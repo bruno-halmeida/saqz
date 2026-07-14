@@ -6,7 +6,11 @@ group = "br.com.saqz"
 version = "0.1.0-SNAPSHOT"
 
 dependencies {
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
     implementation(libs.firebase.admin)
+    implementation("org.springframework.security:spring-security-core")
+    implementation("org.springframework.security:spring-security-web")
+    compileOnly("jakarta.servlet:jakarta.servlet-api")
 
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))

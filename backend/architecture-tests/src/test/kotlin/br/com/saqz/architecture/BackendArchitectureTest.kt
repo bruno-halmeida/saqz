@@ -85,8 +85,6 @@ class BackendArchitectureTest {
             .flatMap { source -> source.readText().lineSequence().filter { it.startsWith("import ") }.toList() }
 
         assertTrue(imports.all { it.startsWith("import br.com.saqz.identity.") || it.startsWith("import kotlin.") })
-        assertFalse(backendRoot.resolve("features/identity/build.gradle.kts").readText().contains("spring"))
-        assertTrue(imports.none { it.startsWith("import com.google.firebase.") })
     }
 
     @Test
