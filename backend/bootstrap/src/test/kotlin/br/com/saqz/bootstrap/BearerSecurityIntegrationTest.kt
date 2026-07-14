@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.security.core.Authentication
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import java.net.URI
@@ -26,6 +28,8 @@ import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(BearerSecurityIntegrationTest.SecurityTestConfiguration::class)
+@ActiveProfiles("test")
+@TestPropertySource(properties = ["saqz.firebase.emulator.enabled=true"])
 class BearerSecurityIntegrationTest {
     @LocalServerPort
     private var port: Int = 0

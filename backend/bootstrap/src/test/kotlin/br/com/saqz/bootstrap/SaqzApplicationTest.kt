@@ -6,6 +6,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Import
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -15,6 +17,8 @@ import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestIdentityConfiguration::class)
+@ActiveProfiles("test")
+@TestPropertySource(properties = ["saqz.firebase.emulator.enabled=true"])
 class SaqzApplicationTest {
     @Autowired
     private lateinit var context: ConfigurableApplicationContext

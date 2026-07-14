@@ -11,6 +11,8 @@ import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -19,6 +21,8 @@ import kotlin.test.assertEquals
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(SessionEndpointIntegrationTest.SessionTestConfiguration::class)
+@ActiveProfiles("test")
+@TestPropertySource(properties = ["saqz.firebase.emulator.enabled=true"])
 class SessionEndpointIntegrationTest {
     @LocalServerPort
     private var port: Int = 0
