@@ -19,3 +19,4 @@ rootProject.name = "saqz"
 includeBuild("build-logic")
 
 include(":backend:shared-kernel")
+include(":backend:features:identity")
