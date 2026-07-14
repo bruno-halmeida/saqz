@@ -16,5 +16,9 @@ gradlePlugin {
             id = "saqz.kmp-compose-library"
             implementationClass = "br.com.saqz.mobile.buildlogic.KmpComposeLibraryConventionPlugin"
         }
+        register("androidApplication") {
+            id = "saqz.android-application"
+            implementationClass = "br.com.saqz.mobile.buildlogic.AndroidApplicationConventionPlugin"
+        }
     }
 }
