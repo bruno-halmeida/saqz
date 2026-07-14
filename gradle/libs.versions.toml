@@ -1,0 +1,22 @@
+[versions]
+kotlin = "2.4.10"
+compose-multiplatform = "1.11.1"
+android-gradle-plugin = "9.1.0"
+spring-boot = "4.1.0"
+firebase-admin = "9.10.0"
+archunit = "1.4.2"
+junit = "5.14.1"
+
+[libraries]
+firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebase-admin" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
