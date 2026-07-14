@@ -1,6 +1,5 @@
 pluginManagement {
     repositories {
-        google()
         gradlePluginPortal()
         mavenCentral()
     }
@@ -9,16 +8,15 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
         mavenCentral()
     }
 }
 
-rootProject.name = "saqz"
+rootProject.name = "saqz-backend"
 
 includeBuild("build-logic")
 
-include(":backend:shared-kernel")
-include(":backend:features:identity")
-include(":backend:bootstrap")
-include(":backend:architecture-tests")
+include(":shared-kernel")
+include(":features:identity")
+include(":bootstrap")
+include(":architecture-tests")

@@ -10,9 +10,9 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.archunit.junit5)
-    testImplementation(project(":backend:bootstrap"))
-    testImplementation(project(":backend:features:identity"))
-    testImplementation(project(":backend:shared-kernel"))
+    testImplementation(project(":bootstrap"))
+    testImplementation(project(":features:identity"))
+    testImplementation(project(":shared-kernel"))
 }
 
 tasks.test {

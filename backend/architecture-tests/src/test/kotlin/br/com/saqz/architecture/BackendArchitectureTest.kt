@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
+import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import kotlin.io.path.readText
@@ -14,15 +15,21 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BackendArchitectureTest {
-    private val repositoryRoot: Path = Path.of("../..").toAbsolutePath().normalize()
+    private val workspaceRoot: Path = Path.of("../..").toAbsolutePath().normalize()
+    private val backendRoot: Path = workspaceRoot.resolve("backend")
 
     @Test
     fun `ARCH-01 exposes separate bootstrap shared kernel and identity modules`() {
-        val settings = repositoryRoot.resolve("settings.gradle.kts").readText()
+        val settings = backendRoot.resolve("settings.gradle.kts").readText()
+        val modules = Regex("include\\(\"([^\"]+)\"\\)")
+            .findAll(settings)
+            .map { it.groupValues[1] }
+            .toSet()
 
-        assertTrue(settings.contains("include(\":backend:bootstrap\")"))
-        assertTrue(settings.contains("include(\":backend:shared-kernel\")"))
-        assertTrue(settings.contains("include(\":backend:features:identity\")"))
+        assertEquals(
+            setOf(":shared-kernel", ":features:identity", ":bootstrap", ":architecture-tests"),
+            modules,
+        )
     }
 
     @Test
@@ -60,7 +67,7 @@ class BackendArchitectureTest {
 
     @Test
     fun `ARCH-04 limits bootstrap to entry point wiring and configuration packages`() {
-        val sourceRoot = repositoryRoot.resolve("backend/bootstrap/src/main/kotlin")
+        val sourceRoot = backendRoot.resolve("bootstrap/src/main/kotlin")
         val forbiddenSegments = setOf("domain", "application", "usecase", "port", "adapter")
         val sourcePaths = kotlinSources(sourceRoot).map(sourceRoot::relativize)
 
@@ -71,30 +78,30 @@ class BackendArchitectureTest {
     @Test
     fun `ARCH-05 keeps identity contracts provider neutral`() {
         val contractRoots = listOf("api", "application", "domain")
-            .map { repositoryRoot.resolve("backend/features/identity/src/main/kotlin/br/com/saqz/identity/$it") }
+            .map { backendRoot.resolve("features/identity/src/main/kotlin/br/com/saqz/identity/$it") }
             .filter(Path::isDirectory)
         val imports = contractRoots
             .flatMap(::kotlinSources)
             .flatMap { source -> source.readText().lineSequence().filter { it.startsWith("import ") }.toList() }
 
         assertTrue(imports.all { it.startsWith("import br.com.saqz.identity.") || it.startsWith("import kotlin.") })
-        assertFalse(repositoryRoot.resolve("backend/features/identity/build.gradle.kts").readText().contains("spring"))
-        assertFalse(repositoryRoot.resolve("backend/features/identity/build.gradle.kts").readText().contains("firebase"))
+        assertFalse(backendRoot.resolve("features/identity/build.gradle.kts").readText().contains("spring"))
+        assertFalse(backendRoot.resolve("features/identity/build.gradle.kts").readText().contains("firebase"))
     }
 
     @Test
     fun `ARCH-06 enforces the dependency direction documented for backend features`() {
-        val sharedBuild = repositoryRoot.resolve("backend/shared-kernel/build.gradle.kts").readText()
-        val identityBuild = repositoryRoot.resolve("backend/features/identity/build.gradle.kts").readText()
+        val sharedBuild = backendRoot.resolve("shared-kernel/build.gradle.kts").readText()
+        val identityBuild = backendRoot.resolve("features/identity/build.gradle.kts").readText()
 
         assertFalse(sharedBuild.contains("project("))
-        assertFalse(identityBuild.contains(":backend:bootstrap"))
-        assertFalse(identityBuild.contains(":backend:features:"))
+        assertFalse(identityBuild.contains(":bootstrap"))
+        assertFalse(identityBuild.contains(":features:"))
     }
 
     @Test
     fun `ARCH-07 keeps identity as the only backend feature`() {
-        val featuresRoot = repositoryRoot.resolve("backend/features")
+        val featuresRoot = backendRoot.resolve("features")
         val featureDirectories = Files.list(featuresRoot).use { paths ->
             paths.filter(Path::isDirectory).map(Path::name).sorted().toList()
         }
@@ -104,14 +111,52 @@ class BackendArchitectureTest {
 
     @Test
     fun `ARCH-08 separates backend and client build graphs`() {
-        val backendBuilds = gradleBuilds(repositoryRoot.resolve("backend"))
-        val forbiddenClients = listOf(":mobile", ":app-android", "app-ios", "app-web")
-        val clientRoots = listOf("mobile", "app-android", "app-ios", "app-web")
-            .map(repositoryRoot::resolve)
-            .filter(Path::isDirectory)
+        val rootGradlePaths = listOf(
+            "gradlew",
+            "gradlew.bat",
+            "gradle/libs.versions.toml",
+            "gradle/wrapper/gradle-wrapper.jar",
+            "gradle/wrapper/gradle-wrapper.properties",
+            "settings.gradle.kts",
+            "build.gradle.kts",
+            "build-logic/settings.gradle.kts",
+            "build-logic/build.gradle.kts",
+            "build-logic/src/main/kotlin/br/com/saqz/buildlogic/JvmBackendConventionPlugin.kt",
+        )
+        val requiredBackendPaths = rootGradlePaths.map(backendRoot::resolve)
+        val settings = backendRoot.resolve("settings.gradle.kts").readText()
+        val configurationFiles = gradleBuilds(backendRoot) + listOf(
+            backendRoot.resolve("settings.gradle.kts"),
+            backendRoot.resolve("gradle/libs.versions.toml"),
+            backendRoot.resolve("build-logic/settings.gradle.kts"),
+        ) + kotlinSources(backendRoot.resolve("build-logic/src/main/kotlin"))
+        val configuration = configurationFiles.joinToString("\n") { it.readText() }
+        val includedBuilds = Regex("includeBuild\\(\\s*\"([^\"]+)\"\\s*\\)")
+            .findAll(settings)
+            .map { it.groupValues[1] }
+            .toList()
+        val allowedProjects = setOf(":shared-kernel", ":features:identity", ":bootstrap")
+        val projectDependencies = Regex("project\\(\\s*\"([^\"]+)\"\\s*\\)")
+            .findAll(configuration)
+            .map { it.groupValues[1] }
+            .toSet()
+        val forbiddenBackendTooling = listOf(
+            "org.jetbrains.compose",
+            "kotlin-multiplatform",
+            "com.android",
+            "android-gradle",
+            "mobile",
+            "frontend",
+            "ios",
+        )
+        val siblingArtifact = Regex("(?:\\.\\./)+(?:mobile|frontend)(?:/|\\\")|br\\.com\\.saqz(?::|\\.)(?:mobile|frontend)")
 
-        assertTrue(backendBuilds.none { build -> forbiddenClients.any(build.readText()::contains) })
-        assertTrue(clientRoots.flatMap(::gradleBuilds).none { it.readText().contains(":backend:") })
+        assertTrue(rootGradlePaths.none { workspaceRoot.resolve(it).exists() })
+        assertTrue(requiredBackendPaths.all(Path::exists))
+        assertEquals(listOf("build-logic"), includedBuilds)
+        assertTrue(projectDependencies.all(allowedProjects::contains))
+        assertFalse(siblingArtifact.containsMatchIn(configuration.lowercase()))
+        assertTrue(forbiddenBackendTooling.none(configuration.lowercase()::contains))
     }
 
     private fun kotlinSources(root: Path): List<Path> =

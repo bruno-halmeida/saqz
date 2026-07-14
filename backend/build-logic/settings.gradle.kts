@@ -1,6 +1,5 @@
 pluginManagement {
     repositories {
-        google()
         gradlePluginPortal()
         mavenCentral()
     }
@@ -8,9 +7,8 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
-        google()
         mavenCentral()
     }
 }
 
-rootProject.name = "build-logic"
+rootProject.name = "backend-build-logic"
