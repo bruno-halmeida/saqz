@@ -1,6 +1,44 @@
 .superpowers/
+.specs/
 docs/
+
+# Gradle, Kotlin, and Android
+.gradle/
+.kotlin/
+**/build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Node and Angular
 node_modules/
 dist/
+.angular/
+coverage/
 .astro/
+
+# Xcode and Swift Package Manager
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+
+# Firebase local runtime
+.firebase/
+firebase-debug.log*
+ui-debug.log*
+firebase-export-*/
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+!.env.*.example
+google-services.json
+GoogleService-Info.plist
+
+# Operating systems
 .DS_Store
