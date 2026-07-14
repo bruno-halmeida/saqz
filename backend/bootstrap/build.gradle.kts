@@ -20,5 +20,16 @@ dependencies {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform { excludeTags("emulator") }
+}
+
+val emulatorTest by tasks.registering(Test::class) {
+    description = "Runs protected session tests against the Firebase Auth Emulator."
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    environment("FIREBASE_AUTH_EMULATOR_HOST", "127.0.0.1:9099")
+    systemProperty("session.fixture", rootProject.projectDir.parentFile.resolve("firebase/session-fixture"))
+    useJUnitPlatform { includeTags("emulator") }
+    shouldRunAfter(tasks.test)
 }
