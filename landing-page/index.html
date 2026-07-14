@@ -5,13 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Saqz | Aplicativo para organizar grupos de vôlei</title>
   <meta name="description" content="Organize jogos, confirmações e pagamentos do seu grupo de vôlei com o Saqz. Entre na lista de interesse do pré-lançamento.">
-  <link rel="canonical" href="https://bruno-halmeida.github.io/saqz/">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="pt_BR">
-  <meta property="og:title" content="Saqz | Aplicativo para organizar grupos de vôlei">
-  <meta property="og:description" content="Organize jogos, confirmações e pagamentos do seu grupo de vôlei em um só lugar.">
-  <meta property="og:url" content="https://bruno-halmeida.github.io/saqz/">
-  <meta name="twitter:card" content="summary">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@110,800&family=Inter:wght@400;500;600;700;800&display=swap');
     :root { --blue:#0638df; --lime:#c7f300; --ink:#071025; --paper:#f4f5f0; --ease:cubic-bezier(.23,1,.32,1); }
@@ -136,17 +129,33 @@
     .game-ticket h3 { margin:0 0 5px; font-size:18px; letter-spacing:-.03em; }.game-ticket p { margin:0; color:#c5ccda; font-size:10px; line-height:1.5; }
     .money-panel { background:var(--ink); color:#fff; }
     .money-panel .panel-label { color:var(--lime); }
-    .money-summary { position:absolute; left:25px; right:25px; bottom:22px; display:grid; grid-template-columns:1fr auto; align-items:end; gap:20px; }
-    .money-total span { color:#8995ad; font-size:9px; }.money-total strong { display:block; margin-top:4px; color:#fff; font-size:27px; letter-spacing:-.04em; }
-    .payment-ring { display:grid; width:66px; height:66px; place-items:center; border-radius:50%; background:conic-gradient(var(--lime) 0 80%,rgba(255,255,255,.1) 80% 100%); }
-    .payment-ring::before { content:""; width:48px; height:48px; border-radius:50%; background:var(--ink); }
-    .payment-ring b { position:absolute; color:#fff; font-size:11px; }
-    .payment-status { display:flex; gap:12px; margin-top:14px; color:#a4aec1; font-size:9px; }
-    .payment-status span { display:flex; align-items:center; gap:5px; }.payment-status i { width:6px; height:6px; border-radius:50%; background:var(--lime); }.payment-status span:last-child i { background:#ef795e; }
+    .money-summary { position:absolute; left:25px; right:25px; bottom:22px; top:54px; display:flex; flex-direction:column; }
+    .money-amount { display:flex; align-items:baseline; gap:7px; }
+    .money-amount span { color:#8995ad; font-size:10px; letter-spacing:.01em; }
+    .money-amount strong { color:#fff; font-size:32px; font-weight:600; letter-spacing:-.04em; }
+    .money-amount small { color:var(--lime); font-size:10px; font-weight:600; }
+    .money-bar { height:3px; margin:16px 0 22px; overflow:hidden; border-radius:980px; background:rgba(255,255,255,.1); }
+    .money-bar i { display:block; width:80%; height:100%; border-radius:inherit; background:var(--lime); }
+    .money-columns { display:grid; grid-template-columns:1fr 1fr; margin-bottom:22px; border-top:1px solid rgba(255,255,255,.1); }
+    .money-col { padding:14px 14px 14px 0; }
+    .money-col + .money-col { padding-left:14px; border-left:1px solid rgba(255,255,255,.1); }
+    .money-col span { display:block; color:#8995ad; font-size:8px; letter-spacing:.04em; text-transform:uppercase; }
+    .money-col b { display:block; margin-top:6px; color:#fff; font-size:15px; font-weight:600; letter-spacing:-.02em; }
+    .money-col b em { margin-left:5px; color:#8995ad; font-size:9px; font-style:normal; font-weight:400; }
+    .money-col:last-child b { color:rgba(255,255,255,.78); }
+    .money-list { display:grid; gap:9px; margin:0; list-style:none; padding:0; }
+    .payer { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.07); }
+    .payer:first-child { border-top:0; }
+    .payer-name { display:flex; align-items:center; gap:9px; color:#fff; font-size:10px; }
+    .payer-dot { width:7px; height:7px; border-radius:50%; background:var(--lime); }
+    .payer.payer--pending .payer-dot { background:#8995ad; }
+    .payer-status { padding:4px 9px; border-radius:980px; background:rgba(199,243,0,.1); color:var(--lime); font-size:8px; font-weight:600; letter-spacing:.01em; }
+    .payer.payer--pending .payer-status { background:rgba(255,255,255,.06); color:#8995ad; }
     .truth { position:relative; overflow:hidden; background:var(--ink); color:#fff; }
     .truth::before { content:""; position:absolute; width:480px; height:480px; left:-300px; bottom:-310px; border:1px solid rgba(199,243,0,.18); border-radius:50%; box-shadow:0 0 0 55px rgba(199,243,0,.035),0 0 0 110px rgba(255,255,255,.025); }
     .truth-row { position:relative; z-index:2; display:grid; grid-template-columns:1.05fr .95fr; align-items:center; gap:78px; padding:88px 0; }
-    .truth .eyebrow { color:var(--lime); }
+    .truth .eyebrow { display:inline-flex; align-items:center; gap:11px; color:var(--lime); font-size:24px; font-weight:600; letter-spacing:-.03em; text-transform:none; }
+    .truth .eyebrow::before { content:""; width:8px; height:8px; border:2px solid var(--lime); border-radius:50%; box-shadow:0 0 0 5px rgba(199,243,0,.13); }
     .truth h2 { max-width:650px; margin:12px 0 16px; font-family:Anybody,sans-serif; font-stretch:110%; font-size:clamp(37px,4vw,58px); line-height:.98; letter-spacing:-.05em; }
     .truth-copy > p { max-width:580px; margin:0; color:#aeb7ca; font-size:15px; line-height:1.65; }
     .truth-copy .primary { margin-top:26px; }
@@ -174,6 +183,216 @@
     @media (max-width:900px) { .hero-grid { grid-template-columns:1fr; gap:20px; padding-top:58px; }.photo { background-image:linear-gradient(180deg,rgba(6,56,223,1) 0%,rgba(6,56,223,.96) 44%,rgba(6,56,223,.48) 70%,rgba(7,16,37,.35) 100%),url('https://images.pexels.com/photos/6203713/pexels-photo-6203713.jpeg?auto=compress&cs=tinysrgb&w=1400'); background-position:center,center; }.visual { min-height:620px; }.device-stage { transform:translate(-50%,-50%) rotate(2deg); }.below-head,.organizer-board,.truth-row,.faq-grid,.attendance-copy { grid-template-columns:1fr; }.organizer-board { grid-template-rows:auto; }.attendance-panel { grid-row:auto; min-height:500px; }.attendance-copy { gap:15px; }.attendance-copy > p { max-width:460px; }.below-head .section-lead { margin-top:0; }.truth-row,.faq-grid,.below-head { gap:26px; } }
     @media (max-width:520px) { .shell { width:min(100% - 28px,1240px); } nav { min-height:70px; }.logo { width:116px; }.nav-cta { padding:10px 12px; font-size:9px; }.hero-grid { min-height:auto; }.copy h1 { font-size:42px; line-height:.98; }.lead { font-size:15px; }.visual { min-height:570px; margin-top:6px; }.device-stage { width:265px; height:540px; }.halo { width:370px; height:370px; }.one { left:-18px; bottom:66px; }.two { top:158px; right:-18px; }.caption { bottom:8px; } }
     @media (prefers-reduced-motion:reduce) { .nav-cta,.primary,.page-track,.tabbar button { transition:none; } }
+
+    /* Alternative concept: restrained, product-led, and centered. */
+    :root { --paper:#f5f5f7; --ink:#1d1d1f; }
+    body { background:#f5f5f7; color:#1d1d1f; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Segoe UI",sans-serif; letter-spacing:-.016em; }
+    .shell { width:min(1080px,calc(100% - 48px)); }
+    header { position:sticky; top:0; z-index:20; border-bottom:1px solid rgba(0,0,0,.08); background:rgba(255,255,255,.78); backdrop-filter:saturate(180%) blur(20px); }
+    nav { min-height:54px; }
+    .logo { width:102px; }
+    .nav-cta,.primary { border-radius:980px; font-size:14px; font-weight:400; letter-spacing:-.01em; }
+    .nav-cta { padding:9px 15px; background:var(--blue); color:#fff; }
+    .hero { min-height:auto; overflow:hidden; background:#f5f5f7; color:#1d1d1f; }
+    .photo { top:auto; bottom:0; height:58%; border:0; background-image:linear-gradient(rgba(6,56,223,.11),rgba(6,56,223,.11)),url('https://images.pexels.com/photos/6203713/pexels-photo-6203713.jpeg?auto=compress&cs=tinysrgb&w=2000'); background-position:center,center 44%; -webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 8%,rgba(0,0,0,.72) 24%,#000 38%); mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 8%,rgba(0,0,0,.72) 24%,#000 38%); }
+    .photo::after { display:none; }
+    .hero-grid { min-height:1120px; display:flex; flex-direction:column; gap:0; padding:86px 0 0; }
+    .copy { width:min(880px,100%); margin:0 auto; text-align:center; }
+    .kicker { margin-bottom:18px; color:var(--blue); font-size:13px; font-weight:600; letter-spacing:-.01em; text-transform:none; }
+    .kicker::before { display:none; }
+    h1 { max-width:900px; margin:0 auto; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:clamp(48px,6vw,72px); font-weight:600; line-height:1.04; letter-spacing:-.045em; }
+    .lead { max-width:760px; margin:22px auto 0; color:#6e6e73; font-size:21px; font-weight:400; line-height:1.38; text-shadow:none; }
+    .primary { margin-top:26px; padding:11px 17px; background:var(--blue); color:#fff; box-shadow:none; }
+    .click-trigger { color:#6e6e73; font-size:12px; }
+    .hero .click-trigger { color:#6e6e73 !important; }
+    .visual { width:100%; min-height:720px; margin-top:18px; }
+    .halo { display:none; }
+    .device-stage { left:50%; top:52%; width:310px; height:632px; transform:translate(-50%,-50%); }
+    .device { border:1px solid rgba(255,255,255,.42); border-radius:50px; box-shadow:rgba(0,0,0,.22) 3px 5px 30px; }
+    .device::after { border-radius:42px; }
+    .screen { border-radius:42px; }
+    .float-card { border:1px solid rgba(0,0,0,.1); border-radius:8px; background:rgba(255,255,255,.92); color:#1d1d1f; box-shadow:none; backdrop-filter:blur(20px); }
+    .float-card i { border-radius:7px; background:var(--blue); color:#fff; }
+    .float-card strong { color:#1d1d1f; }
+    .one { left:-58px; bottom:92px; }.two { top:178px; right:-62px; }
+    .caption { right:24px; bottom:18px; color:rgba(255,255,255,.82); }
+
+    .below { width:100%; padding:120px 0; background:#fff; }
+    .below > * { width:min(1080px,calc(100% - 48px)); margin-left:auto; margin-right:auto; }
+    .below-head { text-align:center; }
+    .eyebrow { color:var(--blue); font-size:13px; font-weight:600; letter-spacing:-.01em; text-transform:none; }
+    .below h2,.final h2,.faq h2,.truth h2 { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-weight:600; letter-spacing:-.04em; }
+    .below-head h2 { max-width:900px; margin:12px auto 0; font-size:clamp(42px,5vw,56px); line-height:1.07; white-space:normal; }
+    .below-head .section-lead { max-width:700px; margin:18px auto 0; color:#6e6e73; font-size:19px; line-height:1.45; }
+    .organizer-board { grid-template-columns:1fr 1fr; grid-template-rows:auto auto; gap:16px; margin-top:64px; }
+    .board-panel { border-radius:8px; }
+    .attendance-panel { grid-column:1 / -1; grid-row:auto; min-height:430px; padding:48px; }
+    .attendance-panel::before { display:none; }
+    .attendance-copy { grid-template-columns:1fr 1fr; align-items:start; gap:64px; }
+    .attendance-panel h3 { max-width:540px; margin-top:16px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:42px; font-weight:600; line-height:1.06; letter-spacing:-.04em; }
+    .attendance-copy > p { max-width:390px; color:rgba(255,255,255,.76); font-size:17px; line-height:1.47; }
+    .attendance-demo { left:48px; right:48px; bottom:42px; border-radius:8px; box-shadow:none; }
+    .game-panel,.money-panel { min-height:320px; padding:32px; }
+    .game-ticket { left:32px; right:32px; bottom:30px; border-radius:8px; box-shadow:none; }
+    .money-summary { left:32px; right:32px; bottom:32px; }
+
+    .truth { background:var(--blue); }
+    .truth::before { display:none; }
+    .truth-row { display:block; width:min(980px,calc(100% - 48px)); padding:112px 0; text-align:center; }
+    .truth .eyebrow { color:var(--lime); }
+    .truth h2 { max-width:800px; margin:14px auto 18px; font-size:clamp(42px,5vw,56px); line-height:1.07; }
+    .truth-copy > p { max-width:680px; margin:0 auto; color:rgba(255,255,255,.76); font-size:19px; line-height:1.47; }
+    .truth-copy .primary { background:var(--lime); color:#1d1d1f; }
+    .truth-copy .click-trigger { color:rgba(255,255,255,.68); }
+    .access-card { display:grid; grid-template-columns:repeat(3,1fr); max-width:900px; margin:48px auto 0; padding:0; border:1px solid rgba(255,255,255,.22); border-radius:8px; background:transparent; box-shadow:none; backdrop-filter:none; text-align:left; }
+    .access-top { grid-column:1 / -1; margin:0; padding:18px 22px; border-bottom:1px solid rgba(255,255,255,.22); }
+    .access-step { grid-template-columns:34px 1fr; padding:24px 20px; border-top:0; border-right:1px solid rgba(255,255,255,.18); }
+    .access-step:last-child { border-right:0; }
+
+    .faq { width:min(900px,calc(100% - 48px)); padding:112px 0; }
+    .faq-grid { display:block; }
+    .faq-grid > div:first-child { text-align:center; }
+    .faq h2 { margin:12px auto 0; font-size:48px; line-height:1.08; }
+    .questions { max-width:780px; margin:54px auto 0; border-top:1px solid #d2d2d7; }
+    .question { padding:28px 0; border-color:#d2d2d7; }
+    .question h3 { font-size:19px; font-weight:600; }.question p { max-width:680px; color:#6e6e73; font-size:17px; line-height:1.47; }
+    .final { width:100%; padding:120px 24px; background:#fff; }
+    .final h2 { max-width:800px; font-size:56px; line-height:1.07; }
+    .final p { max-width:660px; color:#6e6e73; font-size:19px; }
+
+    @media (max-width:900px) {
+      .hero-grid { min-height:1080px; padding-top:72px; }
+      .visual { min-height:680px; }
+      .device-stage { transform:translate(-50%,-50%); }
+      .organizer-board,.attendance-copy { grid-template-columns:1fr; }
+      .attendance-panel { grid-column:auto; min-height:520px; padding:34px; }
+      .attendance-copy { gap:18px; }
+      .attendance-demo { left:34px; right:34px; bottom:34px; }
+      .access-card { grid-template-columns:1fr; }
+      .access-top { grid-column:auto; }
+      .access-step { border-right:0; border-top:1px solid rgba(255,255,255,.18); }
+    }
+    @media (max-width:520px) {
+      .shell { width:min(100% - 32px,1080px); }
+      nav { min-height:50px; }
+      .logo { width:88px; }
+      .nav-cta { padding:8px 12px; font-size:12px; }
+      .hero-grid { min-height:1000px; padding-top:54px; }
+      h1 { font-size:44px; line-height:1.05; }
+      .lead { font-size:18px; }
+      .visual { min-height:630px; }
+      .device-stage { width:265px; height:540px; }
+      .one { left:-14px; bottom:70px; }.two { top:160px; right:-14px; }
+      .below { padding:88px 0; }
+      .below > * { width:min(100% - 32px,1080px); }
+      .below-head h2,.truth h2,.faq h2,.final h2 { font-size:38px; }
+      .below-head .section-lead,.truth-copy > p,.final p { font-size:17px; }
+      .attendance-panel { min-height:560px; padding:26px; }
+      .attendance-panel h3 { font-size:34px; }
+      .attendance-demo { left:26px; right:26px; bottom:26px; }
+      .organizer-board { grid-template-columns:1fr; }
+      .game-panel,.money-panel { min-height:280px; }
+      .truth-row,.faq { width:min(100% - 32px,900px); padding:88px 0; }
+      .final { padding:88px 20px; }
+    }
+    /* Finance panel: human, light, and status-led. */
+    .money-panel { border:1px solid #d2d2d7; background:#f4f8fb; color:#1d1d1f; }
+    .money-panel .panel-label { color:var(--blue); }
+    .payment-story { position:absolute; inset:62px 32px 30px; display:flex; flex-direction:column; }
+    .payment-story h3 { max-width:420px; margin:0; color:#1d1d1f; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:30px; font-weight:600; line-height:1.08; letter-spacing:-.04em; }
+    .payment-story h3 strong { color:var(--blue); font-weight:600; }
+    .payment-story > p { margin:8px 0 0; color:#6e6e73; font-size:12px; line-height:1.45; }
+    .payment-people { display:flex; align-items:center; margin-top:22px; padding-left:8px; }
+    .payment-face,.payment-more { position:relative; width:42px; height:42px; margin-left:-8px; border:3px solid #f4f8fb; border-radius:50%; background-position:center 20%; background-size:cover; }
+    .payment-face:nth-child(1) { background-image:url('https://images.pexels.com/photos/30446985/pexels-photo-30446985.jpeg?auto=compress&cs=tinysrgb&w=120'); }
+    .payment-face:nth-child(2) { background-image:url('https://images.pexels.com/photos/36866635/pexels-photo-36866635.jpeg?auto=compress&cs=tinysrgb&w=120'); }
+    .payment-face:nth-child(3) { background-image:url('https://images.pexels.com/photos/10350338/pexels-photo-10350338.jpeg?auto=compress&cs=tinysrgb&w=120'); }
+    .payment-face:nth-child(4) { background-image:url('https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=120'); }
+    .payment-face:nth-child(5) { background-image:url('https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=120'); }
+    .payment-face::after { content:"✓"; position:absolute; right:-2px; bottom:-2px; display:grid; width:15px; height:15px; place-items:center; border:2px solid #f4f8fb; border-radius:50%; background:var(--lime); color:#1d1d1f; font-size:7px; font-style:normal; font-weight:800; }
+    .payment-face.is-pending { filter:grayscale(1); opacity:.62; }
+    .payment-face.is-pending::after { content:""; background:#b8b8bd; }
+    .payment-more { display:grid; place-items:center; background:#e2e2e5; color:#6e6e73; font-size:9px; font-style:normal; font-weight:600; }
+    .payment-totals { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:auto; border-top:1px solid #d2d2d7; }
+    .payment-total { padding-top:15px; }
+    .payment-total + .payment-total { padding-left:18px; border-left:1px solid #d2d2d7; }
+    .payment-total span { display:block; color:#6e6e73; font-size:9px; }
+    .payment-total strong { display:block; margin-top:5px; color:#1d1d1f; font-size:19px; font-weight:600; letter-spacing:-.03em; }
+    .payment-total:last-child strong { color:#6e6e73; }
+    /* FAQ: native disclosure with quiet, editorial hierarchy. */
+    .questions { border-top:1px solid #d2d2d7; }
+    .question { padding:0; border-bottom:1px solid #d2d2d7; }
+    .question summary { display:grid; grid-template-columns:38px 1fr 34px; align-items:center; gap:14px; padding:26px 0; list-style:none; cursor:pointer; }
+    .question summary::-webkit-details-marker { display:none; }
+    .question summary:focus-visible { border-radius:8px; outline:2px solid var(--blue); outline-offset:5px; }
+    .question-index { color:var(--blue); font-size:11px; font-weight:600; letter-spacing:.04em; }
+    .question h3 { margin:0; color:#1d1d1f; font-size:21px; font-weight:600; letter-spacing:-.025em; }
+    .question-toggle { position:relative; display:block; width:30px; height:30px; border:1px solid #d2d2d7; border-radius:50%; }
+    .question-toggle::before,.question-toggle::after { content:""; position:absolute; left:50%; top:50%; width:10px; height:1px; background:#1d1d1f; transform:translate(-50%,-50%); transition:transform 180ms var(--ease); }
+    .question-toggle::after { transform:translate(-50%,-50%) rotate(90deg); }
+    .question[open] .question-toggle { border-color:var(--blue); background:var(--blue); }
+    .question[open] .question-toggle::before,.question[open] .question-toggle::after { background:#fff; }
+    .question[open] .question-toggle::after { transform:translate(-50%,-50%) rotate(0deg); }
+    .question p { max-width:720px; margin:0; padding:0 48px 28px 52px; color:#6e6e73; font-size:17px; line-height:1.47; }
+    @media (max-width:520px) {
+      .question summary { grid-template-columns:28px 1fr 32px; gap:10px; padding:22px 0; }
+      .question h3 { font-size:18px; }
+      .question p { padding:0 42px 22px 38px; font-size:15px; }
+    }
+    /* Final CTA: quiet product lockup on a blue-tinted wash. */
+    .final { position:relative; overflow:hidden; border-top:1px solid #dbe5ee; border-bottom:1px solid #dbe5ee; background:#f4f8fb; }
+    .final-logo { display:block; width:132px; height:auto; margin:0 auto 24px; }
+    .final .eyebrow { display:inline-flex; align-items:center; gap:8px; padding:8px 13px; border:1px solid #d2dce5; border-radius:980px; background:rgba(255,255,255,.72); color:var(--blue); font-size:12px; font-weight:600; letter-spacing:-.01em; }
+    .final .eyebrow::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 3px rgba(199,243,0,.16); }
+    .final h2 { margin-top:24px; }
+    .final .primary { padding:13px 21px; font-size:16px; }
+    .final .click-trigger { display:flex; width:max-content; align-items:center; gap:7px; margin:14px auto 0; }
+    .final .click-trigger::before { content:"✓"; display:grid; width:17px; height:17px; place-items:center; border-radius:50%; background:rgba(6,56,223,.09); color:var(--blue); font-size:9px; font-weight:700; }
+    @media (max-width:520px) {
+      .final-logo { width:112px; margin-bottom:20px; }
+      .final .primary { padding:12px 18px; font-size:14px; }
+    }
+    /* Phone mockup: light product theme aligned with the page. */
+    .screen { background:#f5f5f7; }
+    .app { color:#1d1d1f; }
+    .welcome { color:#85858a; }
+    .group-name,.page-title { color:#1d1d1f; }
+    .page-kicker,.game-label { color:var(--blue); }
+    .game { border:1px solid #e2e2e5; background:#fff; box-shadow:none; }
+    .game h2 { color:#1d1d1f; }
+    .game p { color:#707075; }
+    .bar { border:1px solid #ececf0; background:#f5f5f7; color:#47474c; }
+    .bar b { color:var(--blue); }
+    .mini-title { color:#1d1d1f; }
+    .mini-title span { color:#85858a; }
+    .metric { border:1px solid #e2e2e5; background:#fff; color:#707075; }
+    .metric b { color:#1d1d1f; }
+    .metric:last-child b { color:var(--blue); }
+    .schedule-card { border:1px solid #e2e2e5; background:#fff; }
+    .schedule-date { background:var(--blue); color:#fff; }
+    .schedule-date small { color:var(--lime); }
+    .schedule-card h4 { color:#1d1d1f; }
+    .schedule-card p { color:#707075; }
+    .spots { color:var(--blue); }
+    .athlete-row { border:1px solid #e2e2e5; background:#fff; }
+    .athlete-row h4 { color:#1d1d1f; }
+    .athlete-row p { color:#707075; }
+    .athlete-status { background:rgba(199,243,0,.26); color:#354300; }
+    .finance-overview { border:1px solid #e2e2e5; background:#fff; }
+    .finance-overview > span { color:#707075; }
+    .finance-overview > strong { color:#1d1d1f; }
+    .finance-split span { background:#f5f5f7; color:#707075; }
+    .finance-split b { color:#1d1d1f; }
+    .finance-split span:last-child b { color:var(--blue); }
+    .transaction-title { color:#1d1d1f; }
+    .transaction-title span { color:#85858a; }
+    .transaction { border:1px solid #e8e8ec; background:#fff; }
+    .transaction i { background:rgba(6,56,223,.08); color:var(--blue); }
+    .transaction h4,.transaction strong { color:#1d1d1f; }
+    .transaction p { color:#707075; }
+    .tabbar { border-color:rgba(0,0,0,.08); background:rgba(255,255,255,.88); box-shadow:0 -8px 24px rgba(0,0,0,.035); }
+    .tabbar button { color:#85858a; }
+    .tabbar button.is-active { background:rgba(6,56,223,.08); color:var(--blue); }
   </style>
 </head>
 <body>
@@ -240,12 +459,12 @@
       <div class="organizer-board">
         <article class="board-panel attendance-panel"><div class="attendance-copy"><div><span class="panel-label">Quem vai?</span><h3>Veja as confirmações sem recontar a conversa.</h3></div><p>Cada atleta poderá confirmar presença. Vagas e lista de espera ficarão visíveis para o grupo.</p></div><div class="attendance-demo"><div class="demo-row"><span>Confirmados para quinta</span><strong>10 / 12</strong></div><div class="progress"><i></i></div><div class="player-row"><div class="player-stack"><i></i><i></i><i></i><i>+7</i></div><span class="waiting">Lista de espera<b>2 atletas</b></span></div></div></article>
         <article class="board-panel game-panel"><span class="panel-label">Onde e quando?</span><div class="game-ticket"><div class="date-block"><strong>18</strong><span>JUL · QUI</span></div><div><h3>Quinta na Arena</h3><p>20h30 · Quadra 2<br>Confirmações até quarta, 18h</p></div></div></article>
-        <article class="board-panel money-panel"><span class="panel-label">Quem pagou?</span><div class="money-summary"><div class="money-total"><span>Recebido neste mês</span><strong>R$ 840</strong><div class="payment-status"><span><i></i>8 pagos</span><span><i></i>2 pendentes</span></div></div><div class="payment-ring"><b>80%</b></div></div></article>
+        <article class="board-panel money-panel"><span class="panel-label">Quem pagou?</span><div class="payment-story"><h3><strong>8 de 10</strong> atletas já pagaram.</h3><p>Veja rapidamente quem está em dia e quem ainda precisa acertar.</p><div class="payment-people" aria-label="Status dos pagamentos"><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face is-pending"></i><i class="payment-face is-pending"></i><i class="payment-more">+5</i></div><div class="payment-totals"><div class="payment-total"><span>Recebido em julho</span><strong>R$ 840</strong></div><div class="payment-total"><span>A receber</span><strong>R$ 120</strong></div></div></div></article>
       </div>
     </section>
     <section class="truth"><div class="truth-row shell"><div class="truth-copy"><span class="eyebrow">Pré-lançamento</span><h2>Seu grupo pode usar o Saqz antes do lançamento.</h2><p>Estamos começando com poucos grupos para manter tudo funcionando bem. As vagas são preenchidas pela ordem de entrada na lista.</p><a class="primary" href="#interesse">EU QUERO UMA VAGA →</a><span class="click-trigger">O botão leva ao WhatsApp</span></div><div class="access-card"><div class="access-top"><span>Como participar</span><b>Vagas limitadas</b></div><div class="access-step"><i>1</i><div><strong>Entre na lista</strong><p>Envie uma mensagem pelo WhatsApp.</p></div></div><div class="access-step"><i>2</i><div><strong>Aguarde sua vez</strong><p>Seguimos a ordem em que cada grupo demonstrou interesse.</p></div></div><div class="access-step"><i>3</i><div><strong>Receba o convite</strong><p>Chamamos você quando uma nova vaga estiver disponível.</p></div></div></div></div></section>
-    <section class="faq shell"><div class="faq-grid"><div><span class="eyebrow">Perguntas frequentes</span><h2>Antes de entrar na lista.</h2></div><div class="questions"><article class="question"><h3>O que é o Saqz?</h3><p>Um aplicativo para organizar jogos, presenças e pagamentos de grupos de vôlei de quadra.</p></article><article class="question"><h3>O Saqz já pode ser usado?</h3><p>Estamos no pré-lançamento. Abrimos poucas vagas por vez e chamamos os grupos pela ordem da lista.</p></article><article class="question"><h3>Como consigo uma vaga?</h3><p>Clique em “Eu quero uma vaga” e envie a mensagem pelo WhatsApp. Entraremos em contato quando chegar a vez do seu grupo.</p></article><article class="question"><h3>Preciso pagar para entrar na lista?</h3><p>Não. Entrar na lista não gera contratação nem cobrança.</p></article></div></div></section>
-    <section class="final shell" id="interesse"><span class="eyebrow">Lista de interesse</span><h2>Quer organizar seu grupo com o Saqz?</h2><p>Entre na lista para receber um convite quando abrirmos uma nova vaga durante o pré-lançamento.</p><a class="primary" href="#">EU QUERO UMA VAGA →</a><span class="click-trigger">Abre uma conversa no WhatsApp · entrar na lista é gratuito</span></section>
+    <section class="faq shell"><div class="faq-grid"><div><span class="eyebrow">Perguntas frequentes</span><h2>Antes de entrar na lista.</h2></div><div class="questions"><details class="question" open><summary><span class="question-index">01</span><h3>O que é o Saqz?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Um aplicativo para organizar jogos, presenças e pagamentos de grupos de vôlei de quadra.</p></details><details class="question"><summary><span class="question-index">02</span><h3>O Saqz já pode ser usado?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Estamos no pré-lançamento. Abrimos poucas vagas por vez e chamamos os grupos pela ordem da lista.</p></details><details class="question"><summary><span class="question-index">03</span><h3>Como consigo uma vaga?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Clique em “Eu quero uma vaga” e envie a mensagem pelo WhatsApp. Entraremos em contato quando chegar a vez do seu grupo.</p></details><details class="question"><summary><span class="question-index">04</span><h3>Preciso pagar para entrar na lista?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. Entrar na lista não gera contratação nem cobrança.</p></details></div></div></section>
+    <section class="final shell" id="interesse"><img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz"><span class="eyebrow">Lista de interesse</span><h2>Quer organizar seu grupo com o Saqz?</h2><p>Entre na lista para receber um convite quando abrirmos uma nova vaga durante o pré-lançamento.</p><a class="primary" href="#">EU QUERO UMA VAGA →</a><span class="click-trigger">Abre uma conversa no WhatsApp · entrar na lista é gratuito</span></section>
   </main>
   <script src="assets/phone-carousel.js"></script>
   <script>
