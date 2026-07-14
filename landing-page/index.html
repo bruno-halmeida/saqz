@@ -186,6 +186,7 @@
 
     /* Alternative concept: restrained, product-led, and centered. */
     :root { --paper:#f5f5f7; --ink:#1d1d1f; }
+    html { zoom:1.33; }
     body { background:#f5f5f7; color:#1d1d1f; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Segoe UI",sans-serif; letter-spacing:-.016em; }
     .shell { width:min(1080px,calc(100% - 48px)); }
     header { position:sticky; top:0; z-index:20; border-bottom:1px solid rgba(0,0,0,.08); background:rgba(255,255,255,.78); backdrop-filter:saturate(180%) blur(20px); }
@@ -261,6 +262,7 @@
     .final p { max-width:660px; color:#6e6e73; font-size:19px; }
 
     @media (max-width:900px) {
+      html { zoom:1; }
       .hero-grid { min-height:1080px; padding-top:72px; }
       .visual { min-height:680px; }
       .device-stage { transform:translate(-50%,-50%); }
