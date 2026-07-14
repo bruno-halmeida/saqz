@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
+import br.com.saqz.identity.adapter.input.http.SessionController
 import br.com.saqz.identity.adapter.input.http.writeProblem
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import org.springframework.context.annotation.Bean
@@ -12,6 +13,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration(proxyBeanMethods = false)
 class IdentitySecurityConfiguration {
+    @Bean
+    fun sessionController() = SessionController()
+
     @Bean
     fun bearerAuthenticationFilter(verifyRequestIdentity: VerifyRequestIdentity) =
         BearerAuthenticationFilter(verifyRequestIdentity)
