@@ -17,3 +17,5 @@ dependencyResolutionManagement {
 rootProject.name = "saqz"
 
 includeBuild("build-logic")
+
+include(":backend:shared-kernel")
