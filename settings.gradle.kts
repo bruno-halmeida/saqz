@@ -20,3 +20,4 @@ includeBuild("build-logic")
 
 include(":backend:shared-kernel")
 include(":backend:features:identity")
+include(":backend:bootstrap")
