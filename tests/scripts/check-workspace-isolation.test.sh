@@ -3,14 +3,50 @@
 set -eu
 
 workspace=${1:-}
-if [ "$workspace" != "backend" ]; then
-    printf 'usage: %s backend\n' "$0" >&2
+if [ "$workspace" != "backend" ] && [ "$workspace" != "mobile" ]; then
+    printf 'usage: %s backend|mobile\n' "$0" >&2
     exit 2
 fi
 
 repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 scratch_root=$(mktemp -d "${TMPDIR:-/tmp}/saqz-workspace-isolation.XXXXXX")
 trap 'rm -rf "$scratch_root"' EXIT HUP INT TERM
+
+if [ "$workspace" = "mobile" ]; then
+    cp -R "$repository_root/mobile" "$scratch_root/mobile"
+    find "$scratch_root/mobile" -type d \( -name .gradle -o -name build \) -prune -exec rm -rf {} +
+
+    if [ -e "$scratch_root/backend" ] || [ -e "$scratch_root/frontend" ]; then
+        printf 'scratch workspace unexpectedly contains a sibling product workspace\n' >&2
+        exit 1
+    fi
+
+    clean_log="$scratch_root/mobile-clean.log"
+    if ! "$scratch_root/mobile/gradlew" -p "$scratch_root/mobile" \
+        :compose-app:allTests \
+        --console=plain >"$clean_log" 2>&1; then
+        cat "$clean_log" >&2
+        exit 1
+    fi
+    cat "$clean_log"
+
+    settings="$scratch_root/mobile/settings.gradle.kts"
+    printf '\nincludeBuild("../backend")\n' >>"$settings"
+    mutation_log="$scratch_root/mobile-sibling-composite.log"
+    if "$scratch_root/mobile/gradlew" -p "$scratch_root/mobile" help \
+        --console=plain >"$mutation_log" 2>&1; then
+        printf 'mobile settings accepted forbidden sibling composite\n' >&2
+        exit 1
+    fi
+    if ! grep -q 'Mobile build must not include a sibling workspace or its build logic' "$mutation_log"; then
+        cat "$mutation_log" >&2
+        printf 'mobile settings failed before rejecting sibling composite\n' >&2
+        exit 1
+    fi
+
+    printf 'ok - mobile workspace isolation\n'
+    exit 0
+fi
 
 cp -R "$repository_root/backend" "$scratch_root/backend"
 find "$scratch_root/backend" -type d \( -name .gradle -o -name build \) -prune -exec rm -rf {} +

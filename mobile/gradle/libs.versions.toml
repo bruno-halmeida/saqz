@@ -1,0 +1,12 @@
+[versions]
+android-gradle-plugin = "9.1.0"
+compile-sdk = "36"
+compose = "1.11.1"
+kotlin = "2.4.10"
+min-sdk = "23"
+
+[plugins]
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
