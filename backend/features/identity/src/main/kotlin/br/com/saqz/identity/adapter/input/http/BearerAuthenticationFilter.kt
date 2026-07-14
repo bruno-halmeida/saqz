@@ -3,6 +3,7 @@ package br.com.saqz.identity.adapter.input.http
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
+import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -24,13 +25,14 @@ class BearerAuthenticationFilter(
     ) {
         val token = bearerToken(request.getHeader("Authorization"))
         if (token == null) {
-            writeProblem(response, 401, "AUTHENTICATION_REQUIRED")
+            writeProblem(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
             return
         }
 
         when (val verification = verifyRequestIdentity.execute(RawIdentityToken(token))) {
-            TokenVerification.Rejected -> writeProblem(response, 401, "AUTHENTICATION_REQUIRED")
-            TokenVerification.ProviderUnavailable -> writeProblem(response, 503, "IDENTITY_PROVIDER_UNAVAILABLE")
+            TokenVerification.Rejected -> writeProblem(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+            TokenVerification.ProviderUnavailable ->
+                writeProblem(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
             is TokenVerification.Verified -> {
                 val context = SecurityContextHolder.createEmptyContext()
                 context.authentication = UsernamePasswordAuthenticationToken(
@@ -51,8 +53,17 @@ class BearerAuthenticationFilter(
     }
 }
 
-fun writeProblem(response: HttpServletResponse, status: Int, code: String) {
+fun writeProblem(
+    request: HttpServletRequest,
+    response: HttpServletResponse,
+    status: Int,
+    code: ErrorCode? = null,
+) {
     response.status = status
     response.setHeader("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE)
-    response.outputStream.write("{\"status\":$status,\"code\":\"$code\"}".toByteArray())
+    val codeField = code?.let { ",\"code\":\"$it\"" }.orEmpty()
+    val correlationId = requestCorrelationId(request).value
+    response.outputStream.write(
+        "{\"status\":$status$codeField,\"correlationId\":\"$correlationId\"}".toByteArray(),
+    )
 }

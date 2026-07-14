@@ -6,6 +6,7 @@ group = "br.com.saqz"
 version = "0.1.0-SNAPSHOT"
 
 dependencies {
+    implementation(project(":shared-kernel"))
     implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
     implementation(libs.firebase.admin)
     implementation("org.springframework.security:spring-security-core")
