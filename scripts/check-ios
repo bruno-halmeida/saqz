@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+export JAVA_HOME="${SAQZ_JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+simulator_udid="$(xcrun simctl list devices available -j | ruby -rjson -e '
+devices = JSON.parse(STDIN.read).fetch("devices")
+runtime, simulators = devices.find { |name, entries| name.include?("SimRuntime.iOS") && entries.any? { |entry| entry["isAvailable"] } }
+abort "No available iOS Simulator is installed. Install an iOS Simulator runtime in Xcode." unless runtime
+puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
+')"
+
+xcodebuild \
+  -project mobile/ios-app/SaqzIOS.xcodeproj \
+  -scheme SaqzIOS \
+  -destination "id=$simulator_udid" \
+  CODE_SIGNING_ALLOWED=NO \
+  test

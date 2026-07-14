@@ -5,13 +5,17 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 @Composable
 fun SaqzApp() {
     MaterialTheme {
         Text(
             text = "Saqz",
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { contentDescription = "Saqz" },
         )
     }
 }

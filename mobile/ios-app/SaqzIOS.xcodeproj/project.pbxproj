@@ -1,0 +1,83 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* SaqzIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* SaqzIOSApp.swift */; };
+		A10000000000000000000002 /* SaqzMobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* SaqzMobile.framework */; };
+		A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* SaqzIOSUITests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000011 /* SaqzIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* SaqzMobile.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = "../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework"; sourceTree = SOURCE_ROOT; };
+		A10000000000000000000013 /* SaqzIOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSUITests.swift; sourceTree = "<group>"; };
+		A10000000000000000000014 /* SaqzIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SaqzIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000015 /* SaqzIOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SaqzIOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000021 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000002 /* SaqzMobile.framework in Frameworks */,); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000022 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000031 = {isa = PBXGroup; children = (A10000000000000000000032 /* SaqzIOS */, A10000000000000000000033 /* SaqzIOSUITests */, A10000000000000000000034 /* Frameworks */, A10000000000000000000035 /* Products */); sourceTree = "<group>"; };
+		A10000000000000000000032 /* SaqzIOS */ = {isa = PBXGroup; children = (A10000000000000000000011 /* SaqzIOSApp.swift */,); path = SaqzIOS; sourceTree = "<group>"; };
+		A10000000000000000000033 /* SaqzIOSUITests */ = {isa = PBXGroup; children = (A10000000000000000000013 /* SaqzIOSUITests.swift */,); path = SaqzIOSUITests; sourceTree = "<group>"; };
+		A10000000000000000000034 /* Frameworks */ = {isa = PBXGroup; children = (A10000000000000000000012 /* SaqzMobile.framework */,); name = Frameworks; sourceTree = "<group>"; };
+		A10000000000000000000035 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000014 /* SaqzIOS.app */, A10000000000000000000015 /* SaqzIOSUITests.xctest */,); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000041 /* SaqzIOS */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000051 /* Build configuration list for PBXNativeTarget "SaqzIOS" */; buildPhases = (A10000000000000000000061 /* Build SaqzMobile */, A10000000000000000000062 /* Sources */, A10000000000000000000021 /* Frameworks */, A10000000000000000000063 /* Resources */,); buildRules = (); dependencies = (); name = SaqzIOS; productName = SaqzIOS; productReference = A10000000000000000000014 /* SaqzIOS.app */; productType = "com.apple.product-type.application"; };
+		A10000000000000000000042 /* SaqzIOSUITests */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000052 /* Build configuration list for PBXNativeTarget "SaqzIOSUITests" */; buildPhases = (A10000000000000000000064 /* Sources */, A10000000000000000000022 /* Frameworks */, A10000000000000000000065 /* Resources */,); buildRules = (); dependencies = (A10000000000000000000071 /* PBXTargetDependency */,); name = SaqzIOSUITests; productName = SaqzIOSUITests; productReference = A10000000000000000000015 /* SaqzIOSUITests.xctest */; productType = "com.apple.product-type.bundle.ui-testing"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000081 /* Project object */ = {isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2620; LastUpgradeCheck = 2620; TargetAttributes = { A10000000000000000000041 = { CreatedOnToolsVersion = 26.2; }; A10000000000000000000042 = { CreatedOnToolsVersion = 26.2; TestTargetID = A10000000000000000000041; }; }; }; buildConfigurationList = A10000000000000000000053 /* Build configuration list for PBXProject "SaqzIOS" */; compatibilityVersion = "Xcode 16.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base,); mainGroup = A10000000000000000000031; productRefGroup = A10000000000000000000035 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000041 /* SaqzIOS */, A10000000000000000000042 /* SaqzIOSUITests */,); };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000063 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000065 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A10000000000000000000061 /* Build SaqzMobile */ = {isa = PBXShellScriptBuildPhase; buildActionMask = 2147483647; files = (); inputPaths = (); name = "Build SaqzMobile"; outputPaths = (); runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/sh; shellScript = "set -eu\ncd \"$SRCROOT/../..\"\nmobile/gradlew -p mobile :compose-app:embedAndSignAppleFrameworkForXcode\n"; };
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000062 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* SaqzIOSApp.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000064 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000071 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000041 /* SaqzIOS */; targetProxy = A10000000000000000000072 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000072 /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A10000000000000000000081 /* Project object */; proxyType = 1; remoteGlobalIDString = A10000000000000000000041; remoteInfo = SaqzIOS; };
+/* End PBXContainerItemProxy section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000091 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_C_LANGUAGE_STANDARD = gnu17; GCC_NO_COMMON_BLOCKS = YES; GCC_WARN_64_TO_32_BIT_CONVERSION = YES; GCC_WARN_UNDECLARED_SELECTOR = YES; GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE; IPHONEOS_DEPLOYMENT_TARGET = 15.0; SDKROOT = iphoneos; SWIFT_VERSION = 6.0; }; name = Debug; };
+		A10000000000000000000092 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 15.0; SDKROOT = iphoneos; SWIFT_VERSION = 6.0; VALIDATE_PRODUCT = YES; }; name = Release; };
+		A10000000000000000000093 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; ASSETCATALOG_COMPILER_APPICON_NAME = ""; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEAD_CODE_STRIPPING = YES; DEVELOPMENT_TEAM = ""; ENABLE_PREVIEWS = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = SaqzIOS/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 15.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = br.com.saqz.local; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OBJC_BRIDGING_HEADER = ""; FRAMEWORK_SEARCH_PATHS = "$(inherited) $(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"; }; name = Debug; };
+		A10000000000000000000094 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; ASSETCATALOG_COMPILER_APPICON_NAME = ""; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEAD_CODE_STRIPPING = YES; DEVELOPMENT_TEAM = ""; ENABLE_PREVIEWS = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = SaqzIOS/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 15.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = br.com.saqz.local; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OBJC_BRIDGING_HEADER = ""; FRAMEWORK_SEARCH_PATHS = "$(inherited) $(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"; }; name = Release; };
+		A10000000000000000000095 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_BUNDLE_IDENTIFIER = br.com.saqz.local.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = SaqzIOS; }; name = Debug; };
+		A10000000000000000000096 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_BUNDLE_IDENTIFIER = br.com.saqz.local.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = SaqzIOS; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A10000000000000000000051 /* Build configuration list for PBXNativeTarget "SaqzIOS" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000093 /* Debug */, A10000000000000000000094 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A10000000000000000000052 /* Build configuration list for PBXNativeTarget "SaqzIOSUITests" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000095 /* Debug */, A10000000000000000000096 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A10000000000000000000053 /* Build configuration list for PBXProject "SaqzIOS" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000091 /* Debug */, A10000000000000000000092 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A10000000000000000000081 /* Project object */;
+}
