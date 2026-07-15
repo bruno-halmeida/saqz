@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -40,6 +42,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Set up Node 26
         uses: actions/setup-node@v7
         with:
@@ -60,6 +64,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -73,6 +79,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Run landing gate
         run: scripts/check-landing
 
@@ -83,6 +91,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Evaluate gate results
         run: scripts/evaluate-ci-gates "$GRADLE_RESULT" "$ANGULAR_RESULT" "$IOS_RESULT" "$LANDING_RESULT"
         env:
