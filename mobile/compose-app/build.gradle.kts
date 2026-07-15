@@ -26,10 +26,13 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":core:common"))
+            implementation(project(":core:design-system"))
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material:material:1.11.1")
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
+            implementation("org.jetbrains.compose.components:components-resources:1.11.1")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
