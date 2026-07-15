@@ -1,0 +1,94 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+fail() {
+    printf 'scope gate failed: %s\n' "$1" >&2
+    exit 1
+}
+
+tracked_files() {
+    git -C "$repository_root" ls-files
+}
+
+tracked_prod_files() {
+    tracked_files | grep -Ev '(^docs/|^README\.md$|^scripts/|^tests/|/src/test/|/src/androidTest/|/SaqzIOSTests/|/SaqzIOSUITests/)' || true
+}
+
+tracked_client_prod_files() {
+    tracked_prod_files | grep -E '^(frontend/src/|mobile/.*/src/.*/|mobile/ios-app/SaqzIOS/)' || true
+}
+
+tracked_build_files() {
+    tracked_prod_files | grep -E '(^backend/.*\.(gradle\.kts|toml)$|^mobile/.*\.(gradle\.kts|toml)$|^frontend/(package\.json|package-lock\.json|angular\.json|tsconfig.*\.json)$)' || true
+}
+
+reject_matches() {
+    label=$1
+    pattern=$2
+    files=${3:-}
+    [ -n "$files" ] || return 0
+    matches=$(printf '%s\n' "$files" | xargs grep -InE "$pattern" 2>/dev/null || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail "$label"
+    }
+}
+
+reject_paths() {
+    label=$1
+    pattern=$2
+    matches=$(tracked_files | grep -E "$pattern" || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail "$label"
+    }
+}
+
+prod_files=$(tracked_prod_files)
+client_prod_files=$(tracked_client_prod_files)
+build_files=$(tracked_build_files)
+
+reject_matches 'database or persistence artifact found' \
+    'org\.postgresql|postgresql|flyway|liquibase|jooq|exposed|jdbc|r2dbc|jakarta\.persistence|javax\.persistence|/migration|persistence|UserRepository' \
+    "$prod_files"
+
+reject_matches 'auth or product UI flow found in client source' \
+    'login|sign[ -]?up|password[ -]?reset|Google[ -]?Sign[ -]?In|logout|user[ -]?sync|onboarding|invitation|role[ -]?authorization' \
+    "$client_prod_files"
+
+reject_matches 'generated OpenAPI client or generator found' \
+    'openapi|swagger|open-api|api[ -]?client[ -]?generator' \
+    "$prod_files"
+reject_paths 'generated OpenAPI client path found' \
+    '(^|/)(generated|openapi|swagger)(/|$)'
+
+reject_matches 'client navigation dependency or route found' \
+    '@angular/router|RouterModule|provideRouter|NavHost|NavController|androidx\.navigation|compose\.navigation|voyager|decompose' \
+    "$client_prod_files $build_files"
+reject_paths 'extra client UI source path found' \
+    '^mobile/(core|features)/|^frontend/src/app/(routes|pages|features|screens|components)/'
+
+reject_matches 'production deployment workflow found' \
+    'deploy[^#]*(backend|frontend|angular|android|ios)|production[^#]*(backend|frontend|angular|android|ios)' \
+    "$(tracked_files | grep -E '^\.github/workflows/' || true)"
+
+reject_matches 'cross-workspace Gradle coupling found' \
+    'includeBuild\([[:space:]]*["'\''][^"'\'']*\.\./|project\([[:space:]]*["'\'']:(backend|mobile)|files\([[:space:]]*["'\''][^"'\'']*\.\./(backend|mobile)' \
+    "$build_files"
+reject_matches 'client build depends on backend workspace' \
+    'backend/|br\.com\.saqz\.identity|br\.com\.saqz\.sharedkernel' \
+    "$(tracked_files | grep -E '^(frontend/|mobile/).*(\.gradle\.kts|\.toml|package\.json|package-lock\.json|\.kt|\.swift|\.ts)$' || true)"
+reject_paths 'client domain or application source segment found' \
+    '^(frontend/src|mobile/.*/src|mobile/ios-app/SaqzIOS)/.*/(domain|usecase|application)(/|$)'
+
+feature_modules=$(find "$repository_root/backend/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')
+[ "$feature_modules" = "identity " ] || fail "backend/features must contain only identity"
+
+git -C "$repository_root" check-ignore --no-index -q .specs/features/project-initialization/spec.md ||
+    fail ".specs is not ignored"
+[ -z "$(git -C "$repository_root" ls-files .specs)" ] ||
+    fail ".specs contains tracked files"
+
+printf 'ok - initialization scope\n'
