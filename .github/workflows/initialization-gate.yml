@@ -30,12 +30,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Start Android emulator and run Gradle gate
-        uses: reactivecircus/android-emulator-runner@v3
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          script: scripts/check-gradle
+        run: |
+          sdkmanager "platforms;android-35" "system-images;android-35;google_apis;x86_64"
+          echo "no" | avdmanager create avd --force --name saqz-ci --package "system-images;android-35;google_apis;x86_64" --device pixel_6
+          "$ANDROID_HOME/emulator/emulator" -avd saqz-ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect &
+          adb wait-for-device
+          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+          scripts/check-gradle
 
   angular-gate:
     runs-on: ubuntu-latest

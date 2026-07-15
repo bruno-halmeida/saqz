@@ -25,7 +25,7 @@ assert_workflow '^[[:space:]]*pull_request:[[:space:]]*$' 'pull request trigger'
 assert_workflow '^[[:space:]]*branches:[[:space:]]*\[[[:space:]]*main[[:space:]]*\]' 'main PR branch'
 
 assert_workflow '^[[:space:]]*gradle-gate:[[:space:]]*$' 'gradle job'
-assert_workflow 'script:[[:space:]]*scripts/check-gradle' 'gradle command'
+assert_workflow 'scripts/check-gradle' 'gradle command'
 ok 'gradle job identity and command'
 
 assert_workflow '^[[:space:]]*angular-gate:[[:space:]]*$' 'angular job'
@@ -46,8 +46,10 @@ ok 'landing job identity and command'
 assert_workflow 'runs-on:[[:space:]]*macos-' 'ios macos runner'
 ok 'macos ios runner'
 
-assert_workflow 'reactivecircus/android-emulator-runner@v3' 'android emulator'
-assert_workflow 'script:[[:space:]]*scripts/check-gradle' 'gradle gate under emulator'
+assert_workflow 'sdkmanager "platforms;android-35" "system-images;android-35;google_apis;x86_64"' 'android sdk install'
+assert_workflow 'avdmanager create avd .*saqz-ci' 'android avd creation'
+assert_workflow 'adb wait-for-device' 'android boot wait'
+assert_workflow 'scripts/check-gradle' 'gradle gate under emulator'
 ok 'gradle emulator provisioning'
 
 grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
