@@ -53,4 +53,29 @@ class FirebaseAuthBootstrapTest {
         assertEquals(listOf("create"), calls)
         assertEquals(auth, initialized)
     }
+
+    @Test
+    fun firebaseInitializesOnce() {
+        // A single bootstrap creates the auth client exactly once — never once per
+        // recomposition. The named-app process dedup lives in AndroidFirebaseBootstrap
+        // and is exercised by the instrumented suite launching MainActivity repeatedly.
+        var creates = 0
+        val auth = FirebaseAuthClient { _, _ -> }
+
+        FirebaseAuthBootstrap(
+            factory = {
+                creates++
+                auth
+            },
+            configuration = AndroidFirebaseConfiguration(
+                projectId = LocalFirebaseConfiguration.projectId,
+                apiKey = LocalFirebaseConfiguration.apiKey,
+                messagingSenderId = LocalFirebaseConfiguration.messagingSenderId,
+                applicationId = LocalFirebaseConfiguration.applicationId,
+                useAuthEmulator = true,
+            ),
+        ).initialize()
+
+        assertEquals(1, creates)
+    }
 }
