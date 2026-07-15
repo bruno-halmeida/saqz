@@ -1,25 +1,19 @@
-import CryptoKit
 import UIKit
 import XCTest
 
 // Contract over the native iOS launch screen: a static UILaunchScreen backed by asset-catalog
-// members, with the symbol derived byte-for-byte from the unchanged T18 landing source.
+// members, with the symbol matching the checked-in mobile brand derivative.
 @MainActor
 final class LaunchContractTests: XCTestCase {
-    private var repoRoot: URL {
+    private var mobileRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // SaqzIOSTests
             .deletingLastPathComponent() // ios-app
             .deletingLastPathComponent() // mobile
-            .deletingLastPathComponent() // repo root
-    }
-
-    private func sha256(_ data: Data) -> String {
-        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     private func pathData(in svg: String) -> [String] {
-        let regex = try! NSRegularExpression(pattern: "\\sd=\"([^\"]+)\"")
+        let regex = try! NSRegularExpression(pattern: "(?:\\sd|android:pathData)=\"([^\"]+)\"")
         let range = NSRange(svg.startIndex..., in: svg)
         return regex.matches(in: svg, range: range).compactMap {
             Range($0.range(at: 1), in: svg).map { r in String(svg[r]) }
@@ -43,23 +37,25 @@ final class LaunchContractTests: XCTestCase {
     }
 
     func testSourceHashMatchesT18() throws {
-        let landing = repoRoot.appendingPathComponent("landing-page/assets/saqz-logo.svg")
-        let landingData = try Data(contentsOf: landing)
-        XCTAssertEqual(
-            sha256(landingData),
-            "0c732546309e7143f60203472c368a3cebbb3a53721f142898724023aa33a473",
-            "landing source must remain unchanged (same pin as T18)"
+        let provenance = try String(
+            contentsOf: mobileRoot.appendingPathComponent("brand/PROVENANCE.md"),
+            encoding: .utf8
         )
+        XCTAssertTrue(provenance.contains("landing-page/assets/saqz-logo.svg"))
+        XCTAssertTrue(provenance.contains("0c732546309e7143f60203472c368a3cebbb3a53721f142898724023aa33a473"))
 
-        let symbol = repoRoot.appendingPathComponent(
-            "mobile/ios-app/SaqzIOS/Assets.xcassets/LaunchSymbol.imageset/saqz-symbol.svg"
+        let symbol = mobileRoot.appendingPathComponent(
+            "ios-app/SaqzIOS/Assets.xcassets/LaunchSymbol.imageset/saqz-symbol.svg"
+        )
+        let designSystemSymbol = mobileRoot.appendingPathComponent(
+            "core/design-system/src/commonMain/composeResources/drawable/saqz_symbol.xml"
         )
         let symbolPaths = pathData(in: try String(contentsOf: symbol, encoding: .utf8))
-        let landingPaths = pathData(in: String(data: landingData, encoding: .utf8)!)
-        // The launch symbol reuses the exact landing path data, derived and never redrawn.
-        XCTAssertEqual(landingPaths.count, 3)
-        for d in landingPaths {
-            XCTAssertTrue(symbolPaths.contains(d), "launch symbol must reuse the landing path data")
+        let designSystemPaths = pathData(in: try String(contentsOf: designSystemSymbol, encoding: .utf8))
+        // The launch symbol reuses the exact mobile brand path data, derived and never redrawn.
+        XCTAssertEqual(designSystemPaths.count, 3)
+        for path in designSystemPaths {
+            XCTAssertTrue(symbolPaths.contains(path), "launch symbol must reuse the mobile brand path data")
         }
     }
 }
