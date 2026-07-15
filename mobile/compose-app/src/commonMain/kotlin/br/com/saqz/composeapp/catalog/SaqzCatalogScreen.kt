@@ -49,7 +49,7 @@ internal fun saqzCatalogAthleteItemTag(index: Int) = "saqz-catalog-athlete-$inde
 
 // A 1:1 inspection surface for the design system. Every registry token, typography style,
 // metric and component variant/state is rendered from CatalogFixtures. It hosts no avatar,
-// login/logout, selectable role or business data — only the foundation, so a designer can
+// account or session flows, selectable role or business data — only the foundation, so a designer can
 // verify the whole system from the Home entry.
 @Composable
 fun SaqzCatalogScreen(modifier: Modifier = Modifier) {

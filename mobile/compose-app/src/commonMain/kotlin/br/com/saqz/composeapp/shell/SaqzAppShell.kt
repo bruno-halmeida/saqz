@@ -46,7 +46,7 @@ internal const val SaqzShellNavTag = "saqz-shell-nav"
 // The accessible mobile shell: theme + a content slot (state host over the type-safe NavHost)
 // + the bottom nav. The content slot takes safeDrawing (top/horizontal) plus the IME inset and
 // reserves the measured nav height so the last action always clears the chrome; the bottom nav
-// is the single consumer of the bottom inset. It hosts no avatar, login, profile or third
+// is the single consumer of the bottom inset. It hosts no avatar, account entry, profile or third
 // destination — only Home and Componentes.
 @Composable
 internal fun SaqzAppShell(
