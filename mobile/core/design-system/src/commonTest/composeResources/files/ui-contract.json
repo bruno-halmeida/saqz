@@ -58,5 +58,15 @@
       "maxTranslation": 0,
       "opacityFeedbackDurationMillis": 120
     }
+  },
+  "typography": {
+    "heroDisplay": { "size": 34, "weight": 600, "lineHeight": 1.07, "tracking": -0.005 },
+    "displayLarge": { "size": 32, "weight": 600, "lineHeight": 1.10, "tracking": -0.009 },
+    "displayMedium": { "size": 28, "weight": 600, "lineHeight": 1.20, "tracking": -0.011 },
+    "lead": { "size": 22, "weight": 400, "lineHeight": 1.14, "tracking": 0.007 },
+    "body": { "size": 17, "weight": 400, "lineHeight": 1.47, "tracking": -0.022 },
+    "bodyStrong": { "size": 17, "weight": 600, "lineHeight": 1.24, "tracking": -0.022 },
+    "caption": { "size": 14, "weight": 400, "lineHeight": 1.43, "tracking": -0.016 },
+    "navigation": { "size": 12, "weight": 400, "lineHeight": 1.00, "tracking": -0.010 }
   }
 }
