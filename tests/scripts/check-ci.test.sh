@@ -48,6 +48,18 @@ assert_workflow '^[[:space:]]*ios-gate:[[:space:]]*$' 'ios job'
 assert_workflow 'run:[[:space:]]*scripts/check-ios' 'ios command'
 ok 'ios job identity and command'
 
+awk '
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_ios = 1 }
+    /^[[:space:]]*landing-gate:[[:space:]]*$/ { in_ios = 0 }
+    in_ios && /DEVELOPER_DIR:[[:space:]]*\/Applications\/Xcode_26\.4\.app\/Contents\/Developer/ { xcode = 1 }
+    in_ios && /^[[:space:]]*timeout-minutes:[[:space:]]*45[[:space:]]*$/ { timeout = 1 }
+    END { exit xcode && timeout ? 0 : 1 }
+' "$workflow" || {
+    printf 'iOS job must pin Xcode 26.4 and have a finite timeout\n' >&2
+    exit 1
+}
+ok 'ios xcode and runtime guard'
+
 assert_workflow '^[[:space:]]*landing-gate:[[:space:]]*$' 'landing job'
 assert_workflow 'run:[[:space:]]*scripts/check-landing' 'landing command'
 ok 'landing job identity and command'
@@ -141,4 +153,4 @@ for gate in gradle angular ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 18 ]
+[ "$count" -eq 19 ]

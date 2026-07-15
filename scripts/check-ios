@@ -4,12 +4,15 @@ set -eu
 export JAVA_HOME="${SAQZ_JAVA_HOME:-${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}}"
 export PATH="$JAVA_HOME/bin:$PATH"
 
+simulator_runtime_version=$(xcrun --sdk iphonesimulator --show-sdk-version)
 simulator_udid="$(xcrun simctl list devices available -j | ruby -rjson -e '
+sdk_version = ARGV.fetch(0)
 devices = JSON.parse(STDIN.read).fetch("devices")
-runtime, simulators = devices.find { |name, entries| name.include?("SimRuntime.iOS") && entries.any? { |entry| entry["isAvailable"] } }
-abort "No available iOS Simulator is installed. Install an iOS Simulator runtime in Xcode." unless runtime
+runtime_suffix = ".iOS-#{sdk_version.tr(".", "-")}"
+runtime, simulators = devices.find { |name, entries| name.end_with?(runtime_suffix) && entries.any? { |entry| entry["isAvailable"] } }
+abort "No available iOS #{sdk_version} Simulator is installed. Install the runtime matching the active Xcode SDK." unless runtime
 puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
-')"
+' "$simulator_runtime_version")"
 
 xcodebuild \
   -project mobile/ios-app/SaqzIOS.xcodeproj \
