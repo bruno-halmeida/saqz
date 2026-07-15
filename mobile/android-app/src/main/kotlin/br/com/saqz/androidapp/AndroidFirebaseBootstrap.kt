@@ -66,7 +66,10 @@ internal object AndroidFirebaseBootstrap {
             .setApplicationId(configuration.applicationId)
             .build()
         val appName = if (configuration.useAuthEmulator) "saqz-local" else "saqz"
-        val app = FirebaseApp.initializeApp(context, options, appName)
+        // Named app initializes once per process: reuse it across activity re-launch
+        // and rotation instead of re-initializing (EDGE-05).
+        val app = FirebaseApp.getApps(context).firstOrNull { it.name == appName }
+            ?: FirebaseApp.initializeApp(context, options, appName)
         val auth = FirebaseAuth.getInstance(app)
         FirebaseAuthClient { host, port -> auth.useEmulator(host, port) }
         },

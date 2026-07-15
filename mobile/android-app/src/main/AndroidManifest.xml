@@ -2,6 +2,7 @@
     <application android:label="Saqz">
         <activity
             android:name="br.com.saqz.androidapp.MainActivity"
+            android:theme="@style/Theme.Saqz.Starting"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

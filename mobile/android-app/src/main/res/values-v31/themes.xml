@@ -1,0 +1,8 @@
+<resources>
+    <!-- API 31+ delegates to the platform system splash via android: attributes. -->
+    <style name="Theme.Saqz.Starting" parent="Theme.SplashScreen">
+        <item name="android:windowSplashScreenBackground">@color/saqz_launch_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/saqz_launch_symbol</item>
+        <item name="postSplashScreenTheme">@style/Theme.Saqz.App</item>
+    </style>
+</resources>

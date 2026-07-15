@@ -87,6 +87,7 @@ android {
 dependencies {
     implementation(project(":compose-app"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
 
