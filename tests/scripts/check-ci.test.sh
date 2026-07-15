@@ -80,6 +80,11 @@ assert_workflow 'profile:[[:space:]]*pixel_2' 'android automated test device pro
 assert_workflow 'ram-size:[[:space:]]*2048M' 'android automated test device memory'
 ok 'android automated test device image'
 
+assert_workflow 'sudo chmod 0666 /dev/kvm' 'direct Android KVM permission'
+assert_workflow 'test -r /dev/kvm' 'Android KVM read access check'
+assert_workflow 'test -w /dev/kvm' 'Android KVM write access check'
+ok 'android kvm access guard'
+
 assert_workflow 'emulator-build:[[:space:]]*13823996' 'pinned stable Android emulator build'
 assert_workflow 'emulator-boot-timeout:[[:space:]]*300' 'bounded Android emulator boot'
 assert_workflow 'pre-emulator-launch-script:[[:space:]]*adb start-server' 'ADB starts before Android emulator'
@@ -157,4 +162,4 @@ for gate in gradle angular ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 20 ]
+[ "$count" -eq 21 ]
