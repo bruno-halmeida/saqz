@@ -110,4 +110,17 @@ fail_case scope-failure '' env FAIL_SCOPE=1
 fail_case firebase-emulator-failure '' env FAIL_FIREBASE_EMULATOR=1
 fail_case android-instrumented-failure '' env FAIL_ANDROID_INSTRUMENTED=1
 
-[ "$count" -eq 5 ]
+identity_build="$repository_root/backend/features/identity/build.gradle.kts"
+identity_test="$repository_root/backend/features/identity/src/test/kotlin/br/com/saqz/identity/adapter/output/firebase/FirebaseAdminTokenVerifierEmulatorTest.kt"
+grep -Fq 'systemProperty("session.fixture"' "$identity_build"
+grep -Fq 'System.getProperty("session.fixture")' "$identity_test"
+grep -Fq 'SAQZ_FIXTURE_HOLD' "$identity_test"
+grep -Fq 'port-bindable' "$identity_test"
+if grep -Fq '"npx", "--yes", "firebase-tools@' "$identity_test"; then
+    printf 'identity emulator test must use the shared lifecycle fixture\n' >&2
+    exit 1
+fi
+count=$((count + 1))
+printf 'ok %d - shared identity emulator lifecycle\n' "$count"
+
+[ "$count" -eq 6 ]

@@ -8,16 +8,14 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import java.net.HttpURLConnection
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.Date
 import java.util.UUID
+import kotlin.io.path.readLines
+import kotlin.io.path.readText
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -26,18 +24,20 @@ import kotlin.test.assertTrue
 class FirebaseAdminTokenVerifierEmulatorTest {
     @Test
     fun `verifies a real emulator token without starting backend`() {
-        checkPortAvailable(9099)
-        val process = ProcessBuilder(
-            "npx", "--yes", "firebase-tools@15.23.0", "emulators:start",
-            "--only", "auth", "--project", "saqz-local", "--config", System.getProperty("firebase.config"),
-        ).redirectErrorStream(true).start()
-        val output = StringBuilder()
-        val outputThread = Thread { process.inputStream.bufferedReader().forEachLine { output.appendLine(it) } }.apply { start() }
+        val state = Files.createTempDirectory("saqz-identity-fixture-")
+        val process = ProcessBuilder(System.getProperty("session.fixture"))
+            .redirectErrorStream(true)
+            .redirectOutput(state.resolve("fixture.log").toFile())
+            .apply {
+                environment()["SAQZ_FIXTURE_STATE_DIR"] = state.toString()
+                environment()["SAQZ_FIXTURE_HOLD"] = "true"
+            }
+            .start()
 
         try {
-            awaitEmulator(process, output)
-            val email = "adapter-${UUID.randomUUID()}@example.test"
-            val token = createUser(email)
+            awaitReady(process, state)
+            val email = state.resolve("email").readText().trim()
+            val token = state.resolve("id-token").readText().trim()
             val app = FirebaseApp.initializeApp(
                 FirebaseOptions.builder()
                     .setProjectId("saqz-local")
@@ -55,34 +55,35 @@ class FirebaseAdminTokenVerifierEmulatorTest {
                 app.delete()
             }
         } finally {
-            process.destroy()
-            if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) process.destroyForcibly()
-            outputThread.join(5_000)
-            checkPortAvailable(9099)
+            stopFixture(process, state)
         }
     }
 
-    private fun createUser(email: String): String {
-        val body = """{"email":"$email","password":"local-password-123","returnSecureToken":true}"""
-        val request = HttpRequest.newBuilder(
-            URI("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-saqz-local-api-key"),
-        ).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build()
-        val response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString())
-        assertEquals(HttpURLConnection.HTTP_OK, response.statusCode(), response.body())
-        return Regex("\"idToken\":\"([^\"]+)\"").find(response.body())!!.groupValues[1]
-    }
-
-    private fun awaitEmulator(process: Process, output: StringBuilder) {
-        val deadline = System.nanoTime() + Duration.ofSeconds(45).toNanos()
+    private fun awaitReady(process: Process, state: Path) {
+        val deadline = System.nanoTime() + Duration.ofSeconds(60).toNanos()
         while (System.nanoTime() < deadline) {
-            if (!process.isAlive) error("Firebase emulator exited early:\n$output")
-            runCatching { Socket("127.0.0.1", 9099).use { return } }
+            if (Files.exists(state.resolve("ready"))) return
+            if (!process.isAlive) error(fixtureLog(state))
             Thread.sleep(200)
         }
-        error("Firebase emulator did not start:\n$output")
+        error("Firebase fixture did not become ready:\n${fixtureLog(state)}")
     }
 
-    private fun checkPortAvailable(port: Int) {
-        ServerSocket(port).use { }
+    private fun stopFixture(process: Process, state: Path) {
+        process.destroy()
+        try {
+            assertTrue(process.waitFor(30, TimeUnit.SECONDS), fixtureLog(state))
+            assertTrue(Files.exists(state.resolve("account-deleted")), fixtureLog(state))
+            assertTrue(Files.exists(state.resolve("port-bindable")), fixtureLog(state))
+            assertFalse(Files.exists(state.resolve("id-token")))
+            state.resolve("pids").readLines().forEach { pid ->
+                assertFalse(ProcessHandle.of(pid.toLong()).map(ProcessHandle::isAlive).orElse(false), pid)
+            }
+        } finally {
+            state.toFile().deleteRecursively()
+        }
     }
+
+    private fun fixtureLog(state: Path): String =
+        state.resolve("fixture.log").takeIf(Files::exists)?.readText().orEmpty()
 }

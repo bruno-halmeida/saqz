@@ -29,7 +29,7 @@ val emulatorTest by tasks.registering(Test::class) {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     environment("FIREBASE_AUTH_EMULATOR_HOST", "127.0.0.1:9099")
-    systemProperty("firebase.config", rootProject.projectDir.parentFile.resolve("firebase.json"))
+    systemProperty("session.fixture", rootProject.projectDir.parentFile.resolve("firebase/session-fixture"))
     useJUnitPlatform { includeTags("emulator") }
     shouldRunAfter(tasks.test)
 }
