@@ -16,7 +16,7 @@ if [ "$workspace" = "mobile" ]; then
     cp -R "$repository_root/mobile" "$scratch_root/mobile"
     find "$scratch_root/mobile" -type d \( -name .gradle -o -name build \) -prune -exec rm -rf {} +
 
-    if [ -e "$scratch_root/backend" ] || [ -e "$scratch_root/frontend" ]; then
+    if [ -e "$scratch_root/backend" ]; then
         printf 'scratch workspace unexpectedly contains a sibling product workspace\n' >&2
         exit 1
     fi
@@ -51,7 +51,7 @@ fi
 cp -R "$repository_root/backend" "$scratch_root/backend"
 find "$scratch_root/backend" -type d \( -name .gradle -o -name build \) -prune -exec rm -rf {} +
 
-if [ -e "$scratch_root/mobile" ] || [ -e "$scratch_root/frontend" ]; then
+if [ -e "$scratch_root/mobile" ]; then
     printf 'scratch workspace unexpectedly contains a sibling product workspace\n' >&2
     exit 1
 fi
@@ -81,7 +81,7 @@ cp "$architecture_build" "$architecture_build.baseline"
 restore_build_files() {
     cp "$settings.baseline" "$settings"
     cp "$architecture_build.baseline" "$architecture_build"
-    rm -rf "$scratch_root/mobile" "$scratch_root/frontend"
+    rm -rf "$scratch_root/mobile"
 }
 
 expect_arch08_rejection() {

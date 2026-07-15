@@ -144,10 +144,9 @@ class BackendArchitectureTest {
             "com.android",
             "android-gradle",
             "mobile",
-            "frontend",
             "ios",
         )
-        val siblingArtifact = Regex("(?:\\.\\./)+(?:mobile|frontend)(?:/|\\\")|br\\.com\\.saqz(?::|\\.)(?:mobile|frontend)")
+        val siblingArtifact = Regex("(?:\\.\\./)+mobile(?:/|\\\")|br\\.com\\.saqz(?::|\\.)mobile")
 
         assertTrue(rootGradlePaths.none { workspaceRoot.resolve(it).exists() })
         assertTrue(requiredBackendPaths.all(Path::exists))

@@ -17,11 +17,11 @@ tracked_prod_files() {
 }
 
 tracked_client_prod_files() {
-    tracked_prod_files | grep -E '^(frontend/src/|mobile/.*/src/.*/|mobile/ios-app/SaqzIOS/)' || true
+    tracked_prod_files | grep -E '^(mobile/.*/src/.*/|mobile/ios-app/SaqzIOS/)' || true
 }
 
 tracked_build_files() {
-    tracked_prod_files | grep -E '(^backend/.*\.(gradle\.kts|toml)$|^mobile/.*\.(gradle\.kts|toml)$|^frontend/(package\.json|package-lock\.json|angular\.json|tsconfig.*\.json)$)' || true
+    tracked_prod_files | grep -E '(^backend/.*\.(gradle\.kts|toml)$|^mobile/.*\.(gradle\.kts|toml)$)' || true
 }
 
 reject_matches() {
@@ -50,6 +50,8 @@ prod_files=$(tracked_prod_files)
 client_prod_files=$(tracked_client_prod_files)
 build_files=$(tracked_build_files)
 
+reject_paths 'retired frontend workspace found' '^frontend/'
+
 reject_matches 'database or persistence artifact found' \
     'org\.postgresql|postgresql|flyway|liquibase|jooq|exposed|jdbc|r2dbc|jakarta\.persistence|javax\.persistence|/migration|persistence|UserRepository' \
     "$prod_files"
@@ -65,13 +67,13 @@ reject_paths 'generated OpenAPI client path found' \
     '(^|/)(generated|openapi|swagger)(/|$)'
 
 reject_matches 'client navigation dependency or route found' \
-    '@angular/router|RouterModule|provideRouter|NavHost|NavController|androidx\.navigation|compose\.navigation|voyager|decompose' \
+    'NavHost|NavController|androidx\.navigation|compose\.navigation|voyager|decompose' \
     "$client_prod_files $build_files"
 reject_paths 'extra client UI source path found' \
-    '^mobile/(core|features)/|^frontend/src/app/(routes|pages|features|screens|components)/'
+    '^mobile/(core|features)/'
 
 reject_matches 'production deployment workflow found' \
-    'deploy[^#]*(backend|frontend|angular|android|ios)|production[^#]*(backend|frontend|angular|android|ios)' \
+    'deploy[^#]*(backend|mobile|android|ios)|production[^#]*(backend|mobile|android|ios)' \
     "$(tracked_files | grep -E '^\.github/workflows/' || true)"
 
 reject_matches 'cross-workspace Gradle coupling found' \
@@ -79,9 +81,9 @@ reject_matches 'cross-workspace Gradle coupling found' \
     "$build_files"
 reject_matches 'client build depends on backend workspace' \
     'backend/|br\.com\.saqz\.identity|br\.com\.saqz\.sharedkernel' \
-    "$(tracked_files | grep -E '^(frontend/|mobile/).*(\.gradle\.kts|\.toml|package\.json|package-lock\.json|\.kt|\.swift|\.ts)$' || true)"
+    "$(tracked_files | grep -E '^mobile/.*(\.gradle\.kts|\.toml|\.kt|\.swift)$' || true)"
 reject_paths 'client domain or application source segment found' \
-    '^(frontend/src|mobile/.*/src|mobile/ios-app/SaqzIOS)/.*/(domain|usecase|application)(/|$)'
+    '^(mobile/.*/src|mobile/ios-app/SaqzIOS)/.*/(domain|usecase|application)(/|$)'
 
 feature_modules=$(find "$repository_root/backend/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')
 [ "$feature_modules" = "identity " ] || fail "backend/features must contain only identity"
@@ -91,4 +93,4 @@ git -C "$repository_root" check-ignore --no-index -q .specs/features/project-ini
 [ -z "$(git -C "$repository_root" ls-files .specs)" ] ||
     fail ".specs contains tracked files"
 
-printf 'ok - initialization scope\n'
+printf 'ok - mobile-first scope\n'
