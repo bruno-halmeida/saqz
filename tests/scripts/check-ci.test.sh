@@ -47,10 +47,19 @@ assert_workflow 'runs-on:[[:space:]]*macos-' 'ios macos runner'
 ok 'macos ios runner'
 
 assert_workflow 'cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"' 'android sdk install'
+assert_workflow 'ANDROID_AVD_HOME:[[:space:]]*\$\{\{ runner\.temp \}\}/android-avd' 'android avd home'
+assert_workflow 'mkdir -p "\$ANDROID_AVD_HOME"' 'android avd directory creation'
 assert_workflow 'cmdline-tools/latest/bin/avdmanager" create avd .*saqz-ci' 'android avd creation'
+assert_workflow 'emulator" -list-avds' 'android avd visibility check'
 assert_workflow 'platform-tools/adb" wait-for-device' 'android boot wait'
 assert_workflow 'scripts/check-gradle' 'gradle gate under emulator'
 ok 'gradle emulator provisioning'
+
+grep -Eq 'SAQZ_JAVA_HOME:-\$\{JAVA_HOME:-' "$repository_root/scripts/check-ios" || {
+    printf 'iOS gate must preserve runner-provided JAVA_HOME before using local fallback\n' >&2
+    exit 1
+}
+ok 'ios java home fallback'
 
 grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-scope' "$repository_root/scripts/check-gradle"
@@ -109,4 +118,4 @@ for gate in gradle angular ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 16 ]
+[ "$count" -eq 17 ]
