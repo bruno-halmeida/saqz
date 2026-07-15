@@ -68,13 +68,17 @@ assert_workflow 'runs-on:[[:space:]]*macos-' 'ios macos runner'
 ok 'macos ios runner'
 
 assert_workflow 'uses:[[:space:]]*ReactiveCircus/android-emulator-runner@v2' 'android emulator runner action'
-assert_workflow 'api-level:[[:space:]]*35' 'android emulator api level'
-assert_workflow 'target:[[:space:]]*google_apis' 'android emulator target'
-assert_workflow 'arch:[[:space:]]*x86_64' 'android emulator abi'
 assert_workflow 'avd-name:[[:space:]]*saqz-ci' 'android avd name'
 assert_workflow 'script:[[:space:]]*scripts/check-gradle' 'gradle gate under emulator action'
 assert_workflow 'scripts/check-gradle' 'gradle gate under emulator'
 ok 'gradle emulator provisioning'
+
+assert_workflow 'api-level:[[:space:]]*30' 'android automated test device api level'
+assert_workflow 'target:[[:space:]]*google_atd' 'android automated test device target'
+assert_workflow 'arch:[[:space:]]*x86' 'android automated test device abi'
+assert_workflow 'profile:[[:space:]]*pixel_2' 'android automated test device profile'
+assert_workflow 'ram-size:[[:space:]]*2048M' 'android automated test device memory'
+ok 'android automated test device image'
 
 assert_workflow 'emulator-build:[[:space:]]*13823996' 'pinned stable Android emulator build'
 assert_workflow 'emulator-boot-timeout:[[:space:]]*300' 'bounded Android emulator boot'
@@ -153,4 +157,4 @@ for gate in gradle angular ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 19 ]
+[ "$count" -eq 20 ]
