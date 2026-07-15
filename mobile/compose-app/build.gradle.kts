@@ -43,3 +43,8 @@ kotlin {
         }
     }
 }
+
+compose.resources {
+    packageOfResClass = "br.com.saqz.composeapp.resources"
+    generateResClass = always
+}

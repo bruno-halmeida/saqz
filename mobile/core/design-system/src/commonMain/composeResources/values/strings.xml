@@ -1,3 +1,10 @@
 <resources>
     <string name="preflight_sentinel">Preflight Sentinel</string>
+    <string name="state_loading">Carregando</string>
+    <string name="state_empty">Nada por aqui</string>
+    <string name="state_error">Não foi possível carregar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_show_password">Mostrar senha</string>
+    <string name="action_hide_password">Ocultar senha</string>
 </resources>
