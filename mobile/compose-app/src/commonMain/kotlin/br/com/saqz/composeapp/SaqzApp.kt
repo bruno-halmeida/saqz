@@ -1,9 +1,7 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.runtime.Composable
-import br.com.saqz.composeapp.home.SaqzHomeScreen
-import br.com.saqz.designsystem.component.SaqzStateHost
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.composeapp.shell.SaqzAppShell
 
 // Native boundary: exactly two accessibility booleans, no core type and no font scale.
 @Composable
@@ -21,10 +19,5 @@ fun SaqzApp(
 
 @Composable
 internal fun SaqzApp(environment: SaqzAppEnvironment) {
-    SaqzTheme(preferences = environment.toPreferences()) {
-        SaqzStateHost(
-            state = environment.startupState,
-            content = { SaqzHomeScreen(onExploreComponents = {}) },
-        )
-    }
+    SaqzAppShell(environment = environment)
 }
