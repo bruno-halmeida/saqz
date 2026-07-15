@@ -12,6 +12,8 @@
 		A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* SaqzIOSUITests.swift */; };
 		A10000000000000000000004 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000131 /* FirebaseAuth */; };
 		A10000000000000000000005 /* SaqzIOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* SaqzIOSTests.swift */; };
+		A10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* Assets.xcassets */; };
+		A10000000000000000000007 /* LaunchContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* LaunchContractTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +24,8 @@
 		A10000000000000000000015 /* SaqzIOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SaqzIOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* SaqzIOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* SaqzIOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SaqzIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000019 /* LaunchContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchContractTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,11 +36,11 @@
 
 /* Begin PBXGroup section */
 		A10000000000000000000031 = {isa = PBXGroup; children = (A10000000000000000000032 /* SaqzIOS */, A10000000000000000000132 /* SaqzIOSTests */, A10000000000000000000033 /* SaqzIOSUITests */, A10000000000000000000034 /* Frameworks */, A10000000000000000000035 /* Products */); sourceTree = "<group>"; };
-		A10000000000000000000032 /* SaqzIOS */ = {isa = PBXGroup; children = (A10000000000000000000011 /* SaqzIOSApp.swift */,); path = SaqzIOS; sourceTree = "<group>"; };
+		A10000000000000000000032 /* SaqzIOS */ = {isa = PBXGroup; children = (A10000000000000000000011 /* SaqzIOSApp.swift */, A10000000000000000000018 /* Assets.xcassets */,); path = SaqzIOS; sourceTree = "<group>"; };
 		A10000000000000000000033 /* SaqzIOSUITests */ = {isa = PBXGroup; children = (A10000000000000000000013 /* SaqzIOSUITests.swift */,); path = SaqzIOSUITests; sourceTree = "<group>"; };
 		A10000000000000000000034 /* Frameworks */ = {isa = PBXGroup; children = (A10000000000000000000012 /* SaqzMobile.framework */,); name = Frameworks; sourceTree = "<group>"; };
 		A10000000000000000000035 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000014 /* SaqzIOS.app */, A10000000000000000000017 /* SaqzIOSTests.xctest */, A10000000000000000000015 /* SaqzIOSUITests.xctest */,); name = Products; sourceTree = "<group>"; };
-		A10000000000000000000132 /* SaqzIOSTests */ = {isa = PBXGroup; children = (A10000000000000000000016 /* SaqzIOSTests.swift */,); path = SaqzIOSTests; sourceTree = "<group>"; };
+		A10000000000000000000132 /* SaqzIOSTests */ = {isa = PBXGroup; children = (A10000000000000000000016 /* SaqzIOSTests.swift */, A10000000000000000000019 /* LaunchContractTests.swift */,); path = SaqzIOSTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -50,7 +54,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A10000000000000000000063 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000063 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000006 /* Assets.xcassets in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
 		A10000000000000000000065 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		A10000000000000000000067 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
@@ -63,7 +67,7 @@
 /* Begin PBXSourcesBuildPhase section */
 		A10000000000000000000062 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* SaqzIOSApp.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 		A10000000000000000000064 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000066 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* SaqzIOSTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000066 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* SaqzIOSTests.swift in Sources */, A10000000000000000000007 /* LaunchContractTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

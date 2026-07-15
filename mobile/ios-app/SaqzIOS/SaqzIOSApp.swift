@@ -110,13 +110,10 @@ struct SaqzIOSApp: App {
 }
 
 private struct ComposeRootView: UIViewControllerRepresentable {
+    // Only the Compose controller: the app's accessibility tree comes entirely from
+    // Compose semantics, with no synthetic UIKit accessibility element.
     func makeUIViewController(context: Context) -> UIViewController {
-        let controller = MainViewControllerKt.MainViewController()
-        let accessibilityText = UILabel(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
-        accessibilityText.accessibilityLabel = "Saqz"
-        accessibilityText.isAccessibilityElement = true
-        controller.view.addSubview(accessibilityText)
-        return controller
+        MainViewControllerKt.MainViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
