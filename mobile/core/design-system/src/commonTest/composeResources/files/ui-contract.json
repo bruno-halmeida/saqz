@@ -1,0 +1,32 @@
+{
+  "colors": {
+    "background": "#F5F5F7",
+    "surface": "#FFFFFF",
+    "surfaceSubtle": "#F4F8FB",
+    "surfacePearl": "#FAFAFC",
+    "surfaceDark": "#071025",
+    "onDark": "#FFFFFF",
+    "textMutedOnDark": "#CCCCCC",
+    "primary": "#0638DF",
+    "onPrimary": "#FFFFFF",
+    "accent": "#C7F300",
+    "onAccent": "#1D1D1F",
+    "textPrimary": "#1D1D1F",
+    "textSecondary": "#6E6E73",
+    "textMuted": "#707075",
+    "controlBorder": "#85858A",
+    "border": "#D2D2D7",
+    "hairline": "#E0E0E0",
+    "dividerSoft": "#F0F0F0",
+    "infoSurface": "#EAF0FF",
+    "infoForeground": "#0638DF",
+    "successSurface": "#E8F5EC",
+    "successForeground": "#1D6B35",
+    "warningSurface": "#FFF4D6",
+    "warningForeground": "#7A4B00",
+    "errorSurface": "#FDEBEC",
+    "errorForeground": "#B42318",
+    "disabledSurface": "#E8E8ED",
+    "disabledForeground": "#6E6E73"
+  }
+}
