@@ -1,0 +1,72 @@
+{
+  "colors": {
+    "background": "#F5F5F7",
+    "surface": "#FFFFFF",
+    "surfaceSubtle": "#F4F8FB",
+    "surfacePearl": "#FAFAFC",
+    "surfaceDark": "#071025",
+    "onDark": "#FFFFFF",
+    "textMutedOnDark": "#CCCCCC",
+    "primary": "#0638DF",
+    "onPrimary": "#FFFFFF",
+    "accent": "#C7F300",
+    "onAccent": "#1D1D1F",
+    "textPrimary": "#1D1D1F",
+    "textSecondary": "#6E6E73",
+    "textMuted": "#707075",
+    "controlBorder": "#85858A",
+    "border": "#D2D2D7",
+    "hairline": "#E0E0E0",
+    "dividerSoft": "#F0F0F0",
+    "infoSurface": "#EAF0FF",
+    "infoForeground": "#0638DF",
+    "successSurface": "#E8F5EC",
+    "successForeground": "#1D6B35",
+    "warningSurface": "#FFF4D6",
+    "warningForeground": "#7A4B00",
+    "errorSurface": "#FDEBEC",
+    "errorForeground": "#B42318",
+    "disabledSurface": "#E8E8ED",
+    "disabledForeground": "#6E6E73"
+  },
+  "metrics": {
+    "grid": 8,
+    "subGrid": 4,
+    "horizontalPadding": 16,
+    "sectionVerticalPadding": 48,
+    "utilityCardPadding": 16,
+    "primaryButtonRadius": 12,
+    "compactControlRadius": 8,
+    "cardRadius": 16,
+    "bottomNavHeight": 56,
+    "minimumTouchTarget": 48
+  },
+  "motion": {
+    "normal": {
+      "pressScale": 0.95,
+      "pressDurationMillis": 120,
+      "focusDurationMillis": 180,
+      "routeDurationMillis": 220,
+      "maxTranslation": 8,
+      "opacityFeedbackDurationMillis": 120
+    },
+    "reduced": {
+      "pressScale": 1.0,
+      "pressDurationMillis": 120,
+      "focusDurationMillis": 180,
+      "routeDurationMillis": 220,
+      "maxTranslation": 0,
+      "opacityFeedbackDurationMillis": 120
+    }
+  },
+  "typography": {
+    "heroDisplay": { "size": 34, "weight": 600, "lineHeight": 1.07, "tracking": -0.005 },
+    "displayLarge": { "size": 32, "weight": 600, "lineHeight": 1.10, "tracking": -0.009 },
+    "displayMedium": { "size": 28, "weight": 600, "lineHeight": 1.20, "tracking": -0.011 },
+    "lead": { "size": 22, "weight": 400, "lineHeight": 1.14, "tracking": 0.007 },
+    "body": { "size": 17, "weight": 400, "lineHeight": 1.47, "tracking": -0.022 },
+    "bodyStrong": { "size": 17, "weight": 600, "lineHeight": 1.24, "tracking": -0.022 },
+    "caption": { "size": 14, "weight": 400, "lineHeight": 1.43, "tracking": -0.016 },
+    "navigation": { "size": 12, "weight": 400, "lineHeight": 1.00, "tracking": -0.010 }
+  }
+}
