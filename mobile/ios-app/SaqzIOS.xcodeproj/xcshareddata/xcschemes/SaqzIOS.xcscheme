@@ -10,6 +10,9 @@
   <TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES">
     <Testables>
       <TestableReference skipped="NO">
+        <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000043" BuildableName="SaqzIOSTests.xctest" BlueprintName="SaqzIOSTests" ReferencedContainer="container:SaqzIOS.xcodeproj"/>
+      </TestableReference>
+      <TestableReference skipped="NO">
         <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000042" BuildableName="SaqzIOSUITests.xctest" BlueprintName="SaqzIOSUITests" ReferencedContainer="container:SaqzIOS.xcodeproj"/>
       </TestableReference>
     </Testables>
