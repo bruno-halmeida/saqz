@@ -98,11 +98,90 @@ awk '
 }
 ok 'android emulator boot guard'
 
-grep -Eq 'SAQZ_JAVA_HOME:-\$\{JAVA_HOME:-' "$repository_root/scripts/check-ios" || {
-    printf 'iOS gate must preserve runner-provided JAVA_HOME before using local fallback\n' >&2
+grep -Eq 'SAQZ_JAVA_HOME' "$repository_root/scripts/check-ios"
+grep -Eq '/usr/libexec/java_home -v 21' "$repository_root/scripts/check-ios" || {
+    printf 'iOS gate must select JDK 21 explicitly before using local fallback\n' >&2
     exit 1
 }
 ok 'ios java home fallback'
+
+assert_workflow '^[[:space:]]*android-api35-probe:[[:space:]]*$' 'api35 probe job'
+ok 'api35 probe jobExists'
+
+awk '
+    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
+    in_probe && /^[[:space:]]*api-level:[[:space:]]*35[[:space:]]*$/ { api = 1 }
+    in_probe && /^[[:space:]]*target:[[:space:]]*google_apis[[:space:]]*$/ { target = 1 }
+    in_probe && /^[[:space:]]*arch:[[:space:]]*x86_64[[:space:]]*$/ { arch = 1 }
+    in_probe && /^[[:space:]]*profile:[[:space:]]*pixel_7[[:space:]]*$/ { profile = 1 }
+    in_probe && /^[[:space:]]*ram-size:[[:space:]]*4096M[[:space:]]*$/ { ram = 1 }
+    in_probe && /^[[:space:]]*avd-name:[[:space:]]*saqz-api35-probe[[:space:]]*$/ { avd = 1 }
+    in_probe && /^[[:space:]]*emulator-build:[[:space:]]*13823996[[:space:]]*$/ { build = 1 }
+    END { exit api && target && arch && profile && ram && avd && build ? 0 : 1 }
+' "$workflow" || {
+    printf 'api35 probe tuple must be pinned exactly\n' >&2
+    exit 1
+}
+ok 'api35 tuplePinned'
+
+awk '
+    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
+    in_probe && /^[[:space:]]*emulator-boot-timeout:[[:space:]]*300[[:space:]]*$/ { found = 1 }
+    END { exit found ? 0 : 1 }
+' "$workflow" || {
+    printf 'api35 probe must keep boot timeout at 300 seconds\n' >&2
+    exit 1
+}
+ok 'api35 bootTimeoutIs300'
+
+awk '
+    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
+    in_probe && /sudo chmod 0666 \/dev\/kvm/ { chmod = 1 }
+    in_probe && /test -r \/dev\/kvm/ { read = 1 }
+    in_probe && /test -w \/dev\/kvm/ { write = 1 }
+    END { exit chmod && read && write ? 0 : 1 }
+' "$workflow" || {
+    printf 'api35 probe must enable and verify KVM access\n' >&2
+    exit 1
+}
+ok 'api35 kvmEnabled'
+
+awk '
+    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
+    in_probe && /:android-app:connectedDevDebugAndroidTest/ { connected = 1 }
+    in_probe && /android\.testInstrumentationRunnerArguments\.class=br\.com\.saqz\.androidapp\.ModernAndroidBehaviorTest/ { modern = 1 }
+    in_probe && /scripts\/check-gradle/ { full_gate = 1 }
+    END { exit connected && modern && !full_gate ? 0 : 1 }
+' "$workflow" || {
+    printf 'api35 probe must run only ModernAndroidBehaviorTest, not check-gradle\n' >&2
+    exit 1
+}
+ok 'api35 exactModernClassRuns'
+
+awk '
+    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
+    in_probe && /continue-on-error/ { found = 1 }
+    END { exit found ? 0 : 1 }
+' "$workflow" >/dev/null 2>&1 && {
+    printf 'api35 probe must be strict internally, without continue-on-error\n' >&2
+    exit 1
+}
+ok 'api35 internalFailureIsFatal'
+
+assert_workflow 'needs:[[:space:]]*\[gradle-gate, ios-gate, landing-gate\]' 'aggregate excludes api35 probe'
+if grep -Eq 'needs:[[:space:]]*\[[^]]*android-api35-probe' "$workflow"; then
+    printf 'api35 probe must stay outside aggregate until T42 promotion\n' >&2
+    exit 1
+fi
+ok 'api35 probeOutsideAggregate'
+
+"$evaluator" success success success >/dev/null
+ok 'api35 missingProbeDoesNotFailCurrentEvaluator'
 
 grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-scope' "$repository_root/scripts/check-gradle"
@@ -169,4 +248,4 @@ for gate in gradle ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 21 ]
+[ "$count" -eq 29 ]
