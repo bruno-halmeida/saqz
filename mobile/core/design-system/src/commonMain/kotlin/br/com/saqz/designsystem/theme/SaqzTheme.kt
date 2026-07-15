@@ -7,14 +7,36 @@ import androidx.compose.material.Typography
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 internal val LocalSaqzColors = staticCompositionLocalOf { SaqzColorTokens.Light }
 internal val LocalSaqzMetrics = staticCompositionLocalOf { SaqzMetrics.Default }
 internal val LocalSaqzTypography = staticCompositionLocalOf { SaqzTypography.Default }
 internal val LocalSaqzMotion = staticCompositionLocalOf { SaqzMotionPolicy.Normal }
+internal val LocalSaqzChrome = staticCompositionLocalOf {
+    SaqzColorTokens.Light.toChrome(reduceTransparency = false)
+}
+
+// Overlay/nav chrome: a translucent or opaque surface that always keeps a 1dp
+// hairline so the divider survives either transparency mode.
+@Immutable
+internal data class SaqzChrome(
+    val surface: Color,
+    val hairlineColor: Color,
+    val hairlineThickness: Dp,
+)
+
+private fun SaqzColorTokens.toChrome(reduceTransparency: Boolean) = SaqzChrome(
+    surface = if (reduceTransparency) surface else surface.copy(alpha = 0.8f),
+    hairlineColor = hairline,
+    hairlineThickness = 1.dp,
+)
 
 object SaqzTheme {
     val colors: SaqzColorTokens
@@ -28,16 +50,21 @@ object SaqzTheme {
 }
 
 @Composable
-fun SaqzTheme(content: @Composable () -> Unit) {
+fun SaqzTheme(
+    preferences: SaqzAccessibilityPreferences = SaqzAccessibilityPreferences(),
+    content: @Composable () -> Unit,
+) {
     val colors = SaqzColorTokens.Light
     val metrics = SaqzMetrics.Default
-    val motion = SaqzMotionPolicy.Normal
+    val motion = if (preferences.reduceMotion) SaqzMotionPolicy.Reduced else SaqzMotionPolicy.Normal
     val typography = SaqzTypography.Default.withFontFamily(saqzFontFamily())
+    val chrome = colors.toChrome(preferences.reduceTransparency)
     CompositionLocalProvider(
         LocalSaqzColors provides colors,
         LocalSaqzMetrics provides metrics,
         LocalSaqzTypography provides typography,
         LocalSaqzMotion provides motion,
+        LocalSaqzChrome provides chrome,
     ) {
         MaterialTheme(
             colors = colors.toMaterialColors(),
