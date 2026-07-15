@@ -64,6 +64,20 @@ assert_workflow 'script:[[:space:]]*scripts/check-gradle' 'gradle gate under emu
 assert_workflow 'scripts/check-gradle' 'gradle gate under emulator'
 ok 'gradle emulator provisioning'
 
+assert_workflow 'emulator-build:[[:space:]]*13823996' 'pinned stable Android emulator build'
+assert_workflow 'emulator-boot-timeout:[[:space:]]*300' 'bounded Android emulator boot'
+assert_workflow 'pre-emulator-launch-script:[[:space:]]*adb start-server' 'ADB starts before Android emulator'
+awk '
+    /^[[:space:]]*gradle-gate:[[:space:]]*$/ { in_gradle = 1 }
+    /^[[:space:]]*angular-gate:[[:space:]]*$/ { in_gradle = 0 }
+    in_gradle && /^[[:space:]]*timeout-minutes:[[:space:]]*45[[:space:]]*$/ { found = 1 }
+    END { exit found ? 0 : 1 }
+' "$workflow" || {
+    printf 'gradle job must have a finite timeout\n' >&2
+    exit 1
+}
+ok 'android emulator boot guard'
+
 grep -Eq 'SAQZ_JAVA_HOME:-\$\{JAVA_HOME:-' "$repository_root/scripts/check-ios" || {
     printf 'iOS gate must preserve runner-provided JAVA_HOME before using local fallback\n' >&2
     exit 1
@@ -127,4 +141,4 @@ for gate in gradle angular ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 17 ]
+[ "$count" -eq 18 ]

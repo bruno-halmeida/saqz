@@ -13,6 +13,7 @@ permissions:
 jobs:
   gradle-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -36,6 +37,9 @@ jobs:
           arch: x86_64
           profile: pixel_6
           avd-name: saqz-ci
+          emulator-build: 13823996
+          emulator-boot-timeout: 300
+          pre-emulator-launch-script: adb start-server
           disable-animations: true
           script: scripts/check-gradle
 
