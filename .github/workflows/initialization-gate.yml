@@ -23,28 +23,21 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Set up Node 26
-        uses: actions/setup-node@v7
-        with:
-          node-version: '26.5.0'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Start Android emulator and run Gradle gate
-        env:
-          ANDROID_AVD_HOME: ${{ runner.temp }}/android-avd
+      - name: Enable KVM for Android emulator
         run: |
-          mkdir -p "$ANDROID_AVD_HOME"
           sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"
-          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force --name saqz-ci --package "system-images;android-35;google_apis;x86_64" --device pixel_6
-          "$ANDROID_HOME/emulator/emulator" -list-avds
-          "$ANDROID_HOME/emulator/emulator" -avd saqz-ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect &
-          "$ANDROID_HOME/platform-tools/adb" wait-for-device
-          "$ANDROID_HOME/platform-tools/adb" shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-          scripts/check-gradle
+      - name: Start Android emulator and run Gradle gate
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          avd-name: saqz-ci
+          disable-animations: true
+          script: scripts/check-gradle
 
   angular-gate:
     runs-on: ubuntu-latest

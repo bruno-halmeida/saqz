@@ -26,6 +26,15 @@ assert_workflow '^[[:space:]]*branches:[[:space:]]*\[[[:space:]]*main[[:space:]]
 
 assert_workflow '^[[:space:]]*gradle-gate:[[:space:]]*$' 'gradle job'
 assert_workflow 'scripts/check-gradle' 'gradle command'
+awk '
+    /^[[:space:]]*gradle-gate:[[:space:]]*$/ { in_gradle = 1 }
+    /^[[:space:]]*angular-gate:[[:space:]]*$/ { in_gradle = 0 }
+    in_gradle && /actions\/setup-node/ { found = 1 }
+    END { exit found ? 0 : 1 }
+' "$workflow" >/dev/null 2>&1 && {
+    printf 'gradle job must not set up Node\n' >&2
+    exit 1
+}
 ok 'gradle job identity and command'
 
 assert_workflow '^[[:space:]]*angular-gate:[[:space:]]*$' 'angular job'
@@ -46,12 +55,12 @@ ok 'landing job identity and command'
 assert_workflow 'runs-on:[[:space:]]*macos-' 'ios macos runner'
 ok 'macos ios runner'
 
-assert_workflow 'cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"' 'android sdk install'
-assert_workflow 'ANDROID_AVD_HOME:[[:space:]]*\$\{\{ runner\.temp \}\}/android-avd' 'android avd home'
-assert_workflow 'mkdir -p "\$ANDROID_AVD_HOME"' 'android avd directory creation'
-assert_workflow 'cmdline-tools/latest/bin/avdmanager" create avd .*saqz-ci' 'android avd creation'
-assert_workflow 'emulator" -list-avds' 'android avd visibility check'
-assert_workflow 'platform-tools/adb" wait-for-device' 'android boot wait'
+assert_workflow 'uses:[[:space:]]*ReactiveCircus/android-emulator-runner@v2' 'android emulator runner action'
+assert_workflow 'api-level:[[:space:]]*35' 'android emulator api level'
+assert_workflow 'target:[[:space:]]*google_apis' 'android emulator target'
+assert_workflow 'arch:[[:space:]]*x86_64' 'android emulator abi'
+assert_workflow 'avd-name:[[:space:]]*saqz-ci' 'android avd name'
+assert_workflow 'script:[[:space:]]*scripts/check-gradle' 'gradle gate under emulator action'
 assert_workflow 'scripts/check-gradle' 'gradle gate under emulator'
 ok 'gradle emulator provisioning'
 
