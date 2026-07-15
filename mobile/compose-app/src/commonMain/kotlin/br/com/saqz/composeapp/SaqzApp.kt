@@ -1,21 +1,30 @@
 package br.com.saqz.composeapp
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import br.com.saqz.composeapp.home.SaqzHomeScreen
+import br.com.saqz.designsystem.component.SaqzStateHost
+import br.com.saqz.designsystem.theme.SaqzTheme
+
+// Native boundary: exactly two accessibility booleans, no core type and no font scale.
+@Composable
+fun SaqzApp(
+    reduceMotion: Boolean = false,
+    reduceTransparency: Boolean = false,
+) {
+    SaqzApp(
+        environment = SaqzAppEnvironment(
+            reduceMotion = reduceMotion,
+            reduceTransparency = reduceTransparency,
+        ),
+    )
+}
 
 @Composable
-fun SaqzApp() {
-    MaterialTheme {
-        Text(
-            text = "Saqz",
-            modifier = Modifier
-                .fillMaxSize()
-                .semantics { contentDescription = "Saqz" },
+internal fun SaqzApp(environment: SaqzAppEnvironment) {
+    SaqzTheme(preferences = environment.toPreferences()) {
+        SaqzStateHost(
+            state = environment.startupState,
+            content = { SaqzHomeScreen(onExploreComponents = {}) },
         )
     }
 }
