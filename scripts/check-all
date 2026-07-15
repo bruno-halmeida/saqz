@@ -52,10 +52,6 @@ run_step() {
     fail "scripts/check-all requires macOS for the iOS gate; run CI for supported platform coverage"
 
 run_step 'Gradle/Kotlin/Android gate' "$repository_root/scripts/check-gradle"
-run_step 'Angular install' npm --prefix "$repository_root/frontend" ci
-run_step 'Angular lint' npm --prefix "$repository_root/frontend" run lint
-run_step 'Angular tests' npm --prefix "$repository_root/frontend" run test:ci
-run_step 'Angular production build' npm --prefix "$repository_root/frontend" run build
 run_step 'iOS gate' "$repository_root/scripts/check-ios"
 run_step 'Landing gate' "$repository_root/scripts/check-landing"
 

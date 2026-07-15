@@ -8,7 +8,7 @@ count=0
 
 make_repo() {
     target=$1
-    mkdir -p "$target/repo/scripts" "$target/repo/frontend" "$target/repo/bin"
+    mkdir -p "$target/repo/scripts" "$target/repo/bin"
     cp "$repository_root/scripts/check-all" "$target/repo/scripts/check-all"
     chmod +x "$target/repo/scripts/check-all"
     : >"$target/repo/invocations.log"
@@ -34,20 +34,12 @@ SH
         chmod +x "$target/repo/scripts/$script"
     done
 
-    cat >"$target/repo/bin/npm" <<'SH'
-#!/bin/sh
-set -eu
-printf 'npm %s\n' "$*" >>"$LOG_FILE"
-case "$*" in
-    *" run lint") [ "${FAIL_ANGULAR:-0}" = 0 ] || exit 12 ;;
-esac
-SH
     cat >"$target/repo/bin/uname" <<'SH'
 #!/bin/sh
 set -eu
 printf '%s\n' "${FAKE_UNAME:-Darwin}"
 SH
-    chmod +x "$target/repo/bin/npm" "$target/repo/bin/uname"
+    chmod +x "$target/repo/bin/uname"
 }
 
 free_port() {
@@ -92,15 +84,10 @@ pass_case() {
     expected="$dir/expected.log"
     cat >"$expected" <<'EOF'
 check-gradle
-npm --prefix REPO/frontend ci
-npm --prefix REPO/frontend run lint
-npm --prefix REPO/frontend run test:ci
-npm --prefix REPO/frontend run build
 check-ios
 check-landing
 EOF
-    sed -E 's#--prefix [^ ]+/frontend#--prefix REPO/frontend#g' "$dir/repo/invocations.log" >"$dir/actual.log"
-    diff -u "$expected" "$dir/actual.log"
+    diff -u "$expected" "$dir/repo/invocations.log"
     count=$((count + 1))
     printf 'ok %d - %s\n' "$count" "$label"
 }
@@ -120,8 +107,7 @@ fail_fast_case() {
         exit 1
     fi
     printf '%s\n' "$expected_log" >"$dir/expected.log"
-    sed -E 's#--prefix [^ ]+/frontend#--prefix REPO/frontend#g' "$dir/repo/invocations.log" >"$dir/actual.log"
-    diff -u "$dir/expected.log" "$dir/actual.log"
+    diff -u "$dir/expected.log" "$dir/repo/invocations.log"
     count=$((count + 1))
     printf 'ok %d - %s\n' "$count" "$label"
 }
@@ -227,24 +213,13 @@ PY
 
 pass_case all-success
 fail_fast_case gradle-failure FAIL_GRADLE 'check-gradle'
-fail_fast_case angular-failure FAIL_ANGULAR 'check-gradle
-npm --prefix REPO/frontend ci
-npm --prefix REPO/frontend run lint'
 fail_fast_case ios-failure FAIL_IOS 'check-gradle
-npm --prefix REPO/frontend ci
-npm --prefix REPO/frontend run lint
-npm --prefix REPO/frontend run test:ci
-npm --prefix REPO/frontend run build
 check-ios'
 fail_fast_case landing-failure FAIL_LANDING 'check-gradle
-npm --prefix REPO/frontend ci
-npm --prefix REPO/frontend run lint
-npm --prefix REPO/frontend run test:ci
-npm --prefix REPO/frontend run build
 check-ios
 check-landing'
 unsupported_case
 signal_case INT sigint-cleanup
 signal_case TERM sigterm-cleanup
 
-[ "$count" -eq 8 ]
+[ "$count" -eq 7 ]
