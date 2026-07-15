@@ -1,0 +1,54 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+child_pid=
+
+fail() {
+    printf 'local gate failed: %s\n' "$1" >&2
+    exit 1
+}
+
+cleanup() {
+    status=$1
+    if [ -n "${child_pid:-}" ] && kill -0 "$child_pid" 2>/dev/null; then
+        kill "$child_pid" 2>/dev/null || true
+        wait "$child_pid" 2>/dev/null || true
+    fi
+    exit "$status"
+}
+
+on_signal() {
+    cleanup 130
+}
+
+trap on_signal INT TERM
+
+run_step() {
+    label=$1
+    shift
+    printf '==> %s\n' "$label"
+    "$@" &
+    child_pid=$!
+    while kill -0 "$child_pid" 2>/dev/null; do
+        sleep 0.1
+    done
+    if ! wait "$child_pid"; then
+        child_pid=
+        fail "$label"
+    fi
+    child_pid=
+}
+
+[ "$(uname -s)" = "Darwin" ] ||
+    fail "scripts/check-all requires macOS for the iOS gate; run CI for supported platform coverage"
+
+run_step 'Gradle/Kotlin/Android gate' "$repository_root/scripts/check-gradle"
+run_step 'Angular install' npm --prefix "$repository_root/frontend" ci
+run_step 'Angular lint' npm --prefix "$repository_root/frontend" run lint
+run_step 'Angular tests' npm --prefix "$repository_root/frontend" run test:ci
+run_step 'Angular production build' npm --prefix "$repository_root/frontend" run build
+run_step 'iOS gate' "$repository_root/scripts/check-ios"
+run_step 'Landing gate' "$repository_root/scripts/check-landing"
+
+printf 'ok - all local gates\n'

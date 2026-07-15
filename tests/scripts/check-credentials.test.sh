@@ -73,18 +73,18 @@ pass_case clean-repository
 fail_case forbidden-android-config mobile/android-app/google-services.json '{}' 'forbidden Firebase platform file'
 fail_case forbidden-apple-config mobile/ios-app/GoogleService-Info.plist '<plist />' 'forbidden Firebase platform file'
 fail_case forbidden-env backend/.env 'DATABASE_URL=postgres://secret@example.invalid/app' 'forbidden non-example environment file'
-fail_case private-key-literal docs/key.txt '-----BEGIN PRIVATE KEY-----' 'private-key literal'
-fail_case service-account-literal docs/service-account.json '{"type":"service_account","private_key_id":"abc"}' 'service-account literal'
-fail_case credential-classification docs/aws.txt 'AKIA1234567890ABCDEF' 'credential literal'
-fail_case gitleaks-private-key-classification docs/gitleaks-key.txt '-----BEGIN RSA PRIVATE KEY-----' 'private-key literal'
-fail_case bearer-token-classification docs/bearer.txt 'Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.example.signature' 'bearer-token literal'
+fail_case private-key-literal docs/key.txt "-----BEGIN PRIVATE"" KEY-----" 'private-key literal'
+fail_case service-account-literal docs/service-account.json "{\"type\":\"service_""account\",\"private_key_id\":\"abc\"}" 'service-account literal'
+fail_case credential-classification docs/aws.txt "AKIA1234567890ABC""DEF" 'credential literal'
+fail_case gitleaks-private-key-classification docs/gitleaks-key.txt "-----BEGIN RSA PRIVATE"" KEY-----" 'private-key literal'
+fail_case bearer-token-classification docs/bearer.txt "Authorization: Bearer ""eyJhbGciOiJSUzI1NiJ9.example.signature" 'bearer-token literal'
 
 dir="$scratch_root/specs-ignored"
 make_repo "$dir"
 (
     cd "$dir/repo"
     mkdir -p .specs
-    printf '%s\n' 'Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.example.signature' >.specs/local.md
+    printf '%s\n' "Authorization: Bearer ""eyJhbGciOiJSUzI1NiJ9.example.signature" >.specs/local.md
     if ! git check-ignore -q .specs/local.md; then
         printf '.specs/local.md is not ignored\n' >&2
         exit 1

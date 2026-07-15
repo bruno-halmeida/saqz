@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+if command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    java21=$(/usr/libexec/java_home -v 21 2>/dev/null || true)
+    if [ -n "$java21" ]; then
+        export JAVA_HOME=$java21
+        export PATH="$JAVA_HOME/bin:$PATH"
+    fi
+fi
+
+"$repository_root/tests/scripts/check-all.test.sh"
+"$repository_root/tests/scripts/check-credentials.test.sh"
+"$repository_root/tests/scripts/check-gradle.test.sh"
+"$repository_root/tests/scripts/check-landing.test.sh"
+"$repository_root/tests/scripts/check-scope.test.sh"
+"$repository_root/tests/scripts/check-workspace-isolation.test.sh" backend
+"$repository_root/tests/scripts/check-workspace-isolation.test.sh" mobile
+"$repository_root/tests/scripts/emulator-fixture.test.sh"
+
+printf 'ok - script tests\n'
