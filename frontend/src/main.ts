@@ -1,6 +1,4 @@
-import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
+import { bootstrapSaqzWeb } from './app/firebase/local-firebase.bootstrap';
 
-bootstrapApplication(App, appConfig)
+bootstrapSaqzWeb()
   .catch((err) => console.error(err));
