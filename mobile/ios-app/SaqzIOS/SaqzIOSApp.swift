@@ -110,11 +110,31 @@ struct SaqzIOSApp: App {
 }
 
 private struct ComposeRootView: UIViewControllerRepresentable {
-    // Only the Compose controller: the app's accessibility tree comes entirely from
-    // Compose semantics, with no synthetic UIKit accessibility element.
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    // Only the Compose controller: the app's accessibility tree comes entirely from Compose
+    // semantics, with no synthetic UIKit accessibility element. The Reduce Motion / Reduce
+    // Transparency observer lives in the coordinator and pushes two booleans into the same
+    // Compose controller on launch and on every change.
     func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
+        let controller = SaqzAccessibilityController()
+        let viewController = MainViewControllerKt.MainViewController(accessibilityController: controller)
+        context.coordinator.start(controller: controller)
+        return viewController
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+
+    @MainActor
+    final class Coordinator {
+        private var observer: AccessibilityPreferencesObserver?
+
+        func start(controller: SaqzAccessibilityController) {
+            let observer = AccessibilityPreferencesObserver { reduceMotion, reduceTransparency in
+                controller.update(reduceMotion: reduceMotion, reduceTransparency: reduceTransparency)
+            }
+            observer.start()
+            self.observer = observer
+        }
+    }
 }
