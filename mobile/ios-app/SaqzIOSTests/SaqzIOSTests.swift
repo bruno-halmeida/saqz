@@ -6,7 +6,7 @@ final class SaqzIOSTests: XCTestCase {
     func testLocalFirebaseOptionsEndpointAndInitializationOrder() {
         let client = RecordingFirebaseBootstrapClient()
 
-        let root = FirebaseBootstrap.makeRoot(client: client) {
+        let root = FirebaseBootstrap.makeRoot(client: client, configuration: .local) {
             client.events.append(.composeRootCreated)
             return "root"
         }
@@ -23,6 +23,37 @@ final class SaqzIOSTests: XCTestCase {
                     bundleID: "br.com.saqz.local"
                 ),
                 .authEmulator(host: "127.0.0.1", port: 9099),
+                .composeRootCreated,
+            ]
+        )
+    }
+
+    func testDevelopmentFirebaseOptionsDoNotUseAuthEmulator() {
+        let client = RecordingFirebaseBootstrapClient()
+        let configuration = LocalFirebaseConfiguration(
+            projectID: "saqz-dev",
+            apiKey: "dev-api-key",
+            senderID: "464989826191",
+            appID: "1:464989826191:ios:52fe6125e199b95209d4fa",
+            bundleID: "app.saqz",
+            authEmulatorHost: nil,
+            authEmulatorPort: nil
+        )
+
+        _ = FirebaseBootstrap.makeRoot(client: client, configuration: configuration) {
+            client.events.append(.composeRootCreated)
+        }
+
+        XCTAssertEqual(
+            client.events,
+            [
+                .configured(
+                    projectID: "saqz-dev",
+                    apiKey: "dev-api-key",
+                    senderID: "464989826191",
+                    appID: "1:464989826191:ios:52fe6125e199b95209d4fa",
+                    bundleID: "app.saqz"
+                ),
                 .composeRootCreated,
             ]
         )

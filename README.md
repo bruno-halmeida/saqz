@@ -12,7 +12,7 @@ Angular web, and mobile, plus the preserved static pre-launch landing page.
   with `SAQZ_JAVA_HOME` when needed.
 - Node 26.5.0 and npm 12.0.1 for `frontend/`.
 - Android SDK, `adb`, and a running Android emulator/device for
-  `:android-app:connectedDebugAndroidTest`.
+  `:android-app:connectedDevDebugAndroidTest`.
 - Xcode 26.4 with an installed iOS Simulator runtime.
 - Firebase CLI 15.23.0 through `npx --yes firebase-tools@15.23.0`.
 - Gitleaks 8.30.1 is optional locally; `scripts/check-credentials` runs it
@@ -64,13 +64,13 @@ scripts/test-scripts
 
 ```bash
 backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
-mobile/gradlew -p mobile :compose-app:allTests :android-app:testDebugUnitTest :android-app:connectedDebugAndroidTest --console=plain
+mobile/gradlew -p mobile :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 ```
 
 `scripts/check-ios` runs credential-free simulator tests:
 
 ```bash
-xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzIOS -destination "id=<available-simulator-udid>" CODE_SIGNING_ALLOWED=NO test
+xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzDev -destination "id=<available-simulator-udid>" CODE_SIGNING_ALLOWED=NO test
 ```
 
 GitHub Actions runs platform gates separately in
@@ -139,6 +139,19 @@ Local Firebase configuration is fake and committed as code/configuration:
 - Apple app ID: `1:123456789000:ios:5a61717a6c6f6361`
 - Auth Emulator endpoints: `127.0.0.1:9099` for Angular and iOS Simulator,
   `10.0.2.2:9099` for Android Emulator.
+- iOS has shared schemes `SaqzDev` and `SaqzProd`. `SaqzDev` uses the `Debug`
+  configuration and reads development Firebase config from ignored local file
+  `mobile/ios-app/SaqzIOS/Config/Dev/GoogleService-Info.plist` when present.
+  `SaqzProd` uses the `Release` configuration and reads production Firebase
+  config from ignored local file
+  `mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist`. Without a
+  matching file, the iOS app falls back to the local Auth Emulator config.
+- Android uses `dev` and `prod` product flavors. The `dev` flavor reads
+  development Firebase config from ignored local file
+  `mobile/android-app/src/dev/google-services.json` when present. Without that
+  file, `dev` falls back to the local Auth Emulator config. The `prod` flavor
+  reads production Firebase config from ignored local file
+  `mobile/android-app/src/prod/google-services.json`.
 
 Do not commit production Firebase credentials, service accounts, signing
 identities, production database credentials, `google-services.json`,

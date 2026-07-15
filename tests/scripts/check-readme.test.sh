@@ -41,7 +41,7 @@ require 'scripts/check-scope' 'scope gate'
 ok 'native gate commands'
 
 require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
-require 'mobile/gradlew -p mobile :compose-app:allTests :android-app:testDebugUnitTest :android-app:connectedDebugAndroidTest --console=plain' 'mobile Gradle command'
+require 'mobile/gradlew -p mobile :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
 ok 'Gradle and Android commands'
 
 require 'npm --prefix frontend ci' 'Angular install'

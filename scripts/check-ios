@@ -16,7 +16,7 @@ puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
 
 xcodebuild \
   -project mobile/ios-app/SaqzIOS.xcodeproj \
-  -scheme SaqzIOS \
+  -scheme SaqzDev \
   -destination "id=$simulator_udid" \
   CODE_SIGNING_ALLOWED=NO \
   test

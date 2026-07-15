@@ -40,7 +40,7 @@ SH
 set -eu
 printf 'mobile %s\n' "$*" >>"$LOG_FILE"
 case " $* " in
-    *" :android-app:connectedDebugAndroidTest "*)
+    *" :android-app:connectedDevDebugAndroidTest "*)
         [ "${FAIL_ANDROID_INSTRUMENTED:-0}" = 0 ] || exit 44
         ;;
 esac
@@ -97,7 +97,7 @@ credentials
 scope
 backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
-mobile -p REPO/mobile :compose-app:allTests :android-app:testDebugUnitTest :android-app:connectedDebugAndroidTest --console=plain
+mobile -p REPO/mobile :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
