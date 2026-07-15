@@ -60,6 +60,10 @@ reject_matches 'auth or product UI flow found in client source' \
     'login|sign[ -]?up|password[ -]?reset|Google[ -]?Sign[ -]?In|logout|user[ -]?sync|onboarding|invitation|role[ -]?authorization' \
     "$client_prod_files"
 
+reject_matches 'legacy Ais identifier found' \
+    'Ais[A-Z]|br\.com\.ais' \
+    "$client_prod_files"
+
 reject_matches 'generated OpenAPI client or generator found' \
     'openapi|swagger|open-api|api[ -]?client[ -]?generator' \
     "$prod_files"
@@ -67,10 +71,18 @@ reject_paths 'generated OpenAPI client path found' \
     '(^|/)(generated|openapi|swagger)(/|$)'
 
 reject_matches 'client navigation dependency or route found' \
-    'NavHost|NavController|androidx\.navigation|compose\.navigation|voyager|decompose' \
+    'voyager|decompose' \
     "$client_prod_files $build_files"
-reject_paths 'extra client UI source path found' \
-    '^mobile/(core|features)/'
+
+reject_matches 'web ui target found' \
+    'wasmJs|(^|[^A-Za-z.])js[[:space:]]*[({]|org\.jetbrains\.compose\.web' \
+    "$build_files"
+
+extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system)/' || true)
+[ -z "$extra_ui_paths" ] || {
+    printf '%s\n' "$extra_ui_paths" >&2
+    fail 'extra client UI source path found'
+}
 
 reject_matches 'production deployment workflow found' \
     'deploy[^#]*(backend|mobile|android|ios)|production[^#]*(backend|mobile|android|ios)' \
