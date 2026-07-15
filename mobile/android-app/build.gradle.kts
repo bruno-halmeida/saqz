@@ -42,6 +42,14 @@ android {
         buildConfig = true
     }
 
+    sourceSets {
+        // Package the pinned Inter OFL license into the test APK so the
+        // instrumented checksum test verifies the same file kept for attribution.
+        getByName("androidTest").assets.srcDir(
+            rootProject.file("core/design-system/THIRD_PARTY_LICENSES"),
+        )
+    }
+
     flavorDimensions += "environment"
     productFlavors {
         create("dev") {
