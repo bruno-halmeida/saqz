@@ -1,8 +1,16 @@
 #!/bin/sh
 set -eu
 
-export JAVA_HOME="${SAQZ_JAVA_HOME:-${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}}"
+if [ -n "${SAQZ_JAVA_HOME:-}" ]; then
+    export JAVA_HOME="$SAQZ_JAVA_HOME"
+elif command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+else
+    export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
+fi
 export PATH="$JAVA_HOME/bin:$PATH"
+
+project="mobile/ios-app/SaqzIOS.xcodeproj"
 
 simulator_runtime_version=$(xcrun --sdk iphonesimulator --show-sdk-version)
 simulator_udid="$(xcrun simctl list devices available -j | ruby -rjson -e '
@@ -14,9 +22,62 @@ abort "No available iOS #{sdk_version} Simulator is installed. Install the runti
 puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
 ' "$simulator_runtime_version")"
 
-xcodebuild \
-  -project mobile/ios-app/SaqzIOS.xcodeproj \
+destination="id=$simulator_udid"
+
+# The Release build copies the Prod Firebase plist only when present; its absence
+# is a supported path (unit tests need no production credentials and no real
+# signing), so the gate proceeds without them.
+prod_plist="mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist"
+if [ ! -f "$prod_plist" ]; then
+    printf 'note: production GoogleService-Info.plist absent; running Release build/unit without production credentials\n' >&2
+fi
+
+# A test invocation that discovers zero XCTest cases is a silent skip and must fail.
+run_tests() {
+    log=$(mktemp "${TMPDIR:-/tmp}/saqz-check-ios.XXXXXX")
+    if ! xcodebuild "$@" >"$log" 2>&1; then
+        cat "$log"
+        rm -f "$log"
+        exit 1
+    fi
+    cat "$log"
+    if ! grep -Eq 'Executed [1-9][0-9]* test' "$log"; then
+        rm -f "$log"
+        printf 'check-ios failed: xcodebuild ran zero tests for: %s\n' "$*" >&2
+        exit 1
+    fi
+    rm -f "$log"
+}
+
+# 1. SaqzDev runs the full unit + UI suite in Debug.
+run_tests \
+  -project "$project" \
   -scheme SaqzDev \
-  -destination "id=$simulator_udid" \
+  -destination "$destination" \
+  JAVA_HOME="$JAVA_HOME" \
   CODE_SIGNING_ALLOWED=NO \
+  test
+
+# 2. SaqzProd builds in Release, proving the production configuration compiles.
+xcodebuild \
+  -project "$project" \
+  -scheme SaqzProd \
+  -configuration Release \
+  -destination "$destination" \
+  JAVA_HOME="$JAVA_HOME" \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+
+# 3. SaqzProd runs unit tests only in Release; UI tests never run on Prod.
+# Release defaults ENABLE_TESTABILITY=NO, but SaqzIOSTests uses @testable import,
+# so it is forced on for this run only (no signing, no production credentials).
+run_tests \
+  -project "$project" \
+  -scheme SaqzProd \
+  -configuration Release \
+  -destination "$destination" \
+  -only-testing:SaqzIOSTests \
+  JAVA_HOME="$JAVA_HOME" \
+  CODE_SIGNING_ALLOWED=NO \
+  ENABLE_TESTABILITY=YES \
   test
