@@ -1,0 +1,107 @@
+#!/bin/sh
+set -eu
+
+baseline_commit=c03a8ccbc800b70a982b1f9bb93a4b0af3d87c44
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+landing_dir="$repository_root/landing-page"
+workflow_file="$repository_root/.github/workflows/deploy-pages.yml"
+server_pid=
+
+fail() {
+    printf 'landing gate failed: %s\n' "$1" >&2
+    exit 1
+}
+
+cleanup() {
+    if [ -n "${server_pid:-}" ] && kill -0 "$server_pid" 2>/dev/null; then
+        kill "$server_pid" 2>/dev/null || true
+        wait "$server_pid" 2>/dev/null || true
+    fi
+}
+
+trap cleanup EXIT HUP INT TERM
+
+require_line() {
+    pattern=$1
+    label=$2
+    grep -Eq "$pattern" "$workflow_file" || fail "Pages workflow missing $label"
+}
+
+git -C "$repository_root" cat-file -e "$baseline_commit^{commit}" 2>/dev/null ||
+    fail "landing baseline commit not found: $baseline_commit"
+
+if ! git -C "$repository_root" diff --quiet "$baseline_commit" -- landing-page; then
+    git -C "$repository_root" diff --stat "$baseline_commit" -- landing-page >&2
+    fail "landing-page differs from baseline"
+fi
+
+[ -f "$workflow_file" ] || fail "Pages workflow missing"
+require_line '^[[:space:]]*push:[[:space:]]*$' 'push trigger'
+require_line '^[[:space:]]*branches:[[:space:]]*\[[[:space:]]*main[[:space:]]*\][[:space:]]*$' 'main branch trigger'
+require_line '^[[:space:]]*-[[:space:]]*landing-page/\*\*[[:space:]]*$' 'landing-page path trigger'
+require_line '^[[:space:]]*workflow_dispatch:[[:space:]]*$' 'manual dispatch trigger'
+require_line 'uses:[[:space:]]*actions/upload-pages-artifact@' 'Pages artifact upload step'
+require_line '^[[:space:]]*path:[[:space:]]*landing-page[[:space:]]*$' 'landing-page artifact path'
+require_line '^[[:space:]]*name:[[:space:]]*github-pages[[:space:]]*$' 'github-pages environment'
+require_line 'uses:[[:space:]]*actions/deploy-pages@' 'Pages deploy step'
+
+if command -v python3 >/dev/null 2>&1; then
+    python_bin=python3
+elif command -v python >/dev/null 2>&1; then
+    python_bin=python
+else
+    fail "python is required to serve landing-page"
+fi
+
+if [ -n "${SAQZ_LANDING_PORT:-}" ]; then
+    port=$SAQZ_LANDING_PORT
+else
+    port=$("$python_bin" - <<'PY'
+import socket
+with socket.socket() as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+)
+fi
+
+"$python_bin" -m http.server "$port" --bind 127.0.0.1 --directory "$landing_dir" >/dev/null 2>&1 &
+server_pid=$!
+
+base_url="http://127.0.0.1:$port"
+ready=0
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -fsS -o /dev/null "$base_url/index.html" 2>/dev/null; then
+        ready=1
+        break
+    fi
+    sleep 0.2
+done
+[ "$ready" -eq 1 ] || fail "index.html did not return 200"
+
+asset_list=$(mktemp "${TMPDIR:-/tmp}/saqz-landing-assets.XXXXXX")
+trap 'rm -f "$asset_list"; cleanup' EXIT HUP INT TERM
+
+{
+    grep -Eo '(src|href)="[^"]+"' "$landing_dir/index.html" |
+        sed -E 's/^[^"]+"([^"]+)"/\1/'
+    grep -Eo 'url\(([^)]*)\)' "$landing_dir/index.html" |
+        sed -E "s/^url\((.*)\)$/\1/; s/^['\"]//; s/['\"]$//"
+} | while IFS= read -r asset; do
+    case "$asset" in
+        ''|'#'*|http://*|https://*|//*|mailto:*|tel:*|data:*) ;;
+        *) printf '%s\n' "$asset" ;;
+    esac
+done | sort -u >"$asset_list"
+
+while IFS= read -r asset; do
+    path=${asset%%\?*}
+    path=${path%%#*}
+    case "$path" in
+        /*) url="$base_url$path" ;;
+        *) url="$base_url/$path" ;;
+    esac
+    curl -fsS -o /dev/null "$url" || fail "local asset did not return 200: $asset"
+done <"$asset_list"
+
+printf 'ok - landing preservation\n'
