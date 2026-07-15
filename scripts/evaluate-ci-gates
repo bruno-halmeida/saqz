@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+[ "$#" -eq 4 ] || {
+    printf 'usage: %s gradle-result angular-result ios-result landing-result\n' "$0" >&2
+    exit 2
+}
+
+for result in "$@"; do
+    if [ "$result" != success ]; then
+        printf 'initialization gate failed: expected success, got %s\n' "$result" >&2
+        exit 1
+    fi
+done
+
+printf 'ok - initialization gate\n'
