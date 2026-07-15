@@ -28,7 +28,7 @@ assert_workflow '^[[:space:]]*gradle-gate:[[:space:]]*$' 'gradle job'
 assert_workflow 'scripts/check-gradle' 'gradle command'
 awk '
     /^[[:space:]]*gradle-gate:[[:space:]]*$/ { in_gradle = 1 }
-    /^[[:space:]]*angular-gate:[[:space:]]*$/ { in_gradle = 0 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gradle = 0 }
     in_gradle && /actions\/setup-node/ { found = 1 }
     END { exit found ? 0 : 1 }
 ' "$workflow" >/dev/null 2>&1 && {
@@ -37,12 +37,11 @@ awk '
 }
 ok 'gradle job identity and command'
 
-assert_workflow '^[[:space:]]*angular-gate:[[:space:]]*$' 'angular job'
-assert_workflow 'run:[[:space:]]*npm --prefix frontend ci' 'angular install'
-assert_workflow 'run:[[:space:]]*npm --prefix frontend run lint' 'angular lint'
-assert_workflow 'run:[[:space:]]*npm --prefix frontend run test:ci' 'angular test'
-assert_workflow 'run:[[:space:]]*npm --prefix frontend run build' 'angular build'
-ok 'angular job identity and commands'
+if grep -Eqi 'angular-gate|npm --prefix frontend|frontend/package-lock' "$workflow"; then
+    printf 'retired Angular job is still present\n' >&2
+    exit 1
+fi
+ok 'angular job retired'
 
 assert_workflow '^[[:space:]]*ios-gate:[[:space:]]*$' 'ios job'
 assert_workflow 'run:[[:space:]]*scripts/check-ios' 'ios command'
@@ -90,7 +89,7 @@ assert_workflow 'emulator-boot-timeout:[[:space:]]*300' 'bounded Android emulato
 assert_workflow 'pre-emulator-launch-script:[[:space:]]*adb start-server' 'ADB starts before Android emulator'
 awk '
     /^[[:space:]]*gradle-gate:[[:space:]]*$/ { in_gradle = 1 }
-    /^[[:space:]]*angular-gate:[[:space:]]*$/ { in_gradle = 0 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gradle = 0 }
     in_gradle && /^[[:space:]]*timeout-minutes:[[:space:]]*45[[:space:]]*$/ { found = 1 }
     END { exit found ? 0 : 1 }
 ' "$workflow" || {
@@ -109,10 +108,22 @@ grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-scope' "$repository_root/scripts/check-gradle"
 
 assert_workflow '^[[:space:]]*initialization-gate:[[:space:]]*$' 'aggregate job'
-assert_workflow 'needs:[[:space:]]*\[gradle-gate, angular-gate, ios-gate, landing-gate\]' 'aggregate needs'
+assert_workflow 'needs:[[:space:]]*\[gradle-gate, ios-gate, landing-gate\]' 'aggregate needs'
 assert_workflow 'if:[[:space:]]*always\(\)' 'aggregate always'
-assert_workflow 'scripts/evaluate-ci-gates "\$GRADLE_RESULT" "\$ANGULAR_RESULT" "\$IOS_RESULT" "\$LANDING_RESULT"' 'aggregate evaluator'
-"$evaluator" success success success success >/dev/null
+assert_workflow 'scripts/evaluate-ci-gates "\$GRADLE_RESULT" "\$IOS_RESULT" "\$LANDING_RESULT"' 'aggregate evaluator'
+"$evaluator" success success success >/dev/null
+
+if "$evaluator" success success >/dev/null 2>&1; then
+    printf 'aggregate evaluator accepted a missing job result\n' >&2
+    exit 1
+fi
+ok 'aggregate rejects missing result'
+
+if "$evaluator" success success success success >/dev/null 2>&1; then
+    printf 'aggregate evaluator accepted an extra job result\n' >&2
+    exit 1
+fi
+ok 'aggregate rejects extra result'
 
 if grep -Eqi 'secret|GOOGLE_APPLICATION_CREDENTIALS|service-account|signing|database|deploy-pages|firebase deploy' "$workflow"; then
     printf 'workflow requires forbidden secret/deployment contract\n' >&2
@@ -126,36 +137,32 @@ git -C "$repository_root" diff --quiet -- "$pages_workflow" || {
 }
 ok 'pages workflow preserved'
 
-for gate in gradle angular ios landing; do
+for gate in gradle ios landing; do
     gradle=success
-    angular=success
     ios=success
     landing=success
     case "$gate" in
         gradle) gradle=failure ;;
-        angular) angular=failure ;;
         ios) ios=failure ;;
         landing) landing=failure ;;
     esac
-    if "$evaluator" "$gradle" "$angular" "$ios" "$landing" >/dev/null 2>&1; then
+    if "$evaluator" "$gradle" "$ios" "$landing" >/dev/null 2>&1; then
         printf 'aggregate accepted %s failure\n' "$gate" >&2
         exit 1
     fi
     ok "aggregate rejects $gate failure"
 done
 
-for gate in gradle angular ios landing; do
+for gate in gradle ios landing; do
     gradle=success
-    angular=success
     ios=success
     landing=success
     case "$gate" in
         gradle) gradle=cancelled ;;
-        angular) angular=cancelled ;;
         ios) ios=cancelled ;;
         landing) landing=cancelled ;;
     esac
-    if "$evaluator" "$gradle" "$angular" "$ios" "$landing" >/dev/null 2>&1; then
+    if "$evaluator" "$gradle" "$ios" "$landing" >/dev/null 2>&1; then
         printf 'aggregate accepted %s cancellation\n' "$gate" >&2
         exit 1
     fi
