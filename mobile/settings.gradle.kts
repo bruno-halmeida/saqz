@@ -22,5 +22,6 @@ require(!Regex("""includeBuild\(\s*[\"'][^\"']*\.\./""").containsMatchIn(setting
 rootProject.name = "saqz-mobile"
 
 includeBuild("build-logic")
+include(":core:common")
 include(":compose-app")
 include(":android-app")
