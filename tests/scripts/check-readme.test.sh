@@ -44,11 +44,11 @@ require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test
 require 'mobile/gradlew -p mobile :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
 ok 'Gradle and Android commands'
 
-require 'npm --prefix frontend ci' 'Angular install'
-require 'npm --prefix frontend run lint' 'Angular lint'
-require 'npm --prefix frontend run test:ci' 'Angular test'
-require 'npm --prefix frontend run build' 'Angular build'
-ok 'Angular commands'
+if grep -Eqi 'Angular|frontend/|npm --prefix frontend|Web app ID' "$readme"; then
+    printf 'README still documents the retired Angular workspace\n' >&2
+    exit 1
+fi
+ok 'retired Angular documentation absent'
 
 require 'CODE_SIGNING_ALLOWED=NO test' 'credential-free xcodebuild'
 require 'macOS for the complete local gate' 'local platform limitation'
@@ -72,7 +72,7 @@ ok 'KMP umbrella procedure'
 
 require 'Project ID: `saqz-local`' 'fake project'
 require 'fake-saqz-local-api-key' 'fake API key'
-require '127\.0\.0\.1:9099' 'web/iOS emulator'
+require '127\.0\.0\.1:9099' 'backend/iOS emulator'
 require '10\.0\.2\.2:9099' 'Android emulator'
 ok 'local fake Firebase values'
 
@@ -86,4 +86,9 @@ require 'scripts/test-scripts' 'script test gate'
 require 'initialization-gate' 'CI aggregate'
 ok 'script and CI commands'
 
-[ "$count" -eq 12 ]
+test_scripts="$repository_root/scripts/test-scripts"
+grep -Fq 'tests/scripts/check-ci.test.sh' "$test_scripts"
+grep -Fq 'tests/scripts/check-readme.test.sh' "$test_scripts"
+ok 'script aggregate includes CI and README contracts'
+
+[ "$count" -eq 13 ]

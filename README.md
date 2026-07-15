@@ -1,7 +1,8 @@
 # Saqz
 
-Saqz is a hybrid monorepo with independent product workspaces for backend,
-Angular web, and mobile, plus the preserved static pre-launch landing page.
+Saqz is a mobile-first monorepo with independent product workspaces for the
+Kotlin backend and Compose Multiplatform app, plus the preserved static
+pre-launch landing page.
 
 ## Prerequisites
 
@@ -10,7 +11,7 @@ Angular web, and mobile, plus the preserved static pre-launch landing page.
 - JDK 21. `scripts/check-ios` defaults to
   `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`; override
   with `SAQZ_JAVA_HOME` when needed.
-- Node 26.5.0 and npm 12.0.1 for `frontend/`.
+- Node 26.5.0 and npm 12.0.1 for the pinned Firebase CLI and session fixture.
 - Android SDK, `adb`, and a running Android emulator/device for
   `:android-app:connectedDevDebugAndroidTest`.
 - Xcode 26.4 with an installed iOS Simulator runtime.
@@ -49,10 +50,6 @@ Native gates are also directly runnable:
 
 ```bash
 scripts/check-gradle
-npm --prefix frontend ci
-npm --prefix frontend run lint
-npm --prefix frontend run test:ci
-npm --prefix frontend run build
 scripts/check-ios
 scripts/check-landing
 scripts/check-credentials
@@ -74,21 +71,23 @@ xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzDev -destinatio
 ```
 
 GitHub Actions runs platform gates separately in
-`.github/workflows/initialization-gate.yml`: Gradle, Angular, and landing on
-Linux, and iOS on macOS. The aggregate `initialization-gate` passes only when
-all four native jobs pass.
+`.github/workflows/initialization-gate.yml`: Gradle and landing on Linux, and
+iOS on macOS. The aggregate `initialization-gate` passes only when all three
+jobs pass.
 
 ## Workspace Boundaries
 
 - `backend/` owns its Gradle wrapper, settings, version catalog, and build
-  logic. It must build without `frontend/` or `mobile/`.
+  logic. It must build without `mobile/`.
 - `mobile/` owns its Gradle wrapper, settings, version catalog, and build
-  logic. It must build without `backend/` or `frontend/`.
-- `frontend/` is an npm/Angular workspace and must not compile backend Gradle
-  artifacts or Kotlin domain classes.
+  logic. It must build without `backend/`.
+- `landing-page/` is static public content, not a product application
+  workspace and not a dependency of backend or mobile builds.
 - The repository root has no Gradle wrapper, settings, catalog, or build logic.
 - Backend and mobile must not use composite builds, shared build logic, project
   dependencies, or compiled artifacts from sibling workspaces.
+- There is no browser product workspace. A future web app requires a new spec
+  and architecture decision; the landing remains HTML/CSS.
 
 ## Backend Architecture
 
@@ -134,11 +133,10 @@ Local Firebase configuration is fake and committed as code/configuration:
 
 - Project ID: `saqz-local`
 - API key: `fake-saqz-local-api-key`
-- Web app ID: `1:123456789000:web:saqzlocal`
 - Android app ID: `1:123456789000:android:saqzlocal`
 - Apple app ID: `1:123456789000:ios:5a61717a6c6f6361`
-- Auth Emulator endpoints: `127.0.0.1:9099` for Angular and iOS Simulator,
-  `10.0.2.2:9099` for Android Emulator.
+- Auth Emulator endpoints: `127.0.0.1:9099` for backend tooling and iOS
+  Simulator, `10.0.2.2:9099` for Android Emulator.
 - iOS has shared schemes `SaqzDev` and `SaqzProd`. `SaqzDev` uses the `Debug`
   configuration and reads development Firebase config from ignored local file
   `mobile/ios-app/SaqzIOS/Config/Dev/GoogleService-Info.plist` when present.

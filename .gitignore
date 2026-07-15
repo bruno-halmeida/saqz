@@ -13,12 +13,10 @@ captures/
 .externalNativeBuild/
 .cxx/
 
-# Node and Angular
+# Node tooling (Firebase CLI and session fixture)
 node_modules/
 dist/
-.angular/
 coverage/
-.astro/
 
 # Xcode and Swift Package Manager
 DerivedData/
