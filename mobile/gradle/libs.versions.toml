@@ -8,6 +8,7 @@ compose = "1.11.1"
 firebase-bom = "34.15.0"
 junit = "4.13.2"
 kotlin = "2.4.10"
+kotlinx-datetime = "0.8.0"
 min-sdk = "23"
 navigation = "2.9.2"
 serialization-json = "1.11.0"
@@ -28,5 +29,6 @@ compose-ui-test-junit4 = { module = "org.jetbrains.compose.ui:ui-test-junit4", v
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 junit = { module = "junit:junit", version.ref = "junit" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization-json" }
