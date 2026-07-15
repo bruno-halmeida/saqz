@@ -1,17 +1,146 @@
 # Saqz
 
-Landing page de pré-lançamento do Saqz, localizada em `landing-page/`.
+Saqz is a hybrid monorepo with independent product workspaces for backend,
+Angular web, and mobile, plus the preserved static pre-launch landing page.
 
-## Desenvolvimento local
+## Prerequisites
 
-Sirva a raiz do repositório com qualquer servidor HTTP estático. Exemplo:
+- macOS for the complete local gate, because `scripts/check-ios` requires Xcode
+  and an available iOS Simulator.
+- JDK 21. `scripts/check-ios` defaults to
+  `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`; override
+  with `SAQZ_JAVA_HOME` when needed.
+- Node 26.5.0 and npm 12.0.1 for `frontend/`.
+- Android SDK, `adb`, and a running Android emulator/device for
+  `:android-app:connectedDebugAndroidTest`.
+- Xcode 26.4 with an installed iOS Simulator runtime.
+- Firebase CLI 15.23.0 through `npx --yes firebase-tools@15.23.0`.
+- Gitleaks 8.30.1 is optional locally; `scripts/check-credentials` runs it
+  when installed and always runs the built-in credential scanner.
+
+## Landing Page
+
+The pre-launch landing page lives in `landing-page/` and is intentionally
+independent from the product workspaces.
+
+Serve it locally with any static HTTP server:
 
 ```bash
 python3 -m http.server 8080 --directory landing-page
 ```
 
-Acesse `http://localhost:8080`.
+Open `http://localhost:8080`.
 
-## GitHub Pages
+The workflow `.github/workflows/deploy-pages.yml` publishes `landing-page/`
+after changes to that folder are pushed to `main`. Initialization work must not
+change the landing content; `scripts/check-landing` compares it with baseline
+`c03a8ccbc800b70a982b1f9bb93a4b0af3d87c44`, verifies the Pages workflow
+contract, and checks `index.html` plus local assets over HTTP.
 
-O workflow `.github/workflows/deploy-pages.yml` publica `landing-page/` após mudanças nessa pasta enviadas para `main`.
+## Local Gates
+
+Run the complete local gate on macOS:
+
+```bash
+scripts/check-all
+```
+
+Native gates are also directly runnable:
+
+```bash
+scripts/check-gradle
+npm --prefix frontend ci
+npm --prefix frontend run lint
+npm --prefix frontend run test:ci
+npm --prefix frontend run build
+scripts/check-ios
+scripts/check-landing
+scripts/check-credentials
+scripts/check-scope
+scripts/test-scripts
+```
+
+`scripts/check-gradle` runs credential and scope checks first, then:
+
+```bash
+backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
+mobile/gradlew -p mobile :compose-app:allTests :android-app:testDebugUnitTest :android-app:connectedDebugAndroidTest --console=plain
+```
+
+`scripts/check-ios` runs credential-free simulator tests:
+
+```bash
+xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzIOS -destination "id=<available-simulator-udid>" CODE_SIGNING_ALLOWED=NO test
+```
+
+GitHub Actions runs platform gates separately in
+`.github/workflows/initialization-gate.yml`: Gradle, Angular, and landing on
+Linux, and iOS on macOS. The aggregate `initialization-gate` passes only when
+all four native jobs pass.
+
+## Workspace Boundaries
+
+- `backend/` owns its Gradle wrapper, settings, version catalog, and build
+  logic. It must build without `frontend/` or `mobile/`.
+- `mobile/` owns its Gradle wrapper, settings, version catalog, and build
+  logic. It must build without `backend/` or `frontend/`.
+- `frontend/` is an npm/Angular workspace and must not compile backend Gradle
+  artifacts or Kotlin domain classes.
+- The repository root has no Gradle wrapper, settings, catalog, or build logic.
+- Backend and mobile must not use composite builds, shared build logic, project
+  dependencies, or compiled artifacts from sibling workspaces.
+
+## Backend Architecture
+
+Backend features use feature-oriented hexagonal modules. Allowed dependency
+direction is:
+
+```text
+bootstrap -> features:<feature> -> shared-kernel
+```
+
+Identity is currently the only backend feature module under `backend/features/`.
+Domain, application, and API contracts must not import Spring, Firebase, HTTP
+adapters, persistence, another feature's internals, or client code. Adapters are
+owned by their feature and are wired only by the Spring Boot composition root.
+
+To add a backend feature:
+
+1. Create `backend/features/<feature>/` only when it owns implemented behavior.
+2. Add `api`, `application`, and domain code inside that module as needed.
+3. Add input/output adapters under the feature's adapter packages.
+4. Wire the feature from `backend/bootstrap/`; do not wire from another feature.
+5. Add architecture rules before exposing cross-module dependencies.
+
+## Mobile Architecture
+
+`mobile/compose-app` is the single shared Compose umbrella consumed by Android
+and iOS. `mobile/android-app` is the Android launcher. `mobile/ios-app` is the
+Xcode launcher and embeds the one `SaqzMobile` framework.
+
+To add a KMP feature:
+
+1. Create `mobile/features/<feature>/` only when there is real mobile behavior.
+2. Keep feature internals inside that module.
+3. Depend on the feature from `mobile/compose-app`.
+4. Keep iOS consuming only the umbrella framework generated by `compose-app`.
+
+No client source may contain backend business `domain`, `usecase`, or
+`application` packages.
+
+## Firebase And Credentials
+
+Local Firebase configuration is fake and committed as code/configuration:
+
+- Project ID: `saqz-local`
+- API key: `fake-saqz-local-api-key`
+- Web app ID: `1:123456789000:web:saqzlocal`
+- Android app ID: `1:123456789000:android:saqzlocal`
+- Apple app ID: `1:123456789000:ios:5a61717a6c6f6361`
+- Auth Emulator endpoints: `127.0.0.1:9099` for Angular and iOS Simulator,
+  `10.0.2.2:9099` for Android Emulator.
+
+Do not commit production Firebase credentials, service accounts, signing
+identities, production database credentials, `google-services.json`,
+`GoogleService-Info.plist`, or non-example `.env` files. `.specs/` is ignored
+and must remain untracked.
