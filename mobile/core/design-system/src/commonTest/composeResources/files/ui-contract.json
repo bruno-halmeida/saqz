@@ -40,5 +40,23 @@
     "cardRadius": 16,
     "bottomNavHeight": 56,
     "minimumTouchTarget": 48
+  },
+  "motion": {
+    "normal": {
+      "pressScale": 0.95,
+      "pressDurationMillis": 120,
+      "focusDurationMillis": 180,
+      "routeDurationMillis": 220,
+      "maxTranslation": 8,
+      "opacityFeedbackDurationMillis": 120
+    },
+    "reduced": {
+      "pressScale": 1.0,
+      "pressDurationMillis": 120,
+      "focusDurationMillis": 180,
+      "routeDurationMillis": 220,
+      "maxTranslation": 0,
+      "opacityFeedbackDurationMillis": 120
+    }
   }
 }
