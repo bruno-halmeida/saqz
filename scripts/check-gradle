@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+fail() {
+    printf 'gradle gate failed: %s\n' "$1" >&2
+    exit 1
+}
+
+"$repository_root/scripts/check-credentials"
+"$repository_root/scripts/check-scope"
+
+"$repository_root/backend/gradlew" -p "$repository_root/backend" \
+    :shared-kernel:check \
+    :features:identity:test \
+    :features:identity:emulatorTest \
+    :bootstrap:test \
+    :bootstrap:emulatorTest \
+    :architecture-tests:test \
+    --console=plain
+
+if ! command -v adb >/dev/null 2>&1; then
+    fail "adb is required for Android instrumented tests"
+fi
+
+if ! adb devices | grep -Eq '^[^[:space:]]+[[:space:]]+device$'; then
+    fail "Android emulator/device is required for connectedDebugAndroidTest"
+fi
+
+"$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
+    :compose-app:allTests \
+    :android-app:testDebugUnitTest \
+    :android-app:connectedDebugAndroidTest \
+    --console=plain
+
+printf 'ok - complete Kotlin and Android gate\n'
