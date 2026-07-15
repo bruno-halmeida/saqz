@@ -46,9 +46,9 @@ ok 'landing job identity and command'
 assert_workflow 'runs-on:[[:space:]]*macos-' 'ios macos runner'
 ok 'macos ios runner'
 
-assert_workflow 'sdkmanager "platforms;android-35" "system-images;android-35;google_apis;x86_64"' 'android sdk install'
-assert_workflow 'avdmanager create avd .*saqz-ci' 'android avd creation'
-assert_workflow 'adb wait-for-device' 'android boot wait'
+assert_workflow 'cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "platforms;android-35" "system-images;android-35;google_apis;x86_64"' 'android sdk install'
+assert_workflow 'cmdline-tools/latest/bin/avdmanager" create avd .*saqz-ci' 'android avd creation'
+assert_workflow 'platform-tools/adb" wait-for-device' 'android boot wait'
 assert_workflow 'scripts/check-gradle' 'gradle gate under emulator'
 ok 'gradle emulator provisioning'
 
