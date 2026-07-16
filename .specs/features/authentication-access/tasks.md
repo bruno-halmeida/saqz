@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T07 concluidas
+**Status:** Execute em andamento - T01..T08 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -270,8 +270,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +10 casos incluindo duas conexoes concorrentes.
 - **Gate:** SQL integration.
-- **Done when:** [ ] concorrencia deixa uma linha; [ ] roles por grupo sao
-  preservadas; [ ] baseline +10 e Gate verde.
+- **Done when:** [x] concorrencia deixa uma linha; [x] roles por grupo sao
+  preservadas; [x] baseline +10 e Gate verde.
 - **Commit:** `feat(access): persist idempotent session bootstrap`
 
 ### T09 - Expor PUT /api/session
