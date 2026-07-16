@@ -36,6 +36,19 @@ reject_matches() {
     }
 }
 
+reject_matches_outside() {
+    label=$1
+    pattern=$2
+    allowed_paths=$3
+    files=${4:-}
+    [ -n "$files" ] || return 0
+    matches=$(printf '%s\n' "$files" | xargs grep -InE "$pattern" 2>/dev/null | grep -Ev "$allowed_paths" || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail "$label"
+    }
+}
+
 reject_paths() {
     label=$1
     pattern=$2
@@ -52,13 +65,23 @@ build_files=$(tracked_build_files)
 
 reject_paths 'retired frontend workspace found' '^frontend/'
 
-reject_matches 'database or persistence artifact found' \
-    'org\.postgresql|postgresql|flyway|liquibase|jooq|exposed|jdbc|r2dbc|jakarta\.persistence|javax\.persistence|/migration|persistence|UserRepository' \
+reject_matches 'unsupported persistence technology found' \
+    'liquibase|jooq|exposed|r2dbc|jakarta\.persistence|javax\.persistence|org\.hibernate|com\.h2database|sqlite' \
     "$prod_files"
 
-reject_matches 'auth or product UI flow found in client source' \
+reject_matches_outside 'persistence artifact outside access backend found' \
+    'org\.postgresql|postgresql|flyway|jdbc|JdbcClient|/migration|persistence|Repository' \
+    '^(backend/(features/access/|bootstrap/|gradle/|settings\.gradle\.kts|build\.gradle\.kts)|compose\.yaml)' \
+    "$prod_files"
+
+reject_matches_outside 'auth flow outside approved mobile surface found' \
     'login|sign[ -]?up|password[ -]?reset|Google[ -]?Sign[ -]?In|logout|user[ -]?sync|onboarding|invitation|role[ -]?authorization' \
+    '^(mobile/(features/access|core/network|compose-app|android-app|ios-app/SaqzIOS)/)' \
     "$client_prod_files"
+
+reject_matches 'co-owner capability found' \
+    'co[-_ ]?owner|CO_OWNER|transfer[^[:alnum:]]+ownership' \
+    "$prod_files"
 
 reject_matches 'legacy Ais identifier found' \
     'Ais[A-Z]|br\.com\.ais' \
@@ -78,7 +101,7 @@ reject_matches 'web ui target found' \
     'wasmJs|(^|[^A-Za-z.])js[[:space:]]*[({]|org\.jetbrains\.compose\.web' \
     "$build_files"
 
-extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system)/' || true)
+extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system|network)/|^mobile/features/access/' || true)
 [ -z "$extra_ui_paths" ] || {
     printf '%s\n' "$extra_ui_paths" >&2
     fail 'extra client UI source path found'
@@ -98,7 +121,12 @@ reject_paths 'client domain or application source segment found' \
     '^(mobile/.*/src|mobile/ios-app/SaqzIOS)/.*/(domain|usecase|application)(/|$)'
 
 feature_modules=$(find "$repository_root/backend/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')
-[ "$feature_modules" = "identity " ] || fail "backend/features must contain only identity"
+case "$feature_modules" in
+    "identity "|"access identity ") ;;
+    *) fail "backend/features may contain only access and identity" ;;
+esac
+
+reject_paths 'tracked secret path found' '(^|/)\.secrets/|(^|/)(service-account|GoogleService-Info|google-services)\.?.*\.json$'
 
 if git -C "$repository_root" check-ignore --no-index -q .specs/features/project-initialization/spec.md; then
     fail ".specs is ignored"

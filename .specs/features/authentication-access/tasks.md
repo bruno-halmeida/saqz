@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Rascunho para aprovacao antes de Execute
+**Status:** Execute em andamento - T01 concluida
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -139,8 +139,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** SHELL.
 - **Tests:** contract/mutation, +12 cenarios positivos/negativos.
 - **Gate:** Contract.
-- **Done when:** [ ] todas as categorias possuem fixture discriminatoria; [ ]
-  baseline +12 ou maior sem remocoes; [ ] `scripts/check-scope` e Contract verdes.
+- **Done when:** [x] todas as categorias possuem fixture discriminatoria; [x]
+  baseline +12 ou maior sem remocoes; [x] `scripts/check-scope` e Contract verdes.
 - **Commit:** `chore(scope): allow authentication access epic`
 
 ### T02 - Publicar RequestIdentity no shared-kernel
