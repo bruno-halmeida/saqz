@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T04 concluidas
+**Status:** Execute em andamento - T01..T05 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -215,8 +215,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +14 casos de migration/constraints/rollback.
 - **Gate:** SQL integration.
-- **Done when:** [ ] Flyway sobe banco vazio e reexecuta sem drift; [ ] cada
-  constraint mata a mutacao correspondente; [ ] baseline +14 e Gate verde.
+- **Done when:** [x] Flyway sobe banco vazio e reexecuta sem drift; [x] cada
+  constraint mata a mutacao correspondente; [x] baseline +14 e Gate verde.
 - **Commit:** `feat(access): add relational access schema`
 
 ### T06 - Implementar tipos e politica do dominio access
