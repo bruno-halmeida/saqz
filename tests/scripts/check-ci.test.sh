@@ -105,104 +105,132 @@ grep -Eq '/usr/libexec/java_home -v 21' "$repository_root/scripts/check-ios" || 
 }
 ok 'ios java home fallback'
 
-assert_workflow '^[[:space:]]*android-api35-probe:[[:space:]]*$' 'api35 probe job'
-ok 'api35 probe jobExists'
+assert_workflow '^[[:space:]]*android-api35-gate:[[:space:]]*$' 'api35 gate job'
+ok 'api35 gate jobExists'
 
 awk '
-    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
-    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
-    in_probe && /^[[:space:]]*api-level:[[:space:]]*35[[:space:]]*$/ { api = 1 }
-    in_probe && /^[[:space:]]*target:[[:space:]]*google_apis[[:space:]]*$/ { target = 1 }
-    in_probe && /^[[:space:]]*arch:[[:space:]]*x86_64[[:space:]]*$/ { arch = 1 }
-    in_probe && /^[[:space:]]*profile:[[:space:]]*pixel_7[[:space:]]*$/ { profile = 1 }
-    in_probe && /^[[:space:]]*ram-size:[[:space:]]*4096M[[:space:]]*$/ { ram = 1 }
-    in_probe && /^[[:space:]]*avd-name:[[:space:]]*saqz-api35-probe[[:space:]]*$/ { avd = 1 }
-    in_probe && /^[[:space:]]*emulator-build:[[:space:]]*13823996[[:space:]]*$/ { build = 1 }
+    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gate = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
+    in_gate && /^[[:space:]]*api-level:[[:space:]]*35[[:space:]]*$/ { api = 1 }
+    in_gate && /^[[:space:]]*target:[[:space:]]*google_apis[[:space:]]*$/ { target = 1 }
+    in_gate && /^[[:space:]]*arch:[[:space:]]*x86_64[[:space:]]*$/ { arch = 1 }
+    in_gate && /^[[:space:]]*profile:[[:space:]]*pixel_7[[:space:]]*$/ { profile = 1 }
+    in_gate && /^[[:space:]]*ram-size:[[:space:]]*4096M[[:space:]]*$/ { ram = 1 }
+    in_gate && /^[[:space:]]*avd-name:[[:space:]]*saqz-api35-probe[[:space:]]*$/ { avd = 1 }
+    in_gate && /^[[:space:]]*emulator-build:[[:space:]]*13823996[[:space:]]*$/ { build = 1 }
     END { exit api && target && arch && profile && ram && avd && build ? 0 : 1 }
 ' "$workflow" || {
-    printf 'api35 probe tuple must be pinned exactly\n' >&2
+    printf 'api35 gate tuple must be pinned exactly\n' >&2
     exit 1
 }
 ok 'api35 tuplePinned'
 
 awk '
-    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
-    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
-    in_probe && /^[[:space:]]*emulator-boot-timeout:[[:space:]]*300[[:space:]]*$/ { found = 1 }
+    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gate = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
+    in_gate && /^[[:space:]]*emulator-boot-timeout:[[:space:]]*300[[:space:]]*$/ { found = 1 }
     END { exit found ? 0 : 1 }
 ' "$workflow" || {
-    printf 'api35 probe must keep boot timeout at 300 seconds\n' >&2
+    printf 'api35 gate must keep boot timeout at 300 seconds\n' >&2
     exit 1
 }
 ok 'api35 bootTimeoutIs300'
 
 awk '
-    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
-    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
-    in_probe && /sudo chmod 0666 \/dev\/kvm/ { chmod = 1 }
-    in_probe && /test -r \/dev\/kvm/ { read = 1 }
-    in_probe && /test -w \/dev\/kvm/ { write = 1 }
+    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gate = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
+    in_gate && /sudo chmod 0666 \/dev\/kvm/ { chmod = 1 }
+    in_gate && /test -r \/dev\/kvm/ { read = 1 }
+    in_gate && /test -w \/dev\/kvm/ { write = 1 }
     END { exit chmod && read && write ? 0 : 1 }
 ' "$workflow" || {
-    printf 'api35 probe must enable and verify KVM access\n' >&2
+    printf 'api35 gate must enable and verify KVM access\n' >&2
     exit 1
 }
 ok 'api35 kvmEnabled'
 
 awk '
-    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
-    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
-    in_probe && /:android-app:connectedDevDebugAndroidTest/ { connected = 1 }
-    in_probe && /android\.testInstrumentationRunnerArguments\.class=br\.com\.saqz\.androidapp\.ModernAndroidBehaviorTest/ { modern = 1 }
-    in_probe && /scripts\/check-gradle/ { full_gate = 1 }
+    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gate = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
+    in_gate && /:android-app:connectedDevDebugAndroidTest/ { connected = 1 }
+    in_gate && /android\.testInstrumentationRunnerArguments\.class=br\.com\.saqz\.androidapp\.ModernAndroidBehaviorTest/ { modern = 1 }
+    in_gate && /scripts\/check-gradle/ { full_gate = 1 }
     END { exit connected && modern && !full_gate ? 0 : 1 }
 ' "$workflow" || {
-    printf 'api35 probe must run only ModernAndroidBehaviorTest, not check-gradle\n' >&2
+    printf 'api35 gate must run only ModernAndroidBehaviorTest, not check-gradle\n' >&2
     exit 1
 }
 ok 'api35 exactModernClassRuns'
 
 awk '
-    /^[[:space:]]*android-api35-probe:[[:space:]]*$/ { in_probe = 1 }
-    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_probe = 0 }
-    in_probe && /continue-on-error/ { found = 1 }
+    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gate = 1 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
+    in_gate && /continue-on-error/ { found = 1 }
     END { exit found ? 0 : 1 }
 ' "$workflow" >/dev/null 2>&1 && {
-    printf 'api35 probe must be strict internally, without continue-on-error\n' >&2
+    printf 'api35 gate must be strict internally, without continue-on-error\n' >&2
     exit 1
 }
 ok 'api35 internalFailureIsFatal'
 
-assert_workflow 'needs:[[:space:]]*\[gradle-gate, ios-gate, landing-gate\]' 'aggregate excludes api35 probe'
-if grep -Eq 'needs:[[:space:]]*\[[^]]*android-api35-probe' "$workflow"; then
-    printf 'api35 probe must stay outside aggregate until T42 promotion\n' >&2
-    exit 1
-fi
-ok 'api35 probeOutsideAggregate'
+assert_workflow 'needs:[[:space:]]*\[gradle-gate, android-api35-gate, ios-gate, landing-gate\]' 'aggregate includes api35 gate'
+ok 'api35 aggregateNeedsFourJobs'
 
-"$evaluator" success success success >/dev/null
-ok 'api35 missingProbeDoesNotFailCurrentEvaluator'
+"$evaluator" success success success success >/dev/null
+ok 'api35 evaluatorAcceptsFourSuccesses'
+
+grep -Eq 'gradle-result api35-result ios-result landing-result' "$evaluator" || {
+    printf 'aggregate evaluator usage must name all four results\n' >&2
+    exit 1
+}
+ok 'api35 evaluatorUsageNamesFourResults'
 
 grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-scope' "$repository_root/scripts/check-gradle"
 
 assert_workflow '^[[:space:]]*initialization-gate:[[:space:]]*$' 'aggregate job'
-assert_workflow 'needs:[[:space:]]*\[gradle-gate, ios-gate, landing-gate\]' 'aggregate needs'
+assert_workflow 'needs:[[:space:]]*\[gradle-gate, android-api35-gate, ios-gate, landing-gate\]' 'aggregate needs'
 assert_workflow 'if:[[:space:]]*always\(\)' 'aggregate always'
-assert_workflow 'scripts/evaluate-ci-gates "\$GRADLE_RESULT" "\$IOS_RESULT" "\$LANDING_RESULT"' 'aggregate evaluator'
-"$evaluator" success success success >/dev/null
+assert_workflow 'scripts/evaluate-ci-gates "\$GRADLE_RESULT" "\$API35_RESULT" "\$IOS_RESULT" "\$LANDING_RESULT"' 'aggregate evaluator'
+"$evaluator" success success success success >/dev/null
 
-if "$evaluator" success success >/dev/null 2>&1; then
+assert_workflow 'API35_RESULT:[[:space:]]*\$\{\{[[:space:]]*needs\.android-api35-gate\.result[[:space:]]*\}\}' 'api35 aggregate result binding'
+ok 'api35 aggregateResultBinding'
+
+awk '
+    /^[[:space:]]*gradle-gate:[[:space:]]*$/ { in_gradle = 1 }
+    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gradle = 0 }
+    in_gradle && /^[[:space:]]*api-level:[[:space:]]*30[[:space:]]*$/ { api30 = 1 }
+    END { exit api30 ? 0 : 1 }
+' "$workflow" || {
+    printf 'stable API 30 gate must remain required after API 35 promotion\n' >&2
+    exit 1
+}
+ok 'api35 api30StillRequired'
+
+if "$evaluator" success success success >/dev/null 2>&1; then
     printf 'aggregate evaluator accepted a missing job result\n' >&2
     exit 1
 fi
 ok 'aggregate rejects missing result'
 
-if "$evaluator" success success success success >/dev/null 2>&1; then
+if "$evaluator" success '' success success >/dev/null 2>&1; then
+    printf 'aggregate evaluator accepted an empty API 35 result\n' >&2
+    exit 1
+fi
+ok 'api35 missingFails'
+
+if "$evaluator" success success success success success >/dev/null 2>&1; then
     printf 'aggregate evaluator accepted an extra job result\n' >&2
     exit 1
 fi
 ok 'aggregate rejects extra result'
+
+if grep -Eqi '\.specs|checklist|manual' "$workflow" "$evaluator"; then
+    printf 'manual checklist must not be an input to CI gates\n' >&2
+    exit 1
+fi
+ok 'api35 manualChecklistIsIgnored'
 
 if grep -Eqi 'secret|GOOGLE_APPLICATION_CREDENTIALS|service-account|signing|database|deploy-pages|firebase deploy' "$workflow"; then
     printf 'workflow requires forbidden secret/deployment contract\n' >&2
@@ -216,36 +244,40 @@ git -C "$repository_root" diff --quiet -- "$pages_workflow" || {
 }
 ok 'pages workflow preserved'
 
-for gate in gradle ios landing; do
+for gate in gradle api35 ios landing; do
     gradle=success
+    api35=success
     ios=success
     landing=success
     case "$gate" in
         gradle) gradle=failure ;;
+        api35) api35=failure ;;
         ios) ios=failure ;;
         landing) landing=failure ;;
     esac
-    if "$evaluator" "$gradle" "$ios" "$landing" >/dev/null 2>&1; then
+    if "$evaluator" "$gradle" "$api35" "$ios" "$landing" >/dev/null 2>&1; then
         printf 'aggregate accepted %s failure\n' "$gate" >&2
         exit 1
     fi
     ok "aggregate rejects $gate failure"
 done
 
-for gate in gradle ios landing; do
+for gate in gradle api35 ios landing; do
     gradle=success
+    api35=success
     ios=success
     landing=success
     case "$gate" in
         gradle) gradle=cancelled ;;
+        api35) api35=cancelled ;;
         ios) ios=cancelled ;;
         landing) landing=cancelled ;;
     esac
-    if "$evaluator" "$gradle" "$ios" "$landing" >/dev/null 2>&1; then
+    if "$evaluator" "$gradle" "$api35" "$ios" "$landing" >/dev/null 2>&1; then
         printf 'aggregate accepted %s cancellation\n' "$gate" >&2
         exit 1
     fi
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 29 ]
+[ "$count" -eq 36 ]

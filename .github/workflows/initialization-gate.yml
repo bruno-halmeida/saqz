@@ -47,7 +47,7 @@ jobs:
           disable-animations: true
           script: scripts/check-gradle
 
-  android-api35-probe:
+  android-api35-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -113,7 +113,7 @@ jobs:
 
   initialization-gate:
     runs-on: ubuntu-latest
-    needs: [gradle-gate, ios-gate, landing-gate]
+    needs: [gradle-gate, android-api35-gate, ios-gate, landing-gate]
     if: always()
     steps:
       - name: Checkout
@@ -121,8 +121,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Evaluate gate results
-        run: scripts/evaluate-ci-gates "$GRADLE_RESULT" "$IOS_RESULT" "$LANDING_RESULT"
+        run: scripts/evaluate-ci-gates "$GRADLE_RESULT" "$API35_RESULT" "$IOS_RESULT" "$LANDING_RESULT"
         env:
           GRADLE_RESULT: ${{ needs.gradle-gate.result }}
+          API35_RESULT: ${{ needs.android-api35-gate.result }}
           IOS_RESULT: ${{ needs.ios-gate.result }}
           LANDING_RESULT: ${{ needs.landing-gate.result }}

@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-[ "$#" -eq 3 ] || {
-    printf 'usage: %s gradle-result ios-result landing-result\n' "$0" >&2
+[ "$#" -eq 4 ] || {
+    printf 'usage: %s gradle-result api35-result ios-result landing-result\n' "$0" >&2
     exit 2
 }
 
