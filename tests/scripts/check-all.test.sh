@@ -207,7 +207,9 @@ if not ready:
     sys.stderr.write(err)
     raise SystemExit("signal test server did not become ready")
 
-os.killpg(process.pid, getattr(signal, "SIG" + signal_name))
+# V1: signal the aggregate owner; child cleanup must be caused by its trap.
+# The process group is reserved for emergency cleanup after a timeout.
+os.kill(process.pid, getattr(signal, "SIG" + signal_name))
 try:
     out, err = process.communicate(timeout=5)
 except subprocess.TimeoutExpired:
