@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap.configuration.http
 
 import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
+import br.com.saqz.access.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -26,6 +27,21 @@ class SafeExceptionHandler(
             400,
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = mapOf("displayName" to listOf("must be between 2 and 80 characters without controls")),
+        )
+    }
+
+    @ExceptionHandler(InvalidGroupRequestException::class)
+    fun invalidGroup(
+        failure: InvalidGroupRequestException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = failure.fieldErrors,
         )
     }
 

@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T13 concluidas
+**Status:** Execute em andamento - T01..T14 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -377,8 +377,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +9 casos happy/retry/validation/auth/failure.
 - **Gate:** HTTP full.
-- **Done when:** [ ] cada campo invalido e apontado; [ ] duplo POST nao duplica;
-  [ ] baseline +9 e Gate verde.
+- **Done when:** [x] cada campo invalido e apontado; [x] duplo POST nao duplica;
+  [x] baseline +9 e Gate verde.
 - **Commit:** `feat(access): expose group creation endpoint`
 
 ### T15 - Implementar leitura autorizada de grupo

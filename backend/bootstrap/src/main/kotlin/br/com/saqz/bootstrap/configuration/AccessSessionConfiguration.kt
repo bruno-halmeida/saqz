@@ -1,7 +1,11 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.access.adapter.input.http.AccessGroupController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.access.application.group.create.CreateGroup
 import br.com.saqz.access.application.session.BootstrapSession
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -19,4 +23,22 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
+
+    @Bean
+    fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)
+
+    @Bean
+    fun accessTransactionRunner(dataSource: DataSource) = JdbcTransactionRunner(dataSource)
+
+    @Bean
+    fun createGroup(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcGroupCreationRepository,
+    ) = CreateGroup(transaction, repository)
+
+    @Bean
+    fun accessGroupController(
+        bootstrapSession: BootstrapSession,
+        createGroup: CreateGroup,
+    ) = AccessGroupController(bootstrapSession, createGroup)
 }
