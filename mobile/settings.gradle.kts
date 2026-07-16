@@ -24,5 +24,6 @@ rootProject.name = "saqz-mobile"
 includeBuild("build-logic")
 include(":core:common")
 include(":core:design-system")
+include(":core:network")
 include(":compose-app")
 include(":android-app")

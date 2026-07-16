@@ -1,0 +1,160 @@
+package br.com.saqz.network
+
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondError
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+class NetworkClientTest {
+    @Test
+    fun `environment selects its injected base URL`() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("https://dev.example.test/api/probe", request.url.toString())
+            respond("{\"value\":\"ok\"}", headers = jsonHeaders())
+        }
+
+        val result = client(engine, NetworkConfig("dev", "https://dev.example.test/api/"))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(ProbeResponse("ok"), assertIs<NetworkResult.Success<ProbeResponse>>(result).value)
+    }
+
+    @Test
+    fun `base URL rejects non HTTP schemes`() {
+        assertFailsWith<IllegalArgumentException> { NetworkConfig("dev", "file:///private/config") }
+    }
+
+    @Test
+    fun `successful JSON response is decoded`() = runTest {
+        val result = client(responding("{\"value\":\"decoded\"}"))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals("decoded", assertIs<NetworkResult.Success<ProbeResponse>>(result).value.value)
+    }
+
+    @Test
+    fun `successful JSON ignores additive unknown fields`() = runTest {
+        val result = client(responding("{\"value\":\"stable\",\"future\":true}"))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals("stable", assertIs<NetworkResult.Success<ProbeResponse>>(result).value.value)
+    }
+
+    @Test
+    fun `complete API problem maps every stable field`() = runTest {
+        val body = """{"status":429,"code":"INVITE_ATTEMPT_LIMIT","correlationId":"corr-1","fieldErrors":{"code":["invalid"]},"retryAfterSeconds":17}"""
+        val result = client(responding(body, HttpStatusCode.TooManyRequests))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        val problem = assertIs<NetworkError.ApiProblemError>(assertFailure(result)).problem
+        assertEquals(429, problem.status)
+        assertEquals("INVITE_ATTEMPT_LIMIT", problem.code)
+        assertEquals("corr-1", problem.correlationId)
+        assertEquals(listOf("invalid"), problem.fieldErrors?.get("code"))
+        assertEquals(17, problem.retryAfterSeconds)
+    }
+
+    @Test
+    fun `API problem accepts absent optional fields`() = runTest {
+        val result = client(responding("""{"status":500,"correlationId":"corr-2"}""", HttpStatusCode.InternalServerError))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        val problem = assertIs<NetworkError.ApiProblemError>(assertFailure(result)).problem
+        assertEquals(null, problem.code)
+        assertEquals(null, problem.fieldErrors)
+        assertEquals(null, problem.retryAfterSeconds)
+    }
+
+    @Test
+    fun `field errors preserve multiple messages per field`() = runTest {
+        val body = """{"status":400,"code":"VALIDATION_FAILED","correlationId":"corr-3","fieldErrors":{"name":["short","control"]}}"""
+        val result = client(responding(body, HttpStatusCode.BadRequest))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        val problem = assertIs<NetworkError.ApiProblemError>(assertFailure(result)).problem
+        assertEquals(listOf("short", "control"), problem.fieldErrors?.get("name"))
+    }
+
+    @Test
+    fun `malformed error body maps only HTTP status`() = runTest {
+        val result = client(responding("not-json", HttpStatusCode.BadGateway))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(NetworkError.HttpStatus(502), assertFailure(result))
+    }
+
+    @Test
+    fun `oversized error body is not parsed or retained`() = runTest {
+        val secret = "sensitive-body-" + "x".repeat(100)
+        val config = NetworkConfig("test", "https://api.example.test/", maxErrorBodyBytes = 32)
+        val result = client(responding(secret, HttpStatusCode.BadGateway), config)
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        val error = assertFailure(result)
+        assertEquals(NetworkError.HttpStatus(502), error)
+        assertFalse(error.toString().contains(secret))
+    }
+
+    @Test
+    fun `request timeout maps to stable timeout error`() = runTest {
+        val engine = MockEngine {
+            delay(100)
+            respond("{\"value\":\"late\"}", headers = jsonHeaders())
+        }
+        val config = NetworkConfig("test", "https://api.example.test/", requestTimeoutMillis = 10)
+        val result = client(engine, config).execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(NetworkError.Timeout, assertFailure(result))
+    }
+
+    @Test
+    fun `authorization token is sent but never retained in failure`() = runTest {
+        val secret = "bearer-fixture-secret"
+        val engine = MockEngine { request ->
+            assertEquals("Bearer $secret", request.headers[HttpHeaders.Authorization])
+            respondError(HttpStatusCode.ServiceUnavailable, "unavailable")
+        }
+        val result = client(engine).execute(HttpMethod.Get, "probe", serializer<ProbeResponse>(), secret)
+
+        assertFalse(assertFailure(result).toString().contains(secret))
+    }
+
+    @Test
+    fun `sensitive server body is never retained in failure`() = runTest {
+        val secret = "private-response-fixture-secret"
+        val result = client(responding(secret, HttpStatusCode.InternalServerError))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertFalse(assertFailure(result).toString().contains(secret))
+    }
+
+    private fun client(
+        engine: MockEngine,
+        config: NetworkConfig = NetworkConfig("test", "https://api.example.test/"),
+    ) = NetworkClient(engine, config)
+
+    private fun responding(body: String, status: HttpStatusCode = HttpStatusCode.OK) = MockEngine {
+        respond(body, status, jsonHeaders())
+    }
+
+    private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, "application/json")
+
+    private fun assertFailure(result: NetworkResult<*>): NetworkError =
+        assertIs<NetworkResult.Failure>(result).error
+
+    @Serializable
+    private data class ProbeResponse(val value: String)
+}

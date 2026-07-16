@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T09 concluidas
+**Status:** Execute em andamento - T01..T10 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -306,8 +306,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** KMP unit/MockEngine, +12 casos JSON/problem/timeout/redaction.
 - **Gate:** Quick network.
-- **Done when:** [ ] engines compilam nos tres targets; [ ] erros estaveis sao
-  discriminados; [ ] baseline +12 e Gate verde.
+- **Done when:** [x] engines compilam nos tres targets; [x] erros estaveis sao
+  discriminados; [x] baseline +12 e Gate verde.
 - **Commit:** `feat(network): add shared ktor client`
 
 ### T11 - Implementar bearer refresh e SessionApi
