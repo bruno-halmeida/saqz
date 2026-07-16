@@ -13,7 +13,7 @@ tracked_files() {
 }
 
 tracked_prod_files() {
-    tracked_files | grep -Ev '(^docs/|^README\.md$|^scripts/|^tests/|/src/test/|/src/androidTest/|/SaqzIOSTests/|/SaqzIOSUITests/)' || true
+    tracked_files | grep -Ev '(^\.specs/|^AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/test/|/src/androidTest/|/SaqzIOSTests/|/SaqzIOSUITests/)' || true
 }
 
 tracked_client_prod_files() {
@@ -100,9 +100,14 @@ reject_paths 'client domain or application source segment found' \
 feature_modules=$(find "$repository_root/backend/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')
 [ "$feature_modules" = "identity " ] || fail "backend/features must contain only identity"
 
-git -C "$repository_root" check-ignore --no-index -q .specs/features/project-initialization/spec.md ||
-    fail ".specs is not ignored"
-[ -z "$(git -C "$repository_root" ls-files .specs)" ] ||
-    fail ".specs contains tracked files"
+if git -C "$repository_root" check-ignore --no-index -q .specs/features/project-initialization/spec.md; then
+    fail ".specs is ignored"
+fi
+git -C "$repository_root" ls-files --error-unmatch AGENTS.md >/dev/null 2>&1 ||
+    fail "AGENTS.md is not tracked"
+git -C "$repository_root" ls-files --error-unmatch .specs/STATE.md >/dev/null 2>&1 ||
+    fail ".specs/STATE.md is not tracked"
+[ -n "$(git -C "$repository_root" ls-files '.specs/features/*/spec.md')" ] ||
+    fail ".specs contains no tracked feature specifications"
 
 printf 'ok - mobile-first scope\n'

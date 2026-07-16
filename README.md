@@ -113,6 +113,14 @@ SaqzDev unit + UI suite. SaqzProd remains in the complete local gate; its
 dedicated production CI is deferred until that pipeline is designed. The
 aggregate `initialization-gate` passes only when all four jobs pass.
 
+## Agent Workflow
+
+`AGENTS.md` is the versioned operating contract for coding agents. `.specs/` is versioned
+project memory: `STATE.md` records active architectural decisions and handoff state, while
+`features/<feature>/` holds requirements, design, tasks, and validation evidence at the depth
+required by each feature. Agents load only the active feature documents and must keep specs
+free of credentials and other secrets.
+
 ## Workspace Boundaries
 
 - `backend/` owns its Gradle wrapper, settings, version catalog, and build
@@ -191,5 +199,4 @@ Local Firebase configuration is fake and committed as code/configuration:
 
 Do not commit production Firebase credentials, service accounts, signing
 identities, production database credentials, `google-services.json`,
-`GoogleService-Info.plist`, or non-example `.env` files. `.specs/` is ignored
-and must remain untracked.
+`GoogleService-Info.plist`, or non-example `.env` files.

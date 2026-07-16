@@ -10,11 +10,17 @@ make_repo() {
     target=$1
     git clone -q "$repository_root" "$target/repo"
     cp "$repository_root/scripts/check-scope" "$target/repo/scripts/check-scope"
+    cp "$repository_root/.gitignore" "$target/repo/.gitignore"
+    cp "$repository_root/AGENTS.md" "$target/repo/AGENTS.md"
+    rm -rf "$target/repo/.specs"
+    cp -R "$repository_root/.specs" "$target/repo/.specs"
     chmod +x "$target/repo/scripts/check-scope"
     (
         cd "$target/repo"
         git config user.email test@example.invalid
         git config user.name 'Scope Test'
+        git add .gitignore AGENTS.md .specs scripts/check-scope
+        git commit -qm governance-fixture
     )
 }
 
@@ -98,8 +104,17 @@ fail_case client-domain-application 'client domain or application source segment
 fail_case retired-frontend-workspace 'retired frontend workspace' sh -c \
     "mkdir -p frontend && printf 'retired workspace\n' >frontend/README.md"
 
-fail_case specs-tracked '.specs contains tracked files' sh -c \
-    "mkdir -p .specs/features/project-initialization && printf 'local spec\n' >.specs/features/project-initialization/spec.md && git add -f .specs/features/project-initialization/spec.md && git commit -qm specs-tracked"
+fail_case specs-ignored '.specs is ignored' sh -c \
+    "printf '\n.specs/\n' >>.gitignore"
+
+fail_case agents-untracked 'AGENTS.md is not tracked' sh -c \
+    "git rm -q AGENTS.md"
+
+fail_case state-untracked '.specs/STATE.md is not tracked' sh -c \
+    "git rm -q .specs/STATE.md"
+
+fail_case feature-specs-untracked '.specs contains no tracked feature specifications' sh -c \
+    "git rm -q .specs/features/*/spec.md"
 
 # --- Fundação mobile aprovada: positivos ---
 
@@ -141,4 +156,4 @@ fail_case mobile-production-deploy 'production deployment workflow' sh -c \
 fail_case second-backend-feature 'backend/features must contain only identity' sh -c \
     "mkdir -p backend/features/payments/src/main/kotlin && printf 'package payments\n\nval placeholder = 1\n' >backend/features/payments/src/main/kotlin/Payments.kt"
 
-[ "$count" -eq 22 ]
+[ "$count" -eq 25 ]
