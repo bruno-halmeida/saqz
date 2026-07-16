@@ -61,19 +61,21 @@ scripts/test-scripts
 
 ```bash
 backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
-mobile/gradlew -p mobile :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 ```
 
 `scripts/check-ios` runs credential-free simulator tests:
 
 ```bash
 xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzDev -destination "id=<available-simulator-udid>" CODE_SIGNING_ALLOWED=NO test
+xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzProd -configuration Release -destination "id=<available-simulator-udid>" CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzProd -configuration Release -destination "id=<available-simulator-udid>" -only-testing:SaqzIOSTests CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES test
 ```
 
 GitHub Actions runs platform gates separately in
-`.github/workflows/initialization-gate.yml`: Gradle and landing on Linux, and
-iOS on macOS. The aggregate `initialization-gate` passes only when all three
-jobs pass.
+`.github/workflows/initialization-gate.yml`: the complete Gradle/API 30 gate,
+the focused API 35 gate and landing on Linux, plus iOS on macOS. The aggregate
+`initialization-gate` passes only when all four jobs pass.
 
 ## Workspace Boundaries
 

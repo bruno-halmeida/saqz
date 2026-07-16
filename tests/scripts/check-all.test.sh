@@ -129,6 +129,26 @@ unsupported_case() {
     printf 'ok %d - unsupported-host\n' "$count"
 }
 
+manual_checklist_case() {
+    dir="$scratch_root/manual-checklist-not-required"
+    make_repo "$dir"
+    mkdir -p "$dir/repo/.specs"
+    printf 'status: pending\n' >"$dir/repo/.specs/manual-checklist.md"
+    (
+        cd "$dir/repo"
+        LOG_FILE="$PWD/invocations.log" PATH="$PWD/bin:$PATH" scripts/check-all
+    ) >/dev/null
+    expected="$dir/expected.log"
+    cat >"$expected" <<'EOF'
+check-gradle
+check-ios
+check-landing
+EOF
+    diff -u "$expected" "$dir/repo/invocations.log"
+    count=$((count + 1))
+    printf 'ok %d - manual-checklist-not-required\n' "$count"
+}
+
 signal_case() {
     signal=$1
     label=$2
@@ -221,5 +241,6 @@ check-landing'
 unsupported_case
 signal_case INT sigint-cleanup
 signal_case TERM sigterm-cleanup
+manual_checklist_case
 
-[ "$count" -eq 7 ]
+[ "$count" -eq 8 ]

@@ -41,14 +41,35 @@ require 'scripts/check-scope' 'scope gate'
 ok 'native gate commands'
 
 require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
-require 'mobile/gradlew -p mobile :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
-ok 'Gradle and Android commands'
+ok 'backend Gradle command'
 
-if grep -Eqi 'Angular|frontend/|npm --prefix frontend|Web app ID' "$readme"; then
+require ':core:common:allTests' 'core common suite'
+ok 'core common suite documented'
+
+require ':core:design-system:allTests' 'core design system suite'
+ok 'core design system suite documented'
+
+require ':compose-app:allTests' 'compose app suite'
+ok 'compose app suite documented'
+
+require ':android-app:testDevDebugUnitTest' 'Android unit suite'
+ok 'Android unit suite documented'
+
+require ':android-app:connectedDevDebugAndroidTest' 'Android connected suite'
+ok 'Android connected suite documented'
+
+if grep -Eqi 'Angular|frontend/|npm --prefix frontend|Web app ID|scripts/check-web|web-gate' "$readme"; then
     printf 'README still documents the retired Angular workspace\n' >&2
     exit 1
 fi
 ok 'retired Angular documentation absent'
+
+require 'xcodebuild .*SaqzDev.*CODE_SIGNING_ALLOWED=NO test' 'SaqzDev full suite'
+ok 'SaqzDev suite documented'
+
+require 'xcodebuild .*SaqzProd.*-configuration Release.*CODE_SIGNING_ALLOWED=NO build' 'SaqzProd Release build'
+require 'xcodebuild .*SaqzProd.*-configuration Release.*-only-testing:SaqzIOSTests.*ENABLE_TESTABILITY=YES.*test' 'SaqzProd unit suite'
+ok 'SaqzProd suites documented'
 
 require 'CODE_SIGNING_ALLOWED=NO test' 'credential-free xcodebuild'
 require 'macOS for the complete local gate' 'local platform limitation'
@@ -91,4 +112,4 @@ grep -Fq 'tests/scripts/check-ci.test.sh' "$test_scripts"
 grep -Fq 'tests/scripts/check-readme.test.sh' "$test_scripts"
 ok 'script aggregate includes CI and README contracts'
 
-[ "$count" -eq 13 ]
+[ "$count" -eq 20 ]
