@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T02 concluidas
+**Status:** Execute em andamento - T01..T03 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -177,8 +177,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +9 casos de escaping, status, header e redaction.
 - **Gate:** Quick identity.
-- **Done when:** [ ] identity nao possui HTTP transversal; [ ] todos os problems
-  tem correlation ID igual ao log; [ ] baseline +9 e Gate verde.
+- **Done when:** [x] identity nao possui HTTP transversal; [x] todos os problems
+  tem correlation ID igual ao log; [x] baseline +9 e Gate verde.
 - **Commit:** `refactor(http): centralize safe api diagnostics`
 
 ### T04 - Criar modulo hexagonal features:access

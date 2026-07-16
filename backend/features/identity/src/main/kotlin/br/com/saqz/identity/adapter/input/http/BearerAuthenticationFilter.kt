@@ -7,13 +7,13 @@ import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
 
 class BearerAuthenticationFilter(
     private val verifyRequestIdentity: VerifyRequestIdentity,
+    private val writeProblem: (HttpServletRequest, HttpServletResponse, Int, ErrorCode?) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
         request.requestURI == "/actuator/health"
@@ -51,19 +51,4 @@ class BearerAuthenticationFilter(
         val token = header.substringAfter(' ').trim()
         return token.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) }
     }
-}
-
-fun writeProblem(
-    request: HttpServletRequest,
-    response: HttpServletResponse,
-    status: Int,
-    code: ErrorCode? = null,
-) {
-    response.status = status
-    response.setHeader("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE)
-    val codeField = code?.let { ",\"code\":\"$it\"" }.orEmpty()
-    val correlationId = requestCorrelationId(request).value
-    response.outputStream.write(
-        "{\"status\":$status$codeField,\"correlationId\":\"$correlationId\"}".toByteArray(),
-    )
 }

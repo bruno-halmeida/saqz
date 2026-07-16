@@ -1,4 +1,4 @@
-package br.com.saqz.identity.adapter.input.http
+package br.com.saqz.bootstrap.configuration.http
 
 import br.com.saqz.sharedkernel.CorrelationId
 import jakarta.servlet.FilterChain
@@ -10,6 +10,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 import java.util.UUID
 
 private const val CORRELATION_ATTRIBUTE = "br.com.saqz.correlationId"
+private const val CORRELATION_HEADER = "X-Correlation-ID"
 
 class RequestCorrelationFilter : OncePerRequestFilter() {
     private val requestLogger = LoggerFactory.getLogger(RequestCorrelationFilter::class.java)
@@ -21,6 +22,7 @@ class RequestCorrelationFilter : OncePerRequestFilter() {
     ) {
         val correlationId = CorrelationId(UUID.randomUUID().toString())
         request.setAttribute(CORRELATION_ATTRIBUTE, correlationId)
+        response.setHeader(CORRELATION_HEADER, correlationId.value)
         MDC.put("correlationId", correlationId.value)
         try {
             filterChain.doFilter(request, response)
