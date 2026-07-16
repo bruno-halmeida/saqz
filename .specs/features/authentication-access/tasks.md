@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T11 concluidas
+**Status:** Execute em andamento - T01..T12 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -343,8 +343,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +10 casos happy/invalid/retry/rollback contract.
 - **Gate:** Quick access.
-- **Done when:** [ ] outputs GROUP-01/02 asserted; [ ] chamadas de port exatas;
-  [ ] baseline +10 e Gate verde.
+- **Done when:** [x] outputs GROUP-01/02 asserted; [x] chamadas de port exatas;
+  [x] baseline +10 e Gate verde.
 - **Commit:** `feat(access): add group creation use case`
 
 ### T13 - Persistir criacao idempotente de grupo
