@@ -7,4 +7,5 @@ enum class ErrorCode {
     VALIDATION_FAILED,
     GROUP_NOT_FOUND,
     ACCESS_FORBIDDEN,
+    VERSION_CONFLICT,
 }

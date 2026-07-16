@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T19 concluidas
+**Status:** Execute em andamento - T01..T20 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -479,7 +479,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +10 casos happy/roles/etag/fields/404.
 - **Gate:** HTTP full.
-- **Done when:** [ ] todo status tem problem estavel; [ ] baseline +10; [ ] Gate verde.
+- **Done when:** [x] todo status tem problem estavel; [x] baseline +10; [x] Gate verde.
 - **Commit:** `feat(access): expose group settings endpoint`
 
 ## Fase 3 - Papeis e convites

@@ -5,6 +5,7 @@ import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.access.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidGroupRequestException
+import br.com.saqz.access.adapter.input.http.VersionConflictException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -55,6 +56,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccessForbiddenException::class)
     fun accessForbidden(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
+    }
+
+    @ExceptionHandler(VersionConflictException::class)
+    fun versionConflict(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
