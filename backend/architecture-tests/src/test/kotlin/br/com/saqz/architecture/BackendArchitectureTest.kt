@@ -27,7 +27,7 @@ class BackendArchitectureTest {
             .toSet()
 
         assertEquals(
-            setOf(":shared-kernel", ":features:identity", ":bootstrap", ":architecture-tests"),
+            setOf(":shared-kernel", ":features:access", ":features:identity", ":bootstrap", ":architecture-tests"),
             modules,
         )
     }
@@ -104,13 +104,13 @@ class BackendArchitectureTest {
     }
 
     @Test
-    fun `ARCH-07 keeps identity as the only backend feature`() {
+    fun `ARCH-07 keeps the approved backend feature inventory`() {
         val featuresRoot = backendRoot.resolve("features")
         val featureDirectories = Files.list(featuresRoot).use { paths ->
             paths.filter(Path::isDirectory).map(Path::name).sorted().toList()
         }
 
-        assertEquals(listOf("identity"), featureDirectories)
+        assertEquals(listOf("access", "identity"), featureDirectories)
     }
 
     @Test
@@ -139,7 +139,7 @@ class BackendArchitectureTest {
             .findAll(settings)
             .map { it.groupValues[1] }
             .toList()
-        val allowedProjects = setOf(":shared-kernel", ":features:identity", ":bootstrap")
+        val allowedProjects = setOf(":shared-kernel", ":features:access", ":features:identity", ":bootstrap")
         val projectDependencies = Regex("project\\(\\s*\"([^\"]+)\"\\s*\\)")
             .findAll(configuration)
             .map { it.groupValues[1] }
@@ -185,6 +185,88 @@ class BackendArchitectureTest {
         assertFalse(legacyPrincipal.exists())
         assertTrue(productionSources.none { it.readText().contains("AuthenticatedPrincipal") })
     }
+
+    @Test
+    fun `ARCH-11 exposes exactly identity and access backend features`() {
+        assertEquals(listOf("access", "identity"), featureDirectories().map(Path::name))
+    }
+
+    @Test
+    fun `ARCH-12 every backend feature depends on shared kernel`() {
+        featureDirectories().forEach { feature ->
+            assertTrue(feature.resolve("build.gradle.kts").readText().contains("project(\":shared-kernel\")"))
+        }
+    }
+
+    @Test
+    fun `ARCH-13 backend feature builds never depend on another feature`() {
+        featureDirectories().forEach { feature ->
+            assertFalse(feature.resolve("build.gradle.kts").readText().contains("project(\":features:"))
+        }
+    }
+
+    @Test
+    fun `ARCH-14 backend feature code never imports another feature`() {
+        val featurePackages = featureDirectories().map { "br.com.saqz.${it.name}." }
+
+        featureDirectories().forEach { feature ->
+            kotlinSources(feature.resolve("src/main/kotlin")).forEach { source ->
+                val ownPackage = "br.com.saqz.${feature.name}."
+                assertTrue(
+                    source.readText().lineSequence()
+                        .filter { it.startsWith("import ") }
+                        .none { imported -> featurePackages.any { imported.startsWith("import $it") && it != ownPackage } },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `ARCH-15 all feature domain and application code stays framework and JDBC free`() {
+        val forbidden = listOf("org.springframework.", "com.google.firebase.", "jakarta.persistence.", "java.sql.")
+
+        featureLayerSources("domain", "application").forEach { source ->
+            assertTrue(forbidden.none(source.readText()::contains), source.toString())
+        }
+    }
+
+    @Test
+    fun `ARCH-16 all feature domain and application code stays adapter free`() {
+        featureLayerSources("domain", "application").forEach { source ->
+            assertFalse(source.readText().contains(".adapter."), source.toString())
+        }
+    }
+
+    @Test
+    fun `ARCH-17 backend feature code never references bootstrap`() {
+        featureDirectories().flatMap { kotlinSources(it.resolve("src/main/kotlin")) }.forEach { source ->
+            assertFalse(source.readText().contains("br.com.saqz.bootstrap"), source.toString())
+        }
+    }
+
+    @Test
+    fun `ARCH-18 access has isolated test and integration test suites and bootstrap composition`() {
+        val accessBuild = backendRoot.resolve("features/access/build.gradle.kts").readText()
+        val bootstrapBuild = backendRoot.resolve("bootstrap/build.gradle.kts").readText()
+
+        assertTrue(accessBuild.contains("sourceSets.create(\"integrationTest\")"))
+        assertTrue(accessBuild.contains("val integrationTest by tasks.registering(Test::class)"))
+        assertTrue(bootstrapBuild.contains("project(\":features:access\")"))
+    }
+
+    private fun featureDirectories(): List<Path> {
+        val featuresRoot = backendRoot.resolve("features")
+        return Files.list(featuresRoot).use { paths ->
+            paths.filter(Path::isDirectory).sorted().toList()
+        }
+    }
+
+    private fun featureLayerSources(vararg layers: String): List<Path> =
+        featureDirectories().flatMap { feature ->
+            layers.flatMap { layer ->
+                kotlinSources(feature.resolve("src/main/kotlin/br/com/saqz/${feature.name}/$layer"))
+            }
+        }
 
     private fun kotlinSources(root: Path): List<Path> =
         if (root.isDirectory()) {

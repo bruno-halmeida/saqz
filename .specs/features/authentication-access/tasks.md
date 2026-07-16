@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T03 concluidas
+**Status:** Execute em andamento - T01..T04 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -196,8 +196,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** architecture/contract, +8 regras/mutacoes.
 - **Gate:** Contract e Quick identity.
-- **Done when:** [ ] modulo vazio compila isolado; [ ] mutacoes cross-feature,
-  adapter e bootstrap morrem; [ ] baseline +8 e gates verdes.
+- **Done when:** [x] modulo vazio compila isolado; [x] mutacoes cross-feature,
+  adapter e bootstrap morrem; [x] baseline +8 e gates verdes.
 - **Commit:** `build(access): add hexagonal backend module`
 
 ### T05 - Criar schema PostgreSQL versionado

@@ -17,6 +17,7 @@ rootProject.name = "saqz-backend"
 includeBuild("build-logic")
 
 include(":shared-kernel")
+include(":features:access")
 include(":features:identity")
 include(":bootstrap")
 include(":architecture-tests")

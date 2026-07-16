@@ -11,6 +11,7 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.archunit.junit5)
     testImplementation(project(":bootstrap"))
+    testImplementation(project(":features:access"))
     testImplementation(project(":features:identity"))
     testImplementation(project(":shared-kernel"))
 }
