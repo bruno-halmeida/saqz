@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T23 concluidas
+**Status:** Execute em andamento - T01..T24 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -548,8 +548,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit/contract, +13 casos entropia/formato/digest/URI/redaction.
 - **Gate:** Quick access.
-- **Done when:** [ ] 10k tokens nao colidem no teste deterministico; [ ] fixtures
-  de URI decodificam exatamente; [ ] baseline +13 e Gate verde.
+- **Done when:** [x] 10k tokens nao colidem no teste deterministico; [x] fixtures
+  de URI decodificam exatamente; [x] baseline +13 e Gate verde.
 - **Commit:** `feat(access): generate opaque invite links`
 
 ### T25 - Implementar RotateInvite e ExpireInvite
