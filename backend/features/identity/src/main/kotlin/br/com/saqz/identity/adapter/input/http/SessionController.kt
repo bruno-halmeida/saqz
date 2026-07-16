@@ -1,6 +1,6 @@
 package br.com.saqz.identity.adapter.input.http
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -14,7 +14,7 @@ data class SessionResponse(
 @RestController
 class SessionController {
     @GetMapping("/api/session")
-    fun session(@AuthenticationPrincipal principal: AuthenticatedPrincipal) = SessionResponse(
+    fun session(@AuthenticationPrincipal principal: RequestIdentity) = SessionResponse(
         subject = principal.subject,
         email = principal.email,
         emailVerified = principal.emailVerified,

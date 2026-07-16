@@ -1,9 +1,9 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -69,7 +69,7 @@ class SafeDiagnosticsIntegrationTest {
 
     @Test
     fun `unexpected failure has generic 500 problem and matching correlation log`(output: CapturedOutput) {
-        verifier.result = TokenVerification.Verified(AuthenticatedPrincipal("failure-subject", null, null))
+        verifier.result = TokenVerification.Verified(RequestIdentity("failure-subject", null, null))
         val response = get("/test/unexpected", "unexpected-secret-token")
         val correlationId = correlationId(response)
 
@@ -83,7 +83,7 @@ class SafeDiagnosticsIntegrationTest {
 
     @Test
     fun `successful response and log redact bearer and credential fixtures`(output: CapturedOutput) {
-        verifier.result = TokenVerification.Verified(AuthenticatedPrincipal("safe-subject", null, null))
+        verifier.result = TokenVerification.Verified(RequestIdentity("safe-subject", null, null))
 
         val response = get("/api/session", "success-secret-token")
 
@@ -97,7 +97,7 @@ class SafeDiagnosticsIntegrationTest {
         val rejected = get("/api/session", "rejected-fixture-secret")
         verifier.result = TokenVerification.ProviderUnavailable
         val unavailable = get("/api/session", "provider-fixture-secret")
-        verifier.result = TokenVerification.Verified(AuthenticatedPrincipal("failure-subject", null, null))
+        verifier.result = TokenVerification.Verified(RequestIdentity("failure-subject", null, null))
         val unexpected = get("/test/unexpected", "failure-fixture-secret")
         val captured = rejected.body() + unavailable.body() + unexpected.body() + output.out
 

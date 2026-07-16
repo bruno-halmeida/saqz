@@ -1,9 +1,9 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -78,14 +78,14 @@ class BearerSecurityIntegrationTest {
     @Test
     fun `verified credentials establish only provider-neutral principal`() {
         verifier.result = TokenVerification.Verified(
-            AuthenticatedPrincipal("subject-7", "person@example.test", true),
+            RequestIdentity("subject-7", "person@example.test", true),
         )
 
         val response = send(request("Bearer verified-token"))
 
         assertEquals(200, response.statusCode())
         assertTrue(response.body().contains("\"subject\":\"subject-7\""))
-        assertTrue(response.body().contains("\"principalType\":\"AuthenticatedPrincipal\""))
+        assertTrue(response.body().contains("\"principalType\":\"RequestIdentity\""))
         assertFalse(response.body().contains("Firebase"))
     }
 
@@ -130,7 +130,7 @@ class BearerSecurityIntegrationTest {
     class PrincipalProbe {
         @GetMapping("/test/principal")
         fun principal(authentication: Authentication): Map<String, String> {
-            val principal = authentication.principal as AuthenticatedPrincipal
+            val principal = authentication.principal as RequestIdentity
             return mapOf(
                 "subject" to principal.subject,
                 "principalType" to principal::class.simpleName.orEmpty(),

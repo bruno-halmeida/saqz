@@ -1,8 +1,8 @@
 package br.com.saqz.identity.adapter.output.firebase
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.Test
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -11,11 +11,37 @@ import kotlin.test.assertSame
 
 class FirebaseAdminTokenVerifierTest {
     @Test
+    fun `maps display name claim to request identity`() {
+        val verifier = verifierReturning(
+            DecodedFirebaseToken("subject-name", null, true, "Person Name"),
+        )
+
+        assertEquals(
+            "Person Name",
+            (verifier.verify(RawIdentityToken("token")) as TokenVerification.Verified)
+                .principal.displayName,
+        )
+    }
+
+    @Test
+    fun `maps absent display name claim to null`() {
+        val verifier = verifierReturning(
+            DecodedFirebaseToken("subject-no-name", "person@example.test", true, null),
+        )
+
+        assertEquals(
+            null,
+            (verifier.verify(RawIdentityToken("token")) as TokenVerification.Verified)
+                .principal.displayName,
+        )
+    }
+
+    @Test
     fun `maps complete claims exactly`() {
         val verifier = verifierReturning(DecodedFirebaseToken("subject-1", "person@example.test", true))
 
         assertEquals(
-            TokenVerification.Verified(AuthenticatedPrincipal("subject-1", "person@example.test", true)),
+            TokenVerification.Verified(RequestIdentity("subject-1", "person@example.test", true)),
             verifier.verify(RawIdentityToken("token")),
         )
     }
@@ -25,7 +51,7 @@ class FirebaseAdminTokenVerifierTest {
         val verifier = verifierReturning(DecodedFirebaseToken("subject-2", null, null))
 
         assertEquals(
-            TokenVerification.Verified(AuthenticatedPrincipal("subject-2", null, null)),
+            TokenVerification.Verified(RequestIdentity("subject-2", null, null)),
             verifier.verify(RawIdentityToken("token")),
         )
     }

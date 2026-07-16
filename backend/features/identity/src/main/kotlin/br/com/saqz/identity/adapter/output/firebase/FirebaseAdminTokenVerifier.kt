@@ -1,9 +1,9 @@
 package br.com.saqz.identity.adapter.output.firebase
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
 import br.com.saqz.identity.application.IdentityTokenVerifier
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
+import br.com.saqz.sharedkernel.RequestIdentity
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
@@ -19,7 +19,7 @@ class FirebaseAdminTokenVerifier internal constructor(
         try {
             val decoded = decode(token.value)
             TokenVerification.Verified(
-                AuthenticatedPrincipal(decoded.subject, decoded.email, decoded.emailVerified),
+                RequestIdentity(decoded.subject, decoded.email, decoded.emailVerified, decoded.displayName),
             )
         } catch (_: InvalidFirebaseToken) {
             TokenVerification.Rejected
@@ -36,6 +36,7 @@ internal data class DecodedFirebaseToken(
     val subject: String,
     val email: String?,
     val emailVerified: Boolean?,
+    val displayName: String? = null,
 )
 
 internal class InvalidFirebaseToken(cause: Throwable? = null) : Exception(cause)
@@ -52,6 +53,7 @@ internal fun firebaseTokenDecoder(firebaseApp: FirebaseApp): (String) -> Decoded
                 subject = token.uid,
                 email = token.email,
                 emailVerified = token.claims["email_verified"] as? Boolean,
+                displayName = token.name,
             )
         } catch (failure: FirebaseAuthException) {
             throw classify(failure)

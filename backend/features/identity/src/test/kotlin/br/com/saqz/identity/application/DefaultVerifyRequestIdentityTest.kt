@@ -1,6 +1,6 @@
 package br.com.saqz.identity.application
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
@@ -9,7 +9,7 @@ class DefaultVerifyRequestIdentityTest {
     @Test
     fun `preserves verified principal and delegates once`() {
         val expected = TokenVerification.Verified(
-            AuthenticatedPrincipal("subject-1", "person@example.test", true),
+            RequestIdentity("subject-1", "person@example.test", true),
         )
         val verifier = RecordingVerifier(expected)
         val useCase = DefaultVerifyRequestIdentity(verifier)
@@ -45,7 +45,7 @@ class DefaultVerifyRequestIdentityTest {
     @Test
     fun `repeating the same token produces equal provider-neutral results`() {
         val expected = TokenVerification.Verified(
-            AuthenticatedPrincipal("subject-2", null, null),
+            RequestIdentity("subject-2", null, null),
         )
         val verifier = RecordingVerifier(expected)
         val useCase = DefaultVerifyRequestIdentity(verifier)

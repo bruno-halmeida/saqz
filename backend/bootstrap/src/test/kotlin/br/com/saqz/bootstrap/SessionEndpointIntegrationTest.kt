@@ -1,8 +1,8 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.identity.api.AuthenticatedPrincipal
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -32,7 +32,7 @@ class SessionEndpointIntegrationTest {
 
     @Test
     fun `valid principal returns exact session fields`() {
-        verifier.principal = AuthenticatedPrincipal("subject-8", "session@example.test", true)
+        verifier.principal = RequestIdentity("subject-8", "session@example.test", true)
 
         val response = session()
 
@@ -42,14 +42,14 @@ class SessionEndpointIntegrationTest {
 
     @Test
     fun `missing email claims return both optional fields as null`() {
-        verifier.principal = AuthenticatedPrincipal("subject-without-email", null, null)
+        verifier.principal = RequestIdentity("subject-without-email", null, null)
 
         assertSession(session().body(), "subject-without-email", "null", "null")
     }
 
     @Test
     fun `same principal returns equal fields twice without state`() {
-        verifier.principal = AuthenticatedPrincipal("stable-subject", "stable@example.test", false)
+        verifier.principal = RequestIdentity("stable-subject", "stable@example.test", false)
 
         val first = session().body()
         val second = session().body()
@@ -86,7 +86,7 @@ class SessionEndpointIntegrationTest {
     }
 
     class SessionVerifier : VerifyRequestIdentity {
-        lateinit var principal: AuthenticatedPrincipal
+        lateinit var principal: RequestIdentity
 
         override fun execute(token: br.com.saqz.identity.application.RawIdentityToken) =
             TokenVerification.Verified(principal)

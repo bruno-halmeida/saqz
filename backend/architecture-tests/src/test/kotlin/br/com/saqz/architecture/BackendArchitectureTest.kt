@@ -84,7 +84,13 @@ class BackendArchitectureTest {
             .flatMap(::kotlinSources)
             .flatMap { source -> source.readText().lineSequence().filter { it.startsWith("import ") }.toList() }
 
-        assertTrue(imports.all { it.startsWith("import br.com.saqz.identity.") || it.startsWith("import kotlin.") })
+        assertTrue(
+            imports.all {
+                it.startsWith("import br.com.saqz.identity.") ||
+                    it.startsWith("import br.com.saqz.sharedkernel.") ||
+                    it.startsWith("import kotlin.")
+            },
+        )
     }
 
     @Test
@@ -154,6 +160,30 @@ class BackendArchitectureTest {
         assertTrue(projectDependencies.all(allowedProjects::contains))
         assertFalse(siblingArtifact.containsMatchIn(configuration.lowercase()))
         assertTrue(forbiddenBackendTooling.none(configuration.lowercase()::contains))
+    }
+
+    @Test
+    fun `ARCH-09 keeps shared request identity provider neutral`() {
+        val source = backendRoot
+            .resolve("shared-kernel/src/main/kotlin/br/com/saqz/sharedkernel/RequestIdentity.kt")
+
+        assertTrue(source.exists())
+        assertTrue(
+            source.readText().lineSequence()
+                .filter { it.startsWith("import ") }
+                .none { it.contains("springframework") || it.contains("firebase") },
+        )
+    }
+
+    @Test
+    fun `ARCH-10 removes the feature owned authenticated principal`() {
+        val legacyPrincipal = backendRoot
+            .resolve("features/identity/src/main/kotlin/br/com/saqz/identity/api/AuthenticatedPrincipal.kt")
+        val productionSources = kotlinSources(backendRoot)
+            .filter { it.toString().replace('\\', '/').contains("/src/main/kotlin/") }
+
+        assertFalse(legacyPrincipal.exists())
+        assertTrue(productionSources.none { it.readText().contains("AuthenticatedPrincipal") })
     }
 
     private fun kotlinSources(root: Path): List<Path> =

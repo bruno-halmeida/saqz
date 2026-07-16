@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01 concluida
+**Status:** Execute em andamento - T01..T02 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -158,8 +158,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit + architecture, +6 casos de mapping/neutralidade.
 - **Gate:** Quick identity.
-- **Done when:** [ ] todos os consumidores usam `RequestIdentity`; [ ] remover o
-  antigo tipo nao quebra contrato publico remanescente; [ ] Gate verde.
+- **Done when:** [x] todos os consumidores usam `RequestIdentity`; [x] remover o
+  antigo tipo nao quebra contrato publico remanescente; [x] Gate verde.
 - **Commit:** `refactor(identity): share request identity contract`
 
 ### T03 - Centralizar diagnostics HTTP no bootstrap
