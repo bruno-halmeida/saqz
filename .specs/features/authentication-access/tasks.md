@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T14 concluidas
+**Status:** Execute em andamento - T01..T15 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -394,8 +394,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +9 casos owner/admin/athlete/nonmember/missing.
 - **Gate:** Quick access.
-- **Done when:** [ ] 404 outcomes sao indistinguiveis; [ ] role vem do repository;
-  [ ] baseline +9 e Gate verde.
+- **Done when:** [x] 404 outcomes sao indistinguiveis; [x] role vem do repository;
+  [x] baseline +9 e Gate verde.
 - **Commit:** `feat(access): add authorized group read`
 
 ### T16 - Implementar query JDBC de grupo
