@@ -1,6 +1,8 @@
 package br.com.saqz.bootstrap.configuration.http
 
+import br.com.saqz.access.adapter.input.http.AccessForbiddenException
 import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException
+import br.com.saqz.access.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.sharedkernel.ErrorCode
@@ -43,6 +45,16 @@ class SafeExceptionHandler(
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = failure.fieldErrors,
         )
+    }
+
+    @ExceptionHandler(GroupNotFoundException::class)
+    fun groupNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.GROUP_NOT_FOUND)
+    }
+
+    @ExceptionHandler(AccessForbiddenException::class)
+    fun accessForbidden(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

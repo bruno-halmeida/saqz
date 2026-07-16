@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T16 concluidas
+**Status:** Execute em andamento - T01..T17 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -428,7 +428,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +8 casos role/404/etag/auth.
 - **Gate:** HTTP full.
-- **Done when:** [ ] matriz publica exata; [ ] ETag corresponde ao body; [ ]
+- **Done when:** [x] matriz publica exata; [x] ETag corresponde ao body; [x]
   baseline +8 e Gate verde.
 - **Commit:** `feat(access): expose authorized group read`
 
