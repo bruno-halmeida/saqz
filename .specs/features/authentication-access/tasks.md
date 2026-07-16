@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T06 concluidas
+**Status:** Execute em andamento - T01..T07 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -251,8 +251,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +12 casos de create/update/retry/concurrency contract/falhas.
 - **Gate:** Quick access.
-- **Done when:** [ ] todos os outputs de SESSION-01/05 sao asserted; [ ] write
-  zero para identidade bloqueada; [ ] baseline +12 e Gate verde.
+- **Done when:** [x] todos os outputs de SESSION-01/05 sao asserted; [x] write
+  zero para identidade bloqueada; [x] baseline +12 e Gate verde.
 - **Commit:** `feat(access): add session bootstrap use case`
 
 ### T08 - Persistir bootstrap de sessao com JdbcClient
