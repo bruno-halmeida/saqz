@@ -44,7 +44,7 @@ fi
 ok 'angular job retired'
 
 assert_workflow '^[[:space:]]*ios-gate:[[:space:]]*$' 'ios job'
-assert_workflow 'run:[[:space:]]*scripts/check-ios' 'ios command'
+assert_workflow 'run:[[:space:]]*scripts/check-ios --dev-only[[:space:]]*$' 'iOS Dev-only command'
 ok 'ios job identity and command'
 
 awk '

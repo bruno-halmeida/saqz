@@ -99,7 +99,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Run iOS gate
-        run: scripts/check-ios
+        run: scripts/check-ios --dev-only
 
   landing-gate:
     runs-on: ubuntu-latest

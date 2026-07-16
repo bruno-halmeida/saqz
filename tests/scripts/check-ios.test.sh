@@ -61,6 +61,19 @@ run_check_ios() {
         "$repository_root/scripts/check-ios"
 }
 
+run_check_ios_dev() {
+    log_target=$1
+    shift
+    : >"$log_target"
+    env PATH="$scratch_root/bin:$PATH" \
+        SAQZ_JAVA_HOME="$scratch_root/jdk" \
+        FAKE_IOS_SDK_VERSION=26.4 \
+        FAKE_SIMCTL_JSON="$matching_devices" \
+        XCODEBUILD_LOG="$log_target" \
+        "$@" \
+        "$repository_root/scripts/check-ios" --dev-only
+}
+
 count=0
 pass() { count=$((count + 1)); printf 'ok %d - %s\n' "$count" "$1"; }
 has() { case " $1 " in *" $2 "*) return 0 ;; *) return 1 ;; esac; }
@@ -118,6 +131,36 @@ grep -q 'BuildableName="SaqzIOSUITests.xctest"' "$dev_scheme"
 grep -q 'skipped="NO"' "$dev_scheme"
 pass 'devIncludesUi'
 
+# --- devOnlyRunsExactlyDev -------------------------------------------------
+dev_only_log="$scratch_root/dev-only.log"
+run_check_ios_dev "$dev_only_log" >/dev/null
+[ "$(wc -l <"$dev_only_log" | tr -d ' ')" -eq 1 ] || {
+    printf 'expected dev-only mode to invoke xcodebuild exactly once, got:\n' >&2
+    cat "$dev_only_log" >&2
+    exit 1
+}
+dev_only_line=$(sed -n '1p' "$dev_only_log")
+require "$dev_only_line" '-scheme SaqzDev' 'dev-only mode did not run SaqzDev'
+require "$dev_only_line" 'test' 'dev-only mode did not run tests'
+refuse "$dev_only_line" '-only-testing:SaqzIOSTests' 'dev-only mode must include UI tests'
+refuse "$dev_only_line" 'SaqzProd' 'dev-only mode must not invoke SaqzProd'
+pass 'devOnlyRunsExactlyDev'
+
+# --- unknownModeFailsBeforeBuild -------------------------------------------
+unknown_log="$scratch_root/unknown.log"
+: >"$unknown_log"
+if env PATH="$scratch_root/bin:$PATH" SAQZ_JAVA_HOME="$scratch_root/jdk" \
+    FAKE_IOS_SDK_VERSION=26.4 FAKE_SIMCTL_JSON="$matching_devices" \
+    XCODEBUILD_LOG="$unknown_log" \
+    "$repository_root/scripts/check-ios" --prod-only \
+    >"$scratch_root/stdout" 2>"$scratch_root/stderr"; then
+    printf 'check-ios accepted an unknown mode\n' >&2
+    exit 1
+fi
+grep -q 'usage: scripts/check-ios \[--dev-only\]' "$scratch_root/stderr"
+[ ! -s "$unknown_log" ]
+pass 'unknownModeFailsBeforeBuild'
+
 # --- prodBuildIsRelease -----------------------------------------------------
 require "$line2" '-scheme SaqzProd' 'second invocation is not a SaqzProd run'
 require "$line2" '-configuration Release' 'SaqzProd build is not Release'
@@ -163,4 +206,13 @@ fi
 grep -q 'ran zero tests' "$scratch_root/stderr"
 pass 'zeroTestsFails'
 
-[ "$count" -eq 12 ]
+# --- devOnlyFailurePropagates ----------------------------------------------
+dev_fail_log="$scratch_root/dev-fail.log"
+if run_check_ios_dev "$dev_fail_log" env FAIL_INVOCATION=1 \
+    >"$scratch_root/stdout" 2>"$scratch_root/stderr"; then
+    printf 'dev-only mode did not propagate SaqzDev failure\n' >&2
+    exit 1
+fi
+pass 'devOnlyFailurePropagates'
+
+[ "$count" -eq 15 ]

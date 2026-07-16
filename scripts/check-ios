@@ -1,6 +1,23 @@
 #!/bin/sh
 set -eu
 
+mode=full
+case "$#" in
+    0) ;;
+    1)
+        if [ "$1" = "--dev-only" ]; then
+            mode=dev
+        else
+            printf 'usage: scripts/check-ios [--dev-only]\n' >&2
+            exit 2
+        fi
+        ;;
+    *)
+        printf 'usage: scripts/check-ios [--dev-only]\n' >&2
+        exit 2
+        ;;
+esac
+
 if [ -n "${SAQZ_JAVA_HOME:-}" ]; then
     export JAVA_HOME="$SAQZ_JAVA_HOME"
 elif command -v /usr/libexec/java_home >/dev/null 2>&1; then
@@ -23,14 +40,6 @@ puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
 ' "$simulator_runtime_version")"
 
 destination="id=$simulator_udid"
-
-# The Release build copies the Prod Firebase plist only when present; its absence
-# is a supported path (unit tests need no production credentials and no real
-# signing), so the gate proceeds without them.
-prod_plist="mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist"
-if [ ! -f "$prod_plist" ]; then
-    printf 'note: production GoogleService-Info.plist absent; running Release build/unit without production credentials\n' >&2
-fi
 
 # A test invocation that discovers zero XCTest cases is a silent skip and must fail.
 run_tests() {
@@ -57,6 +66,18 @@ run_tests \
   JAVA_HOME="$JAVA_HOME" \
   CODE_SIGNING_ALLOWED=NO \
   test
+
+if [ "$mode" = dev ]; then
+    exit 0
+fi
+
+# The Release build copies the Prod Firebase plist only when present; its absence
+# is a supported path (unit tests need no production credentials and no real
+# signing), so the gate proceeds without them.
+prod_plist="mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist"
+if [ ! -f "$prod_plist" ]; then
+    printf 'note: production GoogleService-Info.plist absent; running Release build/unit without production credentials\n' >&2
+fi
 
 # 2. SaqzProd builds in Release, proving the production configuration compiles.
 xcodebuild \

@@ -76,6 +76,10 @@ require 'macOS for the complete local gate' 'local platform limitation'
 require 'iOS on macOS' 'CI iOS runner'
 ok 'iOS and CI platform commands'
 
+require 'scripts/check-ios --dev-only' 'iOS CI Dev-only command'
+require 'SaqzProd remains in the complete local gate' 'deferred production CI policy'
+ok 'iOS CI Dev-only policy'
+
 require 'bootstrap -> features:<feature> -> shared-kernel' 'dependency direction'
 require 'must not import Spring, Firebase, HTTP' 'backend boundary'
 require 'must not use composite builds' 'workspace boundary'
@@ -112,4 +116,4 @@ grep -Fq 'tests/scripts/check-ci.test.sh' "$test_scripts"
 grep -Fq 'tests/scripts/check-readme.test.sh' "$test_scripts"
 ok 'script aggregate includes CI and README contracts'
 
-[ "$count" -eq 20 ]
+[ "$count" -eq 21 ]

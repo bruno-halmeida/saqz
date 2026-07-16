@@ -74,8 +74,11 @@ xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzProd -configura
 
 GitHub Actions runs platform gates separately in
 `.github/workflows/initialization-gate.yml`: the complete Gradle/API 30 gate,
-the focused API 35 gate and landing on Linux, plus iOS on macOS. The aggregate
-`initialization-gate` passes only when all four jobs pass.
+the focused API 35 gate and landing on Linux, plus iOS on macOS through
+`scripts/check-ios --dev-only`. The remote iOS gate runs the complete
+SaqzDev unit + UI suite. SaqzProd remains in the complete local gate; its
+dedicated production CI is deferred until that pipeline is designed. The
+aggregate `initialization-gate` passes only when all four jobs pass.
 
 ## Workspace Boundaries
 
