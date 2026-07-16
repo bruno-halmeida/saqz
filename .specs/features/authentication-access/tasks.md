@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T20 concluidas
+**Status:** Execute em andamento - T01..T21 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -498,8 +498,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +14 casos da matriz e varios admins.
 - **Gate:** Quick access.
-- **Done when:** [ ] todas as tentativas ADMIN/ATHLETE falham sem write; [ ] um
-  admin nao afeta outro; [ ] baseline +14 e Gate verde.
+- **Done when:** [x] todas as tentativas ADMIN/ATHLETE falham sem write; [x] um
+  admin nao afeta outro; [x] baseline +14 e Gate verde.
 - **Commit:** `feat(access): add owner role administration`
 
 ### T22 - Persistir memberships e mudanca de papel
