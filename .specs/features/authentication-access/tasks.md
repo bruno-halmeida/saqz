@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T15 concluidas
+**Status:** Execute em andamento - T01..T16 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -411,8 +411,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +8 casos de isolamento/role/version.
 - **Gate:** SQL integration.
-- **Done when:** [ ] fixtures multi-grupo nao vazam; [ ] query plan usa PK/index;
-  [ ] baseline +8 e Gate verde.
+- **Done when:** [x] fixtures multi-grupo nao vazam; [x] query plan usa PK/index;
+  [x] baseline +8 e Gate verde.
 - **Commit:** `feat(access): persist authorized group reads`
 
 ### T17 - Expor GET /api/groups/{groupId}
