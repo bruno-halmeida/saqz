@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T12 concluidas
+**Status:** Execute em andamento - T01..T13 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -360,8 +360,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +9 casos incluindo timeout/retry concorrente.
 - **Gate:** SQL integration.
-- **Done when:** [ ] falha injetada reverte tudo; [ ] sensor sem unique constraint
-  falha; [ ] baseline +9 e Gate verde.
+- **Done when:** [x] falha injetada reverte tudo; [x] sensor sem unique constraint
+  falha; [x] baseline +9 e Gate verde.
 - **Commit:** `feat(access): persist idempotent group creation`
 
 ### T14 - Expor POST /api/groups
