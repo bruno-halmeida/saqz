@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T17 concluidas
+**Status:** Execute em andamento - T01..T18 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -445,8 +445,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +11 casos roles/fields/version/rollback contract.
 - **Gate:** Quick access.
-- **Done when:** [ ] matriz de roles e atomicidade asserted; [ ] baseline +11;
-  [ ] Gate verde.
+- **Done when:** [x] matriz de roles e atomicidade asserted; [x] baseline +11;
+  [x] Gate verde.
 - **Commit:** `feat(access): add group settings update`
 
 ### T19 - Persistir settings com optimistic locking
