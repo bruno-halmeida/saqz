@@ -3,15 +3,19 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.access.adapter.input.http.AccessGroupController
 import br.com.saqz.access.adapter.input.http.AccessGroupReadController
 import br.com.saqz.access.adapter.input.http.AccessGroupSettingsController
+import br.com.saqz.access.adapter.input.http.AccessMembershipController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
 import br.com.saqz.access.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.access.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
+import br.com.saqz.access.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.access.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.access.application.group.create.CreateGroup
 import br.com.saqz.access.application.group.read.GetGroup
 import br.com.saqz.access.application.group.settings.UpdateGroupSettings
+import br.com.saqz.access.application.membership.ChangeMemberRole
+import br.com.saqz.access.application.membership.ListAccessMemberships
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.domain.GroupAccessPolicy
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -76,4 +80,27 @@ class AccessSessionConfiguration {
         bootstrapSession: BootstrapSession,
         updateGroupSettings: UpdateGroupSettings,
     ) = AccessGroupSettingsController(bootstrapSession, updateGroupSettings)
+
+    @Bean
+    fun membershipRepository(dataSource: DataSource) = JdbcMembershipRepository(dataSource)
+
+    @Bean
+    fun listAccessMemberships(
+        readRepository: JdbcGroupReadRepository,
+        membershipRepository: JdbcMembershipRepository,
+    ) = ListAccessMemberships(readRepository, membershipRepository, GroupAccessPolicy())
+
+    @Bean
+    fun changeMemberRole(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        membershipRepository: JdbcMembershipRepository,
+    ) = ChangeMemberRole(transaction, readRepository, membershipRepository, GroupAccessPolicy())
+
+    @Bean
+    fun accessMembershipController(
+        bootstrapSession: BootstrapSession,
+        listAccessMemberships: ListAccessMemberships,
+        changeMemberRole: ChangeMemberRole,
+    ) = AccessMembershipController(bootstrapSession, listAccessMemberships, changeMemberRole)
 }

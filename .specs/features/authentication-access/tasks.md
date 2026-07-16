@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T22 concluidas
+**Status:** Execute em andamento - T01..T23 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -532,7 +532,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +11 casos das duas rotas e matriz de papeis.
 - **Gate:** HTTP full.
-- **Done when:** [ ] cada rota tem happy/403/404/400; [ ] baseline +11; [ ] Gate verde.
+- **Done when:** [x] cada rota tem happy/403/404/400; [x] baseline +11; [x] Gate verde.
 - **Commit:** `feat(access): expose membership administration`
 
 ### T24 - Gerar token e Branch Long Link
