@@ -25,6 +25,12 @@ set -eu
 printf 'scope\n' >>"$LOG_FILE"
 [ "${FAIL_SCOPE:-0}" = 0 ] || exit 42
 SH
+    cat >"$target/repo/scripts/check-bruno" <<'SH'
+#!/bin/sh
+set -eu
+printf 'bruno\n' >>"$LOG_FILE"
+[ "${FAIL_BRUNO:-0}" = 0 ] || exit 46
+SH
     cat >"$target/repo/backend/gradlew" <<'SH'
 #!/bin/sh
 set -eu
@@ -67,6 +73,7 @@ else
 fi
 SH
     chmod +x "$target/repo/scripts/check-credentials" "$target/repo/scripts/check-scope" \
+        "$target/repo/scripts/check-bruno" \
         "$target/repo/backend/gradlew" "$target/repo/mobile/gradlew" "$target/repo/bin/adb"
     : >"$log"
 }
@@ -106,6 +113,7 @@ expected="$dir/expected.log"
 cat >"$expected" <<'EOF'
 credentials
 scope
+bruno
 backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
 mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
@@ -118,6 +126,7 @@ printf 'ok %d - inventory\n' "$count"
 
 fail_case credential-failure '' env FAIL_CREDENTIALS=1
 fail_case scope-failure '' env FAIL_SCOPE=1
+fail_case bruno-failure '' env FAIL_BRUNO=1
 fail_case firebase-emulator-failure '' env FAIL_FIREBASE_EMULATOR=1
 fail_case android-instrumented-failure '' env FAIL_ANDROID_INSTRUMENTED=1
 
@@ -145,16 +154,18 @@ required_suites=':core:common:allTests :core:design-system:allTests :compose-app
 count=$((count + 1))
 printf 'ok %d - exactInventory\n' "$count"
 
-# exactOrder: credentials, scope, backend, adb precede the mobile suites in order.
+# exactOrder: credentials, scope, Bruno, backend, adb precede mobile suites.
 awk '
     /^credentials$/ { seen["credentials"] = ++i }
     /^scope$/ { seen["scope"] = ++i }
+    /^bruno$/ { seen["bruno"] = ++i }
     /^backend / { seen["backend"] = ++i }
     /^adb / { seen["adb"] = ++i }
     /^mobile / { seen["mobile"] = ++i }
     END {
         ok = seen["credentials"] < seen["scope"] &&
-             seen["scope"] < seen["backend"] &&
+             seen["scope"] < seen["bruno"] &&
+             seen["bruno"] < seen["backend"] &&
              seen["backend"] < seen["adb"] &&
              seen["adb"] < seen["mobile"]
         exit ok ? 0 : 1
@@ -218,4 +229,4 @@ fi
 count=$((count + 1))
 printf 'ok %d - shared identity emulator lifecycle\n' "$count"
 
-[ "$count" -eq 19 ]
+[ "$count" -eq 20 ]

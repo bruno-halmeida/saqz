@@ -187,6 +187,7 @@ ok 'api35 evaluatorUsageNamesFourResults'
 
 grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-scope' "$repository_root/scripts/check-gradle"
+grep -Eq 'scripts/check-bruno' "$repository_root/scripts/check-gradle"
 
 assert_workflow '^[[:space:]]*initialization-gate:[[:space:]]*$' 'aggregate job'
 assert_workflow 'needs:[[:space:]]*\[gradle-gate, android-api35-gate, ios-gate, landing-gate\]' 'aggregate needs'

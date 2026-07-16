@@ -1,8 +1,10 @@
 .superpowers/
 .specs/
 docs/
-
+.agents
+.claude
 # Gradle, Kotlin, and Android
+.secrets
 .gradle/
 .kotlin/
 **/build/

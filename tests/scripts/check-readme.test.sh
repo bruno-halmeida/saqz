@@ -38,6 +38,7 @@ require 'scripts/check-gradle' 'Gradle gate'
 require 'scripts/check-ios' 'iOS gate'
 require 'scripts/check-credentials' 'credential gate'
 require 'scripts/check-scope' 'scope gate'
+require 'scripts/check-bruno' 'Bruno contract gate'
 ok 'native gate commands'
 
 require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
@@ -113,6 +114,7 @@ ok 'script and CI commands'
 
 test_scripts="$repository_root/scripts/test-scripts"
 grep -Fq 'tests/scripts/check-ci.test.sh' "$test_scripts"
+grep -Fq 'tests/scripts/check-bruno.test.sh' "$test_scripts"
 grep -Fq 'tests/scripts/check-readme.test.sh' "$test_scripts"
 ok 'script aggregate includes CI and README contracts'
 

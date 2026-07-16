@@ -10,6 +10,7 @@ fail() {
 
 "$repository_root/scripts/check-credentials"
 "$repository_root/scripts/check-scope"
+"$repository_root/scripts/check-bruno"
 
 "$repository_root/backend/gradlew" -p "$repository_root/backend" \
     :shared-kernel:check \

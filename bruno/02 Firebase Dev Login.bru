@@ -1,0 +1,39 @@
+meta {
+  name: Firebase Dev Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseApiKey}}
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "email": "{{firebaseEmail}}",
+    "password": "{{firebasePassword}}",
+    "returnSecureToken": true
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (res.getStatus() === 200 && body.idToken) {
+    bru.setVar("idToken", body.idToken);
+  }
+}
+
+tests {
+  test("Firebase Dev returns an ID token", function () {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.idToken).to.be.a("string").and.not.empty;
+    expect(body.email).to.equal(bru.getEnvVar("firebaseEmail"));
+  });
+}

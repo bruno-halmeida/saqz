@@ -12,6 +12,7 @@ if command -v /usr/libexec/java_home >/dev/null 2>&1; then
 fi
 
 "$repository_root/tests/scripts/check-all.test.sh"
+"$repository_root/tests/scripts/check-bruno.test.sh"
 "$repository_root/tests/scripts/check-ci.test.sh"
 "$repository_root/tests/scripts/check-credentials.test.sh"
 "$repository_root/tests/scripts/check-gradle.test.sh"

@@ -19,6 +19,39 @@ pre-launch landing page.
 - Gitleaks 8.30.1 is optional locally; `scripts/check-credentials` runs it
   when installed and always runs the built-in credential scanner.
 
+## Local Backend With Firebase Dev
+
+Place the `saqz-dev` Firebase Admin service-account key at
+`.secrets/firebase-dev-service-account.json`, then run:
+
+```bash
+docker compose up --build -d
+docker compose ps
+curl http://localhost:8080/actuator/health
+```
+
+The container uses the real `saqz-dev` Firebase project; it does not start the
+Auth Emulator. Follow logs or stop the stack with:
+
+```bash
+docker compose logs -f backend
+docker compose down
+```
+
+### Bruno API Collection
+
+Open `bruno/` in Bruno and select the `Dev` environment. Copy the environment
+template and fill it with a Firebase Dev test account:
+
+```bash
+cp bruno/.env.example bruno/.env
+```
+
+Run the requests in order: `Health`, `Firebase Dev Login`, then `Session`.
+The login stores the Firebase ID token only in Bruno runtime memory. Every
+observable backend HTTP contract change must update its request and assertions
+in `bruno/`; `scripts/check-bruno` enforces route coverage.
+
 ## Landing Page
 
 The pre-launch landing page lives in `landing-page/` and is intentionally

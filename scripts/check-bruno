@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+repository_root=${SAQZ_REPOSITORY_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
+collection="$repository_root/bruno"
+
+fail() {
+    printf 'Bruno contract failed: %s\n' "$1" >&2
+    exit 1
+}
+
+[ -f "$collection/bruno.json" ] || fail 'bruno/bruno.json is missing'
+[ -f "$collection/environments/Dev.bru" ] || fail 'Dev environment is missing'
+
+routes=$(
+    find "$repository_root/backend" -type f -path '*/src/main/*' -name '*.kt' -exec \
+        grep -hE '@(Get|Post|Put|Patch|Delete)Mapping\("/[^\"]*"\)' {} + 2>/dev/null |
+        sed -E 's/.*@(Get|Post|Put|Patch|Delete)Mapping\("([^\"]+)"\).*/\1 \2/' |
+        sort -u
+)
+
+[ -n "$routes" ] || fail 'no explicit backend routes found'
+
+printf '%s\n' "$routes" | while IFS=' ' read -r mapping path; do
+    method=$(printf '%s' "$mapping" | sed 's/Mapping$//' | tr '[:upper:]' '[:lower:]')
+    covered=false
+
+    for request in "$collection"/*.bru; do
+        [ -f "$request" ] || continue
+        grep -Eq "^${method}[[:space:]]*\\{" "$request" || continue
+
+        url=$(sed -n 's/^[[:space:]]*url:[[:space:]]*//p' "$request" | head -n 1)
+        case "$url" in
+            *"$path"|*"$path"\?*)
+                grep -q '^tests {' "$request" || fail "$mapping $path has no Bruno assertions"
+                covered=true
+                break
+                ;;
+        esac
+    done
+
+    [ "$covered" = true ] || fail "$mapping $path has no matching Bruno request"
+done
+
+printf 'ok - Bruno covers explicit backend routes\n'
