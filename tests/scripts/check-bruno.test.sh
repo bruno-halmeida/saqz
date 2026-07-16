@@ -34,4 +34,13 @@ if SAQZ_REPOSITORY_ROOT="$wrong_method" "$wrong_method/check-bruno" >/dev/null 2
     exit 1
 fi
 
+duplicate_secrets="$scratch/duplicate-secrets"
+make_fixture "$duplicate_secrets"
+printf '\nvars:secret [\n  firebasePassword\n]\n' >>"$duplicate_secrets/bruno/environments/Dev.bru"
+printf 'get {\n  url: {{backendUrl}}/api/demo\n}\n\ntests {\n  test("ok", () => expect(res.status).to.equal(200));\n}\n' >"$duplicate_secrets/bruno/Demo.bru"
+if SAQZ_REPOSITORY_ROOT="$duplicate_secrets" "$duplicate_secrets/check-bruno" >/dev/null 2>&1; then
+    printf 'duplicated secrets unexpectedly passed\n' >&2
+    exit 1
+fi
+
 printf 'ok - Bruno contract mutations\n'

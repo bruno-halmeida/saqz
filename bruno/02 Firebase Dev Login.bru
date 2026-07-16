@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseApiKey}}
+  url: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{process.env.SAQZ_FIREBASE_API_KEY}}
   body: json
   auth: none
 }
@@ -16,8 +16,8 @@ headers {
 
 body:json {
   {
-    "email": "{{firebaseEmail}}",
-    "password": "{{firebasePassword}}",
+    "email": "{{process.env.SAQZ_FIREBASE_EMAIL}}",
+    "password": "{{process.env.SAQZ_FIREBASE_PASSWORD}}",
     "returnSecureToken": true
   }
 }
@@ -34,6 +34,6 @@ tests {
     const body = res.getBody();
     expect(res.getStatus()).to.equal(200);
     expect(body.idToken).to.be.a("string").and.not.empty;
-    expect(body.email).to.equal(bru.getEnvVar("firebaseEmail"));
+    expect(body.email).to.equal(bru.getProcessEnv("SAQZ_FIREBASE_EMAIL"));
   });
 }

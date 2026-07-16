@@ -19,7 +19,7 @@ tests {
     const body = res.getBody();
     expect(res.getStatus()).to.equal(200);
     expect(body.subject).to.be.a("string").and.not.empty;
-    expect(body.email).to.equal(bru.getEnvVar("firebaseEmail"));
+    expect(body.email).to.equal(bru.getProcessEnv("SAQZ_FIREBASE_EMAIL"));
     expect(body.emailVerified).to.be.a("boolean");
   });
 }

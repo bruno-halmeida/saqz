@@ -11,6 +11,9 @@ fail() {
 
 [ -f "$collection/bruno.json" ] || fail 'bruno/bruno.json is missing'
 [ -f "$collection/environments/Dev.bru" ] || fail 'Dev environment is missing'
+if grep -q '^vars:secret' "$collection/environments/Dev.bru"; then
+    fail 'dotenv-backed secrets must not be duplicated as Bruno secret variables'
+fi
 
 routes=$(
     find "$repository_root/backend" -type f -path '*/src/main/*' -name '*.kt' -exec \
