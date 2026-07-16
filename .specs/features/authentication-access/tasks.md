@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T18 concluidas
+**Status:** Execute em andamento - T01..T19 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -462,8 +462,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +9 casos incluindo writers concorrentes.
 - **Gate:** SQL integration.
-- **Done when:** [ ] exatamente um writer vence; [ ] falha preserva dois campos;
-  [ ] baseline +9 e Gate verde.
+- **Done when:** [x] exatamente um writer vence; [x] falha preserva dois campos;
+  [x] baseline +9 e Gate verde.
 - **Commit:** `feat(access): persist versioned group settings`
 
 ### T20 - Expor PUT /api/groups/{groupId}/settings
