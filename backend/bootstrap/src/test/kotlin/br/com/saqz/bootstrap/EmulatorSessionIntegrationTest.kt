@@ -1,5 +1,11 @@
 package br.com.saqz.bootstrap
 
+import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.SessionRepository
+import br.com.saqz.access.application.session.SessionUpsert
+import br.com.saqz.access.application.session.SessionView
+import br.com.saqz.access.application.session.UserAccount
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
@@ -7,6 +13,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import java.net.URI
@@ -16,6 +25,7 @@ import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
@@ -26,6 +36,7 @@ import kotlin.test.assertTrue
 @Tag("emulator")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(EmulatorSessionIntegrationTest.EmulatorSessionTestConfiguration::class)
 @ActiveProfiles("test")
 @TestPropertySource(properties = ["saqz.firebase.emulator.enabled=true"])
 class EmulatorSessionIntegrationTest {
@@ -63,18 +74,14 @@ class EmulatorSessionIntegrationTest {
     }
 
     @Test
-    fun `real emulator token returns exact subject email and false verification`() {
+    fun `real verified emulator token returns internal user mirrors without Firebase UID`() {
         val response = session()
 
-        assertEquals(200, response.statusCode())
-        assertEquals(
-            setOf(
-                "\"subject\":\"${state.resolve("subject").readText().trim()}\"",
-                "\"email\":\"${state.resolve("email").readText().trim()}\"",
-                "\"emailVerified\":false",
-            ),
-            response.body().removeSurrounding("{", "}").split(',').toSet(),
-        )
+        assertEquals(200, response.statusCode(), response.body())
+        assertTrue(response.body().contains("\"email\":\"${state.resolve("email").readText().trim()}\""))
+        assertTrue(response.body().contains("\"displayName\":\"Session Fixture\""))
+        assertTrue(response.body().contains("\"memberships\":[]"))
+        assertFalse(response.body().contains(state.resolve("subject").readText().trim()))
     }
 
     @Test
@@ -82,8 +89,8 @@ class EmulatorSessionIntegrationTest {
         val first = session()
         val second = session()
 
-        assertEquals(200, first.statusCode())
-        assertEquals(200, second.statusCode())
+        assertEquals(200, first.statusCode(), first.body())
+        assertEquals(200, second.statusCode(), second.body())
         assertEquals(first.body(), second.body())
     }
 
@@ -91,7 +98,7 @@ class EmulatorSessionIntegrationTest {
         val request = HttpRequest.newBuilder()
             .uri(URI("http://127.0.0.1:$port/api/session"))
             .header("Authorization", "Bearer ${state.resolve("id-token").readText().trim()}")
-            .GET()
+            .PUT(HttpRequest.BodyPublishers.noBody())
             .build()
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString())
     }
@@ -108,4 +115,28 @@ class EmulatorSessionIntegrationTest {
 
     private fun fixtureLog(): String =
         state.resolve("fixture.log").takeIf(Files::exists)?.readText().orEmpty()
+
+    @TestConfiguration(proxyBeanMethods = false)
+    class EmulatorSessionTestConfiguration {
+        @Bean
+        fun emulatorSessionRepository() = object : SessionRepository {
+            private val ids = mutableMapOf<String, UUID>()
+
+            override fun upsertAndLoad(command: SessionUpsert) = SessionView(
+                UserAccount(
+                    ids.getOrPut(command.subject) { UUID.randomUUID() },
+                    command.subject,
+                    command.email,
+                    command.displayName,
+                ),
+                emptyList(),
+            )
+        }
+
+        @Bean
+        fun emulatorBootstrapSession(repository: SessionRepository) = BootstrapSession(repository)
+
+        @Bean
+        fun emulatorAccessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
+    }
 }

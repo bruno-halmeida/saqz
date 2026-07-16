@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T08 concluidas
+**Status:** Execute em andamento - T01..T09 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -288,8 +288,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring + emulator integration, +11 casos happy/auth/unverified/update/failure.
 - **Gate:** HTTP full.
-- **Done when:** [ ] endpoint passa com token emulator real; [ ] GET retorna
-  method-not-allowed/not-found; [ ] baseline +11 e Gate verde.
+- **Done when:** [x] endpoint passa com token emulator real; [x] GET retorna
+  method-not-allowed/not-found; [x] baseline +11 e Gate verde.
 - **Commit:** `feat(access): expose idempotent session bootstrap`
 
 ### T10 - Criar core:network com Ktor

@@ -39,13 +39,15 @@ cleanup() {
             "$state_dir/id-token" |
             curl -sS -o "$state_dir/delete-response" -H 'Content-Type: application/json' \
                 -d @- "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=fake-saqz-local-api-key"
-        curl -sS "http://127.0.0.1:9099/emulator/v1/projects/$project_id/accounts" >"$state_dir/accounts-after-delete"
+        node -e 'process.stdout.write(JSON.stringify({email:process.argv[1],password:"local-password-123",returnSecureToken:true}))' \
+            "$account_email" |
+            curl -sS -o "$state_dir/signin-after-delete" -H 'Content-Type: application/json' \
+                -d @- "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-saqz-local-api-key"
         if node -e '
             const fs=require("fs");
             const body=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
-            const email=process.argv[2];
-            process.exit((body.users || []).some(user => user.email === email) ? 1 : 0);
-        ' "$state_dir/accounts-after-delete" "$account_email"; then
+            process.exit(body.error?.message === "EMAIL_NOT_FOUND" ? 0 : 1);
+        ' "$state_dir/signin-after-delete"; then
             : >"$state_dir/account-deleted"
         else
             status=1
@@ -129,6 +131,65 @@ node -e '
 ' "$state_dir/signup-response" "$state_dir/id-token" "$state_dir/subject" "$state_dir/email"
 
 local_id=$(tr -d '\n' <"$state_dir/subject")
+
+node -e '
+    const fs=require("fs");
+    process.stdout.write(JSON.stringify({
+        idToken:fs.readFileSync(process.argv[1],"utf8").trim(),
+        displayName:"Session Fixture",
+        returnSecureToken:false
+    }));
+' "$state_dir/id-token" |
+    curl -sS -o "$state_dir/update-response" -H 'Content-Type: application/json' \
+        -d @- "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-saqz-local-api-key"
+
+node -e '
+    const fs=require("fs");
+    process.stdout.write(JSON.stringify({
+        requestType:"VERIFY_EMAIL",
+        idToken:fs.readFileSync(process.argv[1],"utf8").trim()
+    }));
+' "$state_dir/id-token" |
+    curl -sS -o "$state_dir/oob-request-response" -H 'Content-Type: application/json' \
+        -d @- "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=fake-saqz-local-api-key"
+
+curl -sS -o "$state_dir/oob-codes" \
+    "http://127.0.0.1:9099/emulator/v1/projects/$project_id/oobCodes"
+
+node -e '
+    const fs=require("fs");
+    const body=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+    const email=process.argv[3];
+    const match=(body.oobCodes || []).find(code => code.email === email && code.requestType === "VERIFY_EMAIL");
+    if (!match) {
+        console.error(JSON.stringify(body));
+        process.exit(1);
+    }
+    fs.writeFileSync(process.argv[2], match.oobCode + "\n", {mode: 0o600});
+' "$state_dir/oob-codes" "$state_dir/oob-code" "$account_email"
+
+node -e '
+    const fs=require("fs");
+    process.stdout.write(JSON.stringify({oobCode:fs.readFileSync(process.argv[1],"utf8").trim()}));
+' "$state_dir/oob-code" |
+    curl -sS -o "$state_dir/verify-response" -H 'Content-Type: application/json' \
+        -d @- "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-saqz-local-api-key"
+
+node -e 'process.stdout.write(JSON.stringify({email:process.argv[1],password:"local-password-123",returnSecureToken:true}))' \
+    "$account_email" |
+    curl -sS -o "$state_dir/signin-response" -H 'Content-Type: application/json' \
+        -d @- "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-saqz-local-api-key"
+
+node -e '
+    const fs=require("fs");
+    const body=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+    if (!body.idToken || body.registered !== true) {
+        console.error(JSON.stringify(body));
+        process.exit(1);
+    }
+    fs.writeFileSync(process.argv[2], body.idToken + "\n", {mode: 0o600});
+' "$state_dir/signin-response" "$state_dir/id-token"
+
 : >"$state_dir/ready"
 
 if [ "${SAQZ_FIXTURE_FAIL:-false}" = true ]; then

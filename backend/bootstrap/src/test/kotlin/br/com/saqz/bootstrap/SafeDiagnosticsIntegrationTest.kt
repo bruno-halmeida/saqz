@@ -93,7 +93,7 @@ class SafeDiagnosticsIntegrationTest {
     fun `successful response and log redact bearer and credential fixtures`(output: CapturedOutput) {
         verifier.result = TokenVerification.Verified(RequestIdentity("safe-subject", null, null))
 
-        val response = get("/api/session", "success-secret-token")
+        val response = get("/test/success", "success-secret-token")
 
         assertEquals(200, response.statusCode())
         assertFalse((response.body() + output.out).contains("success-secret-token"))
@@ -155,7 +155,7 @@ class SafeDiagnosticsIntegrationTest {
     @Test
     fun `successful response exposes correlation header matching log`(output: CapturedOutput) {
         verifier.result = TokenVerification.Verified(RequestIdentity("safe-subject"))
-        val response = get("/api/session", "header-success-token")
+        val response = get("/test/success", "header-success-token")
         val correlationId = correlationHeader(response)
 
         assertTrue(correlationId.isNotBlank())
@@ -258,6 +258,9 @@ class SafeDiagnosticsIntegrationTest {
 
     @RestController
     class FailureProbe {
+        @GetMapping("/test/success")
+        fun success() = mapOf("status" to "ok")
+
         @GetMapping("/test/unexpected")
         fun fail(): Nothing = error("FirebaseAuthException private-key-content service-account-content")
 

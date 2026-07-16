@@ -4,7 +4,7 @@ meta {
   seq: 3
 }
 
-get {
+put {
   url: {{backendUrl}}/api/session
   body: none
   auth: none
@@ -18,8 +18,10 @@ tests {
   test("backend accepts the Firebase Dev token", function () {
     const body = res.getBody();
     expect(res.getStatus()).to.equal(200);
-    expect(body.subject).to.be.a("string").and.not.empty;
-    expect(body.email).to.equal(bru.getProcessEnv("SAQZ_FIREBASE_EMAIL"));
-    expect(body.emailVerified).to.be.a("boolean");
+    expect(body.user.id).to.be.a("string").and.not.empty;
+    expect(body.user.email).to.equal(bru.getProcessEnv("SAQZ_FIREBASE_EMAIL"));
+    expect(body.user.displayName).to.be.a("string").and.not.empty;
+    expect(body.memberships).to.be.an("array");
+    expect(body).not.to.have.property("subject");
   });
 }

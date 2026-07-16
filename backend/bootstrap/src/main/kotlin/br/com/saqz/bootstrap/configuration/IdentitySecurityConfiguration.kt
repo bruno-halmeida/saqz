@@ -3,7 +3,6 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
 import br.com.saqz.bootstrap.configuration.http.RequestCorrelationFilter
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
-import br.com.saqz.identity.adapter.input.http.SessionController
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.ErrorCode
 import org.springframework.context.annotation.Bean
@@ -16,9 +15,6 @@ import tools.jackson.databind.ObjectMapper
 
 @Configuration(proxyBeanMethods = false)
 class IdentitySecurityConfiguration {
-    @Bean
-    fun sessionController() = SessionController()
-
     @Bean
     fun apiProblemWriter(objectMapper: ObjectMapper) = ApiProblemWriter(objectMapper)
 
