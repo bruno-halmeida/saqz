@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T05 concluidas
+**Status:** Execute em andamento - T01..T06 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -232,8 +232,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +24 casos cobrindo todos os branches/roles/validadores.
 - **Gate:** Quick access.
-- **Done when:** [ ] cada branch da matriz tem caso nomeado; [ ] timezone real e
-  invalido discriminam; [ ] baseline +24 e Gate verde.
+- **Done when:** [x] cada branch da matriz tem caso nomeado; [x] timezone real e
+  invalido discriminam; [x] baseline +24 e Gate verde.
 - **Commit:** `feat(access): define access domain policy`
 
 ## Fase 1 - Sessao persistida e transporte autenticado

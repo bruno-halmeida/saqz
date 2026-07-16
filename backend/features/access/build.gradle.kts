@@ -31,6 +31,10 @@ configurations[integrationTestSourceSet.implementationConfigurationName]
 configurations[integrationTestSourceSet.runtimeOnlyConfigurationName]
     .extendsFrom(configurations.runtimeOnly.get(), configurations.testRuntimeOnly.get())
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 val integrationTest by tasks.registering(Test::class) {
     description = "Runs access integration tests."
     group = LifecycleBasePlugin.VERIFICATION_GROUP
