@@ -20,7 +20,8 @@ make_repo() {
         git config user.email test@example.invalid
         git config user.name 'Scope Test'
         git add .gitignore AGENTS.md .specs scripts/check-scope
-        git commit -qm governance-fixture
+        # V1: setup works whether the cloned HEAD already contains governance or not.
+        git diff --cached --quiet || git commit -qm governance-fixture
     )
 }
 

@@ -38,3 +38,15 @@ weakening credential safety or workspace-scope gates.
 - Changing product architecture or feature requirements.
 - Adding nested workspace-specific `AGENTS.md` files.
 - Introducing a new documentation generator or lessons automation.
+
+## Validation Invariants
+
+- **V1 — Idempotent fixture setup**: The scope-test repository setup SHALL
+  succeed whether the cloned `HEAD` already contains the current governance
+  files or requires an auxiliary fixture commit.
+
+## Backprop Log
+
+| ID | Date | Root cause | Invariant |
+| --- | --- | --- | --- |
+| B1 | 2026-07-16 | Scope fixture always attempted a commit and failed under `set -e` when the governance overlay produced no staged diff. | V1 |
