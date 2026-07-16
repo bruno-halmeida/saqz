@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T21 concluidas
+**Status:** Execute em andamento - T01..T22 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -515,7 +515,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +10 casos upsert/list/isolation/concurrency.
 - **Gate:** SQL integration.
-- **Done when:** [ ] promotion repetida deixa uma row; [ ] demotion isolada; [ ]
+- **Done when:** [x] promotion repetida deixa uma row; [x] demotion isolada; [x]
   baseline +10 e Gate verde.
 - **Commit:** `feat(access): persist membership roles`
 
