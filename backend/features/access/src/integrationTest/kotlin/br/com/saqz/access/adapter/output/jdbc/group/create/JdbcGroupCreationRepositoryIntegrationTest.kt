@@ -1,5 +1,6 @@
 package br.com.saqz.access.adapter.output.jdbc.group.create
 
+import br.com.saqz.access.testing.startAndAwaitJdbc
 import br.com.saqz.access.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.access.application.group.create.CreateGroup
 import br.com.saqz.access.application.group.create.CreateGroupResult
@@ -32,7 +33,7 @@ class JdbcGroupCreationRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.start()
+        postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
         transaction = JdbcTransactionRunner(dataSource)

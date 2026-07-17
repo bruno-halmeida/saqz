@@ -31,6 +31,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.flywaydb.core.Flyway
+import org.springframework.core.env.Environment
+import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.net.URI
 import java.time.Clock
 import javax.sql.DataSource
@@ -38,6 +41,19 @@ import javax.sql.DataSource
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("spring.datasource.url")
 class AccessSessionConfiguration {
+    @Bean
+    fun accessDataSource(environment: Environment): DataSource = DriverManagerDataSource(
+        environment.getRequiredProperty("spring.datasource.url"),
+        environment.getProperty("spring.datasource.username").orEmpty(),
+        environment.getProperty("spring.datasource.password").orEmpty(),
+    )
+
+    @Bean(initMethod = "migrate")
+    fun accessFlyway(dataSource: DataSource): Flyway = Flyway.configure()
+        .dataSource(dataSource)
+        .locations("classpath:db/migration")
+        .load()
+
     @Bean
     fun sessionRepository(dataSource: DataSource) = JdbcSessionRepository(dataSource)
 

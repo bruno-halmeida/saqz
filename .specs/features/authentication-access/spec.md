@@ -324,6 +324,8 @@ inspecionar correlation/redaction e executar o fluxo completo em ambiente descar
 | B6 | 2026-07-17 | Um `Task @MainActor` tentou transferir o resultado não-`Sendable` do callback Google e Swift 6 rejeitou o possível data race. | O callback Google documentado na main queue permanece no executor com `MainActor.assumeIsolated`; Full iOS compila em concorrência estrita; nenhum novo invariante necessário. |
 | B7 | 2026-07-17 | O script iOS exigia chaves Google em todo plist Firebase local e quebrou o build Prod quando elas ainda não estavam provisionadas. | Firebase continua empacotado por ambiente, enquanto `GIDClientID` e o URL scheme são injetados somente quando ambas as chaves Google existem; Full iOS cobre Dev e Prod. |
 | B8 | 2026-07-17 | A referência direta ao método do router usou uma forma de `onOpenURL` sem o label `perform:` exigido pela API SwiftUI compilada. | O Full iOS compila o lifecycle bridge contra o SDK SwiftUI real em Dev e Prod; nenhum novo invariante necessário. |
+| B9 | 2026-07-17 | A nova suíte descartável inspecionou rollback via `JdbcTemplate`, mas o bootstrap não declarava Spring JDBC no classpath de testes. | T55 declara a dependência somente em testes e o emulator gate compila a suíte contra PostgreSQL real; nenhum novo invariante de produto necessário. |
+| B10 | 2026-07-17 | No Colima, `PostgreSQLContainer.start()` retornou antes de a porta mapeada aceitar JDBC, tornando o gate SQL aleatoriamente vermelho antes das assertions. | SEC-04; todo PostgreSQL integration test aguarda uma conexão JDBC real com timeout após o start e antes de migrar. |
 
 ## Critérios de Sucesso
 

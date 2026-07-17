@@ -1,5 +1,6 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
+import br.com.saqz.access.testing.startAndAwaitJdbc
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.GroupRole
@@ -29,7 +30,7 @@ class JdbcSessionRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.start()
+        postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
         repository = JdbcSessionRepository(dataSource)

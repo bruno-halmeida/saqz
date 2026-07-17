@@ -1,5 +1,6 @@
 package br.com.saqz.access
 
+import br.com.saqz.access.testing.startAndAwaitJdbc
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -23,7 +24,7 @@ class AccessSchemaIntegrationTest {
 
     @BeforeAll
     fun migrateEmptyDatabase() {
-        postgres.start()
+        postgres.startAndAwaitJdbc()
         flyway = Flyway.configure()
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")

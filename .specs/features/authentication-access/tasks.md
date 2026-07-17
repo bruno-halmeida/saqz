@@ -1078,7 +1078,7 @@ Fase 8: T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** end-to-end integration, +8 jornadas independentes.
 - **Gate:** HTTP full e SQL integration.
-- **Done when:** [ ] fixture sobe/derruba recursos sem processo residual; [ ]
+- **Done when:** [x] fixture sobe/derruba recursos sem processo residual; [x]
   baseline +8 e gates verdes em rerun limpo.
 - **Commit:** `test(access): prove disposable authenticated flows`
 

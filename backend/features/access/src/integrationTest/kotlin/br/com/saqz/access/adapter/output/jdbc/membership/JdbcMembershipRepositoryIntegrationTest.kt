@@ -1,5 +1,6 @@
 package br.com.saqz.access.adapter.output.jdbc.membership
 
+import br.com.saqz.access.testing.startAndAwaitJdbc
 import br.com.saqz.access.application.membership.ChangeMemberRoleCommand
 import br.com.saqz.access.domain.GroupRole
 import br.com.saqz.access.domain.PersistedMembershipRole
@@ -29,7 +30,7 @@ class JdbcMembershipRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.start()
+        postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
         repository = JdbcMembershipRepository(dataSource)

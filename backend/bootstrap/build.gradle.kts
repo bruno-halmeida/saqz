@@ -11,13 +11,18 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation(libs.spring.jdbc)
     implementation(libs.firebase.admin)
+    implementation(libs.flyway.core)
     implementation(project(":features:access"))
     implementation(project(":features:identity"))
     implementation(project(":shared-kernel"))
+    runtimeOnly(libs.flyway.postgresql)
+    runtimeOnly(libs.postgresql)
 
     testImplementation(kotlin("test"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation(libs.testcontainers.postgresql)
 }
 
 tasks.test {
