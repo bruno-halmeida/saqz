@@ -94,7 +94,7 @@ exact state/error outcomes preserved.
 
 ### T3: Give group selection one typed intent entry
 
-**Status:** Pending
+**Status:** Complete
 
 **What:** Replace selection commands with `GroupSelectionIntent` and
 `onIntent`, adding an active-selection token so stale completions cannot replace

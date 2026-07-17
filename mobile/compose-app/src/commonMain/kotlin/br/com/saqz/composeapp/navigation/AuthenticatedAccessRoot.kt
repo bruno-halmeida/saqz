@@ -33,8 +33,9 @@ import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.DeferredInviteCoordinator
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.presentation.GroupAdministrationCoordinator
+import br.com.saqz.access.presentation.GroupSelectionIntent
 import br.com.saqz.access.presentation.GroupSelectionState
-import br.com.saqz.access.presentation.GroupSelectionCoordinator
+import br.com.saqz.access.presentation.GroupSelectionStateMachine
 import br.com.saqz.access.presentation.InviteUiError
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
@@ -200,7 +201,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     LaunchedEffect(session) {
         val ready = session as? SessionAccessState.Ready
         runtime.invites.setSessionReady(ready != null)
-        if (ready != null) runtime.selection.reconcile(ready.session)
+        if (ready != null) runtime.selection.onIntent(GroupSelectionIntent.Reconcile(ready.session))
         if (session is SessionAccessState.SignedOut) {
             page = AccessPage.CONTEXT
             logoutConfirmation = false
@@ -250,14 +251,14 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         resendVerification = { runtime.session.onIntent(SessionIntent.ResendVerification) },
         completeName = { runtime.session.onIntent(SessionIntent.CompleteName) },
         retryBootstrap = { runtime.session.onIntent(SessionIntent.RetryBootstrap) },
-        selectGroup = runtime.selection::select,
+        selectGroup = { runtime.selection.onIntent(GroupSelectionIntent.Select(it)) },
         openCreateGroup = {
             createName = ""
             createTimeZone = ""
             createRequestId = runtime.newRequestId()
             page = AccessPage.CREATE_GROUP
         },
-        retryGroup = runtime.selection::retry,
+        retryGroup = { runtime.selection.onIntent(GroupSelectionIntent.Retry) },
         createNameChanged = { createName = it },
         createTimeZoneChanged = { createTimeZone = it },
         createGroup = { runtime.administration.createGroup(createRequestId, createName, createTimeZone) },
@@ -327,9 +328,13 @@ internal class AccessRuntime(
     val authentication = AuthenticationStateMachine(dependencies.auth) {
         session.onIntent(SessionIntent.Accept(it))
     }
-    val selection = GroupSelectionCoordinator(dependencies.localState, groups, scope)
-    val administration = GroupAdministrationCoordinator(groups, roles, scope, selection::select)
-    val invites = DeferredInviteCoordinator(dependencies.links, dependencies.localState, roles, scope, selection::select)
+    val selection = GroupSelectionStateMachine(dependencies.localState, groups, scope)
+    val administration = GroupAdministrationCoordinator(groups, roles, scope) {
+        selection.onIntent(GroupSelectionIntent.Select(it))
+    }
+    val invites = DeferredInviteCoordinator(dependencies.links, dependencies.localState, roles, scope) {
+        selection.onIntent(GroupSelectionIntent.Select(it))
+    }
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())
     val inviteToolState = mutableInviteToolState.asStateFlow()
     var authObserved by mutableStateOf(false)
@@ -366,7 +371,7 @@ internal class AccessRuntime(
 
     fun showGroupSelector(ready: SessionAccessState.Ready) {
         dependencies.localState.writeSelectedGroupId(null, resultCallback {
-            selection.reconcile(ready.session)
+            selection.onIntent(GroupSelectionIntent.Reconcile(ready.session))
         })
     }
 

@@ -28,7 +28,15 @@ sealed interface GroupSelectionState {
     data class LoadError(val groupId: String) : GroupSelectionState
 }
 
-class GroupSelectionCoordinator(
+sealed interface GroupSelectionIntent {
+    data class Reconcile(val session: SessionDto) : GroupSelectionIntent
+
+    data class Select(val groupId: String) : GroupSelectionIntent
+
+    data object Retry : GroupSelectionIntent
+}
+
+class GroupSelectionStateMachine(
     private val localState: LocalAccessStatePort,
     private val groups: GroupGateway,
     private val scope: CoroutineScope,
@@ -36,40 +44,52 @@ class GroupSelectionCoordinator(
     private val mutableState = MutableStateFlow<GroupSelectionState>(GroupSelectionState.NoGroup)
     val state: StateFlow<GroupSelectionState> = mutableState.asStateFlow()
     private var memberships: List<SessionMembershipDto> = emptyList()
+    private var operationGeneration = 0L
 
-    fun reconcile(session: SessionDto) {
-        memberships = session.memberships
-        when (memberships.size) {
-            0 -> reconcileEmpty()
-            1 -> selectInternal(memberships.single().groupId)
-            else -> restoreOrSelect()
+    fun onIntent(intent: GroupSelectionIntent) {
+        when (intent) {
+            is GroupSelectionIntent.Reconcile -> reconcile(intent.session)
+            is GroupSelectionIntent.Select -> select(intent.groupId)
+            GroupSelectionIntent.Retry -> retry()
         }
     }
 
-    fun select(groupId: String) {
+    private fun reconcile(session: SessionDto) {
+        val generation = nextGeneration()
+        memberships = session.memberships
+        when (memberships.size) {
+            0 -> reconcileEmpty(generation)
+            1 -> selectInternal(memberships.single().groupId, generation)
+            else -> restoreOrSelect(generation)
+        }
+    }
+
+    private fun select(groupId: String) {
         if (mutableState.value is GroupSelectionState.Loading) return
         if (memberships.none { it.groupId == groupId }) return
-        selectInternal(groupId)
+        selectInternal(groupId, nextGeneration())
     }
 
-    fun retry() {
+    private fun retry() {
         val error = mutableState.value as? GroupSelectionState.LoadError ?: return
-        selectInternal(error.groupId)
+        selectInternal(error.groupId, nextGeneration())
     }
 
-    private fun reconcileEmpty() {
+    private fun reconcileEmpty(generation: Long) {
         localState.readSelectedGroupId(valueCallback { result ->
+            if (generation != operationGeneration) return@valueCallback
             if ((result as? ValueResult.Success)?.value != null) writeSelection(null)
             mutableState.value = GroupSelectionState.NoGroup
         })
     }
 
-    private fun restoreOrSelect() {
+    private fun restoreOrSelect(generation: Long) {
         localState.readSelectedGroupId(valueCallback { result ->
+            if (generation != operationGeneration) return@valueCallback
             val stored = (result as? ValueResult.Success)?.value
             when {
                 stored == null -> mutableState.value = GroupSelectionState.Selector(memberships)
-                memberships.any { it.groupId == stored } -> selectInternal(stored)
+                memberships.any { it.groupId == stored } -> selectInternal(stored, generation)
                 else -> {
                     writeSelection(null)
                     mutableState.value = GroupSelectionState.Selector(memberships)
@@ -78,16 +98,20 @@ class GroupSelectionCoordinator(
         })
     }
 
-    private fun selectInternal(groupId: String) {
+    private fun selectInternal(groupId: String, generation: Long) {
         mutableState.value = GroupSelectionState.Loading(groupId)
         writeSelection(groupId)
         scope.launch {
-            mutableState.value = when (val result = groups.read(groupId)) {
+            val result = groups.read(groupId)
+            if (generation != operationGeneration) return@launch
+            mutableState.value = when (result) {
                 is NetworkResult.Success -> GroupSelectionState.Selected(result.value)
                 is NetworkResult.Failure -> GroupSelectionState.LoadError(groupId)
             }
         }
     }
+
+    private fun nextGeneration(): Long = ++operationGeneration
 
     private fun writeSelection(value: String?) {
         localState.writeSelectedGroupId(value, resultCallback {})
