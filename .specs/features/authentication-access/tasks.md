@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T34 concluidas
+**Status:** Execute em andamento - T01..T35 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -739,8 +739,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** unit, +17 transicoes/restart/retry/refresh/logout.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] segundo 401 e unico caminho de auth invalidation; [ ] 5xx
-  mantem session; [ ] baseline +17 e Gate verde.
+- **Done when:** [x] segundo 401 e unico caminho de auth invalidation; [x] 5xx
+  mantem session; [x] baseline +17 e Gate verde.
 - **Commit:** `feat(access-mobile): coordinate verified sessions`
 
 ### T36 - Implementar selecao de grupo

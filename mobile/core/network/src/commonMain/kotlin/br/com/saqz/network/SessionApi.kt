@@ -23,9 +23,13 @@ data class SessionDto(
     val memberships: List<SessionMembershipDto>,
 )
 
+interface SessionGateway {
+    suspend fun bootstrap(): NetworkResult<SessionDto>
+}
+
 class SessionApi(
     private val network: AuthenticatedNetworkClient,
-) {
-    suspend fun bootstrap(): NetworkResult<SessionDto> =
+) : SessionGateway {
+    override suspend fun bootstrap(): NetworkResult<SessionDto> =
         network.execute(HttpMethod.Put, "api/session", SessionDto.serializer())
 }
