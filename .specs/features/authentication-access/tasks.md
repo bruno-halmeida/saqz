@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T36 concluidas
+**Status:** Execute em andamento - T01..T37 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -774,8 +774,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** unit, +18 casos create/settings/roles/conflict/field/single-flight.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] todos os roles produzem acoes corretas; [ ] baseline +18;
-  [ ] Gate verde.
+- **Done when:** [x] todos os roles produzem acoes corretas; [x] baseline +18;
+  [x] Gate verde.
 - **Commit:** `feat(access-mobile): coordinate group administration`
 
 ### T38 - Implementar convite pendente e resgate

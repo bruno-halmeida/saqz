@@ -37,18 +37,30 @@ private data class ChangeRoleRequestDto(val role: PersistedRoleDto)
 @Serializable
 private data class RedeemInviteRequestDto(val code: String)
 
+interface RolesInvitesGateway {
+    suspend fun listMemberships(groupId: String): NetworkResult<List<MembershipDto>>
+
+    suspend fun changeRole(groupId: String, userId: String, role: PersistedRoleDto): NetworkResult<MembershipDto>
+
+    suspend fun rotateInvite(groupId: String): NetworkResult<InviteUrlDto>
+
+    suspend fun expireInvite(groupId: String): NetworkResult<Unit>
+
+    suspend fun redeem(code: String): NetworkResult<RedeemedInviteDto>
+}
+
 class RolesInvitesApi(
     private val network: AuthenticatedNetworkClient,
-) {
+) : RolesInvitesGateway {
     private val json = Json { explicitNulls = false }
 
-    suspend fun listMemberships(groupId: String): NetworkResult<List<MembershipDto>> = network.execute(
+    override suspend fun listMemberships(groupId: String): NetworkResult<List<MembershipDto>> = network.execute(
         HttpMethod.Get,
         "api/groups/$groupId/memberships",
         ListSerializer(MembershipDto.serializer()),
     )
 
-    suspend fun changeRole(
+    override suspend fun changeRole(
         groupId: String,
         userId: String,
         role: PersistedRoleDto,
@@ -59,18 +71,18 @@ class RolesInvitesApi(
         NetworkRequest(json.encodeToString(ChangeRoleRequestDto(role))),
     )
 
-    suspend fun rotateInvite(groupId: String): NetworkResult<InviteUrlDto> = network.execute(
+    override suspend fun rotateInvite(groupId: String): NetworkResult<InviteUrlDto> = network.execute(
         HttpMethod.Post,
         "api/groups/$groupId/invite",
         InviteUrlDto.serializer(),
     )
 
-    suspend fun expireInvite(groupId: String): NetworkResult<Unit> = network.executeNoContent(
+    override suspend fun expireInvite(groupId: String): NetworkResult<Unit> = network.executeNoContent(
         HttpMethod.Delete,
         "api/groups/$groupId/invite",
     )
 
-    suspend fun redeem(code: String): NetworkResult<RedeemedInviteDto> = network.execute(
+    override suspend fun redeem(code: String): NetworkResult<RedeemedInviteDto> = network.execute(
         HttpMethod.Post,
         "api/invites/redeem",
         RedeemedInviteDto.serializer(),
