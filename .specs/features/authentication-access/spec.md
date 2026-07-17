@@ -321,6 +321,10 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | B1 | 2026-07-16 | O gate KMP executava apenas testes do simulador iOS, permitindo que `commonMain` dependesse acidentalmente do classpath de teste e falhasse ao compilar para Android. | SEC-04; Quick access mobile compila Android antes de `allTests`. |
 | B2 | 2026-07-16 | O gate Bruno buscava requests apenas na raiz da coleção e rejeitava organização por contexto. | SEC-05; busca recursiva coberta por fixture aninhada. |
 | B3 | 2026-07-17 | Os XCUITests iOS legados continuaram exigindo Home/Catálogo após T45 substituir o shell pelo fluxo autenticado. | AUTH-06, EDGE-07 e o Full iOS já exigem cold start no Login, ausência de conteúdo protegido e ações alcançáveis em Dynamic Type máximo; nenhum novo invariante necessário. |
+| B4 | 2026-07-17 | Protocolos Kotlin exportados via Objective-C não carregam isolamento `MainActor`, e Swift 6 rejeitou a conformidade actor-isolated do auth adapter. | O contrato T50 exige callbacks no `MainActor`; conformidade usa `@preconcurrency` e Full iOS compila a fronteira em Swift 6; nenhum novo invariante necessário. |
+| B5 | 2026-07-17 | Labels de callbacks Kotlin colidiram após export Objective-C e chegaram ao Swift como `result_:`/`result__:` em vez do nome comum original. | O Full iOS compila consumidores Swift contra o header real do umbrella framework; nenhum novo invariante necessário. |
+| B6 | 2026-07-17 | Um `Task @MainActor` tentou transferir o resultado não-`Sendable` do callback Google e Swift 6 rejeitou o possível data race. | O callback Google documentado na main queue permanece no executor com `MainActor.assumeIsolated`; Full iOS compila em concorrência estrita; nenhum novo invariante necessário. |
+| B7 | 2026-07-17 | O script iOS exigia chaves Google em todo plist Firebase local e quebrou o build Prod quando elas ainda não estavam provisionadas. | Firebase continua empacotado por ambiente, enquanto `GIDClientID` e o URL scheme são injetados somente quando ambas as chaves Google existem; Full iOS cobre Dev e Prod. |
 
 ## Critérios de Sucesso
 

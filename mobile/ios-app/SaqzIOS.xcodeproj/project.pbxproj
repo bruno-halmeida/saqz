@@ -17,6 +17,9 @@
 		A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */; };
 		A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */; };
 		A1000000000000000000000A /* AccessibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001C /* AccessibilityUITests.swift */; };
+		A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* IOSAuthAdapter.swift */; };
+		A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* IOSAuthAdapterTests.swift */; };
+		A20000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000131 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +52,8 @@
 		A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPreferencesObserver.swift; sourceTree = "<group>"; };
 		A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPreferencesObserverTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000001C /* AccessibilityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityUITests.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* IOSAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapter.swift; sourceTree = "<group>"; };
+		A20000000000000000000012 /* IOSAuthAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapterTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +63,7 @@
 			files = (
 				A10000000000000000000002 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework in Frameworks */,
 				A10000000000000000000004 /* FirebaseAuth in Frameworks */,
+				A20000000000000000000003 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000011 /* SaqzIOSApp.swift */,
+				A20000000000000000000011 /* IOSAuthAdapter.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
 				A10000000000000000000018 /* Assets.xcassets */,
 			);
@@ -130,6 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000016 /* SaqzIOSTests.swift */,
+				A20000000000000000000012 /* IOSAuthAdapterTests.swift */,
 				A10000000000000000000019 /* LaunchContractTests.swift */,
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
 			);
@@ -156,6 +164,7 @@
 			name = SaqzIOS;
 			packageProductDependencies = (
 				A10000000000000000000131 /* FirebaseAuth */,
+				A20000000000000000000131 /* GoogleSignIn */,
 			);
 			productName = SaqzIOS;
 			productReference = A10000000000000000000014 /* SaqzIOS.app */;
@@ -231,6 +240,7 @@
 			mainGroup = A10000000000000000000031;
 			packageReferences = (
 				A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			productRefGroup = A10000000000000000000035 /* Products */;
 			projectDirPath = "";
@@ -295,7 +305,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n    Debug) firebase_environment=\"Dev\" ;;\n    Release) firebase_environment=\"Prod\" ;;\n    *) firebase_environment=\"\" ;;\nesac\n\nif [ -n \"$firebase_environment\" ]; then\n    plist=\"$SRCROOT/SaqzIOS/Config/$firebase_environment/GoogleService-Info.plist\"\n    resources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n    if [ -f \"$plist\" ]; then\n        mkdir -p \"$resources\"\n        cp \"$plist\" \"$resources/GoogleService-Info.plist\"\n    fi\nfi\n";
+			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n    Debug) firebase_environment=\"Dev\" ;;\n    Release) firebase_environment=\"Prod\" ;;\n    *) firebase_environment=\"\" ;;\nesac\n\nif [ -n \"$firebase_environment\" ]; then\n    plist=\"$SRCROOT/SaqzIOS/Config/$firebase_environment/GoogleService-Info.plist\"\n    resources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n    if [ -f \"$plist\" ]; then\n        mkdir -p \"$resources\"\n        cp \"$plist\" \"$resources/GoogleService-Info.plist\"\n        client_id=$(/usr/libexec/PlistBuddy -c \"Print :CLIENT_ID\" \"$plist\" 2>/dev/null || true)\n        reversed_client_id=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$plist\" 2>/dev/null || true)\n        if [ -n \"$client_id\" ] && [ -n \"$reversed_client_id\" ]; then\n            built_plist=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n            /usr/libexec/PlistBuddy -c \"Delete :GIDClientID\" \"$built_plist\" 2>/dev/null || true\n            /usr/libexec/PlistBuddy -c \"Add :GIDClientID string $client_id\" \"$built_plist\"\n            /usr/libexec/PlistBuddy -c \"Delete :CFBundleURLTypes\" \"$built_plist\" 2>/dev/null || true\n            /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes array\" \"$built_plist\"\n            /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0 dict\" \"$built_plist\"\n            /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0:CFBundleURLSchemes array\" \"$built_plist\"\n            /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $reversed_client_id\" \"$built_plist\"\n        fi\n    fi\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -305,6 +315,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* SaqzIOSApp.swift in Sources */,
+				A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -323,6 +334,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000005 /* SaqzIOSTests.swift in Sources */,
+				A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */,
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
 			);
@@ -533,6 +545,14 @@
 				version = 12.16.0;
 			};
 		};
+		A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = exactVersion;
+				version = 9.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -540,6 +560,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		A20000000000000000000131 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

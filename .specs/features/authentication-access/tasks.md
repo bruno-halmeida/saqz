@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T49 concluidas
+**Status:** Execute em andamento - T01..T50 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -1007,8 +1007,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** IOS.
 - **Tests:** XCTest com clients fake/emulator seam, +18 casos mapping/order/cancel.
 - **Gate:** Full iOS.
-- **Done when:** [ ] Firebase configura antes do adapter/root; [ ] baseline +18;
-  [ ] SaqzDev/Prod gates verdes.
+- **Done when:** [x] Firebase configura antes do adapter/root; [x] baseline +18;
+  [x] SaqzDev/Prod gates verdes.
 - **Commit:** `feat(ios): add native authentication adapter`
 
 ### T51 - Implementar Branch/NativeLink no iOS
