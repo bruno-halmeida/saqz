@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T26 concluidas
+**Status:** Execute em andamento - T01..T27 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -599,7 +599,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +10 casos das duas rotas/roles/falhas.
 - **Gate:** HTTP full.
-- **Done when:** [ ] captura de output nao encontra code; [ ] baseline +10; [ ] Gate verde.
+- **Done when:** [x] captura de output nao encontra code; [x] baseline +10; [x] Gate verde.
 - **Commit:** `feat(access): expose invite management endpoints`
 
 ### T28 - Implementar RedeemInvite

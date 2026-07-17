@@ -3,24 +3,32 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.access.adapter.input.http.AccessGroupController
 import br.com.saqz.access.adapter.input.http.AccessGroupReadController
 import br.com.saqz.access.adapter.input.http.AccessGroupSettingsController
+import br.com.saqz.access.adapter.input.http.AccessInviteManagementController
 import br.com.saqz.access.adapter.input.http.AccessMembershipController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.output.crypto.JcaSecureTokenGenerator
 import br.com.saqz.access.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
 import br.com.saqz.access.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.access.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
+import br.com.saqz.access.adapter.output.jdbc.invite.JdbcInviteManagementRepository
 import br.com.saqz.access.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.access.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.access.adapter.output.link.BranchInviteLinkFactory
 import br.com.saqz.access.application.group.create.CreateGroup
 import br.com.saqz.access.application.group.read.GetGroup
 import br.com.saqz.access.application.group.settings.UpdateGroupSettings
+import br.com.saqz.access.application.invite.manage.ExpireInvite
+import br.com.saqz.access.application.invite.manage.RotateInvite
 import br.com.saqz.access.application.membership.ChangeMemberRole
 import br.com.saqz.access.application.membership.ListAccessMemberships
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.domain.GroupAccessPolicy
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.net.URI
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
@@ -103,4 +111,44 @@ class AccessSessionConfiguration {
         listAccessMemberships: ListAccessMemberships,
         changeMemberRole: ChangeMemberRole,
     ) = AccessMembershipController(bootstrapSession, listAccessMemberships, changeMemberRole)
+
+    @Bean
+    fun inviteManagementRepository(dataSource: DataSource) = JdbcInviteManagementRepository(dataSource)
+
+    @Bean
+    fun inviteTokenGenerator() = JcaSecureTokenGenerator()
+
+    @Bean
+    fun inviteLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
+        BranchInviteLinkFactory(URI(branchDomain))
+
+    @Bean
+    fun rotateInvite(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        inviteRepository: JdbcInviteManagementRepository,
+        tokenGenerator: JcaSecureTokenGenerator,
+        linkFactory: BranchInviteLinkFactory,
+    ) = RotateInvite(
+        transaction,
+        readRepository,
+        inviteRepository,
+        GroupAccessPolicy(),
+        tokenGenerator,
+        linkFactory,
+    )
+
+    @Bean
+    fun expireInvite(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        inviteRepository: JdbcInviteManagementRepository,
+    ) = ExpireInvite(transaction, readRepository, inviteRepository, GroupAccessPolicy())
+
+    @Bean
+    fun accessInviteManagementController(
+        bootstrapSession: BootstrapSession,
+        rotateInvite: RotateInvite,
+        expireInvite: ExpireInvite,
+    ) = AccessInviteManagementController(bootstrapSession, rotateInvite, expireInvite)
 }
