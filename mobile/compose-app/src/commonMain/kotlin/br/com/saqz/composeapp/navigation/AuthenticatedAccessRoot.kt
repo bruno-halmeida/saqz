@@ -36,8 +36,9 @@ import br.com.saqz.access.presentation.GroupAdministrationCoordinator
 import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.GroupSelectionCoordinator
 import br.com.saqz.access.presentation.InviteUiError
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
-import br.com.saqz.access.presentation.VerifiedSessionCoordinator
+import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.CreateGroupScreen
 import br.com.saqz.access.ui.ExpireInviteConfirmationDialog
@@ -230,8 +231,11 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     )
     val actions = AccessRootActions(
         updateName = { value ->
-            if (session is SessionAccessState.CompletingName) runtime.session.updateName(value)
-            else runtime.authentication.onIntent(AuthenticationIntent.UpdateName(value))
+            if (session is SessionAccessState.CompletingName) {
+                runtime.session.onIntent(SessionIntent.UpdateName(value))
+            } else {
+                runtime.authentication.onIntent(AuthenticationIntent.UpdateName(value))
+            }
         },
         updateEmail = { runtime.authentication.onIntent(AuthenticationIntent.UpdateEmail(it)) },
         updatePassword = { runtime.authentication.onIntent(AuthenticationIntent.UpdatePassword(it)) },
@@ -242,10 +246,10 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         showLogin = { runtime.authentication.onIntent(AuthenticationIntent.ShowLogin) },
         showRegistration = { runtime.authentication.onIntent(AuthenticationIntent.ShowRegistration) },
         showReset = { runtime.authentication.onIntent(AuthenticationIntent.ShowPasswordReset) },
-        confirmVerification = runtime.session::confirmVerification,
-        resendVerification = runtime.session::resendVerification,
-        completeName = runtime.session::completeName,
-        retryBootstrap = runtime.session::retryBootstrap,
+        confirmVerification = { runtime.session.onIntent(SessionIntent.ConfirmVerification) },
+        resendVerification = { runtime.session.onIntent(SessionIntent.ResendVerification) },
+        completeName = { runtime.session.onIntent(SessionIntent.CompleteName) },
+        retryBootstrap = { runtime.session.onIntent(SessionIntent.RetryBootstrap) },
         selectGroup = runtime.selection::select,
         openCreateGroup = {
             createName = ""
@@ -278,7 +282,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         confirmLogout = {
             logoutConfirmation = false
             runtime.invites.onLogout()
-            runtime.session.logout()
+            runtime.session.onIntent(SessionIntent.Logout)
         },
         cancelLogout = { logoutConfirmation = false },
         settingsNameChanged = { settingsName = it },
@@ -319,8 +323,10 @@ internal class AccessRuntime(
     )
     private val groups = GroupApi(authenticatedNetwork)
     private val roles = RolesInvitesApi(authenticatedNetwork)
-    val session = VerifiedSessionCoordinator(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
-    val authentication = AuthenticationStateMachine(dependencies.auth, session::accept)
+    val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
+    val authentication = AuthenticationStateMachine(dependencies.auth) {
+        session.onIntent(SessionIntent.Accept(it))
+    }
     val selection = GroupSelectionCoordinator(dependencies.localState, groups, scope)
     val administration = GroupAdministrationCoordinator(groups, roles, scope, selection::select)
     val invites = DeferredInviteCoordinator(dependencies.links, dependencies.localState, roles, scope, selection::select)
@@ -341,7 +347,9 @@ internal class AccessRuntime(
                 authObserved = true
                 when (state) {
                     AuthState.SignedOut -> authentication.onIntent(AuthenticationIntent.ShowLogin)
-                    is AuthState.SignedIn -> session.accept(AuthTransition.Authenticated(state.user))
+                    is AuthState.SignedIn -> session.onIntent(
+                        SessionIntent.Accept(AuthTransition.Authenticated(state.user)),
+                    )
                 }
             }
         })

@@ -30,14 +30,14 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class VerifiedSessionCoordinatorTest {
+class SessionAccessStateMachineTest {
     @Test
     fun `unverified authentication remains blocked before bootstrap`() = runTest {
         val fixture = fixture(this)
 
-        fixture.coordinator.accept(AuthTransition.Authenticated(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
-        assertEquals(unverified, assertIs<SessionAccessState.AwaitingVerification>(fixture.coordinator.state.value).user)
+        assertEquals(unverified, assertIs<SessionAccessState.AwaitingVerification>(fixture.machine.state.value).user)
         assertEquals(0, fixture.session.calls)
     }
 
@@ -45,9 +45,9 @@ class VerifiedSessionCoordinatorTest {
     fun `verified user without usable name requires completion before bootstrap`() = runTest {
         val fixture = fixture(this)
 
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified.copy(displayName = " ")))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = " "))))
 
-        assertEquals("", assertIs<SessionAccessState.CompletingName>(fixture.coordinator.state.value).name)
+        assertEquals("", assertIs<SessionAccessState.CompletingName>(fixture.machine.state.value).name)
         assertEquals(0, fixture.session.calls)
     }
 
@@ -55,22 +55,22 @@ class VerifiedSessionCoordinatorTest {
     fun `verified named user bootstraps into ready state`() = runTest {
         val fixture = fixture(this)
 
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
-        assertEquals(session, assertIs<SessionAccessState.Ready>(fixture.coordinator.state.value).session)
+        assertEquals(session, assertIs<SessionAccessState.Ready>(fixture.machine.state.value).session)
         assertEquals(1, fixture.session.calls)
     }
 
     @Test
     fun `already verified reload keeps unverified account blocked`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.VerificationRequired(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
 
-        fixture.coordinator.confirmVerification()
+        fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Success(unverified))
 
-        assertIs<SessionAccessState.AwaitingVerification>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.AwaitingVerification>(fixture.machine.state.value)
         assertEquals(0, fixture.auth.tokenCalls.size)
         assertEquals(0, fixture.session.calls)
     }
@@ -78,9 +78,9 @@ class VerifiedSessionCoordinatorTest {
     @Test
     fun `verified reload forces token refresh`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.VerificationRequired(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
 
-        fixture.coordinator.confirmVerification()
+        fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Success(verified))
 
         assertEquals(listOf(true), fixture.auth.tokenCalls)
@@ -89,26 +89,26 @@ class VerifiedSessionCoordinatorTest {
     @Test
     fun `forced token success continues bootstrap`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.VerificationRequired(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
 
-        fixture.coordinator.confirmVerification()
+        fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Success(verified))
         fixture.auth.completeToken(TokenResult.Success("fresh-token"))
         runCurrent()
 
-        assertIs<SessionAccessState.Ready>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
         assertEquals(1, fixture.session.calls)
     }
 
     @Test
     fun `reload failure ends loading without bootstrap`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.VerificationRequired(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
 
-        fixture.coordinator.confirmVerification()
+        fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
 
-        val state = assertIs<SessionAccessState.AwaitingVerification>(fixture.coordinator.state.value)
+        val state = assertIs<SessionAccessState.AwaitingVerification>(fixture.machine.state.value)
         assertEquals(AuthUiError.NETWORK_UNAVAILABLE, state.error)
         assertFalse(state.isLoading)
         assertEquals(0, fixture.session.calls)
@@ -117,22 +117,22 @@ class VerifiedSessionCoordinatorTest {
     @Test
     fun `resend verification maps provider feedback without bootstrap`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.VerificationRequired(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
 
-        fixture.coordinator.resendVerification()
+        fixture.machine.onIntent(SessionIntent.ResendVerification)
         fixture.auth.completeOperation(OperationResult.Success)
 
-        assertTrue(assertIs<SessionAccessState.AwaitingVerification>(fixture.coordinator.state.value).verificationSent)
+        assertTrue(assertIs<SessionAccessState.AwaitingVerification>(fixture.machine.state.value).verificationSent)
         assertEquals(0, fixture.session.calls)
     }
 
     @Test
     fun `name completion sends exact value`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified.copy(displayName = null)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
 
-        fixture.coordinator.updateName("Person Name")
-        fixture.coordinator.completeName()
+        fixture.machine.onIntent(SessionIntent.UpdateName("Person Name"))
+        fixture.machine.onIntent(SessionIntent.CompleteName)
 
         assertEquals(listOf("Person Name"), fixture.auth.nameUpdates)
     }
@@ -140,27 +140,27 @@ class VerifiedSessionCoordinatorTest {
     @Test
     fun `name completion success refreshes token then bootstraps`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified.copy(displayName = null)))
-        fixture.coordinator.updateName("Person Name")
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
+        fixture.machine.onIntent(SessionIntent.UpdateName("Person Name"))
 
-        fixture.coordinator.completeName()
+        fixture.machine.onIntent(SessionIntent.CompleteName)
         fixture.auth.completeAuth(AuthResult.Success(verified))
         fixture.auth.completeToken(TokenResult.Success("fresh-token"))
         runCurrent()
 
         assertEquals(listOf(true), fixture.auth.tokenCalls)
-        assertIs<SessionAccessState.Ready>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
     }
 
     @Test
     fun `invalid completed name stays local and does not call provider`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified.copy(displayName = null)))
-        fixture.coordinator.updateName("\n")
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
+        fixture.machine.onIntent(SessionIntent.UpdateName("\n"))
 
-        fixture.coordinator.completeName()
+        fixture.machine.onIntent(SessionIntent.CompleteName)
 
-        val state = assertIs<SessionAccessState.CompletingName>(fixture.coordinator.state.value)
+        val state = assertIs<SessionAccessState.CompletingName>(fixture.machine.state.value)
         assertTrue(state.invalidName)
         assertTrue(fixture.auth.nameUpdates.isEmpty())
     }
@@ -169,24 +169,24 @@ class VerifiedSessionCoordinatorTest {
     fun `backend failure exposes retry without protected session`() = runTest {
         val fixture = fixture(this, NetworkResult.Failure(NetworkError.HttpStatus(500)))
 
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
-        assertIs<SessionAccessState.BootstrapError>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
         assertEquals(0, fixture.auth.signOutCalls)
     }
 
     @Test
     fun `bootstrap retry preserves firebase session and can recover`() = runTest {
         val fixture = fixture(this, NetworkResult.Failure(NetworkError.Unavailable))
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
         fixture.session.result = NetworkResult.Success(session)
 
-        fixture.coordinator.retryBootstrap()
+        fixture.machine.onIntent(SessionIntent.RetryBootstrap)
         runCurrent()
 
-        assertIs<SessionAccessState.Ready>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
         assertEquals(2, fixture.session.calls)
         assertEquals(0, fixture.auth.signOutCalls)
     }
@@ -198,47 +198,47 @@ class VerifiedSessionCoordinatorTest {
         )
         val fixture = fixture(this, failure)
 
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
-        assertIs<SessionAccessState.AwaitingVerification>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.AwaitingVerification>(fixture.machine.state.value)
     }
 
     @Test
     fun `logout clears selected group pending invite and native session`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
-        fixture.coordinator.logout()
+        fixture.machine.onIntent(SessionIntent.Logout)
 
         assertEquals(listOf<String?>(null), fixture.local.selectedWrites)
         assertEquals(listOf<String?>(null), fixture.local.pendingWrites)
         assertEquals(1, fixture.auth.signOutCalls)
-        assertIs<SessionAccessState.SignedOut>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
     }
 
     @Test
     fun `session invalidation uses the same local logout path`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.Authenticated(verified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
-        fixture.coordinator.invalidate()
+        fixture.machine.invalidate()
 
         assertEquals(listOf<String?>(null), fixture.local.selectedWrites)
         assertEquals(listOf<String?>(null), fixture.local.pendingWrites)
         assertEquals(1, fixture.auth.signOutCalls)
-        assertIs<SessionAccessState.SignedOut>(fixture.coordinator.state.value)
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
     }
 
     @Test
     fun `duplicate verification confirmation is single flight`() = runTest {
         val fixture = fixture(this)
-        fixture.coordinator.accept(AuthTransition.VerificationRequired(unverified))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
 
-        fixture.coordinator.confirmVerification()
-        fixture.coordinator.confirmVerification()
+        fixture.machine.onIntent(SessionIntent.ConfirmVerification)
+        fixture.machine.onIntent(SessionIntent.ConfirmVerification)
 
         assertEquals(1, fixture.auth.reloadCalls)
     }
@@ -250,7 +250,7 @@ class VerifiedSessionCoordinatorTest {
         val auth = FakeAuthPort()
         val local = FakeLocalState()
         val gateway = FakeSessionGateway(result)
-        return Fixture(VerifiedSessionCoordinator(auth, local, gateway, scope), auth, local, gateway)
+        return Fixture(SessionAccessStateMachine(auth, local, gateway, scope), auth, local, gateway)
     }
 
     private class FakeSessionGateway(var result: NetworkResult<SessionDto>) : SessionGateway {
@@ -295,7 +295,7 @@ class VerifiedSessionCoordinatorTest {
     }
 
     private data class Fixture(
-        val coordinator: VerifiedSessionCoordinator,
+        val machine: SessionAccessStateMachine,
         val auth: FakeAuthPort,
         val local: FakeLocalState,
         val session: FakeSessionGateway,

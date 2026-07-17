@@ -46,7 +46,23 @@ sealed interface SessionAccessState {
     data class Ready(val session: SessionDto) : SessionAccessState
 }
 
-class VerifiedSessionCoordinator(
+sealed interface SessionIntent {
+    data class Accept(val transition: AuthTransition) : SessionIntent
+
+    data object ConfirmVerification : SessionIntent
+
+    data object ResendVerification : SessionIntent
+
+    data class UpdateName(val value: String) : SessionIntent
+
+    data object CompleteName : SessionIntent
+
+    data object RetryBootstrap : SessionIntent
+
+    data object Logout : SessionIntent
+}
+
+class SessionAccessStateMachine(
     private val auth: NativeAuthPort,
     private val localState: LocalAccessStatePort,
     private val session: SessionGateway,
@@ -57,14 +73,22 @@ class VerifiedSessionCoordinator(
     private var currentUser: NativeUser? = null
     private var loggingOut = false
 
-    fun accept(transition: AuthTransition) {
-        when (transition) {
-            is AuthTransition.Authenticated -> routeIdentity(transition.user)
-            is AuthTransition.VerificationRequired -> awaitVerification(transition.user)
+    fun onIntent(intent: SessionIntent) {
+        when (intent) {
+            is SessionIntent.Accept -> when (val transition = intent.transition) {
+                is AuthTransition.Authenticated -> routeIdentity(transition.user)
+                is AuthTransition.VerificationRequired -> awaitVerification(transition.user)
+            }
+            SessionIntent.ConfirmVerification -> confirmVerification()
+            SessionIntent.ResendVerification -> resendVerification()
+            is SessionIntent.UpdateName -> updateName(intent.value)
+            SessionIntent.CompleteName -> completeName()
+            SessionIntent.RetryBootstrap -> retryBootstrap()
+            SessionIntent.Logout -> logout()
         }
     }
 
-    fun confirmVerification() {
+    private fun confirmVerification() {
         val current = mutableState.value as? SessionAccessState.AwaitingVerification ?: return
         if (current.isLoading) return
         mutableState.value = current.copy(isLoading = true, error = null, verificationSent = false)
@@ -80,7 +104,7 @@ class VerifiedSessionCoordinator(
         })
     }
 
-    fun resendVerification() {
+    private fun resendVerification() {
         val current = mutableState.value as? SessionAccessState.AwaitingVerification ?: return
         if (current.isLoading) return
         mutableState.value = current.copy(isLoading = true, error = null, verificationSent = false)
@@ -92,12 +116,12 @@ class VerifiedSessionCoordinator(
         })
     }
 
-    fun updateName(value: String) {
+    private fun updateName(value: String) {
         val current = mutableState.value as? SessionAccessState.CompletingName ?: return
         if (!current.isLoading) mutableState.value = current.copy(name = value, error = null, invalidName = false)
     }
 
-    fun completeName() {
+    private fun completeName() {
         val current = mutableState.value as? SessionAccessState.CompletingName ?: return
         if (current.isLoading) return
         val name = validName(current.name)
@@ -115,13 +139,13 @@ class VerifiedSessionCoordinator(
         })
     }
 
-    fun retryBootstrap() {
+    private fun retryBootstrap() {
         val user = currentUser ?: return
         if (mutableState.value !is SessionAccessState.BootstrapError) return
         bootstrap(user)
     }
 
-    fun logout() {
+    private fun logout() {
         if (loggingOut) return
         loggingOut = true
         localState.writeSelectedGroupId(null, resultCallback {
@@ -135,7 +159,7 @@ class VerifiedSessionCoordinator(
         })
     }
 
-    override fun invalidate() = logout()
+    override fun invalidate() = onIntent(SessionIntent.Logout)
 
     private fun routeIdentity(user: NativeUser) {
         currentUser = user

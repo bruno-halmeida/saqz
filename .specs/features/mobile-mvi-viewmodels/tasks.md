@@ -77,7 +77,7 @@ no deletions/skips.
 
 ### T2: Give verified-session flow one typed intent entry
 
-**Status:** Pending
+**Status:** Complete
 
 **What:** Replace verification/name/bootstrap/logout commands with
 `SessionIntent` and `onIntent`, keeping invalidation as a port adapter that
@@ -93,6 +93,8 @@ exact state/error outcomes preserved.
 **Commit:** `refactor(mobile): route session flow through typed intents`
 
 ### T3: Give group selection one typed intent entry
+
+**Status:** Pending
 
 **What:** Replace selection commands with `GroupSelectionIntent` and
 `onIntent`, adding an active-selection token so stale completions cannot replace
