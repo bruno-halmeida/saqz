@@ -43,26 +43,51 @@ sealed interface AuthTransition {
     data class VerificationRequired(val user: NativeUser) : AuthTransition
 }
 
-class AuthenticationCoordinator(
+sealed interface AuthenticationIntent {
+    data object ShowLogin : AuthenticationIntent
+
+    data object ShowRegistration : AuthenticationIntent
+
+    data object ShowPasswordReset : AuthenticationIntent
+
+    data class UpdateName(val value: String) : AuthenticationIntent
+
+    data class UpdateEmail(val value: String) : AuthenticationIntent
+
+    data class UpdatePassword(val value: String) : AuthenticationIntent
+
+    data object SubmitRegistration : AuthenticationIntent
+
+    data object SubmitPasswordLogin : AuthenticationIntent
+
+    data object SubmitGoogleLogin : AuthenticationIntent
+
+    data object SubmitPasswordReset : AuthenticationIntent
+}
+
+class AuthenticationStateMachine(
     private val auth: NativeAuthPort,
     private val transition: (AuthTransition) -> Unit,
 ) {
     private val mutableState = MutableStateFlow(AuthenticationState())
     val state: StateFlow<AuthenticationState> = mutableState.asStateFlow()
 
-    fun showLogin() = show(AuthScreen.LOGIN)
+    fun onIntent(intent: AuthenticationIntent) {
+        when (intent) {
+            AuthenticationIntent.ShowLogin -> show(AuthScreen.LOGIN)
+            AuthenticationIntent.ShowRegistration -> show(AuthScreen.REGISTRATION)
+            AuthenticationIntent.ShowPasswordReset -> show(AuthScreen.PASSWORD_RESET)
+            is AuthenticationIntent.UpdateName -> updateForm { copy(name = intent.value) }
+            is AuthenticationIntent.UpdateEmail -> updateForm { copy(email = intent.value) }
+            is AuthenticationIntent.UpdatePassword -> updateForm { copy(password = intent.value) }
+            AuthenticationIntent.SubmitRegistration -> submitRegistration()
+            AuthenticationIntent.SubmitPasswordLogin -> submitPasswordLogin()
+            AuthenticationIntent.SubmitGoogleLogin -> submitGoogleLogin()
+            AuthenticationIntent.SubmitPasswordReset -> submitPasswordReset()
+        }
+    }
 
-    fun showRegistration() = show(AuthScreen.REGISTRATION)
-
-    fun showPasswordReset() = show(AuthScreen.PASSWORD_RESET)
-
-    fun updateName(value: String) = updateForm { copy(name = value) }
-
-    fun updateEmail(value: String) = updateForm { copy(email = value) }
-
-    fun updatePassword(value: String) = updateForm { copy(password = value) }
-
-    fun submitRegistration() {
+    private fun submitRegistration() {
         val current = beginSensitiveSubmit() ?: return
         auth.createAccount(current.name, current.email, current.password, authCallback { result ->
             when (result) {
@@ -81,17 +106,17 @@ class AuthenticationCoordinator(
         })
     }
 
-    fun submitPasswordLogin() {
+    private fun submitPasswordLogin() {
         val current = beginSensitiveSubmit() ?: return
         auth.signInWithPassword(current.email, current.password, authCallback(::completeLogin))
     }
 
-    fun submitGoogleLogin() {
+    private fun submitGoogleLogin() {
         if (!beginSubmit()) return
         auth.signInWithGoogle(authCallback(::completeLogin))
     }
 
-    fun submitPasswordReset() {
+    private fun submitPasswordReset() {
         val current = mutableState.value
         if (!beginSubmit()) return
         auth.sendPasswordReset(current.email, resultCallback {

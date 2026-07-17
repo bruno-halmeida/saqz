@@ -194,6 +194,14 @@
 - **Date**: 2026-07-16
 - **Status**: active
 
+### AD-025
+- **Decision**: Every Compose product navigation route owns a lifecycle-aware KMP ViewModel whose screen command surface is one typed `onIntent`, with immutable `StateFlow` state, explicit one-shot effects, and stateless visual composables.
+- **Reason**: A single state-machine entry makes Android/iOS presentation transitions discoverable, testable and lifecycle-consistent while keeping UI rendering independent from business coordination.
+- **Trade-off**: Presentation features require explicit intent/state/effect types and route factories; state-derived panels inside one route share that route ViewModel until they become real navigation entries.
+- **Scope**: All current and future Compose Multiplatform product routes and feature presentation modules.
+- **Date**: 2026-07-17
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: ios-ci-dev-only — .specs/features/ios-ci-dev-only/

@@ -17,12 +17,12 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class AuthenticationCoordinatorTest {
+class AuthenticationStateMachineTest {
     @Test
     fun `registration submits exact nonempty form once`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
 
         assertEquals(listOf(RegistrationCall("Person Name", "person@example.test", "secret-value")), fixture.auth.registrations)
     }
@@ -31,68 +31,68 @@ class AuthenticationCoordinatorTest {
     fun `registration clears password as soon as submitted`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
 
-        assertEquals("", fixture.coordinator.state.value.password)
-        assertEquals("Person Name", fixture.coordinator.state.value.name)
-        assertEquals("person@example.test", fixture.coordinator.state.value.email)
+        assertEquals("", fixture.machine.state.value.password)
+        assertEquals("Person Name", fixture.machine.state.value.name)
+        assertEquals("person@example.test", fixture.machine.state.value.email)
     }
 
     @Test
     fun `successful registration requests email verification`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
         fixture.auth.completeAuth(AuthResult.Success(unverifiedUser))
 
         assertEquals(1, fixture.auth.verificationRequests)
-        assertTrue(fixture.coordinator.state.value.isLoading)
+        assertTrue(fixture.machine.state.value.isLoading)
     }
 
     @Test
     fun `verified request completion emits verification required`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
         fixture.auth.completeAuth(AuthResult.Success(unverifiedUser))
         fixture.auth.completeOperation(OperationResult.Success)
 
         assertEquals(AuthTransition.VerificationRequired(unverifiedUser), fixture.transitions.single())
-        assertFalse(fixture.coordinator.state.value.isLoading)
+        assertFalse(fixture.machine.state.value.isLoading)
     }
 
     @Test
     fun `registration failure maps email in use without provider detail`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
         fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.EMAIL_IN_USE))
 
-        assertEquals(AuthUiError.EMAIL_IN_USE, fixture.coordinator.state.value.error)
-        assertFalse(fixture.coordinator.state.value.isLoading)
+        assertEquals(AuthUiError.EMAIL_IN_USE, fixture.machine.state.value.error)
+        assertFalse(fixture.machine.state.value.isLoading)
     }
 
     @Test
     fun `registration provider failure preserves name and email`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
         fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
 
-        assertEquals("Person Name", fixture.coordinator.state.value.name)
-        assertEquals("person@example.test", fixture.coordinator.state.value.email)
-        assertEquals(AuthUiError.PROVIDER_UNAVAILABLE, fixture.coordinator.state.value.error)
+        assertEquals("Person Name", fixture.machine.state.value.name)
+        assertEquals("person@example.test", fixture.machine.state.value.email)
+        assertEquals(AuthUiError.PROVIDER_UNAVAILABLE, fixture.machine.state.value.error)
     }
 
     @Test
     fun `registration verification failure ends loading with actionable error`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
         fixture.auth.completeAuth(AuthResult.Success(unverifiedUser))
         fixture.auth.completeOperation(OperationResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
 
-        assertEquals(AuthUiError.NETWORK_UNAVAILABLE, fixture.coordinator.state.value.error)
+        assertEquals(AuthUiError.NETWORK_UNAVAILABLE, fixture.machine.state.value.error)
         assertTrue(fixture.transitions.isEmpty())
     }
 
@@ -100,9 +100,9 @@ class AuthenticationCoordinatorTest {
     fun `second registration submit while loading is ignored`() {
         val fixture = fixture().filledRegistration()
 
-        fixture.coordinator.submitRegistration()
-        fixture.coordinator.updatePassword("another-secret")
-        fixture.coordinator.submitRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
+        fixture.machine.onIntent(AuthenticationIntent.UpdatePassword("another-secret"))
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
 
         assertEquals(1, fixture.auth.registrations.size)
     }
@@ -110,47 +110,47 @@ class AuthenticationCoordinatorTest {
     @Test
     fun `password login submits email and captured password`() {
         val fixture = fixture()
-        fixture.coordinator.updateEmail("person@example.test")
-        fixture.coordinator.updatePassword("secret-value")
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("person@example.test"))
+        fixture.machine.onIntent(AuthenticationIntent.UpdatePassword("secret-value"))
 
-        fixture.coordinator.submitPasswordLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordLogin)
 
         assertEquals(listOf(LoginCall("person@example.test", "secret-value")), fixture.auth.logins)
-        assertEquals("", fixture.coordinator.state.value.password)
+        assertEquals("", fixture.machine.state.value.password)
     }
 
     @Test
     fun `password login success emits authenticated user`() {
         val fixture = fixture()
-        fixture.coordinator.updatePassword("secret-value")
+        fixture.machine.onIntent(AuthenticationIntent.UpdatePassword("secret-value"))
 
-        fixture.coordinator.submitPasswordLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordLogin)
         fixture.auth.completeAuth(AuthResult.Success(verifiedUser))
 
         assertEquals(AuthTransition.Authenticated(verifiedUser), fixture.transitions.single())
-        assertFalse(fixture.coordinator.state.value.isLoading)
+        assertFalse(fixture.machine.state.value.isLoading)
     }
 
     @Test
     fun `invalid credentials become stable actionable error`() {
         val fixture = fixture()
-        fixture.coordinator.updateEmail("person@example.test")
-        fixture.coordinator.updatePassword("wrong")
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("person@example.test"))
+        fixture.machine.onIntent(AuthenticationIntent.UpdatePassword("wrong"))
 
-        fixture.coordinator.submitPasswordLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordLogin)
         fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS))
 
-        assertEquals(AuthUiError.INVALID_CREDENTIALS, fixture.coordinator.state.value.error)
-        assertEquals("person@example.test", fixture.coordinator.state.value.email)
+        assertEquals(AuthUiError.INVALID_CREDENTIALS, fixture.machine.state.value.error)
+        assertEquals("person@example.test", fixture.machine.state.value.email)
     }
 
     @Test
     fun `second password login while loading is ignored`() {
         val fixture = fixture()
-        fixture.coordinator.updatePassword("secret-value")
+        fixture.machine.onIntent(AuthenticationIntent.UpdatePassword("secret-value"))
 
-        fixture.coordinator.submitPasswordLogin()
-        fixture.coordinator.submitPasswordLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordLogin)
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordLogin)
 
         assertEquals(1, fixture.auth.logins.size)
     }
@@ -159,8 +159,8 @@ class AuthenticationCoordinatorTest {
     fun `google login starts exactly once`() {
         val fixture = fixture()
 
-        fixture.coordinator.submitGoogleLogin()
-        fixture.coordinator.submitGoogleLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitGoogleLogin)
+        fixture.machine.onIntent(AuthenticationIntent.SubmitGoogleLogin)
 
         assertEquals(1, fixture.auth.googleCalls)
     }
@@ -169,7 +169,7 @@ class AuthenticationCoordinatorTest {
     fun `google success emits authenticated user`() {
         val fixture = fixture()
 
-        fixture.coordinator.submitGoogleLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitGoogleLogin)
         fixture.auth.completeAuth(AuthResult.Success(verifiedUser))
 
         assertEquals(AuthTransition.Authenticated(verifiedUser), fixture.transitions.single())
@@ -178,14 +178,14 @@ class AuthenticationCoordinatorTest {
     @Test
     fun `google cancellation stays on current screen without error`() {
         val fixture = fixture()
-        fixture.coordinator.showRegistration()
+        fixture.machine.onIntent(AuthenticationIntent.ShowRegistration)
 
-        fixture.coordinator.submitGoogleLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitGoogleLogin)
         fixture.auth.completeAuth(AuthResult.Cancelled)
 
-        assertEquals(AuthScreen.REGISTRATION, fixture.coordinator.state.value.screen)
-        assertFalse(fixture.coordinator.state.value.isLoading)
-        assertNull(fixture.coordinator.state.value.error)
+        assertEquals(AuthScreen.REGISTRATION, fixture.machine.state.value.screen)
+        assertFalse(fixture.machine.state.value.isLoading)
+        assertNull(fixture.machine.state.value.error)
         assertTrue(fixture.transitions.isEmpty())
     }
 
@@ -193,20 +193,20 @@ class AuthenticationCoordinatorTest {
     fun `auth method conflict maps without account merge`() {
         val fixture = fixture()
 
-        fixture.coordinator.submitGoogleLogin()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitGoogleLogin)
         fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.AUTH_METHOD_CONFLICT))
 
-        assertEquals(AuthUiError.AUTH_METHOD_CONFLICT, fixture.coordinator.state.value.error)
+        assertEquals(AuthUiError.AUTH_METHOD_CONFLICT, fixture.machine.state.value.error)
         assertTrue(fixture.transitions.isEmpty())
     }
 
     @Test
     fun `password reset submits exact email`() {
         val fixture = fixture()
-        fixture.coordinator.showPasswordReset()
-        fixture.coordinator.updateEmail("person@example.test")
+        fixture.machine.onIntent(AuthenticationIntent.ShowPasswordReset)
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("person@example.test"))
 
-        fixture.coordinator.submitPasswordReset()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordReset)
 
         assertEquals(listOf("person@example.test"), fixture.auth.passwordResets)
     }
@@ -214,36 +214,36 @@ class AuthenticationCoordinatorTest {
     @Test
     fun `password reset success shows neutral confirmation`() {
         val fixture = fixture()
-        fixture.coordinator.submitPasswordReset()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordReset)
         fixture.auth.completeOperation(OperationResult.Success)
 
-        assertTrue(fixture.coordinator.state.value.resetConfirmation)
-        assertFalse(fixture.coordinator.state.value.isLoading)
-        assertNull(fixture.coordinator.state.value.error)
+        assertTrue(fixture.machine.state.value.resetConfirmation)
+        assertFalse(fixture.machine.state.value.isLoading)
+        assertNull(fixture.machine.state.value.error)
     }
 
     @Test
     fun `password reset provider outcome shows the same neutral confirmation`() {
         val fixture = fixture()
-        fixture.coordinator.submitPasswordReset()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordReset)
         fixture.auth.completeOperation(OperationResult.Failure(NativeFailureCode.UNKNOWN))
 
-        assertTrue(fixture.coordinator.state.value.resetConfirmation)
-        assertFalse(fixture.coordinator.state.value.isLoading)
-        assertNull(fixture.coordinator.state.value.error)
+        assertTrue(fixture.machine.state.value.resetConfirmation)
+        assertFalse(fixture.machine.state.value.isLoading)
+        assertNull(fixture.machine.state.value.error)
     }
 
     private fun fixture(): Fixture {
         val auth = FakeAuthPort()
         val transitions = mutableListOf<AuthTransition>()
-        return Fixture(AuthenticationCoordinator(auth, transitions::add), auth, transitions)
+        return Fixture(AuthenticationStateMachine(auth, transitions::add), auth, transitions)
     }
 
     private fun Fixture.filledRegistration(): Fixture = apply {
-        coordinator.showRegistration()
-        coordinator.updateName("Person Name")
-        coordinator.updateEmail("person@example.test")
-        coordinator.updatePassword("secret-value")
+        machine.onIntent(AuthenticationIntent.ShowRegistration)
+        machine.onIntent(AuthenticationIntent.UpdateName("Person Name"))
+        machine.onIntent(AuthenticationIntent.UpdateEmail("person@example.test"))
+        machine.onIntent(AuthenticationIntent.UpdatePassword("secret-value"))
     }
 
     private class FakeAuthPort : NativeAuthPort {
@@ -291,7 +291,7 @@ class AuthenticationCoordinatorTest {
     }
 
     private data class Fixture(
-        val coordinator: AuthenticationCoordinator,
+        val machine: AuthenticationStateMachine,
         val auth: FakeAuthPort,
         val transitions: MutableList<AuthTransition>,
     )

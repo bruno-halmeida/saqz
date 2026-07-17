@@ -27,8 +27,9 @@ import br.com.saqz.access.port.TokenCallback
 import br.com.saqz.access.port.TokenResult as NativeTokenResult
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthTransition
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
-import br.com.saqz.access.presentation.AuthenticationCoordinator
+import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.DeferredInviteCoordinator
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.presentation.GroupAdministrationCoordinator
@@ -230,17 +231,17 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     val actions = AccessRootActions(
         updateName = { value ->
             if (session is SessionAccessState.CompletingName) runtime.session.updateName(value)
-            else runtime.authentication.updateName(value)
+            else runtime.authentication.onIntent(AuthenticationIntent.UpdateName(value))
         },
-        updateEmail = runtime.authentication::updateEmail,
-        updatePassword = runtime.authentication::updatePassword,
-        submitLogin = runtime.authentication::submitPasswordLogin,
-        submitGoogle = runtime.authentication::submitGoogleLogin,
-        submitRegistration = runtime.authentication::submitRegistration,
-        submitReset = runtime.authentication::submitPasswordReset,
-        showLogin = runtime.authentication::showLogin,
-        showRegistration = runtime.authentication::showRegistration,
-        showReset = runtime.authentication::showPasswordReset,
+        updateEmail = { runtime.authentication.onIntent(AuthenticationIntent.UpdateEmail(it)) },
+        updatePassword = { runtime.authentication.onIntent(AuthenticationIntent.UpdatePassword(it)) },
+        submitLogin = { runtime.authentication.onIntent(AuthenticationIntent.SubmitPasswordLogin) },
+        submitGoogle = { runtime.authentication.onIntent(AuthenticationIntent.SubmitGoogleLogin) },
+        submitRegistration = { runtime.authentication.onIntent(AuthenticationIntent.SubmitRegistration) },
+        submitReset = { runtime.authentication.onIntent(AuthenticationIntent.SubmitPasswordReset) },
+        showLogin = { runtime.authentication.onIntent(AuthenticationIntent.ShowLogin) },
+        showRegistration = { runtime.authentication.onIntent(AuthenticationIntent.ShowRegistration) },
+        showReset = { runtime.authentication.onIntent(AuthenticationIntent.ShowPasswordReset) },
         confirmVerification = runtime.session::confirmVerification,
         resendVerification = runtime.session::resendVerification,
         completeName = runtime.session::completeName,
@@ -319,7 +320,7 @@ internal class AccessRuntime(
     private val groups = GroupApi(authenticatedNetwork)
     private val roles = RolesInvitesApi(authenticatedNetwork)
     val session = VerifiedSessionCoordinator(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
-    val authentication = AuthenticationCoordinator(dependencies.auth, session::accept)
+    val authentication = AuthenticationStateMachine(dependencies.auth, session::accept)
     val selection = GroupSelectionCoordinator(dependencies.localState, groups, scope)
     val administration = GroupAdministrationCoordinator(groups, roles, scope, selection::select)
     val invites = DeferredInviteCoordinator(dependencies.links, dependencies.localState, roles, scope, selection::select)
@@ -339,7 +340,7 @@ internal class AccessRuntime(
             override fun onStateChanged(state: AuthState) {
                 authObserved = true
                 when (state) {
-                    AuthState.SignedOut -> authentication.showLogin()
+                    AuthState.SignedOut -> authentication.onIntent(AuthenticationIntent.ShowLogin)
                     is AuthState.SignedIn -> session.accept(AuthTransition.Authenticated(state.user))
                 }
             }
