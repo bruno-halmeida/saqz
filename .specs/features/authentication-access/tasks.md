@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T42 concluidas
+**Status:** Execute em andamento - T01..T43 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -879,7 +879,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI, +13 casos roles/edit/conflict/switch/logout.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] role refresh muda acoes sem confiar no estado anterior; [ ]
+- **Done when:** [x] role refresh muda acoes sem confiar no estado anterior; [x]
   baseline +13 e Gate verde.
 - **Commit:** `feat(access-ui): add group context and settings`
 

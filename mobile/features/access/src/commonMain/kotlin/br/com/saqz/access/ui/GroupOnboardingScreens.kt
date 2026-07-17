@@ -154,7 +154,7 @@ private fun CenteredActions(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ScrollColumn(content: @Composable () -> Unit) {
+internal fun ScrollColumn(content: @Composable () -> Unit) {
     Column(
         Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
             .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.sectionVerticalPadding),
