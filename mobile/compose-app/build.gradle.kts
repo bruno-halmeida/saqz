@@ -31,6 +31,7 @@ kotlin {
             api(project(":features:access"))
             implementation(project(":core:common"))
             implementation(project(":core:design-system"))
+            implementation(project(":core:network"))
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material:material:1.11.1")
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
@@ -38,6 +39,7 @@ kotlin {
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
             implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

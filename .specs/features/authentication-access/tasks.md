@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T44 concluidas
+**Status:** Execute em andamento - T01..T45 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -914,8 +914,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI/contract, +18 casos guards/back/reselection/restore/resources.
 - **Gate:** Quick app e Quick access mobile.
-- **Done when:** [ ] cada state tem exatamente um destino; [ ] sensor de stack
-  duplicada falha; [ ] baseline +18 e gates verdes.
+- **Done when:** [x] cada state tem exatamente um destino; [x] sensor de stack
+  duplicada falha; [x] baseline +18 e gates verdes.
 - **Commit:** `feat(compose-app): integrate authenticated access flow`
 
 ## Fase 6 - Adapters Android
