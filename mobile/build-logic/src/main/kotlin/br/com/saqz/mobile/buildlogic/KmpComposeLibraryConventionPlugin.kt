@@ -12,7 +12,7 @@ private const val COMPOSE_ANDROID_ASSETS_DIR = "composeAndroidAssets"
 
 // Compose library modules whose resources must reach the app APK. Kept here (not
 // per-app) so a module gaining composeResources needs no android-app edit.
-private val COMPOSE_RESOURCE_MODULES = listOf(":core:design-system", ":compose-app")
+private val COMPOSE_RESOURCE_MODULES = listOf(":core:design-system", ":features:access", ":compose-app")
 
 class KmpComposeLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {

@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T30 concluidas
+**Status:** Execute em andamento - T01..T31 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -669,8 +669,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** contract/build, +8 casos de callbacks/cancelation/export sentinel.
 - **Gate:** Quick access mobile e Quick app.
-- **Done when:** [ ] Swift header expoe apenas contracts aprovados; [ ] Android
-  compila implementacao externa; [ ] baseline +8 e gates verdes.
+- **Done when:** [x] Swift header expoe apenas contracts aprovados; [x] Android
+  compila implementacao externa; [x] baseline +8 e gates verdes.
 - **Commit:** `build(access-mobile): add shared access feature`
 
 ### T32 - Implementar client mobile de grupos
