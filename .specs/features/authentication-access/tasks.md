@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T38 concluidas
+**Status:** Execute em andamento - T01..T39 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -811,7 +811,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI, +11 casos estados/callbacks/semantics/IME/font scale.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] todos os controles cabem no viewport maximo; [ ] baseline
+- **Done when:** [x] todos os controles cabem no viewport maximo; [x] baseline
   +11 e Gate verde.
 - **Commit:** `feat(access-ui): add login screen`
 

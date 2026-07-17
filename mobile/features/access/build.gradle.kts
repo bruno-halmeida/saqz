@@ -36,6 +36,7 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+            implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
         }
     }
 }

@@ -1,0 +1,119 @@
+package br.com.saqz.access.ui
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+@OptIn(ExperimentalTestApi::class)
+class LoginScreenTest {
+    @Test fun `email input emits controlled value`() = runComposeUiTest {
+        var email = ""
+        content(onEmailChange = { email = it })
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("person@example.test")
+        assertEquals("person@example.test", email)
+    }
+
+    @Test fun `password input emits controlled value`() = runComposeUiTest {
+        var password = ""
+        content(onPasswordChange = { password = it })
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("secret")
+        assertEquals("secret", password)
+    }
+
+    @Test fun `primary action submits password login`() = runComposeUiTest {
+        var calls = 0; content(onSubmit = { calls += 1 })
+        onNodeWithTag(LoginTags.Submit).performClick()
+        assertEquals(1, calls)
+    }
+
+    @Test fun `google action invokes provider flow`() = runComposeUiTest {
+        var calls = 0; content(onGoogle = { calls += 1 })
+        onNodeWithText("Continuar com Google").performClick()
+        assertEquals(1, calls)
+    }
+
+    @Test fun `registration action is reachable`() = runComposeUiTest {
+        var calls = 0; content(onRegister = { calls += 1 })
+        onNodeWithText("Criar conta").performClick()
+        assertEquals(1, calls)
+    }
+
+    @Test fun `password reset action is reachable`() = runComposeUiTest {
+        var calls = 0; content(onReset = { calls += 1 })
+        onNodeWithText("Esqueci minha senha").performClick()
+        assertEquals(1, calls)
+    }
+
+    @Test fun `loading disables all submit actions`() = runComposeUiTest {
+        content(state = AuthenticationState(isLoading = true))
+        onNodeWithTag(LoginTags.Submit).assertIsNotEnabled()
+        onNodeWithTag(LoginTags.Google).assertIsNotEnabled()
+    }
+
+    @Test fun `stable actionable error is rendered`() = runComposeUiTest {
+        content(state = AuthenticationState(error = AuthUiError.INVALID_CREDENTIALS))
+        onNodeWithText("E-mail ou senha invalidos").assertExists()
+    }
+
+    @Test fun `password starts with accessible reveal control`() = runComposeUiTest {
+        content(state = AuthenticationState(password = "secret"))
+        onNodeWithContentDescription("Mostrar senha").assertHasClickAction()
+    }
+
+    @Test fun `email and password expose associated labels`() = runComposeUiTest {
+        content()
+        onNodeWithTag(LoginTags.Email).assertTextContains("E-mail")
+        onNodeWithTag(LoginTags.Password).assertTextContains("Senha")
+        assertEquals(2, onAllNodes(hasSetTextAction(), useUnmergedTree = true).fetchSemanticsNodes().size)
+    }
+
+    @Test fun `compact viewport at maximum font scale keeps actions reachable`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
+                    Box(Modifier.size(280.dp, 320.dp)) {
+                        LoginScreen(AuthenticationState(), {}, {}, {}, {}, {}, {})
+                    }
+                }
+            }
+        }
+        onNodeWithText("Criar conta").performScrollTo().assertExists()
+        onNodeWithText("Esqueci minha senha").performScrollTo().assertExists()
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.content(
+        state: AuthenticationState = AuthenticationState(),
+        onEmailChange: (String) -> Unit = {},
+        onPasswordChange: (String) -> Unit = {},
+        onSubmit: () -> Unit = {},
+        onGoogle: () -> Unit = {},
+        onRegister: () -> Unit = {},
+        onReset: () -> Unit = {},
+    ) = setContent {
+        SaqzTheme {
+            LoginScreen(state, onEmailChange, onPasswordChange, onSubmit, onGoogle, onRegister, onReset)
+        }
+    }
+}
