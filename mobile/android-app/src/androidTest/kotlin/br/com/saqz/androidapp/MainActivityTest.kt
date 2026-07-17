@@ -3,11 +3,14 @@ package br.com.saqz.androidapp
 import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,11 +29,6 @@ class MainActivityTest {
         }
     }
 
-    private fun openCatalog() {
-        composeRule.onNodeWithText("Explorar componentes").performClick()
-        composeRule.waitForIdle()
-    }
-
     @Test
     fun displaysTheSharedSaqzPlaceholder() {
         composeRule.onNodeWithText("Saqz").assertIsDisplayed()
@@ -42,15 +40,14 @@ class MainActivityTest {
             it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
         composeRule.waitForIdle()
-        // In landscape the bottom nav still clears the system bar inset and stays reachable.
-        composeRule.onNodeWithText("Início").assertIsDisplayed()
-        composeRule.onNodeWithText("Componentes").assertIsDisplayed()
+        // EDGE-07: both authentication actions remain reachable around system insets.
+        composeRule.onNodeWithTag("login-submit").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("login-google").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun imeKeepsInputVisible() {
-        openCatalog()
-        val email = composeRule.onNodeWithText("Email")
+        val email = composeRule.onNodeWithTag("login-email")
         // Tapping the field focuses it and requests the IME; imePadding shrinks the content
         // viewport, and the field stays reachable/visible within that reduced viewport.
         email.performScrollTo().performClick()
@@ -60,16 +57,22 @@ class MainActivityTest {
     }
 
     @Test
-    fun rotationKeepsOverlayClosed() {
-        openCatalog()
-        // The modal primary action ("ok") exists only while an overlay is open; none is.
-        composeRule.onNodeWithText("ok").assertDoesNotExist()
+    fun rotationKeepsSingleLoginDestination() {
+        assertEquals(
+            1,
+            composeRule.onAllNodesWithTag("authenticated-access-destination").fetchSemanticsNodes().size,
+        )
         composeRule.activityRule.scenario.onActivity {
             it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
         composeRule.waitForIdle()
-        // Rotation does not resurrect a closed overlay, and the catalog is still shown.
-        composeRule.onNodeWithText("ok").assertDoesNotExist()
-        composeRule.onNodeWithText("cores").assertExists()
+        // AUTH-06 + EDGE-06/EDGE-07: restoration preserves one signed-out
+        // destination and never resurrects protected catalog content.
+        assertEquals(
+            1,
+            composeRule.onAllNodesWithTag("authenticated-access-destination").fetchSemanticsNodes().size,
+        )
+        composeRule.onNodeWithTag("login-submit").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("cores").assertDoesNotExist()
     }
 }

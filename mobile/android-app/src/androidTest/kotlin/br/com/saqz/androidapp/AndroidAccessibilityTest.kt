@@ -5,6 +5,7 @@ import androidx.compose.material.Text
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -50,10 +51,15 @@ class AndroidAccessibilityTest {
         assertEquals(1, composeRule.onAllNodesWithText("Saqz").fetchSemanticsNodes().size)
 
         val headingTop = composeRule.onNodeWithText("Saqz").fetchSemanticsNode().boundsInRoot.top
-        val actionTop = composeRule.onNodeWithText("Explorar componentes").fetchSemanticsNode().boundsInRoot.top
-        val navTop = composeRule.onNodeWithText("Início").fetchSemanticsNode().boundsInRoot.top
-        // Reading order top-to-bottom: heading, then primary action, then bottom nav.
-        assertTrue("heading precedes action", headingTop < actionTop)
-        assertTrue("action precedes bottom nav", actionTop < navTop)
+        val emailTop = composeRule.onNodeWithTag("login-email").fetchSemanticsNode().boundsInRoot.top
+        val passwordTop = composeRule.onNodeWithTag("login-password").fetchSemanticsNode().boundsInRoot.top
+        val submitTop = composeRule.onNodeWithTag("login-submit").fetchSemanticsNode().boundsInRoot.top
+        val googleTop = composeRule.onNodeWithTag("login-google").fetchSemanticsNode().boundsInRoot.top
+        // AUTH-03/AUTH-06 + EDGE-07: signed-out reading order follows the
+        // visible login journey and both authentication methods stay reachable.
+        assertTrue("heading precedes email", headingTop < emailTop)
+        assertTrue("email precedes password", emailTop < passwordTop)
+        assertTrue("password precedes submit", passwordTop < submitTop)
+        assertTrue("password submit precedes Google", submitTop < googleTop)
     }
 }

@@ -88,8 +88,11 @@ dependencies {
     implementation(project(":compose-app"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.google.id)
 
     testImplementation(libs.junit)
 

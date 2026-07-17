@@ -933,8 +933,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** ANDROID.
 - **Tests:** JUnit + emulator seam, +18 casos de mapping/callback/session.
 - **Gate:** Full Android.
-- **Done when:** [ ] dev sem config usa Auth Emulator; [ ] prod nao usa emulator;
-  [ ] baseline +18 e Gate verde.
+- **Done when:** [x] dev sem config usa Auth Emulator; [x] prod nao usa emulator;
+  [x] baseline +18 e Gate verde.
 - **Commit:** `feat(android): add native authentication adapter`
 
 ### T47 - Implementar Branch/App Links no Android

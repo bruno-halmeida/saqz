@@ -3,11 +3,14 @@ package br.com.saqz.androidapp
 import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,9 +42,11 @@ class ModernAndroidBehaviorTest {
 
     @Test
     fun modernSubsetRunsStandalone() {
-        // Cold start lands on the real Home shell with no artificial retention.
+        // AUTH-03/AUTH-06: cold start without a session lands on the real login
+        // destination with both supported authentication methods available.
         composeRule.onNodeWithText("Saqz").assertIsDisplayed()
-        composeRule.onNodeWithText("Explorar componentes").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-submit").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-google").assertIsDisplayed()
     }
 
     @Test
@@ -49,24 +54,29 @@ class ModernAndroidBehaviorTest {
         shell("settings put system font_scale 2.0")
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        // At 2x font scale the primary action reflows and stays fully visible (not clipped).
-        composeRule.onNodeWithText("Explorar componentes").assertIsDisplayed()
+        // EDGE-07: both login actions reflow and remain reachable at 2x font scale.
+        composeRule.onNodeWithTag("login-submit").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("login-google").performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun rotationKeepsCatalog() {
-        composeRule.onNodeWithText("Explorar componentes").performClick()
-        composeRule.waitForIdle()
-        // Fresh navigation starts scrolled to the top, so the first section header is visible.
-        composeRule.onNodeWithText("cores").assertIsDisplayed()
+    fun rotationKeepsSingleLoginDestination() {
+        assertEquals(
+            1,
+            composeRule.onAllNodesWithTag("authenticated-access-destination").fetchSemanticsNodes().size,
+        )
         composeRule.activityRule.scenario.onActivity {
             it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
         composeRule.waitForIdle()
-        // The saved Catalog destination survives the configuration change (the Home action
-        // is gone; the Catalog tree is present regardless of the scroll viewport).
-        composeRule.onNodeWithText("Explorar componentes").assertDoesNotExist()
-        composeRule.onNodeWithText("cores").assertExists()
+        // AUTH-06 + EDGE-06/EDGE-07: rotation restores exactly one login
+        // destination, with no protected content in the semantics tree.
+        assertEquals(
+            1,
+            composeRule.onAllNodesWithTag("authenticated-access-destination").fetchSemanticsNodes().size,
+        )
+        composeRule.onNodeWithTag("login-submit").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("cores").assertDoesNotExist()
     }
 
     @Test
@@ -75,8 +85,8 @@ class ModernAndroidBehaviorTest {
             it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         composeRule.waitForIdle()
-        // Edge-to-edge: the bottom nav clears the system bar inset and stays reachable.
-        composeRule.onNodeWithText("Início").assertIsDisplayed()
-        composeRule.onNodeWithText("Componentes").assertIsDisplayed()
+        // EDGE-07: edge-to-edge keeps both authentication actions reachable.
+        composeRule.onNodeWithTag("login-submit").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("login-google").performScrollTo().assertIsDisplayed()
     }
 }

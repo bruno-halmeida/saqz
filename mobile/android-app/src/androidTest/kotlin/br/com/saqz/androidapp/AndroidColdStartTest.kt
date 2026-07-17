@@ -3,6 +3,7 @@ package br.com.saqz.androidapp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -18,11 +19,15 @@ class AndroidColdStartTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun coldStartReachesHome() {
-        // The interactive Home action is present immediately after launch — the launch
-        // screen dismissed straight into the shell, not into a splash placeholder.
-        composeRule.onNodeWithText("Explorar componentes").assertIsDisplayed()
+    fun coldStartReachesLogin() {
+        // AUTH-06: without a persisted Firebase session, the native launch screen
+        // dismisses straight into login and never exposes protected catalog content.
         composeRule.onNodeWithText("Saqz").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-email").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-password").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-submit").assertIsDisplayed()
+        composeRule.onNodeWithText("Explorar componentes").assertDoesNotExist()
+        composeRule.onNodeWithText("cores").assertDoesNotExist()
     }
 
     @Test
