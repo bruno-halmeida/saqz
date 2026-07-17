@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T39 concluidas
+**Status:** Execute em andamento - T01..T40 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -828,7 +828,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI, +10 casos fields/errors/loading/semantics/lifecycle.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] password nao aparece em restoration fixture; [ ] baseline
+- **Done when:** [x] password nao aparece em restoration fixture; [x] baseline
   +10 e Gate verde.
 - **Commit:** `feat(access-ui): add registration screen`
 

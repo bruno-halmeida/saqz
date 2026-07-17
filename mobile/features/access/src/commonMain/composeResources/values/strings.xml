@@ -14,4 +14,12 @@
     <string name="auth_error_network">Verifique sua conexao e tente novamente</string>
     <string name="auth_error_provider">O login esta indisponivel. Tente novamente</string>
     <string name="auth_error_unknown">Nao foi possivel entrar. Tente novamente</string>
+    <string name="registration_title">Criar conta</string>
+    <string name="registration_name">Nome</string>
+    <string name="registration_email">E-mail</string>
+    <string name="registration_password">Senha</string>
+    <string name="registration_submit">Criar conta</string>
+    <string name="registration_back">Voltar para entrar</string>
+    <string name="registration_name_required">Informe seu nome</string>
+    <string name="registration_email_invalid">Informe um e-mail valido</string>
 </resources>
