@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T25 concluidas
+**Status:** Execute em andamento - T01..T26 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -582,8 +582,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +10 casos incluindo rotacoes concorrentes.
 - **Gate:** SQL integration.
-- **Done when:** [ ] apenas digest vencedor existe; [ ] rollback preserva antigo;
-  [ ] baseline +10 e Gate verde.
+- **Done when:** [x] apenas digest vencedor existe; [x] rollback preserva antigo;
+  [x] baseline +10 e Gate verde.
 - **Commit:** `feat(access): persist invite lifecycle`
 
 ### T27 - Expor endpoints de gerencia de convite
