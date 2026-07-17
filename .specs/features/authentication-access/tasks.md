@@ -1115,8 +1115,8 @@ Fase 8: T55 -> T56 -> T57 -> T58
 - **Tools:** CI.
 - **Tests:** isolation + CI contract/mutation, +12 cenarios.
 - **Gate:** Isolation e Contract.
-- **Done when:** [ ] mutacoes cross-workspace morrem; [ ] workflow inventory
-  exato; [ ] baseline +12 e gates verdes.
+- **Done when:** [x] mutacoes cross-workspace morrem; [x] workflow inventory
+  exato; [x] baseline +12 e gates verdes.
 - **Commit:** `ci(access): gate isolated authenticated flows`
 
 ### T58 - Fechar documentacao e gate local

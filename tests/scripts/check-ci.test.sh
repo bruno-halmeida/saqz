@@ -239,6 +239,39 @@ if grep -Eqi 'secret|GOOGLE_APPLICATION_CREDENTIALS|service-account|signing|data
 fi
 ok 'no production secret contract'
 
+# --- T57: authenticated-flow CI and isolation contracts --------------------
+check_gradle="$repository_root/scripts/check-gradle"
+isolation="$repository_root/tests/scripts/check-workspace-isolation.test.sh"
+
+grep -Fq ':features:access:test' "$check_gradle"
+ok 'access backend unit suite required'
+grep -Fq ':features:access:integrationTest' "$check_gradle"
+ok 'access PostgreSQL suite required'
+grep -Fq ':bootstrap:emulatorTest' "$check_gradle"
+ok 'access Firebase endpoint suite required'
+grep -Fq ':core:network:allTests' "$check_gradle"
+ok 'network KMP suite required'
+grep -Fq ':features:access:compileAndroidMain' "$check_gradle"
+grep -Fq ':features:access:allTests' "$check_gradle"
+ok 'access Android and shared suites required'
+grep -Fq ':features:access:test' "$isolation"
+ok 'backend isolation includes access unit'
+grep -Fq ':features:access:integrationTest' "$isolation"
+ok 'backend isolation includes access PostgreSQL'
+grep -Fq ':core:network:allTests' "$isolation"
+ok 'mobile isolation includes network'
+grep -Fq ':features:access:allTests' "$isolation"
+ok 'mobile isolation includes access'
+assert_workflow 'npx --yes firebase-tools@15\.23\.0 --version' 'pinned Firebase emulator tooling'
+ok 'Firebase emulator tooling pinned'
+assert_workflow 'docker info' 'Docker runtime verification'
+ok 'Docker runtime available'
+if grep -Eq 'GOOGLE_APPLICATION_CREDENTIALS=|service-account|BRANCH_KEY|GOOGLE_CLIENT' "$workflow" "$check_gradle"; then
+    printf 'authenticated CI must remain credential-free\n' >&2
+    exit 1
+fi
+ok 'authenticated CI credential-free'
+
 git -C "$repository_root" diff --quiet -- "$pages_workflow" || {
     printf 'Pages workflow has unstaged changes\n' >&2
     exit 1
@@ -281,4 +314,4 @@ for gate in gradle api35 ios landing; do
     ok "aggregate rejects $gate cancellation"
 done
 
-[ "$count" -eq 36 ]
+[ "$count" -eq 48 ]

@@ -48,7 +48,7 @@ if [ "$workspace" = "mobile" ]; then
 set -eu
 printf 'gradle %s\n' "$*" >>"$COMMAND_LOG"
 case " $* " in
-    *" :core:common:allTests "*|*" :core:design-system:allTests "*|*" :compose-app:allTests "*|*" :android-app:testDevDebugUnitTest "*|*" :android-app:connectedDevDebugAndroidTest "*)
+    *" :core:common:allTests "*|*" :core:design-system:allTests "*|*" :core:network:allTests "*|*" :features:access:compileAndroidMain "*|*" :features:access:allTests "*|*" :compose-app:allTests "*|*" :android-app:testDevDebugUnitTest "*|*" :android-app:connectedDevDebugAndroidTest "*)
         printf 'BUILD SUCCESSFUL\nExecuted 5 tests\n'
         ;;
     *" help "*)
@@ -147,6 +147,9 @@ puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
 
     run_and_log core-common "$gradle" -p "$mobile_dir" :core:common:allTests --console=plain
     run_and_log core-design-system "$gradle" -p "$mobile_dir" :core:design-system:allTests --console=plain
+    run_and_log core-network "$gradle" -p "$mobile_dir" :core:network:allTests --console=plain
+    run_and_log access-android "$gradle" -p "$mobile_dir" :features:access:compileAndroidMain --console=plain
+    run_and_log access-shared "$gradle" -p "$mobile_dir" :features:access:allTests --console=plain
     run_and_log compose-app "$gradle" -p "$mobile_dir" :compose-app:allTests --console=plain
     run_and_log android-unit "$gradle" -p "$mobile_dir" :android-app:testDevDebugUnitTest --console=plain
     run_and_log android-instrumented "$gradle" -p "$mobile_dir" :android-app:connectedDevDebugAndroidTest --console=plain
@@ -159,8 +162,11 @@ puts simulators.find { |entry| entry["isAvailable"] }.fetch("udid")
         -configuration Release -destination "$destination" -only-testing:SaqzIOSTests \
         JAVA_HOME="$JAVA_HOME" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES test
 
-    expected_log="gradle -p $mobile_dir :core:common:allTests --console=plain
+expected_log="gradle -p $mobile_dir :core:common:allTests --console=plain
 gradle -p $mobile_dir :core:design-system:allTests --console=plain
+gradle -p $mobile_dir :core:network:allTests --console=plain
+gradle -p $mobile_dir :features:access:compileAndroidMain --console=plain
+gradle -p $mobile_dir :features:access:allTests --console=plain
 gradle -p $mobile_dir :compose-app:allTests --console=plain
 gradle -p $mobile_dir :android-app:testDevDebugUnitTest --console=plain
 gradle -p $mobile_dir :android-app:connectedDevDebugAndroidTest --console=plain
@@ -208,6 +214,8 @@ clean_log="$scratch_root/backend-clean.log"
 if ! "$scratch_root/backend/gradlew" -p "$scratch_root/backend" \
     :shared-kernel:check \
     :features:identity:test \
+    :features:access:test \
+    :features:access:integrationTest \
     :bootstrap:test \
     :architecture-tests:test \
     --console=plain >"$clean_log" 2>&1; then
