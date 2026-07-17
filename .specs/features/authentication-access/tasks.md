@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T24 concluidas
+**Status:** Execute em andamento - T01..T25 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -565,8 +565,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +11 casos roles/rotate/expire/factory failure/rollback.
 - **Gate:** Quick access.
-- **Done when:** [ ] raw code nao entra no repository port; [ ] falha do link
-  nao muta estado; [ ] baseline +11 e Gate verde.
+- **Done when:** [x] raw code nao entra no repository port; [x] falha do link
+  nao muta estado; [x] baseline +11 e Gate verde.
 - **Commit:** `feat(access): add invite lifecycle use cases`
 
 ### T26 - Persistir rotacao e expiracao de convite
