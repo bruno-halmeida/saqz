@@ -2,9 +2,6 @@ package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
 import br.com.saqz.bootstrap.configuration.http.RequestCorrelationFilter
-import br.com.saqz.access.application.observability.AccessMetrics
-import br.com.saqz.bootstrap.configuration.observability.MicrometerAccessMetrics
-import io.micrometer.core.instrument.MeterRegistry
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.ErrorCode
@@ -19,13 +16,10 @@ import tools.jackson.databind.ObjectMapper
 @Configuration(proxyBeanMethods = false)
 class IdentitySecurityConfiguration {
     @Bean
-    fun accessMetrics(registry: MeterRegistry): AccessMetrics = MicrometerAccessMetrics(registry)
-
-    @Bean
     fun apiProblemWriter(objectMapper: ObjectMapper) = ApiProblemWriter(objectMapper)
 
     @Bean
-    fun requestCorrelationFilter(accessMetrics: AccessMetrics) = RequestCorrelationFilter(accessMetrics)
+    fun requestCorrelationFilter() = RequestCorrelationFilter()
 
     @Bean
     fun bearerAuthenticationFilter(

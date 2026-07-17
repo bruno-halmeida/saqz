@@ -1077,7 +1077,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit + Spring output/registry, +14 casos labels/events/redaction.
 - **Gate:** Quick access e HTTP full.
-- **Done when:** [x] forbidden values nao aparecem em registry/output; [x]
+- **Done when:** [ ] forbidden values nao aparecem em registry/output; [ ]
   baseline +14 e gates verdes.
 - **Commit:** `feat(access): add safe access observability`
 
