@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material.Text
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 @Composable
@@ -87,4 +89,10 @@ fun SaqzListItem(
         }
         trailingContent?.invoke()
     }
+}
+
+@Preview
+@Composable
+private fun SaqzListItemPreview() = SaqzTheme {
+    SaqzListItem(headline = "Grupo de terça", supportingContent = { Text("OWNER") })
 }

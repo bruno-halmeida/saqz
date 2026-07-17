@@ -5,6 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material.Text
+import br.com.saqz.designsystem.theme.SaqzTheme
 
 // Bottom-anchored modal built on the same Dialog + scaffold as SaqzDialog. No experimental
 // ModalBottomSheet, no drag handle and no drag-to-dismiss: the same dismiss flags apply,
@@ -36,4 +39,10 @@ fun SaqzBottomSheet(
             content = content,
         )
     }
+}
+
+@Preview
+@Composable
+private fun SaqzBottomSheetPreview() = SaqzTheme {
+    SaqzBottomSheet("Opções", {}, primaryAction = { SaqzButton("Salvar", {}) }) { Text("Conteúdo") }
 }

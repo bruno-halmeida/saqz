@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.resources.Res
@@ -132,4 +133,10 @@ private fun AuthUiError.resource(): StringResource = when (this) {
     AuthUiError.NETWORK_UNAVAILABLE -> Res.string.auth_error_network
     AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
     AuthUiError.UNKNOWN -> Res.string.auth_error_unknown
+}
+
+@Preview
+@Composable
+private fun LoginScreenPreview() = SaqzTheme {
+    LoginScreen(AuthenticationState(email = "ana@exemplo.com"), {}, {}, {}, {}, {}, {})
 }

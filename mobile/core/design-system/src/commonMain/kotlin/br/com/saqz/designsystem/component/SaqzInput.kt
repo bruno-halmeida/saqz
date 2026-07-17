@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_hide_password
 import br.com.saqz.designsystem.resources.action_show_password
@@ -129,4 +130,10 @@ fun SaqzInput(
             )
         }
     }
+}
+
+@Preview
+@Composable
+private fun SaqzInputPreview() = SaqzTheme {
+    SaqzInput(TextFieldValue("nome@exemplo.com"), {}, label = "E-mail", kind = SaqzInputKind.Email)
 }

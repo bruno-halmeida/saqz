@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.core.common.state.SaqzUiState
 import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -63,4 +64,12 @@ fun <T> SaqzStateHost(
             is SaqzUiState.Error -> error(onRetry)
         }
     }
+}
+
+@Preview
+@Composable
+private fun SaqzStateHostPreview() = SaqzTheme {
+    SaqzStateHost<String>(state = SaqzUiState.Content("Grupo carregado"), content = { value ->
+        androidx.compose.material.Text(value)
+    })
 }

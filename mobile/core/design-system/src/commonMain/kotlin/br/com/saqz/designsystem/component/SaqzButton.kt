@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.state_loading
@@ -146,3 +147,7 @@ fun SaqzButton(
         }
     }
 }
+
+@Preview
+@Composable
+private fun SaqzButtonPreview() = SaqzTheme { SaqzButton(label = "Continuar", onClick = {}) }

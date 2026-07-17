@@ -11,6 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.access.data.GroupDto
+import br.com.saqz.access.data.GroupRoleDto
+import br.com.saqz.access.data.VersionedGroupDto
+import br.com.saqz.access.presentation.GroupActions
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.action_back
@@ -97,3 +102,24 @@ fun LogoutConfirmationDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 @Composable
 private fun Action(label: String, tag: String, click: () -> Unit, variant: SaqzButtonVariant = SaqzButtonVariant.Secondary) =
     SaqzButton(label, click, Modifier.fillMaxWidth().testTag(tag), variant)
+
+private val previewGroupState = GroupAdministrationState(
+    group = VersionedGroupDto(GroupDto("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRoleDto.OWNER), "preview-etag"),
+    actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
+)
+
+@Preview
+@Composable
+private fun GroupContextScreenPreview() = SaqzTheme {
+    GroupContextScreen(previewGroupState, {}, {}, {}, {}, {})
+}
+
+@Preview
+@Composable
+private fun GroupSettingsScreenPreview() = SaqzTheme {
+    GroupSettingsScreen(previewGroupState, "Futebol de terça", "America/Sao_Paulo", {}, {}, {}, {}, {})
+}
+
+@Preview
+@Composable
+private fun LogoutConfirmationDialogPreview() = SaqzTheme { LogoutConfirmationDialog({}, {}) }

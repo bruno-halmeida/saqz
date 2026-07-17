@@ -13,7 +13,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.data.GroupRoleDto
+import br.com.saqz.access.data.MembershipDto
 import br.com.saqz.access.data.PersistedRoleDto
 import br.com.saqz.access.presentation.GroupActions
 import br.com.saqz.access.presentation.GroupAdministrationState
@@ -244,3 +246,25 @@ private fun InviteFeedback(state: InviteToolState, onRetry: () -> Unit) {
         enabled = error != InviteUiError.ATTEMPT_LIMIT && !state.isLoading,
     )
 }
+
+private val previewInviteActions = GroupActions(true, true, true)
+
+@Preview
+@Composable
+private fun MembershipAdministrationScreenPreview() = SaqzTheme {
+    MembershipAdministrationScreen(
+        GroupAdministrationState(actions = previewInviteActions, memberships = listOf(MembershipDto("preview-athlete", "Bruno", GroupRoleDto.ATHLETE))),
+        { _, _ -> },
+        {},
+    )
+}
+
+@Preview
+@Composable
+private fun InviteManagementScreenPreview() = SaqzTheme {
+    InviteManagementScreen(previewInviteActions, InviteToolState(inviteUrl = "https://saqz.app/i/preview"), {}, {}, {}, {}, {})
+}
+
+@Preview
+@Composable
+private fun ExpireInviteConfirmationDialogPreview() = SaqzTheme { ExpireInviteConfirmationDialog({}, {}) }

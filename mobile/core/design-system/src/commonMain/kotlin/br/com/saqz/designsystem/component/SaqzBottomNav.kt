@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.LocalSaqzChrome
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -126,4 +127,15 @@ fun SaqzBottomNav(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun SaqzBottomNavPreview() = SaqzTheme {
+    SaqzBottomNav(
+        items = listOf(
+            SaqzBottomNavItem("Início", true, {}) { Text("⌂") },
+            SaqzBottomNavItem("Perfil", false, {}) { Text("◉") },
+        ),
+    )
 }

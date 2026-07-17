@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import br.com.saqz.composeapp.resources.Res
@@ -58,3 +59,7 @@ fun SaqzHomeScreen(
         )
     }
 }
+
+@Preview
+@Composable
+private fun SaqzHomeScreenPreview() = SaqzTheme { SaqzHomeScreen(onExploreComponents = {}) }

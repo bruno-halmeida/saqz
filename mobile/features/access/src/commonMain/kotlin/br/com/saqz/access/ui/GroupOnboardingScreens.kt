@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
@@ -160,4 +162,22 @@ internal fun ScrollColumn(content: @Composable () -> Unit) {
             .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.sectionVerticalPadding),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) { content() }
+}
+
+@Preview
+@Composable
+private fun BootstrapAccessScreenPreview() = SaqzTheme {
+    BootstrapAccessScreen(SessionAccessState.BootstrapError, {})
+}
+
+@Preview
+@Composable
+private fun GroupOnboardingScreenPreview() = SaqzTheme {
+    GroupOnboardingScreen(GroupSelectionState.Selector(listOf(SessionMembershipDto("preview-group", "Futebol de terça", "OWNER"))), {}, {}, {})
+}
+
+@Preview
+@Composable
+private fun CreateGroupScreenPreview() = SaqzTheme {
+    CreateGroupScreen(GroupAdministrationState(), "Futebol de terça", "America/Sao_Paulo", {}, {}, {}, {})
 }

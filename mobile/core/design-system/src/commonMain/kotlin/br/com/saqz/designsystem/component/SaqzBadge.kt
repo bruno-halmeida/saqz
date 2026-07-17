@@ -10,6 +10,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.theme.SaqzColorTokens
 import br.com.saqz.designsystem.theme.SaqzTheme
 
@@ -50,4 +51,10 @@ fun SaqzBadge(
     ) {
         Text(text = label, color = pair.foreground, style = SaqzTheme.typography.caption)
     }
+}
+
+@Preview
+@Composable
+private fun SaqzBadgePreview() = SaqzTheme {
+    SaqzBadge(label = "Ativo", variant = SaqzBadgeVariant.Success)
 }

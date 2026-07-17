@@ -24,6 +24,7 @@ kotlin {
             implementation("org.jetbrains.compose.material:material:1.11.1")
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
+            implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
         }
         commonTest.dependencies {

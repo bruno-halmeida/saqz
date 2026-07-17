@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.state_loading
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -19,3 +20,7 @@ fun SaqzLoadingState(modifier: Modifier = Modifier) {
         modifier = modifier.semantics { contentDescription = label },
     )
 }
+
+@Preview
+@Composable
+private fun SaqzLoadingStatePreview() = SaqzTheme { SaqzLoadingState() }

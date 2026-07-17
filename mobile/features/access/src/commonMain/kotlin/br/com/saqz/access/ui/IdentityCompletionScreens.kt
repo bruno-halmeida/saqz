@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.access.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
@@ -185,4 +187,24 @@ private fun AuthUiError.identityError(): StringResource = when (this) {
     AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
     AuthUiError.AUTH_METHOD_CONFLICT -> Res.string.auth_error_method_conflict
     else -> Res.string.auth_error_unknown
+}
+
+private val previewIdentityUser = NativeUser("preview-user", "ana@exemplo.com", false, "Ana")
+
+@Preview
+@Composable
+private fun VerificationScreenPreview() = SaqzTheme {
+    VerificationScreen(SessionAccessState.AwaitingVerification(previewIdentityUser, verificationSent = true), {}, {})
+}
+
+@Preview
+@Composable
+private fun NameCompletionScreenPreview() = SaqzTheme {
+    NameCompletionScreen(SessionAccessState.CompletingName(previewIdentityUser, name = "Ana"), {}, {})
+}
+
+@Preview
+@Composable
+private fun PasswordResetScreenPreview() = SaqzTheme {
+    PasswordResetScreen(AuthenticationState(email = "ana@exemplo.com"), {}, {}, {})
 }

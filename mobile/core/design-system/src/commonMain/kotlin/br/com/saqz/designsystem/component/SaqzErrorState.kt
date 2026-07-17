@@ -6,6 +6,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_retry
 import br.com.saqz.designsystem.resources.state_error
@@ -36,3 +37,7 @@ fun SaqzErrorState(
         )
     }
 }
+
+@Preview
+@Composable
+private fun SaqzErrorStatePreview() = SaqzTheme { SaqzErrorState(onRetry = {}) }

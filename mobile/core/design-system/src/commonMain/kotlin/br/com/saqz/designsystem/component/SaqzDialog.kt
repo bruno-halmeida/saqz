@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_close
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -165,8 +166,9 @@ internal fun SaqzModalScaffold(
                     ) {
                         // Decorative glyph; the accessible name lives on the box itself.
                         Text(text = "×", style = SaqzTheme.typography.lead, color = colors.textSecondary)
-                    }
-                }
+    }
+}
+
             }
             // Scrollable body: takes the remaining bounded height so the footer stays fixed.
             Column(
@@ -180,7 +182,15 @@ internal fun SaqzModalScaffold(
                 // Fixed footer: never scrolls out of view.
                 Box(modifier = Modifier.fillMaxWidth().testTag(SaqzModalFooterTag)) {
                     primaryAction()
-                }
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun SaqzDialogPreview() = SaqzTheme {
+    SaqzDialog("Confirmar ação", {}, primaryAction = { SaqzButton("Confirmar", {}) }) {
+        Text("Esta ação pode ser confirmada nesta prévia.")
+    }
+}

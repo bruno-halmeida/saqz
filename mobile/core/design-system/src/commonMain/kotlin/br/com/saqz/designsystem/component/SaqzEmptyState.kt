@@ -3,6 +3,7 @@ package br.com.saqz.designsystem.component
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.state_empty
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -18,3 +19,7 @@ fun SaqzEmptyState(modifier: Modifier = Modifier) {
         modifier = modifier,
     )
 }
+
+@Preview
+@Composable
+private fun SaqzEmptyStatePreview() = SaqzTheme { SaqzEmptyState() }

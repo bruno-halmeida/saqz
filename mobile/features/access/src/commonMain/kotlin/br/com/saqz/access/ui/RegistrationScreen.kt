@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.AuthenticationState
@@ -152,4 +153,10 @@ private fun AuthenticationState.registrationGlobalError() = when (error) {
     AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
     AuthUiError.UNKNOWN, AuthUiError.INVALID_CREDENTIALS -> Res.string.auth_error_unknown
     AuthUiError.EMAIL_IN_USE, AuthUiError.WEAK_PASSWORD, null -> null
+}
+
+@Preview
+@Composable
+private fun RegistrationScreenPreview() = SaqzTheme {
+    RegistrationScreen(AuthenticationState(screen = AuthScreen.REGISTRATION, name = "Ana", email = "ana@exemplo.com"), {}, {}, {}, {}, {})
 }

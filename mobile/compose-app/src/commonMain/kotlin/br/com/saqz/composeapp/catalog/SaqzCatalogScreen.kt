@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
@@ -253,3 +254,7 @@ private fun Section(key: String, content: @Composable () -> Unit) {
         content()
     }
 }
+
+@Preview
+@Composable
+private fun SaqzCatalogScreenPreview() = SaqzTheme { SaqzCatalogScreen() }
