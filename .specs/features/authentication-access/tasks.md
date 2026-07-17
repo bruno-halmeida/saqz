@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T41 concluidas
+**Status:** Execute em andamento - T01..T42 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -862,7 +862,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI, +15 casos estados/selection/form/retry/large text.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] fixture de troca nao encontra texto anterior; [ ] baseline
+- **Done when:** [x] fixture de troca nao encontra texto anterior; [x] baseline
   +15 e Gate verde.
 - **Commit:** `feat(access-ui): add group onboarding and selector`
 
