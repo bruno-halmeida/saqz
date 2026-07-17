@@ -3,6 +3,7 @@
 
     <application
         android:name="br.com.saqz.androidapp.SaqzApplication"
+        android:allowBackup="false"
         android:label="Saqz">
         <meta-data
             android:name="io.branch.sdk.BranchKey"

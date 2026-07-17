@@ -967,7 +967,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** ANDROID.
 - **Tests:** JUnit + instrumented, +11 casos roundtrip/delete/restart/redaction/share.
 - **Gate:** Full Android.
-- **Done when:** [ ] arquivo raw nao contem code; [ ] logout remove ambos; [ ]
+- **Done when:** [x] arquivo raw nao contem code; [x] logout remove ambos; [x]
   baseline +11 e Gate verde.
 - **Commit:** `feat(android): add secure access state adapters`
 
