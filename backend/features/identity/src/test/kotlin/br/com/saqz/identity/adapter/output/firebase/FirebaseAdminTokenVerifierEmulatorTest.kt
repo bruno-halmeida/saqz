@@ -49,7 +49,7 @@ class FirebaseAdminTokenVerifierEmulatorTest {
                 val result = FirebaseAdminTokenVerifier(firebaseTokenDecoder(app)).verify(RawIdentityToken(token))
                 assertTrue(result is TokenVerification.Verified)
                 assertEquals(email, result.principal.email)
-                assertFalse(result.principal.emailVerified ?: true)
+                assertTrue(result.principal.emailVerified == true)
                 assertTrue(result.principal.subject.isNotBlank())
             } finally {
                 app.delete()

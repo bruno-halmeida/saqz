@@ -326,6 +326,7 @@ inspecionar correlation/redaction e executar o fluxo completo em ambiente descar
 | B8 | 2026-07-17 | A referência direta ao método do router usou uma forma de `onOpenURL` sem o label `perform:` exigido pela API SwiftUI compilada. | O Full iOS compila o lifecycle bridge contra o SDK SwiftUI real em Dev e Prod; nenhum novo invariante necessário. |
 | B9 | 2026-07-17 | A nova suíte descartável inspecionou rollback via `JdbcTemplate`, mas o bootstrap não declarava Spring JDBC no classpath de testes. | T55 declara a dependência somente em testes e o emulator gate compila a suíte contra PostgreSQL real; nenhum novo invariante de produto necessário. |
 | B10 | 2026-07-17 | No Colima, `PostgreSQLContainer.start()` retornou antes de a porta mapeada aceitar JDBC, tornando o gate SQL aleatoriamente vermelho antes das assertions. | SEC-04; todo PostgreSQL integration test aguarda uma conexão JDBC real com timeout após o start e antes de migrar. |
+| B11 | 2026-07-17 | O teste do verifier ainda esperava `emailVerified=false`, embora a fixture compartilhada verificasse o email e renovasse o token antes da assertion. | SESSION-01 e SEC-04; o emulator test exige explicitamente `emailVerified=true` no token real renovado. |
 
 ## Critérios de Sucesso
 

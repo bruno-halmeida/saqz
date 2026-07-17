@@ -1096,7 +1096,7 @@ Fase 8: T55 -> T56 -> T57 -> T58
 - **Tools:** SHELL.
 - **Tests:** contract/mutation, +12 cenarios inventory/order/fail/zero tests.
 - **Gate:** Contract; depois `scripts/check-gradle` em ambiente apto.
-- **Done when:** [ ] cada suite possui failure mutation; [ ] baseline +12; [ ]
+- **Done when:** [x] cada suite possui failure mutation; [x] baseline +12; [x]
   Contract e gate Gradle completos verdes.
 - **Commit:** `test(gates): include authentication access suites`
 

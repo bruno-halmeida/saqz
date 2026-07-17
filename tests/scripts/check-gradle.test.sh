@@ -31,10 +31,19 @@ set -eu
 printf 'bruno\n' >>"$LOG_FILE"
 [ "${FAIL_BRUNO:-0}" = 0 ] || exit 46
 SH
-    cat >"$target/repo/backend/gradlew" <<'SH'
+cat >"$target/repo/backend/gradlew" <<'SH'
 #!/bin/sh
 set -eu
 printf 'backend %s\n' "$*" >>"$LOG_FILE"
+backend_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+results_dir="$backend_dir/build/test-results/stub"
+mkdir -p "$results_dir"
+tests_attr=1
+[ "${ZERO_BACKEND_TESTS:-0}" = 0 ] || tests_attr=0
+printf '<testsuite tests="%s"></testsuite>\n' "$tests_attr" >"$results_dir/TEST-stub.xml"
+if [ -n "${FAIL_TASK:-}" ]; then
+    case " $* " in *" $FAIL_TASK "*) exit 45 ;; esac
+fi
 case " $* " in
     *" :features:identity:emulatorTest "*|*" :bootstrap:emulatorTest "*)
         [ "${FAIL_FIREBASE_EMULATOR:-0}" = 0 ] || exit 43
@@ -114,9 +123,9 @@ cat >"$expected" <<'EOF'
 credentials
 scope
 bruno
-backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
+backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
@@ -144,7 +153,7 @@ make_repo "$happy"
 ) >/dev/null
 happy_log="$happy/repo/invocations.log"
 
-required_suites=':core:common:allTests :core:design-system:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
+required_suites=':core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
 
 # exactInventory: the mobile invocation lists exactly the five required suites.
 [ "$(mobile_line "$happy_log")" = "$required_suites" ] || {
@@ -207,7 +216,7 @@ fail_case deviceMissingFails 'emulator/device is required' env NO_ANDROID_DEVICE
 fail_case zeroTestsFails 'zero tests discovered' env ZERO_TESTS=1
 
 # backendInventoryUnchanged: the backend invocation is byte-for-byte the original.
-backend_expected=':shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test'
+backend_expected=':shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test'
 backend_actual=$(grep '^backend ' "$happy_log" | sed -E 's#.* -p [^ ]+/backend ##; s# --console=plain$##')
 [ "$backend_actual" = "$backend_expected" ] || {
     printf 'backendInventoryUnchanged: backend suites were %s\n' "$backend_actual" >&2
@@ -229,4 +238,34 @@ fi
 count=$((count + 1))
 printf 'ok %d - shared identity emulator lifecycle\n' "$count"
 
-[ "$count" -eq 20 ]
+# --- T56: authentication access inventory and mutations --------------------
+
+case " $backend_actual " in
+    *' :features:access:test :features:access:integrationTest '*) ;;
+    *) printf 'backend access inventory missing or out of order\n' >&2; exit 1 ;;
+esac
+count=$((count + 1)); printf 'ok %d - backendAccessInventory\n' "$count"
+
+backend_position=$(grep -n '^backend ' "$happy_log" | cut -d: -f1)
+adb_position=$(grep -n '^adb ' "$happy_log" | cut -d: -f1)
+[ "$backend_position" -lt "$adb_position" ]
+count=$((count + 1)); printf 'ok %d - backendAccessBeforeAdb\n' "$count"
+
+case " $(mobile_line "$happy_log") " in
+    *' :core:network:allTests :features:access:compileAndroidMain :features:access:allTests '*) ;;
+    *) printf 'mobile access inventory missing or out of order\n' >&2; exit 1 ;;
+esac
+count=$((count + 1)); printf 'ok %d - mobileAccessInventory\n' "$count"
+
+fail_case access-unit-failure '' env FAIL_TASK=:features:access:test
+fail_case access-integration-failure '' env FAIL_TASK=:features:access:integrationTest
+fail_case network-failure '' env FAIL_TASK=:core:network:allTests
+fail_case access-mobile-failure '' env FAIL_TASK=:features:access:allTests
+fail_case backend-zero-tests 'backend suites reported BUILD SUCCESS with zero tests discovered' env ZERO_BACKEND_TESTS=1
+
+if grep -Eq 'BRANCH_KEY|GOOGLE_CLIENT|service.account|production.secret' "$repository_root/scripts/check-gradle"; then
+    printf 'gate must remain credential-free\n' >&2; exit 1
+fi
+count=$((count + 1)); printf 'ok %d - credentialFreeAccessGate\n' "$count"
+
+[ "$count" -eq 32 ]

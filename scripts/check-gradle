@@ -16,10 +16,23 @@ fail() {
     :shared-kernel:check \
     :features:identity:test \
     :features:identity:emulatorTest \
+    :features:access:test \
+    :features:access:integrationTest \
     :bootstrap:test \
     :bootstrap:emulatorTest \
     :architecture-tests:test \
     --console=plain
+
+backend_discovered_tests=$(
+    find "$repository_root/backend" -type f -name '*.xml' -path '*/test-results/*' \
+        -exec cat {} + 2>/dev/null |
+        grep -oE 'tests="[0-9]+"' |
+        grep -oE '[0-9]+' |
+        awk '{ sum += $1 } END { print sum + 0 }'
+)
+
+[ "$backend_discovered_tests" -gt 0 ] 2>/dev/null ||
+    fail "backend suites reported BUILD SUCCESS with zero tests discovered"
 
 if ! command -v adb >/dev/null 2>&1; then
     fail "adb is required for Android instrumented tests"
@@ -32,6 +45,9 @@ fi
 "$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
     :core:common:allTests \
     :core:design-system:allTests \
+    :core:network:allTests \
+    :features:access:compileAndroidMain \
+    :features:access:allTests \
     :compose-app:allTests \
     :android-app:testDevDebugUnitTest \
     :android-app:connectedDevDebugAndroidTest \
