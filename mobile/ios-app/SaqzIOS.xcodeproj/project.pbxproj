@@ -25,6 +25,8 @@
 		A30000000000000000000003 /* BranchSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000131 /* BranchSDK */; };
 		A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000011 /* IOSLocalAccessAdapters.swift */; };
 		A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */; };
+		A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000011 /* IOSAppCompositionTests.swift */; };
+		A50000000000000000000002 /* IOSAuthenticatedLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +66,8 @@
 		A30000000000000000000013 /* SaqzIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SaqzIOS.entitlements; sourceTree = "<group>"; };
 		A40000000000000000000011 /* IOSLocalAccessAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdapters.swift; sourceTree = "<group>"; };
 		A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdaptersTests.swift; sourceTree = "<group>"; };
+		A50000000000000000000011 /* IOSAppCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppCompositionTests.swift; sourceTree = "<group>"; };
+		A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthenticatedLifecycleUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +129,7 @@
 			children = (
 				A10000000000000000000013 /* SaqzIOSUITests.swift */,
 				A1000000000000000000001C /* AccessibilityUITests.swift */,
+				A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */,
 			);
 			path = SaqzIOSUITests;
 			sourceTree = "<group>";
@@ -154,6 +159,7 @@
 				A20000000000000000000012 /* IOSAuthAdapterTests.swift */,
 				A30000000000000000000012 /* IOSLinkAdapterTests.swift */,
 				A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */,
+				A50000000000000000000011 /* IOSAppCompositionTests.swift */,
 				A10000000000000000000019 /* LaunchContractTests.swift */,
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
 			);
@@ -346,6 +352,7 @@
 			files = (
 				A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */,
 				A1000000000000000000000A /* AccessibilityUITests.swift in Sources */,
+				A50000000000000000000002 /* IOSAuthenticatedLifecycleUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -357,6 +364,7 @@
 				A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */,
 				A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */,
 				A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */,
+				A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */,
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
 			);
@@ -438,6 +446,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SAQZ_API_BASE_URL = "http://127.0.0.1:8080";
+				SAQZ_ENVIRONMENT = dev;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};
@@ -466,6 +476,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SAQZ_API_BASE_URL = "https://api.invalid";
+				SAQZ_ENVIRONMENT = prod;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};

@@ -325,6 +325,7 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | B5 | 2026-07-17 | Labels de callbacks Kotlin colidiram após export Objective-C e chegaram ao Swift como `result_:`/`result__:` em vez do nome comum original. | O Full iOS compila consumidores Swift contra o header real do umbrella framework; nenhum novo invariante necessário. |
 | B6 | 2026-07-17 | Um `Task @MainActor` tentou transferir o resultado não-`Sendable` do callback Google e Swift 6 rejeitou o possível data race. | O callback Google documentado na main queue permanece no executor com `MainActor.assumeIsolated`; Full iOS compila em concorrência estrita; nenhum novo invariante necessário. |
 | B7 | 2026-07-17 | O script iOS exigia chaves Google em todo plist Firebase local e quebrou o build Prod quando elas ainda não estavam provisionadas. | Firebase continua empacotado por ambiente, enquanto `GIDClientID` e o URL scheme são injetados somente quando ambas as chaves Google existem; Full iOS cobre Dev e Prod. |
+| B8 | 2026-07-17 | A referência direta ao método do router usou uma forma de `onOpenURL` sem o label `perform:` exigido pela API SwiftUI compilada. | O Full iOS compila o lifecycle bridge contra o SDK SwiftUI real em Dev e Prod; nenhum novo invariante necessário. |
 
 ## Critérios de Sucesso
 

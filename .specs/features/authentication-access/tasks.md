@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T52 concluidas
+**Status:** Execute em andamento - T01..T53 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -1058,8 +1058,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** IOS.
 - **Tests:** XCTest + XCUITest, +15 casos lifecycle/semantics/large type/links.
 - **Gate:** Full iOS.
-- **Done when:** [ ] max Dynamic Type mantem acoes alcancaveis; [ ] baseline +15;
-  [ ] SaqzDev e SaqzProd verdes.
+- **Done when:** [x] max Dynamic Type mantem acoes alcancaveis; [x] baseline +15;
+  [x] SaqzDev e SaqzProd verdes.
 - **Commit:** `feat(ios): compose authenticated app lifecycle`
 
 ## Fase 8 - Observabilidade e gates finais

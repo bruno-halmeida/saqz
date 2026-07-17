@@ -35,6 +35,10 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>SaqzAPIBaseURL</key>
+	<string>$(SAQZ_API_BASE_URL)</string>
+	<key>SaqzEnvironment</key>
+	<string>$(SAQZ_ENVIRONMENT)</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

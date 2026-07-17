@@ -4,6 +4,66 @@ import SaqzMobile
 import SwiftUI
 import UIKit
 
+struct IOSAppConfiguration: Equatable {
+    let environment: String
+    let apiBaseURL: String
+
+    static func bundled(bundle: Bundle = .main) -> IOSAppConfiguration {
+        IOSAppConfiguration(
+            environment: bundle.object(forInfoDictionaryKey: "SaqzEnvironment") as? String ?? "local",
+            apiBaseURL: bundle.object(forInfoDictionaryKey: "SaqzAPIBaseURL") as? String ?? "http://127.0.0.1:8080"
+        )
+    }
+}
+
+@MainActor
+struct IOSAppComposition {
+    let auth: IOSAuthAdapter
+    let links: IOSLinkAdapter
+    let localState: IOSLocalAccessStateAdapter
+    let share: IOSShareAdapter
+    let dependencies: SaqzAppDependencies
+
+    static func makeLive(configuration: IOSAppConfiguration = .bundled()) -> IOSAppComposition {
+        let auth = IOSAuthComposition.makeLive()
+        let links = IOSLinkComposition.makeLive()
+        let localState = IOSLocalAccessComposition.makeState()
+        let share = IOSLocalAccessComposition.makeShare { IOSPresentationRoot.current }
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, share: share)
+    }
+
+    static func make(
+        configuration: IOSAppConfiguration,
+        auth: IOSAuthAdapter,
+        links: IOSLinkAdapter,
+        localState: IOSLocalAccessStateAdapter,
+        share: IOSShareAdapter
+    ) -> IOSAppComposition {
+        links.onColdStart(url: nil)
+        let dependencies = SaqzAppDependencies(
+            environment: configuration.environment,
+            apiBaseUrl: configuration.apiBaseURL,
+            auth: auth,
+            links: links,
+            localState: localState,
+            share: share
+        )
+        return IOSAppComposition(auth: auth, links: links, localState: localState, share: share, dependencies: dependencies)
+    }
+}
+
+@MainActor
+final class IOSLifecycleRouter {
+    private let auth: IOSAuthAdapter
+    private let links: IOSLinkAdapter
+    init(auth: IOSAuthAdapter, links: IOSLinkAdapter) { self.auth = auth; self.links = links }
+    func open(_ url: URL) {
+        _ = auth.handleGoogleURL(url)
+        _ = links.onOpenURL(url)
+    }
+    func continueActivity(_ activity: NSUserActivity) { _ = links.onContinueUserActivity(activity) }
+}
+
 struct LocalFirebaseConfiguration: Equatable {
     let projectID: String
     let apiKey: String
@@ -95,31 +155,21 @@ enum FirebaseBootstrap {
 @main
 struct SaqzIOSApp: App {
     private let root: ComposeRootView
-    private let auth: IOSAuthAdapter
-    private let links: IOSLinkAdapter
+    private let router: IOSLifecycleRouter
 
     init() {
         let composition = FirebaseBootstrap.makeRoot(client: LiveFirebaseBootstrapClient()) {
-            let auth = IOSAuthComposition.makeLive()
-            let links = IOSLinkComposition.makeLive()
-            links.onColdStart(url: nil)
-            return (auth, links, ComposeRootView())
+            IOSAppComposition.makeLive()
         }
-        auth = composition.0
-        links = composition.1
-        root = composition.2
+        router = IOSLifecycleRouter(auth: composition.auth, links: composition.links)
+        root = ComposeRootView(dependencies: composition.dependencies)
     }
 
     var body: some Scene {
         WindowGroup {
             root
-                .onOpenURL {
-                    _ = auth.handleGoogleURL($0)
-                    _ = links.onOpenURL($0)
-                }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) {
-                    _ = links.onContinueUserActivity($0)
-                }
+                .onOpenURL(perform: router.open)
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb, perform: router.continueActivity)
         }
     }
 }
@@ -137,7 +187,7 @@ enum IOSAuthComposition {
 }
 
 @MainActor
-private enum IOSPresentationRoot {
+enum IOSPresentationRoot {
     static var current: UIViewController? {
         let scene = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -148,7 +198,8 @@ private enum IOSPresentationRoot {
     }
 }
 
-private struct ComposeRootView: UIViewControllerRepresentable {
+struct ComposeRootView: UIViewControllerRepresentable {
+    let dependencies: SaqzAppDependencies
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     // Only the Compose controller: the app's accessibility tree comes entirely from Compose
@@ -157,7 +208,10 @@ private struct ComposeRootView: UIViewControllerRepresentable {
     // Compose controller on launch and on every change.
     func makeUIViewController(context: Context) -> UIViewController {
         let controller = SaqzAccessibilityController()
-        let viewController = MainViewControllerKt.MainViewController(accessibilityController: controller)
+        let viewController = MainViewControllerKt.MainViewController(
+            accessibilityController: controller,
+            dependencies: dependencies
+        )
         context.coordinator.start(controller: controller)
         return viewController
     }
