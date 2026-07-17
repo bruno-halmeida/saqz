@@ -20,6 +20,9 @@
 		A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* IOSAuthAdapter.swift */; };
 		A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* IOSAuthAdapterTests.swift */; };
 		A20000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000131 /* GoogleSignIn */; };
+		A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000011 /* IOSLinkAdapter.swift */; };
+		A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000012 /* IOSLinkAdapterTests.swift */; };
+		A30000000000000000000003 /* BranchSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000131 /* BranchSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +57,9 @@
 		A1000000000000000000001C /* AccessibilityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityUITests.swift; sourceTree = "<group>"; };
 		A20000000000000000000011 /* IOSAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapter.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* IOSAuthAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapterTests.swift; sourceTree = "<group>"; };
+		A30000000000000000000011 /* IOSLinkAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapter.swift; sourceTree = "<group>"; };
+		A30000000000000000000012 /* IOSLinkAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapterTests.swift; sourceTree = "<group>"; };
+		A30000000000000000000013 /* SaqzIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SaqzIOS.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +70,7 @@
 				A10000000000000000000002 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework in Frameworks */,
 				A10000000000000000000004 /* FirebaseAuth in Frameworks */,
 				A20000000000000000000003 /* GoogleSignIn in Frameworks */,
+				A30000000000000000000003 /* BranchSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,7 +107,9 @@
 			children = (
 				A10000000000000000000011 /* SaqzIOSApp.swift */,
 				A20000000000000000000011 /* IOSAuthAdapter.swift */,
+				A30000000000000000000011 /* IOSLinkAdapter.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
+				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
 			);
 			path = SaqzIOS;
@@ -138,6 +147,7 @@
 			children = (
 				A10000000000000000000016 /* SaqzIOSTests.swift */,
 				A20000000000000000000012 /* IOSAuthAdapterTests.swift */,
+				A30000000000000000000012 /* IOSLinkAdapterTests.swift */,
 				A10000000000000000000019 /* LaunchContractTests.swift */,
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
 			);
@@ -165,6 +175,7 @@
 			packageProductDependencies = (
 				A10000000000000000000131 /* FirebaseAuth */,
 				A20000000000000000000131 /* GoogleSignIn */,
+				A30000000000000000000131 /* BranchSDK */,
 			);
 			productName = SaqzIOS;
 			productReference = A10000000000000000000014 /* SaqzIOS.app */;
@@ -241,6 +252,7 @@
 			packageReferences = (
 				A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				A30000000000000000000130 /* XCRemoteSwiftPackageReference "ios-branch-deep-linking-attribution" */,
 			);
 			productRefGroup = A10000000000000000000035 /* Products */;
 			projectDirPath = "";
@@ -316,6 +328,7 @@
 			files = (
 				A10000000000000000000001 /* SaqzIOSApp.swift in Sources */,
 				A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */,
+				A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -335,6 +348,7 @@
 			files = (
 				A10000000000000000000005 /* SaqzIOSTests.swift in Sources */,
 				A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */,
+				A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */,
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
 			);
@@ -398,6 +412,11 @@
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				BRANCH_DOMAIN = saqz.test-app.link;
+				BRANCH_LIVE_KEY = missing-branch-live-key;
+				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
+				BRANCH_TEST_MODE = YES;
+				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -421,6 +440,11 @@
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				BRANCH_DOMAIN = missing-branch-live-domain.invalid;
+				BRANCH_LIVE_KEY = missing-branch-live-key;
+				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
+				BRANCH_TEST_MODE = NO;
+				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -553,6 +577,14 @@
 				version = 9.1.0;
 			};
 		};
+		A30000000000000000000130 /* XCRemoteSwiftPackageReference "ios-branch-deep-linking-attribution" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/BranchMetrics/ios-branch-deep-linking-attribution";
+			requirement = {
+				kind = exactVersion;
+				version = 3.14.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -565,6 +597,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignIn;
+		};
+		A30000000000000000000131 /* BranchSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000000000000000000130 /* XCRemoteSwiftPackageReference "ios-branch-deep-linking-attribution" */;
+			productName = BranchSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

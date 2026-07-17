@@ -96,20 +96,30 @@ enum FirebaseBootstrap {
 struct SaqzIOSApp: App {
     private let root: ComposeRootView
     private let auth: IOSAuthAdapter
+    private let links: IOSLinkAdapter
 
     init() {
         let composition = FirebaseBootstrap.makeRoot(client: LiveFirebaseBootstrapClient()) {
             let auth = IOSAuthComposition.makeLive()
-            return (auth, ComposeRootView())
+            let links = IOSLinkComposition.makeLive()
+            links.onColdStart(url: nil)
+            return (auth, links, ComposeRootView())
         }
         auth = composition.0
-        root = composition.1
+        links = composition.1
+        root = composition.2
     }
 
     var body: some Scene {
         WindowGroup {
             root
-                .onOpenURL { _ = auth.handleGoogleURL($0) }
+                .onOpenURL {
+                    _ = auth.handleGoogleURL($0)
+                    _ = links.onOpenURL($0)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) {
+                    _ = links.onContinueUserActivity($0)
+                }
         }
     }
 }

@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T50 concluidas
+**Status:** Execute em andamento - T01..T51 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -1024,7 +1024,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** IOS.
 - **Tests:** XCTest, +13 casos direct/deferred/duplicate/denial/invalid/config.
 - **Gate:** Full iOS.
-- **Done when:** [ ] cold/warm/deferred chegam ao mesmo callback; [ ] baseline
+- **Done when:** [x] cold/warm/deferred chegam ao mesmo callback; [x] baseline
   +13 e Gate verde.
 - **Commit:** `feat(ios): add deferred invite links`
 
