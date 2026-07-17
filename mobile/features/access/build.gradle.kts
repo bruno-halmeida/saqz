@@ -30,6 +30,7 @@ kotlin {
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

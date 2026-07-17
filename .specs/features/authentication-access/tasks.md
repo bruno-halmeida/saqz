@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T33 concluidas
+**Status:** Execute em andamento - T01..T34 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -721,8 +721,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** unit, +18 transicoes/erros/cancelamento/duplo submit.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] cada AUTH mapeado tem output exato; [ ] password some apos
-  submit; [ ] baseline +18 e Gate verde.
+- **Done when:** [x] cada AUTH mapeado tem output exato; [x] password some apos
+  submit; [x] baseline +18 e Gate verde.
 - **Commit:** `feat(access-mobile): coordinate authentication flows`
 
 ### T35 - Implementar verificacao, bootstrap e logout
