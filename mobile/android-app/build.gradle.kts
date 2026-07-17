@@ -27,6 +27,31 @@ val missingReleaseFirebaseAndroidConfig = FirebaseAndroidConfig(
     applicationId = "missing-release-firebase-config",
 )
 
+val requiresProdBranchConfig = gradle.startParameter.taskNames.any {
+    it.contains("Prod", ignoreCase = true) || it.contains("Release", ignoreCase = true)
+}
+
+val branchTestKey = branchProperty(
+    name = "saqz.branch.testKey",
+    required = requiresProdBranchConfig,
+    fallback = "key_test_saqz_local_fixture",
+)
+val branchLiveKey = branchProperty(
+    name = "saqz.branch.liveKey",
+    required = requiresProdBranchConfig,
+    fallback = "missing-branch-live-key",
+)
+val branchTestDomain = branchProperty(
+    name = "saqz.branch.testDomain",
+    required = false,
+    fallback = "saqz.test-app.link",
+)
+val branchLiveDomain = branchProperty(
+    name = "saqz.branch.liveDomain",
+    required = requiresProdBranchConfig,
+    fallback = "missing-branch-live-domain.invalid",
+)
+
 android {
     namespace = "br.com.saqz.androidapp"
     compileSdk = libs.versions.compile.sdk.get().toInt()
@@ -65,6 +90,12 @@ android {
             buildConfigField("String", "FIREBASE_MESSAGING_SENDER_ID", firebaseConfig.messagingSenderId.toBuildConfigString())
             buildConfigField("String", "FIREBASE_APPLICATION_ID", firebaseConfig.applicationId.toBuildConfigString())
             buildConfigField("boolean", "FIREBASE_USE_EMULATOR", (!firebaseConfigFile.isFile).toString())
+            manifestPlaceholders["branchLiveKey"] = branchLiveKey
+            manifestPlaceholders["branchTestKey"] = branchTestKey
+            manifestPlaceholders["branchTestMode"] = "true"
+            manifestPlaceholders["branchDomain"] = branchTestDomain
+            buildConfigField("String", "BRANCH_DOMAIN", branchTestDomain.toBuildConfigString())
+            buildConfigField("boolean", "BRANCH_TEST_MODE", "true")
         }
         create("prod") {
             dimension = "environment"
@@ -80,6 +111,12 @@ android {
             buildConfigField("String", "FIREBASE_MESSAGING_SENDER_ID", firebaseConfig.messagingSenderId.toBuildConfigString())
             buildConfigField("String", "FIREBASE_APPLICATION_ID", firebaseConfig.applicationId.toBuildConfigString())
             buildConfigField("boolean", "FIREBASE_USE_EMULATOR", "false")
+            manifestPlaceholders["branchLiveKey"] = branchLiveKey
+            manifestPlaceholders["branchTestKey"] = branchTestKey
+            manifestPlaceholders["branchTestMode"] = "false"
+            manifestPlaceholders["branchDomain"] = branchLiveDomain
+            buildConfigField("String", "BRANCH_DOMAIN", branchLiveDomain.toBuildConfigString())
+            buildConfigField("boolean", "BRANCH_TEST_MODE", "false")
         }
     }
 }
@@ -90,6 +127,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.branch)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.google.id)
@@ -131,3 +169,9 @@ fun firebaseAndroidConfig(
 }
 
 fun String.toBuildConfigString() = "\"$this\""
+
+fun branchProperty(name: String, required: Boolean, fallback: String): String {
+    val value = providers.gradleProperty(name).orNull?.trim().orEmpty()
+    require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
+    return value.ifEmpty { fallback }
+}

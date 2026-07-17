@@ -1,12 +1,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:label="Saqz">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name="br.com.saqz.androidapp.SaqzApplication"
+        android:label="Saqz">
+        <meta-data
+            android:name="io.branch.sdk.BranchKey"
+            android:value="${branchLiveKey}" />
+        <meta-data
+            android:name="io.branch.sdk.BranchKey.test"
+            android:value="${branchTestKey}" />
+        <meta-data
+            android:name="io.branch.sdk.TestMode"
+            android:value="${branchTestMode}" />
+
         <activity
             android:name="br.com.saqz.androidapp.MainActivity"
             android:theme="@style/Theme.Saqz.Starting"
+            android:launchMode="singleTask"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${branchDomain}" />
             </intent-filter>
         </activity>
     </application>

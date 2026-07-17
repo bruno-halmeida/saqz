@@ -950,7 +950,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** ANDROID.
 - **Tests:** JUnit + instrumented, +12 casos cold/warm/duplicate/invalid/config.
 - **Gate:** Full Android.
-- **Done when:** [ ] intent sem Branch/code e no-op; [ ] baseline +12 e Gate verde.
+- **Done when:** [x] intent sem Branch/code e no-op; [x] baseline +12 e Gate verde.
 - **Commit:** `feat(android): add deferred invite links`
 
 ### T48 - Implementar estado local cifrado e compartilhamento Android
