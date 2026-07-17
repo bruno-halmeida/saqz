@@ -1,6 +1,8 @@
 package br.com.saqz.access.application.invite
 
 import java.net.URI
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 @JvmInline
 value class InviteCode private constructor(val value: String) {
@@ -31,6 +33,11 @@ class InviteTokenDigest private constructor(private val bytes: ByteArray) {
             require(bytes.size == 32) { "Invite token digest must contain 32 bytes" }
             return InviteTokenDigest(bytes.copyOf())
         }
+
+        fun sha256(code: InviteCode): InviteTokenDigest = from(
+            MessageDigest.getInstance("SHA-256")
+                .digest(code.value.toByteArray(StandardCharsets.US_ASCII)),
+        )
     }
 }
 

@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T27 concluidas
+**Status:** Execute em andamento - T01..T28 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -615,8 +615,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** unit, +16 casos retry/roles/window/boundaries/parallel contract.
 - **Gate:** Quick access.
-- **Done when:** [ ] boundary 10/11 e reset temporal asserted; [ ] roles superiores
-  preservados; [ ] baseline +16 e Gate verde.
+- **Done when:** [x] boundary 10/11 e reset temporal asserted; [x] roles superiores
+  preservados; [x] baseline +16 e Gate verde.
 - **Commit:** `feat(access): add invite redemption policy`
 
 ### T29 - Persistir resgate e limite concorrentes
