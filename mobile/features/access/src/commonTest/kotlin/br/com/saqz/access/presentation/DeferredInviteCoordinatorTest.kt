@@ -1,0 +1,209 @@
+package br.com.saqz.access.presentation
+
+import br.com.saqz.access.data.GroupRoleDto
+import br.com.saqz.access.data.InviteUrlDto
+import br.com.saqz.access.data.MembershipDto
+import br.com.saqz.access.data.PersistedRoleDto
+import br.com.saqz.access.data.RedeemedInviteDto
+import br.com.saqz.access.data.RolesInvitesGateway
+import br.com.saqz.access.port.Cancelable
+import br.com.saqz.access.port.InviteCodeListener
+import br.com.saqz.access.port.LocalAccessStatePort
+import br.com.saqz.access.port.NativeFailureCode
+import br.com.saqz.access.port.NativeLinkPort
+import br.com.saqz.access.port.OperationResult
+import br.com.saqz.access.port.ResultCallback
+import br.com.saqz.access.port.ValueCallback
+import br.com.saqz.access.port.ValueResult
+import br.com.saqz.network.ApiProblem
+import br.com.saqz.network.NetworkError
+import br.com.saqz.network.NetworkResult
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class DeferredInviteCoordinatorTest {
+    @Test fun `start subscribes once to native links`() = runTest {
+        val fixture = fixture(this)
+        fixture.coordinator.start(); fixture.coordinator.start()
+        assertEquals(1, fixture.links.starts)
+    }
+
+    @Test fun `link event persists pending code`() = runTest {
+        val fixture = fixture(this); fixture.coordinator.start()
+        fixture.links.emit(CODE_A)
+        assertEquals(listOf<String?>(CODE_A), fixture.local.writes)
+        assertTrue(fixture.coordinator.state.value.hasPending)
+    }
+
+    @Test fun `last preauthentication link replaces prior code`() = runTest {
+        val fixture = fixture(this); fixture.coordinator.start()
+        fixture.links.emit(CODE_A); fixture.links.emit(CODE_B)
+        assertEquals(listOf<String?>(CODE_A, CODE_B), fixture.local.writes)
+    }
+
+    @Test fun `pending link is not redeemed before session ready`() = runTest {
+        val fixture = fixture(this); fixture.coordinator.start(); fixture.links.emit(CODE_A)
+        runCurrent()
+        assertTrue(fixture.roles.redeems.isEmpty())
+    }
+
+    @Test fun `session readiness redeems only latest pending code`() = runTest {
+        val fixture = fixture(this); fixture.coordinator.start()
+        fixture.links.emit(CODE_A); fixture.links.emit(CODE_B)
+        fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(listOf(CODE_B), fixture.roles.redeems)
+    }
+
+    @Test fun `restart restores pending code without exposing it in state`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.coordinator.restore()
+        assertTrue(fixture.coordinator.state.value.hasPending)
+        assertFalse(fixture.coordinator.state.value.toString().contains(CODE_A))
+    }
+
+    @Test fun `restored code waits for verified bootstrap`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.coordinator.restore(); runCurrent()
+        assertTrue(fixture.roles.redeems.isEmpty())
+        fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(listOf(CODE_A), fixture.roles.redeems)
+    }
+
+    @Test fun `successful redeem selects returned group`() = runTest {
+        val fixture = fixture(this, stored = CODE_A); fixture.coordinator.restore()
+        fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(listOf(GROUP_ID), fixture.selected)
+    }
+
+    @Test fun `successful redeem clears pending capability`() = runTest {
+        val fixture = fixture(this, stored = CODE_A); fixture.coordinator.restore()
+        fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(null, fixture.local.writes.last())
+        assertFalse(fixture.coordinator.state.value.hasPending)
+    }
+
+    @Test fun `successful redeem preserves authoritative admin role`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ADMIN))
+        fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(GroupRoleDto.ADMIN, fixture.coordinator.state.value.redeemedRole)
+    }
+
+    @Test fun `duplicate events during redeem produce one request`() = runTest {
+        val fixture = fixture(this); fixture.roles.pending = CompletableDeferred()
+        fixture.coordinator.setSessionReady(true); fixture.coordinator.start()
+        fixture.links.emit(CODE_A); runCurrent(); fixture.links.emit(CODE_A)
+        assertEquals(listOf(CODE_A), fixture.roles.redeems)
+        fixture.roles.pending!!.complete(NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))); runCurrent()
+    }
+
+    @Test fun `invalid invite clears pending capability`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = problem(404, "INVITE_INVALID_OR_EXPIRED")
+        fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(null, fixture.local.writes.last())
+        assertEquals(InviteUiError.INVALID_OR_EXPIRED, fixture.coordinator.state.value.error)
+    }
+
+    @Test fun `invalid invite never selects a group`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = problem(404, "INVITE_INVALID_OR_EXPIRED")
+        fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        assertTrue(fixture.selected.isEmpty())
+        assertNull(fixture.coordinator.state.value.redeemedRole)
+    }
+
+    @Test fun `rate limit preserves pending capability`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = limited(37)
+        fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        assertTrue(fixture.coordinator.state.value.hasPending)
+        assertFalse(fixture.local.writes.contains(null))
+    }
+
+    @Test fun `rate limit exposes exact retry seconds`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = limited(37)
+        fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        assertEquals(InviteUiError.ATTEMPT_LIMIT, fixture.coordinator.state.value.error)
+        assertEquals(37, fixture.coordinator.state.value.retryAfterSeconds)
+    }
+
+    @Test fun `retry remains blocked while rate limit is active`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = limited(37)
+        fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        fixture.coordinator.retry(); runCurrent()
+        assertEquals(1, fixture.roles.redeems.size)
+    }
+
+    @Test fun `logout clears pending capability and session readiness`() = runTest {
+        val fixture = fixture(this, stored = CODE_A); fixture.coordinator.restore(); fixture.coordinator.setSessionReady(true); runCurrent()
+        fixture.coordinator.onLogout()
+        assertEquals(null, fixture.local.writes.last())
+        assertEquals(InviteState(), fixture.coordinator.state.value)
+    }
+
+    @Test fun `explicit discard clears pending without redeem`() = runTest {
+        val fixture = fixture(this, stored = CODE_A); fixture.coordinator.restore()
+        fixture.coordinator.discard()
+        assertEquals(null, fixture.local.writes.last())
+        assertFalse(fixture.coordinator.state.value.hasPending)
+        assertTrue(fixture.roles.redeems.isEmpty())
+    }
+
+    @Test fun `ready session without pending code is a no op`() = runTest {
+        val fixture = fixture(this)
+        fixture.coordinator.setSessionReady(true); fixture.coordinator.retry(); runCurrent()
+        assertTrue(fixture.roles.redeems.isEmpty())
+    }
+
+    private fun fixture(scope: kotlinx.coroutines.CoroutineScope, stored: String? = null): Fixture {
+        val links = FakeLinks(); val local = FakeLocal(stored); val roles = FakeRoles(); val selected = mutableListOf<String>()
+        return Fixture(DeferredInviteCoordinator(links, local, roles, scope, selected::add), links, local, roles, selected)
+    }
+
+    private class FakeLinks : NativeLinkPort {
+        var starts = 0; private var listener: InviteCodeListener? = null
+        override fun start(listener: InviteCodeListener): Cancelable { starts += 1; this.listener = listener; return object : Cancelable { override fun cancel() { this@FakeLinks.listener = null } } }
+        fun emit(code: String) = listener!!.onInviteCode(code)
+    }
+
+    private class FakeLocal(private val stored: String?) : LocalAccessStatePort {
+        val writes = mutableListOf<String?>()
+        override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(stored))
+        override fun writePendingInvite(value: String?, done: ResultCallback) { writes += value; done.complete(OperationResult.Success) }
+        override fun readSelectedGroupId(done: ValueCallback) = done.complete(ValueResult.Success(null))
+        override fun writeSelectedGroupId(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
+    }
+
+    private class FakeRoles : RolesInvitesGateway {
+        val redeems = mutableListOf<String>()
+        var result: NetworkResult<RedeemedInviteDto> = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        var pending: CompletableDeferred<NetworkResult<RedeemedInviteDto>>? = null
+        override suspend fun redeem(code: String): NetworkResult<RedeemedInviteDto> { redeems += code; return pending?.await() ?: result }
+        override suspend fun listMemberships(groupId: String): NetworkResult<List<MembershipDto>> = error("unused")
+        override suspend fun changeRole(groupId: String, userId: String, role: PersistedRoleDto): NetworkResult<MembershipDto> = error("unused")
+        override suspend fun rotateInvite(groupId: String): NetworkResult<InviteUrlDto> = error("unused")
+        override suspend fun expireInvite(groupId: String): NetworkResult<Unit> = error("unused")
+    }
+
+    private data class Fixture(val coordinator: DeferredInviteCoordinator, val links: FakeLinks, val local: FakeLocal, val roles: FakeRoles, val selected: MutableList<String>)
+
+    private companion object {
+        const val CODE_A = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        const val CODE_B = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        const val GROUP_ID = "group-id"
+        fun problem(status: Int, code: String) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(status, code, "corr-$status")))
+        fun limited(seconds: Int) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(429, "INVITE_ATTEMPT_LIMIT", "corr-429", retryAfterSeconds = seconds)))
+    }
+}

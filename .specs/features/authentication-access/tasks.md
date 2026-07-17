@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T37 concluidas
+**Status:** Execute em andamento - T01..T38 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -792,8 +792,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** unit, +18 casos lifecycle/duplicate/invalid/rate/roles/single-flight.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] eventos duplicados geram um redeem; [ ] code anterior nunca
-  e usado; [ ] baseline +18 e Gate verde.
+- **Done when:** [x] eventos duplicados geram um redeem; [x] code anterior nunca
+  e usado; [x] baseline +18 e Gate verde.
 - **Commit:** `feat(access-mobile): coordinate deferred invitations`
 
 ## Fase 5 - Interface Compose e navegacao
