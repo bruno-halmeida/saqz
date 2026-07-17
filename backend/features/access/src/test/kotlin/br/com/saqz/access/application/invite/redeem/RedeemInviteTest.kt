@@ -223,7 +223,8 @@ class RedeemInviteTest {
         val redemptions = mutableListOf<RedeemMembershipCommand>()
         val roles = mutableMapOf<UUID, GroupRole>()
 
-        override fun lockAttemptWindow(userId: UUID): InviteAttemptWindow? = windows[userId]
+        override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow =
+            windows[userId] ?: InviteAttemptWindow(initializedAt, 0)
 
         override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? {
             lookups += digest

@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T28 concluidas
+**Status:** Execute em andamento - T01..T29 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -632,8 +632,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** PostgreSQL integration, +14 casos incluindo barriers reais.
 - **Gate:** SQL integration.
-- **Done when:** [ ] dois users concorrentes viram ATHLETE; [ ] 11a falha 429 sem
-  membership; [ ] baseline +14 e Gate verde.
+- **Done when:** [x] dois users concorrentes viram ATHLETE; [x] 11a falha 429 sem
+  membership; [x] baseline +14 e Gate verde.
 - **Commit:** `feat(access): persist concurrent invite redemption`
 
 ### T30 - Expor POST /api/invites/redeem

@@ -15,9 +15,9 @@ class RedeemInvite(
 ) {
     fun execute(actor: UUID, rawCode: String): RedeemInviteResult = transactionRunner.inTransaction {
         val now = clock.instant()
-        val storedWindow = repository.lockAttemptWindow(actor)
+        val storedWindow = repository.lockAttemptWindow(actor, now)
         val currentWindow = storedWindow
-            ?.takeUnless { now >= it.windowStartedAt.plus(WINDOW) }
+            .takeUnless { now >= it.windowStartedAt.plus(WINDOW) }
             ?: InviteAttemptWindow(now, 0)
         if (currentWindow.invalidCount == MAX_INVALID_ATTEMPTS) {
             return@inTransaction RedeemInviteResult.AttemptLimit(retryAfterSeconds(now, currentWindow))

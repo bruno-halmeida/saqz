@@ -36,7 +36,7 @@ sealed interface RedeemInviteResult {
 }
 
 interface InviteRedemptionRepository {
-    fun lockAttemptWindow(userId: UUID): InviteAttemptWindow?
+    fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow
 
     fun findInvite(digest: InviteTokenDigest): RedeemableInvite?
 
