@@ -52,6 +52,11 @@ class DeferredInviteCoordinator(
         })
     }
 
+    fun stop() {
+        subscription?.cancel()
+        subscription = null
+    }
+
     fun restore() {
         localState.readPendingInvite(object : ValueCallback {
             override fun complete(result: ValueResult) {

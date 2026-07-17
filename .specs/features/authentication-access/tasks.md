@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T45 concluidas
+**Status:** Execute em andamento - T01..T49 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -985,8 +985,11 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** ANDROID.
 - **Tests:** instrumented, +14 fluxos lifecycle/accessibility/auth/invite fixtures.
 - **Gate:** Full Android.
-- **Done when:** [ ] rotacao durante submit produz uma chamada; [ ] API30/35
-  smoke continua verde; [ ] baseline +14 e Gate verde.
+- **Done when:** [x] rotacao durante submit produz uma chamada; [x] por decisao
+  do usuario em 2026-07-17, Full Android local no API36 verde (45 unit +39
+  instrumented, zero skip/failure) e focused T49 14/14; os smokes API30/API35
+  nao sao alegados como executados e permanecem no contrato CI de T57; [x]
+  baseline +14 e Gate verde.
 - **Commit:** `feat(android): compose authenticated app lifecycle`
 
 ## Fase 7 - Adapters iOS

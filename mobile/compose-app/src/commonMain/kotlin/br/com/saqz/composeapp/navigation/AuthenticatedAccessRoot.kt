@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -176,12 +175,10 @@ internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, actions: AccessR
 }
 
 @Composable
-internal fun AuthenticatedAccessRuntime(dependencies: SaqzAppDependencies) {
-    val scope = rememberCoroutineScope()
-    val runtime = remember(dependencies) { AccessRuntime(dependencies, scope) }
+internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     DisposableEffect(runtime) {
         runtime.start()
-        onDispose { runtime.close() }
+        onDispose { }
     }
 
     val authentication by runtime.authentication.state.collectAsState()
@@ -306,7 +303,7 @@ internal fun AuthenticatedAccessRuntime(dependencies: SaqzAppDependencies) {
     AuthenticatedAccessRoot(snapshot, actions)
 }
 
-private class AccessRuntime(
+internal class AccessRuntime(
     private val dependencies: SaqzAppDependencies,
     private val scope: CoroutineScope,
 ) {
@@ -354,6 +351,7 @@ private class AccessRuntime(
     fun close() {
         authSubscription?.cancel()
         authSubscription = null
+        invites.stop()
         network.close()
     }
 

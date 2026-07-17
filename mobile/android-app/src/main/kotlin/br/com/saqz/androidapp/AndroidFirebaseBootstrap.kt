@@ -57,22 +57,27 @@ internal object AndroidFirebaseBootstrap {
     fun initialize(
         context: Context,
         configuration: AndroidFirebaseConfiguration = AndroidFirebaseConfiguration.current,
-    ): FirebaseAuthClient = FirebaseAuthBootstrap(
+    ): FirebaseAuth {
+        lateinit var sdkAuth: FirebaseAuth
+        FirebaseAuthBootstrap(
         factory = {
-        val options = FirebaseOptions.Builder()
-            .setProjectId(configuration.projectId)
-            .setApiKey(configuration.apiKey)
-            .setGcmSenderId(configuration.messagingSenderId)
-            .setApplicationId(configuration.applicationId)
-            .build()
-        val appName = if (configuration.useAuthEmulator) "saqz-local" else "saqz"
-        // Named app initializes once per process: reuse it across activity re-launch
-        // and rotation instead of re-initializing (EDGE-05).
-        val app = FirebaseApp.getApps(context).firstOrNull { it.name == appName }
-            ?: FirebaseApp.initializeApp(context, options, appName)
-        val auth = FirebaseAuth.getInstance(app)
-        FirebaseAuthClient { host, port -> auth.useEmulator(host, port) }
+            val options = FirebaseOptions.Builder()
+                .setProjectId(configuration.projectId)
+                .setApiKey(configuration.apiKey)
+                .setGcmSenderId(configuration.messagingSenderId)
+                .setApplicationId(configuration.applicationId)
+                .build()
+            val appName = if (configuration.useAuthEmulator) "saqz-local" else "saqz"
+            val applicationContext = context.applicationContext
+            // Named app initializes once per process: reuse it across activity re-launch
+            // and rotation instead of re-initializing (EDGE-05).
+            val app = FirebaseApp.getApps(applicationContext).firstOrNull { it.name == appName }
+                ?: FirebaseApp.initializeApp(applicationContext, options, appName)
+            sdkAuth = FirebaseAuth.getInstance(app)
+            FirebaseAuthClient { host, port -> sdkAuth.useEmulator(host, port) }
         },
         configuration = configuration,
-    ).initialize()
+        ).initialize()
+        return sdkAuth
+    }
 }

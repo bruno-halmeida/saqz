@@ -17,9 +17,14 @@ internal interface AndroidBranchSessionClient {
     fun reinitialize(url: String?, callback: (Map<String, String?>) -> Unit)
 }
 
+internal interface AndroidIntentLinkPort : NativeLinkPort {
+    fun onColdStart(url: String?)
+    fun onWarmIntent(url: String?)
+}
+
 internal class AndroidLinkAdapter(
     private val branch: AndroidBranchSessionClient,
-) : NativeLinkPort {
+) : AndroidIntentLinkPort {
     private var listener: InviteCodeListener? = null
     private var pendingCode: String? = null
     private var lastAcceptedCode: String? = null
@@ -37,12 +42,12 @@ internal class AndroidLinkAdapter(
         }
     }
 
-    fun onColdStart(url: String?) {
+    override fun onColdStart(url: String?) {
         accept(directInviteCode(url))
         branch.initialize(url, ::acceptBranchParameters)
     }
 
-    fun onWarmIntent(url: String?) {
+    override fun onWarmIntent(url: String?) {
         accept(directInviteCode(url))
         branch.reinitialize(url, ::acceptBranchParameters)
     }

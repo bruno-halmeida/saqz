@@ -11,6 +11,7 @@ data class FirebaseAndroidConfig(
     val apiKey: String,
     val messagingSenderId: String,
     val applicationId: String,
+    val googleServerClientId: String,
 )
 
 val localFirebaseAndroidConfig = FirebaseAndroidConfig(
@@ -18,6 +19,7 @@ val localFirebaseAndroidConfig = FirebaseAndroidConfig(
     apiKey = "fake-saqz-local-api-key",
     messagingSenderId = "123456789000",
     applicationId = "1:123456789000:android:saqzlocal",
+    googleServerClientId = "fake-saqz-local-web-client-id.apps.googleusercontent.com",
 )
 
 val missingReleaseFirebaseAndroidConfig = FirebaseAndroidConfig(
@@ -25,6 +27,7 @@ val missingReleaseFirebaseAndroidConfig = FirebaseAndroidConfig(
     apiKey = "missing-release-firebase-config",
     messagingSenderId = "0",
     applicationId = "missing-release-firebase-config",
+    googleServerClientId = "missing-release-google-server-client-id",
 )
 
 val requiresProdBranchConfig = gradle.startParameter.taskNames.any {
@@ -50,6 +53,16 @@ val branchLiveDomain = branchProperty(
     name = "saqz.branch.liveDomain",
     required = requiresProdBranchConfig,
     fallback = "missing-branch-live-domain.invalid",
+)
+val devApiBaseUrl = environmentProperty(
+    name = "saqz.api.devBaseUrl",
+    required = false,
+    fallback = "http://10.0.2.2:8080",
+)
+val prodApiBaseUrl = environmentProperty(
+    name = "saqz.api.prodBaseUrl",
+    required = requiresProdBranchConfig,
+    fallback = "missing-release-api-base-url",
 )
 
 android {
@@ -89,7 +102,10 @@ android {
             buildConfigField("String", "FIREBASE_API_KEY", firebaseConfig.apiKey.toBuildConfigString())
             buildConfigField("String", "FIREBASE_MESSAGING_SENDER_ID", firebaseConfig.messagingSenderId.toBuildConfigString())
             buildConfigField("String", "FIREBASE_APPLICATION_ID", firebaseConfig.applicationId.toBuildConfigString())
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", firebaseConfig.googleServerClientId.toBuildConfigString())
             buildConfigField("boolean", "FIREBASE_USE_EMULATOR", (!firebaseConfigFile.isFile).toString())
+            buildConfigField("String", "ENVIRONMENT", "dev".toBuildConfigString())
+            buildConfigField("String", "API_BASE_URL", devApiBaseUrl.toBuildConfigString())
             manifestPlaceholders["branchLiveKey"] = branchLiveKey
             manifestPlaceholders["branchTestKey"] = branchTestKey
             manifestPlaceholders["branchTestMode"] = "true"
@@ -110,7 +126,10 @@ android {
             buildConfigField("String", "FIREBASE_API_KEY", firebaseConfig.apiKey.toBuildConfigString())
             buildConfigField("String", "FIREBASE_MESSAGING_SENDER_ID", firebaseConfig.messagingSenderId.toBuildConfigString())
             buildConfigField("String", "FIREBASE_APPLICATION_ID", firebaseConfig.applicationId.toBuildConfigString())
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", firebaseConfig.googleServerClientId.toBuildConfigString())
             buildConfigField("boolean", "FIREBASE_USE_EMULATOR", "false")
+            buildConfigField("String", "ENVIRONMENT", "prod".toBuildConfigString())
+            buildConfigField("String", "API_BASE_URL", prodApiBaseUrl.toBuildConfigString())
             manifestPlaceholders["branchLiveKey"] = branchLiveKey
             manifestPlaceholders["branchTestKey"] = branchTestKey
             manifestPlaceholders["branchTestMode"] = "false"
@@ -159,18 +178,34 @@ fun firebaseAndroidConfig(
     val client = (root["client"] as List<*>).first() as Map<*, *>
     val clientInfo = client["client_info"] as Map<*, *>
     val apiKey = (client["api_key"] as List<*>).first() as Map<*, *>
+    val googleServerClientId = (client["oauth_client"] as? List<*>)
+        ?.asSequence()
+        ?.mapNotNull { it as? Map<*, *> }
+        ?.firstOrNull { (it["client_type"] as? Number)?.toInt() == 3 }
+        ?.get("client_id") as? String
+
+    require(!required || !googleServerClientId.isNullOrBlank()) {
+        "Missing web OAuth client in Android Firebase config: ${file.path}"
+    }
 
     return FirebaseAndroidConfig(
         projectId = projectInfo["project_id"] as String,
         apiKey = apiKey["current_key"] as String,
         messagingSenderId = projectInfo["project_number"] as String,
         applicationId = clientInfo["mobilesdk_app_id"] as String,
+        googleServerClientId = googleServerClientId ?: fallback.googleServerClientId,
     )
 }
 
 fun String.toBuildConfigString() = "\"$this\""
 
 fun branchProperty(name: String, required: Boolean, fallback: String): String {
+    val value = providers.gradleProperty(name).orNull?.trim().orEmpty()
+    require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
+    return value.ifEmpty { fallback }
+}
+
+fun environmentProperty(name: String, required: Boolean, fallback: String): String {
     val value = providers.gradleProperty(name).orNull?.trim().orEmpty()
     require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
     return value.ifEmpty { fallback }
