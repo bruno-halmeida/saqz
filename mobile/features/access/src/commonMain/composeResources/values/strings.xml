@@ -1,10 +1,16 @@
 <resources>
     <string name="access_brand">Saqz</string>
     <string name="login_title">Entrar</string>
+    <string name="login_headline_first">Organize seu grupo.</string>
+    <string name="login_headline_second">Jogue</string>
+    <string name="login_headline_emphasis">junto.</string>
+    <string name="login_supporting_text">Entre na sua conta e mantenha sua galera sempre alinhada.</string>
+    <string name="login_continue_with">ou continue com</string>
+    <string name="login_no_account">Ainda não tem uma conta?</string>
     <string name="login_email">E-mail</string>
     <string name="login_password">Senha</string>
     <string name="login_submit">Entrar</string>
-    <string name="login_google">Continuar com Google</string>
+    <string name="login_google">Entrar com Google</string>
     <string name="login_reset">Esqueci minha senha</string>
     <string name="login_register">Criar conta</string>
     <string name="auth_error_invalid_credentials">E-mail ou senha invalidos</string>

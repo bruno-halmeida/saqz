@@ -44,7 +44,7 @@ class ModernAndroidBehaviorTest {
     fun modernSubsetRunsStandalone() {
         // AUTH-03/AUTH-06: cold start without a session lands on the real login
         // destination with both supported authentication methods available.
-        composeRule.onNodeWithText("Saqz").assertIsDisplayed()
+        composeRule.onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
         composeRule.onNodeWithTag("login-submit").assertIsDisplayed()
         composeRule.onNodeWithTag("login-google").assertIsDisplayed()
     }

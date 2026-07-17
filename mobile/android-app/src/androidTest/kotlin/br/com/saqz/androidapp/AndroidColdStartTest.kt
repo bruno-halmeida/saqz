@@ -22,7 +22,7 @@ class AndroidColdStartTest {
     fun coldStartReachesLogin() {
         // AUTH-06: without a persisted Firebase session, the native launch screen
         // dismisses straight into login and never exposes protected catalog content.
-        composeRule.onNodeWithText("Saqz").assertIsDisplayed()
+        composeRule.onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
         composeRule.onNodeWithTag("login-email").assertIsDisplayed()
         composeRule.onNodeWithTag("login-password").assertIsDisplayed()
         composeRule.onNodeWithTag("login-submit").assertIsDisplayed()
@@ -32,7 +32,7 @@ class AndroidColdStartTest {
 
     @Test
     fun noIntermediateComposeSplash() {
-        composeRule.onNodeWithText("Saqz").assertIsDisplayed()
+        composeRule.onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
         // A Compose splash screen would leave a retained splash node; there is none.
         assertEquals(0, composeRule.onAllNodesWithTag("saqz-splash").fetchSemanticsNodes().size)
     }

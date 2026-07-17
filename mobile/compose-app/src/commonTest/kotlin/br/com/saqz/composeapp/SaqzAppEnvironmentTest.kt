@@ -19,7 +19,7 @@ class SaqzAppEnvironmentTest {
     fun defaultShowsContent() = runComposeUiTest {
         setContent { SaqzApp() }
         // Default startup is Content(Unit): the Home content slot renders, not a state view.
-        onNodeWithText("Saqz").assertExists()
+        onNodeWithText("Organize seu grupo.", substring = true).assertExists()
         onNodeWithContentDescription("Carregando").assertDoesNotExist()
     }
 
@@ -27,21 +27,21 @@ class SaqzAppEnvironmentTest {
     fun loadingUsesStateHost() = runComposeUiTest {
         setContent { SaqzApp(SaqzAppEnvironment(startupState = SaqzUiState.Loading)) }
         onNodeWithContentDescription("Carregando").assertExists()
-        onNodeWithText("Saqz").assertDoesNotExist()
+        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
     }
 
     @Test
     fun emptyUsesStateHost() = runComposeUiTest {
         setContent { SaqzApp(SaqzAppEnvironment(startupState = SaqzUiState.Empty)) }
         onNodeWithText("Nada por aqui").assertExists()
-        onNodeWithText("Saqz").assertDoesNotExist()
+        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
     }
 
     @Test
     fun errorUsesStateHost() = runComposeUiTest {
         setContent { SaqzApp(SaqzAppEnvironment(startupState = SaqzUiState.Error)) }
         onNodeWithText("Não foi possível carregar").assertExists()
-        onNodeWithText("Saqz").assertDoesNotExist()
+        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
     }
 
     @Test

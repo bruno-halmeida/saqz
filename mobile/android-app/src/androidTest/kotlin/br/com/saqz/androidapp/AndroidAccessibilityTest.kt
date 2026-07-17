@@ -19,7 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 // Accessibility on-device: the four Inter weights render, and the TalkBack traversal order
-// follows the visual reading order without a duplicated decorative wordmark.
+// follows the visual reading order without a duplicated brand label.
 @RunWith(AndroidJUnit4::class)
 class AndroidAccessibilityTest {
     @get:Rule
@@ -47,10 +47,10 @@ class AndroidAccessibilityTest {
         composeRule.setContent { SaqzApp() }
         composeRule.waitForIdle()
 
-        // The wordmark is decorative, so "Saqz" is announced exactly once (the heading).
-        assertEquals(1, composeRule.onAllNodesWithText("Saqz").fetchSemanticsNodes().size)
+        // Decorative artwork is silent, so the visible brand label is announced exactly once.
+        assertEquals(1, composeRule.onAllNodesWithText("saqz").fetchSemanticsNodes().size)
 
-        val headingTop = composeRule.onNodeWithText("Saqz").fetchSemanticsNode().boundsInRoot.top
+        val headingTop = composeRule.onNodeWithText("saqz").fetchSemanticsNode().boundsInRoot.top
         val emailTop = composeRule.onNodeWithTag("login-email").fetchSemanticsNode().boundsInRoot.top
         val passwordTop = composeRule.onNodeWithTag("login-password").fetchSemanticsNode().boundsInRoot.top
         val submitTop = composeRule.onNodeWithTag("login-submit").fetchSemanticsNode().boundsInRoot.top

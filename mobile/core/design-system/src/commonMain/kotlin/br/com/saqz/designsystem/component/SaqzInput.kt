@@ -1,6 +1,8 @@
 package br.com.saqz.designsystem.component
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -22,7 +26,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -62,6 +71,8 @@ fun SaqzInput(
     helperText: String? = null,
     errorText: String? = null,
     enabled: Boolean = true,
+    inlineLabel: Boolean = false,
+    leadingContent: (@Composable () -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -77,27 +88,58 @@ fun SaqzInput(
             .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
-        Text(text = label, style = SaqzTheme.typography.caption, color = colors.textSecondary)
+        if (!inlineLabel) {
+            Text(text = label, style = SaqzTheme.typography.caption, color = colors.textSecondary)
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .sizeIn(minHeight = metrics.minimumTouchTarget)
-                .border(1.dp, if (errorText != null) colors.errorForeground else colors.controlBorder, shape)
+                .heightIn(min = if (inlineLabel) 56.dp else metrics.minimumTouchTarget)
+                .background(colors.surface, shape)
+                .border(
+                    1.dp,
+                    when {
+                        errorText != null -> colors.errorForeground
+                        inlineLabel -> colors.border
+                        else -> colors.controlBorder
+                    },
+                    shape,
+                )
                 .padding(horizontal = metrics.horizontalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                enabled = enabled,
-                singleLine = true,
-                visualTransformation = visualTransformationFor(kind, revealed),
-                keyboardOptions = KeyboardOptions(keyboardType = keyboardTypeFor(kind)),
-                textStyle = SaqzTheme.typography.body.copy(color = colors.textPrimary),
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { if (errorText != null) error(errorText) },
-            )
+            leadingContent?.let { leading ->
+                Box(modifier = Modifier.padding(end = 12.dp), contentAlignment = Alignment.Center) {
+                    leading()
+                }
+            }
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (inlineLabel && value.text.isEmpty()) {
+                    Text(
+                        text = label,
+                        style = SaqzTheme.typography.body,
+                        color = if (enabled) colors.textMuted else colors.disabledForeground,
+                    )
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    enabled = enabled,
+                    singleLine = true,
+                    visualTransformation = visualTransformationFor(kind, revealed),
+                    keyboardOptions = KeyboardOptions(keyboardType = keyboardTypeFor(kind)),
+                    textStyle = SaqzTheme.typography.body.copy(color = colors.textPrimary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = label
+                            if (errorText != null) error(errorText)
+                        },
+                )
+            }
             if (kind == SaqzInputKind.Password) {
                 val toggleLabel = stringResource(
                     if (revealed) Res.string.action_hide_password else Res.string.action_show_password,
@@ -117,8 +159,7 @@ fun SaqzInput(
                         .semantics { contentDescription = toggleLabel },
                     contentAlignment = Alignment.Center,
                 ) {
-                    // Decorative glyph; the accessible name lives on the toggle itself.
-                    Text(text = if (revealed) "●" else "○", color = colors.textSecondary)
+                    PasswordVisibilityGlyph(revealed = revealed, color = colors.textSecondary)
                 }
             }
         }
@@ -127,6 +168,34 @@ fun SaqzInput(
                 text = message,
                 style = SaqzTheme.typography.caption,
                 color = if (errorText != null) colors.errorForeground else colors.textMuted,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PasswordVisibilityGlyph(revealed: Boolean, color: Color) {
+    Canvas(
+        modifier = Modifier
+            .size(22.dp)
+            .clearAndSetSemantics {},
+    ) {
+        val strokeWidth = 1.5.dp.toPx()
+        val centerY = size.height / 2f
+        val eye = Path().apply {
+            moveTo(0f, centerY)
+            cubicTo(size.width * 0.22f, size.height * 0.16f, size.width * 0.78f, size.height * 0.16f, size.width, centerY)
+            cubicTo(size.width * 0.78f, size.height * 0.84f, size.width * 0.22f, size.height * 0.84f, 0f, centerY)
+        }
+        drawPath(eye, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+        drawCircle(color = color, radius = 3.dp.toPx(), center = center)
+        if (revealed) {
+            drawLine(
+                color = color,
+                start = androidx.compose.ui.geometry.Offset(1.dp.toPx(), size.height - 1.dp.toPx()),
+                end = androidx.compose.ui.geometry.Offset(size.width - 1.dp.toPx(), 1.dp.toPx()),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
             )
         }
     }

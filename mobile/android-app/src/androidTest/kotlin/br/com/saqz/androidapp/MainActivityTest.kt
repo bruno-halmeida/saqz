@@ -31,7 +31,7 @@ class MainActivityTest {
 
     @Test
     fun displaysTheSharedSaqzPlaceholder() {
-        composeRule.onNodeWithText("Saqz").assertIsDisplayed()
+        composeRule.onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
     }
 
     @Test

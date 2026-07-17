@@ -12,6 +12,6 @@ class SaqzAppTest {
     fun rendersTheSharedSaqzPlaceholder() = runComposeUiTest {
         setContent { SaqzApp() }
 
-        onNodeWithText("Saqz").assertIsDisplayed()
+        onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
     }
 }

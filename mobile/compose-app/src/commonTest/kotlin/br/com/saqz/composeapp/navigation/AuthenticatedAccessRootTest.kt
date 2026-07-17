@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -194,7 +195,7 @@ class AuthenticatedAccessRootTest {
     fun `access resources resolve through umbrella packaging`() = runComposeUiTest {
         root(snapshot())
 
-        onNodeWithText("Saqz").assertIsDisplayed()
+        onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -207,8 +208,8 @@ class AuthenticatedAccessRootTest {
             }
         }
 
-        onNodeWithText("Continuar com Google").assertIsDisplayed()
-        onNodeWithText("Criar conta").assertIsDisplayed()
+        onNodeWithText("Entrar com Google").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Criar conta").performScrollTo().assertIsDisplayed()
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.root(

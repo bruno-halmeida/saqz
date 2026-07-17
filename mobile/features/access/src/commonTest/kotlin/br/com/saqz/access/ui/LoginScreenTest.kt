@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
@@ -50,8 +51,35 @@ class LoginScreenTest {
 
     @Test fun `google action invokes provider flow`() = runComposeUiTest {
         var calls = 0; content(onGoogle = { calls += 1 })
-        onNodeWithText("Continuar com Google").performClick()
+        onNodeWithText("Entrar com Google").performClick()
         assertEquals(1, calls)
+    }
+
+    @Test fun `approved visual hierarchy exposes the complete login journey`() = runComposeUiTest {
+        content()
+        onNodeWithText("Organize seu grupo.", substring = true).assertExists()
+        onNodeWithText("Jogue junto.", substring = true).assertExists()
+        onNodeWithText("Entre na sua conta e mantenha sua galera sempre alinhada.").assertExists()
+        onNodeWithText("Esqueci minha senha").assertExists()
+        onNodeWithText("ou continue com").assertExists()
+        onNodeWithText("Entrar com Google").assertExists()
+        onNodeWithText("Ainda não tem uma conta?").assertExists()
+        onNodeWithText("Criar conta").assertExists()
+    }
+
+    @Test fun `phone apple and facebook remain outside the login surface`() = runComposeUiTest {
+        content()
+        onNodeWithText("E-mail ou telefone").assertDoesNotExist()
+        onNodeWithText("Entrar com Apple").assertDoesNotExist()
+        onNodeWithText("Entrar com Facebook").assertDoesNotExist()
+    }
+
+    @Test fun `login controls retain minimum touch targets`() = runComposeUiTest {
+        content()
+        onNodeWithTag(LoginTags.Email).assertHeightIsAtLeast(48.dp)
+        onNodeWithTag(LoginTags.Password).assertHeightIsAtLeast(48.dp)
+        onNodeWithTag(LoginTags.Submit).assertHeightIsAtLeast(48.dp)
+        onNodeWithTag(LoginTags.Google).assertHeightIsAtLeast(48.dp)
     }
 
     @Test fun `registration action is reachable`() = runComposeUiTest {
