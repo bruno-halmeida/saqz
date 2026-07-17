@@ -22,4 +22,20 @@
     <string name="registration_back">Voltar para entrar</string>
     <string name="registration_name_required">Informe seu nome</string>
     <string name="registration_email_invalid">Informe um e-mail valido</string>
+    <string name="verification_title">Verifique seu e-mail</string>
+    <string name="verification_body">Enviamos as instrucoes para</string>
+    <string name="verification_confirm">Ja verifiquei</string>
+    <string name="verification_resend">Reenviar e-mail</string>
+    <string name="verification_sent">E-mail enviado. Aguarde antes de reenviar</string>
+    <string name="name_title">Complete seu perfil</string>
+    <string name="name_body">Informe o nome que aparecera no seu grupo</string>
+    <string name="name_label">Nome</string>
+    <string name="name_invalid">Informe um nome entre 2 e 80 caracteres</string>
+    <string name="name_submit">Continuar</string>
+    <string name="reset_title">Recuperar senha</string>
+    <string name="reset_body">Informe o e-mail usado na sua conta</string>
+    <string name="reset_email">E-mail</string>
+    <string name="reset_submit">Enviar instrucoes</string>
+    <string name="reset_back">Voltar para entrar</string>
+    <string name="reset_confirmation">Se o e-mail estiver cadastrado, voce recebera as instrucoes</string>
 </resources>

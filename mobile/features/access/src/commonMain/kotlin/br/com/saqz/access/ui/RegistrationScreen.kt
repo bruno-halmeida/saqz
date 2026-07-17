@@ -141,7 +141,7 @@ fun RegistrationScreen(
     }
 }
 
-private fun String.isValidEmail(): Boolean {
+internal fun String.isValidEmail(): Boolean {
     val at = indexOf('@')
     return at > 0 && at < lastIndex && substring(at + 1).contains('.')
 }

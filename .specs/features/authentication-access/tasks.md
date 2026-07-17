@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T40 concluidas
+**Status:** Execute em andamento - T01..T41 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -845,7 +845,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI, +13 casos dos tres estados e navigation callbacks.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] confirmacao de reset e identica para outcomes; [ ] baseline
+- **Done when:** [x] confirmacao de reset e identica para outcomes; [x] baseline
   +13 e Gate verde.
 - **Commit:** `feat(access-ui): add identity completion screens`
 
