@@ -1,0 +1,22 @@
+meta {
+  name: Expire Invite
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{backendUrl}}/api/groups/{{groupId}}/invite
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+tests {
+  test("invite expires without a response body", function () {
+    expect(res.getStatus()).to.equal(204);
+    expect(res.getBody()).to.equal(null);
+  });
+}

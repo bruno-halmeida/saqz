@@ -1,0 +1,31 @@
+meta {
+  name: Update Group Settings
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{backendUrl}}/api/groups/{{groupId}}/settings
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  content-type: application/json
+  If-Match: "replace-with-current-etag"
+}
+
+body:json {
+  {
+    "name": "Bruno Test Group Updated",
+    "timeZone": "America/Sao_Paulo"
+  }
+}
+
+tests {
+  test("settings are updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().name).to.be.a("string").and.not.empty;
+  });
+}

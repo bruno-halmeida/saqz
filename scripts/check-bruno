@@ -26,6 +26,7 @@ routes=$(
 
 printf '%s\n' "$routes" | while IFS=' ' read -r mapping path; do
     method=$(printf '%s' "$mapping" | sed 's/Mapping$//' | tr '[:upper:]' '[:lower:]')
+    pattern=$(printf '%s' "$path" | sed -E 's/\{([^}]+)\}/{{\1}}/g')
     covered=false
 
     for request in "$collection"/*.bru; do
@@ -34,7 +35,7 @@ printf '%s\n' "$routes" | while IFS=' ' read -r mapping path; do
 
         url=$(sed -n 's/^[[:space:]]*url:[[:space:]]*//p' "$request" | head -n 1)
         case "$url" in
-            *"$path"|*"$path"\?*)
+            *"$pattern"|*"$pattern"\?*)
                 grep -q '^tests {' "$request" || fail "$mapping $path has no Bruno assertions"
                 covered=true
                 break

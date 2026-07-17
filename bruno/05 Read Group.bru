@@ -1,0 +1,23 @@
+meta {
+  name: Read Group
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{backendUrl}}/api/groups/{{groupId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+tests {
+  test("group response is versioned", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+    expect(res.getBody().id).to.equal("{{groupId}}");
+  });
+}

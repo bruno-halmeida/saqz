@@ -1,0 +1,32 @@
+meta {
+  name: Create Group
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{backendUrl}}/api/groups
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  content-type: application/json
+}
+
+body:json {
+  {
+    "requestId": "{{requestId}}",
+    "name": "Bruno Test Group",
+    "timeZone": "America/Sao_Paulo"
+  }
+}
+
+tests {
+  test("group is created", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().id).to.be.a("string").and.not.empty;
+    expect(res.getBody().role).to.equal("OWNER");
+  });
+}
