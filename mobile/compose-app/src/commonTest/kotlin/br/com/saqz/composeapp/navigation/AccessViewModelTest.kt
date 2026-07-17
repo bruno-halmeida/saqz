@@ -170,11 +170,25 @@ class AccessViewModelTest {
     fun `duplicate create submit while pending remains single flight`() = runTest {
         val (viewModel, runtime) = fixture()
         viewModel.onIntent(AccessIntent.OpenCreateGroup)
+        viewModel.onIntent(AccessIntent.UpdateCreateName("New Group"))
+        viewModel.onIntent(AccessIntent.UpdateCreateTimeZone("Europe/Lisbon"))
 
         viewModel.onIntent(AccessIntent.SubmitCreateGroup)
         viewModel.onIntent(AccessIntent.SubmitCreateGroup)
 
         assertEquals(1, runtime.intents.count { it is AccessRuntimeIntent.Administration })
+    }
+
+    @Test
+    fun `invalid create submit exposes validation without runtime operation`() = runTest {
+        val (viewModel, runtime) = fixture()
+        viewModel.onIntent(AccessIntent.OpenCreateGroup)
+
+        viewModel.onIntent(AccessIntent.SubmitCreateGroup)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.createValidationAttempted)
+        assertTrue(runtime.intents.isEmpty())
     }
 
     @Test

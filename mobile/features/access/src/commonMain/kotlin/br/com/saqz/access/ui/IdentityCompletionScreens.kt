@@ -10,18 +10,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.access.presentation.isValidEmail
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_method_conflict
 import br.com.saqz.access.resources.auth_error_network
@@ -63,8 +62,7 @@ internal object IdentityTags {
 @Composable
 fun VerificationScreen(
     state: SessionAccessState.AwaitingVerification,
-    onConfirm: () -> Unit,
-    onResend: () -> Unit,
+    onIntent: (SessionIntent) -> Unit,
 ) = IdentityColumn {
     IdentityHeading(stringResource(Res.string.verification_title))
     Text(stringResource(Res.string.verification_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
@@ -77,13 +75,13 @@ fun VerificationScreen(
     }
     SaqzButton(
         label = stringResource(Res.string.verification_confirm),
-        onClick = onConfirm,
+        onClick = { onIntent(SessionIntent.ConfirmVerification) },
         loading = state.isLoading,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.Verify),
     )
     SaqzButton(
         label = stringResource(Res.string.verification_resend),
-        onClick = onResend,
+        onClick = { onIntent(SessionIntent.ResendVerification) },
         variant = SaqzButtonVariant.Secondary,
         enabled = !state.isLoading && !state.verificationSent,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.Resend),
@@ -93,14 +91,13 @@ fun VerificationScreen(
 @Composable
 fun NameCompletionScreen(
     state: SessionAccessState.CompletingName,
-    onNameChange: (String) -> Unit,
-    onSubmit: () -> Unit,
+    onIntent: (SessionIntent) -> Unit,
 ) = IdentityColumn {
     IdentityHeading(stringResource(Res.string.name_title))
     Text(stringResource(Res.string.name_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     SaqzInput(
         value = TextFieldValue(state.name),
-        onValueChange = { onNameChange(it.text) },
+        onValueChange = { onIntent(SessionIntent.UpdateName(it.text)) },
         label = stringResource(Res.string.name_label),
         errorText = if (state.invalidName) stringResource(Res.string.name_invalid) else null,
         enabled = !state.isLoading,
@@ -110,7 +107,7 @@ fun NameCompletionScreen(
     }
     SaqzButton(
         label = stringResource(Res.string.name_submit),
-        onClick = onSubmit,
+        onClick = { onIntent(SessionIntent.CompleteName) },
         loading = state.isLoading,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.NameSubmit),
     )
@@ -119,11 +116,8 @@ fun NameCompletionScreen(
 @Composable
 fun PasswordResetScreen(
     state: AuthenticationState,
-    onEmailChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onBack: () -> Unit,
+    onIntent: (AuthenticationIntent) -> Unit,
 ) {
-    var validationAttempted by remember { mutableStateOf(false) }
     IdentityColumn {
         IdentityHeading(stringResource(Res.string.reset_title))
         if (state.resetConfirmation) {
@@ -136,27 +130,24 @@ fun PasswordResetScreen(
             Text(stringResource(Res.string.reset_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
             SaqzInput(
                 value = TextFieldValue(state.email),
-                onValueChange = { onEmailChange(it.text) },
+                onValueChange = { onIntent(AuthenticationIntent.UpdateEmail(it.text)) },
                 label = stringResource(Res.string.reset_email),
                 kind = SaqzInputKind.Email,
-                errorText = if (validationAttempted && !state.email.isValidEmail()) {
+                errorText = if (state.validationAttempted && !state.email.isValidEmail()) {
                     stringResource(Res.string.registration_email_invalid)
                 } else null,
                 enabled = !state.isLoading,
             )
             SaqzButton(
                 label = stringResource(Res.string.reset_submit),
-                onClick = {
-                    validationAttempted = true
-                    if (state.email.isValidEmail()) onSubmit()
-                },
+                onClick = { onIntent(AuthenticationIntent.SubmitPasswordReset) },
                 loading = state.isLoading,
                 modifier = Modifier.fillMaxWidth().testTag(IdentityTags.ResetSubmit),
             )
         }
         SaqzButton(
             label = stringResource(Res.string.reset_back),
-            onClick = onBack,
+            onClick = { onIntent(AuthenticationIntent.ShowLogin) },
             variant = SaqzButtonVariant.Ghost,
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth().testTag(IdentityTags.ResetBack),
@@ -194,17 +185,17 @@ private val previewIdentityUser = NativeUser("preview-user", "ana@exemplo.com", 
 @Preview
 @Composable
 private fun VerificationScreenPreview() = SaqzTheme {
-    VerificationScreen(SessionAccessState.AwaitingVerification(previewIdentityUser, verificationSent = true), {}, {})
+    VerificationScreen(SessionAccessState.AwaitingVerification(previewIdentityUser, verificationSent = true), {})
 }
 
 @Preview
 @Composable
 private fun NameCompletionScreenPreview() = SaqzTheme {
-    NameCompletionScreen(SessionAccessState.CompletingName(previewIdentityUser, name = "Ana"), {}, {})
+    NameCompletionScreen(SessionAccessState.CompletingName(previewIdentityUser, name = "Ana"), {})
 }
 
 @Preview
 @Composable
 private fun PasswordResetScreenPreview() = SaqzTheme {
-    PasswordResetScreen(AuthenticationState(email = "ana@exemplo.com"), {}, {}, {})
+    PasswordResetScreen(AuthenticationState(email = "ana@exemplo.com"), {})
 }

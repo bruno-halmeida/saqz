@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.AuthScreen
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -21,41 +22,37 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class RegistrationScreenTest {
     @Test fun `name input emits controlled value`() = runComposeUiTest {
-        var value = ""; content(onNameChange = { value = it })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("Person Name")
-        assertEquals("Person Name", value)
+        assertEquals(AuthenticationIntent.UpdateName("Person Name"), intent)
     }
 
     @Test fun `email input emits controlled value`() = runComposeUiTest {
-        var value = ""; content(onEmailChange = { value = it })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("person@example.test")
-        assertEquals("person@example.test", value)
+        assertEquals(AuthenticationIntent.UpdateEmail("person@example.test"), intent)
     }
 
     @Test fun `password input emits controlled value`() = runComposeUiTest {
-        var value = ""; content(onPasswordChange = { value = it })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[2].performTextInput("secret")
-        assertEquals("secret", value)
+        assertEquals(AuthenticationIntent.UpdatePassword("secret"), intent)
     }
 
     @Test fun `valid form submits`() = runComposeUiTest {
-        var calls = 0
-        content(AuthenticationState(name = "Person Name", email = "person@example.test"), onSubmit = { calls++ })
+        var intent: AuthenticationIntent? = null
+        content(AuthenticationState(name = "Person Name", email = "person@example.test"), onIntent = { intent = it })
         onNodeWithTag(RegistrationTags.Submit).performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.SubmitRegistration, intent)
     }
 
-    @Test fun `blank name blocks submit and exposes field error`() = runComposeUiTest {
-        var calls = 0
-        content(AuthenticationState(email = "person@example.test"), onSubmit = { calls++ })
-        onNodeWithTag(RegistrationTags.Submit).performClick()
+    @Test fun `blank name validation state exposes field error`() = runComposeUiTest {
+        content(AuthenticationState(email = "person@example.test", validationAttempted = true))
         onNodeWithText("Informe seu nome").assertExists()
-        assertEquals(0, calls)
     }
 
-    @Test fun `invalid email blocks submit and exposes field error`() = runComposeUiTest {
-        content(AuthenticationState(name = "Person Name", email = "invalid"))
-        onNodeWithTag(RegistrationTags.Submit).performClick()
+    @Test fun `invalid email validation state exposes field error`() = runComposeUiTest {
+        content(AuthenticationState(name = "Person Name", email = "invalid", validationAttempted = true))
         onNodeWithText("Informe um e-mail valido").assertExists()
     }
 
@@ -63,6 +60,15 @@ class RegistrationScreenTest {
         content(AuthenticationState(isLoading = true))
         onNodeWithTag(RegistrationTags.Submit).assertIsNotEnabled()
         onNodeWithTag(RegistrationTags.Back).assertIsNotEnabled()
+    }
+
+    @Test fun `back action emits login intent`() = runComposeUiTest {
+        var intent: AuthenticationIntent? = null
+        content(onIntent = { intent = it })
+
+        onNodeWithTag(RegistrationTags.Back).performClick()
+
+        assertEquals(AuthenticationIntent.ShowLogin, intent)
     }
 
     @Test fun `firebase password error is associated with password field`() = runComposeUiTest {
@@ -86,14 +92,10 @@ class RegistrationScreenTest {
 
     private fun androidx.compose.ui.test.ComposeUiTest.content(
         state: AuthenticationState = AuthenticationState(),
-        onNameChange: (String) -> Unit = {},
-        onEmailChange: (String) -> Unit = {},
-        onPasswordChange: (String) -> Unit = {},
-        onSubmit: () -> Unit = {},
-        onBack: () -> Unit = {},
+        onIntent: (AuthenticationIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
-            RegistrationScreen(state, onNameChange, onEmailChange, onPasswordChange, onSubmit, onBack)
+            RegistrationScreen(state, onIntent)
         }
     }
 }

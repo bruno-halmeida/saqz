@@ -10,10 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
@@ -22,6 +18,7 @@ import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.action_back
 import br.com.saqz.access.resources.action_retry
@@ -53,13 +50,47 @@ internal object GroupOnboardingTags {
     const val CreateSubmit = "group-create-submit"
 }
 
+sealed interface GroupOnboardingIntent {
+    data class Select(val groupId: String) : GroupOnboardingIntent
+
+    data object OpenCreateGroup : GroupOnboardingIntent
+
+    data object Retry : GroupOnboardingIntent
+}
+
+sealed interface CreateGroupIntent {
+    data class UpdateName(val value: String) : CreateGroupIntent
+
+    data class UpdateTimeZone(val value: String) : CreateGroupIntent
+
+    data object Submit : CreateGroupIntent
+
+    data object Back : CreateGroupIntent
+}
+
+data class CreateGroupUiState(
+    val administration: GroupAdministrationState,
+    val name: String,
+    val timeZone: String,
+    val validationAttempted: Boolean = false,
+) {
+    val validName: Boolean
+        get() = name.trim().length in 2..80 && name.none(Char::isISOControl)
+
+    val validTimeZone: Boolean
+        get() = timeZone.contains('/') && timeZone.none { it.isWhitespace() || it.isISOControl() }
+
+    val isValid: Boolean
+        get() = validName && validTimeZone
+}
+
 @Composable
-fun BootstrapAccessScreen(state: SessionAccessState, onRetry: () -> Unit) {
+fun BootstrapAccessScreen(state: SessionAccessState, onIntent: (SessionIntent) -> Unit) {
     when (state) {
         SessionAccessState.Bootstrapping -> SaqzLoadingState(Modifier.testTag(GroupOnboardingTags.BootstrapLoading))
         SessionAccessState.BootstrapError -> CenteredActions {
             Text(stringResource(Res.string.bootstrap_error), color = SaqzTheme.colors.textPrimary)
-            SaqzButton(stringResource(Res.string.action_retry), onRetry)
+            SaqzButton(stringResource(Res.string.action_retry), { onIntent(SessionIntent.RetryBootstrap) })
         }
         else -> Unit
     }
@@ -68,14 +99,12 @@ fun BootstrapAccessScreen(state: SessionAccessState, onRetry: () -> Unit) {
 @Composable
 fun GroupOnboardingScreen(
     state: GroupSelectionState,
-    onSelect: (String) -> Unit,
-    onCreate: () -> Unit,
-    onRetry: () -> Unit,
+    onIntent: (GroupOnboardingIntent) -> Unit,
 ) {
     when (state) {
         GroupSelectionState.NoGroup -> CenteredActions {
             Text(stringResource(Res.string.groups_empty), color = SaqzTheme.colors.textPrimary)
-            CreateGroupButton(onCreate)
+            CreateGroupButton { onIntent(GroupOnboardingIntent.OpenCreateGroup) }
         }
         is GroupSelectionState.Selector -> ScrollColumn {
             Text(stringResource(Res.string.groups_select), style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
@@ -83,15 +112,15 @@ fun GroupOnboardingScreen(
                 SaqzListItem(
                     headline = membership.groupName,
                     trailingContent = { SaqzBadge(membership.role, SaqzBadgeVariant.Neutral) },
-                    onClick = { onSelect(membership.groupId) },
+                    onClick = { onIntent(GroupOnboardingIntent.Select(membership.groupId)) },
                 )
             }
-            CreateGroupButton(onCreate)
+            CreateGroupButton { onIntent(GroupOnboardingIntent.OpenCreateGroup) }
         }
         is GroupSelectionState.Loading -> SaqzLoadingState(Modifier.testTag(GroupOnboardingTags.GroupLoading))
         is GroupSelectionState.LoadError -> CenteredActions {
             Text(stringResource(Res.string.groups_load_error), color = SaqzTheme.colors.textPrimary)
-            SaqzButton(stringResource(Res.string.action_retry), onRetry)
+            SaqzButton(stringResource(Res.string.action_retry), { onIntent(GroupOnboardingIntent.Retry) })
         }
         is GroupSelectionState.Selected -> CenteredActions {
             Text(state.group.group.name, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
@@ -101,42 +130,34 @@ fun GroupOnboardingScreen(
 
 @Composable
 fun CreateGroupScreen(
-    state: GroupAdministrationState,
-    name: String,
-    timeZone: String,
-    onNameChange: (String) -> Unit,
-    onTimeZoneChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onBack: () -> Unit,
+    state: CreateGroupUiState,
+    onIntent: (CreateGroupIntent) -> Unit,
 ) {
-    var attempted by remember { mutableStateOf(false) }
-    val validName = name.trim().length in 2..80 && name.none(Char::isISOControl)
-    val validTimeZone = timeZone.contains('/') && timeZone.none { it.isWhitespace() || it.isISOControl() }
     ScrollColumn {
         Text(stringResource(Res.string.group_create_title), style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
         SaqzInput(
-            TextFieldValue(name), { onNameChange(it.text) }, stringResource(Res.string.group_name),
-            errorText = if ((attempted && !validName) || state.fieldErrors.containsKey("name")) {
+            TextFieldValue(state.name), { onIntent(CreateGroupIntent.UpdateName(it.text)) }, stringResource(Res.string.group_name),
+            errorText = if ((state.validationAttempted && !state.validName) || state.administration.fieldErrors.containsKey("name")) {
                 stringResource(Res.string.group_name_invalid)
             } else null,
-            enabled = !state.isLoading,
+            enabled = !state.administration.isLoading,
         )
         SaqzInput(
-            TextFieldValue(timeZone), { onTimeZoneChange(it.text) }, stringResource(Res.string.group_timezone),
-            errorText = if ((attempted && !validTimeZone) || state.fieldErrors.containsKey("timeZone")) {
+            TextFieldValue(state.timeZone), { onIntent(CreateGroupIntent.UpdateTimeZone(it.text)) }, stringResource(Res.string.group_timezone),
+            errorText = if ((state.validationAttempted && !state.validTimeZone) || state.administration.fieldErrors.containsKey("timeZone")) {
                 stringResource(Res.string.group_timezone_invalid)
             } else null,
-            enabled = !state.isLoading,
+            enabled = !state.administration.isLoading,
         )
         SaqzButton(
             stringResource(Res.string.group_create_submit),
-            onClick = { attempted = true; if (validName && validTimeZone) onSubmit() },
-            loading = state.isLoading,
+            onClick = { onIntent(CreateGroupIntent.Submit) },
+            loading = state.administration.isLoading,
             modifier = Modifier.fillMaxWidth().testTag(GroupOnboardingTags.CreateSubmit),
         )
         SaqzButton(
-            stringResource(Res.string.action_back), onBack, variant = SaqzButtonVariant.Ghost,
-            enabled = !state.isLoading, modifier = Modifier.fillMaxWidth(),
+            stringResource(Res.string.action_back), { onIntent(CreateGroupIntent.Back) }, variant = SaqzButtonVariant.Ghost,
+            enabled = !state.administration.isLoading, modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -173,11 +194,11 @@ private fun BootstrapAccessScreenPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun GroupOnboardingScreenPreview() = SaqzTheme {
-    GroupOnboardingScreen(GroupSelectionState.Selector(listOf(SessionMembershipDto("preview-group", "Futebol de terça", "OWNER"))), {}, {}, {})
+    GroupOnboardingScreen(GroupSelectionState.Selector(listOf(SessionMembershipDto("preview-group", "Futebol de terça", "OWNER"))), {})
 }
 
 @Preview
 @Composable
 private fun CreateGroupScreenPreview() = SaqzTheme {
-    CreateGroupScreen(GroupAdministrationState(), "Futebol de terça", "America/Sao_Paulo", {}, {}, {}, {})
+    CreateGroupScreen(CreateGroupUiState(GroupAdministrationState(), "Futebol de terça", "America/Sao_Paulo"), {})
 }

@@ -17,6 +17,7 @@ import br.com.saqz.access.data.VersionedGroupDto
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionMembershipDto
 import kotlin.test.Test
@@ -31,16 +32,16 @@ class GroupOnboardingScreensTest {
     }
 
     @Test fun `bootstrap error retries without returning to login`() = runComposeUiTest {
-        var calls = 0; bootstrap(SessionAccessState.BootstrapError, { calls++ })
+        var intent: SessionIntent? = null; bootstrap(SessionAccessState.BootstrapError, { intent = it })
         onNodeWithText("Tentar novamente").performClick()
-        assertEquals(1, calls)
+        assertEquals(SessionIntent.RetryBootstrap, intent)
         onNodeWithText("Entrar").assertDoesNotExist()
     }
 
     @Test fun `empty memberships offer group creation`() = runComposeUiTest {
-        var calls = 0; groups(GroupSelectionState.NoGroup, onCreate = { calls++ })
+        var intent: GroupOnboardingIntent? = null; groups(GroupSelectionState.NoGroup) { intent = it }
         onNodeWithText("Criar grupo").performClick()
-        assertEquals(1, calls)
+        assertEquals(GroupOnboardingIntent.OpenCreateGroup, intent)
     }
 
     @Test fun `selector lists every group name`() = runComposeUiTest {
@@ -54,14 +55,15 @@ class GroupOnboardingScreensTest {
     }
 
     @Test fun `selector emits selected group id`() = runComposeUiTest {
-        var selected = ""; groups(selector, onSelect = { selected = it })
+        var intent: GroupOnboardingIntent? = null; groups(selector) { intent = it }
         onNodeWithText("Second Group").performClick()
-        assertEquals("group-2", selected)
+        assertEquals(GroupOnboardingIntent.Select("group-2"), intent)
     }
 
     @Test fun `selector also offers group creation`() = runComposeUiTest {
-        var calls = 0; groups(selector, onCreate = { calls++ })
-        onNodeWithTag(GroupOnboardingTags.Create).performClick(); assertEquals(1, calls)
+        var intent: GroupOnboardingIntent? = null; groups(selector) { intent = it }
+        onNodeWithTag(GroupOnboardingTags.Create).performClick()
+        assertEquals(GroupOnboardingIntent.OpenCreateGroup, intent)
     }
 
     @Test fun `group switch loading never exposes previous content`() = runComposeUiTest {
@@ -71,8 +73,9 @@ class GroupOnboardingScreensTest {
     }
 
     @Test fun `group load error retries`() = runComposeUiTest {
-        var calls = 0; groups(GroupSelectionState.LoadError("group-2"), onRetry = { calls++ })
-        onNodeWithText("Tentar novamente").performClick(); assertEquals(1, calls)
+        var intent: GroupOnboardingIntent? = null; groups(GroupSelectionState.LoadError("group-2")) { intent = it }
+        onNodeWithText("Tentar novamente").performClick()
+        assertEquals(GroupOnboardingIntent.Retry, intent)
     }
 
     @Test fun `selected group exposes only current name`() = runComposeUiTest {
@@ -81,54 +84,67 @@ class GroupOnboardingScreensTest {
     }
 
     @Test fun `create name emits controlled value`() = runComposeUiTest {
-        var value = ""; create(onNameChange = { value = it })
+        var intent: CreateGroupIntent? = null; create(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("Training Group")
-        assertEquals("Training Group", value)
+        assertEquals(CreateGroupIntent.UpdateName("Training Group"), intent)
     }
 
     @Test fun `create timezone emits controlled value`() = runComposeUiTest {
-        var value = ""; create(onTimeZoneChange = { value = it })
+        var intent: CreateGroupIntent? = null; create(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("America/Sao_Paulo")
-        assertEquals("America/Sao_Paulo", value)
+        assertEquals(CreateGroupIntent.UpdateTimeZone("America/Sao_Paulo"), intent)
     }
 
-    @Test fun `invalid create fields stay local`() = runComposeUiTest {
-        var calls = 0; create(onSubmit = { calls++ })
-        onNodeWithTag(GroupOnboardingTags.CreateSubmit).performClick()
+    @Test fun `invalid create validation state exposes field errors`() = runComposeUiTest {
+        create(validationAttempted = true)
         onNodeWithText("Informe o nome do grupo").assertExists()
         onNodeWithText("Informe uma timezone IANA").assertExists()
-        assertEquals(0, calls)
     }
 
     @Test fun `valid create form submits once`() = runComposeUiTest {
-        var calls = 0; create(name = "Training Group", timeZone = "America/Sao_Paulo", onSubmit = { calls++ })
-        onNodeWithTag(GroupOnboardingTags.CreateSubmit).performClick(); assertEquals(1, calls)
+        var intent: CreateGroupIntent? = null
+        create(name = "Training Group", timeZone = "America/Sao_Paulo", onIntent = { intent = it })
+        onNodeWithTag(GroupOnboardingTags.CreateSubmit).performClick()
+        assertEquals(CreateGroupIntent.Submit, intent)
     }
 
     @Test fun `large text keeps loading create action stable`() = runComposeUiTest {
         setContent {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                    CreateGroupScreen(GroupAdministrationState(isLoading = true), "Training Group", "America/Sao_Paulo", {}, {}, {}, {})
+                    CreateGroupScreen(
+                        CreateGroupUiState(
+                            GroupAdministrationState(isLoading = true),
+                            "Training Group",
+                            "America/Sao_Paulo",
+                        ),
+                        {},
+                    )
                 }
             }
         }
         onNodeWithTag(GroupOnboardingTags.CreateSubmit).assertIsNotEnabled()
     }
 
-    private fun androidx.compose.ui.test.ComposeUiTest.bootstrap(state: SessionAccessState, retry: () -> Unit = {}) =
-        setContent { SaqzTheme { BootstrapAccessScreen(state, retry) } }
+    private fun androidx.compose.ui.test.ComposeUiTest.bootstrap(
+        state: SessionAccessState,
+        onIntent: (SessionIntent) -> Unit = {},
+    ) = setContent { SaqzTheme { BootstrapAccessScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.groups(
         state: GroupSelectionState,
-        onSelect: (String) -> Unit = {}, onCreate: () -> Unit = {}, onRetry: () -> Unit = {},
-    ) = setContent { SaqzTheme { GroupOnboardingScreen(state, onSelect, onCreate, onRetry) } }
+        onIntent: (GroupOnboardingIntent) -> Unit = {},
+    ) = setContent { SaqzTheme { GroupOnboardingScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.create(
         state: GroupAdministrationState = GroupAdministrationState(), name: String = "", timeZone: String = "",
-        onNameChange: (String) -> Unit = {}, onTimeZoneChange: (String) -> Unit = {},
-        onSubmit: () -> Unit = {}, onBack: () -> Unit = {},
-    ) = setContent { SaqzTheme { CreateGroupScreen(state, name, timeZone, onNameChange, onTimeZoneChange, onSubmit, onBack) } }
+        validationAttempted: Boolean = false,
+        onIntent: (CreateGroupIntent) -> Unit = {},
+    ) = setContent {
+        SaqzTheme {
+            CreateGroupScreen(CreateGroupUiState(state, name, timeZone, validationAttempted), onIntent)
+        }
+    }
 
     private companion object {
         val selector = GroupSelectionState.Selector(

@@ -22,6 +22,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -30,29 +31,29 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class LoginScreenTest {
     @Test fun `email input emits controlled value`() = runComposeUiTest {
-        var email = ""
-        content(onEmailChange = { email = it })
+        var intent: AuthenticationIntent? = null
+        content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("person@example.test")
-        assertEquals("person@example.test", email)
+        assertEquals(AuthenticationIntent.UpdateEmail("person@example.test"), intent)
     }
 
     @Test fun `password input emits controlled value`() = runComposeUiTest {
-        var password = ""
-        content(onPasswordChange = { password = it })
+        var intent: AuthenticationIntent? = null
+        content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("secret")
-        assertEquals("secret", password)
+        assertEquals(AuthenticationIntent.UpdatePassword("secret"), intent)
     }
 
     @Test fun `primary action submits password login`() = runComposeUiTest {
-        var calls = 0; content(onSubmit = { calls += 1 })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onNodeWithTag(LoginTags.Submit).performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.SubmitPasswordLogin, intent)
     }
 
     @Test fun `google action invokes provider flow`() = runComposeUiTest {
-        var calls = 0; content(onGoogle = { calls += 1 })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onNodeWithText("Entrar com Google").performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.SubmitGoogleLogin, intent)
     }
 
     @Test fun `approved visual hierarchy exposes the complete login journey`() = runComposeUiTest {
@@ -83,15 +84,15 @@ class LoginScreenTest {
     }
 
     @Test fun `registration action is reachable`() = runComposeUiTest {
-        var calls = 0; content(onRegister = { calls += 1 })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onNodeWithText("Criar conta").performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.ShowRegistration, intent)
     }
 
     @Test fun `password reset action is reachable`() = runComposeUiTest {
-        var calls = 0; content(onReset = { calls += 1 })
+        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
         onNodeWithText("Esqueci minha senha").performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.ShowPasswordReset, intent)
     }
 
     @Test fun `loading disables all submit actions`() = runComposeUiTest {
@@ -122,7 +123,7 @@ class LoginScreenTest {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
                     Box(Modifier.size(280.dp, 320.dp)) {
-                        LoginScreen(AuthenticationState(), {}, {}, {}, {}, {}, {})
+                        LoginScreen(AuthenticationState(), {})
                     }
                 }
             }
@@ -133,15 +134,10 @@ class LoginScreenTest {
 
     private fun androidx.compose.ui.test.ComposeUiTest.content(
         state: AuthenticationState = AuthenticationState(),
-        onEmailChange: (String) -> Unit = {},
-        onPasswordChange: (String) -> Unit = {},
-        onSubmit: () -> Unit = {},
-        onGoogle: () -> Unit = {},
-        onRegister: () -> Unit = {},
-        onReset: () -> Unit = {},
+        onIntent: (AuthenticationIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
-            LoginScreen(state, onEmailChange, onPasswordChange, onSubmit, onGoogle, onRegister, onReset)
+            LoginScreen(state, onIntent)
         }
     }
 }

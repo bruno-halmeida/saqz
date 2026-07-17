@@ -42,10 +42,13 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.ui.BootstrapAccessScreen
+import br.com.saqz.access.ui.CreateGroupIntent
 import br.com.saqz.access.ui.CreateGroupScreen
+import br.com.saqz.access.ui.CreateGroupUiState
 import br.com.saqz.access.ui.ExpireInviteConfirmationDialog
 import br.com.saqz.access.ui.GroupContextScreen
 import br.com.saqz.access.ui.GroupOnboardingScreen
+import br.com.saqz.access.ui.GroupOnboardingIntent
 import br.com.saqz.access.ui.GroupSettingsScreen
 import br.com.saqz.access.ui.InviteManagementScreen
 import br.com.saqz.access.ui.InviteToolState
@@ -177,6 +180,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     var page by remember { mutableStateOf(AccessPage.CONTEXT) }
     var createName by remember { mutableStateOf("") }
     var createTimeZone by remember { mutableStateOf("") }
+    var createValidationAttempted by remember { mutableStateOf(false) }
     var createRequestId by remember { mutableStateOf(runtime.newRequestId()) }
     var settingsName by remember { mutableStateOf("") }
     var settingsTimeZone by remember { mutableStateOf("") }
@@ -209,6 +213,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         page = page,
         createName = createName,
         createTimeZone = createTimeZone,
+        createValidationAttempted = createValidationAttempted,
         settingsName = settingsName,
         settingsTimeZone = settingsTimeZone,
         invite = invite,
@@ -240,6 +245,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         openCreateGroup = {
             createName = ""
             createTimeZone = ""
+            createValidationAttempted = false
             createRequestId = runtime.newRequestId()
             page = AccessPage.CREATE_GROUP
         },
@@ -247,9 +253,13 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         createNameChanged = { createName = it },
         createTimeZoneChanged = { createTimeZone = it },
         createGroup = {
-            runtime.administration.onIntent(
-                GroupAdministrationIntent.CreateGroup(createRequestId, createName, createTimeZone),
-            )
+            createValidationAttempted = true
+            val form = CreateGroupUiState(administration, createName, createTimeZone, validationAttempted = true)
+            if (form.isValid) {
+                runtime.administration.onIntent(
+                    GroupAdministrationIntent.CreateGroup(createRequestId, createName, createTimeZone),
+                )
+            }
         },
         closePage = { page = AccessPage.CONTEXT },
         switchGroup = {
@@ -517,44 +527,67 @@ private fun DestinationContent(destination: AccessDestination, state: AccessRoot
         AccessDestination.STARTING -> SaqzLoadingState()
         AccessDestination.LOGIN -> LoginScreen(
             state.authentication,
-            actions.updateEmail,
-            actions.updatePassword,
-            actions.submitLogin,
-            actions.submitGoogle,
-            actions.showRegistration,
-            actions.showReset,
-        )
+        ) { intent ->
+            when (intent) {
+                is AuthenticationIntent.UpdateEmail -> actions.updateEmail(intent.value)
+                is AuthenticationIntent.UpdatePassword -> actions.updatePassword(intent.value)
+                AuthenticationIntent.SubmitPasswordLogin -> actions.submitLogin()
+                AuthenticationIntent.SubmitGoogleLogin -> actions.submitGoogle()
+                AuthenticationIntent.ShowRegistration -> actions.showRegistration()
+                AuthenticationIntent.ShowPasswordReset -> actions.showReset()
+                else -> Unit
+            }
+        }
         AccessDestination.REGISTRATION -> RegistrationScreen(
             state.authentication,
-            actions.updateName,
-            actions.updateEmail,
-            actions.updatePassword,
-            actions.submitRegistration,
-            actions.showLogin,
-        )
+        ) { intent ->
+            when (intent) {
+                is AuthenticationIntent.UpdateName -> actions.updateName(intent.value)
+                is AuthenticationIntent.UpdateEmail -> actions.updateEmail(intent.value)
+                is AuthenticationIntent.UpdatePassword -> actions.updatePassword(intent.value)
+                AuthenticationIntent.SubmitRegistration -> actions.submitRegistration()
+                AuthenticationIntent.ShowLogin -> actions.showLogin()
+                else -> Unit
+            }
+        }
         AccessDestination.PASSWORD_RESET -> PasswordResetScreen(
             state.authentication,
-            actions.updateEmail,
-            actions.submitReset,
-            actions.showLogin,
-        )
+        ) { intent ->
+            when (intent) {
+                is AuthenticationIntent.UpdateEmail -> actions.updateEmail(intent.value)
+                AuthenticationIntent.SubmitPasswordReset -> actions.submitReset()
+                AuthenticationIntent.ShowLogin -> actions.showLogin()
+                else -> Unit
+            }
+        }
         AccessDestination.VERIFICATION -> VerificationScreen(
             state.session as SessionAccessState.AwaitingVerification,
-            actions.confirmVerification,
-            actions.resendVerification,
-        )
+        ) { intent ->
+            when (intent) {
+                SessionIntent.ConfirmVerification -> actions.confirmVerification()
+                SessionIntent.ResendVerification -> actions.resendVerification()
+                else -> Unit
+            }
+        }
         AccessDestination.NAME_COMPLETION -> NameCompletionScreen(
             state.session as SessionAccessState.CompletingName,
-            actions.updateName,
-            actions.completeName,
-        )
-        AccessDestination.BOOTSTRAP -> BootstrapAccessScreen(state.session, actions.retryBootstrap)
-        AccessDestination.GROUP_ONBOARDING -> GroupOnboardingScreen(
-            state.selection,
-            actions.selectGroup,
-            actions.openCreateGroup,
-            actions.retryGroup,
-        )
+        ) { intent ->
+            when (intent) {
+                is SessionIntent.UpdateName -> actions.updateName(intent.value)
+                SessionIntent.CompleteName -> actions.completeName()
+                else -> Unit
+            }
+        }
+        AccessDestination.BOOTSTRAP -> BootstrapAccessScreen(state.session) { intent ->
+            if (intent == SessionIntent.RetryBootstrap) actions.retryBootstrap()
+        }
+        AccessDestination.GROUP_ONBOARDING -> GroupOnboardingScreen(state.selection) { intent ->
+            when (intent) {
+                is GroupOnboardingIntent.Select -> actions.selectGroup(intent.groupId)
+                GroupOnboardingIntent.OpenCreateGroup -> actions.openCreateGroup()
+                GroupOnboardingIntent.Retry -> actions.retryGroup()
+            }
+        }
         AccessDestination.GROUP_CONTEXT -> {
             GroupContextScreen(
                 state.administration,
@@ -569,14 +602,20 @@ private fun DestinationContent(destination: AccessDestination, state: AccessRoot
             }
         }
         AccessDestination.CREATE_GROUP -> CreateGroupScreen(
-            state.administration,
-            state.createName,
-            state.createTimeZone,
-            actions.createNameChanged,
-            actions.createTimeZoneChanged,
-            actions.createGroup,
-            actions.closePage,
-        )
+            state = CreateGroupUiState(
+                administration = state.administration,
+                name = state.createName,
+                timeZone = state.createTimeZone,
+                validationAttempted = state.createValidationAttempted,
+            ),
+        ) { intent ->
+            when (intent) {
+                is CreateGroupIntent.UpdateName -> actions.createNameChanged(intent.value)
+                is CreateGroupIntent.UpdateTimeZone -> actions.createTimeZoneChanged(intent.value)
+                CreateGroupIntent.Submit -> actions.createGroup()
+                CreateGroupIntent.Back -> actions.closePage()
+            }
+        }
         AccessDestination.SETTINGS -> GroupSettingsScreen(
             state.administration,
             state.settingsName,

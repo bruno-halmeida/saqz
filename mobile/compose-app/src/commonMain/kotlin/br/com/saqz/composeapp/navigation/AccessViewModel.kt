@@ -14,6 +14,7 @@ import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.ui.InviteToolState
+import br.com.saqz.access.ui.CreateGroupUiState
 import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.network.SessionDto
 import kotlinx.coroutines.CoroutineScope
@@ -103,6 +104,7 @@ internal data class AccessUiState(
     val page: AccessPage = AccessPage.CONTEXT,
     val createName: String = "",
     val createTimeZone: String = "",
+    val createValidationAttempted: Boolean = false,
     val settingsName: String = "",
     val settingsTimeZone: String = "",
     val invite: InviteToolState = InviteToolState(),
@@ -196,6 +198,7 @@ internal class AccessViewModel private constructor(
             page = route.page,
             createName = route.createName,
             createTimeZone = route.createTimeZone,
+            createValidationAttempted = route.createValidationAttempted,
             settingsName = route.settingsName,
             settingsTimeZone = route.settingsTimeZone,
             invite = invite,
@@ -295,6 +298,7 @@ internal class AccessViewModel private constructor(
                 page = AccessPage.CREATE_GROUP,
                 createName = "",
                 createTimeZone = "",
+                createValidationAttempted = false,
                 createRequestId = runtime.newRequestId(),
             )
         }
@@ -302,6 +306,14 @@ internal class AccessViewModel private constructor(
 
     private fun submitCreateGroup() {
         val route = routeState.value
+        updateRoute { copy(createValidationAttempted = true) }
+        val form = CreateGroupUiState(
+            administration = runtime.administrationState.value,
+            name = route.createName,
+            timeZone = route.createTimeZone,
+            validationAttempted = true,
+        )
+        if (!form.isValid) return
         if (runtime.administrationState.value.isLoading) return
         runtime.onIntent(
             AccessRuntimeIntent.Administration(
@@ -388,6 +400,7 @@ internal class AccessViewModel private constructor(
         val page: AccessPage = AccessPage.CONTEXT,
         val createName: String = "",
         val createTimeZone: String = "",
+        val createValidationAttempted: Boolean = false,
         val createRequestId: String,
         val settingsName: String = "",
         val settingsTimeZone: String = "",

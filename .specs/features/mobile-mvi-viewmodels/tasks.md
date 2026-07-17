@@ -149,6 +149,8 @@ reconciliation, stale-state protection, and cleanup exactly once.
 
 ### T6: Make authentication and identity screens intent-only
 
+**Status:** Complete
+
 **What:** Change login/registration/reset/verification/name/bootstrap screens to
 controlled state plus one typed intent callback and move validation-attempted
 business state out of Compose.

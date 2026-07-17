@@ -35,6 +35,7 @@ data class AuthenticationState(
     val isLoading: Boolean = false,
     val error: AuthUiError? = null,
     val resetConfirmation: Boolean = false,
+    val validationAttempted: Boolean = false,
 )
 
 sealed interface AuthTransition {
@@ -88,6 +89,9 @@ class AuthenticationStateMachine(
     }
 
     private fun submitRegistration() {
+        mutableState.value = mutableState.value.copy(validationAttempted = true)
+        val form = mutableState.value
+        if (form.name.isBlank() || !form.email.isValidEmail()) return
         val current = beginSensitiveSubmit() ?: return
         auth.createAccount(current.name, current.email, current.password, authCallback { result ->
             when (result) {
@@ -117,7 +121,9 @@ class AuthenticationStateMachine(
     }
 
     private fun submitPasswordReset() {
+        mutableState.value = mutableState.value.copy(validationAttempted = true)
         val current = mutableState.value
+        if (!current.email.isValidEmail()) return
         if (!beginSubmit()) return
         auth.sendPasswordReset(current.email, resultCallback {
             mutableState.value = mutableState.value.copy(
@@ -171,6 +177,7 @@ class AuthenticationStateMachine(
             password = "",
             error = null,
             resetConfirmation = false,
+            validationAttempted = false,
         )
     }
 
@@ -186,6 +193,11 @@ class AuthenticationStateMachine(
     private fun resultCallback(block: (OperationResult) -> Unit) = object : ResultCallback {
         override fun complete(result: OperationResult) = block(result)
     }
+}
+
+internal fun String.isValidEmail(): Boolean {
+    val at = indexOf('@')
+    return at > 0 && at < lastIndex && substring(at + 1).contains('.')
 }
 
 private fun NativeFailureCode.toUiError(): AuthUiError = when (this) {

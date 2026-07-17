@@ -1,21 +1,19 @@
 package br.com.saqz.access.ui
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,15 +26,15 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `already verified action invokes confirmation`() = runComposeUiTest {
-        var calls = 0; verification(onConfirm = { calls++ })
+        var intent: SessionIntent? = null; verification(onIntent = { intent = it })
         onNodeWithTag(IdentityTags.Verify).performClick()
-        assertEquals(1, calls)
+        assertEquals(SessionIntent.ConfirmVerification, intent)
     }
 
     @Test fun `resend action invokes provider request`() = runComposeUiTest {
-        var calls = 0; verification(onResend = { calls++ })
+        var intent: SessionIntent? = null; verification(onIntent = { intent = it })
         onNodeWithTag(IdentityTags.Resend).performClick()
-        assertEquals(1, calls)
+        assertEquals(SessionIntent.ResendVerification, intent)
     }
 
     @Test fun `sent verification reports cooldown and disables resend`() = runComposeUiTest {
@@ -57,9 +55,9 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `name input emits controlled value`() = runComposeUiTest {
-        var value = ""; name(onNameChange = { value = it })
+        var intent: SessionIntent? = null; name(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("Person Name")
-        assertEquals("Person Name", value)
+        assertEquals(SessionIntent.UpdateName("Person Name"), intent)
     }
 
     @Test fun `invalid name exposes associated error`() = runComposeUiTest {
@@ -68,9 +66,10 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `name completion invokes submit`() = runComposeUiTest {
-        var calls = 0; name(SessionAccessState.CompletingName(user, name = "Person Name"), onSubmit = { calls++ })
+        var intent: SessionIntent? = null
+        name(SessionAccessState.CompletingName(user, name = "Person Name"), onIntent = { intent = it })
         onNodeWithTag(IdentityTags.NameSubmit).performClick()
-        assertEquals(1, calls)
+        assertEquals(SessionIntent.CompleteName, intent)
     }
 
     @Test fun `name loading disables field and submit`() = runComposeUiTest {
@@ -79,54 +78,45 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `reset email emits controlled value`() = runComposeUiTest {
-        var value = ""; reset(onEmailChange = { value = it })
+        var intent: AuthenticationIntent? = null; reset(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("person@example.test")
-        assertEquals("person@example.test", value)
+        assertEquals(AuthenticationIntent.UpdateEmail("person@example.test"), intent)
     }
 
-    @Test fun `reset accepts only syntactically valid email`() = runComposeUiTest {
-        var state by mutableStateOf(AuthenticationState(email = "invalid"))
-        var calls = 0
-        setContent {
-            SaqzTheme {
-                PasswordResetScreen(state, { state = state.copy(email = it) }, { calls++ }, {})
-            }
-        }
-        onNodeWithTag(IdentityTags.ResetSubmit).performClick()
-        assertEquals(0, calls)
+    @Test fun `reset validation state exposes invalid email`() = runComposeUiTest {
+        reset(AuthenticationState(email = "invalid", validationAttempted = true))
         onNodeWithText("Informe um e-mail valido").assertExists()
-        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextClearance()
-        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("person@example.test")
+    }
+
+    @Test fun `reset submit emits exact typed intent`() = runComposeUiTest {
+        var intent: AuthenticationIntent? = null
+        reset(AuthenticationState(email = "person@example.test"), onIntent = { intent = it })
         onNodeWithTag(IdentityTags.ResetSubmit).performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.SubmitPasswordReset, intent)
     }
 
     @Test fun `reset confirmation stays neutral and returns through one callback`() = runComposeUiTest {
-        var calls = 0
-        reset(AuthenticationState(resetConfirmation = true, error = AuthUiError.UNKNOWN), onBack = { calls++ })
+        var intent: AuthenticationIntent? = null
+        reset(AuthenticationState(resetConfirmation = true, error = AuthUiError.UNKNOWN), onIntent = { intent = it })
         onNodeWithText("Se o e-mail estiver cadastrado, voce recebera as instrucoes").assertExists()
         onNodeWithTag(IdentityTags.ResetBack).performClick()
-        assertEquals(1, calls)
+        assertEquals(AuthenticationIntent.ShowLogin, intent)
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.verification(
         state: SessionAccessState.AwaitingVerification = SessionAccessState.AwaitingVerification(user),
-        onConfirm: () -> Unit = {},
-        onResend: () -> Unit = {},
-    ) = setContent { SaqzTheme { VerificationScreen(state, onConfirm, onResend) } }
+        onIntent: (SessionIntent) -> Unit = {},
+    ) = setContent { SaqzTheme { VerificationScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.name(
         state: SessionAccessState.CompletingName = SessionAccessState.CompletingName(user),
-        onNameChange: (String) -> Unit = {},
-        onSubmit: () -> Unit = {},
-    ) = setContent { SaqzTheme { NameCompletionScreen(state, onNameChange, onSubmit) } }
+        onIntent: (SessionIntent) -> Unit = {},
+    ) = setContent { SaqzTheme { NameCompletionScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.reset(
         state: AuthenticationState = AuthenticationState(),
-        onEmailChange: (String) -> Unit = {},
-        onSubmit: () -> Unit = {},
-        onBack: () -> Unit = {},
-    ) = setContent { SaqzTheme { PasswordResetScreen(state, onEmailChange, onSubmit, onBack) } }
+        onIntent: (AuthenticationIntent) -> Unit = {},
+    ) = setContent { SaqzTheme { PasswordResetScreen(state, onIntent) } }
 
     private companion object {
         val user = NativeUser("subject", "person@example.test", false, "Person Name")

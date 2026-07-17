@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_email_in_use
@@ -92,12 +93,7 @@ internal object LoginTags {
 @Composable
 fun LoginScreen(
     state: AuthenticationState,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onGoogle: () -> Unit,
-    onRegister: () -> Unit,
-    onReset: () -> Unit,
+    onIntent: (AuthenticationIntent) -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
     val colors = SaqzTheme.colors
@@ -163,7 +159,7 @@ fun LoginScreen(
             Spacer(Modifier.height(24.dp))
             SaqzInput(
                 value = TextFieldValue(state.email),
-                onValueChange = { onEmailChange(it.text) },
+                onValueChange = { onIntent(AuthenticationIntent.UpdateEmail(it.text)) },
                 label = stringResource(Res.string.login_email),
                 kind = SaqzInputKind.Email,
                 enabled = !state.isLoading,
@@ -174,7 +170,7 @@ fun LoginScreen(
             Spacer(Modifier.height(10.dp))
             SaqzInput(
                 value = TextFieldValue(state.password),
-                onValueChange = { onPasswordChange(it.text) },
+                onValueChange = { onIntent(AuthenticationIntent.UpdatePassword(it.text)) },
                 label = stringResource(Res.string.login_password),
                 kind = SaqzInputKind.Password,
                 enabled = !state.isLoading,
@@ -185,7 +181,7 @@ fun LoginScreen(
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 SaqzButton(
                     label = stringResource(Res.string.login_reset),
-                    onClick = onReset,
+                    onClick = { onIntent(AuthenticationIntent.ShowPasswordReset) },
                     variant = SaqzButtonVariant.Ghost,
                     enabled = !state.isLoading,
                 )
@@ -201,7 +197,7 @@ fun LoginScreen(
             }
             LoginPrimaryAction(
                 label = stringResource(Res.string.login_submit),
-                onClick = onSubmit,
+                onClick = { onIntent(AuthenticationIntent.SubmitPasswordLogin) },
                 enabled = !state.isLoading,
                 loading = state.isLoading,
             )
@@ -210,7 +206,7 @@ fun LoginScreen(
             Spacer(Modifier.height(14.dp))
             GoogleAction(
                 label = stringResource(Res.string.login_google),
-                onClick = onGoogle,
+                onClick = { onIntent(AuthenticationIntent.SubmitGoogleLogin) },
                 enabled = !state.isLoading,
             )
             Spacer(Modifier.height(18.dp))
@@ -222,7 +218,7 @@ fun LoginScreen(
             )
             SaqzButton(
                 label = stringResource(Res.string.login_register),
-                onClick = onRegister,
+                onClick = { onIntent(AuthenticationIntent.ShowRegistration) },
                 variant = SaqzButtonVariant.Ghost,
                 enabled = !state.isLoading,
             )
@@ -409,5 +405,5 @@ private fun AuthUiError.resource(): StringResource = when (this) {
 )
 @Composable
 private fun LoginScreenPreview() = SaqzTheme {
-    LoginScreen(AuthenticationState(email = "ana@exemplo.com"), {}, {}, {}, {}, {}, {})
+    LoginScreen(AuthenticationState(email = "ana@exemplo.com"), {})
 }

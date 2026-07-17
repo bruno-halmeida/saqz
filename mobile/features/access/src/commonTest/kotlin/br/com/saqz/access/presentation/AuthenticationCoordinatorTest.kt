@@ -28,6 +28,19 @@ class AuthenticationStateMachineTest {
     }
 
     @Test
+    fun `invalid registration is reduced to validation state without provider call`() {
+        val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.ShowRegistration)
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("invalid"))
+
+        fixture.machine.onIntent(AuthenticationIntent.SubmitRegistration)
+
+        assertTrue(fixture.machine.state.value.validationAttempted)
+        assertTrue(fixture.auth.registrations.isEmpty())
+        assertFalse(fixture.machine.state.value.isLoading)
+    }
+
+    @Test
     fun `registration clears password as soon as submitted`() {
         val fixture = fixture().filledRegistration()
 
@@ -214,6 +227,7 @@ class AuthenticationStateMachineTest {
     @Test
     fun `password reset success shows neutral confirmation`() {
         val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("person@example.test"))
         fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordReset)
         fixture.auth.completeOperation(OperationResult.Success)
 
@@ -225,12 +239,26 @@ class AuthenticationStateMachineTest {
     @Test
     fun `password reset provider outcome shows the same neutral confirmation`() {
         val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("person@example.test"))
         fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordReset)
         fixture.auth.completeOperation(OperationResult.Failure(NativeFailureCode.UNKNOWN))
 
         assertTrue(fixture.machine.state.value.resetConfirmation)
         assertFalse(fixture.machine.state.value.isLoading)
         assertNull(fixture.machine.state.value.error)
+    }
+
+    @Test
+    fun `invalid password reset is reduced to validation state without provider call`() {
+        val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.ShowPasswordReset)
+        fixture.machine.onIntent(AuthenticationIntent.UpdateEmail("invalid"))
+
+        fixture.machine.onIntent(AuthenticationIntent.SubmitPasswordReset)
+
+        assertTrue(fixture.machine.state.value.validationAttempted)
+        assertTrue(fixture.auth.passwordResets.isEmpty())
+        assertFalse(fixture.machine.state.value.isLoading)
     }
 
     private fun fixture(): Fixture {
