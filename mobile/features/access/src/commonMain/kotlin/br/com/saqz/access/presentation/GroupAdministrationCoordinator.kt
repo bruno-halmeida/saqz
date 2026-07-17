@@ -36,7 +36,23 @@ data class GroupAdministrationState(
     val error: GroupAdministrationError? = null,
 )
 
-class GroupAdministrationCoordinator(
+sealed interface GroupAdministrationIntent {
+    data class SetGroup(val group: VersionedGroupDto) : GroupAdministrationIntent
+
+    data class CreateGroup(
+        val requestId: String,
+        val name: String,
+        val timeZone: String,
+    ) : GroupAdministrationIntent
+
+    data class UpdateSettings(val name: String, val timeZone: String) : GroupAdministrationIntent
+
+    data object LoadMemberships : GroupAdministrationIntent
+
+    data class ChangeRole(val userId: String, val role: PersistedRoleDto) : GroupAdministrationIntent
+}
+
+class GroupAdministrationStateMachine(
     private val groups: GroupGateway,
     private val roles: RolesInvitesGateway,
     private val scope: CoroutineScope,
@@ -45,14 +61,24 @@ class GroupAdministrationCoordinator(
     private val mutableState = MutableStateFlow(GroupAdministrationState())
     val state: StateFlow<GroupAdministrationState> = mutableState.asStateFlow()
 
-    fun setGroup(group: VersionedGroupDto) {
+    fun onIntent(intent: GroupAdministrationIntent) {
+        when (intent) {
+            is GroupAdministrationIntent.SetGroup -> setGroup(intent.group)
+            is GroupAdministrationIntent.CreateGroup -> createGroup(intent.requestId, intent.name, intent.timeZone)
+            is GroupAdministrationIntent.UpdateSettings -> updateSettings(intent.name, intent.timeZone)
+            GroupAdministrationIntent.LoadMemberships -> loadMemberships()
+            is GroupAdministrationIntent.ChangeRole -> changeRole(intent.userId, intent.role)
+        }
+    }
+
+    private fun setGroup(group: VersionedGroupDto) {
         mutableState.value = GroupAdministrationState(
             group = group,
             actions = actionsFor(group.group.role),
         )
     }
 
-    fun createGroup(requestId: String, name: String, timeZone: String) {
+    private fun createGroup(requestId: String, name: String, timeZone: String) {
         if (!begin()) return
         scope.launch {
             when (val result = groups.create(requestId, name, timeZone)) {
@@ -65,7 +91,7 @@ class GroupAdministrationCoordinator(
         }
     }
 
-    fun updateSettings(name: String, timeZone: String) {
+    private fun updateSettings(name: String, timeZone: String) {
         val current = mutableState.value
         val group = current.group ?: return
         if (!current.actions.canEditSettings || !begin()) return
@@ -80,7 +106,7 @@ class GroupAdministrationCoordinator(
         }
     }
 
-    fun loadMemberships() {
+    private fun loadMemberships() {
         val current = mutableState.value
         val groupId = current.group?.group?.id ?: return
         if (!current.actions.canManageRoles || !begin()) return
@@ -95,7 +121,7 @@ class GroupAdministrationCoordinator(
         }
     }
 
-    fun changeRole(userId: String, role: PersistedRoleDto) {
+    private fun changeRole(userId: String, role: PersistedRoleDto) {
         val current = mutableState.value
         val groupId = current.group?.group?.id ?: return
         if (!current.actions.canManageRoles || !begin()) return

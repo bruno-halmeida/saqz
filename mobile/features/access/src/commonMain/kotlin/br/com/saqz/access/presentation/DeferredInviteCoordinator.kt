@@ -32,7 +32,23 @@ data class InviteState(
     val redeemedRole: GroupRoleDto? = null,
 )
 
-class DeferredInviteCoordinator(
+sealed interface DeferredInviteIntent {
+    data object Start : DeferredInviteIntent
+
+    data object Stop : DeferredInviteIntent
+
+    data object Restore : DeferredInviteIntent
+
+    data class SetSessionReady(val ready: Boolean) : DeferredInviteIntent
+
+    data object Retry : DeferredInviteIntent
+
+    data object Discard : DeferredInviteIntent
+
+    data object Logout : DeferredInviteIntent
+}
+
+class DeferredInviteStateMachine(
     private val links: NativeLinkPort,
     private val localState: LocalAccessStatePort,
     private val invites: RolesInvitesGateway,
@@ -45,19 +61,31 @@ class DeferredInviteCoordinator(
     private var sessionReady = false
     private var subscription: Cancelable? = null
 
-    fun start() {
+    fun onIntent(intent: DeferredInviteIntent) {
+        when (intent) {
+            DeferredInviteIntent.Start -> start()
+            DeferredInviteIntent.Stop -> stop()
+            DeferredInviteIntent.Restore -> restore()
+            is DeferredInviteIntent.SetSessionReady -> setSessionReady(intent.ready)
+            DeferredInviteIntent.Retry -> retry()
+            DeferredInviteIntent.Discard -> clearPending()
+            DeferredInviteIntent.Logout -> logout()
+        }
+    }
+
+    private fun start() {
         if (subscription != null) return
         subscription = links.start(object : InviteCodeListener {
             override fun onInviteCode(code: String) = receive(code)
         })
     }
 
-    fun stop() {
+    private fun stop() {
         subscription?.cancel()
         subscription = null
     }
 
-    fun restore() {
+    private fun restore() {
         localState.readPendingInvite(object : ValueCallback {
             override fun complete(result: ValueResult) {
                 val restored = (result as? ValueResult.Success)?.value ?: return
@@ -68,19 +96,17 @@ class DeferredInviteCoordinator(
         })
     }
 
-    fun setSessionReady(ready: Boolean) {
+    private fun setSessionReady(ready: Boolean) {
         sessionReady = ready
         if (ready) attemptRedeem()
     }
 
-    fun retry() {
+    private fun retry() {
         if (mutableState.value.retryAfterSeconds != null) return
         attemptRedeem()
     }
 
-    fun discard() = clearPending()
-
-    fun onLogout() {
+    private fun logout() {
         sessionReady = false
         clearPending()
         mutableState.value = InviteState()

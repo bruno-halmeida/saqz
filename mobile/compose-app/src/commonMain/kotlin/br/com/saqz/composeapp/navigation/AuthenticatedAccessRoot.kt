@@ -30,9 +30,11 @@ import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.AuthenticationStateMachine
-import br.com.saqz.access.presentation.DeferredInviteCoordinator
+import br.com.saqz.access.presentation.DeferredInviteIntent
+import br.com.saqz.access.presentation.DeferredInviteStateMachine
+import br.com.saqz.access.presentation.GroupAdministrationIntent
 import br.com.saqz.access.presentation.GroupAdministrationState
-import br.com.saqz.access.presentation.GroupAdministrationCoordinator
+import br.com.saqz.access.presentation.GroupAdministrationStateMachine
 import br.com.saqz.access.presentation.GroupSelectionIntent
 import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.GroupSelectionStateMachine
@@ -200,7 +202,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
 
     LaunchedEffect(session) {
         val ready = session as? SessionAccessState.Ready
-        runtime.invites.setSessionReady(ready != null)
+        runtime.invites.onIntent(DeferredInviteIntent.SetSessionReady(ready != null))
         if (ready != null) runtime.selection.onIntent(GroupSelectionIntent.Reconcile(ready.session))
         if (session is SessionAccessState.SignedOut) {
             page = AccessPage.CONTEXT
@@ -210,7 +212,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     LaunchedEffect(selection) {
         val selected = selection as? GroupSelectionState.Selected
         if (selected != null) {
-            runtime.administration.setGroup(selected.group)
+            runtime.administration.onIntent(GroupAdministrationIntent.SetGroup(selected.group))
             page = AccessPage.CONTEXT
         }
     }
@@ -261,7 +263,11 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         retryGroup = { runtime.selection.onIntent(GroupSelectionIntent.Retry) },
         createNameChanged = { createName = it },
         createTimeZoneChanged = { createTimeZone = it },
-        createGroup = { runtime.administration.createGroup(createRequestId, createName, createTimeZone) },
+        createGroup = {
+            runtime.administration.onIntent(
+                GroupAdministrationIntent.CreateGroup(createRequestId, createName, createTimeZone),
+            )
+        },
         closePage = { page = AccessPage.CONTEXT },
         switchGroup = {
             page = AccessPage.CONTEXT
@@ -275,27 +281,31 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
             }
         },
         openMemberships = {
-            runtime.administration.loadMemberships()
+            runtime.administration.onIntent(GroupAdministrationIntent.LoadMemberships)
             page = AccessPage.MEMBERSHIPS
         },
         openInvite = { page = AccessPage.INVITE },
         requestLogout = { logoutConfirmation = true },
         confirmLogout = {
             logoutConfirmation = false
-            runtime.invites.onLogout()
+            runtime.invites.onIntent(DeferredInviteIntent.Logout)
             runtime.session.onIntent(SessionIntent.Logout)
         },
         cancelLogout = { logoutConfirmation = false },
         settingsNameChanged = { settingsName = it },
         settingsTimeZoneChanged = { settingsTimeZone = it },
-        saveSettings = { runtime.administration.updateSettings(settingsName, settingsTimeZone) },
+        saveSettings = {
+            runtime.administration.onIntent(GroupAdministrationIntent.UpdateSettings(settingsName, settingsTimeZone))
+        },
         reloadSettings = {
             administration.group?.group?.let {
                 settingsName = it.name
                 settingsTimeZone = it.timeZone
             }
         },
-        changeRole = runtime.administration::changeRole,
+        changeRole = { userId, role ->
+            runtime.administration.onIntent(GroupAdministrationIntent.ChangeRole(userId, role))
+        },
         generateInvite = runtime::rotateInvite,
         shareInvite = runtime::shareInvite,
         requestExpireInvite = { expireConfirmation = true },
@@ -329,10 +339,10 @@ internal class AccessRuntime(
         session.onIntent(SessionIntent.Accept(it))
     }
     val selection = GroupSelectionStateMachine(dependencies.localState, groups, scope)
-    val administration = GroupAdministrationCoordinator(groups, roles, scope) {
+    val administration = GroupAdministrationStateMachine(groups, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
-    val invites = DeferredInviteCoordinator(dependencies.links, dependencies.localState, roles, scope) {
+    val invites = DeferredInviteStateMachine(dependencies.links, dependencies.localState, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())
@@ -358,14 +368,14 @@ internal class AccessRuntime(
                 }
             }
         })
-        invites.start()
-        invites.restore()
+        invites.onIntent(DeferredInviteIntent.Start)
+        invites.onIntent(DeferredInviteIntent.Restore)
     }
 
     fun close() {
         authSubscription?.cancel()
         authSubscription = null
-        invites.stop()
+        invites.onIntent(DeferredInviteIntent.Stop)
         network.close()
     }
 

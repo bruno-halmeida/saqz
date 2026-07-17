@@ -111,6 +111,8 @@ if a test failure reveals a missing invariant.
 
 ### T4: Give group administration and invite flows typed inputs
 
+**Status:** Complete
+
 **What:** Replace group/invite action methods with their respective intent
 types and one `onIntent` per state machine.
 **Where:** `GroupAdministrationCoordinator.kt`,
