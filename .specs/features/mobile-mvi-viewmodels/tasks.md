@@ -128,6 +128,8 @@ payload/state assertions and adding no skipped cases.
 
 ### T5: Introduce the KMP access route ViewModel
 
+**Status:** Complete
+
 **What:** Add `AccessViewModel`, `AccessIntent`, immutable `AccessUiState`, and
 one-shot `AccessUiEffect`; move route-local fields, reconciliation, runtime
 scope, and cleanup from Compose/manual runtime into the ViewModel.

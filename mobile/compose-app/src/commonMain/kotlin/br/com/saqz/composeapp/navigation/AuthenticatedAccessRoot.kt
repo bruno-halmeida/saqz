@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -108,23 +107,6 @@ internal class AccessDestinationStack(initial: AccessDestination) {
     }
 }
 
-@Immutable
-internal data class AccessRootSnapshot(
-    val authObserved: Boolean,
-    val authentication: AuthenticationState,
-    val session: SessionAccessState,
-    val selection: GroupSelectionState,
-    val administration: GroupAdministrationState,
-    val page: AccessPage = AccessPage.CONTEXT,
-    val createName: String = "",
-    val createTimeZone: String = "",
-    val settingsName: String = "",
-    val settingsTimeZone: String = "",
-    val invite: InviteToolState = InviteToolState(),
-    val showLogoutConfirmation: Boolean = false,
-    val showExpireConfirmation: Boolean = false,
-)
-
 internal data class AccessRootActions(
     val updateName: (String) -> Unit = {},
     val updateEmail: (String) -> Unit = {},
@@ -182,10 +164,11 @@ internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, actions: AccessR
 @Composable
 internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     DisposableEffect(runtime) {
-        runtime.start()
+        runtime.onIntent(AccessRuntimeIntent.Start)
         onDispose { }
     }
 
+    val authObserved by runtime.authObservedState.collectAsState()
     val authentication by runtime.authentication.state.collectAsState()
     val session by runtime.session.state.collectAsState()
     val selection by runtime.selection.state.collectAsState()
@@ -218,7 +201,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
     }
 
     val snapshot = AccessRootSnapshot(
-        authObserved = runtime.authObserved,
+        authObserved = authObserved,
         authentication = authentication,
         session = session,
         selection = selection,
@@ -271,7 +254,9 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         closePage = { page = AccessPage.CONTEXT },
         switchGroup = {
             page = AccessPage.CONTEXT
-            (session as? SessionAccessState.Ready)?.let { runtime.showGroupSelector(it) }
+            (session as? SessionAccessState.Ready)?.let {
+                runtime.onIntent(AccessRuntimeIntent.ShowGroupSelector(it.session))
+            }
         },
         openSettings = {
             administration.group?.group?.let {
@@ -306,15 +291,15 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
         changeRole = { userId, role ->
             runtime.administration.onIntent(GroupAdministrationIntent.ChangeRole(userId, role))
         },
-        generateInvite = runtime::rotateInvite,
-        shareInvite = runtime::shareInvite,
+        generateInvite = { runtime.onIntent(AccessRuntimeIntent.RotateInvite) },
+        shareInvite = { runtime.onIntent(AccessRuntimeIntent.ShareInviteNative(it)) },
         requestExpireInvite = { expireConfirmation = true },
         confirmExpireInvite = {
             expireConfirmation = false
-            runtime.expireInvite()
+            runtime.onIntent(AccessRuntimeIntent.ExpireInvite)
         },
         cancelExpireInvite = { expireConfirmation = false },
-        retryInvite = runtime::rotateInvite,
+        retryInvite = { runtime.onIntent(AccessRuntimeIntent.RotateInvite) },
     )
     AuthenticatedAccessRoot(snapshot, actions)
 }
@@ -322,7 +307,7 @@ internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
 internal class AccessRuntime(
     private val dependencies: SaqzAppDependencies,
     private val scope: CoroutineScope,
-) {
+) : AccessRuntimeContract {
     private val network = createPlatformNetworkClient(
         NetworkConfig(environment = dependencies.environment, baseUrl = dependencies.apiBaseUrl),
     )
@@ -346,20 +331,41 @@ internal class AccessRuntime(
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())
-    val inviteToolState = mutableInviteToolState.asStateFlow()
-    var authObserved by mutableStateOf(false)
-        private set
+    override val inviteToolState = mutableInviteToolState.asStateFlow()
+    private val mutableAuthObservedState = MutableStateFlow(false)
+    override val authObservedState = mutableAuthObservedState.asStateFlow()
+    override val authenticationState = authentication.state
+    override val sessionState = session.state
+    override val selectionState = selection.state
+    override val administrationState = administration.state
     private var authSubscription: Cancelable? = null
 
     init {
         invalidator.delegate = session
     }
 
-    fun start() {
+    override fun onIntent(intent: AccessRuntimeIntent) {
+        when (intent) {
+            AccessRuntimeIntent.Start -> start()
+            AccessRuntimeIntent.Close -> close()
+            is AccessRuntimeIntent.Authentication -> authentication.onIntent(intent.intent)
+            is AccessRuntimeIntent.Session -> session.onIntent(intent.intent)
+            is AccessRuntimeIntent.Selection -> selection.onIntent(intent.intent)
+            is AccessRuntimeIntent.Administration -> administration.onIntent(intent.intent)
+            is AccessRuntimeIntent.DeferredInvite -> invites.onIntent(intent.intent)
+            is AccessRuntimeIntent.ShowGroupSelector -> showGroupSelector(intent.session)
+            AccessRuntimeIntent.RotateInvite -> rotateInvite()
+            AccessRuntimeIntent.ExpireInvite -> expireInvite()
+            is AccessRuntimeIntent.ShareFinished -> shareFinished(intent.successful)
+            is AccessRuntimeIntent.ShareInviteNative -> shareInvite(intent.url)
+        }
+    }
+
+    private fun start() {
         if (authSubscription != null) return
         authSubscription = dependencies.auth.observe(object : AuthStateListener {
             override fun onStateChanged(state: AuthState) {
-                authObserved = true
+                mutableAuthObservedState.value = true
                 when (state) {
                     AuthState.SignedOut -> authentication.onIntent(AuthenticationIntent.ShowLogin)
                     is AuthState.SignedIn -> session.onIntent(
@@ -372,20 +378,20 @@ internal class AccessRuntime(
         invites.onIntent(DeferredInviteIntent.Restore)
     }
 
-    fun close() {
+    private fun close() {
         authSubscription?.cancel()
         authSubscription = null
         invites.onIntent(DeferredInviteIntent.Stop)
         network.close()
     }
 
-    fun showGroupSelector(ready: SessionAccessState.Ready) {
+    private fun showGroupSelector(session: br.com.saqz.network.SessionDto) {
         dependencies.localState.writeSelectedGroupId(null, resultCallback {
-            selection.onIntent(GroupSelectionIntent.Reconcile(ready.session))
+            selection.onIntent(GroupSelectionIntent.Reconcile(session))
         })
     }
 
-    fun rotateInvite() {
+    private fun rotateInvite() {
         val groupId = administration.state.value.group?.group?.id ?: return
         if (mutableInviteToolState.value.isLoading) return
         mutableInviteToolState.value = mutableInviteToolState.value.copy(isLoading = true, error = null)
@@ -400,7 +406,7 @@ internal class AccessRuntime(
         }
     }
 
-    fun expireInvite() {
+    private fun expireInvite() {
         val groupId = administration.state.value.group?.group?.id ?: return
         if (mutableInviteToolState.value.isLoading) return
         mutableInviteToolState.value = mutableInviteToolState.value.copy(isLoading = true, error = null)
@@ -415,15 +421,19 @@ internal class AccessRuntime(
         }
     }
 
-    fun shareInvite(url: String) {
+    private fun shareInvite(url: String) {
         dependencies.share.share(url, resultCallback { result ->
-            if (result is OperationResult.Failure) {
-                mutableInviteToolState.value = mutableInviteToolState.value.copy(error = InviteUiError.UNAVAILABLE)
-            }
+            shareFinished(result is OperationResult.Success)
         })
     }
 
-    fun newRequestId(): String {
+    private fun shareFinished(successful: Boolean) {
+        if (!successful) {
+            mutableInviteToolState.value = mutableInviteToolState.value.copy(error = InviteUiError.UNAVAILABLE)
+        }
+    }
+
+    override fun newRequestId(): String {
         val bytes = Random.nextBytes(16)
         bytes[6] = ((bytes[6].toInt() and 0x0f) or 0x40).toByte()
         bytes[8] = ((bytes[8].toInt() and 0x3f) or 0x80).toByte()

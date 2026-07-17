@@ -143,3 +143,16 @@ the existing Android/iOS lifecycle suites without changing expected behavior.
 - [ ] Visual composables contain no business/form state that belongs to their
   ViewModel.
 - [ ] Relevant shared, Android, and iOS gates pass without weakening tests.
+
+## §V Verification Invariants
+
+- **V1** - Every test-owned long-lived ViewModel collector SHALL run in the
+  test's `backgroundScope` or be explicitly cancelled, so the relevant gate
+  terminates without live child jobs.
+
+## §B Backpropagation Log
+
+| ID | Date | Failure | Root cause | Invariant |
+| --- | --- | --- | --- | --- |
+| B1 | 2026-07-17 | `AccessViewModelTest` did not compile for Kotlin/Native | Expected singleton lists inferred concrete sealed subtypes instead of the declared `AccessRuntimeIntent` supertype | None; mechanical common-test typing issue with no product-behavior class to constrain |
+| B2 | 2026-07-17 | Quick Compose waited on ViewModel collectors owned by `runTest` | The fixture passed the foreground `TestScope` to eager `stateIn` and reconciliation collectors | V1 |

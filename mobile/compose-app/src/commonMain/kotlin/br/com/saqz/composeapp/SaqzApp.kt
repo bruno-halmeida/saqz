@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import br.com.saqz.composeapp.navigation.AuthenticatedAccessRuntime
+import br.com.saqz.composeapp.navigation.AccessRuntimeIntent
 import br.com.saqz.composeapp.navigation.AccessRuntime
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -22,7 +23,7 @@ class SaqzAppRuntime(
     fun close() {
         if (closed) return
         closed = true
-        access.close()
+        access.onIntent(AccessRuntimeIntent.Close)
         scope.cancel()
     }
 }
