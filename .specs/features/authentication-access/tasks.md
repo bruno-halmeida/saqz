@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T32 concluidas
+**Status:** Execute em andamento - T01..T33 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -703,8 +703,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** MockEngine unit, +17 casos de cinco operacoes/status/redaction.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] todas as rotas tem fixture exata; [ ] code nao aparece no
-  erro/log fake; [ ] baseline +17 e Gate verde.
+- **Done when:** [x] todas as rotas tem fixture exata; [x] code nao aparece no
+  erro/log fake; [x] baseline +17 e Gate verde.
 - **Commit:** `feat(access-mobile): add roles and invites api`
 
 ### T34 - Implementar reducer de autenticacao

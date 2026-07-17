@@ -35,15 +35,29 @@ class AuthenticatedNetworkClient(
         path: String,
         responseSerializer: KSerializer<T>,
         request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<T> = authenticated { token ->
+        network.execute(method, path, responseSerializer, token, request)
+    }
+
+    suspend fun executeNoContent(
+        method: HttpMethod,
+        path: String,
+        request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<Unit> = authenticated { token ->
+        network.executeNoContent(method, path, token, request)
+    }
+
+    private suspend fun <T> authenticated(
+        execute: suspend (String) -> NetworkResult<T>,
     ): NetworkResult<T> {
         val current = token(forceRefresh = false)
         if (current !is TokenResult.Available) return NetworkResult.Failure(NetworkError.Unavailable)
-        val first = network.execute(method, path, responseSerializer, current.value, request)
+        val first = execute(current.value)
         if (!first.isUnauthorized()) return first
 
         val refreshed = refresh(current.value)
         if (refreshed !is TokenResult.Available) return NetworkResult.Failure(NetworkError.Unavailable)
-        val second = network.execute(method, path, responseSerializer, refreshed.value, request)
+        val second = execute(refreshed.value)
         if (second.isUnauthorized()) sessionInvalidator.invalidate()
         return second
     }

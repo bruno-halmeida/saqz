@@ -141,6 +141,23 @@ class NetworkClientTest {
         assertFalse(assertFailure(result).toString().contains(secret))
     }
 
+    @Test
+    fun `no content request accepts an empty 204 response`() = runTest {
+        val engine = MockEngine { respond("", HttpStatusCode.NoContent) }
+
+        val result = client(engine).executeNoContent(HttpMethod.Delete, "probe")
+
+        assertEquals(Unit, assertIs<NetworkResult.Success<Unit>>(result).value)
+    }
+
+    @Test
+    fun `no content request rejects a successful response with a body`() = runTest {
+        val result = client(responding("unexpected"))
+            .executeNoContent(HttpMethod.Delete, "probe")
+
+        assertEquals(NetworkError.InvalidResponse, assertFailure(result))
+    }
+
     private fun client(
         engine: MockEngine,
         config: NetworkConfig = NetworkConfig("test", "https://api.example.test/"),

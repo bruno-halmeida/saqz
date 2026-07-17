@@ -47,6 +47,25 @@ class NetworkClient(
         responseSerializer: KSerializer<T>,
         bearerToken: String? = null,
         request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<T> = executeResponse(method, path, bearerToken, request) { body ->
+        json.decodeFromString(responseSerializer, body)
+    }
+
+    suspend fun executeNoContent(
+        method: HttpMethod,
+        path: String,
+        bearerToken: String? = null,
+        request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<Unit> = executeResponse(method, path, bearerToken, request) { body ->
+        require(body.isEmpty())
+    }
+
+    private suspend fun <T> executeResponse(
+        method: HttpMethod,
+        path: String,
+        bearerToken: String?,
+        request: NetworkRequest,
+        decode: (String) -> T,
     ): NetworkResult<T> = try {
         val response = client.request(config.baseUrl) {
             this.method = method
@@ -60,7 +79,7 @@ class NetworkClient(
         }
         if (response.status.value in 200..299) {
             val body = response.bodyAsText()
-            runCatching { json.decodeFromString(responseSerializer, body) }
+            runCatching { decode(body) }
                 .fold(
                     onSuccess = {
                         NetworkResult.Success(
