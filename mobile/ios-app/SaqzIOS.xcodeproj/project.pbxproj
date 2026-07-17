@@ -23,6 +23,8 @@
 		A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000011 /* IOSLinkAdapter.swift */; };
 		A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000012 /* IOSLinkAdapterTests.swift */; };
 		A30000000000000000000003 /* BranchSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000131 /* BranchSDK */; };
+		A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000011 /* IOSLocalAccessAdapters.swift */; };
+		A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +62,8 @@
 		A30000000000000000000011 /* IOSLinkAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapter.swift; sourceTree = "<group>"; };
 		A30000000000000000000012 /* IOSLinkAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapterTests.swift; sourceTree = "<group>"; };
 		A30000000000000000000013 /* SaqzIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SaqzIOS.entitlements; sourceTree = "<group>"; };
+		A40000000000000000000011 /* IOSLocalAccessAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdapters.swift; sourceTree = "<group>"; };
+		A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdaptersTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +112,7 @@
 				A10000000000000000000011 /* SaqzIOSApp.swift */,
 				A20000000000000000000011 /* IOSAuthAdapter.swift */,
 				A30000000000000000000011 /* IOSLinkAdapter.swift */,
+				A40000000000000000000011 /* IOSLocalAccessAdapters.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
@@ -148,6 +153,7 @@
 				A10000000000000000000016 /* SaqzIOSTests.swift */,
 				A20000000000000000000012 /* IOSAuthAdapterTests.swift */,
 				A30000000000000000000012 /* IOSLinkAdapterTests.swift */,
+				A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */,
 				A10000000000000000000019 /* LaunchContractTests.swift */,
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
 			);
@@ -329,6 +335,7 @@
 				A10000000000000000000001 /* SaqzIOSApp.swift in Sources */,
 				A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */,
 				A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */,
+				A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -349,6 +356,7 @@
 				A10000000000000000000005 /* SaqzIOSTests.swift in Sources */,
 				A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */,
 				A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */,
+				A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */,
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
 			);

@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T51 concluidas
+**Status:** Execute em andamento - T01..T52 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -1041,7 +1041,7 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** IOS.
 - **Tests:** XCTest, +11 casos roundtrip/delete/restart/error/share/redaction.
 - **Gate:** Full iOS.
-- **Done when:** [ ] logout apaga ambos; [ ] baseline +11 e Gate verde.
+- **Done when:** [x] logout apaga ambos; [x] baseline +11 e Gate verde.
 - **Commit:** `feat(ios): add secure access state adapters`
 
 ### T53 - Compor fluxo iOS e provar lifecycle
