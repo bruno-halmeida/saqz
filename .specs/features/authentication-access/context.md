@@ -95,3 +95,5 @@ configuração de jogos/financeiro, gestão esportiva de atletas ou assinatura.
 - Aplicativo web autenticado.
 - Exclusão de conta/grupo e logout global.
 - Configurações esportivas, financeiras e assinatura.
+- Pipeline de observabilidade, métricas, agregação de logs, dashboards e alertas;
+  acompanhar no épico ClickUp `86ajk0wmb` antes de criar uma nova spec.

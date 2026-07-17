@@ -46,6 +46,7 @@ misturar identidade Firebase com autorização de negócio.
 | Logout global/revogação de outras sessões | Logout desta fase afeta somente o dispositivo atual. |
 | Uso offline de conteúdo protegido | Sem backend acessível, o app não expõe dados de grupo. |
 | Permissões granulares/customizadas | Papéis fixos `OWNER`, `ADMIN` e `ATHLETE` cobrem esta fase. |
+| Pipeline de observabilidade, métricas, agregação de logs, dashboards e alertas | Será especificado no épico ClickUp [Observabilidade & Operação](https://app.clickup.com/t/86ajk0wmb), com destinos, retenção, custo, privacidade e operação definidos antes da implementação. |
 
 ---
 
@@ -252,9 +253,6 @@ ou deixar autorização parcialmente aplicada.
 2. **SEC-02** - WHEN criação de grupo, troca de papel, edição de configuração,
    rotação ou resgate falhar antes do commit THEN nenhuma parte da mutação SHALL
    permanecer; retry SHALL observar estado anterior ou resultado completo.
-3. **SEC-03** - WHEN eventos forem medidos THEN SHALL distinguir bootstrap
-   success/failure, `401`, `403`, `404`, `429`, convite gerado/expirado/resgatado
-   e falha do provedor, sem usar dado pessoal como label.
 4. **SEC-04** - WHEN gates locais/CI executarem THEN SHALL provar fluxos com
    Firebase Auth Emulator e banco descartável, sem credencial de produção, além
    das suites comuns, Android e iOS existentes.
@@ -265,7 +263,7 @@ ou deixar autorização parcialmente aplicada.
    SHALL falhar no gate.
 
 **Independent Test:** injetar falhas antes/depois das fronteiras transacionais,
-inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
+inspecionar correlation/redaction e executar o fluxo completo em ambiente descartável.
 
 ## Casos Limite
 
@@ -296,7 +294,7 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | Auth/rate limits | Backend deriva principal do token, matriz fixa de papéis e `INVITE-07`; credenciais são limitadas pelo Firebase. |
 | Concorrência/ordem | Owner/grupo atômicos, rotação atômica e resgate paralelo em `INVITE-08`. |
 | Lifecycle/expiração | Convite expira/rotaciona manualmente; logout é local; exclusões e transferência estão fora. |
-| Observabilidade | `SEC-01` e `SEC-03`, com correlation ID e sem secrets/PII em labels. |
+| Diagnóstico seguro | `SEC-01`, com correlation ID e sem secrets/PII em logs/problems. |
 | Dependência externa | `AUTH-04`, `SESSION-03..04`; indisponibilidade não vira logout nem acesso offline. |
 | Transições de estado | Rotas auth -> verificação -> bootstrap -> grupo e papéis OWNER/ADMIN/ATHLETE possuem guards explícitos. |
 
@@ -309,10 +307,10 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | GROUP-01..07 | Criar grupo/delegar administração | Design | Pending |
 | INVITE-01..08 | Entrar por convite | Design | Pending |
 | SELECT-01..06 | Selecionar contexto | Design | Pending |
-| SEC-01..05 | Segurança/diagnóstico | Design | Pending |
+| SEC-01, SEC-02, SEC-04, SEC-05 | Segurança/diagnóstico | Design | Pending |
 | EDGE-01..07 | Casos limite transversais | Design | Pending |
 
-**Cobertura:** 46 requisitos aguardam mapeamento no Design e em Tasks.
+**Cobertura:** 45 requisitos aguardam mapeamento no Design e em Tasks.
 
 ## Backprop Log
 

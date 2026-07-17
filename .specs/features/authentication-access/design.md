@@ -142,7 +142,7 @@ a sessao local; `5xx` ou falha de rede nunca fazem logout.
 - **Politica**: `GroupAccessPolicy` deriva papel somente do banco. Nao membro e
   indistinguivel de grupo inexistente (`404`); membro sem papel recebe `403`.
 - **Portas**: `AccessRepository`, `TransactionRunner`, `Clock`,
-  `SecureTokenGenerator`, `InviteLinkFactory` e `AccessMetrics`.
+  `SecureTokenGenerator` e `InviteLinkFactory`.
 
 `SecureTokenGenerator` produz 32 bytes aleatorios e Base64URL sem padding. O
 codigo nunca vira ID e somente seu SHA-256 e consultado/persistido. O
@@ -362,7 +362,7 @@ dono do `NavHost`; a feature fornece estado e screen entry points.
 - Branch e um transporte nao autoritativo. Expirar/rotacionar remove o digest no
   banco; nao e necessario apagar link no provedor.
 - O codigo aparece inevitavelmente no link compartilhado e nos dados processados
-  pelo provedor. Logs Saqz, crash reports e metricas devem redacta-lo; a avaliacao
+  pelo provedor. Logs Saqz e crash reports devem redacta-lo; a avaliacao
   de privacidade/contrato Branch e gate de producao.
 - Configurar a maior janela de deferred matching suportada. A validade do
   convite nao tem TTL, mas a recuperacao automatica apos um clique antigo esta
@@ -373,7 +373,7 @@ Firebase Dynamic Links e proibido: o servico foi descontinuado em 2025.
 
 ---
 
-## Erros e Observabilidade
+## Erros e diagnostico seguro
 
 | Cenario | HTTP/codigo | Comportamento do app |
 | --- | --- | --- |
@@ -388,11 +388,10 @@ Firebase Dynamic Links e proibido: o servico foi descontinuado em 2025.
 | ETag antigo | `409 VERSION_CONFLICT` | Recarrega settings antes de editar novamente. |
 | Falha de rede/backend | timeout/`5xx` | Retry; nunca renderiza cache protegido. |
 
-Micrometer registra contadores por `operation`, `result` e status: bootstrap,
-401/403/404/429, invite generated/expired/redeemed e falha de provedor. Labels
-nunca contem user/group ID, email ou codigo. Logs estruturados usam correlation
-ID e resultado estavel; bodies de auth/invite e header Authorization sao
-excluidos de logging.
+Problems e logs existentes usam correlation ID e resultado estavel; bodies de
+auth/invite e o header Authorization sao excluidos de logging. Pipeline de
+metricas, agregacao de logs, dashboards e alertas pertence ao epico ClickUp
+`86ajk0wmb` e nao e parte desta feature.
 
 ---
 
@@ -425,7 +424,7 @@ repository em memoria.
 | `GROUP-01..07` | Group use cases, SQL constraints/policy, HTTP matrix e Compose screens. |
 | `INVITE-01..08` | Token/link factory, secure pending store, rate limit e concurrency tests. |
 | `SELECT-01..06` | SessionView, coordinator, selected-group store e navigation tests. |
-| `SEC-01..04` | Problem/correlation support, transactions, metrics/redaction e disposable gates. |
+| `SEC-01`, `SEC-02`, `SEC-04`, `SEC-05` | Problem/correlation support, transactions, redaction, Bruno e disposable gates. |
 | `EDGE-01..07` | Name completion, last-link reducer, role preservation e lifecycle/UI tests. |
 
 **Cobertura de Design:** 45/45 requisitos mapeados.

@@ -43,7 +43,7 @@ Regras fixas:
 - backend e autoridade de usuario, membership, papel e convite;
 - Firebase UID e a unica chave externa; email nunca faz merge;
 - SDKs Firebase/Google/Branch permanecem nas bordas nativas;
-- nenhum bearer token, senha, invite code ou email completo em logs/metrica;
+- nenhum bearer token, senha, invite code ou email completo em logs/problems;
 - sem OpenAPI gerado, ORM, banco em memoria ou cache de conteudo protegido;
 - convite e sempre ATHLETE, um ativo por grupo, sem TTL automatico;
 - OWNER e unico e nunca vive em `group_memberships`;
@@ -117,7 +117,7 @@ Fase 4: T31 -> T32 -> T33 -> T34 -> T35 -> T36 -> T37 -> T38
 Fase 5: T39 -> T40 -> T41 -> T42 -> T43 -> T44 -> T45
 Fase 6: T46 -> T47 -> T48 -> T49
 Fase 7: T50 -> T51 -> T52 -> T53
-Fase 8: T54 -> T55 -> T56 -> T57 -> T58
+Fase 8: T55 -> T56 -> T57 -> T58
 ```
 
 ## Task Breakdown
@@ -1062,31 +1062,14 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
   [x] SaqzDev e SaqzProd verdes.
 - **Commit:** `feat(ios): compose authenticated app lifecycle`
 
-## Fase 8 - Observabilidade e gates finais
-
-### T54 - Instrumentar metricas e redaction de acesso
-
-- **What:** adicionar `AccessMetrics`/Micrometer e eventos estruturados sem PII.
-- **Where:** access application port/adapter; bootstrap tests.
-- **Depends on:** T53.
-- **Reuses:** correlation diagnostics T03 e operations existentes.
-- **Requirements:** SEC-01, SEC-03.
-- **Fixed contract:** bootstrap success/failure, 401/403/404/429,
-  invite generated/expired/redeemed e provider failure; labels so operation/result/status.
-- **Must not:** user/group ID, email, token/code ou cardinalidade nao limitada.
-- **Tools:** BACKEND.
-- **Tests:** unit + Spring output/registry, +14 casos labels/events/redaction.
-- **Gate:** Quick access e HTTP full.
-- **Done when:** [ ] forbidden values nao aparecem em registry/output; [ ]
-  baseline +14 e gates verdes.
-- **Commit:** `feat(access): add safe access observability`
+## Fase 8 - Gates finais
 
 ### T55 - Provar fluxo descartavel Firebase e PostgreSQL
 
 - **What:** criar fixture end-to-end backend que combina Auth Emulator,
   PostgreSQL Testcontainer e endpoints reais de session/group/invite.
 - **Where:** firebase fixture extensions; bootstrap emulator/integration tests.
-- **Depends on:** T54.
+- **Depends on:** T53.
 - **Reuses:** lifecycle compartilhado do emulator e migrations T05.
 - **Requirements:** SESSION-01, GROUP-01..04, INVITE-01..08, SEC-02, SEC-04.
 - **Fixed contract:** sem credencial externa; duas identidades; criar grupo,
@@ -1159,11 +1142,11 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 | Requisitos | Tasks primarias | Evidencia final |
 | --- | --- | --- |
 | AUTH-01..08 | T31, T34, T35, T39..T41, T45, T46, T50 | reducers KMP + Compose UI + adapters Android/iOS |
-| SESSION-01..05 | T02, T07..T11, T35, T54, T55 | unit/JDBC/HTTP/emulator/MockEngine |
+| SESSION-01..05 | T02, T07..T11, T35, T55 | unit/JDBC/HTTP/emulator/MockEngine |
 | GROUP-01..07 | T05, T06, T12..T23, T32, T37, T42..T44, T55 | policy + PostgreSQL + endpoints + UI |
 | INVITE-01..08 | T05, T24..T30, T33, T38, T44, T47..T53, T55 | crypto/link + concorrencia + deferred links |
 | SELECT-01..06 | T08, T15..T17, T35..T37, T42, T43, T45, T48..T53 | session view + coordinator + storage/lifecycle |
-| SEC-01..04 | T01..T05, T09..T11, T14, T17, T20, T23..T30, T48, T52, T54..T58 | problems/redaction/transactions/metrics/gates |
+| SEC-01, SEC-02, SEC-04, SEC-05 | T01..T05, T09..T11, T14, T17, T20, T23..T30, T48, T52, T55..T58 | problems/redaction/transactions/Bruno/gates |
 | EDGE-01..07 | T06..T08, T12, T18..T21, T28..T30, T34..T53 | validacao, roles, reducers, UI e lifecycle nativo |
 
 **Cobertura planejada:** 45/45 requisitos, sem requisito orfao.
@@ -1187,7 +1170,7 @@ Phase 6: T46 -> T47 -> T48 -> T49 <---------------------+
                                       |
 Phase 7: T50 -> T51 -> T52 -> T53 <---+
                                       |
-Phase 8: T54 -> T55 -> T56 -> T57 -> T58
+Phase 8: T55 -> T56 -> T57 -> T58
 ```
 
 Cada seta representa exatamente o unico `Depends on` direto da task destino;
@@ -1251,7 +1234,6 @@ intra-fase.
 | T51 | um link adapter iOS | OK - granular |
 | T52 | um local-state adapter iOS | OK - coesa |
 | T53 | uma composition root iOS | OK - coesa |
-| T54 | uma observability adapter | OK - coesa |
 | T55 | uma fixture disposable E2E | OK - granular |
 | T56 | um gate Gradle | OK - granular |
 | T57 | um contrato isolation/CI | OK - coesa |
@@ -1318,13 +1300,12 @@ compilavel e verificavel no proprio commit.
 | T51 | T50 | T50 | Match |
 | T52 | T51 | T51 | Match |
 | T53 | T52 | T52 | Match |
-| T54 | T53 | T53 | Match |
-| T55 | T54 | T54 | Match |
+| T55 | T53 | T53 | Match |
 | T56 | T55 | T55 | Match |
 | T57 | T56 | T56 | Match |
 | T58 | T57 | T57 | Match |
 
-**Resultado:** 58/58 dependencias coincidem; nenhuma aponta para fase futura.
+**Resultado:** 57/57 dependencias coincidem; nenhuma aponta para fase futura.
 
 ## Test Co-location Validation
 
@@ -1383,13 +1364,12 @@ compilavel e verificavel no proprio commit.
 | T51 | iOS link adapter | XCTest | XCTest | OK |
 | T52 | iOS local adapters | XCTest | XCTest | OK |
 | T53 | iOS app lifecycle/UI | XCTest + XCUITest | XCTest + XCUITest | OK |
-| T54 | Access metrics/HTTP | unit + Spring integration | unit + Spring registry/output | OK |
 | T55 | Backend E2E/JDBC | emulator + PostgreSQL integration | E2E integration | OK |
 | T56 | Gradle gate script | contract/mutation | contract/mutation | OK |
 | T57 | Isolation/CI | integration + contract/mutation | isolation + contract/mutation | OK |
 | T58 | Docs/aggregate | contract + Full local | docs/aggregate contract | OK |
 
-**Resultado:** 58/58 tasks possuem o teste exigido no mesmo commit; nenhum
+**Resultado:** 57/57 tasks possuem o teste exigido no mesmo commit; nenhum
 `Tests: none` indevido e nenhuma cobertura foi adiada.
 
 ## Aprovacao Antes de Execute
