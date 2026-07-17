@@ -63,4 +63,19 @@
     <string name="logout_title">Sair da conta?</string>
     <string name="logout_confirm">Confirmar saida</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="memberships_title">Gerenciar acessos</string>
+    <string name="membership_make_admin">Tornar admin</string>
+    <string name="membership_make_athlete">Tornar atleta</string>
+    <string name="invite_title">Convite do grupo</string>
+    <string name="invite_generate">Gerar convite</string>
+    <string name="invite_rotate">Gerar novo convite</string>
+    <string name="invite_ready">Convite pronto para compartilhar</string>
+    <string name="invite_share">Compartilhar convite</string>
+    <string name="invite_expire">Expirar convite</string>
+    <string name="invite_expire_title">Expirar convite?</string>
+    <string name="invite_expire_body">Novas entradas deixarao de usar este convite.</string>
+    <string name="invite_expire_confirm">Confirmar expiracao</string>
+    <string name="invite_invalid">Convite invalido ou expirado</string>
+    <string name="invite_rate_limit">Tente novamente em %1$d segundos</string>
+    <string name="invite_unavailable">Nao foi possivel atualizar o convite</string>
 </resources>

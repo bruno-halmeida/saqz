@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T43 concluidas
+**Status:** Execute em andamento - T01..T44 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -896,8 +896,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** Compose UI, +16 casos roles/invite/share/expire/errors/semantics.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] ATHLETE nao alcanca ferramenta; [ ] varios admins isolados;
-  [ ] baseline +16 e Gate verde.
+- **Done when:** [x] ATHLETE nao alcanca ferramenta; [x] varios admins isolados;
+  [x] baseline +16 e Gate verde.
 - **Commit:** `feat(access-ui): add roles and invite tools`
 
 ### T45 - Integrar root e navegacao autenticada
