@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T29 concluidas
+**Status:** Execute em andamento - T01..T30 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -649,8 +649,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** BACKEND.
 - **Tests:** Spring integration, +11 casos happy/retry/invalid/rate/roles/redaction.
 - **Gate:** HTTP full.
-- **Done when:** [ ] problems invalidos sao byte-equivalentes salvo correlation;
-  [ ] baseline +11; [ ] Gate verde.
+- **Done when:** [x] problems invalidos sao byte-equivalentes salvo correlation;
+  [x] baseline +11; [x] Gate verde.
 - **Commit:** `feat(access): expose invite redemption endpoint`
 
 ## Fase 4 - API e maquina de estados KMP

@@ -5,6 +5,8 @@ import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.access.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidGroupRequestException
+import br.com.saqz.access.adapter.input.http.InviteAttemptLimitException
+import br.com.saqz.access.adapter.input.http.InviteInvalidOrExpiredException
 import br.com.saqz.access.adapter.input.http.VersionConflictException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
@@ -61,6 +63,26 @@ class SafeExceptionHandler(
     @ExceptionHandler(VersionConflictException::class)
     fun versionConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
+    }
+
+    @ExceptionHandler(InviteInvalidOrExpiredException::class)
+    fun inviteInvalidOrExpired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.INVITE_INVALID_OR_EXPIRED)
+    }
+
+    @ExceptionHandler(InviteAttemptLimitException::class)
+    fun inviteAttemptLimit(
+        failure: InviteAttemptLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            429,
+            ErrorCode.INVITE_ATTEMPT_LIMIT,
+            retryAfterSeconds = failure.retryAfterSeconds,
+        )
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

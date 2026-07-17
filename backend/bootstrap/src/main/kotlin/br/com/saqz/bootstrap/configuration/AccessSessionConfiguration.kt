@@ -4,6 +4,7 @@ import br.com.saqz.access.adapter.input.http.AccessGroupController
 import br.com.saqz.access.adapter.input.http.AccessGroupReadController
 import br.com.saqz.access.adapter.input.http.AccessGroupSettingsController
 import br.com.saqz.access.adapter.input.http.AccessInviteManagementController
+import br.com.saqz.access.adapter.input.http.AccessInviteRedemptionController
 import br.com.saqz.access.adapter.input.http.AccessMembershipController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.adapter.output.crypto.JcaSecureTokenGenerator
@@ -11,6 +12,7 @@ import br.com.saqz.access.adapter.output.jdbc.group.create.JdbcGroupCreationRepo
 import br.com.saqz.access.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.access.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
 import br.com.saqz.access.adapter.output.jdbc.invite.JdbcInviteManagementRepository
+import br.com.saqz.access.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
 import br.com.saqz.access.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.access.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -20,6 +22,7 @@ import br.com.saqz.access.application.group.read.GetGroup
 import br.com.saqz.access.application.group.settings.UpdateGroupSettings
 import br.com.saqz.access.application.invite.manage.ExpireInvite
 import br.com.saqz.access.application.invite.manage.RotateInvite
+import br.com.saqz.access.application.invite.redeem.RedeemInvite
 import br.com.saqz.access.application.membership.ChangeMemberRole
 import br.com.saqz.access.application.membership.ListAccessMemberships
 import br.com.saqz.access.application.session.BootstrapSession
@@ -29,6 +32,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.net.URI
+import java.time.Clock
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
@@ -151,4 +155,19 @@ class AccessSessionConfiguration {
         rotateInvite: RotateInvite,
         expireInvite: ExpireInvite,
     ) = AccessInviteManagementController(bootstrapSession, rotateInvite, expireInvite)
+
+    @Bean
+    fun inviteRedemptionRepository(dataSource: DataSource) = JdbcInviteRedemptionRepository(dataSource)
+
+    @Bean
+    fun redeemInvite(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcInviteRedemptionRepository,
+    ) = RedeemInvite(transaction, repository, Clock.systemUTC())
+
+    @Bean
+    fun accessInviteRedemptionController(
+        bootstrapSession: BootstrapSession,
+        redeemInvite: RedeemInvite,
+    ) = AccessInviteRedemptionController(bootstrapSession, redeemInvite)
 }
