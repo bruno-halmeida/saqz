@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T31 concluidas
+**Status:** Execute em andamento - T01..T32 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -97,7 +97,7 @@ Regras fixas:
 | SQL integration | migration/JDBC/concorrencia | `backend/gradlew -p backend :features:access:integrationTest --console=plain` |
 | HTTP full | controllers/security/emulator | `backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain` |
 | Quick network | Ktor/core | `mobile/gradlew -p mobile :core:network:allTests --console=plain` |
-| Quick access mobile | API/state/UI feature | `mobile/gradlew -p mobile :features:access:allTests --console=plain` |
+| Quick access mobile | API/state/UI feature | `mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain` |
 | Quick app | root/navegacao | `mobile/gradlew -p mobile :compose-app:allTests --console=plain` |
 | Full Android | adapters/lifecycle/UI | `mobile/gradlew -p mobile :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain` |
 | Full iOS | adapters/lifecycle/UI | `scripts/check-ios` |
@@ -686,8 +686,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** MockEngine unit, +13 casos das tres operacoes/happy/error/serialization.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] requests exatas sao asserted; [ ] 404/403/409/400 mapeiam
-  distinto; [ ] baseline +13 e Gate verde.
+- **Done when:** [x] requests exatas sao asserted; [x] 404/403/409/400 mapeiam
+  distinto; [x] baseline +13 e Gate verde.
 - **Commit:** `feat(access-mobile): add group api client`
 
 ### T33 - Implementar client mobile de papeis e convites

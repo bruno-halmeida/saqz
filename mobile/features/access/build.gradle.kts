@@ -23,6 +23,7 @@ kotlin {
             implementation(project(":core:common"))
             implementation(project(":core:design-system"))
             implementation(project(":core:network"))
+            implementation(libs.ktor.client.core)
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material:material:1.11.1")
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
@@ -32,6 +33,8 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
     }
 }

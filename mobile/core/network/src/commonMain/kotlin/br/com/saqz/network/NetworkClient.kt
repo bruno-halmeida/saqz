@@ -7,11 +7,15 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.header
 import io.ktor.client.request.request
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
+import io.ktor.http.ContentType
 import io.ktor.http.appendPathSegments
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.io.readByteArray
@@ -42,17 +46,30 @@ class NetworkClient(
         path: String,
         responseSerializer: KSerializer<T>,
         bearerToken: String? = null,
+        request: NetworkRequest = NetworkRequest(),
     ): NetworkResult<T> = try {
         val response = client.request(config.baseUrl) {
             this.method = method
             url { appendPathSegments(path.trimStart('/')) }
             if (bearerToken != null) bearerAuth(bearerToken)
+            request.headers.forEach { (name, value) -> header(name, value) }
+            request.body?.let { body ->
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
         }
         if (response.status.value in 200..299) {
             val body = response.bodyAsText()
             runCatching { json.decodeFromString(responseSerializer, body) }
                 .fold(
-                    onSuccess = { NetworkResult.Success(it) },
+                    onSuccess = {
+                        NetworkResult.Success(
+                            it,
+                            NetworkResponseMetadata(
+                                response.headers.entries().associate { (name, values) -> name to values },
+                            ),
+                        )
+                    },
                     onFailure = { NetworkResult.Failure(NetworkError.InvalidResponse) },
                 )
         } else {

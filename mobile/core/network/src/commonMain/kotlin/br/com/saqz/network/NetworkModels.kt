@@ -42,7 +42,24 @@ sealed interface NetworkError {
 }
 
 sealed interface NetworkResult<out T> {
-    data class Success<T>(val value: T) : NetworkResult<T>
+    data class Success<T>(
+        val value: T,
+        val metadata: NetworkResponseMetadata = NetworkResponseMetadata(),
+    ) : NetworkResult<T>
 
     data class Failure(val error: NetworkError) : NetworkResult<Nothing>
+}
+
+data class NetworkRequest(
+    val body: String? = null,
+    val headers: Map<String, String> = emptyMap(),
+)
+
+data class NetworkResponseMetadata(
+    val headers: Map<String, List<String>> = emptyMap(),
+) {
+    fun header(name: String): String? = headers.entries
+        .firstOrNull { (key) -> key.equals(name, ignoreCase = true) }
+        ?.value
+        ?.firstOrNull()
 }

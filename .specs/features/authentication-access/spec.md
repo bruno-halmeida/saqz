@@ -312,6 +312,12 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 
 **Cobertura:** 46 requisitos aguardam mapeamento no Design e em Tasks.
 
+## Backprop Log
+
+| ID | Date | Root cause | Guard |
+| --- | --- | --- | --- |
+| B1 | 2026-07-16 | O gate KMP executava apenas testes do simulador iOS, permitindo que `commonMain` dependesse acidentalmente do classpath de teste e falhasse ao compilar para Android. | SEC-04; Quick access mobile compila Android antes de `allTests`. |
+
 ## Critérios de Sucesso
 
 - [ ] Conta de email verificada e conta Google concluem bootstrap em Android e iOS.
