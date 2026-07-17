@@ -3,6 +3,8 @@ package br.com.saqz.access.adapter.input.http
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.SessionView
+import br.com.saqz.access.application.observability.AccessMetricEvent
+import br.com.saqz.access.application.observability.AccessMetrics
 import br.com.saqz.access.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -34,14 +36,23 @@ class InvalidDisplayNameException : RuntimeException()
 @RestController
 class AccessSessionController(
     private val bootstrapSession: BootstrapSession,
+    private val metrics: AccessMetrics = AccessMetrics.NONE,
 ) {
     @PutMapping("/api/session")
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
         when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.EmailNotVerified -> throw EmailNotVerifiedException()
-            BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            is BootstrapSessionResult.Success -> result.session.toResponse()
+            BootstrapSessionResult.EmailNotVerified -> failure(403) { throw EmailNotVerifiedException() }
+            BootstrapSessionResult.InvalidDisplayName -> failure(400) { throw InvalidDisplayNameException() }
+            is BootstrapSessionResult.Success -> {
+                metrics.record(AccessMetricEvent("bootstrap", "success", "200"))
+                result.session.toResponse()
+            }
         }
+
+    private fun <T> failure(status: Int, block: () -> T): T {
+        metrics.record(AccessMetricEvent("bootstrap", "failure", status.toString()))
+        return block()
+    }
 }
 
 private fun SessionView.toResponse() = AccessSessionResponse(

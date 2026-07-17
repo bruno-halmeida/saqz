@@ -326,6 +326,7 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | B6 | 2026-07-17 | Um `Task @MainActor` tentou transferir o resultado não-`Sendable` do callback Google e Swift 6 rejeitou o possível data race. | O callback Google documentado na main queue permanece no executor com `MainActor.assumeIsolated`; Full iOS compila em concorrência estrita; nenhum novo invariante necessário. |
 | B7 | 2026-07-17 | O script iOS exigia chaves Google em todo plist Firebase local e quebrou o build Prod quando elas ainda não estavam provisionadas. | Firebase continua empacotado por ambiente, enquanto `GIDClientID` e o URL scheme são injetados somente quando ambas as chaves Google existem; Full iOS cobre Dev e Prod. |
 | B8 | 2026-07-17 | A referência direta ao método do router usou uma forma de `onOpenURL` sem o label `perform:` exigido pela API SwiftUI compilada. | O Full iOS compila o lifecycle bridge contra o SDK SwiftUI real em Dev e Prod; nenhum novo invariante necessário. |
+| B9 | 2026-07-17 | O shell do batch herdou `JAVA_HOME` apontando para JDK 17 e o primeiro red gate parou antes da compilação. | O gate já rejeita explicitamente qualquer JDK diferente de 21; o batch passa a executar Gradle com o JDK 21 instalado, sem novo invariante. |
 
 ## Critérios de Sucesso
 

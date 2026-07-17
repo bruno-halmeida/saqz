@@ -6,6 +6,8 @@ import br.com.saqz.access.application.invite.manage.RotateInvite
 import br.com.saqz.access.application.invite.manage.RotateInviteResult
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.observability.AccessMetricEvent
+import br.com.saqz.access.application.observability.AccessMetrics
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -23,6 +25,7 @@ class AccessInviteManagementController(
     private val bootstrapSession: BootstrapSession,
     private val rotateInvite: RotateInvite,
     private val expireInvite: ExpireInvite,
+    private val metrics: AccessMetrics = AccessMetrics.NONE,
 ) {
     @PostMapping("/api/groups/{groupId}/invite")
     fun rotate(
@@ -31,7 +34,10 @@ class AccessInviteManagementController(
     ): InviteUrlResponse = when (val result = rotateInvite.execute(actor(identity), parseId(groupId))) {
         RotateInviteResult.GroupNotFound -> throw GroupNotFoundException()
         RotateInviteResult.AccessForbidden -> throw AccessForbiddenException()
-        is RotateInviteResult.Success -> InviteUrlResponse(result.inviteUrl)
+        is RotateInviteResult.Success -> {
+            metrics.record(AccessMetricEvent("invite", "generated", "201"))
+            InviteUrlResponse(result.inviteUrl)
+        }
     }
 
     @DeleteMapping("/api/groups/{groupId}/invite")
@@ -41,7 +47,10 @@ class AccessInviteManagementController(
     ): ResponseEntity<Void> = when (expireInvite.execute(actor(identity), parseId(groupId))) {
         ExpireInviteResult.GroupNotFound -> throw GroupNotFoundException()
         ExpireInviteResult.AccessForbidden -> throw AccessForbiddenException()
-        ExpireInviteResult.Success -> ResponseEntity.noContent().build()
+        ExpireInviteResult.Success -> {
+            metrics.record(AccessMetricEvent("invite", "expired", "204"))
+            ResponseEntity.noContent().build()
+        }
     }
 
     private fun actor(identity: RequestIdentity): UUID = when (val result = bootstrapSession.execute(identity)) {

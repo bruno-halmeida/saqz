@@ -4,6 +4,8 @@ import br.com.saqz.access.application.invite.redeem.RedeemInvite
 import br.com.saqz.access.application.invite.redeem.RedeemInviteResult
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.observability.AccessMetricEvent
+import br.com.saqz.access.application.observability.AccessMetrics
 import br.com.saqz.access.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
@@ -31,6 +33,7 @@ class InviteAttemptLimitException(val retryAfterSeconds: Int) : RuntimeException
 class AccessInviteRedemptionController(
     private val bootstrapSession: BootstrapSession,
     private val redeemInvite: RedeemInvite,
+    private val metrics: AccessMetrics = AccessMetrics.NONE,
 ) {
     @PostMapping("/api/invites/redeem")
     fun redeem(
@@ -41,7 +44,10 @@ class AccessInviteRedemptionController(
     ) {
         RedeemInviteResult.InvalidOrExpired -> throw InviteInvalidOrExpiredException()
         is RedeemInviteResult.AttemptLimit -> throw InviteAttemptLimitException(result.retryAfterSeconds)
-        is RedeemInviteResult.Success -> RedeemedInviteResponse(result.groupId, result.role)
+        is RedeemInviteResult.Success -> {
+            metrics.record(AccessMetricEvent("invite", "redeemed", "200"))
+            RedeemedInviteResponse(result.groupId, result.role)
+        }
     }
 
     private fun actor(identity: RequestIdentity): UUID = when (val result = bootstrapSession.execute(identity)) {

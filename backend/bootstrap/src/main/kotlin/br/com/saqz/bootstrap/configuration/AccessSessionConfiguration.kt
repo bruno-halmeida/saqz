@@ -26,6 +26,7 @@ import br.com.saqz.access.application.invite.redeem.RedeemInvite
 import br.com.saqz.access.application.membership.ChangeMemberRole
 import br.com.saqz.access.application.membership.ListAccessMemberships
 import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.observability.AccessMetrics
 import br.com.saqz.access.domain.GroupAccessPolicy
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.annotation.Value
@@ -45,7 +46,7 @@ class AccessSessionConfiguration {
     fun bootstrapSession(repository: JdbcSessionRepository) = BootstrapSession(repository)
 
     @Bean
-    fun accessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
+    fun accessSessionController(useCase: BootstrapSession, metrics: AccessMetrics) = AccessSessionController(useCase, metrics)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)
@@ -154,7 +155,8 @@ class AccessSessionConfiguration {
         bootstrapSession: BootstrapSession,
         rotateInvite: RotateInvite,
         expireInvite: ExpireInvite,
-    ) = AccessInviteManagementController(bootstrapSession, rotateInvite, expireInvite)
+        metrics: AccessMetrics,
+    ) = AccessInviteManagementController(bootstrapSession, rotateInvite, expireInvite, metrics)
 
     @Bean
     fun inviteRedemptionRepository(dataSource: DataSource) = JdbcInviteRedemptionRepository(dataSource)
@@ -169,5 +171,6 @@ class AccessSessionConfiguration {
     fun accessInviteRedemptionController(
         bootstrapSession: BootstrapSession,
         redeemInvite: RedeemInvite,
-    ) = AccessInviteRedemptionController(bootstrapSession, redeemInvite)
+        metrics: AccessMetrics,
+    ) = AccessInviteRedemptionController(bootstrapSession, redeemInvite, metrics)
 }
