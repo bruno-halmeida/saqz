@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/authentication-access/spec.md`
 **Design:** `.specs/features/authentication-access/design.md`
-**Status:** Execute em andamento - T01..T35 concluidas
+**Status:** Execute em andamento - T01..T36 concluidas
 **Data:** 2026-07-16
 
 ## Execution Protocol (MANDATORY -- do not skip)
@@ -757,8 +757,8 @@ Fase 8: T54 -> T55 -> T56 -> T57 -> T58
 - **Tools:** KMP.
 - **Tests:** unit, +14 casos memberships/restart/remocao/troca/role refresh.
 - **Gate:** Quick access mobile.
-- **Done when:** [ ] sensor que mantem conteudo antigo falha; [ ] stale selection
-  e apagada; [ ] baseline +14 e Gate verde.
+- **Done when:** [x] sensor que mantem conteudo antigo falha; [x] stale selection
+  e apagada; [x] baseline +14 e Gate verde.
 - **Commit:** `feat(access-mobile): coordinate group selection`
 
 ### T37 - Implementar acoes de grupo e papeis

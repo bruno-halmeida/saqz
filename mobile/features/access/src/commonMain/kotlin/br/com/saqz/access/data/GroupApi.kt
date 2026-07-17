@@ -44,12 +44,20 @@ private data class UpdateGroupSettingsRequestDto(
     val timeZone: String,
 )
 
+interface GroupGateway {
+    suspend fun create(requestId: String, name: String, timeZone: String): NetworkResult<GroupDto>
+
+    suspend fun read(groupId: String): NetworkResult<VersionedGroupDto>
+
+    suspend fun update(groupId: String, etag: String, name: String, timeZone: String): NetworkResult<VersionedGroupDto>
+}
+
 class GroupApi(
     private val network: AuthenticatedNetworkClient,
-) {
+) : GroupGateway {
     private val json = Json { explicitNulls = false }
 
-    suspend fun create(requestId: String, name: String, timeZone: String): NetworkResult<GroupDto> =
+    override suspend fun create(requestId: String, name: String, timeZone: String): NetworkResult<GroupDto> =
         network.execute(
             HttpMethod.Post,
             "api/groups",
@@ -57,10 +65,10 @@ class GroupApi(
             NetworkRequest(json.encodeToString(CreateGroupRequestDto(requestId, name, timeZone))),
         )
 
-    suspend fun read(groupId: String): NetworkResult<VersionedGroupDto> =
+    override suspend fun read(groupId: String): NetworkResult<VersionedGroupDto> =
         network.execute(HttpMethod.Get, "api/groups/$groupId", GroupDto.serializer()).versioned()
 
-    suspend fun update(
+    override suspend fun update(
         groupId: String,
         etag: String,
         name: String,
