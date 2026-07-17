@@ -260,7 +260,9 @@ ou deixar autorização parcialmente aplicada.
    das suites comuns, Android e iOS existentes.
 5. **SEC-05** - WHEN contrato HTTP backend for adicionado, alterado ou removido
    THEN mesma mudança SHALL atualizar coleção Bruno versionada com request e
-   assertions correspondentes; rota explícita sem request SHALL falhar no gate.
+   assertions correspondentes; requests MAY ser organizadas em subdiretórios
+   contextuais e o gate SHALL buscar recursivamente; rota explícita sem request
+   SHALL falhar no gate.
 
 **Independent Test:** injetar falhas antes/depois das fronteiras transacionais,
 inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
@@ -317,6 +319,7 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | ID | Date | Root cause | Guard |
 | --- | --- | --- | --- |
 | B1 | 2026-07-16 | O gate KMP executava apenas testes do simulador iOS, permitindo que `commonMain` dependesse acidentalmente do classpath de teste e falhasse ao compilar para Android. | SEC-04; Quick access mobile compila Android antes de `allTests`. |
+| B2 | 2026-07-16 | O gate Bruno buscava requests apenas na raiz da coleção e rejeitava organização por contexto. | SEC-05; busca recursiva coberta por fixture aninhada. |
 
 ## Critérios de Sucesso
 

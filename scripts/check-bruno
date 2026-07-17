@@ -24,13 +24,19 @@ routes=$(
 
 [ -n "$routes" ] || fail 'no explicit backend routes found'
 
+requests=$(
+    find "$collection" -type f -name '*.bru' \
+        ! -path "$collection/environments/*" -print
+)
+
+[ -n "$requests" ] || fail 'no Bruno requests found'
+
 printf '%s\n' "$routes" | while IFS=' ' read -r mapping path; do
     method=$(printf '%s' "$mapping" | sed 's/Mapping$//' | tr '[:upper:]' '[:lower:]')
     pattern=$(printf '%s' "$path" | sed -E 's/\{([^}]+)\}/{{\1}}/g')
     covered=false
 
-    for request in "$collection"/*.bru; do
-        [ -f "$request" ] || continue
+    while IFS= read -r request; do
         grep -Eq "^${method}[[:space:]]*\\{" "$request" || continue
 
         url=$(sed -n 's/^[[:space:]]*url:[[:space:]]*//p' "$request" | head -n 1)
@@ -41,7 +47,9 @@ printf '%s\n' "$routes" | while IFS=' ' read -r mapping path; do
                 break
                 ;;
         esac
-    done
+    done <<EOF
+$requests
+EOF
 
     [ "$covered" = true ] || fail "$mapping $path has no matching Bruno request"
 done

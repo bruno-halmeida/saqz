@@ -47,10 +47,12 @@ template and fill it with a Firebase Dev test account:
 cp bruno/.env.example bruno/.env
 ```
 
-Run the requests in order: `Health`, `Firebase Dev Login`, then `Session`.
-The login stores the Firebase ID token only in Bruno runtime memory. Every
-observable backend HTTP contract change must update its request and assertions
-in `bruno/`; `scripts/check-bruno` enforces route coverage.
+Requests are grouped by context. Start with `System/Health`, then run
+`Authentication/Firebase Dev Login` and `Authentication/Session`; continue with
+the `Groups`, `Memberships`, and `Invitations` contexts as needed. The login
+stores the Firebase ID token only in Bruno runtime memory. Every observable
+backend HTTP contract change must update its request and assertions in `bruno/`;
+`scripts/check-bruno` enforces recursive route coverage.
 
 ## Landing Page
 
