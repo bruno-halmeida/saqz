@@ -28,22 +28,26 @@ final class SaqzIOSUITests: XCTestCase {
         XCTAssertTrue(drawable.waitForExistence(timeout: 10))
     }
 
-    func testColdStartReachesComposeHome() {
+    func testColdStartReachesComposeLoginWithoutProtectedContent() {
         let app = XCUIApplication()
         app.launch()
 
-        // The native launch screen hands straight to the real Compose Home shell.
+        // A signed-out cold start hands straight to the Compose auth root.
         XCTAssertTrue(app.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Explorar componentes"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continuar com Google"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Início"].exists)
+        XCTAssertFalse(app.staticTexts["Componentes"].exists)
+        XCTAssertFalse(app.staticTexts["Explorar componentes"].exists)
     }
 
-    func testComposeNavIsAccessible() {
+    func testComposeAuthenticationActionsAreAccessibleFromOneSemanticsTree() {
         let app = XCUIApplication()
         app.launch()
 
-        // Bottom navigation is exposed via Compose semantics, not a UIKit shim.
-        XCTAssertTrue(app.staticTexts["Início"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Componentes"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continuar com Google"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Esqueci minha senha"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Criar conta"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts.matching(identifier: "Saqz").count, 1)
     }
 
     func testNoSyntheticUIKitAccessibilityElement() {

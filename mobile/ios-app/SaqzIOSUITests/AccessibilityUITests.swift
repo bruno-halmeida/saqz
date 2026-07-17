@@ -14,9 +14,15 @@ final class AccessibilityUITests: XCTestCase {
     func testLargestDynamicTypeReflows() {
         let app = launch(category: "UICTContentSizeCategoryAccessibilityXXXL")
         XCTAssertTrue(app.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        let action = app.staticTexts["Explorar componentes"]
-        XCTAssertTrue(action.waitForExistence(timeout: 5))
-        XCTAssertTrue(action.isHittable)
+        let googleAction = app.buttons["Continuar com Google"]
+        let passwordResetAction = app.buttons["Esqueci minha senha"]
+        let registrationAction = app.buttons["Criar conta"]
+        XCTAssertTrue(googleAction.waitForExistence(timeout: 5))
+        XCTAssertTrue(googleAction.isHittable)
+        XCTAssertTrue(passwordResetAction.waitForExistence(timeout: 5))
+        XCTAssertTrue(passwordResetAction.isHittable)
+        XCTAssertTrue(registrationAction.waitForExistence(timeout: 5))
+        XCTAssertTrue(registrationAction.isHittable)
     }
 
     func testDynamicTypeIsAppliedOnce() {

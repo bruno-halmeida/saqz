@@ -320,6 +320,7 @@ inspecionar logs/métricas e executar o fluxo completo em ambiente descartável.
 | --- | --- | --- | --- |
 | B1 | 2026-07-16 | O gate KMP executava apenas testes do simulador iOS, permitindo que `commonMain` dependesse acidentalmente do classpath de teste e falhasse ao compilar para Android. | SEC-04; Quick access mobile compila Android antes de `allTests`. |
 | B2 | 2026-07-16 | O gate Bruno buscava requests apenas na raiz da coleção e rejeitava organização por contexto. | SEC-05; busca recursiva coberta por fixture aninhada. |
+| B3 | 2026-07-17 | Os XCUITests iOS legados continuaram exigindo Home/Catálogo após T45 substituir o shell pelo fluxo autenticado. | AUTH-06, EDGE-07 e o Full iOS já exigem cold start no Login, ausência de conteúdo protegido e ações alcançáveis em Dynamic Type máximo; nenhum novo invariante necessário. |
 
 ## Critérios de Sucesso
 
