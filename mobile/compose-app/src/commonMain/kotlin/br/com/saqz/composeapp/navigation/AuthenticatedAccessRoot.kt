@@ -164,6 +164,7 @@ internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, onIntent: (Acces
 }
 
 internal fun AccessDestination.systemBackIntent(): AccessIntent? = when (this) {
+    AccessDestination.REGISTRATION,
     AccessDestination.PASSWORD_RESET -> AccessIntent.Authentication(AuthenticationIntent.ShowLogin)
     else -> null
 }

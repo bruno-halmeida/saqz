@@ -104,6 +104,14 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
+    fun `account setup system back maps to login`() {
+        assertEquals(
+            AccessIntent.Authentication(AuthenticationIntent.ShowLogin),
+            AccessDestination.REGISTRATION.systemBackIntent(),
+        )
+    }
+
+    @Test
     fun `login does not consume system back`() {
         assertNull(AccessDestination.LOGIN.systemBackIntent())
     }
