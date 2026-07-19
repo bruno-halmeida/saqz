@@ -213,10 +213,10 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 2 / T13 (complete invitation and deep-link journey coverage).
-- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `463dc86` mobile Groups module boundary, T09 `94ab9e8` complete mobile Groups ownership migration. Required gates passed. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:326` — prove invite generation/share, cold/warm/deferred link delivery, auth waiting, redemption, selection, invalid-code, and attempt-limiting journey coverage.
-- **Next step**: Execute T13 with backend HTTP, mobile integration, Android native, iOS native, and safety gates.
+- **Phase / Task**: Execute — Phase 2 / T14 (profile/default/venue/slot migration).
+- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `463dc86` mobile Groups module boundary, T09 `94ab9e8` complete mobile Groups ownership migration, T13 `85d841b` complete invitation/deep-link journey coverage, and backprop `596f984` for invite `Retry-After`. Required gates passed. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:354` — add the first Groups profile/default/venue/slot migration and compatibility coverage.
+- **Next step**: Execute T14 with backend migration/schema tests and the required safety gates.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment.
 - **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/tasks.md` (handoff/status update pending).
 - **Branch**: main

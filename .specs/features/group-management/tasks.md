@@ -358,6 +358,9 @@ selected-group store and auth/session fakes.
 **Tests:** cross-layer HTTP/KMP/native journey (`Δ+12`).
 **Gate:** Backend HTTP + Mobile integration + Android native + iOS native + Safety.
 **Commit:** `test(groups): cover invitation deep link journey`
+**Status:** Complete (`85d841b`; backprop `596f984`); backend HTTP, mobile
+integration, Android native, iOS native, and safety gates passed. Backprop
+`B4/V4` records the missing HTTP `Retry-After` header found during T13.
 
 ### T14: Add the profile/default/venue/slot migration
 
