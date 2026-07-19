@@ -19,7 +19,7 @@ class BackendArchitectureTest {
     private val backendRoot: Path = workspaceRoot.resolve("backend")
 
     @Test
-    fun `ARCH-01 exposes separate bootstrap shared kernel and identity modules`() {
+    fun `ARCH-01 exposes separate bootstrap shared kernel identity and groups modules`() {
         val settings = backendRoot.resolve("settings.gradle.kts").readText()
         val modules = Regex("include\\(\"([^\"]+)\"\\)")
             .findAll(settings)
@@ -27,7 +27,7 @@ class BackendArchitectureTest {
             .toSet()
 
         assertEquals(
-            setOf(":shared-kernel", ":features:access", ":features:identity", ":bootstrap", ":architecture-tests"),
+            setOf(":shared-kernel", ":features:access", ":features:groups", ":features:identity", ":bootstrap", ":architecture-tests"),
             modules,
         )
     }
@@ -110,7 +110,7 @@ class BackendArchitectureTest {
             paths.filter(Path::isDirectory).map(Path::name).sorted().toList()
         }
 
-        assertEquals(listOf("access", "identity"), featureDirectories)
+        assertEquals(listOf("access", "groups", "identity"), featureDirectories)
     }
 
     @Test
@@ -139,7 +139,7 @@ class BackendArchitectureTest {
             .findAll(settings)
             .map { it.groupValues[1] }
             .toList()
-        val allowedProjects = setOf(":shared-kernel", ":features:access", ":features:identity", ":bootstrap")
+        val allowedProjects = setOf(":shared-kernel", ":features:access", ":features:groups", ":features:identity", ":bootstrap")
         val projectDependencies = Regex("project\\(\\s*\"([^\"]+)\"\\s*\\)")
             .findAll(configuration)
             .map { it.groupValues[1] }
@@ -187,8 +187,8 @@ class BackendArchitectureTest {
     }
 
     @Test
-    fun `ARCH-11 exposes exactly identity and access backend features`() {
-        assertEquals(listOf("access", "identity"), featureDirectories().map(Path::name))
+    fun `ARCH-11 exposes exactly access groups and identity backend features`() {
+        assertEquals(listOf("access", "groups", "identity"), featureDirectories().map(Path::name))
     }
 
     @Test
@@ -245,13 +245,33 @@ class BackendArchitectureTest {
     }
 
     @Test
-    fun `ARCH-18 access has isolated test and integration test suites and bootstrap composition`() {
+    fun `ARCH-18 access and groups have isolated test and integration test suites`() {
         val accessBuild = backendRoot.resolve("features/access/build.gradle.kts").readText()
+        val groupsBuild = backendRoot.resolve("features/groups/build.gradle.kts").readText()
         val bootstrapBuild = backendRoot.resolve("bootstrap/build.gradle.kts").readText()
 
         assertTrue(accessBuild.contains("sourceSets.create(\"integrationTest\")"))
         assertTrue(accessBuild.contains("val integrationTest by tasks.registering(Test::class)"))
+        assertTrue(groupsBuild.contains("sourceSets.create(\"integrationTest\")"))
+        assertTrue(groupsBuild.contains("val integrationTest by tasks.registering(Test::class)"))
         assertTrue(bootstrapBuild.contains("project(\":features:access\")"))
+    }
+
+    @Test
+    fun `ARCH-19 groups depends only on shared kernel among backend projects`() {
+        val groupsBuild = backendRoot.resolve("features/groups/build.gradle.kts").readText()
+
+        assertTrue(groupsBuild.contains("project(\":shared-kernel\")"))
+        assertFalse(groupsBuild.contains("project(\":features:"))
+        assertFalse(groupsBuild.contains("project(\":bootstrap"))
+    }
+
+    @Test
+    fun `ARCH-20 groups has the approved hexagonal source roots`() {
+        val groupsRoot = backendRoot.resolve("features/groups/src/main/kotlin/br/com/saqz/groups")
+
+        assertTrue(groupsRoot.exists())
+        assertTrue(groupsRoot.resolve("domain").exists() || groupsRoot.resolve("application").exists() || groupsRoot.resolve("adapter").exists())
     }
 
     private fun featureDirectories(): List<Path> {

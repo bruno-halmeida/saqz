@@ -69,9 +69,9 @@ reject_matches 'unsupported persistence technology found' \
     'liquibase|jooq|exposed|r2dbc|jakarta\.persistence|javax\.persistence|org\.hibernate|com\.h2database|sqlite' \
     "$prod_files"
 
-reject_matches_outside 'persistence artifact outside access backend found' \
+reject_matches_outside 'persistence artifact outside approved backend feature found' \
     'org\.postgresql|postgresql|flyway|jdbc|JdbcClient|/migration|persistence|Repository' \
-    '^(backend/(features/access/|bootstrap/|gradle/|settings\.gradle\.kts|build\.gradle\.kts)|compose\.yaml)' \
+    '^(backend/(features/(access|groups)/|bootstrap/|gradle/|settings\.gradle\.kts|build\.gradle\.kts)|compose\.yaml)' \
     "$prod_files"
 
 reject_matches_outside 'auth flow outside approved mobile surface found' \
@@ -122,8 +122,8 @@ reject_paths 'client domain or application source segment found' \
 
 feature_modules=$(find "$repository_root/backend/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')
 case "$feature_modules" in
-    "identity "|"access identity ") ;;
-    *) fail "backend/features may contain only access and identity" ;;
+    "identity "|"access identity "|"access groups identity ") ;;
+    *) fail "backend/features may contain only access groups and identity" ;;
 esac
 
 reject_paths 'tracked secret path found' '(^|/)\.secrets/|(^|/)(service-account|GoogleService-Info|google-services)\.?.*\.json$'

@@ -18,6 +18,7 @@ includeBuild("build-logic")
 
 include(":shared-kernel")
 include(":features:access")
+include(":features:groups")
 include(":features:identity")
 include(":bootstrap")
 include(":architecture-tests")

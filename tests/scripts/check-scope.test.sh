@@ -154,13 +154,16 @@ fail_case extra-features-module 'extra client UI source path' sh -c \
 fail_case mobile-production-deploy 'production deployment workflow' sh -c \
     "printf '%s\n' 'name: Mobile Deploy' 'on: workflow_dispatch' 'jobs:' '  deploy:' '    runs-on: macos-latest' '    steps:' '      - run: deploy mobile production' >.github/workflows/mobile-deploy.yml"
 
-fail_case second-backend-feature 'backend/features may contain only access and identity' sh -c \
+fail_case unapproved-backend-feature 'backend/features may contain only access groups and identity' sh -c \
     "mkdir -p backend/features/payments/src/main/kotlin && printf 'package payments\n\nval placeholder = 1\n' >backend/features/payments/src/main/kotlin/Payments.kt"
 
 # --- Epico 03: allowlists estreitas e proibicoes preservadas ---
 
 pass_case_with allow-access-backend-persistence sh -c \
     "mkdir -p backend/features/access/src/main/kotlin/br/com/saqz/access/adapter/output/persistence backend/features/access/src/main/resources/db/migration && printf 'package br.com.saqz.access.adapter.output.persistence\nimport org.springframework.jdbc.core.simple.JdbcClient\nclass AccessRepository\n' >backend/features/access/src/main/kotlin/br/com/saqz/access/adapter/output/persistence/AccessRepository.kt && printf '%s\n' 'implementation(\"org.postgresql:postgresql\")' 'implementation(\"org.flywaydb:flyway-core\")' >backend/features/access/build.gradle.kts && printf '%s\n' 'create table access_users(id uuid primary key);' >backend/features/access/src/main/resources/db/migration/V1__access.sql"
+
+pass_case_with allow-groups-backend-persistence sh -c \
+    "mkdir -p backend/features/groups/src/main/kotlin/br/com/saqz/groups/adapter/output/jdbc backend/features/groups/src/main/resources/db/migration && printf 'package br.com.saqz.groups.adapter.output.jdbc\nimport org.springframework.jdbc.core.simple.JdbcClient\nclass GroupsRepository\n' >backend/features/groups/src/main/kotlin/br/com/saqz/groups/adapter/output/jdbc/GroupsRepository.kt && printf '%s\n' 'implementation(\"org.postgresql:postgresql\")' 'implementation(\"org.flywaydb:flyway-core\")' >backend/features/groups/build.gradle.kts && printf '%s\n' 'create table groups(id uuid primary key);' >backend/features/groups/src/main/resources/db/migration/V2__groups.sql"
 
 pass_case_with allow-access-backend-module sh -c \
     "mkdir -p backend/features/access/src/main/kotlin/br/com/saqz/access/domain && printf 'package br.com.saqz.access.domain\n\nclass Group\n' >backend/features/access/src/main/kotlin/br/com/saqz/access/domain/Group.kt"
@@ -183,7 +186,7 @@ fail_case unsupported-orm 'unsupported persistence technology' sh -c \
 fail_case client-database-driver 'unsupported persistence technology' sh -c \
     "printf '\nprivate const val sqliteDriver = \"sqlite\"\n' >>mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/SaqzApp.kt"
 
-fail_case persistence-outside-access 'persistence artifact outside access backend' sh -c \
+fail_case persistence-outside-approved-feature 'persistence artifact outside approved backend feature' sh -c \
     "mkdir -p backend/features/identity/src/main/kotlin/br/com/saqz/identity/adapter/output && printf 'package br.com.saqz.identity.adapter.output\nclass IdentityRepository\n' >backend/features/identity/src/main/kotlin/br/com/saqz/identity/adapter/output/IdentityRepository.kt"
 
 fail_case auth-outside-approved-surface 'auth flow outside approved mobile surface' sh -c \
@@ -195,4 +198,4 @@ fail_case co-owner-capability 'co-owner capability' sh -c \
 fail_case tracked-secret-path 'tracked secret path' sh -c \
     "mkdir -p .secrets && printf '{}\n' >.secrets/service-account.json && git add -f .secrets/service-account.json"
 
-[ "$count" -eq 37 ]
+[ "$count" -eq 38 ]
