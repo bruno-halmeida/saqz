@@ -213,10 +213,10 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 1 / T03 (complete backend ownership migration).
-- **Completed**: T01 `5d1db9b` shared integration contracts and T02 `db095ef` backend Groups boundary, with their required gates passed under the installed JDK 21. The user approved merging the incompatible former T03–T07 sequence into one atomic T03 migration.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:212` — revise traceability/validation tables for the merged T03, then execute it.
-- **Next step**: Commit the approved task-plan amendment, then execute T03 as one compatibility migration with all moved code/tests/wiring and final backend HTTP/boundary gates.
-- **Blockers**: None; Gradle commands must use `-Dorg.gradle.java.home=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home` because the active shell JDK is 17.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/tasks.md` (T03 migration amendment pending).
+- **Phase / Task**: Execute — Phase 2 / T08 (mobile Groups boundary).
+- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration. All required T03 Groups unit/integration, bootstrap, architecture, Bruno, credential, and scope gates passed. The user-approved task amendment merged the former T03–T07 sequence.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:255` — execute Phase 2 T08–T13 sequentially.
+- **Next step**: Commit this progress record, then dispatch the Phase 2 whole-phase worker.
+- **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment.
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/tasks.md` (progress record pending).
 - **Branch**: main

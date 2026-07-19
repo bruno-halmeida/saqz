@@ -180,6 +180,7 @@ shared-kernel tests.
 **Tests:** unit (`Δ+4`).
 **Gate:** Backend boundary + Safety.
 **Commit:** `feat(groups): define access integration contracts`
+**Status:** Complete (`49a4730`); required boundary and safety gates passed.
 
 ### T02: Scaffold the backend Groups module and enforce its boundary
 
@@ -208,6 +209,7 @@ existing architecture inventory helpers.
 **Tests:** architecture/build (`Δ+4`).
 **Gate:** Backend boundary + Safety.
 **Commit:** `build(groups): add backend feature boundary`
+**Status:** Complete (`024d689`); required boundary and safety gates passed.
 
 ### T03: Migrate complete backend group ownership to Groups
 
@@ -248,6 +250,9 @@ existing V1 schema, `BootstrapSession`, and `AccessSessionConfiguration`.
 (`Δ0` moved suites; `Δ+4` composition cases).
 **Gate:** Backend HTTP + Backend boundary + Safety.
 **Commit:** `refactor(groups): migrate backend group ownership`
+**Status:** Complete (`dfd35d8`); Groups unit/integration, bootstrap,
+architecture, Bruno, credential, and scope gates passed with the active Colima
+socket supplied to Testcontainers.
 
 ### T08: Scaffold the mobile Groups feature boundary
 
