@@ -1,0 +1,439 @@
+# Group Management Specification
+
+**Status:** Confirmed
+**Date:** 2026-07-19
+**Context:** `.specs/features/group-management/context.md`
+
+## Problem
+
+Saqz currently creates a private group with only a name and raw timezone. It
+cannot represent the group’s volleyball identity, reuse normal play settings,
+schedule games, manage confirmations and waitlists, or track expected payments
+and group expenses.
+
+## Goal
+
+Let a verified organizer register and maintain a private volleyball group,
+configure reusable defaults without creating a game, later operate one-time or
+recurring games, manage capacity and attendance, and manually track per-game and
+monthly charges plus group expenses without processing money.
+
+## Non-goals
+
+- Sports other than court volleyball, beach volleyball, and footvolley.
+- Public groups, search, discovery, or join requests.
+- Group deletion, archive, ownership transfer, co-owners, or leaving a group.
+- Team balancing, lineups, positions, score, statistics, tournament brackets,
+  or player-performance history.
+- Pix/card/bank integration, wallets, money custody, automatic reconciliation,
+  invoices, tax documents, refunds, split payments, or partial payments.
+- Reimbursements or expense settlement.
+- Replacing the existing authentication, role, membership, or invitation model.
+
+## Ownership and compatibility
+
+- Authentication/access owns verified identity, the single `OWNER`,
+  `ADMIN`/`ATHLETE` memberships, invitations, and selected-group reconciliation.
+- Group Management owns profile, reusable defaults, venues, game series,
+  occurrences, attendance, charges, manual payment status, and expenses.
+- Existing IDs, memberships, invitations, and creation idempotency survive the
+  migration unchanged.
+- Existing groups remain readable but are marked `INCOMPLETE` until an
+  authorized editor supplies newly required modality and composition; migration
+  never guesses them.
+- No group registration creates a game, attendance record, charge, or expense.
+
+## Group registration data
+
+### Profile fields
+
+| Field | Required | Type / values | Validation |
+| --- | --- | --- | --- |
+| `name` | Yes | Text | Trimmed; 2–80 characters; no control characters. |
+| `modality` | Yes | `COURT_VOLLEYBALL`, `BEACH_VOLLEYBALL`, `FOOTVOLLEY` | Exactly one supported value. |
+| `composition` | Yes | `WOMEN`, `MEN`, `MIXED` | Exactly one supported value. |
+| `photo` | No | One square image | JPEG, PNG, or WebP; at most 5 MiB and 4096×4096 after decode; no animation. |
+| `description` | No | Text | Blank becomes `null`; otherwise trimmed, 2–500 characters; no controls. |
+| `city` | No | Text | Blank becomes `null`; otherwise trimmed, 2–80 characters; no controls. |
+| `level` | No | `BEGINNER`, `INTERMEDIATE`, `ADVANCED`, `MIXED_LEVELS`, `CUSTOM` | `customLevel` required only for `CUSTOM`. |
+| `customLevel` | Conditional | Text | Trimmed 2–40 characters for custom level; otherwise `null`. |
+| `playStyle` | No; court only | `SIX_ZERO`, `FOUR_TWO`, `FIVE_ONE`, `CUSTOM` | Forbidden unless modality is court volleyball. |
+| `customPlayStyle` | Conditional | Text | Trimmed 2–40 characters for custom play style; otherwise `null`. |
+
+### Optional game defaults
+
+| Field | Required | Type / values | Validation / meaning |
+| --- | --- | --- | --- |
+| `defaultVenue` | No | Nested venue | Name and address required when the venue block is used; court identifier optional. |
+| `regularSlots` | No | List of weekday/time defaults | Each slot requires weekday, start time, and duration; at least one slot if block enabled. |
+| `defaultCapacity` | No | Integer | 2–100 available confirmation spots. |
+| `defaultConfirmationLeadMinutes` | No | Integer | 0–10,080 minutes before start; `0` means game start. |
+| `defaultGameFeeCents` | No | Integer BRL cents | 1–99,999,999; absence means no per-game charge default. |
+
+### Optional monthly finance defaults
+
+| Field | Required | Type / values | Validation / meaning |
+| --- | --- | --- | --- |
+| `monthlyFeeCents` | No | Integer BRL cents | 1–99,999,999; absence means no monthly-fee default. |
+| `monthlyDueDay` | Conditional | Integer | Required when monthly fee exists; day 1–28. |
+
+### Venue fields
+
+| Field | Required | Validation |
+| --- | --- | --- |
+| `name` | Yes | Trimmed 2–120 characters; e.g. `Arena Beach Sports`. |
+| `address` | Yes | Trimmed 5–300 characters. |
+| `court` | No | Blank becomes `null`; otherwise trimmed 1–80 characters; e.g. `Quadra 2`. |
+
+### Regular-slot fields
+
+| Field | Required | Validation |
+| --- | --- | --- |
+| `weekday` | Yes | Monday through Sunday. |
+| `startTime` | Yes | Local wall-clock time in the group timezone. |
+| `durationMinutes` | Yes | 15–480 minutes. |
+
+### System-managed group fields
+
+| Field | Source | Contract |
+| --- | --- | --- |
+| `id` | Backend | Stable UUID. |
+| `ownerUserId` | Authenticated principal | Created atomically; exactly one owner. |
+| `creationKey` | Mobile request | UUID idempotency key. |
+| `timeZone` | Device/platform adapter | Detected automatically; technical identifier is not a normal form field. |
+| `privacy` | Backend constant | Always `PRIVATE`. |
+| `currency` | Backend constant | Always `BRL`. |
+| `profileStatus` | Backend derivation | `COMPLETE` for valid new groups; legacy missing required profile data is `INCOMPLETE`. |
+| `version` | Backend | Starts at 1; optimistic-concurrency version. |
+| timestamps | Backend clock | Server-controlled creation/update times. |
+
+## pt-BR presentation labels
+
+| Value | Label |
+| --- | --- |
+| `COURT_VOLLEYBALL` | `Vôlei de quadra` |
+| `BEACH_VOLLEYBALL` | `Vôlei de praia` |
+| `FOOTVOLLEY` | `Futevôlei` |
+| `WOMEN` / `MEN` / `MIXED` | `Feminino` / `Masculino` / `Misto` |
+| `BEGINNER` / `INTERMEDIATE` / `ADVANCED` | `Iniciante` / `Intermediário` / `Avançado` |
+| `MIXED_LEVELS` / level `CUSTOM` | `Todos os níveis` / `Personalizado` |
+| `SIX_ZERO` / `FOUR_TWO` / `FIVE_ONE` | `6-0` / `4-2` / `5-1` |
+| play-style `CUSTOM` | `Personalizado` |
+
+Visible labels come from Compose resources and never expose enum names, object
+keys, cents, or timezone identifiers.
+
+## Group registration flow
+
+1. A verified user opens `Criar grupo`.
+2. One keyboard-safe, scrollable flow presents three clear sections: group
+   profile, optional game defaults, and optional finance defaults.
+3. Required fields are name, modality, and composition. Every other user field
+   is optional or conditionally required.
+4. Timezone is detected from the device. Detection failure uses a friendly
+   region/timezone chooser, never raw technical input.
+5. Court volleyball reveals optional play style. Beach volleyball or footvolley
+   hides and clears both style fields.
+6. Custom level/style reveals its required label. Selecting a preset clears the
+   obsolete custom label.
+7. Enabling default venue requires venue name and address. Regular slots can be
+   added/removed independently and use the group timezone.
+8. Enabling a monthly fee requires a due day. Fees are displayed/entered as BRL
+   and converted to integer cents before transport.
+9. Submit validates the complete visible/conditional form. Invalid input makes
+   no request.
+10. Backend atomically creates group, owner, scalar defaults, optional venue,
+    and regular slots under one creation key. The group becomes selected.
+11. Optional photo uploads separately after the group ID exists. Upload failure
+    never rolls back or duplicates the group and remains retryable.
+12. Success opens group context/profile. It creates no first game and may offer
+    separate actions `Criar jogo` and `Fazer depois`.
+
+## Group profile, defaults, and privacy
+
+- All current members read the complete non-financial group profile and game
+  defaults. Only `OWNER`/`ADMIN` read finance defaults and expense totals.
+- `ATHLETE` sees no profile/default edit controls.
+- `OWNER`/`ADMIN` edit profile, defaults, venue, photo, and finance defaults.
+- Updates use optimistic concurrency. A stale update returns conflict, keeps the
+  local draft, and offers reload/retry.
+- Switching away from court volleyball atomically clears both style fields.
+- Changing custom values to presets atomically clears custom labels.
+- Group-default edits affect only future prefill; they never mutate existing
+  series, games, attendance, charges, or expenses.
+- A non-member receives the same `404` contract for group, photo, venue, game,
+  attendance, and finance resources.
+- There is no public listing, public photo URL, or unauthenticated invite preview
+  of name, city, photo, schedule, members, or finance data.
+
+## Private photo contract
+
+- Native Android/iOS adapters provide camera/library selection; shared UI
+  provides square preview/crop, replace, retry, and remove.
+- Backend verifies membership role, declared/decoded type, byte size, pixel
+  dimensions, successful decoding, and non-animation.
+- Invalid media never replaces the current photo.
+- Replacement publishes the new private reference atomically before safely
+  removing the old object. Removal is idempotent and shows a deterministic
+  fallback mark.
+- Storage provider and raw object key never become durable public API fields.
+- Production media is private; only current members may retrieve it.
+
+## Game model
+
+### Game fields
+
+| Field | Required | Contract |
+| --- | --- | --- |
+| `title` | Yes | Trimmed 2–120 characters; may be prefilled from group/slot context. |
+| `venue` | Yes | Existing group venue or a new valid venue snapshot/reference. |
+| `startsAt` | Yes | Zoned instant resolved from local date/time and group timezone. |
+| `durationMinutes` | Yes | 15–480 minutes. |
+| `capacity` | Yes | 2–100 confirmation spots. |
+| `confirmationDeadline` | Yes | At or before game start; may be prefilled from lead minutes. |
+| `gameFeeCents` | No | Integer BRL cents; copied from default and independently editable. |
+| `notes` | No | Blank becomes `null`; otherwise trimmed 2–500 characters. |
+| `status` | System | `DRAFT`, `PUBLISHED`, `CANCELLED`, `COMPLETED`. |
+| `version` | System | Optimistic-concurrency version. |
+
+### Recurrence
+
+- A game is one-time or belongs to a weekly series.
+- A weekly series has a start date, optional end date, and one or more schedule
+  slots, each with weekday, start time, duration, and venue.
+- Series creation materializes/serves bounded future occurrences; it never
+  requires an unbounded database write.
+- Editing an occurrence offers `Somente este jogo` or `Este e os próximos`.
+- `Somente este jogo` detaches/overrides that occurrence without changing its
+  siblings.
+- `Este e os próximos` preserves past and completed occurrences and changes
+  only the selected occurrence and later occurrences.
+- Cancelling a series follows the same past/future boundary and preserves all
+  historical attendance and finance records.
+
+### Game permissions and lifecycle
+
+- `OWNER`/`ADMIN` create, edit, publish, cancel, and complete games.
+- `ATHLETE` reads published games and manages only their own attendance before
+  the deadline.
+- Draft games are organizer-only and create no attendance or charge.
+- Publishing makes the game visible and opens attendance.
+- Cancelled/completed games are read-only except for authorized finance status
+  correction; they are never hard-deleted.
+- Cancelling a game cancels its pending per-game charges. Paid/waived charges
+  remain historical and are flagged for organizer review; Saqz issues no refund.
+
+## Attendance and waitlist
+
+### Attendance states
+
+| State | Meaning |
+| --- | --- |
+| No response | No attendance record yet. |
+| `CONFIRMED` | Occupies one capacity spot. |
+| `DECLINED` | Does not occupy a spot. |
+| `WAITLISTED` | Ordered queue after capacity is full. |
+
+- Confirming while a spot exists creates/changes attendance to `CONFIRMED`.
+- Confirming at capacity creates/changes it to `WAITLISTED` with a stable FIFO
+  position.
+- A confirmed withdrawal keeps any existing charge pending by default and frees
+  a spot. The first valid waitlisted member is promoted atomically.
+- Capacity increase promotes as many waitlisted members as new spots permit.
+- Capacity decrease never demotes existing confirmed members; it blocks new
+  confirmations until confirmed count falls below capacity.
+- After the confirmation deadline, athletes cannot self-change attendance;
+  `OWNER`/`ADMIN` may override with an audit record.
+- Cancellation freezes attendance history and prevents further responses.
+- Concurrent confirmations/promotions never exceed capacity or give duplicate
+  waitlist positions.
+
+## Manual charges and payment status
+
+### Charge kinds and identity
+
+- `GAME`: at most one charge per member per game.
+- `MONTHLY`: at most one charge per member per group and calendar month.
+- Every charge stores amount in integer BRL cents, kind, subject, member,
+  status, created-by, status-changed-by, and timestamps.
+- Charges represent tracking records only. Saqz never stores payment
+  credentials, generates a payment transaction, or claims that funds settled.
+
+### Per-game charges
+
+- Publishing a paid game does not charge every member. A per-game charge is
+  created idempotently when a member becomes confirmed.
+- Waitlisted, declined, and no-response members receive no game charge.
+- Promotion from waitlist creates the charge once.
+- Withdrawal does not automatically forgive the charge; it stays pending until
+  an organizer marks it paid, waived, or cancelled.
+
+### Monthly charges
+
+- `OWNER`/`ADMIN` choose a month and the active members to include, review the
+  default amount/due date, and generate charges idempotently.
+- Organizers may exempt owner/admin/athlete members by excluding them or marking
+  the generated charge waived.
+- Changing the group monthly default never rewrites an already generated charge.
+
+### Status and visibility
+
+| Status | Meaning |
+| --- | --- |
+| `PENDING` | Expected but not marked received. |
+| `PAID` | Organizer manually recorded receipt. |
+| `WAIVED` | Organizer decided no payment is due. |
+| `CANCELLED` | Charge was voided without payment. |
+
+- `OWNER`/`ADMIN` read all charges and change statuses with a mandatory audit
+  record. Corrections never erase previous audit entries.
+- `ATHLETE` reads only their own charges and cannot change status.
+- No partial amount, refund, credit balance, or negative charge exists.
+
+## Manual group expenses
+
+| Field | Required | Contract |
+| --- | --- | --- |
+| `description` | Yes | Trimmed 2–160 characters. |
+| `amountCents` | Yes | Integer BRL cents, 1–99,999,999. |
+| `expenseDate` | Yes | Group-local calendar date. |
+| `category` | Yes | `VENUE`, `EQUIPMENT`, `REFEREE`, `OTHER`. |
+| `customCategory` | Conditional | Trimmed 2–40 characters for `OTHER`; otherwise `null`. |
+| `notes` | No | Blank becomes `null`; otherwise trimmed 2–500 characters. |
+| audit fields | System | Creator, last editor, version, and timestamps. |
+
+- `OWNER`/`ADMIN` create, edit, and void expenses; expenses are not hard-deleted.
+- Only `OWNER`/`ADMIN` read expense entries and aggregate finance totals in this
+  version.
+- An expense never creates a member debt, reimbursement, or money transfer.
+
+## Acceptance criteria
+
+### Registration and migration
+
+1. **GRP-REG-01** — WHEN registration opens THEN required profile and all
+   optional profile/game-default/finance-default fields SHALL be discoverable in
+   one accessible flow without creating a game.
+2. **GRP-REG-02** — WHEN valid data is submitted THEN group, single owner,
+   defaults, optional venue, and regular slots SHALL commit once under the
+   creation key and the group SHALL become selected.
+3. **GRP-REG-03** — WHEN the creation key is retried THEN no group, owner,
+   venue, slot, photo, game, charge, or expense SHALL duplicate.
+4. **GRP-REG-04** — WHEN existing groups migrate THEN identity/access data SHALL
+   remain valid and missing required profile values SHALL produce
+   `profileStatus=INCOMPLETE`, never guessed values.
+5. **GRP-REG-05** — WHEN timezone detection succeeds THEN no technical timezone
+   input SHALL appear; failure SHALL use a friendly selector.
+
+### Conditional profile/default behavior
+
+6. **GRP-DEFAULT-01** — WHEN modality is not court volleyball THEN play-style
+   fields SHALL be hidden, cleared, and rejected if sent.
+7. **GRP-DEFAULT-02** — WHEN level or play style is not custom THEN obsolete
+   custom text SHALL be cleared and contradictory payloads rejected.
+8. **GRP-DEFAULT-03** — WHEN group defaults change THEN existing series, games,
+   attendance, charges, and expenses SHALL remain byte-for-byte semantically
+   unchanged.
+9. **GRP-DEFAULT-04** — WHEN an athlete edits or a non-member reads/writes THEN
+   backend SHALL return `403` or privacy-preserving `404` without mutation.
+
+### Photo and privacy
+
+10. **GRP-PHOTO-01** — WHEN optional photo upload succeeds/fails THEN group
+    creation SHALL remain singular and failure SHALL be retryable without a
+    broken/public reference.
+11. **GRP-PHOTO-02** — WHEN media is corrupt, animated, spoofed, oversized, or
+    unauthorized THEN it SHALL never replace/publish a photo.
+12. **GRP-PRIVATE-01** — WHEN any non-member or unauthenticated actor probes
+    group-related resources THEN no profile, schedule, member, attendance,
+    finance, photo, or storage data SHALL be disclosed.
+
+### Games and recurrence
+
+13. **GAME-01** — WHEN an organizer creates a game from defaults THEN the game
+    SHALL copy those values and permit overrides without linking historical
+    values back to mutable defaults.
+14. **GAME-02** — WHEN a weekly series uses multiple slots THEN each occurrence
+    SHALL resolve the correct local weekday/time across timezone offset changes.
+15. **GAME-03** — WHEN an organizer edits/cancels one occurrence or this-and-
+    future THEN the chosen boundary SHALL apply exactly and past/completed data
+    SHALL remain unchanged.
+16. **GAME-04** — WHEN game lifecycle or role is invalid THEN publish/edit/
+    cancel/complete SHALL fail without partial schedule, attendance, or finance
+    mutation.
+
+### Attendance
+
+17. **ATTEND-01** — WHEN capacity is available/full THEN confirmation SHALL
+    atomically produce `CONFIRMED`/`WAITLISTED` with no overbooking.
+18. **ATTEND-02** — WHEN a spot opens or capacity increases THEN FIFO waitlisted
+    members SHALL promote atomically and receive at most one game charge.
+19. **ATTEND-03** — WHEN capacity decreases below confirmed count THEN no member
+    SHALL be silently demoted and new confirmations SHALL remain blocked.
+20. **ATTEND-04** — WHEN deadline passes or game is cancelled/completed THEN
+    athlete self-service SHALL close while authorized overrides remain audited
+    where specified.
+
+### Manual finance
+
+21. **FIN-01** — WHEN a member becomes confirmed for a paid game THEN exactly one
+    pending game charge SHALL exist; waitlisted/declined members SHALL have none.
+22. **FIN-02** — WHEN confirmed attendance withdraws THEN its charge SHALL remain
+    pending until an organizer records paid, waived, or cancelled.
+23. **FIN-03** — WHEN monthly charges are generated/retried THEN selected active
+    members SHALL receive at most one immutable-amount charge for that month.
+24. **FIN-04** — WHEN a status changes THEN actor, old/new status, and timestamp
+    SHALL append to audit history; no prior event SHALL be overwritten.
+25. **FIN-05** — WHEN an athlete reads finance data THEN only their charges SHALL
+    be visible; group totals and expenses SHALL remain organizer-only.
+26. **FIN-06** — WHEN an expense is created/edited/voided THEN integer-cents
+    amount, category, date, version, and audit history SHALL remain consistent
+    without creating a payment or reimbursement.
+27. **FIN-07** — WHEN implementation is inspected THEN no payment SDK, payment
+    credential, webhook, settlement claim, partial payment, or refund model SHALL
+    exist.
+
+### Mobile and regression
+
+28. **GRP-UI-01** — WHEN viewport is compact, keyboard visible, or text scale is
+    maximal THEN every group/default/game/attendance/finance action SHALL remain
+    reachable in semantic order with at least 48 dp targets.
+29. **GRP-UI-02** — WHEN a request fails, app rotates/restarts, or retry occurs
+    THEN non-sensitive drafts SHALL survive safely and no creation, RSVP,
+    promotion, charge, or expense SHALL execute twice.
+30. **GRP-REGRESSION-01** — WHEN delivered THEN existing auth, selection,
+    membership, invitation, logout, credential, workspace isolation, backend,
+    Android, and iOS gates SHALL remain mandatory and green.
+
+## Verification requirements
+
+- Backend unit/domain tests cover every enum, conditional rule, transition,
+  authorization decision, amount rule, idempotency key, and recurrence boundary.
+- PostgreSQL integration tests cover additive migration, constraints,
+  transactions, locking, optimistic concurrency, FIFO promotion, unique charges,
+  and audit append-only behavior.
+- HTTP integration tests assert exact contracts, stable field errors,
+  privacy-preserving `404`, `403`, conflicts, media validation, and redaction.
+- KMP tests cover serialization, copied defaults, timezone recurrence, dependent
+  cleanup, draft restoration, upload retry, attendance, and finance state.
+- Compose tests cover registration sections, venue/slot editors, game lifecycle,
+  RSVP/waitlist, charge visibility, expense forms, accessibility, and large text.
+- Android/iOS tests cover image permissions/cancellation and lifecycle recovery.
+- Security gates prove no production media/payment credential, public object,
+  client-authoritative charge/status, or sensitive log enters the repository.
+
+## Success criteria
+
+- [ ] Organizer registers a complete private group with required profile and any
+  optional defaults without creating a first game.
+- [ ] All confirmed modalities, compositions, levels, and court play styles work
+  with exact conditional cleanup and custom values.
+- [ ] Future games copy defaults, support one-time/weekly scheduling, and preserve
+  occurrence history under single/future edits.
+- [ ] Attendance never overbooks and FIFO waitlist promotion is concurrency-safe.
+- [ ] Per-game/monthly charges and expenses are tracked manually, privately, and
+  auditably without payment processing.
+- [ ] Existing groups migrate without identity, owner, membership, invitation,
+  or selection loss.
+- [ ] Complete backend, mobile, native, safety, and aggregate gates pass with no
+  skipped or weakened tests.
