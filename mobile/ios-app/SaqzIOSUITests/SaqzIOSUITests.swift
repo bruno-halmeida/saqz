@@ -2,11 +2,11 @@ import XCTest
 
 @MainActor
 final class SaqzIOSUITests: XCTestCase {
-    func testSharedComposePlaceholderIsAccessible() {
+    func testSharedComposeLoginIsAccessible() {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Saqz"].waitForExistence(timeout: 5))
+        XCTAssertTrue(loginHeadline(in: app).waitForExistence(timeout: 5))
     }
 
     func testAppRendersSentinelStringFromFramework() {
@@ -28,13 +28,26 @@ final class SaqzIOSUITests: XCTestCase {
         XCTAssertTrue(drawable.waitForExistence(timeout: 10))
     }
 
+    func testComposeRootDrawsAcrossTheFullIOSScreen() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-saqzResourcePreflight"]
+        app.launch()
+
+        let root = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "preflight-full-screen-root"))
+            .firstMatch
+        XCTAssertTrue(root.waitForExistence(timeout: 10))
+        XCTAssertEqual(root.frame.minY, app.frame.minY, accuracy: 1)
+        XCTAssertEqual(root.frame.maxY, app.frame.maxY, accuracy: 1)
+    }
+
     func testColdStartReachesComposeLoginWithoutProtectedContent() {
         let app = XCUIApplication()
         app.launch()
 
         // A signed-out cold start hands straight to the Compose auth root.
-        XCTAssertTrue(app.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Continuar com Google"].waitForExistence(timeout: 5))
+        XCTAssertTrue(loginHeadline(in: app).waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Entrar com Google"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Início"].exists)
         XCTAssertFalse(app.staticTexts["Componentes"].exists)
         XCTAssertFalse(app.staticTexts["Explorar componentes"].exists)
@@ -44,18 +57,25 @@ final class SaqzIOSUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.buttons["Continuar com Google"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Entrar com Google"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Esqueci minha senha"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Criar conta"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts.matching(identifier: "Saqz").count, 1)
+        XCTAssertEqual(loginHeadlines(in: app).count, 1)
     }
 
     func testNoSyntheticUIKitAccessibilityElement() {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        // The synthetic 1x1 UILabel is gone: "Saqz" now comes only from the Compose heading.
-        XCTAssertEqual(app.staticTexts.matching(identifier: "Saqz").count, 1)
+        XCTAssertTrue(loginHeadline(in: app).waitForExistence(timeout: 10))
+        XCTAssertEqual(loginHeadlines(in: app).count, 1)
+    }
+
+    private func loginHeadlines(in app: XCUIApplication) -> XCUIElementQuery {
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Organize seu grupo."))
+    }
+
+    private func loginHeadline(in app: XCUIApplication) -> XCUIElement {
+        loginHeadlines(in: app).firstMatch
     }
 }

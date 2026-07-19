@@ -1,9 +1,14 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.ComposeUIViewController
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -25,11 +30,17 @@ fun MainViewController(
 
 @Composable
 private fun ResourcePreflightScreen() {
-    Column {
-        Text(stringResource(ResourcePreflight.sentinelString))
-        Image(
-            painter = painterResource(ResourcePreflight.sentinelDrawable),
-            contentDescription = "preflight-sentinel-drawable",
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = "preflight-full-screen-root" },
+    ) {
+        Column {
+            Text(stringResource(ResourcePreflight.sentinelString))
+            Image(
+                painter = painterResource(ResourcePreflight.sentinelDrawable),
+                contentDescription = "preflight-sentinel-drawable",
+            )
+        }
     }
 }

@@ -168,6 +168,7 @@ struct SaqzIOSApp: App {
     var body: some Scene {
         WindowGroup {
             root
+                .ignoresSafeArea()
                 .onOpenURL(perform: router.open)
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb, perform: router.continueActivity)
         }

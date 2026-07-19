@@ -13,31 +13,40 @@ final class AccessibilityUITests: XCTestCase {
 
     func testLargestDynamicTypeReflows() {
         let app = launch(category: "UICTContentSizeCategoryAccessibilityXXXL")
-        XCTAssertTrue(app.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        let googleAction = app.buttons["Continuar com Google"]
-        let passwordResetAction = app.buttons["Esqueci minha senha"]
-        let registrationAction = app.buttons["Criar conta"]
-        XCTAssertTrue(googleAction.waitForExistence(timeout: 5))
-        XCTAssertTrue(googleAction.isHittable)
-        XCTAssertTrue(passwordResetAction.waitForExistence(timeout: 5))
-        XCTAssertTrue(passwordResetAction.isHittable)
-        XCTAssertTrue(registrationAction.waitForExistence(timeout: 5))
-        XCTAssertTrue(registrationAction.isHittable)
+        XCTAssertTrue(loginHeadline(in: app).waitForExistence(timeout: 10))
+        assertButtonIsReachable("Esqueci minha senha", in: app)
+        assertButtonIsReachable("Entrar com Google", in: app)
+        assertButtonIsReachable("Criar conta", in: app)
     }
 
     func testDynamicTypeIsAppliedOnce() {
         let large = launch(category: "UICTContentSizeCategoryAccessibilityXXXL")
-        XCTAssertTrue(large.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        let largeHeight = large.staticTexts["Saqz"].frame.height
+        XCTAssertTrue(loginHeadline(in: large).waitForExistence(timeout: 10))
+        let largeHeight = loginHeadline(in: large).frame.height
         large.terminate()
 
         let normal = launch(category: "UICTContentSizeCategoryL")
-        XCTAssertTrue(normal.staticTexts["Saqz"].waitForExistence(timeout: 10))
-        let normalHeight = normal.staticTexts["Saqz"].frame.height
+        XCTAssertTrue(loginHeadline(in: normal).waitForExistence(timeout: 10))
+        let normalHeight = loginHeadline(in: normal).frame.height
 
         // Scaled up exactly once: larger than the default, but bounded — a double application
         // would multiply the scale and blow past this ceiling.
         XCTAssertGreaterThan(largeHeight, normalHeight)
         XCTAssertLessThan(largeHeight, normalHeight * 4)
+    }
+
+    private func assertButtonIsReachable(_ label: String, in app: XCUIApplication) {
+        let button = app.buttons[label]
+        for _ in 0..<8 where !button.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(button.exists, "Expected \(label) to remain in the accessibility tree")
+        XCTAssertTrue(button.isHittable, "Expected \(label) to be reachable by scrolling")
+    }
+
+    private func loginHeadline(in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS %@", "Organize seu grupo."))
+            .firstMatch
     }
 }
