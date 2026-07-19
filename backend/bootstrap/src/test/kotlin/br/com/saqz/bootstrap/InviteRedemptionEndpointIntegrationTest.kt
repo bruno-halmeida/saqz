@@ -139,6 +139,7 @@ class InviteRedemptionEndpointIntegrationTest {
 
         assertProblem(response, 429, "INVITE_ATTEMPT_LIMIT")
         assertEquals(600, json(response)["retryAfterSeconds"].asInt())
+        assertEquals("600", response.headers().firstValue("Retry-After").orElse(""))
     }
 
     @Test
@@ -151,6 +152,16 @@ class InviteRedemptionEndpointIntegrationTest {
 
         assertFalse(response.body().contains(rawCode))
         assertFalse(response.body().contains(RedemptionTestConfiguration.GROUP_ID.toString()))
+    }
+
+    @Test
+    fun `invalid expired and rotated outcomes do not emit retry header`() {
+        repository.target = null
+
+        val response = redeem(validCode(8))
+
+        assertProblem(response, 404, "INVITE_INVALID_OR_EXPIRED")
+        assertTrue(response.headers().firstValue("Retry-After").isEmpty)
     }
 
     @Test

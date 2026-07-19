@@ -487,6 +487,12 @@ keys, cents, or timezone identifiers.
 - **V3** — iOS adapters that implement KMP Groups ports SHALL compile against
   the generated Swift protocols in `check-ios`, including external argument
   labels for callbacks and listeners.
+- **B4 | 2026-07-19** — The invite attempt-limit HTTP problem exposed retry
+  seconds only in the body, so clients and intermediaries could miss the
+  required `Retry-After` contract. Covered by V4.
+- **V4** — Every invite attempt-limit HTTP response SHALL include matching
+  `retryAfterSeconds` body data and `Retry-After` header value, while terminal
+  invalid/expired/rotated invite responses SHALL omit `Retry-After`.
 
 ## Success criteria
 

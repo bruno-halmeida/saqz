@@ -20,6 +20,7 @@ class ApiProblemWriter(
         val correlationId = requestCorrelationId(request).value
         response.status = status
         response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE
+        if (retryAfterSeconds != null) response.setHeader("Retry-After", retryAfterSeconds.toString())
         objectMapper.writeValue(
             response.outputStream,
             ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds),
