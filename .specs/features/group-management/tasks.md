@@ -443,14 +443,14 @@ and integration tests.
 
 **Done when:**
 
-- [ ] Validation completes before transaction/write and returns all stable
+- [x] Validation completes before transaction/write and returns all stable
   field errors.
-- [ ] Success commits exactly one group/owner/default set/optional venue/slots,
+- [x] Success commits exactly one group/owner/default set/optional venue/slots,
   selects no game-related table, and returns OWNER/version/profile status.
-- [ ] Same-key sequential and concurrent retries return the original aggregate
+- [x] Same-key sequential and concurrent retries return the original aggregate
   even if retry payload differs.
-- [ ] Any injected child-write failure rolls back the whole aggregate.
-- [ ] Backend full gate passes; test count `Δ+14` or greater.
+- [x] Any injected child-write failure rolls back the whole aggregate.
+- [x] Backend full gate passes; test count `Δ+14` or greater.
 
 **Tests:** unit + PostgreSQL integration (`Δ+14`).
 **Gate:** Backend full + Safety.

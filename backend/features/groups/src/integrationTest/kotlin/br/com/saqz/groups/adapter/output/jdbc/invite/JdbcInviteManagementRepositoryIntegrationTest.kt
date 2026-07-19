@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.testing.startAndAwaitJdbc
+import br.com.saqz.groups.testing.accessMigrationLocation
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.manage.RotateInviteCommand
@@ -35,7 +36,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
+        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
         repository = JdbcInviteManagementRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }

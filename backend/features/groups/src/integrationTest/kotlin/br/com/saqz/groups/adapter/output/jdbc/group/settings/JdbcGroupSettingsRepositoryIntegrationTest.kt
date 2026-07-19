@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.group.settings
 
 import br.com.saqz.groups.testing.startAndAwaitJdbc
+import br.com.saqz.groups.testing.accessMigrationLocation
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
@@ -36,7 +37,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
+        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
         transaction = JdbcTransactionRunner(dataSource)
         useCase = UpdateGroupSettings(
             transaction,

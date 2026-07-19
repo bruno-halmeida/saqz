@@ -500,6 +500,25 @@ keys, cents, or timezone identifiers.
 - **V5** — Every new database migration SHALL be discoverable in the same
   Flyway location sequence as the current baseline migration until the baseline
   is explicitly moved by a separate passing migration-order change.
+- **B6 | 2026-07-19** — A T16 repository test expected blank optional
+  `defaultVenue.court` to be rejected even though the accepted profile field
+  contract says blank optional venue court normalizes to `null`. No new
+  invariant added; the existing venue field contract and T15 domain validation
+  tests already cover the required behavior.
+- **B7 | 2026-07-19** — The first T16 HTTP create DTO modeled the optional
+  `regularSlots` collection as a non-null Kotlin parameter with a default, so
+  clients that omitted optional defaults hit a server error before domain
+  validation. Covered by V6.
+- **V6** — Optional transport collections in group create/update/profile APIs
+  SHALL deserialize when omitted, normalize to empty domain lists before
+  validation, and retain endpoint tests that omit those optional collections.
+- **B8 | 2026-07-19** — Groups integration tests loaded Access-owned
+  migrations by adding a runtime project dependency on `:features:access`,
+  causing backend architecture gates to reject the Groups feature boundary.
+  Covered by V7.
+- **V7** — Groups integration tests MAY load Access-owned baseline migrations
+  by explicit migration resource or filesystem location, but SHALL NOT add any
+  backend feature-to-feature project dependency to make migrations visible.
 
 ## Success criteria
 

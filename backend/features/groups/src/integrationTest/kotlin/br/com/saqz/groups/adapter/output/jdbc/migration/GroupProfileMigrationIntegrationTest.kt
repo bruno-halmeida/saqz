@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.migration
 
+import br.com.saqz.groups.testing.accessMigrationLocation
 import br.com.saqz.groups.testing.startAndAwaitJdbc
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
@@ -10,8 +11,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
-import java.nio.file.Files
-import java.nio.file.Path
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -22,7 +21,7 @@ import kotlin.test.assertNull
 class GroupProfileMigrationIntegrationTest {
     private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
-    private val migrationLocation = "filesystem:" + accessMigrationDirectory()
+    private val migrationLocation = accessMigrationLocation()
 
     @BeforeAll
     fun startDatabase() {
@@ -476,14 +475,4 @@ class GroupProfileMigrationIntegrationTest {
 
     private fun connection(): Connection = dataSource.connection
 
-    private fun accessMigrationDirectory(): Path {
-        val workingDirectory = Path.of(System.getProperty("user.dir")).toAbsolutePath()
-        val candidates = listOf(
-            workingDirectory.resolve("backend/features/access/src/main/resources/db/migration"),
-            workingDirectory.resolve("features/access/src/main/resources/db/migration"),
-            workingDirectory.resolve("../access/src/main/resources/db/migration").normalize(),
-        )
-        candidates.firstOrNull(Files::isDirectory)?.let { return it }
-        error("Cannot find access migrations from working directory $workingDirectory")
-    }
 }

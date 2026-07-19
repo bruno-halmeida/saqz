@@ -1,8 +1,11 @@
 package br.com.saqz.groups.application.create
 
-import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
+import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidation
+import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidator
+import br.com.saqz.groups.domain.group.GroupValidationError
 import java.util.UUID
 
 class CreateGroup(
@@ -12,24 +15,24 @@ class CreateGroup(
     fun execute(
         actor: UUID,
         requestId: UUID,
-        name: String,
+        profile: GroupProfileDefaultsInput,
         timeZone: String,
     ): CreateGroupResult {
-        val validName = runCatching { AccessName.from(name) }.getOrNull()
         val validTimeZone = runCatching { IanaTimeZone.from(timeZone) }.getOrNull()
-        val invalidFields = buildSet {
-            if (validName == null) add(CreateGroupField.NAME)
-            if (validTimeZone == null) add(CreateGroupField.TIME_ZONE)
+        val profileValidation = GroupProfileDefaultsValidator.validate(profile)
+        val errors = buildList {
+            if (profileValidation is GroupProfileDefaultsValidation.Invalid) addAll(profileValidation.errors)
+            if (validTimeZone == null) add(GroupValidationError("timeZone", "must be a valid IANA identifier"))
         }
-        if (invalidFields.isNotEmpty()) return CreateGroupResult.Invalid(invalidFields)
+        if (errors.isNotEmpty()) return CreateGroupResult.Invalid(errors)
 
         val stored = transactionRunner.inTransaction {
             repository.create(
                 CreateGroupCommand(
                     ownerUserId = actor,
                     creationKey = requestId,
-                    name = requireNotNull(validName),
                     timeZone = requireNotNull(validTimeZone),
+                    profile = (profileValidation as GroupProfileDefaultsValidation.Valid).value,
                 ),
             )
         }
@@ -40,6 +43,7 @@ class CreateGroup(
                 timeZone = stored.timeZone.value,
                 version = stored.version,
                 role = GroupRole.OWNER,
+                profileStatus = stored.profileStatus,
             ),
         )
     }

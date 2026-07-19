@@ -4,8 +4,10 @@ import br.com.saqz.groups.adapter.input.http.AccessGroupController
 import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.create.CreateGroupCommand
 import br.com.saqz.groups.application.create.GroupCreationRepository
+import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.create.StoredGroup
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
@@ -70,8 +72,10 @@ class GroupCreationEndpointIntegrationTest {
         assertEquals("Training Club", body["name"].stringValue())
         assertEquals("America/Sao_Paulo", body["timeZone"].stringValue())
         assertEquals("OWNER", body["role"].stringValue())
+        assertEquals("COMPLETE", body["profileStatus"].stringValue())
         assertEquals(GroupTestConfiguration.USER_ID, repository.commands.single().ownerUserId)
         assertEquals(requestId, repository.commands.single().creationKey)
+        assertEquals("Training Club", repository.commands.single().profile.name)
     }
 
     @Test
@@ -126,7 +130,7 @@ class GroupCreationEndpointIntegrationTest {
     fun `body owner and role fields cannot override the authenticated actor`() {
         val attackerId = UUID.randomUUID()
         val response = postRaw(
-            """{"requestId":"${UUID.randomUUID()}","name":"Safe Group","timeZone":"UTC","ownerUserId":"$attackerId","role":"ADMIN"}""",
+            """{"requestId":"${UUID.randomUUID()}","name":"Safe Group","modality":"COURT_VOLLEYBALL","composition":"MIXED","timeZone":"UTC","ownerUserId":"$attackerId","role":"ADMIN"}""",
         )
 
         assertEquals(201, response.statusCode())
@@ -165,7 +169,15 @@ class GroupCreationEndpointIntegrationTest {
         timeZone: String,
         bearer: String? = "group-token",
     ): HttpResponse<String> = postRaw(
-        objectMapper.writeValueAsString(mapOf("requestId" to requestId, "name" to name, "timeZone" to timeZone)),
+        objectMapper.writeValueAsString(
+            mapOf(
+                "requestId" to requestId,
+                "name" to name,
+                "modality" to "COURT_VOLLEYBALL",
+                "composition" to "MIXED",
+                "timeZone" to timeZone,
+            ),
+        ),
         bearer,
     )
 
@@ -258,9 +270,10 @@ class GroupCreationEndpointIntegrationTest {
                     UUID.randomUUID(),
                     command.ownerUserId,
                     command.creationKey,
-                    command.name,
+                    AccessName.from(command.profile.name),
                     command.timeZone,
                     1,
+                    GroupProfileStatus.COMPLETE,
                 )
             }
         }
