@@ -96,13 +96,13 @@ phase's last gate and commit are complete.
 ### Phase 1: Backend Groups boundary and compatibility
 
 ```text
-T01 → T02 → T03 → T04 → T05 → T06 → T07
+T01 → T02 → T03
 ```
 
 ### Phase 2: Mobile Groups boundary and invitation journey
 
 ```text
-T07 → T08 → T09 → T10 → T11 → T12 → T13
+T03 → T08 → T09 → T10 → T11 → T12 → T13
 ```
 
 ### Phase 3: Group profile, defaults, and registration
@@ -209,128 +209,20 @@ existing architecture inventory helpers.
 **Gate:** Backend boundary + Safety.
 **Commit:** `build(groups): add backend feature boundary`
 
-### T03: Move roles, authorization, and existing group value objects to Groups
+### T03: Migrate complete backend group ownership to Groups
 
-**What:** Transfer the existing group role/policy/name/timezone domain concepts
-to Groups without changing observable decisions or wire values.
-**Where:** `backend/features/groups/src/main/kotlin/br/com/saqz/groups/domain/group/`,
-matching tests; remove superseded Access-owned group domain files.
+**What:** Atomically transfer the existing group authorization, value objects,
+create/read/settings, membership administration, invitation lifecycle, HTTP
+controllers, and bootstrap composition from Access to Groups. These pieces share
+the same domain types and cannot cross the enforced Access → Groups boundary in
+intermediate commits.
+**Where:** Access group-owned domain/application/JDBC/HTTP code and matching
+tests; `backend/features/groups/src/main/kotlin/br/com/saqz/groups/`; bootstrap
+composition and HTTP tests.
 **Depends on:** T02.
-**Reuses:** `GroupRole`, `GroupAccessPolicy`, `AccessName`, `IanaTimeZone` and
-their current tests.
-**Requirement:** `GRP-DEFAULT-04`, `GRP-REG-04`, `GRP-REGRESSION-01`,
-`INVITE-01`.
-
-**Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
-
-**Done when:**
-
-- [ ] Role values and owner/admin/athlete permissions remain byte-for-byte API
-  compatible.
-- [ ] Groups owns all group authorization decisions; Access owns none.
-- [ ] Existing domain outcome tests move intact and still discriminate every
-  role/action combination.
-- [ ] Backend quick gate passes with affected-suite count `Δ0` or greater.
-
-**Tests:** unit (`Δ0`, all moved cases retained).
-**Gate:** Backend quick + Safety.
-**Commit:** `refactor(groups): move group authorization domain`
-
-### T04: Move existing group create, read, and settings behavior to Groups
-
-**What:** Transfer the current group application/JDBC behavior to Groups while
-preserving IDs, table names, creation keys, ETags, and outcomes.
-**Where:** `backend/features/groups/src/main/kotlin/br/com/saqz/groups/application/group/`,
-`adapter/output/jdbc/group/`, unit and integration tests; remove matching Access
-implementations after transfer.
-**Depends on:** T03.
-**Reuses:** `CreateGroup`, `GetGroup`, `UpdateGroupSettings`, explicit
-`JdbcClient`, `JdbcTransactionRunner`, V1 schema.
-**Requirement:** `GRP-REG-02..04`, `GRP-DEFAULT-04`,
-`GRP-REGRESSION-01`.
-
-**Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
-
-**Done when:**
-
-- [ ] Current create/read/settings results remain equivalent for owner, admin,
-  athlete, non-member, retry, and stale version.
-- [ ] V1 remains unchanged and Access has no group repository writer.
-- [ ] PostgreSQL tests prove existing rows and creation idempotency survive the
-  ownership move.
-- [ ] Backend full gate passes with moved-suite count `Δ0` or greater.
-
-**Tests:** unit + PostgreSQL integration (`Δ0`).
-**Gate:** Backend full + Safety.
-**Commit:** `refactor(groups): move existing group operations`
-
-### T05: Move membership and role administration to Groups
-
-**What:** Transfer membership listing and owner-only role changes into Groups
-without changing membership keys, owner representation, or role rules.
-**Where:** `backend/features/groups/src/main/kotlin/br/com/saqz/groups/application/membership/`,
-`adapter/output/jdbc/membership/`, matching tests; remove Access copies.
-**Depends on:** T04.
-**Reuses:** `ListAccessMemberships`, `ChangeMemberRole`,
-`JdbcMembershipRepository`, owner-role tests.
-**Requirement:** `GRP-REG-04`, `GRP-DEFAULT-04`, `GRP-PRIVATE-01`,
-`GRP-REGRESSION-01`, `INVITE-03`.
-
-**Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
-
-**Done when:**
-
-- [ ] Existing owner/admin/athlete listing and role-change outcomes are
-  preserved.
-- [ ] Exactly one owner remains represented by `access_groups.owner_user_id`;
-  no owner membership row is introduced.
-- [ ] Privacy-equivalent non-member behavior and transaction rollback remain
-  covered.
-- [ ] Backend full gate passes with moved-suite count `Δ0` or greater.
-
-**Tests:** unit + PostgreSQL integration (`Δ0`).
-**Gate:** Backend full + Safety.
-**Commit:** `refactor(groups): move membership administration`
-
-### T06: Move invitation management and redemption to Groups
-
-**What:** Transfer invite rotation, expiry, digest-only persistence, abuse
-limiting, link creation, and idempotent redemption into Groups.
-**Where:** `backend/features/groups/src/main/kotlin/br/com/saqz/groups/application/invite/`,
-`adapter/output/{crypto,jdbc,link}/`, matching tests; remove Access copies.
-**Depends on:** T05.
-**Reuses:** current secure generator, SHA-256 digest model, Branch Long Link
-factory, row locks, ten-attempt/ten-minute window.
-**Requirement:** `INVITE-01`, `INVITE-03`, `INVITE-04`,
-`GRP-PRIVATE-01`, `GRP-REGRESSION-01`.
-
-**Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
-
-**Done when:**
-
-- [ ] Owner/admin manage one active opaque invite; athlete is forbidden and
-  non-member is privacy-hidden.
-- [ ] Rotation/expiry invalidates prior capabilities without exposing digest or
-  group data.
-- [ ] Redeem creates at most one athlete membership, preserves an existing
-  stronger role, and enforces the existing rate limit.
-- [ ] Backend full gate passes with moved-suite count `Δ0` or greater.
-
-**Tests:** unit + PostgreSQL integration (`Δ0`).
-**Gate:** Backend full + Safety.
-**Commit:** `refactor(groups): move invitation lifecycle`
-
-### T07: Rewire session and HTTP composition through shared ports
-
-**What:** Bind Access actor/session implementations to Groups readers, move
-group/membership/invite controllers to Groups, and eliminate dual ownership.
-**Where:** `backend/features/access/`,
-`backend/features/groups/src/main/kotlin/br/com/saqz/groups/adapter/input/http/`,
-`backend/bootstrap/src/main/kotlin/br/com/saqz/bootstrap/configuration/`,
-`backend/bootstrap/src/test/`.
-**Depends on:** T06.
-**Reuses:** `BootstrapSession`, `AccessSessionConfiguration`, existing endpoint
-paths/problems and Spring composition style.
+**Reuses:** `GroupRole`, `GroupAccessPolicy`, `AccessName`, `IanaTimeZone`,
+`CreateGroup`, `GetGroup`, `UpdateGroupSettings`, membership/invite use cases,
+existing V1 schema, `BootstrapSession`, and `AccessSessionConfiguration`.
 **Requirement:** `GRP-REG-02..04`, `GRP-DEFAULT-04`, `GRP-PRIVATE-01`,
 `GRP-REGRESSION-01`, `INVITE-01..04`.
 
@@ -338,19 +230,24 @@ paths/problems and Spring composition style.
 
 **Done when:**
 
-- [ ] Access owns only identity/account/session and selected-membership
-  reconciliation; Groups owns every group-scoped controller/use case.
-- [ ] Session bootstrap returns Groups membership summaries through the shared
-  port without feature imports.
-- [ ] All existing endpoint paths/statuses/ETags and Bruno requests remain
-  compatible with exactly one writer per table.
-- [ ] A migrated V1 database passes session, group, membership, invitation, and
-  rollback integration tests.
-- [ ] Backend HTTP gate passes; test count `Δ+4` or greater.
+- [ ] Roles, authorization, group values, IDs, table names, creation keys,
+  ETags, endpoint paths, statuses, and wire values remain compatible.
+- [ ] Groups owns every group-scoped domain decision, use case, repository
+  writer, controller, and invite operation; Access owns only identity, account,
+  session, and selected-membership reconciliation.
+- [ ] Owner representation, privacy-equivalent non-member behavior, invite
+  rotation/expiry/digest/rate limiting, redemption idempotency, and stronger
+  role preservation remain intact.
+- [ ] Session bootstrap consumes Groups summaries only through shared ports;
+  V1 stays unchanged and a migrated V1 database passes group, membership,
+  invitation, session, and rollback coverage.
+- [ ] Backend HTTP, architecture, Bruno, and safety gates pass with no affected
+  suite count decrease and at least four new composition compatibility cases.
 
-**Tests:** Spring HTTP + compatibility integration (`Δ+4`).
-**Gate:** Backend HTTP + Safety.
-**Commit:** `refactor(groups): rewire backend group composition`
+**Tests:** moved unit + PostgreSQL integration + Spring HTTP/compatibility
+(`Δ0` moved suites; `Δ+4` composition cases).
+**Gate:** Backend HTTP + Backend boundary + Safety.
+**Commit:** `refactor(groups): migrate backend group ownership`
 
 ### T08: Scaffold the mobile Groups feature boundary
 
@@ -358,7 +255,7 @@ paths/problems and Spring composition style.
 the single `SaqzMobile` framework without coupling it to Access.
 **Where:** `mobile/settings.gradle.kts`, `mobile/features/groups/`,
 `mobile/compose-app/build.gradle.kts`, module inventory tests.
-**Depends on:** T07.
+**Depends on:** T03.
 **Reuses:** `features/access` KMP build conventions, AD-001/013/018/025.
 **Requirement:** `GRP-UI-01`, `GRP-REGRESSION-01`; AD-026.
 
@@ -2050,8 +1947,8 @@ resource preflight/contracts, feature docs status only after evidence.
 ## Phase Execution Map
 
 ```text
-Phase 1  T01 → T02 → T03 → T04 → T05 → T06 → T07
-Phase 2  T07 → T08 → T09 → T10 → T11 → T12 → T13
+Phase 1  T01 → T02 → T03
+Phase 2  T03 → T08 → T09 → T10 → T11 → T12 → T13
 Phase 3  T13 → T14 → T15 → T16 → T17 → T18 → T19 → T20 → T21 → T22
 Phase 4  T22 → T23 → T24 → T25 → T26 → T27 → T28 → T29
 Phase 5  T29 → T30 → T31 → T32 → T33 → T34 → T35 → T36
@@ -2070,16 +1967,16 @@ batching unit and are never split between workers.
 
 | Requirements | Owning tasks |
 | --- | --- |
-| `GRP-REG-01..05` | T04, T07, T09, T14..T22, T63..T67 |
+| `GRP-REG-01..05` | T03, T09, T14..T22, T63..T67 |
 | `GRP-DEFAULT-01..04` | T03, T14..T22, T31, T34, T65..T67 |
 | `GRP-PHOTO-01..02` | T21, T23..T29, T63..T67 |
-| `GRP-PRIVATE-01` | T05..T07, T13, T17, T19, T23..T29, T33..T36, T43..T67 |
+| `GRP-PRIVATE-01` | T03, T13, T17, T19, T23..T29, T33..T36, T43..T67 |
 | `GAME-01..04` | T18, T30..T42, T54, T63..T67 |
 | `ATTEND-01..04` | T30, T33, T45, T49..T57, T66..T67 |
 | `FIN-01..07` | T17..T18, T31, T43..T48, T50..T62, T66..T67 |
 | `GRP-UI-01..02` | T08, T11, T13, T20..T23, T26..T29, T32, T35..T42, T46, T48, T51..T67 |
-| `GRP-REGRESSION-01` | T01..T13, T65..T67 |
-| `INVITE-01..04` | T01, T03, T06..T07, T10..T13, T65..T67 |
+| `GRP-REGRESSION-01` | T01..T03, T08..T13, T65..T67 |
+| `INVITE-01..04` | T01, T03, T10..T13, T65..T67 |
 
 ## Task Granularity Check
 
@@ -2091,11 +1988,7 @@ necessary wiring are part of that deliverable, not deferred tasks.
 | --- | --- | --- |
 | T01: Shared actor/membership contracts | shared-kernel contract | ✅ Granular |
 | T02: Backend Groups boundary | module boundary | ✅ Granular |
-| T03: Group authorization domain move | domain ownership move | ✅ Granular |
-| T04: Existing group operations move | aggregate ownership move | ✅ Granular |
-| T05: Membership administration move | membership component move | ✅ Granular |
-| T06: Invitation lifecycle move | invite component move | ✅ Granular |
-| T07: Backend session/HTTP rewire | composition seam | ✅ Granular |
+| T03: Complete backend ownership migration | atomic compatibility migration | ✅ Granular |
 | T08: Mobile Groups boundary | module boundary | ✅ Granular |
 | T09: Mobile group state move | transport/state move | ✅ Granular |
 | T10: Mobile people/invite move | people/invite component move | ✅ Granular |
@@ -2164,11 +2057,7 @@ necessary wiring are part of that deliverable, not deferred tasks.
 | T01 | None | Entry node | ✅ Match |
 | T02 | T01 | T01 → T02 | ✅ Match |
 | T03 | T02 | T02 → T03 | ✅ Match |
-| T04 | T03 | T03 → T04 | ✅ Match |
-| T05 | T04 | T04 → T05 | ✅ Match |
-| T06 | T05 | T05 → T06 | ✅ Match |
-| T07 | T06 | T06 → T07 | ✅ Match |
-| T08 | T07 | T07 → T08 | ✅ Match |
+| T08 | T03 | T03 → T08 | ✅ Match |
 | T09 | T08 | T08 → T09 | ✅ Match |
 | T10 | T09 | T09 → T10 | ✅ Match |
 | T11 | T10 | T10 → T11 | ✅ Match |
@@ -2238,11 +2127,7 @@ immediate dependency. Transitive dependencies follow from the strict sequence.
 | --- | --- | --- | --- | --- |
 | T01 | shared-kernel contract | unit/architecture | unit Δ+4 | ✅ OK |
 | T02 | module boundary | unit/architecture | architecture Δ+4 | ✅ OK |
-| T03 | domain ownership move | unit | unit Δ0 | ✅ OK |
-| T04 | aggregate ownership move | unit + integration | unit + integration Δ0 | ✅ OK |
-| T05 | membership component move | unit + integration | unit + integration Δ0 | ✅ OK |
-| T06 | invite component move | unit + integration | unit + integration Δ0 | ✅ OK |
-| T07 | composition seam | HTTP + integration | HTTP + integration Δ+4 | ✅ OK |
+| T03 | atomic compatibility migration | unit + integration + HTTP | moved suites Δ0 + HTTP Δ+4 | ✅ OK |
 | T08 | module boundary | unit/build | unit Δ+1 | ✅ OK |
 | T09 | transport/state move | unit | unit Δ0 | ✅ OK |
 | T10 | people/invite component move | unit + Compose UI | unit + Compose UI Δ0 | ✅ OK |
@@ -2310,9 +2195,9 @@ the unit/integration tests co-located with the behavior-producing tasks.
 
 ## Pre-Approval Result
 
-- Task granularity: **67/67 pass**.
-- Diagram/definition consistency: **67/67 match**.
-- Test co-location: **67/67 pass**.
+- Task granularity: **63/63 pass**.
+- Diagram/definition consistency: **63/63 match**.
+- Test co-location: **63/63 pass**.
 - Acceptance-criteria traceability: **34/34 criteria owned**.
 - More than eight tasks: execution must first offer sequential whole-phase
   task-budgeted batches and wait for explicit user confirmation before spawning

@@ -213,10 +213,10 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 1 / T01 (shared integration contracts).
-- **Completed**: Confirmed context/spec including `INVITE-01..04`; approved design; AD-026 recorded; approved 67-task delivery plan across 10 sequential phases; task granularity, dependency, co-location, and 34/34 traceability checks pass.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:1` — execute T01–T07 as the first approved sequential batch.
-- **Next step**: Commit the approved planning artifacts, then execute and verify T01–T07 one task at a time with atomic commits.
-- **Blockers**: None.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/context.md`, `spec.md`, `design.md`, `tasks.md` (planning-artifact commit pending).
+- **Phase / Task**: Execute — Phase 1 / T03 (complete backend ownership migration).
+- **Completed**: T01 `5d1db9b` shared integration contracts and T02 `db095ef` backend Groups boundary, with their required gates passed under the installed JDK 21. The user approved merging the incompatible former T03–T07 sequence into one atomic T03 migration.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:212` — revise traceability/validation tables for the merged T03, then execute it.
+- **Next step**: Commit the approved task-plan amendment, then execute T03 as one compatibility migration with all moved code/tests/wiring and final backend HTTP/boundary gates.
+- **Blockers**: None; Gradle commands must use `-Dorg.gradle.java.home=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home` because the active shell JDK is 17.
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/tasks.md` (T03 migration amendment pending).
 - **Branch**: main
