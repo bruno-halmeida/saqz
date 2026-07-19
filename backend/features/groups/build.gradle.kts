@@ -33,6 +33,10 @@ configurations[integrationTestSourceSet.implementationConfigurationName]
 configurations[integrationTestSourceSet.runtimeOnlyConfigurationName]
     .extendsFrom(configurations.runtimeOnly.get(), configurations.testRuntimeOnly.get())
 
+dependencies {
+    add(integrationTestSourceSet.runtimeOnlyConfigurationName, project(":features:access"))
+}
+
 tasks.test {
     useJUnitPlatform()
 }

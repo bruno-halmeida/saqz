@@ -1,7 +1,6 @@
 package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.Test
 import java.util.Collections
@@ -15,7 +14,7 @@ import kotlin.test.assertTrue
 class BootstrapSessionTest {
     private val userId = UUID.randomUUID()
     private val memberships = listOf(
-        SessionMembership(UUID.randomUUID(), AccessName.from("First Group"), GroupRole.OWNER),
+        SessionMembership(UUID.randomUUID(), AccessName.from("First Group"), "OWNER"),
     )
     private val view = SessionView(
         UserAccount(userId, "subject-1", "person@example.test", AccessName.from("Person Name")),

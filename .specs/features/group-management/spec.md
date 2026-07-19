@@ -493,6 +493,13 @@ keys, cents, or timezone identifiers.
 - **V4** — Every invite attempt-limit HTTP response SHALL include matching
   `retryAfterSeconds` body data and `Retry-After` header value, while terminal
   invalid/expired/rotated invite responses SHALL omit `Retry-After`.
+- **B5 | 2026-07-19** — The first T14 migration was placed on a Groups-only
+  resource classpath while the existing baseline schema still lived in the
+  Access migration classpath, so Flyway attempted V2 before V1 in Groups
+  integration tests. Covered by V5.
+- **V5** — Every new database migration SHALL be discoverable in the same
+  Flyway location sequence as the current baseline migration until the baseline
+  is explicitly moved by a separate passing migration-order change.
 
 ## Success criteria
 

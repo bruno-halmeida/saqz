@@ -3,7 +3,6 @@ package br.com.saqz.access.adapter.output.jdbc.session
 import br.com.saqz.access.testing.startAndAwaitJdbc
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupRole
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -111,7 +110,7 @@ class JdbcSessionRepositoryIntegrationTest {
         val refreshed = repository.upsertAndLoad(command("owner-subject"))
 
         assertEquals(listOf(group), refreshed.memberships.map { it.groupId })
-        assertEquals(GroupRole.OWNER, refreshed.memberships.single().role)
+        assertEquals("OWNER", refreshed.memberships.single().role)
     }
 
     @Test
@@ -125,7 +124,7 @@ class JdbcSessionRepositoryIntegrationTest {
 
         val roles = repository.upsertAndLoad(command("roles-member")).memberships.associate { it.groupId to it.role }
 
-        assertEquals(mapOf(adminGroup to GroupRole.ADMIN, athleteGroup to GroupRole.ATHLETE), roles)
+        assertEquals(mapOf(adminGroup to "ADMIN", athleteGroup to "ATHLETE"), roles)
     }
 
     @Test
@@ -156,7 +155,7 @@ class JdbcSessionRepositoryIntegrationTest {
         )
 
         assertEquals(listOf(group), refreshed.memberships.map { it.groupId })
-        assertEquals(GroupRole.ADMIN, refreshed.memberships.single().role)
+        assertEquals("ADMIN", refreshed.memberships.single().role)
     }
 
     @Test
