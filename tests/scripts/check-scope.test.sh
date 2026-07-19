@@ -81,7 +81,7 @@ fail_case() {
 
 pass_case clean-repository
 
-fail_case database-persistence 'persistence artifact outside access backend' sh -c \
+fail_case database-persistence 'persistence artifact outside approved backend feature' sh -c \
     "mkdir -p backend/features/identity/src/main/kotlin/br/com/saqz/identity/adapter/output/persistence && printf 'package br.com.saqz.identity.adapter.output.persistence\nclass UserRepository\n' >backend/features/identity/src/main/kotlin/br/com/saqz/identity/adapter/output/persistence/UserRepository.kt"
 
 pass_case_with allow-compose-auth-shell sh -c \
@@ -174,6 +174,9 @@ pass_case_with allow-core-network-module sh -c \
 pass_case_with allow-access-mobile-feature sh -c \
     "mkdir -p mobile/features/access/src/commonMain/kotlin/br/com/saqz/access && printf 'package br.com.saqz.access\n\nconst val loginRoute = \"login\"\n' >mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/AccessFeature.kt"
 
+pass_case_with allow-groups-mobile-feature sh -c \
+    "mkdir -p mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups && printf 'package br.com.saqz.groups\n\nconst val invitationRoute = \"invite\"\n' >mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/GroupsFeature.kt"
+
 pass_case_with allow-android-auth-adapter sh -c \
     "mkdir -p mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/access && printf 'package br.com.saqz.androidapp.access\n\nclass GoogleSignInAdapter\n' >mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/access/GoogleSignInAdapter.kt"
 
@@ -198,4 +201,4 @@ fail_case co-owner-capability 'co-owner capability' sh -c \
 fail_case tracked-secret-path 'tracked secret path' sh -c \
     "mkdir -p .secrets && printf '{}\n' >.secrets/service-account.json && git add -f .secrets/service-account.json"
 
-[ "$count" -eq 38 ]
+[ "$count" -eq 39 ]

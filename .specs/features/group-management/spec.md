@@ -464,6 +464,15 @@ keys, cents, or timezone identifiers.
 - Security gates prove no production media/payment credential, public object,
   client-authoritative charge/status, or sensitive log enters the repository.
 
+## Regression backprop
+
+- **B1 | 2026-07-19** — The T08 mobile Groups module was added without updating
+  the repository scope allowlist, so the mandatory scope gate rejected the
+  approved feature path. Covered by V1.
+- **V1** — The scope gate SHALL permit the approved `mobile/features/groups/`
+  feature surface, including invitation behavior, while its mutation suite
+  SHALL continue to reject any other unapproved mobile feature path.
+
 ## Success criteria
 
 - [ ] Organizer registers a complete private group with required profile and any

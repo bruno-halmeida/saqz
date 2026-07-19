@@ -76,7 +76,7 @@ reject_matches_outside 'persistence artifact outside approved backend feature fo
 
 reject_matches_outside 'auth flow outside approved mobile surface found' \
     'login|sign[ -]?up|password[ -]?reset|Google[ -]?Sign[ -]?In|logout|user[ -]?sync|onboarding|invitation|role[ -]?authorization' \
-    '^(mobile/(features/access|core/network|compose-app|android-app|ios-app/SaqzIOS)/)' \
+    '^(mobile/(features/(access|groups)|core/network|compose-app|android-app|ios-app/SaqzIOS)/)' \
     "$client_prod_files"
 
 reject_matches 'co-owner capability found' \
@@ -101,7 +101,7 @@ reject_matches 'web ui target found' \
     'wasmJs|(^|[^A-Za-z.])js[[:space:]]*[({]|org\.jetbrains\.compose\.web' \
     "$build_files"
 
-extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system|network)/|^mobile/features/access/' || true)
+extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system|network)/|^mobile/features/(access|groups)/' || true)
 [ -z "$extra_ui_paths" ] || {
     printf '%s\n' "$extra_ui_paths" >&2
     fail 'extra client UI source path found'
