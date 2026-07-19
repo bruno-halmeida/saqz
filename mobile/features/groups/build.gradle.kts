@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "br.com.saqz.composeapp"
+        namespace = "br.com.saqz.groups.feature"
         compileSdk = libs.versions.compile.sdk.get().toInt()
         minSdk = libs.versions.min.sdk.get().toInt()
     }
@@ -18,43 +18,31 @@ kotlin {
     iosSimulatorArm64()
     applyDefaultHierarchyTemplate()
 
-    listOf(iosArm64(), iosSimulatorArm64()).forEach {
-        it.binaries.framework {
-            baseName = "SaqzMobile"
-            isStatic = true
-            export(project(":features:access"))
-            export(project(":features:groups"))
-        }
-    }
-
     sourceSets {
         commonMain.dependencies {
-            api(project(":features:access"))
-            api(project(":features:groups"))
             implementation(project(":core:common"))
             implementation(project(":core:design-system"))
             implementation(project(":core:network"))
+            implementation(libs.ktor.client.core)
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material:material:1.11.1")
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui-backhandler:1.11.1")
             implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
-            implementation(libs.navigation.compose)
-            implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
             implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
         }
     }
 }
 
 compose.resources {
-    packageOfResClass = "br.com.saqz.composeapp.resources"
+    packageOfResClass = "br.com.saqz.groups.resources"
     generateResClass = always
 }
