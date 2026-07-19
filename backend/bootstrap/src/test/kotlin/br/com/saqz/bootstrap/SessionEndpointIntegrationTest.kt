@@ -8,7 +8,6 @@ import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
 import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupRole
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -149,7 +148,7 @@ class SessionEndpointIntegrationTest {
     fun `session response includes current group names and roles`() {
         val groupId = UUID.randomUUID()
         repository.memberships = listOf(
-            SessionMembership(groupId, AccessName.from("Current Group"), GroupRole.ADMIN),
+            SessionMembership(groupId, AccessName.from("Current Group"), "ADMIN"),
         )
 
         val membership = json(putSession())["memberships"][0]
@@ -162,7 +161,7 @@ class SessionEndpointIntegrationTest {
     @Test
     fun `changed mirrors keep user ID and memberships stable`() {
         repository.memberships = listOf(
-            SessionMembership(UUID.randomUUID(), AccessName.from("Stable Group"), GroupRole.ATHLETE),
+            SessionMembership(UUID.randomUUID(), AccessName.from("Stable Group"), "ATHLETE"),
         )
         val first = json(putSession())
         verifier.principal = identity(email = "changed@example.test", displayName = "Changed Person")

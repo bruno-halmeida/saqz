@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.firebase.admin)
     implementation(libs.flyway.core)
     implementation(project(":features:access"))
+    implementation(project(":features:groups"))
     implementation(project(":features:identity"))
     implementation(project(":shared-kernel"))
     runtimeOnly(libs.flyway.postgresql)

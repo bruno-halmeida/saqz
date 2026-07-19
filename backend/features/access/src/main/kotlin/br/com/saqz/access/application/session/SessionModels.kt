@@ -1,7 +1,6 @@
 package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupRole
 import java.util.UUID
 
 data class UserAccount(
@@ -14,7 +13,7 @@ data class UserAccount(
 data class SessionMembership(
     val groupId: UUID,
     val groupName: AccessName,
-    val role: GroupRole,
+    val role: String,
 )
 
 data class SessionView(

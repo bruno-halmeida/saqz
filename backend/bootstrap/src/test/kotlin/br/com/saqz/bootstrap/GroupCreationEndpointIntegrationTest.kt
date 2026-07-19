@@ -1,11 +1,11 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.access.adapter.input.http.AccessGroupController
-import br.com.saqz.access.application.group.create.CreateGroup
-import br.com.saqz.access.application.group.create.CreateGroupCommand
-import br.com.saqz.access.application.group.create.GroupCreationRepository
-import br.com.saqz.access.application.group.create.StoredGroup
-import br.com.saqz.access.application.group.create.TransactionRunner
+import br.com.saqz.groups.adapter.input.http.AccessGroupController
+import br.com.saqz.groups.application.create.CreateGroup
+import br.com.saqz.groups.application.create.CreateGroupCommand
+import br.com.saqz.groups.application.create.GroupCreationRepository
+import br.com.saqz.groups.application.create.StoredGroup
+import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
@@ -214,7 +214,7 @@ class GroupCreationEndpointIntegrationTest {
 
         @Bean
         fun accessGroupController(bootstrap: BootstrapSession, createGroup: CreateGroup) =
-            AccessGroupController(bootstrap, createGroup)
+            AccessGroupController(verifiedGroupActorResolver(bootstrap), createGroup)
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()

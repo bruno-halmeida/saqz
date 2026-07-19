@@ -1,28 +1,28 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.access.adapter.input.http.AccessInviteManagementController
-import br.com.saqz.access.application.group.create.TransactionRunner
-import br.com.saqz.access.application.group.read.GroupReadKey
-import br.com.saqz.access.application.group.read.GroupReadRepository
-import br.com.saqz.access.application.group.read.GroupReadSnapshot
-import br.com.saqz.access.application.invite.InviteCode
-import br.com.saqz.access.application.invite.InviteLinkFactory
-import br.com.saqz.access.application.invite.InviteToken
-import br.com.saqz.access.application.invite.InviteTokenDigest
-import br.com.saqz.access.application.invite.SecureTokenGenerator
-import br.com.saqz.access.application.invite.manage.ExpireInvite
-import br.com.saqz.access.application.invite.manage.InviteManagementRepository
-import br.com.saqz.access.application.invite.manage.RotateInvite
-import br.com.saqz.access.application.invite.manage.RotateInviteCommand
+import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
+import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.read.GroupReadKey
+import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.application.invite.InviteCode
+import br.com.saqz.groups.application.invite.InviteLinkFactory
+import br.com.saqz.groups.application.invite.InviteToken
+import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.SecureTokenGenerator
+import br.com.saqz.groups.application.invite.manage.ExpireInvite
+import br.com.saqz.groups.application.invite.manage.InviteManagementRepository
+import br.com.saqz.groups.application.invite.manage.RotateInvite
+import br.com.saqz.groups.application.invite.manage.RotateInviteCommand
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
-import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupAccessPolicy
-import br.com.saqz.access.domain.GroupRole
-import br.com.saqz.access.domain.IanaTimeZone
+import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -214,7 +214,7 @@ class InviteManagementEndpointIntegrationTest {
             bootstrap: BootstrapSession,
             rotate: RotateInvite,
             expire: ExpireInvite,
-        ) = AccessInviteManagementController(bootstrap, rotate, expire)
+        ) = AccessInviteManagementController(verifiedGroupActorResolver(bootstrap), rotate, expire)
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()

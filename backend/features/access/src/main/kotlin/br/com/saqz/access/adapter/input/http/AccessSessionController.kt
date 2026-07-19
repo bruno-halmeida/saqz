@@ -3,7 +3,6 @@ package br.com.saqz.access.adapter.input.http
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.SessionView
-import br.com.saqz.access.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.PutMapping
@@ -19,7 +18,7 @@ data class SessionUserResponse(
 data class SessionMembershipResponse(
     val groupId: UUID,
     val groupName: String,
-    val role: GroupRole,
+    val role: String,
 )
 
 data class AccessSessionResponse(

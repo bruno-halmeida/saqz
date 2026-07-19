@@ -1,25 +1,25 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.access.adapter.input.http.AccessMembershipController
-import br.com.saqz.access.application.group.create.TransactionRunner
-import br.com.saqz.access.application.group.read.GroupReadKey
-import br.com.saqz.access.application.group.read.GroupReadRepository
-import br.com.saqz.access.application.group.read.GroupReadSnapshot
-import br.com.saqz.access.application.membership.AccessMembership
-import br.com.saqz.access.application.membership.ChangeMemberRole
-import br.com.saqz.access.application.membership.ChangeMemberRoleCommand
-import br.com.saqz.access.application.membership.ListAccessMemberships
-import br.com.saqz.access.application.membership.MembershipRepository
+import br.com.saqz.groups.adapter.input.http.AccessMembershipController
+import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.read.GroupReadKey
+import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.application.membership.AccessMembership
+import br.com.saqz.groups.application.membership.ChangeMemberRole
+import br.com.saqz.groups.application.membership.ChangeMemberRoleCommand
+import br.com.saqz.groups.application.membership.ListAccessMemberships
+import br.com.saqz.groups.application.membership.MembershipRepository
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
-import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupAccessPolicy
-import br.com.saqz.access.domain.GroupRole
-import br.com.saqz.access.domain.IanaTimeZone
-import br.com.saqz.access.domain.PersistedMembershipRole
+import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.domain.PersistedMembershipRole
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -181,7 +181,7 @@ class MembershipEndpointIntegrationTest {
         @Bean fun changeMemberRole(transaction: TransactionRunner, read: RecordingMembershipGroupReadRepository, repository: RecordingHttpMembershipRepository) =
             ChangeMemberRole(transaction, read, repository, GroupAccessPolicy())
         @Bean fun accessMembershipController(bootstrap: BootstrapSession, list: ListAccessMemberships, change: ChangeMemberRole) =
-            AccessMembershipController(bootstrap, list, change)
+            AccessMembershipController(verifiedGroupActorResolver(bootstrap), list, change)
         companion object { val USER_ID: UUID = UUID.randomUUID() }
     }
 

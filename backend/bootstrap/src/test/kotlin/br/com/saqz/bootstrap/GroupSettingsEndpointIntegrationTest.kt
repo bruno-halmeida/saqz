@@ -1,24 +1,24 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.access.adapter.input.http.AccessGroupSettingsController
-import br.com.saqz.access.application.group.create.TransactionRunner
-import br.com.saqz.access.application.group.read.GroupReadKey
-import br.com.saqz.access.application.group.read.GroupReadRepository
-import br.com.saqz.access.application.group.read.GroupReadSnapshot
-import br.com.saqz.access.application.group.settings.GroupSettingsRepository
-import br.com.saqz.access.application.group.settings.SettingsWriteResult
-import br.com.saqz.access.application.group.settings.StoredGroupSettings
-import br.com.saqz.access.application.group.settings.UpdateGroupSettings
-import br.com.saqz.access.application.group.settings.UpdateGroupSettingsCommand
+import br.com.saqz.groups.adapter.input.http.AccessGroupSettingsController
+import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.read.GroupReadKey
+import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.application.settings.GroupSettingsRepository
+import br.com.saqz.groups.application.settings.SettingsWriteResult
+import br.com.saqz.groups.application.settings.StoredGroupSettings
+import br.com.saqz.groups.application.settings.UpdateGroupSettings
+import br.com.saqz.groups.application.settings.UpdateGroupSettingsCommand
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
-import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupAccessPolicy
-import br.com.saqz.access.domain.GroupRole
-import br.com.saqz.access.domain.IanaTimeZone
+import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -195,7 +195,7 @@ class GroupSettingsEndpointIntegrationTest {
             write: RecordingSettingsWriteRepository,
         ) = UpdateGroupSettings(transaction, read, write, GroupAccessPolicy())
         @Bean fun accessGroupSettingsController(bootstrap: BootstrapSession, useCase: UpdateGroupSettings) =
-            AccessGroupSettingsController(bootstrap, useCase)
+            AccessGroupSettingsController(verifiedGroupActorResolver(bootstrap), useCase)
 
         companion object { val USER_ID: UUID = UUID.randomUUID() }
     }

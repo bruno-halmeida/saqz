@@ -1,32 +1,36 @@
 package br.com.saqz.bootstrap.configuration
 
-import br.com.saqz.access.adapter.input.http.AccessGroupController
-import br.com.saqz.access.adapter.input.http.AccessGroupReadController
-import br.com.saqz.access.adapter.input.http.AccessGroupSettingsController
-import br.com.saqz.access.adapter.input.http.AccessInviteManagementController
-import br.com.saqz.access.adapter.input.http.AccessInviteRedemptionController
-import br.com.saqz.access.adapter.input.http.AccessMembershipController
+import br.com.saqz.groups.adapter.input.http.AccessGroupController
+import br.com.saqz.groups.adapter.input.http.AccessGroupReadController
+import br.com.saqz.groups.adapter.input.http.AccessGroupSettingsController
+import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
+import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
+import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
-import br.com.saqz.access.adapter.output.crypto.JcaSecureTokenGenerator
-import br.com.saqz.access.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
-import br.com.saqz.access.adapter.output.jdbc.group.read.JdbcGroupReadRepository
-import br.com.saqz.access.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
-import br.com.saqz.access.adapter.output.jdbc.invite.JdbcInviteManagementRepository
-import br.com.saqz.access.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
-import br.com.saqz.access.adapter.output.jdbc.membership.JdbcMembershipRepository
+import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
+import br.com.saqz.groups.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
+import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
+import br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
+import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementRepository
+import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
+import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
-import br.com.saqz.access.adapter.output.jdbc.transaction.JdbcTransactionRunner
-import br.com.saqz.access.adapter.output.link.BranchInviteLinkFactory
-import br.com.saqz.access.application.group.create.CreateGroup
-import br.com.saqz.access.application.group.read.GetGroup
-import br.com.saqz.access.application.group.settings.UpdateGroupSettings
-import br.com.saqz.access.application.invite.manage.ExpireInvite
-import br.com.saqz.access.application.invite.manage.RotateInvite
-import br.com.saqz.access.application.invite.redeem.RedeemInvite
-import br.com.saqz.access.application.membership.ChangeMemberRole
-import br.com.saqz.access.application.membership.ListAccessMemberships
+import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.adapter.output.link.BranchInviteLinkFactory
+import br.com.saqz.groups.application.create.CreateGroup
+import br.com.saqz.groups.application.read.GetGroup
+import br.com.saqz.groups.application.settings.UpdateGroupSettings
+import br.com.saqz.groups.application.invite.manage.ExpireInvite
+import br.com.saqz.groups.application.invite.manage.RotateInvite
+import br.com.saqz.groups.application.invite.redeem.RedeemInvite
+import br.com.saqz.groups.application.membership.ChangeMemberRole
+import br.com.saqz.groups.application.membership.ListAccessMemberships
 import br.com.saqz.access.application.session.BootstrapSession
-import br.com.saqz.access.domain.GroupAccessPolicy
+import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
+import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
+import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -61,6 +65,15 @@ class AccessSessionConfiguration {
     fun bootstrapSession(repository: JdbcSessionRepository) = BootstrapSession(repository)
 
     @Bean
+    fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
+        when (val result = bootstrapSession.execute(identity)) {
+            BootstrapSessionResult.EmailNotVerified -> throw EmailNotVerifiedException()
+            BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            is BootstrapSessionResult.Success -> result.session.user.id
+        }
+    }
+
+    @Bean
     fun accessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
 
     @Bean
@@ -77,9 +90,9 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessGroupController(
-        bootstrapSession: BootstrapSession,
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
         createGroup: CreateGroup,
-    ) = AccessGroupController(bootstrapSession, createGroup)
+    ) = AccessGroupController(verifiedGroupActorResolver, createGroup)
 
     @Bean
     fun groupReadRepository(dataSource: DataSource) = JdbcGroupReadRepository(dataSource)
@@ -89,9 +102,9 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessGroupReadController(
-        bootstrapSession: BootstrapSession,
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
         getGroup: GetGroup,
-    ) = AccessGroupReadController(bootstrapSession, getGroup)
+    ) = AccessGroupReadController(verifiedGroupActorResolver, getGroup)
 
     @Bean
     fun groupSettingsRepository(dataSource: DataSource) = JdbcGroupSettingsRepository(dataSource)
@@ -105,9 +118,9 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessGroupSettingsController(
-        bootstrapSession: BootstrapSession,
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
         updateGroupSettings: UpdateGroupSettings,
-    ) = AccessGroupSettingsController(bootstrapSession, updateGroupSettings)
+    ) = AccessGroupSettingsController(verifiedGroupActorResolver, updateGroupSettings)
 
     @Bean
     fun membershipRepository(dataSource: DataSource) = JdbcMembershipRepository(dataSource)
@@ -127,10 +140,10 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessMembershipController(
-        bootstrapSession: BootstrapSession,
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
         listAccessMemberships: ListAccessMemberships,
         changeMemberRole: ChangeMemberRole,
-    ) = AccessMembershipController(bootstrapSession, listAccessMemberships, changeMemberRole)
+    ) = AccessMembershipController(verifiedGroupActorResolver, listAccessMemberships, changeMemberRole)
 
     @Bean
     fun inviteManagementRepository(dataSource: DataSource) = JdbcInviteManagementRepository(dataSource)
@@ -167,10 +180,10 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessInviteManagementController(
-        bootstrapSession: BootstrapSession,
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
         rotateInvite: RotateInvite,
         expireInvite: ExpireInvite,
-    ) = AccessInviteManagementController(bootstrapSession, rotateInvite, expireInvite)
+    ) = AccessInviteManagementController(verifiedGroupActorResolver, rotateInvite, expireInvite)
 
     @Bean
     fun inviteRedemptionRepository(dataSource: DataSource) = JdbcInviteRedemptionRepository(dataSource)
@@ -183,7 +196,7 @@ class AccessSessionConfiguration {
 
     @Bean
     fun accessInviteRedemptionController(
-        bootstrapSession: BootstrapSession,
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
         redeemInvite: RedeemInvite,
-    ) = AccessInviteRedemptionController(bootstrapSession, redeemInvite)
+    ) = AccessInviteRedemptionController(verifiedGroupActorResolver, redeemInvite)
 }

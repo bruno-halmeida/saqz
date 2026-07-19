@@ -1,21 +1,21 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.access.adapter.input.http.AccessInviteRedemptionController
-import br.com.saqz.access.application.group.create.TransactionRunner
-import br.com.saqz.access.application.invite.InviteCode
-import br.com.saqz.access.application.invite.InviteTokenDigest
-import br.com.saqz.access.application.invite.redeem.InviteAttemptWindow
-import br.com.saqz.access.application.invite.redeem.InviteRedemptionRepository
-import br.com.saqz.access.application.invite.redeem.RecordInvalidInviteAttempt
-import br.com.saqz.access.application.invite.redeem.RedeemInvite
-import br.com.saqz.access.application.invite.redeem.RedeemMembershipCommand
-import br.com.saqz.access.application.invite.redeem.RedeemableInvite
+import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
+import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.invite.InviteCode
+import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
+import br.com.saqz.groups.application.invite.redeem.InviteRedemptionRepository
+import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
+import br.com.saqz.groups.application.invite.redeem.RedeemInvite
+import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
+import br.com.saqz.groups.application.invite.redeem.RedeemableInvite
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
-import br.com.saqz.access.domain.GroupRole
+import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -212,7 +212,7 @@ class InviteRedemptionEndpointIntegrationTest {
         @Bean fun accessInviteRedemptionController(
             bootstrap: BootstrapSession,
             redeemInvite: RedeemInvite,
-        ) = AccessInviteRedemptionController(bootstrap, redeemInvite)
+        ) = AccessInviteRedemptionController(verifiedGroupActorResolver(bootstrap), redeemInvite)
 
         companion object {
             val NOW: Instant = Instant.parse("2026-07-16T18:00:00Z")

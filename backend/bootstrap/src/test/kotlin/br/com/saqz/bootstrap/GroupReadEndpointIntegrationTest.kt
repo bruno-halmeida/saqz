@@ -1,19 +1,19 @@
 package br.com.saqz.bootstrap
 
-import br.com.saqz.access.adapter.input.http.AccessGroupReadController
-import br.com.saqz.access.application.group.read.GetGroup
-import br.com.saqz.access.application.group.read.GroupReadKey
-import br.com.saqz.access.application.group.read.GroupReadRepository
-import br.com.saqz.access.application.group.read.GroupReadSnapshot
+import br.com.saqz.groups.adapter.input.http.AccessGroupReadController
+import br.com.saqz.groups.application.read.GetGroup
+import br.com.saqz.groups.application.read.GroupReadKey
+import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.application.read.GroupReadSnapshot
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
-import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupAccessPolicy
-import br.com.saqz.access.domain.GroupRole
-import br.com.saqz.access.domain.IanaTimeZone
+import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -191,7 +191,7 @@ class GroupReadEndpointIntegrationTest {
 
         @Bean
         fun accessGroupReadController(bootstrap: BootstrapSession, getGroup: GetGroup) =
-            AccessGroupReadController(bootstrap, getGroup)
+            AccessGroupReadController(verifiedGroupActorResolver(bootstrap), getGroup)
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()

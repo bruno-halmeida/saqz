@@ -6,7 +6,6 @@ import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
 import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.domain.GroupRole
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.util.UUID
 import javax.sql.DataSource
@@ -60,7 +59,7 @@ class JdbcSessionRepository(
                 SessionMembership(
                     groupId = result.getObject("group_id", UUID::class.java),
                     groupName = AccessName.from(result.getString("group_name")),
-                    role = GroupRole.valueOf(result.getString("role")),
+                    role = result.getString("role"),
                 )
             }
             .list()

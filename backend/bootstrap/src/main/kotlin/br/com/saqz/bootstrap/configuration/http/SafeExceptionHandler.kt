@@ -1,13 +1,15 @@
 package br.com.saqz.bootstrap.configuration.http
 
-import br.com.saqz.access.adapter.input.http.AccessForbiddenException
-import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException
-import br.com.saqz.access.adapter.input.http.GroupNotFoundException
-import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
-import br.com.saqz.access.adapter.input.http.InvalidGroupRequestException
-import br.com.saqz.access.adapter.input.http.InviteAttemptLimitException
-import br.com.saqz.access.adapter.input.http.InviteInvalidOrExpiredException
-import br.com.saqz.access.adapter.input.http.VersionConflictException
+import br.com.saqz.groups.adapter.input.http.AccessForbiddenException
+import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException as AccessEmailNotVerifiedException
+import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
+import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
+import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
+import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
+import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
+import br.com.saqz.groups.adapter.input.http.VersionConflictException
+import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
+import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -19,12 +21,12 @@ import org.springframework.web.HttpRequestMethodNotSupportedException
 class SafeExceptionHandler(
     private val problemWriter: ApiProblemWriter,
 ) {
-    @ExceptionHandler(EmailNotVerifiedException::class)
+    @ExceptionHandler(EmailNotVerifiedException::class, AccessEmailNotVerifiedException::class)
     fun emailNotVerified(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.EMAIL_NOT_VERIFIED)
     }
 
-    @ExceptionHandler(InvalidDisplayNameException::class)
+    @ExceptionHandler(InvalidDisplayNameException::class, AccessInvalidDisplayNameException::class)
     fun invalidDisplayName(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(
             request,
