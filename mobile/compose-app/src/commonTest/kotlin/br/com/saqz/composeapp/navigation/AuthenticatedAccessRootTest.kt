@@ -19,17 +19,22 @@ import br.com.saqz.access.data.GroupDto
 import br.com.saqz.access.data.GroupRoleDto
 import br.com.saqz.access.data.VersionedGroupDto
 import br.com.saqz.access.presentation.AuthScreen
+import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.GroupActions
 import br.com.saqz.access.presentation.GroupAdministrationState
 import br.com.saqz.access.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.port.NativeSharePort
+import br.com.saqz.access.port.OperationResult
+import br.com.saqz.access.port.ResultCallback
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionDto
 import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.network.SessionUserDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalTestApi::class)
 class AuthenticatedAccessRootTest {
@@ -60,39 +65,58 @@ class AuthenticatedAccessRootTest {
 
     @Test
     fun `registration back returns through one callback`() = runComposeUiTest {
-        var calls = 0
+        val intents = mutableListOf<AccessIntent>()
         root(
             snapshot(authentication = AuthenticationState(screen = AuthScreen.REGISTRATION)),
-            AccessRootActions(showLogin = { calls++ }),
+            intents::add,
         )
 
         onNodeWithText("Voltar para entrar").performClick()
 
-        assertEquals(1, calls)
+        assertEquals(
+            listOf<AccessIntent>(AccessIntent.Authentication(AuthenticationIntent.ShowLogin)),
+            intents,
+        )
     }
 
     @Test
     fun `password reset back returns through one callback`() = runComposeUiTest {
-        var calls = 0
+        val intents = mutableListOf<AccessIntent>()
         root(
             snapshot(authentication = AuthenticationState(screen = AuthScreen.PASSWORD_RESET)),
-            AccessRootActions(showLogin = { calls++ }),
+            intents::add,
         )
 
         onNodeWithText("Voltar para entrar").performClick()
 
-        assertEquals(1, calls)
+        assertEquals(
+            listOf<AccessIntent>(AccessIntent.Authentication(AuthenticationIntent.ShowLogin)),
+            intents,
+        )
+    }
+
+    @Test
+    fun `password reset system back maps to login`() {
+        assertEquals(
+            AccessIntent.Authentication(AuthenticationIntent.ShowLogin),
+            AccessDestination.PASSWORD_RESET.systemBackIntent(),
+        )
+    }
+
+    @Test
+    fun `login does not consume system back`() {
+        assertNull(AccessDestination.LOGIN.systemBackIntent())
     }
 
     @Test
     fun `zero memberships offers only group creation`() = runComposeUiTest {
-        var calls = 0
-        root(ready(GroupSelectionState.NoGroup), AccessRootActions(openCreateGroup = { calls++ }))
+        val intents = mutableListOf<AccessIntent>()
+        root(ready(GroupSelectionState.NoGroup), intents::add)
 
         onNodeWithText("Voce ainda nao participa de um grupo").assertExists()
         onNodeWithText("Criar grupo").performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<AccessIntent>(AccessIntent.OpenCreateGroup), intents)
     }
 
     @Test
@@ -107,12 +131,12 @@ class AuthenticatedAccessRootTest {
 
     @Test
     fun `selector keeps create group available to verified user`() = runComposeUiTest {
-        var calls = 0
-        root(ready(selector), AccessRootActions(openCreateGroup = { calls++ }))
+        val intents = mutableListOf<AccessIntent>()
+        root(ready(selector), intents::add)
 
         onNodeWithText("Criar grupo").performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<AccessIntent>(AccessIntent.OpenCreateGroup), intents)
     }
 
     @Test
@@ -125,12 +149,12 @@ class AuthenticatedAccessRootTest {
 
     @Test
     fun `group switch routes through one action`() = runComposeUiTest {
-        var calls = 0
-        root(active(ownerAdministration), AccessRootActions(switchGroup = { calls++ }))
+        val intents = mutableListOf<AccessIntent>()
+        root(active(ownerAdministration), intents::add)
 
         onNodeWithTag("context-switch").performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<AccessIntent>(AccessIntent.SwitchGroup), intents)
     }
 
     @Test
@@ -203,7 +227,7 @@ class AuthenticatedAccessRootTest {
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
                 Box(Modifier) {
-                    SaqzTheme { AuthenticatedAccessRoot(snapshot(), AccessRootActions()) }
+                    SaqzTheme { AuthenticatedAccessRoot(snapshot()) {} }
                 }
             }
         }
@@ -212,10 +236,30 @@ class AuthenticatedAccessRootTest {
         onNodeWithText("Criar conta").performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun `share effect invokes native adapter once and returns through access intent`() {
+        val share = RecordingSharePort(OperationResult.Success)
+        val intents = mutableListOf<AccessIntent>()
+
+        handleAccessEffect(AccessUiEffect.RequestShare("https://example.test/invite"), share, intents::add)
+
+        assertEquals(listOf("https://example.test/invite"), share.values)
+        assertEquals(listOf<AccessIntent>(AccessIntent.ShareFinished(successful = true)), intents)
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.root(
         state: AccessRootSnapshot,
-        actions: AccessRootActions = AccessRootActions(),
-    ) = setContent { SaqzTheme { AuthenticatedAccessRoot(state, actions) } }
+        onIntent: (AccessIntent) -> Unit = {},
+    ) = setContent { SaqzTheme { AuthenticatedAccessRoot(state, onIntent) } }
+
+    private class RecordingSharePort(private val result: OperationResult) : NativeSharePort {
+        val values = mutableListOf<String>()
+
+        override fun share(text: String, done: ResultCallback) {
+            values += text
+            done.complete(result)
+        }
+    }
 
     private fun snapshot(
         authObserved: Boolean = true,

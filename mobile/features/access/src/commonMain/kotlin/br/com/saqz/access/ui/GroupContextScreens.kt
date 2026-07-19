@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
@@ -48,11 +49,38 @@ internal object GroupContextTags {
     const val Save = "settings-save"; const val Reload = "settings-reload"; const val LogoutConfirm = "logout-confirm"
 }
 
+sealed interface GroupContextIntent {
+    data object SwitchGroup : GroupContextIntent
+    data object OpenSettings : GroupContextIntent
+    data object OpenRoles : GroupContextIntent
+    data object OpenInvite : GroupContextIntent
+    data object RequestLogout : GroupContextIntent
+}
+
+@Immutable
+data class GroupSettingsUiState(
+    val administration: GroupAdministrationState,
+    val name: String,
+    val timeZone: String,
+)
+
+sealed interface GroupSettingsIntent {
+    data class UpdateName(val value: String) : GroupSettingsIntent
+    data class UpdateTimeZone(val value: String) : GroupSettingsIntent
+    data object Save : GroupSettingsIntent
+    data object Reload : GroupSettingsIntent
+    data object Back : GroupSettingsIntent
+}
+
+sealed interface LogoutConfirmationIntent {
+    data object Confirm : LogoutConfirmationIntent
+    data object Cancel : LogoutConfirmationIntent
+}
+
 @Composable
 fun GroupContextScreen(
     state: GroupAdministrationState,
-    onSwitch: () -> Unit, onSettings: () -> Unit, onRoles: () -> Unit,
-    onInvite: () -> Unit, onLogout: () -> Unit,
+    onIntent: (GroupContextIntent) -> Unit,
 ) {
     val group = state.group?.group ?: return
     Column(
@@ -63,39 +91,89 @@ fun GroupContextScreen(
             Text(group.name, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
             SaqzBadge(group.role.name, SaqzBadgeVariant.Neutral)
         }
-        Action(stringResource(Res.string.group_switch), GroupContextTags.Switch, onSwitch)
-        if (state.actions.canEditSettings) Action(stringResource(Res.string.group_settings), GroupContextTags.Settings, onSettings)
-        if (state.actions.canManageRoles) Action(stringResource(Res.string.group_roles), GroupContextTags.Roles, onRoles)
-        if (state.actions.canManageInvite) Action(stringResource(Res.string.group_invite), GroupContextTags.Invite, onInvite)
-        Action(stringResource(Res.string.logout), GroupContextTags.Logout, onLogout, SaqzButtonVariant.Ghost)
+        Action(
+            stringResource(Res.string.group_switch),
+            GroupContextTags.Switch,
+            { onIntent(GroupContextIntent.SwitchGroup) },
+        )
+        if (state.actions.canEditSettings) Action(
+            stringResource(Res.string.group_settings),
+            GroupContextTags.Settings,
+            { onIntent(GroupContextIntent.OpenSettings) },
+        )
+        if (state.actions.canManageRoles) Action(
+            stringResource(Res.string.group_roles),
+            GroupContextTags.Roles,
+            { onIntent(GroupContextIntent.OpenRoles) },
+        )
+        if (state.actions.canManageInvite) Action(
+            stringResource(Res.string.group_invite),
+            GroupContextTags.Invite,
+            { onIntent(GroupContextIntent.OpenInvite) },
+        )
+        Action(
+            stringResource(Res.string.logout),
+            GroupContextTags.Logout,
+            { onIntent(GroupContextIntent.RequestLogout) },
+            SaqzButtonVariant.Ghost,
+        )
     }
 }
 
 @Composable
 fun GroupSettingsScreen(
-    state: GroupAdministrationState, name: String, timeZone: String,
-    onNameChange: (String) -> Unit, onTimeZoneChange: (String) -> Unit,
-    onSave: () -> Unit, onReload: () -> Unit, onBack: () -> Unit,
+    state: GroupSettingsUiState,
+    onIntent: (GroupSettingsIntent) -> Unit,
 ) = ScrollColumn {
     Text(stringResource(Res.string.settings_title), style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
-    SaqzInput(TextFieldValue(name), { onNameChange(it.text) }, stringResource(Res.string.group_name), enabled = !state.isLoading)
-    SaqzInput(TextFieldValue(timeZone), { onTimeZoneChange(it.text) }, stringResource(Res.string.group_timezone), enabled = !state.isLoading)
-    if (state.versionConflict) {
+    SaqzInput(
+        TextFieldValue(state.name),
+        { onIntent(GroupSettingsIntent.UpdateName(it.text)) },
+        stringResource(Res.string.group_name),
+        enabled = !state.administration.isLoading,
+    )
+    SaqzInput(
+        TextFieldValue(state.timeZone),
+        { onIntent(GroupSettingsIntent.UpdateTimeZone(it.text)) },
+        stringResource(Res.string.group_timezone),
+        enabled = !state.administration.isLoading,
+    )
+    if (state.administration.versionConflict) {
         Text(stringResource(Res.string.settings_conflict), color = SaqzTheme.colors.errorForeground)
-        Action(stringResource(Res.string.settings_reload), GroupContextTags.Reload, onReload)
+        Action(
+            stringResource(Res.string.settings_reload),
+            GroupContextTags.Reload,
+            { onIntent(GroupSettingsIntent.Reload) },
+        )
     }
-    SaqzButton(stringResource(Res.string.settings_save), onSave, loading = state.isLoading,
+    SaqzButton(stringResource(Res.string.settings_save), { onIntent(GroupSettingsIntent.Save) }, loading = state.administration.isLoading,
         modifier = Modifier.fillMaxWidth().testTag(GroupContextTags.Save))
-    SaqzButton(stringResource(Res.string.action_back), onBack, variant = SaqzButtonVariant.Ghost, enabled = !state.isLoading)
+    SaqzButton(
+        stringResource(Res.string.action_back),
+        { onIntent(GroupSettingsIntent.Back) },
+        variant = SaqzButtonVariant.Ghost,
+        enabled = !state.administration.isLoading,
+    )
 }
 
 @Composable
-fun LogoutConfirmationDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
+fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit) {
     SaqzDialog(
-        title = stringResource(Res.string.logout_title), onCloseRequest = onCancel,
-        primaryAction = { SaqzButton(stringResource(Res.string.logout_confirm), onConfirm, Modifier.testTag(GroupContextTags.LogoutConfirm)) },
+        title = stringResource(Res.string.logout_title),
+        onCloseRequest = { onIntent(LogoutConfirmationIntent.Cancel) },
+        primaryAction = {
+            SaqzButton(
+                stringResource(Res.string.logout_confirm),
+                { onIntent(LogoutConfirmationIntent.Confirm) },
+                Modifier.testTag(GroupContextTags.LogoutConfirm),
+            )
+        },
     ) {
-        SaqzButton(stringResource(Res.string.action_cancel), onCancel, variant = SaqzButtonVariant.Ghost)
+        SaqzButton(
+            stringResource(Res.string.action_cancel),
+            { onIntent(LogoutConfirmationIntent.Cancel) },
+            variant = SaqzButtonVariant.Ghost,
+        )
     }
 }
 
@@ -111,15 +189,15 @@ private val previewGroupState = GroupAdministrationState(
 @Preview
 @Composable
 private fun GroupContextScreenPreview() = SaqzTheme {
-    GroupContextScreen(previewGroupState, {}, {}, {}, {}, {})
+    GroupContextScreen(previewGroupState) {}
 }
 
 @Preview
 @Composable
 private fun GroupSettingsScreenPreview() = SaqzTheme {
-    GroupSettingsScreen(previewGroupState, "Futebol de terça", "America/Sao_Paulo", {}, {}, {}, {}, {})
+    GroupSettingsScreen(GroupSettingsUiState(previewGroupState, "Futebol de terça", "America/Sao_Paulo")) {}
 }
 
 @Preview
 @Composable
-private fun LogoutConfirmationDialogPreview() = SaqzTheme { LogoutConfirmationDialog({}, {}) }
+private fun LogoutConfirmationDialogPreview() = SaqzTheme { LogoutConfirmationDialog {} }

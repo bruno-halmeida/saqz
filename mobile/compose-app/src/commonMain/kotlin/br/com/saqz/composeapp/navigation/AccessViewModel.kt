@@ -137,7 +137,6 @@ internal sealed interface AccessRuntimeIntent {
 
     data class ShareFinished(val successful: Boolean) : AccessRuntimeIntent
 
-    data class ShareInviteNative(val url: String) : AccessRuntimeIntent
 }
 
 internal interface AccessRuntimeContract {

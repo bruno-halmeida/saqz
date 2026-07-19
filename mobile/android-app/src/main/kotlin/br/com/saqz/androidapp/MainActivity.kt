@@ -11,7 +11,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.composeapp.SaqzApp
-import br.com.saqz.composeapp.SaqzAppRuntime
 import java.lang.ref.WeakReference
 
 class MainActivity : ComponentActivity() {
@@ -26,7 +25,7 @@ class MainActivity : ComponentActivity() {
             MainActivityModel.factory(applicationContext, MainActivityComposition.factory()),
         )[MainActivityModel::class.java]
         model.attach(this)
-        setContent { SaqzApp(model.runtime) }
+        setContent { SaqzApp(model.dependencies) }
     }
 
     override fun onStart() {
@@ -47,7 +46,7 @@ internal class MainActivityModel private constructor(
 ) : ViewModel() {
     private val activity = CurrentActivity()
     private val composition = factory.create(context, viewModelScope, activity::require)
-    val runtime = SaqzAppRuntime(composition.dependencies)
+    val dependencies = composition.dependencies
     private var coldStarted = false
 
     fun attach(value: Activity) {
@@ -62,10 +61,6 @@ internal class MainActivityModel private constructor(
 
     fun onWarmIntent(url: String?) {
         composition.links.onWarmIntent(url)
-    }
-
-    override fun onCleared() {
-        runtime.close()
     }
 
     companion object {

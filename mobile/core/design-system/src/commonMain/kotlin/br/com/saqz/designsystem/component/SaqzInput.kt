@@ -1,7 +1,6 @@
 package br.com.saqz.designsystem.component
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,9 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -44,8 +42,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_hide_password
 import br.com.saqz.designsystem.resources.action_show_password
+import br.com.saqz.designsystem.resources.material_visibility
+import br.com.saqz.designsystem.resources.material_visibility_off
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.painterResource
 
 enum class SaqzInputKind { Text, Email, Password }
 
@@ -175,30 +176,14 @@ fun SaqzInput(
 
 @Composable
 private fun PasswordVisibilityGlyph(revealed: Boolean, color: Color) {
-    Canvas(
-        modifier = Modifier
-            .size(22.dp)
-            .clearAndSetSemantics {},
-    ) {
-        val strokeWidth = 1.5.dp.toPx()
-        val centerY = size.height / 2f
-        val eye = Path().apply {
-            moveTo(0f, centerY)
-            cubicTo(size.width * 0.22f, size.height * 0.16f, size.width * 0.78f, size.height * 0.16f, size.width, centerY)
-            cubicTo(size.width * 0.78f, size.height * 0.84f, size.width * 0.22f, size.height * 0.84f, 0f, centerY)
-        }
-        drawPath(eye, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
-        drawCircle(color = color, radius = 3.dp.toPx(), center = center)
-        if (revealed) {
-            drawLine(
-                color = color,
-                start = androidx.compose.ui.geometry.Offset(1.dp.toPx(), size.height - 1.dp.toPx()),
-                end = androidx.compose.ui.geometry.Offset(size.width - 1.dp.toPx(), 1.dp.toPx()),
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round,
-            )
-        }
-    }
+    Image(
+        painter = painterResource(
+            if (revealed) Res.drawable.material_visibility_off else Res.drawable.material_visibility,
+        ),
+        contentDescription = null,
+        colorFilter = ColorFilter.tint(color),
+        modifier = Modifier.size(20.dp).clearAndSetSemantics {},
+    )
 }
 
 @Preview

@@ -16,6 +16,8 @@ pre-launch landing page.
   `:android-app:connectedDevDebugAndroidTest`.
 - Xcode 26.4 with an installed iOS Simulator runtime.
 - Firebase CLI 15.23.0 through `npx --yes firebase-tools@15.23.0`.
+- Docker with a running daemon. Backend access integration tests start
+  PostgreSQL 16 containers through Testcontainers.
 - Gitleaks 8.30.1 is optional locally; `scripts/check-credentials` runs it
   when installed and always runs the built-in credential scanner.
 
@@ -75,6 +77,33 @@ contract, and checks `index.html` plus local assets over HTTP.
 
 ## Local Gates
 
+### Authentication and access test environment
+
+The authenticated backend matrix is disposable and credential-free. Docker must be available for PostgreSQL 16 through Testcontainers;
+each database container is removed after the suite. No local database URL or database credential is required.
+
+Firebase authentication tests use `firebase/session-fixture`. The fixture runs
+`npx --yes firebase-tools@15.23.0 emulators:start --only auth --project saqz-local --config firebase.json`,
+creates a temporary verified account, exposes its test token only through a
+private temporary directory, and removes the account and emulator process on
+exit. `firebase.json` binds the Auth Emulator to `127.0.0.1:9099`; these tests
+never read a Firebase Dev or production credential.
+
+Branch test mode uses `key_test_saqz_local_fixture` and `saqz.test-app.link` as committed fake values on Android and iOS; it does not require a live Branch key.
+It does not call the short-link API, and test links contain only opaque invite
+codes. Production Branch values remain external configuration and must not be
+committed.
+
+Run the focused authenticated suites with the same tasks included in the
+aggregate Gradle gate:
+
+```bash
+backend/gradlew -p backend :features:access:test :features:access:integrationTest --console=plain
+backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain
+mobile/gradlew -p mobile :core:network:allTests --console=plain
+mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain
+```
+
 Run the complete local gate on macOS:
 
 ```bash
@@ -95,8 +124,8 @@ scripts/test-scripts
 `scripts/check-gradle` runs credential and scope checks first, then:
 
 ```bash
-backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
-mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
+mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 ```
 
 `scripts/check-ios` runs credential-free simulator tests:
@@ -110,10 +139,13 @@ xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzProd -configura
 GitHub Actions runs platform gates separately in
 `.github/workflows/initialization-gate.yml`: the complete Gradle/API 30 gate,
 the focused API 35 gate and landing on Linux, plus iOS on macOS through
-`scripts/check-ios --dev-only`. The remote iOS gate runs the complete
-SaqzDev unit + UI suite. SaqzProd remains in the complete local gate; its
-dedicated production CI is deferred until that pipeline is designed. The
-aggregate `initialization-gate` passes only when all four jobs pass.
+`scripts/check-ios --dev-only`. API 30 retains the `google_atd` x86_64 complete
+gate. API 35 uses the pinned `google_apis` x86_64 image, `pixel_7`, 4096 MB,
+AVD `saqz-api35-probe`, emulator build 13823996, and a 300-second boot limit.
+The remote iOS gate runs the complete SaqzDev unit + UI suite.
+SaqzProd remains in the complete local gate; its dedicated production CI is
+deferred until that pipeline is designed. The aggregate `initialization-gate`
+passes only when all four jobs pass.
 
 ## Agent Workflow
 
@@ -146,10 +178,12 @@ direction is:
 bootstrap -> features:<feature> -> shared-kernel
 ```
 
-Identity is currently the only backend feature module under `backend/features/`.
-Domain, application, and API contracts must not import Spring, Firebase, HTTP
-adapters, persistence, another feature's internals, or client code. Adapters are
-owned by their feature and are wired only by the Spring Boot composition root.
+The implemented feature modules are `backend/features/identity` and
+`backend/features/access`. Access follows the concrete direction
+`bootstrap -> features:access -> shared-kernel`. Domain, application, and API
+contracts must not import Spring, Firebase, HTTP adapters, persistence, another
+feature's internals, or client code. Adapters are owned by their feature and are
+wired only by the Spring Boot composition root.
 
 To add a backend feature:
 
@@ -164,6 +198,11 @@ To add a backend feature:
 `mobile/compose-app` is the single shared Compose umbrella consumed by Android
 and iOS. `mobile/android-app` is the Android launcher. `mobile/ios-app` is the
 Xcode launcher and embeds the one `SaqzMobile` framework.
+
+Authenticated transport lives in `mobile/core/network`, while shared access
+behavior and UI live in `mobile/features/access`. Their concrete aggregation
+direction is `compose-app -> features:access -> core:network`; neither module
+imports backend implementation types.
 
 To add a KMP feature:
 

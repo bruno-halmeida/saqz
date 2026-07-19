@@ -156,3 +156,6 @@ the existing Android/iOS lifecycle suites without changing expected behavior.
 | --- | --- | --- | --- | --- |
 | B1 | 2026-07-17 | `AccessViewModelTest` did not compile for Kotlin/Native | Expected singleton lists inferred concrete sealed subtypes instead of the declared `AccessRuntimeIntent` supertype | None; mechanical common-test typing issue with no product-behavior class to constrain |
 | B2 | 2026-07-17 | Quick Compose waited on ViewModel collectors owned by `runTest` | The fixture passed the foreground `TestScope` to eager `stateIn` and reconciliation collectors | V1 |
+| B3 | 2026-07-17 | Quick Access did not start inside the workspace sandbox | Gradle could not open its existing wrapper lock under the user-level `~/.gradle` cache | None; execution-environment permission failure outside product behavior |
+| B4 | 2026-07-17 | Typed-screen tests did not compile for Kotlin/Native | Expected intent lists again inferred concrete sealed subtypes instead of their declared intent parent types | None; recurrence of the mechanical common-test typing issue recorded in B1 |
+| B5 | 2026-07-17 | Full Android/KMP stopped before project tests | The shell selected JDK 17 while the repository gate requires the installed JDK 21 toolchain | None; local toolchain selection failure outside product behavior |

@@ -8,6 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -29,6 +31,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.state_loading
@@ -78,6 +81,10 @@ fun SaqzButton(
     variant: SaqzButtonVariant = SaqzButtonVariant.Primary,
     enabled: Boolean = true,
     loading: Boolean = false,
+    labelStyle: TextStyle? = null,
+    contentColor: Color? = null,
+    leadingContent: (@Composable (Color) -> Unit)? = null,
+    trailingContent: (@Composable (Color) -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -101,7 +108,7 @@ fun SaqzButton(
 
     val loadingLabel = stringResource(Res.string.state_loading)
     val container = if (active) resolved.container else colors.disabledSurface
-    val content = if (active) resolved.content else colors.disabledForeground
+    val content = if (active) contentColor ?: resolved.content else colors.disabledForeground
 
     Box(
         modifier = modifier
@@ -132,12 +139,19 @@ fun SaqzButton(
     ) {
         // Label always reserves its width; loading only hides it behind the spinner
         // (alpha 0 keeps it measured and keeps its accessible name in the tree).
-        Text(
-            text = label,
-            color = content,
-            style = SaqzTheme.typography.bodyStrong,
+        Row(
             modifier = Modifier.alpha(if (loading) 0f else 1f),
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            leadingContent?.invoke(content)
+            Text(
+                text = label,
+                color = content,
+                style = labelStyle ?: SaqzTheme.typography.bodyStrong,
+            )
+            trailingContent?.invoke(content)
+        }
         if (loading) {
             CircularProgressIndicator(
                 color = content,

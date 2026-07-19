@@ -41,8 +41,10 @@ require 'scripts/check-scope' 'scope gate'
 require 'scripts/check-bruno' 'Bruno contract gate'
 ok 'native gate commands'
 
-require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
+require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
 ok 'backend Gradle command'
+
+require 'mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
 
 require ':core:common:allTests' 'core common suite'
 ok 'core common suite documented'
@@ -119,4 +121,37 @@ grep -Fq 'tests/scripts/check-bruno.test.sh' "$test_scripts"
 grep -Fq 'tests/scripts/check-readme.test.sh' "$test_scripts"
 ok 'script aggregate includes CI and README contracts'
 
-[ "$count" -eq 21 ]
+require '`backend/features/access`' 'backend access module'
+require 'bootstrap -> features:access -> shared-kernel' 'backend access dependency direction'
+ok 'backend access architecture inventory'
+
+require '`mobile/core/network`' 'mobile network module'
+require '`mobile/features/access`' 'mobile access module'
+require 'compose-app -> features:access -> core:network' 'mobile access dependency direction'
+ok 'mobile access architecture inventory'
+
+require 'Docker.*PostgreSQL 16.*Testcontainers' 'disposable PostgreSQL prerequisite'
+require 'No local database URL or database credential is required' 'credential-free PostgreSQL tests'
+ok 'PostgreSQL Testcontainers configuration'
+
+require '`firebase/session-fixture`' 'Firebase session fixture'
+require 'npx --yes firebase-tools@15\.23\.0 emulators:start --only auth --project saqz-local' 'Firebase emulator command'
+ok 'Firebase emulator fixture command'
+
+require '`firebase\.json`.*`127\.0\.0\.1:9099`' 'Firebase emulator endpoint'
+require 'temporary verified account' 'disposable Firebase account'
+ok 'Firebase emulator disposable account'
+
+require 'Branch test mode.*`key_test_saqz_local_fixture`.*`saqz\.test-app\.link`' 'fake Branch test configuration'
+require 'does not require a live Branch key' 'credential-free Branch tests'
+ok 'Branch test configuration'
+
+require 'backend/gradlew -p backend :features:access:test :features:access:integrationTest --console=plain' 'focused backend access suites'
+require 'backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain' 'focused backend HTTP and emulator suites'
+ok 'focused backend access commands'
+
+require 'mobile/gradlew -p mobile :core:network:allTests --console=plain' 'focused mobile network suite'
+require 'mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain' 'focused mobile access suites'
+ok 'focused mobile access commands'
+
+[ "$count" -eq 29 ]

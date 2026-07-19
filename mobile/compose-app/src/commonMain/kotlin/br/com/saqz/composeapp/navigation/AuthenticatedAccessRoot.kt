@@ -3,23 +3,22 @@ package br.com.saqz.composeapp.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
-import br.com.saqz.access.data.PersistedRoleDto
+import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.saqz.access.data.GroupApi
 import br.com.saqz.access.data.RolesInvitesApi
 import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
 import br.com.saqz.access.port.Cancelable
 import br.com.saqz.access.port.NativeFailureCode
+import br.com.saqz.access.port.NativeSharePort
 import br.com.saqz.access.port.OperationResult
 import br.com.saqz.access.port.ResultCallback
 import br.com.saqz.access.port.TokenCallback
@@ -46,15 +45,23 @@ import br.com.saqz.access.ui.CreateGroupIntent
 import br.com.saqz.access.ui.CreateGroupScreen
 import br.com.saqz.access.ui.CreateGroupUiState
 import br.com.saqz.access.ui.ExpireInviteConfirmationDialog
+import br.com.saqz.access.ui.ExpireInviteConfirmationIntent
 import br.com.saqz.access.ui.GroupContextScreen
+import br.com.saqz.access.ui.GroupContextIntent
 import br.com.saqz.access.ui.GroupOnboardingScreen
 import br.com.saqz.access.ui.GroupOnboardingIntent
 import br.com.saqz.access.ui.GroupSettingsScreen
+import br.com.saqz.access.ui.GroupSettingsIntent
+import br.com.saqz.access.ui.GroupSettingsUiState
 import br.com.saqz.access.ui.InviteManagementScreen
+import br.com.saqz.access.ui.InviteManagementIntent
+import br.com.saqz.access.ui.InviteManagementUiState
 import br.com.saqz.access.ui.InviteToolState
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.access.ui.LogoutConfirmationDialog
+import br.com.saqz.access.ui.LogoutConfirmationIntent
 import br.com.saqz.access.ui.MembershipAdministrationScreen
+import br.com.saqz.access.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionScreen
 import br.com.saqz.access.ui.PasswordResetScreen
 import br.com.saqz.access.ui.RegistrationScreen
@@ -110,208 +117,55 @@ internal class AccessDestinationStack(initial: AccessDestination) {
     }
 }
 
-internal data class AccessRootActions(
-    val updateName: (String) -> Unit = {},
-    val updateEmail: (String) -> Unit = {},
-    val updatePassword: (String) -> Unit = {},
-    val submitLogin: () -> Unit = {},
-    val submitGoogle: () -> Unit = {},
-    val submitRegistration: () -> Unit = {},
-    val submitReset: () -> Unit = {},
-    val showLogin: () -> Unit = {},
-    val showRegistration: () -> Unit = {},
-    val showReset: () -> Unit = {},
-    val confirmVerification: () -> Unit = {},
-    val resendVerification: () -> Unit = {},
-    val completeName: () -> Unit = {},
-    val retryBootstrap: () -> Unit = {},
-    val selectGroup: (String) -> Unit = {},
-    val openCreateGroup: () -> Unit = {},
-    val retryGroup: () -> Unit = {},
-    val createNameChanged: (String) -> Unit = {},
-    val createTimeZoneChanged: (String) -> Unit = {},
-    val createGroup: () -> Unit = {},
-    val closePage: () -> Unit = {},
-    val switchGroup: () -> Unit = {},
-    val openSettings: () -> Unit = {},
-    val openMemberships: () -> Unit = {},
-    val openInvite: () -> Unit = {},
-    val requestLogout: () -> Unit = {},
-    val confirmLogout: () -> Unit = {},
-    val cancelLogout: () -> Unit = {},
-    val settingsNameChanged: (String) -> Unit = {},
-    val settingsTimeZoneChanged: (String) -> Unit = {},
-    val saveSettings: () -> Unit = {},
-    val reloadSettings: () -> Unit = {},
-    val changeRole: (String, PersistedRoleDto) -> Unit = { _, _ -> },
-    val generateInvite: () -> Unit = {},
-    val shareInvite: (String) -> Unit = {},
-    val requestExpireInvite: () -> Unit = {},
-    val confirmExpireInvite: () -> Unit = {},
-    val cancelExpireInvite: () -> Unit = {},
-    val retryInvite: () -> Unit = {},
-)
-
 @Composable
-internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, actions: AccessRootActions) {
+internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
+    val accessViewModel = viewModel<AccessViewModel>(key = "authenticated-access") {
+        AccessViewModel(dependencies)
+    }
+    val state by accessViewModel.state.collectAsState()
+    LaunchedEffect(accessViewModel, dependencies.share) {
+        accessViewModel.effects.collect { effect ->
+            handleAccessEffect(effect, dependencies.share, accessViewModel::onIntent)
+        }
+    }
+    AuthenticatedAccessRoot(state, accessViewModel::onIntent)
+}
+
+internal fun handleAccessEffect(
+    effect: AccessUiEffect,
+    share: NativeSharePort,
+    onIntent: (AccessIntent) -> Unit,
+) {
+    when (effect) {
+        is AccessUiEffect.RequestShare -> share.share(effect.text, object : ResultCallback {
+            override fun complete(result: OperationResult) {
+                onIntent(AccessIntent.ShareFinished(result is OperationResult.Success))
+            }
+        })
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION")
+@Composable
+internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, onIntent: (AccessIntent) -> Unit) {
     val desired = state.destination()
     val stack = AccessDestinationStack(desired).also { it.replace(desired) }
     val destination = stack.entries.single()
+    val systemBackIntent = destination.systemBackIntent()
+    BackHandler(enabled = systemBackIntent != null) {
+        systemBackIntent?.let(onIntent)
+    }
     key(destination) {
         Box(Modifier.fillMaxSize().testTag(AccessRootTag)) {
-            DestinationContent(destination, state, actions)
+            DestinationContent(destination, state, onIntent)
         }
     }
 }
 
-@Composable
-internal fun AuthenticatedAccessRuntime(runtime: AccessRuntime) {
-    DisposableEffect(runtime) {
-        runtime.onIntent(AccessRuntimeIntent.Start)
-        onDispose { }
-    }
-
-    val authObserved by runtime.authObservedState.collectAsState()
-    val authentication by runtime.authentication.state.collectAsState()
-    val session by runtime.session.state.collectAsState()
-    val selection by runtime.selection.state.collectAsState()
-    val administration by runtime.administration.state.collectAsState()
-    val invite by runtime.inviteToolState.collectAsState()
-    var page by remember { mutableStateOf(AccessPage.CONTEXT) }
-    var createName by remember { mutableStateOf("") }
-    var createTimeZone by remember { mutableStateOf("") }
-    var createValidationAttempted by remember { mutableStateOf(false) }
-    var createRequestId by remember { mutableStateOf(runtime.newRequestId()) }
-    var settingsName by remember { mutableStateOf("") }
-    var settingsTimeZone by remember { mutableStateOf("") }
-    var logoutConfirmation by remember { mutableStateOf(false) }
-    var expireConfirmation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(session) {
-        val ready = session as? SessionAccessState.Ready
-        runtime.invites.onIntent(DeferredInviteIntent.SetSessionReady(ready != null))
-        if (ready != null) runtime.selection.onIntent(GroupSelectionIntent.Reconcile(ready.session))
-        if (session is SessionAccessState.SignedOut) {
-            page = AccessPage.CONTEXT
-            logoutConfirmation = false
-        }
-    }
-    LaunchedEffect(selection) {
-        val selected = selection as? GroupSelectionState.Selected
-        if (selected != null) {
-            runtime.administration.onIntent(GroupAdministrationIntent.SetGroup(selected.group))
-            page = AccessPage.CONTEXT
-        }
-    }
-
-    val snapshot = AccessRootSnapshot(
-        authObserved = authObserved,
-        authentication = authentication,
-        session = session,
-        selection = selection,
-        administration = administration,
-        page = page,
-        createName = createName,
-        createTimeZone = createTimeZone,
-        createValidationAttempted = createValidationAttempted,
-        settingsName = settingsName,
-        settingsTimeZone = settingsTimeZone,
-        invite = invite,
-        showLogoutConfirmation = logoutConfirmation,
-        showExpireConfirmation = expireConfirmation,
-    )
-    val actions = AccessRootActions(
-        updateName = { value ->
-            if (session is SessionAccessState.CompletingName) {
-                runtime.session.onIntent(SessionIntent.UpdateName(value))
-            } else {
-                runtime.authentication.onIntent(AuthenticationIntent.UpdateName(value))
-            }
-        },
-        updateEmail = { runtime.authentication.onIntent(AuthenticationIntent.UpdateEmail(it)) },
-        updatePassword = { runtime.authentication.onIntent(AuthenticationIntent.UpdatePassword(it)) },
-        submitLogin = { runtime.authentication.onIntent(AuthenticationIntent.SubmitPasswordLogin) },
-        submitGoogle = { runtime.authentication.onIntent(AuthenticationIntent.SubmitGoogleLogin) },
-        submitRegistration = { runtime.authentication.onIntent(AuthenticationIntent.SubmitRegistration) },
-        submitReset = { runtime.authentication.onIntent(AuthenticationIntent.SubmitPasswordReset) },
-        showLogin = { runtime.authentication.onIntent(AuthenticationIntent.ShowLogin) },
-        showRegistration = { runtime.authentication.onIntent(AuthenticationIntent.ShowRegistration) },
-        showReset = { runtime.authentication.onIntent(AuthenticationIntent.ShowPasswordReset) },
-        confirmVerification = { runtime.session.onIntent(SessionIntent.ConfirmVerification) },
-        resendVerification = { runtime.session.onIntent(SessionIntent.ResendVerification) },
-        completeName = { runtime.session.onIntent(SessionIntent.CompleteName) },
-        retryBootstrap = { runtime.session.onIntent(SessionIntent.RetryBootstrap) },
-        selectGroup = { runtime.selection.onIntent(GroupSelectionIntent.Select(it)) },
-        openCreateGroup = {
-            createName = ""
-            createTimeZone = ""
-            createValidationAttempted = false
-            createRequestId = runtime.newRequestId()
-            page = AccessPage.CREATE_GROUP
-        },
-        retryGroup = { runtime.selection.onIntent(GroupSelectionIntent.Retry) },
-        createNameChanged = { createName = it },
-        createTimeZoneChanged = { createTimeZone = it },
-        createGroup = {
-            createValidationAttempted = true
-            val form = CreateGroupUiState(administration, createName, createTimeZone, validationAttempted = true)
-            if (form.isValid) {
-                runtime.administration.onIntent(
-                    GroupAdministrationIntent.CreateGroup(createRequestId, createName, createTimeZone),
-                )
-            }
-        },
-        closePage = { page = AccessPage.CONTEXT },
-        switchGroup = {
-            page = AccessPage.CONTEXT
-            (session as? SessionAccessState.Ready)?.let {
-                runtime.onIntent(AccessRuntimeIntent.ShowGroupSelector(it.session))
-            }
-        },
-        openSettings = {
-            administration.group?.group?.let {
-                settingsName = it.name
-                settingsTimeZone = it.timeZone
-                page = AccessPage.SETTINGS
-            }
-        },
-        openMemberships = {
-            runtime.administration.onIntent(GroupAdministrationIntent.LoadMemberships)
-            page = AccessPage.MEMBERSHIPS
-        },
-        openInvite = { page = AccessPage.INVITE },
-        requestLogout = { logoutConfirmation = true },
-        confirmLogout = {
-            logoutConfirmation = false
-            runtime.invites.onIntent(DeferredInviteIntent.Logout)
-            runtime.session.onIntent(SessionIntent.Logout)
-        },
-        cancelLogout = { logoutConfirmation = false },
-        settingsNameChanged = { settingsName = it },
-        settingsTimeZoneChanged = { settingsTimeZone = it },
-        saveSettings = {
-            runtime.administration.onIntent(GroupAdministrationIntent.UpdateSettings(settingsName, settingsTimeZone))
-        },
-        reloadSettings = {
-            administration.group?.group?.let {
-                settingsName = it.name
-                settingsTimeZone = it.timeZone
-            }
-        },
-        changeRole = { userId, role ->
-            runtime.administration.onIntent(GroupAdministrationIntent.ChangeRole(userId, role))
-        },
-        generateInvite = { runtime.onIntent(AccessRuntimeIntent.RotateInvite) },
-        shareInvite = { runtime.onIntent(AccessRuntimeIntent.ShareInviteNative(it)) },
-        requestExpireInvite = { expireConfirmation = true },
-        confirmExpireInvite = {
-            expireConfirmation = false
-            runtime.onIntent(AccessRuntimeIntent.ExpireInvite)
-        },
-        cancelExpireInvite = { expireConfirmation = false },
-        retryInvite = { runtime.onIntent(AccessRuntimeIntent.RotateInvite) },
-    )
-    AuthenticatedAccessRoot(snapshot, actions)
+internal fun AccessDestination.systemBackIntent(): AccessIntent? = when (this) {
+    AccessDestination.PASSWORD_RESET -> AccessIntent.Authentication(AuthenticationIntent.ShowLogin)
+    else -> null
 }
 
 internal class AccessRuntime(
@@ -329,15 +183,15 @@ internal class AccessRuntime(
     )
     private val groups = GroupApi(authenticatedNetwork)
     private val roles = RolesInvitesApi(authenticatedNetwork)
-    val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
-    val authentication = AuthenticationStateMachine(dependencies.auth) {
+    private val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
+    private val authentication = AuthenticationStateMachine(dependencies.auth) {
         session.onIntent(SessionIntent.Accept(it))
     }
-    val selection = GroupSelectionStateMachine(dependencies.localState, groups, scope)
-    val administration = GroupAdministrationStateMachine(groups, roles, scope) {
+    private val selection = GroupSelectionStateMachine(dependencies.localState, groups, scope)
+    private val administration = GroupAdministrationStateMachine(groups, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
-    val invites = DeferredInviteStateMachine(dependencies.links, dependencies.localState, roles, scope) {
+    private val invites = DeferredInviteStateMachine(dependencies.links, dependencies.localState, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())
@@ -367,7 +221,6 @@ internal class AccessRuntime(
             AccessRuntimeIntent.RotateInvite -> rotateInvite()
             AccessRuntimeIntent.ExpireInvite -> expireInvite()
             is AccessRuntimeIntent.ShareFinished -> shareFinished(intent.successful)
-            is AccessRuntimeIntent.ShareInviteNative -> shareInvite(intent.url)
         }
     }
 
@@ -429,12 +282,6 @@ internal class AccessRuntime(
                 )
             }
         }
-    }
-
-    private fun shareInvite(url: String) {
-        dependencies.share.share(url, resultCallback { result ->
-            shareFinished(result is OperationResult.Success)
-        })
     }
 
     private fun shareFinished(successful: Boolean) {
@@ -522,83 +369,67 @@ private fun AccessRootSnapshot.selectionDestination(): AccessDestination = when 
 }
 
 @Composable
-private fun DestinationContent(destination: AccessDestination, state: AccessRootSnapshot, actions: AccessRootActions) {
+private fun DestinationContent(
+    destination: AccessDestination,
+    state: AccessRootSnapshot,
+    onIntent: (AccessIntent) -> Unit,
+) {
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
-        AccessDestination.LOGIN -> LoginScreen(
-            state.authentication,
-        ) { intent ->
-            when (intent) {
-                is AuthenticationIntent.UpdateEmail -> actions.updateEmail(intent.value)
-                is AuthenticationIntent.UpdatePassword -> actions.updatePassword(intent.value)
-                AuthenticationIntent.SubmitPasswordLogin -> actions.submitLogin()
-                AuthenticationIntent.SubmitGoogleLogin -> actions.submitGoogle()
-                AuthenticationIntent.ShowRegistration -> actions.showRegistration()
-                AuthenticationIntent.ShowPasswordReset -> actions.showReset()
-                else -> Unit
-            }
+        AccessDestination.LOGIN -> LoginScreen(state.authentication) { intent ->
+            onIntent(AccessIntent.Authentication(intent))
         }
-        AccessDestination.REGISTRATION -> RegistrationScreen(
-            state.authentication,
-        ) { intent ->
-            when (intent) {
-                is AuthenticationIntent.UpdateName -> actions.updateName(intent.value)
-                is AuthenticationIntent.UpdateEmail -> actions.updateEmail(intent.value)
-                is AuthenticationIntent.UpdatePassword -> actions.updatePassword(intent.value)
-                AuthenticationIntent.SubmitRegistration -> actions.submitRegistration()
-                AuthenticationIntent.ShowLogin -> actions.showLogin()
-                else -> Unit
-            }
+        AccessDestination.REGISTRATION -> RegistrationScreen(state.authentication) { intent ->
+            onIntent(AccessIntent.Authentication(intent))
         }
-        AccessDestination.PASSWORD_RESET -> PasswordResetScreen(
-            state.authentication,
-        ) { intent ->
-            when (intent) {
-                is AuthenticationIntent.UpdateEmail -> actions.updateEmail(intent.value)
-                AuthenticationIntent.SubmitPasswordReset -> actions.submitReset()
-                AuthenticationIntent.ShowLogin -> actions.showLogin()
-                else -> Unit
-            }
+        AccessDestination.PASSWORD_RESET -> PasswordResetScreen(state.authentication) { intent ->
+            onIntent(AccessIntent.Authentication(intent))
         }
         AccessDestination.VERIFICATION -> VerificationScreen(
             state.session as SessionAccessState.AwaitingVerification,
         ) { intent ->
-            when (intent) {
-                SessionIntent.ConfirmVerification -> actions.confirmVerification()
-                SessionIntent.ResendVerification -> actions.resendVerification()
-                else -> Unit
-            }
+            onIntent(AccessIntent.Session(intent))
         }
         AccessDestination.NAME_COMPLETION -> NameCompletionScreen(
             state.session as SessionAccessState.CompletingName,
         ) { intent ->
-            when (intent) {
-                is SessionIntent.UpdateName -> actions.updateName(intent.value)
-                SessionIntent.CompleteName -> actions.completeName()
-                else -> Unit
-            }
+            onIntent(AccessIntent.Session(intent))
         }
         AccessDestination.BOOTSTRAP -> BootstrapAccessScreen(state.session) { intent ->
-            if (intent == SessionIntent.RetryBootstrap) actions.retryBootstrap()
+            onIntent(AccessIntent.Session(intent))
         }
         AccessDestination.GROUP_ONBOARDING -> GroupOnboardingScreen(state.selection) { intent ->
             when (intent) {
-                is GroupOnboardingIntent.Select -> actions.selectGroup(intent.groupId)
-                GroupOnboardingIntent.OpenCreateGroup -> actions.openCreateGroup()
-                GroupOnboardingIntent.Retry -> actions.retryGroup()
+                is GroupOnboardingIntent.Select -> onIntent(
+                    AccessIntent.Selection(GroupSelectionIntent.Select(intent.groupId)),
+                )
+                GroupOnboardingIntent.OpenCreateGroup -> onIntent(AccessIntent.OpenCreateGroup)
+                GroupOnboardingIntent.Retry -> onIntent(
+                    AccessIntent.Selection(GroupSelectionIntent.Retry),
+                )
             }
         }
         AccessDestination.GROUP_CONTEXT -> {
-            GroupContextScreen(
-                state.administration,
-                actions.switchGroup,
-                actions.openSettings,
-                actions.openMemberships,
-                actions.openInvite,
-                actions.requestLogout,
-            )
+            GroupContextScreen(state.administration) { intent ->
+                onIntent(
+                    when (intent) {
+                        GroupContextIntent.SwitchGroup -> AccessIntent.SwitchGroup
+                        GroupContextIntent.OpenSettings -> AccessIntent.OpenSettings
+                        GroupContextIntent.OpenRoles -> AccessIntent.OpenMemberships
+                        GroupContextIntent.OpenInvite -> AccessIntent.OpenInvite
+                        GroupContextIntent.RequestLogout -> AccessIntent.RequestLogout
+                    },
+                )
+            }
             if (state.showLogoutConfirmation) {
-                LogoutConfirmationDialog(actions.confirmLogout, actions.cancelLogout)
+                LogoutConfirmationDialog { intent ->
+                    onIntent(
+                        when (intent) {
+                            LogoutConfirmationIntent.Confirm -> AccessIntent.ConfirmLogout
+                            LogoutConfirmationIntent.Cancel -> AccessIntent.CancelLogout
+                        },
+                    )
+                }
             }
         }
         AccessDestination.CREATE_GROUP -> CreateGroupScreen(
@@ -610,39 +441,63 @@ private fun DestinationContent(destination: AccessDestination, state: AccessRoot
             ),
         ) { intent ->
             when (intent) {
-                is CreateGroupIntent.UpdateName -> actions.createNameChanged(intent.value)
-                is CreateGroupIntent.UpdateTimeZone -> actions.createTimeZoneChanged(intent.value)
-                CreateGroupIntent.Submit -> actions.createGroup()
-                CreateGroupIntent.Back -> actions.closePage()
+                is CreateGroupIntent.UpdateName -> onIntent(AccessIntent.UpdateCreateName(intent.value))
+                is CreateGroupIntent.UpdateTimeZone -> onIntent(AccessIntent.UpdateCreateTimeZone(intent.value))
+                CreateGroupIntent.Submit -> onIntent(AccessIntent.SubmitCreateGroup)
+                CreateGroupIntent.Back -> onIntent(AccessIntent.ClosePage)
             }
         }
         AccessDestination.SETTINGS -> GroupSettingsScreen(
-            state.administration,
-            state.settingsName,
-            state.settingsTimeZone,
-            actions.settingsNameChanged,
-            actions.settingsTimeZoneChanged,
-            actions.saveSettings,
-            actions.reloadSettings,
-            actions.closePage,
-        )
-        AccessDestination.MEMBERSHIPS -> MembershipAdministrationScreen(
-            state.administration,
-            actions.changeRole,
-            actions.closePage,
-        )
+            GroupSettingsUiState(
+                administration = state.administration,
+                name = state.settingsName,
+                timeZone = state.settingsTimeZone,
+            ),
+        ) { intent ->
+            onIntent(
+                when (intent) {
+                    is GroupSettingsIntent.UpdateName -> AccessIntent.UpdateSettingsName(intent.value)
+                    is GroupSettingsIntent.UpdateTimeZone -> AccessIntent.UpdateSettingsTimeZone(intent.value)
+                    GroupSettingsIntent.Save -> AccessIntent.SaveSettings
+                    GroupSettingsIntent.Reload -> AccessIntent.ReloadSettings
+                    GroupSettingsIntent.Back -> AccessIntent.ClosePage
+                },
+            )
+        }
+        AccessDestination.MEMBERSHIPS -> MembershipAdministrationScreen(state.administration) { intent ->
+            onIntent(
+                when (intent) {
+                    is MembershipAdministrationIntent.ChangeRole -> AccessIntent.ChangeRole(
+                        intent.userId,
+                        intent.role,
+                    )
+                    MembershipAdministrationIntent.Back -> AccessIntent.ClosePage
+                },
+            )
+        }
         AccessDestination.INVITE -> {
             InviteManagementScreen(
-                state.administration.actions,
-                state.invite,
-                actions.generateInvite,
-                actions.shareInvite,
-                actions.requestExpireInvite,
-                actions.retryInvite,
-                actions.closePage,
-            )
+                InviteManagementUiState(state.administration.actions, state.invite),
+            ) { intent ->
+                onIntent(
+                    when (intent) {
+                        InviteManagementIntent.Generate -> AccessIntent.GenerateInvite
+                        is InviteManagementIntent.Share -> AccessIntent.ShareInvite(intent.url)
+                        InviteManagementIntent.RequestExpire -> AccessIntent.RequestExpireInvite
+                        InviteManagementIntent.Retry -> AccessIntent.RetryInvite
+                        InviteManagementIntent.Back -> AccessIntent.ClosePage
+                    },
+                )
+            }
             if (state.showExpireConfirmation) {
-                ExpireInviteConfirmationDialog(actions.confirmExpireInvite, actions.cancelExpireInvite)
+                ExpireInviteConfirmationDialog { intent ->
+                    onIntent(
+                        when (intent) {
+                            ExpireInviteConfirmationIntent.Confirm -> AccessIntent.ConfirmExpireInvite
+                            ExpireInviteConfirmationIntent.Cancel -> AccessIntent.CancelExpireInvite
+                        },
+                    )
+                }
             }
         }
     }

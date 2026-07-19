@@ -149,6 +149,33 @@ EOF
     printf 'ok %d - manual-checklist-not-required\n' "$count"
 }
 
+inventory_case() {
+    grep -Fq "run_step 'Gradle/Kotlin/Android gate' \"\$repository_root/scripts/check-gradle\"" \
+        "$repository_root/scripts/check-all"
+    grep -Fq "run_step 'iOS gate' \"\$repository_root/scripts/check-ios\"" \
+        "$repository_root/scripts/check-all"
+    grep -Fq "run_step 'Landing gate' \"\$repository_root/scripts/check-landing\"" \
+        "$repository_root/scripts/check-all"
+    count=$((count + 1))
+    printf 'ok %d - exact executable gate inventory\n' "$count"
+}
+
+failure_has_no_success_marker_case() {
+    dir="$scratch_root/failure-has-no-success-marker"
+    make_repo "$dir"
+    if (
+        cd "$dir/repo"
+        LOG_FILE="$PWD/invocations.log" PATH="$PWD/bin:$PATH" FAIL_IOS=1 scripts/check-all
+    ) >"$dir/stdout" 2>"$dir/stderr"; then
+        printf 'expected aggregate failure before success marker\n' >&2
+        exit 1
+    fi
+    grep -q 'local gate failed: iOS gate' "$dir/stderr"
+    ! grep -q 'ok - all local gates' "$dir/stdout"
+    count=$((count + 1))
+    printf 'ok %d - failure has no success marker\n' "$count"
+}
+
 signal_case() {
     signal=$1
     label=$2
@@ -244,5 +271,7 @@ unsupported_case
 signal_case INT sigint-cleanup
 signal_case TERM sigterm-cleanup
 manual_checklist_case
+inventory_case
+failure_has_no_success_marker_case
 
-[ "$count" -eq 8 ]
+[ "$count" -eq 10 ]

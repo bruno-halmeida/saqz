@@ -50,35 +50,35 @@ class MembershipInviteScreensTest {
 
     @Test
     fun `athlete toggle requests admin for that member`() = runComposeUiTest {
-        var changed: Pair<String, PersistedRoleDto>? = null
-        memberships(onRoleChange = { userId, role -> changed = userId to role })
+        val intents = mutableListOf<MembershipAdministrationIntent>()
+        memberships(onIntent = intents::add)
 
         onNodeWithTag(MembershipInviteTags.role("athlete-id")).performClick()
 
-        assertEquals("athlete-id" to PersistedRoleDto.ADMIN, changed)
+        assertEquals(listOf<MembershipAdministrationIntent>(MembershipAdministrationIntent.ChangeRole("athlete-id", PersistedRoleDto.ADMIN)), intents)
     }
 
     @Test
     fun `admin toggle requests athlete for that member`() = runComposeUiTest {
-        var changed: Pair<String, PersistedRoleDto>? = null
-        memberships(onRoleChange = { userId, role -> changed = userId to role })
+        val intents = mutableListOf<MembershipAdministrationIntent>()
+        memberships(onIntent = intents::add)
 
         onNodeWithTag(MembershipInviteTags.role("admin-id")).performClick()
 
-        assertEquals("admin-id" to PersistedRoleDto.ATHLETE, changed)
+        assertEquals(listOf<MembershipAdministrationIntent>(MembershipAdministrationIntent.ChangeRole("admin-id", PersistedRoleDto.ATHLETE)), intents)
     }
 
     @Test
     fun `changing one of several admins leaves the other targeted independently`() = runComposeUiTest {
-        var changed: Pair<String, PersistedRoleDto>? = null
+        val intents = mutableListOf<MembershipAdministrationIntent>()
         memberships(
             state.copy(memberships = state.memberships + MembershipDto("admin-two", "Admin Two", GroupRoleDto.ADMIN)),
-            onRoleChange = { userId, role -> changed = userId to role },
+            onIntent = intents::add,
         )
 
         onNodeWithTag(MembershipInviteTags.role("admin-two")).performClick()
 
-        assertEquals("admin-two" to PersistedRoleDto.ATHLETE, changed)
+        assertEquals(listOf<MembershipAdministrationIntent>(MembershipAdministrationIntent.ChangeRole("admin-two", PersistedRoleDto.ATHLETE)), intents)
         onNodeWithTag(MembershipInviteTags.role("admin-id")).assertExists()
     }
 
@@ -95,13 +95,8 @@ class MembershipInviteScreensTest {
         setContent {
             SaqzTheme {
                 InviteManagementScreen(
-                    actions = actions,
-                    state = InviteToolState(),
-                    onGenerate = {},
-                    onShare = {},
-                    onExpireRequest = {},
-                    onRetry = {},
-                    onBack = {},
+                    state = InviteManagementUiState(actions, InviteToolState()),
+                    onIntent = {},
                 )
             }
         }
@@ -117,22 +112,22 @@ class MembershipInviteScreensTest {
 
     @Test
     fun `generate action requests first invite`() = runComposeUiTest {
-        var calls = 0
-        invite(onGenerate = { calls++ })
+        val intents = mutableListOf<InviteManagementIntent>()
+        invite(onIntent = intents::add)
 
         onNodeWithTag(MembershipInviteTags.Generate).performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<InviteManagementIntent>(InviteManagementIntent.Generate), intents)
     }
 
     @Test
     fun `generate action rotates an existing invite`() = runComposeUiTest {
-        var calls = 0
-        invite(InviteToolState(inviteUrl = firstUrl), onGenerate = { calls++ })
+        val intents = mutableListOf<InviteManagementIntent>()
+        invite(InviteToolState(inviteUrl = firstUrl), onIntent = intents::add)
 
         onNodeWithTag(MembershipInviteTags.Rotate).performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<InviteManagementIntent>(InviteManagementIntent.Generate), intents)
     }
 
     @Test
@@ -146,10 +141,10 @@ class MembershipInviteScreensTest {
     @Test
     fun `share always receives the latest complete invite url`() = runComposeUiTest {
         var toolState by mutableStateOf(InviteToolState(inviteUrl = firstUrl))
-        var shared: String? = null
+        val intents = mutableListOf<InviteManagementIntent>()
         setContent {
             SaqzTheme {
-                InviteManagementScreen(ownerActions, toolState, {}, { shared = it }, {}, {}, {})
+                InviteManagementScreen(InviteManagementUiState(ownerActions, toolState), intents::add)
             }
         }
         toolState = InviteToolState(inviteUrl = secondUrl)
@@ -157,41 +152,45 @@ class MembershipInviteScreensTest {
 
         onNodeWithTag(MembershipInviteTags.Share).performClick()
 
-        assertEquals(secondUrl, shared)
+        assertEquals(listOf<InviteManagementIntent>(InviteManagementIntent.Share(secondUrl)), intents)
     }
 
     @Test
     fun `expire action requests explicit confirmation`() = runComposeUiTest {
-        var calls = 0
-        invite(InviteToolState(inviteUrl = firstUrl), onExpireRequest = { calls++ })
+        val intents = mutableListOf<InviteManagementIntent>()
+        invite(InviteToolState(inviteUrl = firstUrl), onIntent = intents::add)
 
         onNodeWithTag(MembershipInviteTags.Expire).performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<InviteManagementIntent>(InviteManagementIntent.RequestExpire), intents)
     }
 
     @Test
     fun `expire dialog mutates only after confirmation`() = runComposeUiTest {
-        var confirms = 0
-        var cancels = 0
-        setContent { SaqzTheme { ExpireInviteConfirmationDialog({ confirms++ }, { cancels++ }) } }
+        val intents = mutableListOf<ExpireInviteConfirmationIntent>()
+        setContent { SaqzTheme { ExpireInviteConfirmationDialog(intents::add) } }
 
         onNodeWithTag(MembershipInviteTags.ExpireCancel).performClick()
-        assertEquals(0, confirms)
-        assertEquals(1, cancels)
+        assertEquals(listOf<ExpireInviteConfirmationIntent>(ExpireInviteConfirmationIntent.Cancel), intents)
         onNodeWithTag(MembershipInviteTags.ExpireConfirm).performClick()
-        assertEquals(1, confirms)
+        assertEquals(
+            listOf<ExpireInviteConfirmationIntent>(
+                ExpireInviteConfirmationIntent.Cancel,
+                ExpireInviteConfirmationIntent.Confirm,
+            ),
+            intents,
+        )
     }
 
     @Test
     fun `invalid invite has stable feedback and a retry action`() = runComposeUiTest {
-        var calls = 0
-        invite(InviteToolState(error = InviteUiError.INVALID_OR_EXPIRED), onRetry = { calls++ })
+        val intents = mutableListOf<InviteManagementIntent>()
+        invite(InviteToolState(error = InviteUiError.INVALID_OR_EXPIRED), onIntent = intents::add)
 
         onNodeWithText("Convite invalido ou expirado").assertExists()
         onNodeWithTag(MembershipInviteTags.Retry).performClick()
 
-        assertEquals(1, calls)
+        assertEquals(listOf<InviteManagementIntent>(InviteManagementIntent.Retry), intents)
     }
 
     @Test
@@ -204,21 +203,19 @@ class MembershipInviteScreensTest {
 
     private fun androidx.compose.ui.test.ComposeUiTest.memberships(
         membershipState: GroupAdministrationState = state,
-        onRoleChange: (String, PersistedRoleDto) -> Unit = { _, _ -> },
+        onIntent: (MembershipAdministrationIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
-            MembershipAdministrationScreen(membershipState, onRoleChange, {})
+            MembershipAdministrationScreen(membershipState, onIntent)
         }
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.invite(
         inviteState: InviteToolState = InviteToolState(),
-        onGenerate: () -> Unit = {},
-        onExpireRequest: () -> Unit = {},
-        onRetry: () -> Unit = {},
+        onIntent: (InviteManagementIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
-            InviteManagementScreen(ownerActions, inviteState, onGenerate, {}, onExpireRequest, onRetry, {})
+            InviteManagementScreen(InviteManagementUiState(ownerActions, inviteState), onIntent)
         }
     }
 

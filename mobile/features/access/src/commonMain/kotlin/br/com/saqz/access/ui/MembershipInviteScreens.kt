@@ -68,11 +68,34 @@ data class InviteToolState(
     val retryAfterSeconds: Int? = null,
 )
 
+sealed interface MembershipAdministrationIntent {
+    data class ChangeRole(val userId: String, val role: PersistedRoleDto) : MembershipAdministrationIntent
+    data object Back : MembershipAdministrationIntent
+}
+
+@Immutable
+data class InviteManagementUiState(
+    val actions: GroupActions,
+    val invite: InviteToolState,
+)
+
+sealed interface InviteManagementIntent {
+    data object Generate : InviteManagementIntent
+    data class Share(val url: String) : InviteManagementIntent
+    data object RequestExpire : InviteManagementIntent
+    data object Retry : InviteManagementIntent
+    data object Back : InviteManagementIntent
+}
+
+sealed interface ExpireInviteConfirmationIntent {
+    data object Confirm : ExpireInviteConfirmationIntent
+    data object Cancel : ExpireInviteConfirmationIntent
+}
+
 @Composable
 fun MembershipAdministrationScreen(
     state: GroupAdministrationState,
-    onRoleChange: (String, PersistedRoleDto) -> Unit,
-    onBack: () -> Unit,
+    onIntent: (MembershipAdministrationIntent) -> Unit,
 ) {
     if (!state.actions.canManageRoles) return
     ScrollColumn {
@@ -92,21 +115,25 @@ fun MembershipAdministrationScreen(
                             stringResource(Res.string.membership_make_athlete),
                             member.userId,
                             state.isLoading,
-                        ) { onRoleChange(member.userId, PersistedRoleDto.ATHLETE) }
+                        ) {
+                            onIntent(MembershipAdministrationIntent.ChangeRole(member.userId, PersistedRoleDto.ATHLETE))
+                        }
                     })
                     GroupRoleDto.ATHLETE -> ({
                         RoleButton(
                             stringResource(Res.string.membership_make_admin),
                             member.userId,
                             state.isLoading,
-                        ) { onRoleChange(member.userId, PersistedRoleDto.ADMIN) }
+                        ) {
+                            onIntent(MembershipAdministrationIntent.ChangeRole(member.userId, PersistedRoleDto.ADMIN))
+                        }
                     })
                 },
             )
         }
         SaqzButton(
             stringResource(Res.string.action_back),
-            onBack,
+            { onIntent(MembershipAdministrationIntent.Back) },
             variant = SaqzButtonVariant.Ghost,
             enabled = !state.isLoading,
         )
@@ -115,29 +142,24 @@ fun MembershipAdministrationScreen(
 
 @Composable
 fun InviteManagementScreen(
-    actions: GroupActions,
-    state: InviteToolState,
-    onGenerate: () -> Unit,
-    onShare: (String) -> Unit,
-    onExpireRequest: () -> Unit,
-    onRetry: () -> Unit,
-    onBack: () -> Unit,
+    state: InviteManagementUiState,
+    onIntent: (InviteManagementIntent) -> Unit,
 ) {
-    if (!actions.canManageInvite) return
+    if (!state.actions.canManageInvite) return
     ScrollColumn {
         Text(
             stringResource(Res.string.invite_title),
             style = SaqzTheme.typography.lead,
             color = SaqzTheme.colors.textPrimary,
         )
-        InviteFeedback(state, onRetry)
-        val inviteUrl = state.inviteUrl
+        InviteFeedback(state.invite) { onIntent(InviteManagementIntent.Retry) }
+        val inviteUrl = state.invite.inviteUrl
         if (inviteUrl == null) {
             SaqzButton(
                 stringResource(Res.string.invite_generate),
-                onGenerate,
+                { onIntent(InviteManagementIntent.Generate) },
                 Modifier.fillMaxWidth().testTag(MembershipInviteTags.Generate),
-                loading = state.isLoading,
+                loading = state.invite.isLoading,
             )
         } else {
             Text(stringResource(Res.string.invite_ready), color = SaqzTheme.colors.textSecondary)
@@ -146,41 +168,43 @@ fun InviteManagementScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
             ) {
-                ShareInviteButton(inviteUrl, state.isLoading, onShare)
+                ShareInviteButton(inviteUrl, state.invite.isLoading) {
+                    onIntent(InviteManagementIntent.Share(it))
+                }
                 SaqzButton(
                     stringResource(Res.string.invite_rotate),
-                    onGenerate,
+                    { onIntent(InviteManagementIntent.Generate) },
                     Modifier.testTag(MembershipInviteTags.Rotate),
                     variant = SaqzButtonVariant.Secondary,
-                    enabled = !state.isLoading,
+                    enabled = !state.invite.isLoading,
                 )
             }
             SaqzButton(
                 stringResource(Res.string.invite_expire),
-                onExpireRequest,
+                { onIntent(InviteManagementIntent.RequestExpire) },
                 Modifier.fillMaxWidth().testTag(MembershipInviteTags.Expire),
                 variant = SaqzButtonVariant.Destructive,
-                enabled = !state.isLoading,
+                enabled = !state.invite.isLoading,
             )
         }
         SaqzButton(
             stringResource(Res.string.action_back),
-            onBack,
+            { onIntent(InviteManagementIntent.Back) },
             variant = SaqzButtonVariant.Ghost,
-            enabled = !state.isLoading,
+            enabled = !state.invite.isLoading,
         )
     }
 }
 
 @Composable
-fun ExpireInviteConfirmationDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
+fun ExpireInviteConfirmationDialog(onIntent: (ExpireInviteConfirmationIntent) -> Unit) {
     SaqzDialog(
         title = stringResource(Res.string.invite_expire_title),
-        onCloseRequest = onCancel,
+        onCloseRequest = { onIntent(ExpireInviteConfirmationIntent.Cancel) },
         primaryAction = {
             SaqzButton(
                 stringResource(Res.string.invite_expire_confirm),
-                onConfirm,
+                { onIntent(ExpireInviteConfirmationIntent.Confirm) },
                 Modifier.testTag(MembershipInviteTags.ExpireConfirm),
                 variant = SaqzButtonVariant.Destructive,
             )
@@ -189,7 +213,7 @@ fun ExpireInviteConfirmationDialog(onConfirm: () -> Unit, onCancel: () -> Unit) 
         Text(stringResource(Res.string.invite_expire_body), color = SaqzTheme.colors.textSecondary)
         SaqzButton(
             stringResource(Res.string.action_cancel),
-            onCancel,
+            { onIntent(ExpireInviteConfirmationIntent.Cancel) },
             Modifier.testTag(MembershipInviteTags.ExpireCancel),
             variant = SaqzButtonVariant.Ghost,
         )
@@ -254,7 +278,6 @@ private val previewInviteActions = GroupActions(true, true, true)
 private fun MembershipAdministrationScreenPreview() = SaqzTheme {
     MembershipAdministrationScreen(
         GroupAdministrationState(actions = previewInviteActions, memberships = listOf(MembershipDto("preview-athlete", "Bruno", GroupRoleDto.ATHLETE))),
-        { _, _ -> },
         {},
     )
 }
@@ -262,9 +285,11 @@ private fun MembershipAdministrationScreenPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun InviteManagementScreenPreview() = SaqzTheme {
-    InviteManagementScreen(previewInviteActions, InviteToolState(inviteUrl = "https://saqz.app/i/preview"), {}, {}, {}, {}, {})
+    InviteManagementScreen(
+        InviteManagementUiState(previewInviteActions, InviteToolState(inviteUrl = "https://saqz.app/i/preview")),
+    ) {}
 }
 
 @Preview
 @Composable
-private fun ExpireInviteConfirmationDialogPreview() = SaqzTheme { ExpireInviteConfirmationDialog({}, {}) }
+private fun ExpireInviteConfirmationDialogPreview() = SaqzTheme { ExpireInviteConfirmationDialog {} }
