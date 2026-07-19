@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "dev": "saqz-dev",
+    "prod": "saquz-app"
+  },
+  "targets": {},
+  "etags": {}
+}
