@@ -13,12 +13,16 @@ final class IOSAppCompositionTests: XCTestCase {
         let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.auth as AnyObject) === fixture.composition.auth)
     }
 
-    func testCompositionInjectsExactLinkPort() {
-        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.links as AnyObject) === fixture.composition.links)
+    func testCompositionInjectsExactGroupLinkPort() {
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.groupLinks as AnyObject) === fixture.composition.links)
     }
 
     func testCompositionInjectsExactLocalStatePort() {
         let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.localState as AnyObject) === fixture.composition.localState)
+    }
+
+    func testCompositionInjectsExactGroupStatePort() {
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.groupState as AnyObject) === fixture.composition.groupState)
     }
 
     func testCompositionInjectsExactSharePort() {
@@ -31,7 +35,7 @@ final class IOSAppCompositionTests: XCTestCase {
 
     func testDeferredInviteReceivedBeforeListenerSurvivesComposition() {
         let fixture = makeFixture(); fixture.branch.complete(["saqz_invite": Self.code])
-        let listener = RecordingInviteListener(); _ = fixture.composition.links.start(listener: listener)
+        let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groupLinks.start(listener_: listener)
         XCTAssertEqual(listener.codes, [Self.code])
     }
 
@@ -50,7 +54,7 @@ final class IOSAppCompositionTests: XCTestCase {
     func testBackgroundForegroundUsesSameRetainedAdapterInstances() {
         let fixture = makeFixture(); let dependencies = fixture.composition.dependencies
         XCTAssertTrue((dependencies.auth as AnyObject) === fixture.composition.auth)
-        XCTAssertTrue((dependencies.links as AnyObject) === fixture.composition.links)
+        XCTAssertTrue((dependencies.groupLinks as AnyObject) === fixture.composition.links)
     }
 
     func testComposeControllerHasNoSyntheticUIKitAccessibilityElement() {
@@ -62,10 +66,10 @@ final class IOSAppCompositionTests: XCTestCase {
     private func makeFixture() -> Fixture {
         let firebase = FakeFirebase(); let google = FakeGoogle(); let branch = FakeBranch(); let store = FakeStore(); let share = FakeShare()
         let auth = IOSAuthAdapter(firebase: firebase, google: google); let links = IOSLinkAdapter(branch: branch)
-        let local = IOSLocalAccessStateAdapter(store: store); let shareAdapter = IOSShareAdapter(launcher: share)
+        let local = IOSLocalAccessStateAdapter(store: store); let groupState = IOSLocalGroupStateAdapter(store: store); let shareAdapter = IOSShareAdapter(launcher: share)
         let composition = IOSAppComposition.make(
             configuration: IOSAppConfiguration(environment: "dev", apiBaseURL: "http://127.0.0.1:8080"),
-            auth: auth, links: links, localState: local, share: shareAdapter
+            auth: auth, links: links, localState: local, groupState: groupState, share: shareAdapter
         )
         return Fixture(composition: composition, google: google, branch: branch)
     }
@@ -108,6 +112,6 @@ final class IOSAppCompositionTests: XCTestCase {
 
 @MainActor private final class FakeShare: IOSShareLauncher { func launch(text: String) throws {} }
 
-@MainActor private final class RecordingInviteListener: @preconcurrency InviteCodeListener {
+@MainActor private final class RecordingInviteListener: @preconcurrency GroupInviteCodeListener {
     var codes: [String] = []; func onInviteCode(code: String) { codes.append(code) }
 }

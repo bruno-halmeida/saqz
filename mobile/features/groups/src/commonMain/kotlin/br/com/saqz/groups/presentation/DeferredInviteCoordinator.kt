@@ -1,15 +1,15 @@
-package br.com.saqz.access.presentation
+package br.com.saqz.groups.presentation
 
-import br.com.saqz.access.data.GroupRoleDto
-import br.com.saqz.access.data.RolesInvitesGateway
-import br.com.saqz.access.port.Cancelable
-import br.com.saqz.access.port.InviteCodeListener
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.NativeLinkPort
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.ValueCallback
-import br.com.saqz.access.port.ValueResult
+import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.data.RolesInvitesGateway
+import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupOperationResult
+import br.com.saqz.groups.port.GroupResultCallback
+import br.com.saqz.groups.port.GroupValueCallback
+import br.com.saqz.groups.port.GroupValueResult
+import br.com.saqz.groups.port.LocalGroupStatePort
+import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
@@ -49,8 +49,8 @@ sealed interface DeferredInviteIntent {
 }
 
 class DeferredInviteStateMachine(
-    private val links: NativeLinkPort,
-    private val localState: LocalAccessStatePort,
+    private val links: NativeGroupLinkPort,
+    private val localState: LocalGroupStatePort,
     private val invites: RolesInvitesGateway,
     private val scope: CoroutineScope,
     private val selectGroup: (String) -> Unit,
@@ -59,7 +59,7 @@ class DeferredInviteStateMachine(
     val state: StateFlow<InviteState> = mutableState.asStateFlow()
     private var pendingCode: String? = null
     private var sessionReady = false
-    private var subscription: Cancelable? = null
+    private var subscription: GroupCancelable? = null
 
     fun onIntent(intent: DeferredInviteIntent) {
         when (intent) {
@@ -75,7 +75,7 @@ class DeferredInviteStateMachine(
 
     private fun start() {
         if (subscription != null) return
-        subscription = links.start(object : InviteCodeListener {
+        subscription = links.start(object : GroupInviteCodeListener {
             override fun onInviteCode(code: String) = receive(code)
         })
     }
@@ -86,9 +86,9 @@ class DeferredInviteStateMachine(
     }
 
     private fun restore() {
-        localState.readPendingInvite(object : ValueCallback {
-            override fun complete(result: ValueResult) {
-                val restored = (result as? ValueResult.Success)?.value ?: return
+        localState.readPendingInvite(object : GroupValueCallback {
+            override fun complete(result: GroupValueResult) {
+                val restored = (result as? GroupValueResult.Success)?.value ?: return
                 pendingCode = restored
                 mutableState.value = InviteState(hasPending = true)
                 attemptRedeem()
@@ -178,8 +178,8 @@ class DeferredInviteStateMachine(
     }
 
     private fun persist(value: String?) {
-        localState.writePendingInvite(value, object : ResultCallback {
-            override fun complete(result: OperationResult) = Unit
+        localState.writePendingInvite(value, object : GroupResultCallback {
+            override fun complete(result: GroupOperationResult) = Unit
         })
     }
 }

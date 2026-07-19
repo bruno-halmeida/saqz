@@ -480,6 +480,13 @@ keys, cents, or timezone identifiers.
   fixture they claim to verify when the app composition has authenticated,
   bootstrapping, or group-routing dependencies, and visible brand images SHALL
   expose exactly one accessible brand label.
+- **B3 | 2026-07-19** — The T09 iOS native gate implemented new Swift Groups
+  adapters with source-level Kotlin parameter labels instead of the
+  Kotlin/Native-generated Swift protocol labels, so conformance failed at build
+  time. Covered by V3.
+- **V3** — iOS adapters that implement KMP Groups ports SHALL compile against
+  the generated Swift protocols in `check-ios`, including external argument
+  labels for callbacks and listeners.
 
 ## Success criteria
 

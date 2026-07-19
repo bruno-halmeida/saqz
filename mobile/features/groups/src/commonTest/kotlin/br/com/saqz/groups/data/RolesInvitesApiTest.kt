@@ -1,4 +1,4 @@
-package br.com.saqz.access.data
+package br.com.saqz.groups.data
 
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider

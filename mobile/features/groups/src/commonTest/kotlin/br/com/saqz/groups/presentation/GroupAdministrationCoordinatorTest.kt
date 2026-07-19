@@ -1,14 +1,6 @@
-package br.com.saqz.access.presentation
+package br.com.saqz.groups.presentation
 
-import br.com.saqz.access.data.GroupDto
-import br.com.saqz.access.data.GroupGateway
-import br.com.saqz.access.data.GroupRoleDto
-import br.com.saqz.access.data.InviteUrlDto
-import br.com.saqz.access.data.MembershipDto
-import br.com.saqz.access.data.PersistedRoleDto
-import br.com.saqz.access.data.RedeemedInviteDto
-import br.com.saqz.access.data.RolesInvitesGateway
-import br.com.saqz.access.data.VersionedGroupDto
+import br.com.saqz.groups.data.*
 import br.com.saqz.network.ApiProblem
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult

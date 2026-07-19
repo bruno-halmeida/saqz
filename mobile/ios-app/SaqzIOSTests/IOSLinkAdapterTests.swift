@@ -97,7 +97,7 @@ final class IOSLinkAdapterTests: XCTestCase {
     private final class Fixture {
         let branch = FakeBranchSessionClient(); lazy var adapter = IOSLinkAdapter(branch: branch)
         var received: [String] = []
-        func start() -> Cancelable { adapter.start(listener: RecordingInviteCodeListener { self.received.append($0) }) }
+        func start() -> GroupCancelable { adapter.start(listener_: RecordingInviteCodeListener { self.received.append($0) }) }
     }
 
     private static let codeA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -115,7 +115,7 @@ private final class FakeBranchSessionClient: IOSBranchSessionClient {
 }
 
 @MainActor
-private final class RecordingInviteCodeListener: @preconcurrency InviteCodeListener {
+private final class RecordingInviteCodeListener: @preconcurrency GroupInviteCodeListener {
     private let action: (String) -> Void
     init(_ action: @escaping (String) -> Void) { self.action = action }
     func onInviteCode(code: String) { action(code) }

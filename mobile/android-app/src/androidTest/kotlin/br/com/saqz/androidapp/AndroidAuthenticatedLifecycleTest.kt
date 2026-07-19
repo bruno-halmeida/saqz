@@ -35,6 +35,14 @@ import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupOperationResult
+import br.com.saqz.groups.port.GroupResultCallback
+import br.com.saqz.groups.port.GroupValueCallback
+import br.com.saqz.groups.port.GroupValueResult
+import br.com.saqz.groups.port.LocalGroupStatePort
+import br.com.saqz.groups.port.NativeGroupLinkPort
 import java.io.FileInputStream
 import kotlinx.coroutines.CoroutineScope
 import org.junit.After
@@ -290,6 +298,8 @@ private class LifecycleCompositionFactory(
             links = fixture.links,
             localState = fixture.local,
             share = fixture.share,
+            groupLinks = fixture.links,
+            groupState = fixture.local,
         )
         fixture.lastEnvironment = dependencies.environment
         return AndroidAppComposition(dependencies, fixture.links)
@@ -374,8 +384,9 @@ private class LifecycleAuthPort : NativeAuthPort {
     }
 }
 
-private class LifecycleLinkPort : AndroidIntentLinkPort {
+private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var listener: InviteCodeListener? = null
+    private var groupListener: GroupInviteCodeListener? = null
     var startCalls = 0
     var activeSubscriptions = 0
     val coldUrls = mutableListOf<String?>()
@@ -395,6 +406,20 @@ private class LifecycleLinkPort : AndroidIntentLinkPort {
         }
     }
 
+    override fun start(listener: GroupInviteCodeListener): GroupCancelable {
+        startCalls++
+        activeSubscriptions++
+        groupListener = listener
+        return object : GroupCancelable {
+            override fun cancel() {
+                if (this@LifecycleLinkPort.groupListener === listener) {
+                    this@LifecycleLinkPort.groupListener = null
+                    activeSubscriptions--
+                }
+            }
+        }
+    }
+
     override fun onColdStart(url: String?) {
         coldUrls += url
     }
@@ -404,13 +429,13 @@ private class LifecycleLinkPort : AndroidIntentLinkPort {
     }
 
     fun emit(code: String) {
-        listener?.onInviteCode(code)
+        groupListener?.onInviteCode(code) ?: listener?.onInviteCode(code)
     }
 }
 
 private class LifecycleLocalState(
     var pending: String?,
-) : LocalAccessStatePort {
+) : LocalAccessStatePort, LocalGroupStatePort {
     var selected: String? = null
     var pendingReads = 0
     val pendingWrites = mutableListOf<String?>()
@@ -431,6 +456,24 @@ private class LifecycleLocalState(
         pending = value
         pendingWrites += value
         done.complete(OperationResult.Success)
+    }
+
+    override fun readSelectedGroupId(done: GroupValueCallback) = done.complete(GroupValueResult.Success(selected))
+
+    override fun writeSelectedGroupId(value: String?, done: GroupResultCallback) {
+        selected = value
+        done.complete(GroupOperationResult.Success)
+    }
+
+    override fun readPendingInvite(done: GroupValueCallback) {
+        pendingReads++
+        done.complete(GroupValueResult.Success(pending))
+    }
+
+    override fun writePendingInvite(value: String?, done: GroupResultCallback) {
+        pending = value
+        pendingWrites += value
+        done.complete(GroupOperationResult.Success)
     }
 }
 

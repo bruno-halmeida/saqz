@@ -10,10 +10,10 @@ protocol IOSBranchSessionClient: AnyObject {
 }
 
 @MainActor
-final class IOSLinkAdapter: @preconcurrency NativeLinkPort {
+final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
     private static let inviteParameter = "saqz_invite"
     private let branch: IOSBranchSessionClient
-    private var listener: InviteCodeListener?
+    private var listener: GroupInviteCodeListener?
     private var pendingCode: String?
     private var lastAcceptedCode: String?
 
@@ -21,7 +21,7 @@ final class IOSLinkAdapter: @preconcurrency NativeLinkPort {
         self.branch = branch
     }
 
-    func start(listener: InviteCodeListener) -> Cancelable {
+    func start(listener_ listener: GroupInviteCodeListener) -> GroupCancelable {
         self.listener = listener
         if let pendingCode {
             listener.onInviteCode(code: pendingCode)
@@ -110,7 +110,7 @@ enum IOSLinkComposition {
     }
 }
 
-private final class IOSLinkCancellation: Cancelable {
+private final class IOSLinkCancellation: GroupCancelable {
     private var action: (() -> Void)?
     init(_ action: @escaping () -> Void) { self.action = action }
     func cancel() { action?(); action = nil }

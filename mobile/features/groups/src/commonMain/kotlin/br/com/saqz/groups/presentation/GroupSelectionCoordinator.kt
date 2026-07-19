@@ -1,12 +1,12 @@
-package br.com.saqz.access.presentation
+package br.com.saqz.groups.presentation
 
-import br.com.saqz.access.data.GroupGateway
-import br.com.saqz.access.data.VersionedGroupDto
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.ValueCallback
-import br.com.saqz.access.port.ValueResult
+import br.com.saqz.groups.data.GroupGateway
+import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.port.GroupOperationResult
+import br.com.saqz.groups.port.GroupResultCallback
+import br.com.saqz.groups.port.GroupValueCallback
+import br.com.saqz.groups.port.GroupValueResult
+import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionDto
 import br.com.saqz.network.SessionMembershipDto
@@ -37,7 +37,7 @@ sealed interface GroupSelectionIntent {
 }
 
 class GroupSelectionStateMachine(
-    private val localState: LocalAccessStatePort,
+    private val localState: LocalGroupStatePort,
     private val groups: GroupGateway,
     private val scope: CoroutineScope,
 ) {
@@ -78,7 +78,7 @@ class GroupSelectionStateMachine(
     private fun reconcileEmpty(generation: Long) {
         localState.readSelectedGroupId(valueCallback { result ->
             if (generation != operationGeneration) return@valueCallback
-            if ((result as? ValueResult.Success)?.value != null) writeSelection(null)
+            if ((result as? GroupValueResult.Success)?.value != null) writeSelection(null)
             mutableState.value = GroupSelectionState.NoGroup
         })
     }
@@ -86,7 +86,7 @@ class GroupSelectionStateMachine(
     private fun restoreOrSelect(generation: Long) {
         localState.readSelectedGroupId(valueCallback { result ->
             if (generation != operationGeneration) return@valueCallback
-            val stored = (result as? ValueResult.Success)?.value
+            val stored = (result as? GroupValueResult.Success)?.value
             when {
                 stored == null -> mutableState.value = GroupSelectionState.Selector(memberships)
                 memberships.any { it.groupId == stored } -> selectInternal(stored, generation)
@@ -117,11 +117,11 @@ class GroupSelectionStateMachine(
         localState.writeSelectedGroupId(value, resultCallback {})
     }
 
-    private fun valueCallback(block: (ValueResult) -> Unit) = object : ValueCallback {
-        override fun complete(result: ValueResult) = block(result)
+    private fun valueCallback(block: (GroupValueResult) -> Unit) = object : GroupValueCallback {
+        override fun complete(result: GroupValueResult) = block(result)
     }
 
-    private fun resultCallback(block: (OperationResult) -> Unit) = object : ResultCallback {
-        override fun complete(result: OperationResult) = block(result)
+    private fun resultCallback(block: (GroupOperationResult) -> Unit) = object : GroupResultCallback {
+        override fun complete(result: GroupOperationResult) = block(result)
     }
 }

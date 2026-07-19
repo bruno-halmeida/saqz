@@ -1,4 +1,4 @@
-package br.com.saqz.access.ui
+package br.com.saqz.groups.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,24 +15,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.network.SessionMembershipDto
-import br.com.saqz.access.presentation.GroupAdministrationState
-import br.com.saqz.access.presentation.GroupSelectionState
-import br.com.saqz.access.presentation.SessionAccessState
-import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.access.resources.Res
-import br.com.saqz.access.resources.action_back
-import br.com.saqz.access.resources.action_retry
-import br.com.saqz.access.resources.bootstrap_error
-import br.com.saqz.access.resources.group_create_submit
-import br.com.saqz.access.resources.group_create_title
-import br.com.saqz.access.resources.group_name
-import br.com.saqz.access.resources.group_name_invalid
-import br.com.saqz.access.resources.group_timezone
-import br.com.saqz.access.resources.group_timezone_invalid
-import br.com.saqz.access.resources.groups_create
-import br.com.saqz.access.resources.groups_empty
-import br.com.saqz.access.resources.groups_load_error
-import br.com.saqz.access.resources.groups_select
+import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.resources.*
 import br.com.saqz.designsystem.component.SaqzBadge
 import br.com.saqz.designsystem.component.SaqzBadgeVariant
 import br.com.saqz.designsystem.component.SaqzButton
@@ -82,18 +67,6 @@ data class CreateGroupUiState(
 
     val isValid: Boolean
         get() = validName && validTimeZone
-}
-
-@Composable
-fun BootstrapAccessScreen(state: SessionAccessState, onIntent: (SessionIntent) -> Unit) {
-    when (state) {
-        SessionAccessState.Bootstrapping -> SaqzLoadingState(Modifier.testTag(GroupOnboardingTags.BootstrapLoading))
-        SessionAccessState.BootstrapError -> CenteredActions {
-            Text(stringResource(Res.string.bootstrap_error), color = SaqzTheme.colors.textPrimary)
-            SaqzButton(stringResource(Res.string.action_retry), { onIntent(SessionIntent.RetryBootstrap) })
-        }
-        else -> Unit
-    }
 }
 
 @Composable
@@ -183,12 +156,6 @@ internal fun ScrollColumn(content: @Composable () -> Unit) {
             .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.sectionVerticalPadding),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) { content() }
-}
-
-@Preview
-@Composable
-private fun BootstrapAccessScreenPreview() = SaqzTheme {
-    BootstrapAccessScreen(SessionAccessState.BootstrapError, {})
 }
 
 @Preview

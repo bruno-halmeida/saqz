@@ -17,14 +17,24 @@ import br.com.saqz.access.port.TokenCallback
 import br.com.saqz.access.port.TokenResult
 import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
+import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupOperationResult
+import br.com.saqz.groups.port.GroupResultCallback
+import br.com.saqz.groups.port.GroupValueCallback
+import br.com.saqz.groups.port.GroupValueResult
+import br.com.saqz.groups.port.LocalGroupStatePort
+import br.com.saqz.groups.port.NativeGroupLinkPort
 
 class SaqzAppDependencies(
     val environment: String,
     val apiBaseUrl: String,
     val auth: NativeAuthPort,
-    val links: NativeLinkPort,
+    val links: NativeLinkPort = UnconfiguredLinkPort,
     val localState: LocalAccessStatePort,
     val share: NativeSharePort,
+    val groupLinks: NativeGroupLinkPort = UnconfiguredGroupLinkPort,
+    val groupState: LocalGroupStatePort = UnconfiguredGroupStatePort,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }
@@ -39,6 +49,8 @@ class SaqzAppDependencies(
             links = UnconfiguredLinkPort,
             localState = UnconfiguredLocalStatePort,
             share = UnconfiguredSharePort,
+            groupLinks = UnconfiguredGroupLinkPort,
+            groupState = UnconfiguredGroupStatePort,
         )
     }
 }
@@ -84,4 +96,15 @@ private object UnconfiguredLocalStatePort : LocalAccessStatePort {
 
 private object UnconfiguredSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object UnconfiguredGroupLinkPort : NativeGroupLinkPort {
+    override fun start(listener: GroupInviteCodeListener): GroupCancelable = object : GroupCancelable { override fun cancel() = Unit }
+}
+
+private object UnconfiguredGroupStatePort : LocalGroupStatePort {
+    override fun readSelectedGroupId(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
+    override fun writeSelectedGroupId(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+    override fun readPendingInvite(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
+    override fun writePendingInvite(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
 }

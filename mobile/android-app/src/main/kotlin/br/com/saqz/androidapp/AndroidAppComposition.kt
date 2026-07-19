@@ -8,6 +8,8 @@ import br.com.saqz.androidapp.access.AndroidEncryptedAccessStateStore
 import br.com.saqz.androidapp.access.AndroidGoogleCredentialClient
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.androidapp.access.AndroidLinkAdapter
+import br.com.saqz.androidapp.access.AndroidGroupLinkAdapter
+import br.com.saqz.androidapp.access.AndroidGroupStateAdapter
 import br.com.saqz.androidapp.access.AndroidLocalAccessStateAdapter
 import br.com.saqz.androidapp.access.AndroidShareAdapter
 import br.com.saqz.androidapp.access.AndroidShareLauncher
@@ -61,6 +63,8 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                 links = links,
                 localState = localState,
                 share = share,
+                groupLinks = AndroidGroupLinkAdapter(links),
+                groupState = AndroidGroupStateAdapter(localState),
             ),
             links = links,
         )

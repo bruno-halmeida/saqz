@@ -1,4 +1,4 @@
-package br.com.saqz.access.ui
+package br.com.saqz.groups.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -11,13 +11,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
-import br.com.saqz.access.data.GroupDto
-import br.com.saqz.access.data.GroupRoleDto
-import br.com.saqz.access.data.VersionedGroupDto
-import br.com.saqz.access.presentation.GroupAdministrationState
-import br.com.saqz.access.presentation.GroupSelectionState
-import br.com.saqz.access.presentation.SessionAccessState
-import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.groups.data.*
+import br.com.saqz.groups.presentation.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionMembershipDto
 import kotlin.test.Test
@@ -25,19 +20,6 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class GroupOnboardingScreensTest {
-    @Test fun `bootstrap renders progress without login`() = runComposeUiTest {
-        bootstrap(SessionAccessState.Bootstrapping)
-        onNodeWithTag(GroupOnboardingTags.BootstrapLoading).assertExists()
-        onNodeWithText("Entrar").assertDoesNotExist()
-    }
-
-    @Test fun `bootstrap error retries without returning to login`() = runComposeUiTest {
-        var intent: SessionIntent? = null; bootstrap(SessionAccessState.BootstrapError, { intent = it })
-        onNodeWithText("Tentar novamente").performClick()
-        assertEquals(SessionIntent.RetryBootstrap, intent)
-        onNodeWithText("Entrar").assertDoesNotExist()
-    }
-
     @Test fun `empty memberships offer group creation`() = runComposeUiTest {
         var intent: GroupOnboardingIntent? = null; groups(GroupSelectionState.NoGroup) { intent = it }
         onNodeWithText("Criar grupo").performClick()
@@ -125,11 +107,6 @@ class GroupOnboardingScreensTest {
         }
         onNodeWithTag(GroupOnboardingTags.CreateSubmit).assertIsNotEnabled()
     }
-
-    private fun androidx.compose.ui.test.ComposeUiTest.bootstrap(
-        state: SessionAccessState,
-        onIntent: (SessionIntent) -> Unit = {},
-    ) = setContent { SaqzTheme { BootstrapAccessScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.groups(
         state: GroupSelectionState,

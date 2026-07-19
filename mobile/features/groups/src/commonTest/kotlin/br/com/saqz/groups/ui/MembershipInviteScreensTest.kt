@@ -1,4 +1,4 @@
-package br.com.saqz.access.ui
+package br.com.saqz.groups.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,12 +10,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.access.data.GroupRoleDto
-import br.com.saqz.access.data.MembershipDto
-import br.com.saqz.access.data.PersistedRoleDto
-import br.com.saqz.access.presentation.GroupActions
-import br.com.saqz.access.presentation.GroupAdministrationState
-import br.com.saqz.access.presentation.InviteUiError
+import br.com.saqz.groups.data.*
+import br.com.saqz.groups.presentation.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals

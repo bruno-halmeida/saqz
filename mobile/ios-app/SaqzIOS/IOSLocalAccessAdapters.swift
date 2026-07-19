@@ -115,6 +115,27 @@ final class IOSLocalAccessStateAdapter: @preconcurrency LocalAccessStatePort {
 }
 
 @MainActor
+final class IOSLocalGroupStateAdapter: @preconcurrency LocalGroupStatePort {
+    private let store: IOSAccessStateStore
+    init(store: IOSAccessStateStore) { self.store = store }
+
+    func readSelectedGroupId(done_ done: GroupValueCallback) { read(done, store.readSelectedGroupID) }
+    func writeSelectedGroupId(value: String?, done_ done: GroupResultCallback) { write(done) { try store.writeSelectedGroupID(value) } }
+    func readPendingInvite(done_ done: GroupValueCallback) { read(done, store.readPendingInvite) }
+    func writePendingInvite(value: String?, done_ done: GroupResultCallback) { write(done) { try store.writePendingInvite(value) } }
+
+    private func read(_ done: GroupValueCallback, _ operation: () throws -> String?) {
+        do { done.complete(result_____: GroupValueResultSuccess(value: try operation())) }
+        catch { done.complete(result_____: GroupValueResultFailure(code: .unknown)) }
+    }
+
+    private func write(_ done: GroupResultCallback, _ operation: () throws -> Void) {
+        do { try operation(); done.complete(result____: GroupOperationResultSuccess.shared) }
+        catch { done.complete(result____: GroupOperationResultFailure(code: .unknown)) }
+    }
+}
+
+@MainActor
 protocol IOSShareLauncher: AnyObject { func launch(text: String) throws }
 
 @MainActor

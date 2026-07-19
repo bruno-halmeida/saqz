@@ -21,15 +21,18 @@ struct IOSAppComposition {
     let auth: IOSAuthAdapter
     let links: IOSLinkAdapter
     let localState: IOSLocalAccessStateAdapter
+    let groupState: IOSLocalGroupStateAdapter
     let share: IOSShareAdapter
     let dependencies: SaqzAppDependencies
 
     static func makeLive(configuration: IOSAppConfiguration = .bundled()) -> IOSAppComposition {
         let auth = IOSAuthComposition.makeLive()
         let links = IOSLinkComposition.makeLive()
-        let localState = IOSLocalAccessComposition.makeState()
+        let store = IOSUserDefaultsKeychainAccessStateStore()
+        let localState = IOSLocalAccessStateAdapter(store: store)
+        let groupState = IOSLocalGroupStateAdapter(store: store)
         let share = IOSLocalAccessComposition.makeShare { IOSPresentationRoot.current }
-        return make(configuration: configuration, auth: auth, links: links, localState: localState, share: share)
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share)
     }
 
     static func make(
@@ -37,6 +40,7 @@ struct IOSAppComposition {
         auth: IOSAuthAdapter,
         links: IOSLinkAdapter,
         localState: IOSLocalAccessStateAdapter,
+        groupState: IOSLocalGroupStateAdapter,
         share: IOSShareAdapter
     ) -> IOSAppComposition {
         links.onColdStart(url: nil)
@@ -44,12 +48,22 @@ struct IOSAppComposition {
             environment: configuration.environment,
             apiBaseUrl: configuration.apiBaseURL,
             auth: auth,
-            links: links,
+            links: IOSNoOpAccessLinkPort(),
             localState: localState,
-            share: share
+            share: share,
+            groupLinks: links,
+            groupState: groupState
         )
-        return IOSAppComposition(auth: auth, links: links, localState: localState, share: share, dependencies: dependencies)
+        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, dependencies: dependencies)
     }
+}
+
+private final class IOSNoOpAccessLinkPort: @preconcurrency NativeLinkPort {
+    func start(listener: InviteCodeListener) -> Cancelable { IOSNoOpAccessLinkCancellation() }
+}
+
+private final class IOSNoOpAccessLinkCancellation: Cancelable {
+    func cancel() {}
 }
 
 @MainActor

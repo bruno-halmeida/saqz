@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
-import br.com.saqz.access.data.GroupApi
-import br.com.saqz.access.data.RolesInvitesApi
+import br.com.saqz.groups.data.GroupApi
+import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
 import br.com.saqz.access.port.Cancelable
@@ -28,40 +28,48 @@ import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.AuthenticationStateMachine
-import br.com.saqz.access.presentation.DeferredInviteIntent
-import br.com.saqz.access.presentation.DeferredInviteStateMachine
-import br.com.saqz.access.presentation.GroupAdministrationIntent
-import br.com.saqz.access.presentation.GroupAdministrationState
-import br.com.saqz.access.presentation.GroupAdministrationStateMachine
-import br.com.saqz.access.presentation.GroupSelectionIntent
-import br.com.saqz.access.presentation.GroupSelectionState
-import br.com.saqz.access.presentation.GroupSelectionStateMachine
-import br.com.saqz.access.presentation.InviteUiError
+import br.com.saqz.groups.presentation.DeferredInviteIntent
+import br.com.saqz.groups.presentation.DeferredInviteStateMachine
+import br.com.saqz.groups.presentation.GroupAdministrationIntent
+import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
+import br.com.saqz.groups.presentation.GroupSelectionIntent
+import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.presentation.GroupSelectionStateMachine
+import br.com.saqz.groups.presentation.InviteUiError
+import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupOperationResult
+import br.com.saqz.groups.port.GroupResultCallback
+import br.com.saqz.groups.port.GroupValueCallback
+import br.com.saqz.groups.port.GroupValueResult
+import br.com.saqz.groups.port.LocalGroupStatePort
+import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.ui.BootstrapAccessScreen
-import br.com.saqz.access.ui.CreateGroupIntent
-import br.com.saqz.access.ui.CreateGroupScreen
-import br.com.saqz.access.ui.CreateGroupUiState
-import br.com.saqz.access.ui.ExpireInviteConfirmationDialog
-import br.com.saqz.access.ui.ExpireInviteConfirmationIntent
-import br.com.saqz.access.ui.GroupContextScreen
-import br.com.saqz.access.ui.GroupContextIntent
-import br.com.saqz.access.ui.GroupOnboardingScreen
-import br.com.saqz.access.ui.GroupOnboardingIntent
-import br.com.saqz.access.ui.GroupSettingsScreen
-import br.com.saqz.access.ui.GroupSettingsIntent
-import br.com.saqz.access.ui.GroupSettingsUiState
-import br.com.saqz.access.ui.InviteManagementScreen
-import br.com.saqz.access.ui.InviteManagementIntent
-import br.com.saqz.access.ui.InviteManagementUiState
-import br.com.saqz.access.ui.InviteToolState
+import br.com.saqz.groups.ui.CreateGroupIntent
+import br.com.saqz.groups.ui.CreateGroupScreen
+import br.com.saqz.groups.ui.CreateGroupUiState
+import br.com.saqz.groups.ui.ExpireInviteConfirmationDialog
+import br.com.saqz.groups.ui.ExpireInviteConfirmationIntent
+import br.com.saqz.groups.ui.GroupContextScreen
+import br.com.saqz.groups.ui.GroupContextIntent
+import br.com.saqz.groups.ui.GroupOnboardingScreen
+import br.com.saqz.groups.ui.GroupOnboardingIntent
+import br.com.saqz.groups.ui.GroupSettingsScreen
+import br.com.saqz.groups.ui.GroupSettingsIntent
+import br.com.saqz.groups.ui.GroupSettingsUiState
+import br.com.saqz.groups.ui.InviteManagementScreen
+import br.com.saqz.groups.ui.InviteManagementIntent
+import br.com.saqz.groups.ui.InviteManagementUiState
+import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.access.ui.LoginScreen
-import br.com.saqz.access.ui.LogoutConfirmationDialog
-import br.com.saqz.access.ui.LogoutConfirmationIntent
-import br.com.saqz.access.ui.MembershipAdministrationScreen
-import br.com.saqz.access.ui.MembershipAdministrationIntent
+import br.com.saqz.groups.ui.LogoutConfirmationDialog
+import br.com.saqz.groups.ui.LogoutConfirmationIntent
+import br.com.saqz.groups.ui.MembershipAdministrationScreen
+import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionScreen
 import br.com.saqz.access.ui.PasswordResetScreen
 import br.com.saqz.access.ui.RegistrationScreen
@@ -188,11 +196,13 @@ internal class AccessRuntime(
     private val authentication = AuthenticationStateMachine(dependencies.auth) {
         session.onIntent(SessionIntent.Accept(it))
     }
-    private val selection = GroupSelectionStateMachine(dependencies.localState, groups, scope)
+    private val groupState = dependencies.groupState
+    private val groupLinks = dependencies.groupLinks
+    private val selection = GroupSelectionStateMachine(groupState, groups, scope)
     private val administration = GroupAdministrationStateMachine(groups, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
-    private val invites = DeferredInviteStateMachine(dependencies.links, dependencies.localState, roles, scope) {
+    private val invites = DeferredInviteStateMachine(groupLinks, groupState, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
     }
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())

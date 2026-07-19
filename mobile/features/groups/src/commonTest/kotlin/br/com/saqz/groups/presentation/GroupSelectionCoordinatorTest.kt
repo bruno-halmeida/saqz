@@ -1,15 +1,7 @@
-package br.com.saqz.access.presentation
+package br.com.saqz.groups.presentation
 
-import br.com.saqz.access.data.GroupDto
-import br.com.saqz.access.data.GroupGateway
-import br.com.saqz.access.data.GroupRoleDto
-import br.com.saqz.access.data.VersionedGroupDto
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.NativeFailureCode
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.ValueCallback
-import br.com.saqz.access.port.ValueResult
+import br.com.saqz.groups.data.*
+import br.com.saqz.groups.port.*
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionDto
@@ -225,10 +217,10 @@ class GroupSelectionStateMachineTest {
 
     private class FakeLocalState(private val stored: String?) : LocalAccessStatePort {
         val writes = mutableListOf<String?>()
-        override fun readSelectedGroupId(done: ValueCallback) = done.complete(ValueResult.Success(stored))
-        override fun writeSelectedGroupId(value: String?, done: ResultCallback) { writes += value; done.complete(OperationResult.Success) }
-        override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(null))
-        override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
+        override fun readSelectedGroupId(done: ValueCallback) = done.complete(GroupValueResult.Success(stored))
+        override fun writeSelectedGroupId(value: String?, done: ResultCallback) { writes += value; done.complete(GroupOperationResult.Success) }
+        override fun readPendingInvite(done: ValueCallback) = done.complete(GroupValueResult.Success(null))
+        override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
     }
 
     private class FakeGroupGateway : GroupGateway {
