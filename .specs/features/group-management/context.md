@@ -42,6 +42,7 @@ the first game. Later games copy those defaults and own their historical data.
 | Optional profile fields | Photo/logo, description, and city appear during registration and remain editable. |
 | Timezone | Required system data detected automatically; users never type an IANA identifier. |
 | Privacy | Every group is private and invite-only; there is no public discovery. |
+| Invitation journey | Owner/admin creates, shares, rotates, or expires one opaque Branch invite link; cold, warm, and install-deferred opens wait for verified authentication, redeem idempotently, and select the group without exposing group data. |
 | Editing | `OWNER` and `ADMIN` edit group information; `ATHLETE` is read-only. |
 | Lifecycle | Group deletion, ownership transfer, and leaving are out of scope. |
 | First game | Registration does not create or require a game. |
@@ -74,11 +75,12 @@ the first game. Later games copy those defaults and own their historical data.
 
 ## Relationship to authentication/access
 
-Authentication/access remains authoritative for identity, bootstrap, group
-selection, owner/admin/athlete roles, memberships, and invitations. This feature
-supersedes only the group metadata portions of `GROUP-01` and `GROUP-06`, while
-retaining atomic owner creation, idempotency, authorization, and optimistic
-concurrency.
+Authentication/access remains authoritative for identity, account/session
+bootstrap, and selected-group reconciliation. Group Management takes code and
+domain ownership of owner/admin/athlete roles, memberships, and invitations
+without changing their existing IDs or behavior. This feature supersedes the
+group metadata portions of `GROUP-01` and `GROUP-06`, while retaining atomic
+owner creation, idempotency, authorization, and optimistic concurrency.
 
 ## Open questions
 

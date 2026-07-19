@@ -32,10 +32,11 @@ monthly charges plus group expenses without processing money.
 
 ## Ownership and compatibility
 
-- Authentication/access owns verified identity, the single `OWNER`,
-  `ADMIN`/`ATHLETE` memberships, invitations, and selected-group reconciliation.
-- Group Management owns profile, reusable defaults, venues, game series,
-  occurrences, attendance, charges, manual payment status, and expenses.
+- Authentication/access owns verified identity, account/session bootstrap, and
+  selected-group reconciliation.
+- Group Management owns the single `OWNER`, `ADMIN`/`ATHLETE` memberships,
+  invitations, profile, reusable defaults, venues, game series, occurrences,
+  attendance, charges, manual payment status, and expenses.
 - Existing IDs, memberships, invitations, and creation idempotency survive the
   migration unchanged.
 - Existing groups remain readable but are marked `INCOMPLETE` until an
@@ -178,6 +179,28 @@ keys, cents, or timezone identifiers.
   fallback mark.
 - Storage provider and raw object key never become durable public API fields.
 - Production media is private; only current members may retrieve it.
+
+## Invitation links and deep links
+
+- `OWNER`/`ADMIN` create or rotate the group's single active invitation, share
+  its Branch Long Link, and explicitly expire it. Rotation immediately
+  invalidates the previous code.
+- The link contains only an opaque invite capability. It never contains a group
+  ID, name, city, photo, schedule, member, email address, or finance data, and
+  it provides no unauthenticated group preview.
+- Android/iOS accept the same verified HTTPS link from cold start, warm open,
+  Universal/App Link, or Branch install-deferred delivery. Direct and Branch
+  copies of the same event redeem only once.
+- If no verified session exists, the opaque code survives safe app restart and
+  waits for authentication. Successful redemption creates at most one
+  `ATHLETE` membership, preserves an existing role, clears the pending code,
+  selects the group, and opens its private context.
+- Explicit discard/logout clears a pending code. Invalid, expired, or rotated
+  codes clear terminal pending state and reveal no group existence; temporary
+  failures remain retryable with the same code.
+- Redemption attempts retain the existing abuse limit of ten invalid codes per
+  user in ten minutes and return a retry interval without disclosing which
+  group, if any, a code once represented.
 
 ## Game model
 
@@ -405,6 +428,22 @@ keys, cents, or timezone identifiers.
     membership, invitation, logout, credential, workspace isolation, backend,
     Android, and iOS gates SHALL remain mandatory and green.
 
+### Invitation and deep-link journey
+
+31. **INVITE-01** — WHEN an owner/admin generates, rotates, expires, or shares
+    an invitation THEN exactly one opaque active capability SHALL be managed
+    without placing private group or user data in the link or preview.
+32. **INVITE-02** — WHEN the active link opens cold, warm, or after installation
+    before/after authentication THEN its code SHALL be delivered once, survive
+    safe restart until a verified session is ready, and never bypass auth.
+33. **INVITE-03** — WHEN a valid code is redeemed or retried THEN membership
+    SHALL be created at most once without downgrading an existing role, pending
+    state SHALL clear, and the redeemed group SHALL become selected and open.
+34. **INVITE-04** — WHEN a code is invalid, expired, rotated, duplicated, or
+    rate-limited THEN no group data or existence SHALL leak, no duplicate
+    membership/selection SHALL occur, and only retryable outcomes SHALL retain
+    pending state.
+
 ## Verification requirements
 
 - Backend unit/domain tests cover every enum, conditional rule, transition,
@@ -419,6 +458,9 @@ keys, cents, or timezone identifiers.
 - Compose tests cover registration sections, venue/slot editors, game lifecycle,
   RSVP/waitlist, charge visibility, expense forms, accessibility, and large text.
 - Android/iOS tests cover image permissions/cancellation and lifecycle recovery.
+- Backend/KMP/native journey tests cover invite generation/share, rotation,
+  expiry, cold/warm/install-deferred delivery, authentication waiting, restart,
+  idempotent redemption, selection, invalid codes, and attempt limiting.
 - Security gates prove no production media/payment credential, public object,
   client-authoritative charge/status, or sensitive log enters the repository.
 
@@ -435,5 +477,7 @@ keys, cents, or timezone identifiers.
   auditably without payment processing.
 - [ ] Existing groups migrate without identity, owner, membership, invitation,
   or selection loss.
+- [ ] One opaque invitation link works across cold, warm, authenticated, and
+  install-deferred opens without private preview or duplicate redemption.
 - [ ] Complete backend, mobile, native, safety, and aggregate gates pass with no
   skipped or weakened tests.

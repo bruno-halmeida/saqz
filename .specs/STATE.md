@@ -202,15 +202,21 @@
 - **Date**: 2026-07-17
 - **Status**: active
 
+### AD-026
+- **Decision**: Group profile, memberships, roles, invitations, venues, games, attendance, manual charges, and expenses live in dedicated backend/mobile Groups features; Access retains verified identity, account/session bootstrap, and selected-group reconciliation, with backend cross-feature collaboration only through provider-neutral shared-kernel ports wired in bootstrap.
+- **Reason**: The current Access feature and route ViewModel already mix authentication with group administration, while upcoming recurrence, concurrency, media, and finance behavior needs an independently enforced business boundary without feature-to-feature dependencies.
+- **Trade-off**: Existing group/membership/invite code must migrate compatibly, bootstrap gains two shared port bindings, and architecture inventories/tests must expand before new product behavior is added.
+- **Scope**: Backend and mobile module graphs, group/access ownership, shared-kernel integration seams, Spring composition, and all group-management delivery.
+- **Date**: 2026-07-19
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: ios-ci-dev-only — .specs/features/ios-ci-dev-only/
-- **Phase / Task**: Verified. T01 and standalone validation are complete; `validation.md` is PASS.
-- **Completed**: CI invokes `scripts/check-ios --dev-only`; default local mode retains SaqzDev + SaqzProd. Signal harness V1/B1 was stabilized in ac85baa; Dev-only shipped in d3d02e3.
-- **Baseline**: main at d3d02e3, synchronized with origin; .gitignore has unrelated local modifications and was not staged.
-- **Coverage**: check-ios 15/15, check-ci 36/36, check-readme 21/21, scripts/test-scripts PASS; real Dev-only 12 unit + 8 UI tests in 120.20 seconds.
-- **Next step**: Design production CI separately when release/signing requirements are approved.
-- **External hold**: none.
-- **Blockers**: none.
-- **Tracking**: .specs remains intentionally ignored and local.
+- **Feature**: group-management — `.specs/features/group-management/`
+- **Phase / Task**: Execute — Phase 1 / T01 (shared integration contracts).
+- **Completed**: Confirmed context/spec including `INVITE-01..04`; approved design; AD-026 recorded; approved 67-task delivery plan across 10 sequential phases; task granularity, dependency, co-location, and 34/34 traceability checks pass.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:1` — execute T01–T07 as the first approved sequential batch.
+- **Next step**: Commit the approved planning artifacts, then execute and verify T01–T07 one task at a time with atomic commits.
+- **Blockers**: None.
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/context.md`, `spec.md`, `design.md`, `tasks.md` (planning-artifact commit pending).
 - **Branch**: main
