@@ -133,6 +133,30 @@ class NetworkClientTest {
     }
 
     @Test
+    fun `network logs describe requests and failures without secrets`() = runTest {
+        val token = "private-bearer-token"
+        val body = "private-response-body"
+        val messages = mutableListOf<String>()
+        val engine = MockEngine {
+            respondError(HttpStatusCode.ServiceUnavailable, body)
+        }
+        val client = NetworkClient(
+            engine,
+            NetworkConfig("dev", "https://api.example.test/"),
+            NetworkLogger(messages::add),
+        )
+
+        client.execute(HttpMethod.Put, "api/session", serializer<ProbeResponse>(), token)
+
+        assertEquals(2, messages.size)
+        assertTrue(messages[0].contains("request PUT https://api.example.test/api/session authenticated=true"))
+        assertTrue(messages[1].contains("status=503"))
+        assertTrue(messages[1].contains("result=http-error status=503"))
+        assertFalse(messages.any { it.contains(token) })
+        assertFalse(messages.any { it.contains(body) })
+    }
+
+    @Test
     fun `sensitive server body is never retained in failure`() = runTest {
         val secret = "private-response-fixture-secret"
         val result = client(responding(secret, HttpStatusCode.InternalServerError))

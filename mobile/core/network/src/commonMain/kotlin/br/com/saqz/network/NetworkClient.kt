@@ -22,10 +22,17 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import io.ktor.utils.io.readRemaining
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
+
+fun interface NetworkLogger {
+    fun log(message: String)
+}
 
 class NetworkClient(
     engine: HttpClientEngine,
     private val config: NetworkConfig,
+    private val logger: NetworkLogger = NetworkLogger {},
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -66,50 +73,91 @@ class NetworkClient(
         bearerToken: String?,
         request: NetworkRequest,
         decode: (String) -> T,
-    ): NetworkResult<T> = try {
-        val response = client.request(config.baseUrl) {
-            this.method = method
-            url { appendPathSegments(path.trimStart('/')) }
-            if (bearerToken != null) bearerAuth(bearerToken)
-            request.headers.forEach { (name, value) -> header(name, value) }
-            request.body?.let { body ->
-                contentType(ContentType.Application.Json)
-                setBody(body)
+    ): NetworkResult<T> {
+        val requestDescription = "${method.value} ${config.baseUrl.trimEnd('/')}/${path.trimStart('/')}"
+        val started = TimeSource.Monotonic.markNow()
+        log("request $requestDescription authenticated=${bearerToken != null}")
+        return try {
+            val response = client.request(config.baseUrl) {
+                this.method = method
+                url { appendPathSegments(path.trimStart('/')) }
+                if (bearerToken != null) bearerAuth(bearerToken)
+                request.headers.forEach { (name, value) -> header(name, value) }
+                request.body?.let { body ->
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }
             }
-        }
-        if (response.status.value in 200..299) {
-            val body = response.bodyAsText()
-            runCatching { decode(body) }
-                .fold(
-                    onSuccess = {
-                        NetworkResult.Success(
-                            it,
-                            NetworkResponseMetadata(
-                                response.headers.entries().associate { (name, values) -> name to values },
-                            ),
-                        )
-                    },
-                    onFailure = { NetworkResult.Failure(NetworkError.InvalidResponse) },
-                )
-        } else {
-            val bytes = response.bodyAsChannel()
-                .readRemaining(config.maxErrorBodyBytes.toLong() + 1)
-                .readByteArray()
-            val error = if (bytes.size > config.maxErrorBodyBytes) {
-                NetworkError.HttpStatus(response.status.value)
+            val result = if (response.status.value in 200..299) {
+                val body = response.bodyAsText()
+                runCatching { decode(body) }
+                    .fold(
+                        onSuccess = {
+                            NetworkResult.Success(
+                                it,
+                                NetworkResponseMetadata(
+                                    response.headers.entries().associate { (name, values) -> name to values },
+                                ),
+                            )
+                        },
+                        onFailure = { NetworkResult.Failure(NetworkError.InvalidResponse) },
+                    )
             } else {
-                mapError(response.status.value, bytes.decodeToString())
+                val bytes = response.bodyAsChannel()
+                    .readRemaining(config.maxErrorBodyBytes.toLong() + 1)
+                    .readByteArray()
+                val error = if (bytes.size > config.maxErrorBodyBytes) {
+                    NetworkError.HttpStatus(response.status.value)
+                } else {
+                    mapError(response.status.value, bytes.decodeToString())
+                }
+                NetworkResult.Failure(error)
             }
-            NetworkResult.Failure(error)
+            logResponse(requestDescription, response.status.value, started, result)
+            result
+        } catch (_: HttpRequestTimeoutException) {
+            failure(requestDescription, started, NetworkError.Timeout)
+        } catch (_: SocketTimeoutException) {
+            failure(requestDescription, started, NetworkError.Timeout)
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (failure: Throwable) {
+            failure(
+                requestDescription,
+                started,
+                NetworkError.Unavailable,
+                cause = failure::class.simpleName,
+            )
         }
-    } catch (_: HttpRequestTimeoutException) {
-        NetworkResult.Failure(NetworkError.Timeout)
-    } catch (_: SocketTimeoutException) {
-        NetworkResult.Failure(NetworkError.Timeout)
-    } catch (failure: CancellationException) {
-        throw failure
-    } catch (_: Throwable) {
-        NetworkResult.Failure(NetworkError.Unavailable)
+    }
+
+    private fun <T> failure(
+        requestDescription: String,
+        started: TimeMark,
+        error: NetworkError,
+        cause: String? = null,
+    ): NetworkResult<T> = NetworkResult.Failure(error).also {
+        logResponse(requestDescription, null, started, it, cause)
+    }
+
+    private fun logResponse(
+        requestDescription: String,
+        status: Int?,
+        started: TimeMark,
+        result: NetworkResult<*>,
+        cause: String? = null,
+    ) {
+        val statusDescription = status?.toString() ?: "none"
+        val causeDescription = cause?.let { " cause=$it" }.orEmpty()
+        log(
+            "response $requestDescription status=$statusDescription " +
+                "durationMs=${started.elapsedNow().inWholeMilliseconds} " +
+                "result=${result.logDescription()}$causeDescription",
+        )
+    }
+
+    private fun log(message: String) {
+        runCatching { logger.log(message) }
     }
 
     fun close() {
@@ -120,6 +168,23 @@ class NetworkClient(
         val problem = runCatching { json.decodeFromString(ApiProblem.serializer(), body) }.getOrNull()
         return if (problem == null) NetworkError.HttpStatus(status) else NetworkError.ApiProblemError(problem)
     }
+}
+
+private fun NetworkResult<*>.logDescription(): String = when (this) {
+    is NetworkResult.Success -> "success"
+    is NetworkResult.Failure -> error.logDescription()
+}
+
+private fun NetworkError.logDescription(): String = when (this) {
+    is NetworkError.ApiProblemError -> buildString {
+        append("api-error")
+        append(" code=${problem.code ?: "none"}")
+        append(" correlationId=${problem.correlationId}")
+    }
+    is NetworkError.HttpStatus -> "http-error status=$status"
+    NetworkError.InvalidResponse -> "invalid-response"
+    NetworkError.Timeout -> "timeout"
+    NetworkError.Unavailable -> "unavailable"
 }
 
 expect fun createPlatformNetworkClient(config: NetworkConfig): NetworkClient
