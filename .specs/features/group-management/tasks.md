@@ -277,7 +277,7 @@ the single `SaqzMobile` framework without coupling it to Access.
 **Tests:** build/module unit (`Δ+1`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `build(groups): add mobile feature boundary`
-**Status:** Complete (`e2d4293`); required mobile quick and safety gates passed.
+**Status:** Complete (`463dc86`); required mobile quick and safety gates passed.
 
 ### T09: Migrate complete mobile group and invitation ownership to Groups
 
@@ -322,6 +322,9 @@ Android/iOS Branch adapters, and native share behavior.
 (`Δ0` moved suites; `Δ+8` route cases).
 **Gate:** Mobile integration + Android native + iOS native + Safety.
 **Commit:** `refactor(groups): migrate complete mobile group ownership`
+**Status:** Complete (`94ab9e8`); mobile integration, Android native, iOS
+native, and safety gates passed. Backprop `B3/V3` records the iOS generated
+Swift protocol-label failure found during this gate.
 
 ### T13: Prove the complete invitation and deep-link journey
 
