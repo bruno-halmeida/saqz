@@ -102,7 +102,7 @@ T01 → T02 → T03
 ### Phase 2: Mobile Groups boundary and invitation journey
 
 ```text
-T03 → T08 → T09 → T11 → T12 → T13
+T03 → T08 → T09 → T13
 ```
 
 ### Phase 3: Group profile, defaults, and registration
@@ -283,15 +283,18 @@ the single `SaqzMobile` framework without coupling it to Access.
 
 **What:** Atomically transfer group transport, selection/administration state,
 membership/invitation transport and behavior, people/invite UI/resources, and
-group-specific share/pending-code ports to Groups. The administration state
-directly depends on the membership/invite contracts, so the two ownership moves
-cannot cross the enforced Groups → Access boundary in intermediate commits.
+group-specific share/pending-code ports, route ViewModels/composition, and
+Android/iOS invite adapters to Groups. These pieces share Access resources,
+bootstrap UI, and native ports, so they cannot cross the enforced Groups →
+Access boundary in intermediate commits.
 **Where:** `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/{data,presentation}/`,
-`ui/`, `port/`, `composeResources/`, matching common tests; remove transferred
-Access files and retain authentication-only ports in Access.
+`ui/`, `port/`, `composeResources/`, matching common tests; `compose-app`
+navigation/composition; Android/iOS invitation adapters and tests. Remove
+transferred Access files and retain authentication-only ports in Access.
 **Depends on:** T08.
 **Reuses:** `GroupApi`, `RolesInvitesApi`, selection/administration and deferred
-invite coordinators, `AuthenticatedNetworkClient`, and native share behavior.
+invite coordinators, `AuthenticatedNetworkClient`, route lifecycle factories,
+Android/iOS Branch adapters, and native share behavior.
 **Requirement:** `GRP-REG-02..04`, `GRP-DEFAULT-04`, `GRP-PRIVATE-01`,
 `GRP-REGRESSION-01`, `INVITE-01..04`.
 
@@ -307,65 +310,18 @@ invite coordinators, `AuthenticatedNetworkClient`, and native share behavior.
   persisted/passed from native links.
 - [ ] Access contains no group state, people, invitation, or presentation code;
   authentication-only ports remain there.
-- [ ] Existing gateway, coordinator, and Compose tests move without a count
-  decrease; mobile quick and safety gates pass.
+- [ ] Groups route ViewModels own group context/people/invite commands;
+  Access route owns only auth/session/logout, and one-shot effects do not replay.
+- [ ] Cold, warm, Universal/App Link, and deferred Branch callbacks emit only
+  validated opaque codes once; unrelated/PII parameters remain ignored.
+- [ ] Existing gateway, coordinator, Compose, Android JVM, and XCTest coverage
+  moves without a count decrease; mobile integration, Android native, iOS
+  native, and safety gates pass.
 
-**Tests:** KMP gateway/state + Compose UI (`Δ0`).
-**Gate:** Mobile quick + Safety.
-**Commit:** `refactor(groups): migrate mobile group ownership`
-
-### T11: Split Access and Groups route ViewModels
-
-**What:** Replace the oversized mixed Access route state with Access auth/session
-ownership and Groups-owned group context/people/setup route ViewModels.
-**Where:** `mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/`,
-`mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/`,
-matching tests.
-**Depends on:** T09.
-**Reuses:** AD-025 typed intent/state/effect pattern, current
-`AccessViewModel` tests and lifecycle factories.
-**Requirement:** `GRP-UI-02`, `GRP-REGRESSION-01`, `INVITE-02..03`.
-
-**Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
-
-**Done when:**
-
-- [ ] Access route exposes only auth/session/logout behavior.
-- [ ] Groups route ViewModels own selection, context, people, invite, and
-  create/settings commands through one typed `onIntent` each.
-- [ ] One-shot share/navigation effects never replay after recreation.
-- [ ] Mobile integration gate passes; test count `Δ+8` or greater.
-
-**Tests:** KMP ViewModel + Compose app unit (`Δ+8`).
-**Gate:** Mobile integration + Safety.
-**Commit:** `refactor(groups): split mobile route state`
-
-### T12: Rebind Android and iOS invite adapters to Groups ports
-
-**What:** Update native link/share/local-pending-state compositions to implement
-Groups-owned provider-neutral ports without changing Branch lifecycle behavior.
-**Where:** `mobile/android-app/src/{main,test}/`,
-`mobile/ios-app/SaqzIOS/`, `mobile/ios-app/SaqzIOSTests/`, app composition.
-**Depends on:** T11.
-**Reuses:** `AndroidLinkAdapter`, `IOSLinkAdapter`, current Branch test/live
-configuration, native share/local state adapters.
-**Requirement:** `INVITE-01..04`, `GRP-REGRESSION-01`.
-
-**Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
-
-**Done when:**
-
-- [ ] Cold, warm, Universal/App Link, and deferred Branch callbacks still emit
-  only validated opaque codes.
-- [ ] Direct/Branch duplicate events emit once and unrelated/PII parameters are
-  ignored.
-- [ ] Test/live Branch configuration and no-secret fixtures remain unchanged.
-- [ ] Android native and iOS native gates pass with affected-suite count `Δ0`
-  or greater.
-
-**Tests:** Android JVM + XCTest (`Δ0`).
-**Gate:** Android native + iOS native + Safety.
-**Commit:** `refactor(groups): rebind native invitation ports`
+**Tests:** KMP gateway/state + Compose UI + app integration + Android JVM + XCTest
+(`Δ0` moved suites; `Δ+8` route cases).
+**Gate:** Mobile integration + Android native + iOS native + Safety.
+**Commit:** `refactor(groups): migrate complete mobile group ownership`
 
 ### T13: Prove the complete invitation and deep-link journey
 
@@ -375,7 +331,7 @@ outcomes.
 **Where:** `backend/bootstrap/src/test/`,
 `mobile/features/groups/src/commonTest/`, `mobile/compose-app/src/commonTest/`,
 Android/iOS native lifecycle tests, existing invitation Bruno requests.
-**Depends on:** T12.
+**Depends on:** T09.
 **Reuses:** existing invite endpoint, deferred state-machine, Branch adapters,
 selected-group store and auth/session fakes.
 **Requirement:** `INVITE-01..04`, `GRP-PRIVATE-01`,
@@ -1938,7 +1894,7 @@ resource preflight/contracts, feature docs status only after evidence.
 
 ```text
 Phase 1  T01 → T02 → T03
-Phase 2  T03 → T08 → T09 → T11 → T12 → T13
+Phase 2  T03 → T08 → T09 → T13
 Phase 3  T13 → T14 → T15 → T16 → T17 → T18 → T19 → T20 → T21 → T22
 Phase 4  T22 → T23 → T24 → T25 → T26 → T27 → T28 → T29
 Phase 5  T29 → T30 → T31 → T32 → T33 → T34 → T35 → T36
@@ -1964,9 +1920,9 @@ batching unit and are never split between workers.
 | `GAME-01..04` | T18, T30..T42, T54, T63..T67 |
 | `ATTEND-01..04` | T30, T33, T45, T49..T57, T66..T67 |
 | `FIN-01..07` | T17..T18, T31, T43..T48, T50..T62, T66..T67 |
-| `GRP-UI-01..02` | T08, T11, T13, T20..T23, T26..T29, T32, T35..T42, T46, T48, T51..T67 |
+| `GRP-UI-01..02` | T08, T09, T13, T20..T23, T26..T29, T32, T35..T42, T46, T48, T51..T67 |
 | `GRP-REGRESSION-01` | T01..T03, T08..T13, T65..T67 |
-| `INVITE-01..04` | T01, T03, T09, T11..T13, T65..T67 |
+| `INVITE-01..04` | T01, T03, T09, T13, T65..T67 |
 
 ## Task Granularity Check
 
@@ -1981,8 +1937,6 @@ necessary wiring are part of that deliverable, not deferred tasks.
 | T03: Complete backend ownership migration | atomic compatibility migration | ✅ Granular |
 | T08: Mobile Groups boundary | module boundary | ✅ Granular |
 | T09: Complete mobile ownership migration | atomic compatibility migration | ✅ Granular |
-| T11: Route ViewModel split | route-state boundary | ✅ Granular |
-| T12: Native invite port rebind | native compatibility seam | ✅ Granular |
 | T13: Invite/deep-link journey | cross-layer journey contract | ✅ Granular |
 | T14: Profile/default migration | one Flyway migration | ✅ Granular |
 | T15: Profile/default validation | domain validation aggregate | ✅ Granular |
@@ -2048,9 +2002,7 @@ necessary wiring are part of that deliverable, not deferred tasks.
 | T03 | T02 | T02 → T03 | ✅ Match |
 | T08 | T03 | T03 → T08 | ✅ Match |
 | T09 | T08 | T08 → T09 | ✅ Match |
-| T11 | T09 | T09 → T11 | ✅ Match |
-| T12 | T11 | T11 → T12 | ✅ Match |
-| T13 | T12 | T12 → T13 | ✅ Match |
+| T13 | T09 | T09 → T13 | ✅ Match |
 | T14 | T13 | T13 → T14 | ✅ Match |
 | T15 | T14 | T14 → T15 | ✅ Match |
 | T16 | T15 | T15 → T16 | ✅ Match |
@@ -2118,8 +2070,6 @@ immediate dependency. Transitive dependencies follow from the strict sequence.
 | T03 | atomic compatibility migration | unit + integration + HTTP | moved suites Δ0 + HTTP Δ+4 | ✅ OK |
 | T08 | module boundary | unit/build | unit Δ+1 | ✅ OK |
 | T09 | atomic compatibility migration | unit + Compose UI | moved suites Δ0 | ✅ OK |
-| T11 | route-state boundary | unit | ViewModel/app unit Δ+8 | ✅ OK |
-| T12 | native compatibility seam | Android JVM + XCTest | native unit Δ0 | ✅ OK |
 | T13 | cross-layer journey contract | HTTP + KMP + native | journey Δ+12 | ✅ OK |
 | T14 | one Flyway migration | PostgreSQL integration | integration Δ+14 | ✅ OK |
 | T15 | domain validation aggregate | unit | unit Δ+24 | ✅ OK |
@@ -2182,9 +2132,9 @@ the unit/integration tests co-located with the behavior-producing tasks.
 
 ## Pre-Approval Result
 
-- Task granularity: **62/62 pass**.
-- Diagram/definition consistency: **62/62 match**.
-- Test co-location: **62/62 pass**.
+- Task granularity: **60/60 pass**.
+- Diagram/definition consistency: **60/60 match**.
+- Test co-location: **60/60 pass**.
 - Acceptance-criteria traceability: **34/34 criteria owned**.
 - More than eight tasks: execution must first offer sequential whole-phase
   task-budgeted batches and wait for explicit user confirmation before spawning

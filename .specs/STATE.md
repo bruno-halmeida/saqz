@@ -215,8 +215,8 @@
 - **Feature**: group-management — `.specs/features/group-management/`
 - **Phase / Task**: Execute — Phase 2 / T09 (complete mobile Groups ownership migration).
 - **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `e2d4293` mobile Groups module boundary. Required gates passed. The user-approved task amendment merged the former T03–T07 sequence.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:282` — merge the incompatible former T09–T10 mobile ownership moves, then execute it.
-- **Next step**: Commit the T09/T10 plan amendment, then resume Phase 2 at merged T09.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:282` — merge the remaining incompatible T09–T12 mobile ownership seams, then execute it.
+- **Next step**: Commit the expanded T09 plan amendment, then complete the full no-cross-feature mobile migration before T13.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/tasks.md` (T09/T10 amendment pending).
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/group-management/tasks.md` (expanded T09 amendment pending), plus the worker's uncommitted T09 migration in progress.
 - **Branch**: main
