@@ -5,12 +5,19 @@ services:
     image: saqz-backend:dev
     build:
       context: ./backend
+    depends_on:
+      database:
+        condition: service_healthy
     ports:
       - "${SAQZ_BACKEND_PORT:-8080}:8080"
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SAQZ_FIREBASE_PROJECT_ID: saqz-dev
+      SAQZ_BRANCH_DOMAIN: https://saqz.test-app.link
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-admin
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/saqz
+      SPRING_DATASOURCE_USERNAME: saqz
+      SPRING_DATASOURCE_PASSWORD: saqz-local-dev-only
     secrets:
       - firebase-admin
     healthcheck:
@@ -26,6 +33,26 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: saqz
+      POSTGRES_USER: saqz
+      POSTGRES_PASSWORD: saqz-local-dev-only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saqz -d saqz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    volumes:
+      - saqz-postgres-data:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+
 secrets:
   firebase-admin:
     file: ./.secrets/firebase-dev-service-account.json
+
+volumes:
+  saqz-postgres-data:

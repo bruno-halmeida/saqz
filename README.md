@@ -32,13 +32,17 @@ docker compose ps
 curl http://localhost:8080/actuator/health
 ```
 
-The container uses the real `saqz-dev` Firebase project; it does not start the
-Auth Emulator. Follow logs or stop the stack with:
+The stack uses the real `saqz-dev` Firebase project and a local PostgreSQL 16
+database; it does not start the Auth Emulator. Database data persists in the
+`saqz-postgres-data` Docker volume. Follow logs or stop the stack with:
 
 ```bash
 docker compose logs -f backend
 docker compose down
 ```
+
+Use `docker compose down --volumes` only when you intentionally want to reset
+all local backend data.
 
 ### Bruno API Collection
 
