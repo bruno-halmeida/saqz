@@ -71,6 +71,21 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.received, [Self.codeA])
     }
 
+    func testRepeatedBranchCopiesAreDeliveredOnce() {
+        let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil)
+        fixture.branch.complete(["saqz_invite": Self.codeA])
+        fixture.branch.complete(["saqz_invite": Self.codeA])
+        XCTAssertEqual(fixture.received, [Self.codeA])
+    }
+
+    func testNewerWarmLinkAfterDuplicateIsDelivered() {
+        let fixture = Fixture(); fixture.start()
+        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
+        fixture.branch.complete(["saqz_invite": Self.codeA])
+        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeB)")!)
+        XCTAssertEqual(fixture.received, [Self.codeA, Self.codeB])
+    }
+
     func testLatestEventBeforeListenerWins() {
         let fixture = Fixture()
         fixture.adapter.onColdStart(url: URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)"))

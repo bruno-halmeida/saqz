@@ -108,6 +108,16 @@ class RolesInvitesApiTest {
     }
 
     @Test
+    fun `rotate URL carries no group user role or email data`() = runTest {
+        val result = assertIs<NetworkResult.Success<InviteUrlDto>>(fixture { inviteUrl() }.rotateInvite(GROUP_ID)).value.inviteUrl
+
+        assertFalse(result.contains(GROUP_ID))
+        assertFalse(result.contains(USER_ID))
+        assertFalse(result.contains("OWNER"))
+        assertFalse(result.contains("email"))
+    }
+
+    @Test
     fun `expire deletes exact invite route`() = runTest {
         val api = fixture { request ->
             assertEquals("DELETE", request.method.value)

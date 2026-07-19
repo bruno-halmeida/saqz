@@ -85,6 +85,22 @@ class InviteManagementEndpointIntegrationTest {
     }
 
     @Test
+    fun `owner rotate invite link is opaque and contains only invite code`() {
+        val response = rotate(groupId)
+        val inviteUrl = json(response)["inviteUrl"].stringValue()
+        val uri = URI(inviteUrl)
+        val queryKeys = uri.query.split("&").map { it.substringBefore("=") }.toSet()
+        val code = uri.query.substringAfter("saqz_invite=")
+
+        assertEquals(setOf("saqz_invite"), queryKeys)
+        assertEquals(43, code.length)
+        assertFalse(inviteUrl.contains(groupId.toString()))
+        assertFalse(inviteUrl.contains(InviteTestConfiguration.USER_ID.toString()))
+        assertFalse(inviteUrl.contains("OWNER"))
+        assertFalse(inviteUrl.contains("email"))
+    }
+
+    @Test
     fun `admin rotates invite`() {
         read.role = GroupRole.ADMIN
 

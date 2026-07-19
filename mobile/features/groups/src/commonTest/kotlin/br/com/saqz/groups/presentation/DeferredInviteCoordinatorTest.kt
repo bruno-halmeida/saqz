@@ -163,6 +163,64 @@ class DeferredInviteStateMachineTest {
         assertTrue(fixture.roles.redeems.isEmpty())
     }
 
+    @Test fun `already authenticated warm link redeems and selects once`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
+        fixture.machine.onIntent(DeferredInviteIntent.Start)
+        fixture.links.emit(CODE_A); runCurrent()
+        fixture.machine.onIntent(DeferredInviteIntent.Retry); runCurrent()
+        assertEquals(listOf(CODE_A), fixture.roles.redeems)
+        assertEquals(listOf(GROUP_ID), fixture.selected)
+    }
+
+    @Test fun `temporary server error keeps pending for retry`() = runTest {
+        val fixture = fixture(this)
+        fixture.roles.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
+        fixture.machine.onIntent(DeferredInviteIntent.Start)
+        fixture.links.emit(CODE_A); runCurrent()
+        assertTrue(fixture.machine.state.value.hasPending)
+        assertFalse(fixture.local.writes.contains(null))
+        assertEquals(InviteUiError.UNAVAILABLE, fixture.machine.state.value.error)
+    }
+
+    @Test fun `temporary server error retry redeems same code exactly once more`() = runTest {
+        val fixture = fixture(this)
+        fixture.roles.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
+        fixture.machine.onIntent(DeferredInviteIntent.Start)
+        fixture.links.emit(CODE_A); runCurrent()
+        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        fixture.machine.onIntent(DeferredInviteIntent.Retry); runCurrent()
+        assertEquals(listOf(CODE_A, CODE_A), fixture.roles.redeems)
+        assertEquals(listOf(GROUP_ID), fixture.selected)
+        assertFalse(fixture.machine.state.value.hasPending)
+    }
+
+    @Test fun `new link replaces retryable pending invite and redeems latest only`() = runTest {
+        val fixture = fixture(this)
+        fixture.roles.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
+        fixture.machine.onIntent(DeferredInviteIntent.Start)
+        fixture.links.emit(CODE_A); runCurrent()
+        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        fixture.links.emit(CODE_B); runCurrent()
+        assertEquals(listOf(CODE_A, CODE_B), fixture.roles.redeems)
+        assertEquals(listOf<String?>(CODE_A, CODE_B, null), fixture.local.writes)
+        assertEquals(listOf(GROUP_ID), fixture.selected)
+    }
+
+    @Test fun `terminal invalid clears state so retry cannot reselect`() = runTest {
+        val fixture = fixture(this, stored = CODE_A)
+        fixture.roles.result = problem(404, "INVITE_INVALID_OR_EXPIRED")
+        fixture.machine.onIntent(DeferredInviteIntent.Restore)
+        fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true)); runCurrent()
+        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        fixture.machine.onIntent(DeferredInviteIntent.Retry); runCurrent()
+        assertEquals(listOf(CODE_A), fixture.roles.redeems)
+        assertTrue(fixture.selected.isEmpty())
+    }
+
     private fun fixture(scope: kotlinx.coroutines.CoroutineScope, stored: String? = null): Fixture {
         val links = FakeLinks(); val local = FakeLocal(stored); val roles = FakeRoles(); val selected = mutableListOf<String>()
         return Fixture(DeferredInviteStateMachine(links, local, roles, scope, selected::add), links, local, roles, selected)

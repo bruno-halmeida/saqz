@@ -105,6 +105,30 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
+    fun repeatedBranchCopiesOfSameEventAreDeliveredOnce() {
+        val fixture = Fixture()
+        fixture.start()
+
+        fixture.adapter.onColdStart(null)
+        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
+        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
+
+        assertEquals(listOf(CODE_A), fixture.received)
+    }
+
+    @Test
+    fun newerWarmLinkAfterDuplicateIsDelivered() {
+        val fixture = Fixture()
+        fixture.start()
+
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_A")
+        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_B")
+
+        assertEquals(listOf(CODE_A, CODE_B), fixture.received)
+    }
+
+    @Test
     fun latestEventBeforeListenerWins() {
         val fixture = Fixture()
 
