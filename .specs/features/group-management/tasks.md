@@ -390,6 +390,12 @@ PostgreSQL constraints from AD-019.
 **Tests:** PostgreSQL migration/constraint integration (`Δ+14`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): migrate group profile defaults`
+**Status:** Complete (`124250c`); V2 lives beside current V1 at
+`backend/features/access/src/main/resources/db/migration/V2__expand_group_profile.sql`
+until the baseline migration location is explicitly moved. Added `Δ+16`
+PostgreSQL migration/constraint tests. Backend full and safety gates passed
+with local Testcontainers Ryuk disabled because the Ryuk sidecar timed out in
+this environment; containers are still stopped by the tests.
 
 ### T15: Implement group profile and default domain validation
 
