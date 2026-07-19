@@ -472,6 +472,14 @@ keys, cents, or timezone identifiers.
 - **V1** — The scope gate SHALL permit the approved `mobile/features/groups/`
   feature surface, including invitation behavior, while its mutation suite
   SHALL continue to reject any other unapproved mobile feature path.
+- **B2 | 2026-07-19** — The T09 Android accessibility gate depended on the
+  default app composition to imply the signed-out login screen, and the visible
+  login brand image was marked decorative, so TalkBack could not announce the
+  label under the intended fixture. Covered by V2.
+- **V2** — Native accessibility tests SHALL render the explicit route/screen
+  fixture they claim to verify when the app composition has authenticated,
+  bootstrapping, or group-routing dependencies, and visible brand images SHALL
+  expose exactly one accessible brand label.
 
 ## Success criteria
 

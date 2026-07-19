@@ -4,13 +4,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Text
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import br.com.saqz.composeapp.SaqzApp
+import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.ui.LoginScreen
+import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.designsystem.theme.saqzFontFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -44,13 +47,17 @@ class AndroidAccessibilityTest {
 
     @Test
     fun talkBackOrderMatchesSemantics() {
-        composeRule.setContent { SaqzApp() }
+        composeRule.setContent {
+            SaqzTheme {
+                LoginScreen(AuthenticationState()) { }
+            }
+        }
         composeRule.waitForIdle()
 
         // Decorative artwork is silent, so the visible brand label is announced exactly once.
-        assertEquals(1, composeRule.onAllNodesWithText("saqz").fetchSemanticsNodes().size)
+        assertEquals(1, composeRule.onAllNodesWithContentDescription("Saqz").fetchSemanticsNodes().size)
 
-        val headingTop = composeRule.onNodeWithText("saqz").fetchSemanticsNode().boundsInRoot.top
+        val headingTop = composeRule.onNodeWithContentDescription("Saqz").fetchSemanticsNode().boundsInRoot.top
         val emailTop = composeRule.onNodeWithTag("login-email").fetchSemanticsNode().boundsInRoot.top
         val passwordTop = composeRule.onNodeWithTag("login-password").fetchSemanticsNode().boundsInRoot.top
         val submitTop = composeRule.onNodeWithTag("login-submit").fetchSemanticsNode().boundsInRoot.top

@@ -51,6 +51,7 @@ import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.resources.Res
+import br.com.saqz.access.resources.access_brand
 import br.com.saqz.access.resources.auth_error_email_in_use
 import br.com.saqz.access.resources.auth_error_invalid_credentials
 import br.com.saqz.access.resources.auth_error_method_conflict
@@ -128,7 +129,7 @@ fun LoginScreen(
             Spacer(Modifier.height(14.dp))
             Image(
                 painter = painterResource(DesignRes.drawable.saqz_lettering),
-                contentDescription = null,
+                contentDescription = stringResource(Res.string.access_brand),
                 modifier = Modifier.size(width = 108.dp, height = 32.dp),
             )
             Spacer(Modifier.height(14.dp))
