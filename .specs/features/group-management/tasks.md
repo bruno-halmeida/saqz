@@ -422,6 +422,10 @@ matching unit tests.
 **Tests:** domain unit (`Δ+24`).
 **Gate:** Backend quick + Safety.
 **Commit:** `feat(groups): validate group profile defaults`
+**Status:** Complete (`d85ccb0`); added `Δ+28` domain unit tests covering enum
+inventories, text/range/money/day limits, blank-to-null normalization,
+conditional cleanup, and stable multi-field errors. Backend quick and safety
+gates passed.
 
 ### T16: Extend group registration as one idempotent transaction
 
