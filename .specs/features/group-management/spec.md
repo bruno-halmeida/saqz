@@ -640,6 +640,13 @@ keys, cents, or timezone identifiers.
 - **V17** — A superseded series revision MAY close exactly one day before its
   local start when `THIS_AND_FUTURE` selects the first occurrence; no earlier
   active-through boundary is valid.
+- **B31 | 2026-07-19** — T34 successor materialization exposed that V4 stored
+  every recurring slot snapshot except its title, so a new revision could not
+  regenerate a complete immutable game snapshot without borrowing mutable
+  occurrence data. Covered by V18.
+- **V18** — Every series slot revision SHALL persist every value required to
+  regenerate an immutable game occurrence snapshot, including its title;
+  successor materialization SHALL use only the accepted revision rule.
 
 ## Success criteria
 
