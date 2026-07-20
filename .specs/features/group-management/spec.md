@@ -687,6 +687,11 @@ keys, cents, or timezone identifiers.
 - **B40 | 2026-07-19** — The first T39 compile passed a message argument to the
   fixed shared `SaqzLoadingState` API. No new invariant added; Android and iOS
   common compilation already detect design-system signature drift.
+- **B41 | 2026-07-19** — The second T39 compile found a test-only viewport
+  helper unavailable on the common iOS target, a missing `dp` import, and
+  companion initialization calling an instance fixture. No new invariant
+  added; the cross-target Compose compile gate already enforces portable UI
+  test APIs and fixture initialization.
 
 ## Success criteria
 
