@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
 import br.com.saqz.groups.domain.attendance.*
+import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
 import java.time.LocalDate
@@ -11,6 +12,7 @@ data class AttendanceAggregate(
     val gameId: UUID,
     val memberId: UUID,
     val actorId: UUID,
+    val actorRole: GroupRole?,
     val gameStatus: GameStatus,
     val confirmationDeadline: Instant,
     val capacity: Int,

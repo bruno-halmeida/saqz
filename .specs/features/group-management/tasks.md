@@ -1480,19 +1480,22 @@ transaction runner and deterministic latches.
 
 **Done when:**
 
-- [ ] Game lock precedes capacity count/attendance mutation/charge creation in
+- [x] Game lock precedes capacity count/attendance mutation/charge creation in
   one READ_COMMITTED transaction.
-- [ ] Simultaneous final-spot requests produce exactly one CONFIRMED and the
+- [x] Simultaneous final-spot requests produce exactly one CONFIRMED and the
   rest uniquely ordered WAITLISTED, never over capacity.
-- [ ] Confirm retry/duplicate native delivery creates one attendance row and at
+- [x] Confirm retry/duplicate native delivery creates one attendance row and at
   most one charge; declined/waitlisted receive none.
-- [ ] Injected attendance/charge failure rolls back response, sequence and
+- [x] Injected attendance/charge failure rolls back response, sequence and
   charge together.
-- [ ] Backend full gate passes; test count `Δ+14` or greater.
+- [x] Backend full gate passes; test count `Δ+14` or greater.
 
 **Tests:** PostgreSQL transaction/concurrency integration (`Δ+14`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): confirm attendance atomically`
+**Status:** Complete; 15 focused real-PostgreSQL cases and the complete Groups
+unit/integration plus safety gates passed, including deterministic final-spot
+and FIFO races, retry, unique charge, and injected rollback evidence.
 
 ### T52: Implement withdrawal, FIFO promotion, and capacity adjustment
 
