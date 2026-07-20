@@ -771,6 +771,9 @@ keys, cents, or timezone identifiers.
 - **B59 | 2026-07-20** — T49's first repository-wide backend gate exposed that
   the Access migration sensor still expected two migrations after the existing
   V3 group-photo schema had become part of that workspace. Covered by V21.
+- **B60 | 2026-07-20** — After correcting the Access migration count, its exact
+  table-inventory assertion separately exposed the omitted `group_photos`
+  table. No new invariant added; V21 covers both migration and table inventory.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
