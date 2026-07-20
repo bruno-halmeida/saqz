@@ -1266,18 +1266,20 @@ style.
 
 **Done when:**
 
-- [ ] PENDING/PAID/WAIVED/CANCELLED transitions reject invalid/stale/client-
+- [x] PENDING/PAID/WAIVED/CANCELLED transitions reject invalid/stale/client-
   authored actor/timestamp/amount changes.
-- [ ] Every successful status change emits actor, old/new state, optional note,
+- [x] Every successful status change emits actor, old/new state, optional note,
   and server time without overwriting prior events.
-- [ ] Athlete projection contains only own charges; organizers see group charges
+- [x] Athlete projection contains only own charges; organizers see group charges
   and totals; non-member is privacy-hidden.
-- [ ] No domain type models money movement, settlement, partials or refunds.
-- [ ] Backend quick gate passes; test count `Δ+18` or greater.
+- [x] No domain type models money movement, settlement, partials or refunds.
+- [x] Backend quick gate passes; test count `Δ+18` or greater.
 
 **Tests:** domain/application unit (`Δ+18`).
 **Gate:** Backend quick + Safety.
 **Commit:** `feat(groups): model manual charges`
+**Status:** Complete; backend quick and safety gates passed with 18 added
+charge transition, immutable-value, audit, and visibility cases.
 
 ### T45: Implement game-charge and monthly-generation transactions
 
