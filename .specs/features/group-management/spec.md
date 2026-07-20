@@ -692,6 +692,10 @@ keys, cents, or timezone identifiers.
   companion initialization calling an instance fixture. No new invariant
   added; the cross-target Compose compile gate already enforces portable UI
   test APIs and fixture initialization.
+- **B42 | 2026-07-19** — The first resumed T40 verification selected the
+  nonexistent `compileKotlinAndroid` task and stopped before compiling product
+  sources. No new invariant added; task execution must use the prescribed
+  Mobile quick task names, including `compileAndroidMain` and `allTests`.
 
 ## Success criteria
 
