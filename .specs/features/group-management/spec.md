@@ -858,6 +858,9 @@ keys, cents, or timezone identifiers.
   calls to a helper whose function parameter preceded a defaulted non-function
   parameter, causing Kotlin to bind the lambda to the wrong argument. Covered
   by V40.
+- **B85 | 2026-07-20** — After fixing T65 route helper calls, a retained Compose
+  test exposed the same callback-position regression in the expanded access
+  root signature. Covered by V40.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
