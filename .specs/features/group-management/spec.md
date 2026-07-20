@@ -825,6 +825,9 @@ keys, cents, or timezone identifiers.
 - **B75 | 2026-07-20** — The first executing T60 Compose suite left one combined
   max-length/scroll-geometry sensor failing while all behavioral cases passed.
   Covered by V31.
+- **B76 | 2026-07-20** — After separating B75, the max-length sensor passed and
+  the standalone off-viewport geometry sensor still failed under Skiko's
+  clipped root bounds. Covered by V32.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -865,6 +868,9 @@ keys, cents, or timezone identifiers.
   geometry from stable semantics snapshots; unrelated max-length and spatial
   assertions SHALL be separated when scrolling or recomposition can invalidate
   one snapshot without changing product behavior.
+- **V32** — Minimum-target geometry on a scrollable Compose route SHALL be
+  measured after the target is scrolled fully into view; off-viewport
+  `boundsInRoot` SHALL not be treated as an unclipped layout measurement.
 
 ## Success criteria
 
