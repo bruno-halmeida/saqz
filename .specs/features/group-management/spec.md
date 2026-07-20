@@ -670,6 +670,11 @@ keys, cents, or timezone identifiers.
   filtering to the KMP `allTests` aggregate, which rejected the unsupported
   option before executing tests. No new invariant added; the task's prescribed
   unfiltered Mobile quick command is already authoritative.
+- **B37 | 2026-07-19** — The first unfiltered T37 KMP run reached the iOS test
+  compiler and rejected a compressed auth-refresh fixture call whose token
+  argument was placed after a trailing handler lambda. No new invariant added;
+  common-test compilation on the iOS simulator target catches portable call
+  syntax before execution.
 
 ## Success criteria
 
