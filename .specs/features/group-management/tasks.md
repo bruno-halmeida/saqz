@@ -615,15 +615,15 @@ keyboard-safe layouts and semantic tags.
 
 **Done when:**
 
-- [ ] Name/modality/composition are the only unconditional user-required
+- [x] Name/modality/composition are the only unconditional user-required
   fields; every optional/conditional field is discoverable with exact labels.
-- [ ] Court style/custom fields, venue name/address, slot weekday/time/duration,
+- [x] Court style/custom fields, venue name/address, slot weekday/time/duration,
   monthly due day, and BRL cent conversion behave exactly as specified.
-- [ ] Friendly timezone selector appears only on detection failure and never
+- [x] Friendly timezone selector appears only on detection failure and never
   exposes enum/cents/IANA identifiers in normal presentation.
-- [ ] Compact/keyboard/max-text tests keep every action in semantic order with
+- [x] Compact/keyboard/max-text tests keep every action in semantic order with
   at least 48 dp targets.
-- [ ] Mobile quick gate passes; test count `Δ+24` or greater.
+- [x] Mobile quick gate passes; test count `Δ+24` or greater.
 
 **Tests:** common Compose UI (`Δ+24`).
 **Gate:** Mobile quick + Safety.
