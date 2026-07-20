@@ -868,6 +868,9 @@ keys, cents, or timezone identifiers.
   retained local-state test without an assertion failure; xcresult identified
   the terminated case and an isolated 105-case unit rerun passed. Covered by
   V41.
+- **B88 | 2026-07-20** — The fresh T66 iOS aggregate passed while retaining the
+  pre-task 97-case Release inventory because the new journey source was not a
+  member of the Xcode unit-test target. Covered by V42.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -941,6 +944,10 @@ keys, cents, or timezone identifiers.
   SHALL be diagnosed from its xcresult and reproduced in the narrow target;
   isolated success does not replace the required subsequent fresh aggregate
   pass or permit a skip/retry waiver.
+- **V42** — Every new Swift test source SHALL be referenced by the Xcode project,
+  belong to the intended test target's Sources phase, and increase the executed
+  aggregate inventory by its declared case count; a green aggregate with an
+  unchanged inventory SHALL fail task verification.
 
 ## Success criteria
 
