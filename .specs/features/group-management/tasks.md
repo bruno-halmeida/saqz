@@ -1086,18 +1086,20 @@ effects.
 
 **Done when:**
 
-- [ ] State distinguishes loading/empty/content/error/refresh without exposing
+- [x] State distinguishes loading/empty/content/error/refresh without exposing
   previous-group data during selection change.
-- [ ] Organizer can open create; athlete cannot; all members can open allowed
+- [x] Organizer can open create; athlete cannot; all members can open allowed
   game detail.
-- [ ] List order/time/availability/status use authoritative DTOs and pt-BR
+- [x] List order/time/availability/status use authoritative DTOs and pt-BR
   formatting.
-- [ ] Duplicate refresh/open intents remain single-flight/non-replayed.
-- [ ] Mobile quick gate passes; test count `Δ+12` or greater.
+- [x] Duplicate refresh/open intents remain single-flight/non-replayed.
+- [x] Mobile quick gate passes; test count `Δ+12` with zero skipped/failing.
 
 **Tests:** KMP ViewModel unit (`Δ+12`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): coordinate games list`
+**Status:** Complete; Mobile quick and safety gates passed with 12 added
+common ViewModel cases.
 
 ### T39: Build upcoming/past games screens
 
