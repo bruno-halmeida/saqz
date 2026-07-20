@@ -158,4 +158,19 @@
     <string name="game_editor_this_future">Este e os próximos</string>
     <string name="game_editor_submit">Salvar jogo</string>
     <string name="game_editor_reload">Recarregar jogo</string>
+    <string name="game_detail_title">Detalhes do jogo</string>
+    <string name="game_detail_edit">Editar jogo</string>
+    <string name="game_detail_publish">Publicar jogo</string>
+    <string name="game_detail_cancel">Cancelar jogo</string>
+    <string name="game_detail_complete">Concluir jogo</string>
+    <string name="game_detail_confirm_publish">Publicar este jogo?</string>
+    <string name="game_detail_confirm_cancel">Cancelar este jogo?</string>
+    <string name="game_detail_confirm_complete">Concluir este jogo?</string>
+    <string name="game_detail_confirm">Confirmar</string>
+    <string name="game_detail_dismiss">Voltar</string>
+    <string name="game_detail_reload">Recarregar</string>
+    <string name="game_detail_error">Não foi possível carregar o jogo.</string>
+    <string name="game_detail_conflict">O jogo mudou. Recarregue antes de continuar.</string>
+    <string name="game_detail_cancel_finance">O cancelamento exige revisão financeira manual. Nenhum reembolso é automático.</string>
+    <string name="game_detail_terminal">Este jogo está encerrado e não pode mais ser alterado.</string>
 </resources>

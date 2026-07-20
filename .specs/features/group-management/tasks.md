@@ -1206,17 +1206,19 @@ components.
 
 **Done when:**
 
-- [ ] Members see exact snapshot/status/derived availability; organizer actions
+- [x] Members see exact snapshot/status/derived availability; organizer actions
   appear only in valid role/status combinations.
-- [ ] Publish/cancel/complete are single-flight versioned commands with confirm,
+- [x] Publish/cancel/complete are single-flight versioned commands with confirm,
   conflict reload and non-replayed success effects.
-- [ ] Cancelled/completed presentation becomes read-only and cancellation
+- [x] Cancelled/completed presentation becomes read-only and cancellation
   explains manual finance review without promising refund.
-- [ ] Mobile quick gate passes; test count `Δ+14` or greater.
+- [x] Mobile quick gate passes; test count `Δ+14` or greater.
 
 **Tests:** KMP ViewModel + common Compose UI (`Δ+14`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): add game detail lifecycle`
+**Status:** Complete; Mobile quick and safety gates passed with 16 added
+cross-target lifecycle ViewModel and Compose cases.
 
 ### T43: Add the manual-finance migration
 
