@@ -615,6 +615,13 @@ keys, cents, or timezone identifiers.
   the quoted group ETag from the authoritative returned version and include it
   in the deferred upload handoff; the media upload SHALL never guess from draft
   or pre-confirmation state.
+- **B27 | 2026-07-19** — T29 fresh-eyes review found that successful photo
+  upload/removal cleared the returned group ETag while leaving consecutive
+  replace/remove controls visible, so the next valid organizer action failed as
+  target unavailable until an external refetch. Covered by V15.
+- **V15** — Every successful versioned private-media mutation SHALL publish its
+  returned group ETag into shared state before enabling another mutation; a
+  visible consecutive replace/remove action SHALL be immediately executable.
 
 ## Success criteria
 
