@@ -569,6 +569,12 @@ keys, cents, or timezone identifiers.
 - **V10** — Every provider-neutral Groups photo contract in `commonMain` SHALL
   compile for both Android and iOS targets and SHALL NOT depend on platform-only
   annotations or types.
+- **B18 | 2026-07-19** — T27 encoder design exposed that the first shared crop
+  contract used one normalized side length on unequal source axes, which could
+  not unambiguously describe a physical square. Covered by V11.
+- **V11** — Shared photo crop state SHALL express provider-neutral center and
+  zoom values; every native encoder SHALL derive, clamp, and encode one equal-
+  width/equal-height pixel region for portrait, landscape, and square sources.
 
 ## Success criteria
 
