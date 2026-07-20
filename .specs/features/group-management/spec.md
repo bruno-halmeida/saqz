@@ -871,6 +871,9 @@ keys, cents, or timezone identifiers.
 - **B88 | 2026-07-20** — The fresh T66 iOS aggregate passed while retaining the
   pre-task 97-case Release inventory because the new journey source was not a
   member of the Xcode unit-test target. Covered by V42.
+- **B89 | 2026-07-20** — T67's README privacy sensor required two clauses on a
+  single physical line even though Markdown prose correctly wrapped the exact
+  accepted statement across adjacent lines. Covered by V43.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -948,6 +951,9 @@ keys, cents, or timezone identifiers.
   belong to the intended test target's Sources phase, and increase the executed
   aggregate inventory by its declared case count; a green aggregate with an
   unchanged inventory SHALL fail task verification.
+- **V43** — README contract sensors SHALL verify stable required phrases without
+  coupling a semantic assertion to Markdown line wrapping; separately required
+  clauses SHALL be asserted independently when they may wrap.
 
 ## Success criteria
 
