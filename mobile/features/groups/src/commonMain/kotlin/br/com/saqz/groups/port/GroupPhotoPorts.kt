@@ -1,7 +1,5 @@
 package br.com.saqz.groups.port
 
-import io.ktor.utils.io.ByteReadChannel
-
 data class GroupPhotoSourceHandle(val value: String) {
     init { require(value.isNotBlank()) }
 }
@@ -39,7 +37,7 @@ data class GroupPhotoCrop(
 }
 
 fun interface GroupPhotoByteSource {
-    fun open(): ByteReadChannel
+    fun read(): ByteArray
 }
 
 data class EncodedGroupPhoto(

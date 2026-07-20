@@ -16,12 +16,14 @@ import br.com.saqz.androidapp.access.AndroidShareLauncher
 import br.com.saqz.androidapp.access.BranchSdkSessionClient
 import br.com.saqz.androidapp.access.CredentialManagerGoogleClient
 import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
+import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.composeapp.SaqzAppDependencies
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AndroidAppComposition(
     val dependencies: SaqzAppDependencies,
     val links: AndroidIntentLinkPort,
+    val photos: AndroidGroupPhotoAdapters? = null,
 )
 
 internal fun interface AndroidAppCompositionFactory {
@@ -55,6 +57,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
             AndroidEncryptedAccessStateStore(context.applicationContext),
         )
         val share = AndroidShareAdapter(ActivityShareLauncher(activity))
+        val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         return AndroidAppComposition(
             dependencies = SaqzAppDependencies(
                 environment = BuildConfig.ENVIRONMENT,
@@ -67,6 +70,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                 groupState = AndroidGroupStateAdapter(localState),
             ),
             links = links,
+            photos = photos,
         )
     }
 }

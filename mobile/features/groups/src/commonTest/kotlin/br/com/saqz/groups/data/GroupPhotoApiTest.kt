@@ -19,7 +19,6 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
-import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -94,7 +93,7 @@ class GroupPhotoApiTest {
     private fun upload() = GroupPhotoUploadCommand(
         GROUP_ID,
         GROUP_ETAG,
-        EncodedGroupPhoto(GroupPhotoMediaType.PNG, 3, GroupPhotoByteSource { ByteReadChannel(byteArrayOf(1, 2, 3)) }),
+        EncodedGroupPhoto(GroupPhotoMediaType.PNG, 3, GroupPhotoByteSource { byteArrayOf(1, 2, 3) }),
     )
 
     private fun fixture(response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): GroupPhotoApi {

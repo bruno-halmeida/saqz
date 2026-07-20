@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 4 / T27 (Android private-photo adapters).
-- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, and T26 mobile private-photo coordination. T26 mobile quick and safety gates passed; 27 KMP tests passed with zero skips/failures across gateway, coordinator, and provider-neutral ports. Backprop evidence: cross-target photo contract invariant `699767e`. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:754` — implement Android camera/library and crop encoder adapters.
-- **Next step**: Execute T27 with Android native adapters, composition, tests, Android quick, and safety gates.
+- **Phase / Task**: Execute — Phase 4 / T28 (iOS private-photo adapters).
+- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, and T27 Android private-photo adapters. T27 Android native and safety gates passed; 14 JVM and 4 device photo tests passed, with all 43 instrumented tests green. Backprop evidence: square geometry `fcfa3a9`/`aa54c94` and native transport isolation `0a0a4bc`. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:786` — implement iOS camera/library and crop encoder adapters.
+- **Next step**: Execute T28 with iOS native adapters, composition, XCTest coverage, iOS native, and safety gates.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main

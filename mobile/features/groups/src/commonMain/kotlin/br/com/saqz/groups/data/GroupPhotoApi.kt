@@ -9,6 +9,7 @@ import br.com.saqz.network.NetworkResult
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.utils.io.ByteReadChannel
 
 data class GroupPhotoUploadCommand(
     val groupId: String,
@@ -50,7 +51,7 @@ class GroupPhotoApi(private val network: AuthenticatedNetworkClient) : GroupPhot
                 contentType = ContentType.parse(photo.mediaType.value),
                 contentLength = photo.contentLength,
                 etag = command.groupEtag,
-                openChannel = photo.source::open,
+                openChannel = { ByteReadChannel(photo.source.read()) },
             ),
         )
         return when (result) {

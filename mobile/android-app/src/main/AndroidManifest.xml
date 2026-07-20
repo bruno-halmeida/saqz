@@ -15,6 +15,16 @@
             android:name="io.branch.sdk.TestMode"
             android:value="${branchTestMode}" />
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.group-photo-files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/group_photo_file_paths" />
+        </provider>
+
         <activity
             android:name="br.com.saqz.androidapp.MainActivity"
             android:theme="@style/Theme.Saqz.Starting"

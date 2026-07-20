@@ -769,15 +769,15 @@ Skill: `tlc-spec-driven`; `backprop` on failure.
 
 **Done when:**
 
-- [ ] Library selection requests no broad storage/media permission and grants
+- [x] Library selection requests no broad storage/media permission and grants
   access only to the chosen item.
-- [ ] Camera cancel/denial/failure deletes app-private temp data and returns a
+- [x] Camera cancel/denial/failure deletes app-private temp data and returns a
   typed non-crashing outcome.
-- [ ] Bounds are read before full decode; crop transform produces one static
+- [x] Bounds are read before full decode; crop transform produces one static
   accepted-format square payload within limits.
-- [ ] Rotation/process recreation and explicit cleanup do not duplicate results
+- [x] Rotation/process recreation and explicit cleanup do not duplicate results
   or leave sensitive temporary files.
-- [ ] Android native gate passes; test count `Δ+10` or greater.
+- [x] Android native gate passes; test count `Δ+18` with zero skipped/failing.
 
 **Tests:** Android JVM + instrumented (`Δ+10`).
 **Gate:** Android native + Safety.

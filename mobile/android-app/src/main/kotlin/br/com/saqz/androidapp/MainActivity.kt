@@ -51,6 +51,7 @@ internal class MainActivityModel private constructor(
 
     fun attach(value: Activity) {
         activity.attach(value)
+        (value as? ComponentActivity)?.let { composition.photos?.attach(it) }
     }
 
     fun onStart(url: String?) {

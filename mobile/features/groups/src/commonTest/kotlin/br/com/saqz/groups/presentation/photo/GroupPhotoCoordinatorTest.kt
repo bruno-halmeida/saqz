@@ -18,7 +18,6 @@ import br.com.saqz.groups.port.GroupPhotoSelectionResult
 import br.com.saqz.groups.port.GroupPhotoSourceHandle
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
-import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -258,7 +257,7 @@ class GroupPhotoCoordinatorTest {
     private class FakeEncoder : GroupPhotoEncoderPort {
         var calls = 0
         var result: GroupPhotoEncodingResult = GroupPhotoEncodingResult.Encoded(
-            EncodedGroupPhoto(GroupPhotoMediaType.JPEG, 3, GroupPhotoByteSource { ByteReadChannel(byteArrayOf(1, 2, 3)) }),
+            EncodedGroupPhoto(GroupPhotoMediaType.JPEG, 3, GroupPhotoByteSource { byteArrayOf(1, 2, 3) }),
         )
         val cancelled = mutableListOf<GroupPhotoSourceHandle>()
         override suspend fun encode(source: GroupPhotoSourceHandle, crop: GroupPhotoCrop) = result.also { calls++ }
