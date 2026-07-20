@@ -15,6 +15,8 @@ import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
 import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
+import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
+import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -88,6 +90,16 @@ class SafeExceptionHandler(
     @ExceptionHandler(InvalidGameTransitionException::class)
     fun invalidGameTransition(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.INVALID_GAME_TRANSITION)
+    }
+
+    @ExceptionHandler(AttendanceDeadlinePassedException::class)
+    fun attendanceDeadlinePassed(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.ATTENDANCE_DEADLINE_PASSED)
+    }
+
+    @ExceptionHandler(AttendanceFrozenException::class)
+    fun attendanceFrozen(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.ATTENDANCE_FROZEN)
     }
 
     @ExceptionHandler(InviteInvalidOrExpiredException::class)

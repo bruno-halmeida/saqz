@@ -58,6 +58,8 @@ data class CapacityResponse(
     val promotedCount: Int,
     val detail: AttendanceDetailResponse,
 )
+class AttendanceDeadlinePassedException : RuntimeException()
+class AttendanceFrozenException : RuntimeException()
 
 @RestController
 class AttendanceController(
@@ -122,7 +124,7 @@ class AttendanceController(
             CapacityCommandResult.Hidden -> throw GameNotFoundException()
             CapacityCommandResult.Forbidden -> throw AccessForbiddenException()
             CapacityCommandResult.Conflict -> throw VersionConflictException()
-            CapacityCommandResult.Frozen -> throw InvalidGameTransitionException()
+            CapacityCommandResult.Frozen -> throw AttendanceFrozenException()
             CapacityCommandResult.InvalidCapacity -> invalid("capacity")
         }
     }
@@ -138,7 +140,8 @@ class AttendanceController(
         )
         is AttendanceCommandResult.Denied -> when (result.reason) {
             AttendanceDenial.REASON_REQUIRED, AttendanceDenial.REASON_INVALID -> invalid("reason")
-            else -> throw InvalidGameTransitionException()
+            AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
+            AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
         }
         AttendanceCommandResult.Hidden -> throw GameNotFoundException()
         AttendanceCommandResult.Forbidden -> throw AccessForbiddenException()
