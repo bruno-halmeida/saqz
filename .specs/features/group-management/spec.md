@@ -701,6 +701,10 @@ keys, cents, or timezone identifiers.
   found that a nested fake gateway called instance fixture helpers without an
   outer receiver. No new invariant added; Mobile quick's iOS common-test
   compilation already catches both portable test-source errors.
+- **B44 | 2026-07-19** — The next T40 Kotlin/Native test compile rejected a
+  boundary fixture class declared inside an `inner` fake gateway. No new
+  invariant added; the existing cross-target test compilation catches this
+  Kotlin portability constraint.
 
 ## Success criteria
 
