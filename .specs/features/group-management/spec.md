@@ -795,6 +795,9 @@ keys, cents, or timezone identifiers.
   game side-effect binding was a no-op and its port discarded group and actor
   context, making required pending-charge cancellation impossible. Covered by
   V24.
+- **B67 | 2026-07-20** — T55 transport design found the T53 controller mapped
+  both deadline closure and frozen lifecycle to `INVALID_GAME_TRANSITION`, so
+  mobile could not discriminate the required outcomes. Covered by V25.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -812,6 +815,9 @@ keys, cents, or timezone identifiers.
   saved aggregate and initiating actor whenever a required downstream effect
   is group-scoped or audited; production composition SHALL bind every specified
   effect to a non-no-op adapter.
+- **V25** — Distinct accepted client recovery outcomes SHALL have distinct,
+  stable server problem codes and typed gateway mappings; controllers SHALL not
+  collapse deadline, frozen, stale, hidden, or validation states.
 
 ## Success criteria
 
