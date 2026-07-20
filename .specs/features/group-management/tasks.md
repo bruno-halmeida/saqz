@@ -1785,17 +1785,20 @@ draft schema and tests.
 
 **Done when:**
 
-- [ ] OWNER/ADMIN states load/list/create/edit/void; athlete route is absent and
+- [x] OWNER/ADMIN states load/list/create/edit/void; athlete route is absent and
   no request can be dispatched.
-- [ ] Description/BRL/date/category/custom/notes validate locally and preserve
+- [x] Description/BRL/date/category/custom/notes validate locally and preserve
   draft/version/idempotency through restart/retry/conflict.
-- [ ] Preset category clears custom value; void requires confirmation; success
+- [x] Preset category clears custom value; void requires confirmation; success
   refreshes totals without erasing audit history.
-- [ ] Mobile quick gate passes; test count `Δ+16` or greater.
+- [x] Mobile quick gate passes; test count `Δ+18`.
 
 **Tests:** KMP ViewModel/draft unit (`Δ+16`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): coordinate expense tracking`
+**Status:** Complete; 18 KMP ViewModel/draft cases and the mobile quick/safety
+gates passed across role exclusion, restore/validation, stable create/edit,
+confirmed void, authoritative totals/audit refresh, and conflict retry.
 
 ### T62: Build expense and group-finance UI
 
