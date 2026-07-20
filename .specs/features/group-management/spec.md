@@ -592,6 +592,10 @@ keys, cents, or timezone identifiers.
   notification observer token from the main-actor adapter's nonisolated
   `deinit`. No new invariant added; strict-concurrency iOS compilation already
   rejects actor-isolation violations.
+- **B23 | 2026-07-19** — The first T29 common-test compile compared sealed photo
+  intents with inferred singleton and empty lists that Kotlin/Native could not
+  type consistently. No new invariant added; common-test compilation already
+  catches assertion type inference errors before execution.
 
 ## Success criteria
 
