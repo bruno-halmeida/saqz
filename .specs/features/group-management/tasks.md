@@ -737,15 +737,15 @@ post-create state, AD-018 native-edge rule.
 
 **Done when:**
 
-- [ ] Ports expose camera/library selection, bounded preview handle, crop
+- [x] Ports expose camera/library selection, bounded preview handle, crop
   transform, encode/cancel, and cleanup without platform types in common code.
-- [ ] Shared state handles choose/crop/replace/remove/upload/retry/cancel and
+- [x] Shared state handles choose/crop/replace/remove/upload/retry/cancel and
   keeps the existing photo on every failure.
-- [ ] Upload uses the current ETag and survives group-create response loss
+- [x] Upload uses the current ETag and survives group-create response loss
   without recreating the group.
-- [ ] Logout/membership loss emits cache/source cleanup and no photo bytes enter
+- [x] Logout/membership loss emits cache/source cleanup and no photo bytes enter
   drafts/logs.
-- [ ] Mobile quick gate passes; test count `Δ+14` or greater.
+- [x] Mobile quick gate passes; test count `Δ+27` with zero skipped/failing.
 
 **Tests:** KMP gateway/state/port unit (`Δ+14`).
 **Gate:** Mobile quick + Safety.
