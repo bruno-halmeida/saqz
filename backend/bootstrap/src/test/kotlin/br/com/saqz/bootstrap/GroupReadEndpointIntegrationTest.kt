@@ -5,9 +5,11 @@ import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
 import br.com.saqz.groups.application.read.GroupProfileReadModel
+import br.com.saqz.groups.application.read.GroupRegularSlotReadModel
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.application.read.GroupVenueReadModel
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
@@ -39,6 +41,8 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.DayOfWeek
+import java.time.LocalTime
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -190,6 +194,73 @@ class GroupReadEndpointIntegrationTest {
         assertEquals(json(response)["correlationId"].stringValue(), correlationHeader(response))
     }
 
+    @Test
+    fun `read response exposes stable private BRL system values`() {
+        val body = json(getGroup(groupId))
+
+        assertEquals("PRIVATE", body["privacy"].stringValue())
+        assertEquals("BRL", body["currency"].stringValue())
+        assertFalse(body.has("ownerUserId"))
+        assertFalse(body.has("creationKey"))
+    }
+
+    @Test
+    fun `read response returns every nested profile venue and slot field`() {
+        val venueId = UUID.randomUUID()
+        val slotId = UUID.randomUUID()
+        repository.snapshot = snapshot(
+            GroupRole.OWNER,
+            profile = profile().copy(
+                description = "Training group",
+                city = "São Paulo",
+                level = br.com.saqz.groups.domain.group.GroupLevel.CUSTOM,
+                customLevel = "Competitive",
+                playStyle = br.com.saqz.groups.domain.group.CourtPlayStyle.CUSTOM,
+                customPlayStyle = "Fast 5-1",
+                defaultVenue = GroupVenueReadModel(venueId, "Arena", "Rua Central 100", "Quadra 2"),
+                regularSlots = listOf(
+                    GroupRegularSlotReadModel(slotId, DayOfWeek.MONDAY, LocalTime.of(20, 0), 120),
+                ),
+            ),
+            financeDefaults = finance(),
+        )
+
+        val body = json(getGroup(groupId))["profile"]
+
+        assertEquals("Training group", body["description"].stringValue())
+        assertEquals("CUSTOM", body["level"].stringValue())
+        assertEquals("Competitive", body["customLevel"].stringValue())
+        assertEquals("CUSTOM", body["playStyle"].stringValue())
+        assertEquals("Fast 5-1", body["customPlayStyle"].stringValue())
+        assertEquals(venueId.toString(), body["defaultVenue"]["id"].stringValue())
+        assertEquals("Quadra 2", body["defaultVenue"]["court"].stringValue())
+        assertEquals(slotId.toString(), body["regularSlots"][0]["id"].stringValue())
+        assertEquals("MONDAY", body["regularSlots"][0]["weekday"].stringValue())
+        assertEquals("20:00:00", body["regularSlots"][0]["startTime"].stringValue())
+        assertEquals(120, body["regularSlots"][0]["durationMinutes"].intValue())
+    }
+
+    @Test
+    fun `malformed group id uses the same private not found problem`() {
+        val malformed = getRaw("not-a-uuid")
+        repository.snapshot = null
+        val missing = getGroup(groupId)
+
+        assertProblem(malformed, 404, "GROUP_NOT_FOUND")
+        assertEquals(json(missing)["code"], json(malformed)["code"])
+        assertEquals(json(missing).propertyNames().asSequence().toSet(), json(malformed).propertyNames().asSequence().toSet())
+    }
+
+    @Test
+    fun `athlete read structurally omits organizer finance values`() {
+        repository.snapshot = snapshot(GroupRole.ATHLETE, profile = profile(), financeDefaults = finance())
+
+        val body = json(getGroup(groupId))
+
+        assertTrue(body["financeDefaults"].isNull)
+        assertFalse(responseText(body).contains("7000"))
+    }
+
     private fun snapshot(
         role: GroupRole?,
         profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
@@ -231,10 +302,16 @@ class GroupReadEndpointIntegrationTest {
     )
 
     private fun getGroup(id: UUID, bearer: String? = "group-read-token"): HttpResponse<String> {
+        return getRaw(id.toString(), bearer)
+    }
+
+    private fun getRaw(id: String, bearer: String? = "group-read-token"): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/groups/$id")).GET()
         if (bearer != null) builder.header("Authorization", "Bearer $bearer")
         return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
+
+    private fun responseText(node: tools.jackson.databind.JsonNode) = node.toString()
 
     private fun json(response: HttpResponse<String>) = objectMapper.readTree(response.body())
 

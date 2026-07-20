@@ -527,14 +527,15 @@ resolver, existing endpoint paths.
 
 **Done when:**
 
-- [ ] JSON accepts/returns every required, optional, conditional, system, and
+- [x] JSON accepts/returns every required, optional, conditional, system, and
   role-filtered field with stable enum names and integer cents.
-- [ ] Invalid fields return exact field paths; extra owner/role/system fields
+- [x] Invalid fields return exact field paths; extra owner/role/system fields
   cannot override server authority.
-- [ ] Create returns equivalent success for replay; reads/updates emit quoted
+- [x] Create returns equivalent success for replay; reads/updates emit quoted
   ETags and require `If-Match` as designed.
-- [ ] Every route has Bruno status/body assertions and no secret variable.
-- [ ] Backend HTTP gate passes; test count `Δ+18` or greater.
+- [x] Every route has Bruno status/body assertions and no secret variable.
+- [x] Backend HTTP gate passes; test count `Δ+18` or greater (30 → 48,
+  zero skipped/failing).
 
 **Tests:** Spring HTTP + Bruno contract (`Δ+18`).
 **Gate:** Backend HTTP + Safety.

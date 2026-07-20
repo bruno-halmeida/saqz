@@ -7,7 +7,17 @@ import br.com.saqz.groups.application.create.GroupCreationRepository
 import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.create.StoredGroup
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.read.GetGroup
+import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
+import br.com.saqz.groups.application.read.GroupProfileReadModel
+import br.com.saqz.groups.application.read.GroupReadKey
+import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.application.read.GroupRegularSlotReadModel
+import br.com.saqz.groups.application.read.GroupVenueReadModel
 import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
@@ -160,6 +170,110 @@ class GroupCreationEndpointIntegrationTest {
         assertEquals(json(response)["correlationId"].stringValue(), correlationHeader(response))
     }
 
+    @Test
+    fun `complete registration returns every profile game and finance default`() {
+        val venueId = UUID.randomUUID()
+        val slotId = UUID.randomUUID()
+        repository.nextVenueId = venueId
+        repository.nextSlotIds = listOf(slotId)
+        val response = postRaw(completeRequest(UUID.randomUUID()))
+        val body = json(response)
+
+        assertEquals(201, response.statusCode())
+        assertEquals("PRIVATE", body["privacy"].stringValue())
+        assertEquals("BRL", body["currency"].stringValue())
+        assertEquals("BEACH_VOLLEYBALL", body["profile"]["modality"].stringValue())
+        assertEquals("WOMEN", body["profile"]["composition"].stringValue())
+        assertEquals("Arena Beach", body["profile"]["defaultVenue"]["name"].stringValue())
+        assertEquals(venueId.toString(), body["profile"]["defaultVenue"]["id"].stringValue())
+        assertEquals(slotId.toString(), body["profile"]["regularSlots"][0]["id"].stringValue())
+        assertEquals(1500, body["financeDefaults"]["defaultGameFeeCents"].intValue())
+        assertEquals(7000, body["financeDefaults"]["monthlyFeeCents"].intValue())
+        assertEquals(10, body["financeDefaults"]["monthlyDueDay"].intValue())
+    }
+
+    @Test
+    fun `optional collections may be omitted from registration`() {
+        val response = postRaw(
+            """{"requestId":"${UUID.randomUUID()}","name":"Minimal Group","modality":"FOOTVOLLEY","composition":"MIXED","timeZone":"UTC"}""",
+        )
+
+        assertEquals(201, response.statusCode())
+        assertTrue(json(response)["profile"]["regularSlots"].isEmpty)
+        assertTrue(json(response)["profile"]["defaultVenue"].isNull)
+    }
+
+    @Test
+    fun `nested venue errors retain exact field paths`() {
+        val response = postRaw(
+            """{"requestId":"${UUID.randomUUID()}","name":"Group","modality":"BEACH_VOLLEYBALL","composition":"MIXED","defaultVenue":{"name":"","address":"x"},"timeZone":"UTC"}""",
+        )
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertEquals(
+            setOf("defaultVenue.name", "defaultVenue.address"),
+            json(response)["fieldErrors"].propertyNames().asSequence().toSet(),
+        )
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nested slot errors retain indexed field paths`() {
+        val response = postRaw(
+            """{"requestId":"${UUID.randomUUID()}","name":"Group","modality":"BEACH_VOLLEYBALL","composition":"MIXED","regularSlots":[{"durationMinutes":10}],"timeZone":"UTC"}""",
+        )
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertEquals(
+            setOf("regularSlots[0].weekday", "regularSlots[0].startTime", "regularSlots[0].durationMinutes"),
+            json(response)["fieldErrors"].propertyNames().asSequence().toSet(),
+        )
+    }
+
+    @Test
+    fun `non-court registration rejects play style fields`() {
+        val response = postRaw(
+            """{"requestId":"${UUID.randomUUID()}","name":"Group","modality":"FOOTVOLLEY","composition":"MIXED","playStyle":"FIVE_ONE","timeZone":"UTC"}""",
+        )
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertEquals(setOf("playStyle"), json(response)["fieldErrors"].propertyNames().asSequence().toSet())
+    }
+
+    @Test
+    fun `preset level rejects obsolete custom text`() {
+        val response = postRaw(
+            """{"requestId":"${UUID.randomUUID()}","name":"Group","modality":"COURT_VOLLEYBALL","composition":"MIXED","level":"ADVANCED","customLevel":"Elite","timeZone":"UTC"}""",
+        )
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertEquals(setOf("customLevel"), json(response)["fieldErrors"].propertyNames().asSequence().toSet())
+    }
+
+    @Test
+    fun `missing timezone returns an exact field problem`() {
+        val response = postRaw(
+            """{"requestId":"${UUID.randomUUID()}","name":"Group","modality":"COURT_VOLLEYBALL","composition":"MIXED"}""",
+        )
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertEquals(setOf("timeZone"), json(response)["fieldErrors"].propertyNames().asSequence().toSet())
+    }
+
+    @Test
+    fun `replayed complete registration returns the original nested aggregate`() {
+        val requestId = UUID.randomUUID()
+        val first = postRaw(completeRequest(requestId))
+        val replay = postRaw(completeRequest(requestId).replace("Training group", "Changed description"))
+
+        assertEquals(json(first), json(replay))
+        assertEquals("Training group", json(replay)["profile"]["description"].stringValue())
+        assertEquals(1, repository.groups.size)
+    }
+
+    private fun completeRequest(requestId: UUID) =
+        """{"requestId":"$requestId","name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","description":"Training group","city":"Santos","level":"INTERMEDIATE","defaultVenue":{"name":"Arena Beach","address":"Rua Central 100","court":"Quadra 2"},"regularSlots":[{"weekday":"MONDAY","startTime":"20:00:00","durationMinutes":120}],"defaultCapacity":18,"defaultConfirmationLeadMinutes":180,"defaultGameFeeCents":1500,"monthlyFeeCents":7000,"monthlyDueDay":10,"timeZone":"America/Sao_Paulo"}"""
+
     private fun identity(emailVerified: Boolean? = true) =
         RequestIdentity("group-subject", "group@example.test", emailVerified, "Group Person")
 
@@ -225,8 +339,11 @@ class GroupCreationEndpointIntegrationTest {
             CreateGroup(transaction, repository)
 
         @Bean
-        fun accessGroupController(bootstrap: BootstrapSession, createGroup: CreateGroup) =
-            AccessGroupController(verifiedGroupActorResolver(bootstrap), createGroup)
+        fun getCreatedGroup(repository: RecordingGroupRepository) = GetGroup(repository, GroupAccessPolicy())
+
+        @Bean
+        fun accessGroupController(bootstrap: BootstrapSession, createGroup: CreateGroup, getCreatedGroup: GetGroup) =
+            AccessGroupController(verifiedGroupActorResolver(bootstrap), createGroup, getCreatedGroup)
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()
@@ -251,15 +368,19 @@ class GroupCreationEndpointIntegrationTest {
         )
     }
 
-    class RecordingGroupRepository : GroupCreationRepository {
+    class RecordingGroupRepository : GroupCreationRepository, GroupReadRepository {
         val commands = mutableListOf<CreateGroupCommand>()
         val groups = mutableMapOf<Pair<UUID, UUID>, StoredGroup>()
         var failure: RuntimeException? = null
+        var nextVenueId: UUID = UUID.randomUUID()
+        var nextSlotIds: List<UUID> = listOf(UUID.randomUUID())
 
         fun reset() {
             commands.clear()
             groups.clear()
             failure = null
+            nextVenueId = UUID.randomUUID()
+            nextSlotIds = listOf(UUID.randomUUID())
         }
 
         override fun create(command: CreateGroupCommand): StoredGroup {
@@ -276,6 +397,41 @@ class GroupCreationEndpointIntegrationTest {
                     GroupProfileStatus.COMPLETE,
                 )
             }
+        }
+
+        override fun find(key: GroupReadKey): GroupReadSnapshot? {
+            val stored = groups.values.firstOrNull { it.id == key.groupId } ?: return null
+            val command = commands.first { it.ownerUserId == stored.ownerUserId && it.creationKey == stored.creationKey }
+            val profile = command.profile
+            return GroupReadSnapshot(
+                stored.id,
+                stored.name,
+                stored.timeZone,
+                if (key.actorUserId == stored.ownerUserId) GroupRole.OWNER else null,
+                stored.version,
+                stored.profileStatus,
+                GroupProfileReadModel(
+                    profile.modality,
+                    profile.composition,
+                    profile.description,
+                    profile.city,
+                    profile.level,
+                    profile.customLevel,
+                    profile.playStyle,
+                    profile.customPlayStyle,
+                    profile.defaultVenue?.let { GroupVenueReadModel(nextVenueId, it.name, it.address, it.court) },
+                    profile.regularSlots.mapIndexed { index, slot ->
+                        GroupRegularSlotReadModel(nextSlotIds[index], slot.weekday, slot.startTime, slot.durationMinutes)
+                    },
+                    profile.defaultCapacity,
+                    profile.defaultConfirmationLeadMinutes,
+                ),
+                GroupFinanceDefaultsReadModel(
+                    profile.defaultGameFeeCents,
+                    profile.monthlyFeeCents,
+                    profile.monthlyDueDay,
+                ),
+            )
         }
     }
 }

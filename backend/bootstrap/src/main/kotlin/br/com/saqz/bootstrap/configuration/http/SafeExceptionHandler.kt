@@ -8,6 +8,7 @@ import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
 import br.com.saqz.groups.adapter.input.http.VersionConflictException
+import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
 import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.sharedkernel.ErrorCode
@@ -60,6 +61,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccessForbiddenException::class)
     fun accessForbidden(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
+    }
+
+    @ExceptionHandler(PreconditionRequiredException::class)
+    fun preconditionRequired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 428, ErrorCode.PRECONDITION_REQUIRED)
     }
 
     @ExceptionHandler(VersionConflictException::class)

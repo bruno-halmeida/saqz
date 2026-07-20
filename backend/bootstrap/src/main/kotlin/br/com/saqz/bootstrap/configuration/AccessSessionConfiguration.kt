@@ -92,7 +92,8 @@ class AccessSessionConfiguration {
     fun accessGroupController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         createGroup: CreateGroup,
-    ) = AccessGroupController(verifiedGroupActorResolver, createGroup)
+        getGroup: GetGroup,
+    ) = AccessGroupController(verifiedGroupActorResolver, createGroup, getGroup)
 
     @Bean
     fun groupReadRepository(dataSource: DataSource) = JdbcGroupReadRepository(dataSource)
@@ -120,7 +121,8 @@ class AccessSessionConfiguration {
     fun accessGroupSettingsController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         updateGroupSettings: UpdateGroupSettings,
-    ) = AccessGroupSettingsController(verifiedGroupActorResolver, updateGroupSettings)
+        getGroup: GetGroup,
+    ) = AccessGroupSettingsController(verifiedGroupActorResolver, updateGroupSettings, getGroup)
 
     @Bean
     fun membershipRepository(dataSource: DataSource) = JdbcMembershipRepository(dataSource)

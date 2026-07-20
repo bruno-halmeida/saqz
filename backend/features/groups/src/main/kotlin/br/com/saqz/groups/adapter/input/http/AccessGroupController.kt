@@ -2,9 +2,8 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.create.CreateGroupResult
-import br.com.saqz.groups.application.create.CreatedGroup
-import br.com.saqz.groups.application.create.GroupProfileStatus
-import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.application.read.GetGroup
+import br.com.saqz.groups.application.read.GetGroupResult
 import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
@@ -26,7 +25,7 @@ import java.time.LocalTime
 import java.util.UUID
 
 data class CreateGroupRequest @JsonCreator constructor(
-    @JsonProperty("requestId") val requestId: String,
+    @JsonProperty("requestId") val requestId: String?,
     @JsonProperty("name") val name: String?,
     @JsonProperty("modality") val modality: GroupModality?,
     @JsonProperty("composition") val composition: GroupComposition?,
@@ -43,7 +42,7 @@ data class CreateGroupRequest @JsonCreator constructor(
     @JsonProperty("defaultGameFeeCents") val defaultGameFeeCents: Long? = null,
     @JsonProperty("monthlyFeeCents") val monthlyFeeCents: Long? = null,
     @JsonProperty("monthlyDueDay") val monthlyDueDay: Int? = null,
-    @JsonProperty("timeZone") val timeZone: String,
+    @JsonProperty("timeZone") val timeZone: String?,
 )
 
 data class CreateGroupVenueRequest @JsonCreator constructor(
@@ -58,15 +57,6 @@ data class CreateRegularSlotRequest @JsonCreator constructor(
     @JsonProperty("durationMinutes") val durationMinutes: Int?,
 )
 
-data class CreateGroupResponse(
-    val id: UUID,
-    val name: String,
-    val timeZone: String,
-    val version: Long,
-    val role: GroupRole,
-    val profileStatus: GroupProfileStatus,
-)
-
 class InvalidGroupRequestException(
     val fieldErrors: Map<String, List<String>>,
 ) : RuntimeException()
@@ -75,26 +65,37 @@ class InvalidGroupRequestException(
 class AccessGroupController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val createGroup: CreateGroup,
+    private val getGroup: GetGroup,
 ) {
     @PostMapping("/api/groups")
     fun create(
         @AuthenticationPrincipal identity: RequestIdentity,
         @RequestBody request: CreateGroupRequest,
-    ): ResponseEntity<CreateGroupResponse> {
+    ): ResponseEntity<GroupReadResponse> {
         val actor = actorResolver.resolve(identity)
-        val requestId = runCatching { UUID.fromString(request.requestId) }.getOrNull()
+        val requestId = request.requestId?.let { runCatching { UUID.fromString(it) }.getOrNull() }
             ?: throw InvalidGroupRequestException(
                 mapOf("requestId" to listOf("must be a UUID")),
             )
-        return when (val result = createGroup.execute(actor, requestId, request.profileInput(), request.timeZone)) {
+        val timeZone = request.timeZone
+            ?: throw InvalidGroupRequestException(mapOf("timeZone" to listOf("is required")))
+        return when (val result = createGroup.execute(actor, requestId, request.profileInput(), timeZone)) {
             is CreateGroupResult.Success -> ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(result.group.toResponse())
+                .body(loadCreatedGroup(actor, result.group.id))
             is CreateGroupResult.Invalid -> throw InvalidGroupRequestException(
                 result.errors.groupBy({ it.field }, { it.message }),
             )
         }
     }
+
+    private fun loadCreatedGroup(actor: UUID, groupId: UUID): GroupReadResponse =
+        when (val result = getGroup.execute(actor, groupId)) {
+            is GetGroupResult.Success -> result.group.toResponse()
+            GetGroupResult.GroupNotFound,
+            GetGroupResult.AccessForbidden,
+            -> error("created group could not be read")
+        }
 }
 
 private fun CreateGroupRequest.profileInput() = GroupProfileDefaultsInput(
@@ -115,5 +116,3 @@ private fun CreateGroupRequest.profileInput() = GroupProfileDefaultsInput(
     monthlyFeeCents = monthlyFeeCents,
     monthlyDueDay = monthlyDueDay,
 )
-
-private fun CreatedGroup.toResponse() = CreateGroupResponse(id, name, timeZone, version, role, profileStatus)

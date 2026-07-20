@@ -19,5 +19,9 @@ tests {
     expect(res.getStatus()).to.equal(200);
     expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
     expect(res.getBody().id).to.equal("{{groupId}}");
+    expect(res.getBody().privacy).to.equal("PRIVATE");
+    expect(res.getBody().currency).to.equal("BRL");
+    expect(res.getBody().profileStatus).to.be.oneOf(["COMPLETE", "INCOMPLETE"]);
+    expect(res.getBody().profile.regularSlots).to.be.an("array");
   });
 }

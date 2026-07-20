@@ -5,7 +5,7 @@ meta {
 }
 
 put {
-  url: {{backendUrl}}/api/groups/{{groupId}}/settings
+  url: {{backendUrl}}/api/groups/{{groupId}}
   body: json
   auth: none
 }
@@ -13,19 +13,34 @@ put {
 headers {
   Authorization: Bearer {{idToken}}
   content-type: application/json
-  If-Match: "replace-with-current-etag"
+  If-Match: "1"
 }
 
 body:json {
   {
     "name": "Bruno Test Group Updated",
-    "timeZone": "America/Sao_Paulo"
+    "modality": "COURT_VOLLEYBALL",
+    "composition": "MIXED",
+    "description": "Perfil atualizado manualmente",
+    "city": "São Paulo",
+    "level": "INTERMEDIATE",
+    "playStyle": "FIVE_ONE",
+    "defaultCapacity": 20,
+    "defaultConfirmationLeadMinutes": 120,
+    "defaultGameFeeCents": 1800,
+    "monthlyFeeCents": 7500,
+    "monthlyDueDay": 10
   }
 }
 
 tests {
   test("settings are updated", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody().name).to.be.a("string").and.not.empty;
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+    expect(res.getBody().name).to.equal("Bruno Test Group Updated");
+    expect(res.getBody().privacy).to.equal("PRIVATE");
+    expect(res.getBody().currency).to.equal("BRL");
+    expect(res.getBody().profile.defaultCapacity).to.equal(20);
+    expect(res.getBody().financeDefaults.defaultGameFeeCents).to.equal(1800);
   });
 }

@@ -19,6 +19,29 @@ body:json {
   {
     "requestId": "{{requestId}}",
     "name": "Bruno Test Group",
+    "modality": "COURT_VOLLEYBALL",
+    "composition": "MIXED",
+    "description": "Grupo para validar o contrato completo",
+    "city": "São Paulo",
+    "level": "INTERMEDIATE",
+    "playStyle": "FIVE_ONE",
+    "defaultVenue": {
+      "name": "Arena Central",
+      "address": "Rua Central, 100",
+      "court": "Quadra 2"
+    },
+    "regularSlots": [
+      {
+        "weekday": "MONDAY",
+        "startTime": "20:00:00",
+        "durationMinutes": 120
+      }
+    ],
+    "defaultCapacity": 18,
+    "defaultConfirmationLeadMinutes": 180,
+    "defaultGameFeeCents": 1500,
+    "monthlyFeeCents": 7000,
+    "monthlyDueDay": 10,
     "timeZone": "America/Sao_Paulo"
   }
 }
@@ -27,6 +50,13 @@ tests {
   test("group is created", function () {
     expect(res.getStatus()).to.equal(201);
     expect(res.getBody().id).to.be.a("string").and.not.empty;
+    expect(res.getBody().name).to.equal("Bruno Test Group");
     expect(res.getBody().role).to.equal("OWNER");
+    expect(res.getBody().privacy).to.equal("PRIVATE");
+    expect(res.getBody().currency).to.equal("BRL");
+    expect(res.getBody().profile.modality).to.equal("COURT_VOLLEYBALL");
+    expect(res.getBody().profile.defaultVenue.name).to.equal("Arena Central");
+    expect(res.getBody().profile.regularSlots[0].durationMinutes).to.equal(120);
+    expect(res.getBody().financeDefaults.defaultGameFeeCents).to.equal(1500);
   });
 }

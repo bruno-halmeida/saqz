@@ -30,6 +30,8 @@ data class GroupReadResponse(
     val role: GroupRole,
     val version: Long,
     val profileStatus: GroupProfileStatus,
+    val privacy: String = "PRIVATE",
+    val currency: String = "BRL",
     val profile: GroupProfileReadResponse?,
     val financeDefaults: GroupFinanceDefaultsReadResponse?,
 )
@@ -97,13 +99,15 @@ class AccessGroupReadController(
     }
 }
 
-private fun GroupView.toResponse() = GroupReadResponse(
+fun GroupView.toResponse() = GroupReadResponse(
     id = id,
     name = name.value,
     timeZone = timeZone.value,
     role = role,
     version = version,
     profileStatus = profileStatus,
+    privacy = "PRIVATE",
+    currency = "BRL",
     profile = profile?.toResponse(),
     financeDefaults = financeDefaults?.toResponse(),
 )
