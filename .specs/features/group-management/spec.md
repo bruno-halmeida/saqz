@@ -705,6 +705,12 @@ keys, cents, or timezone identifiers.
   boundary fixture class declared inside an `inner` fake gateway. No new
   invariant added; the existing cross-target test compilation catches this
   Kotlin portability constraint.
+- **B45 | 2026-07-19** — T40 Mobile quick re-exposed two iOS-only flaky tests
+  from T38/T39: a duplicate-refresh assertion left a deferred request alive,
+  and a compact-list assertion depended on a fixed scroll position. No new
+  product invariant added; deterministic coroutine completion and semantic
+  per-item scrolling are required so the existing cross-target gate remains
+  reliable.
 
 ## Success criteria
 
