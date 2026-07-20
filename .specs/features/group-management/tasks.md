@@ -1115,17 +1115,19 @@ resources and tests.
 
 **Done when:**
 
-- [ ] Cards expose title, local date/time, venue, status and derived
+- [x] Cards expose title, local date/time, venue, status and derived
   spots/waitlist without enum/cents/timezone identifiers.
-- [ ] Drafts/organizer CTA are hidden from athletes and no prior-group content
+- [x] Drafts/organizer CTA are hidden from athletes and no prior-group content
   flashes while loading.
-- [ ] Empty/error/retry and upcoming/past navigation are semantically ordered
+- [x] Empty/error/retry and upcoming/past navigation are semantically ordered
   with 48 dp targets under compact/max-text conditions.
-- [ ] Mobile quick gate passes; test count `Δ+12` or greater.
+- [x] Mobile quick gate passes; test count `Δ+12` with zero skipped/failing.
 
 **Tests:** common Compose UI (`Δ+12`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): build games list ui`
+**Status:** Complete; Mobile quick and safety gates passed with 12 added
+cross-target Compose cases.
 
 ### T40: Implement GameEditorViewModel and restorable drafts
 
