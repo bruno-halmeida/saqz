@@ -886,15 +886,15 @@ outcomes.
 
 **Done when:**
 
-- [ ] Title/venue/start/duration/capacity/deadline/fee/notes validation matches
+- [x] Title/venue/start/duration/capacity/deadline/fee/notes validation matches
   exact limits and reports all fields before persistence.
-- [ ] Creating from defaults copies values; subsequent default/venue mutations
+- [x] Creating from defaults copies values; subsequent default/venue mutations
   cannot change the game snapshot.
-- [ ] Only valid role/status transitions succeed; invalid/stale transitions
+- [x] Only valid role/status transitions succeed; invalid/stale transitions
   produce no attendance/finance/schedule side effect.
-- [ ] Draft visibility and published/cancelled/completed mutability match the
+- [x] Draft visibility and published/cancelled/completed mutability match the
   spec.
-- [ ] Backend quick gate passes; test count `Δ+18` or greater.
+- [x] Backend quick gate passes; test count `Δ+37` with zero skipped/failing.
 
 **Tests:** domain/application unit (`Δ+18`).
 **Gate:** Backend quick + Safety.
