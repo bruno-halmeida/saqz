@@ -1356,18 +1356,21 @@ runner.
 
 **Done when:**
 
-- [ ] Description/amount/date/category/custom/notes rules match exact limits
+- [x] Description/amount/date/category/custom/notes rules match exact limits
   and contradictory custom category is cleared/rejected.
-- [ ] OWNER/ADMIN list/create/edit/void; ATHLETE cannot read entries/totals;
+- [x] OWNER/ADMIN list/create/edit/void; ATHLETE cannot read entries/totals;
   non-member is privacy-hidden.
-- [ ] Every mutation appends actor/action/time and preserves all prior events;
+- [x] Every mutation appends actor/action/time and preserves all prior events;
   stale/failed write preserves current expense.
-- [ ] No expense creates member debt, reimbursement, charge, or transfer.
-- [ ] Backend full gate passes; test count `Δ+18` or greater.
+- [x] No expense creates member debt, reimbursement, charge, or transfer.
+- [x] Backend full gate passes; test count `Δ+18` or greater.
 
 **Tests:** domain unit + PostgreSQL integration (`Δ+18`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): track audited group expenses`
+**Status:** Complete; backend full and safety gates passed with 21 added domain
+and PostgreSQL cases covering exact validation, organizer privacy, optimistic
+writes, immutable event snapshots, totals, voiding, and rollback.
 
 ### T48: Expose expense and finance-total HTTP contracts
 
