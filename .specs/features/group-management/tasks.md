@@ -1633,19 +1633,22 @@ deadline/frozen states, and organizer override/capacity intents in game detail.
 
 **Done when:**
 
-- [ ] State derives available action from authoritative role/status/deadline/
+- [x] State derives available action from authoritative role/status/deadline/
   response and exposes confirmed/waitlist position/count accurately.
-- [ ] Double tap/recreation/retry issues one logical command and reconciles the
+- [x] Double tap/recreation/retry issues one logical command and reconciles the
   returned game/charge state without optimistic overbooking claims.
-- [ ] Withdrawal confirmation explains pending charge; promotion refresh shows
+- [x] Withdrawal confirmation explains pending charge; promotion refresh shows
   confirmed and at-most-one charge.
-- [ ] Organizer overrides require explicit member/state/reason and capacity
+- [x] Organizer overrides require explicit member/state/reason and capacity
   conflicts preserve local intent for reload/retry.
-- [ ] Mobile quick gate passes; test count `Δ+16` or greater.
+- [x] Mobile quick gate passes; test count `Δ+18`.
 
 **Tests:** KMP ViewModel unit (`Δ+16`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): coordinate attendance responses`
+**Status:** Complete; 18 KMP ViewModel cases plus the mobile quick and safety
+gates passed across authoritative actions/counts, stable single-flight replay,
+pending-charge warnings, promotion refresh, override, capacity, and conflicts.
 
 ### T57: Build RSVP, waitlist, and organizer attendance UI
 
