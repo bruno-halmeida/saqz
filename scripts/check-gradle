@@ -18,6 +18,8 @@ fail() {
     :features:identity:emulatorTest \
     :features:access:test \
     :features:access:integrationTest \
+    :features:groups:test \
+    :features:groups:integrationTest \
     :bootstrap:test \
     :bootstrap:emulatorTest \
     :architecture-tests:test \
@@ -48,6 +50,8 @@ fi
     :core:network:allTests \
     :features:access:compileAndroidMain \
     :features:access:allTests \
+    :features:groups:compileAndroidMain \
+    :features:groups:allTests \
     :compose-app:allTests \
     :android-app:testDevDebugUnitTest \
     :android-app:connectedDevDebugAndroidTest \

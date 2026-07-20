@@ -168,13 +168,23 @@ class GroupSetupViewModel(
                 copy(monthlyFeeCents = intent.cents, monthlyDueDay = if (intent.cents == null) null else intent.dueDay)
             }
             is GroupSetupIntent.SelectFallbackTimeZone -> selectFallbackTimeZone(intent.identifier)
-            is GroupSetupIntent.SetPhotoPending -> mutableState.update { it.copy(photoPending = intent.value) }
+            is GroupSetupIntent.SetPhotoPending -> {
+                val shouldOpen = !intent.value && mutableState.value.photoPending
+                val groupId = mutableState.value.successGroupId
+                mutableState.update { it.copy(photoPending = intent.value) }
+                if (shouldOpen && groupId != null) openConfirmedGroup(groupId)
+            }
             GroupSetupIntent.Submit -> submit()
             GroupSetupIntent.ReloadConflict -> reloadConflict()
             GroupSetupIntent.RetryPhotoUpload -> retryPhoto()
             GroupSetupIntent.PhotoUploadFailed -> mutableState.update { it.copy(photoRetryAvailable = true) }
-            GroupSetupIntent.PhotoUploadSucceeded -> mutableState.update {
-                it.copy(photoPending = false, photoRetryAvailable = false)
+            GroupSetupIntent.PhotoUploadSucceeded -> {
+                val shouldOpen = mutableState.value.photoPending
+                val groupId = mutableState.value.successGroupId
+                mutableState.update {
+                    it.copy(photoPending = false, photoRetryAvailable = false)
+                }
+                if (shouldOpen && groupId != null) openConfirmedGroup(groupId)
             }
         }
     }
@@ -288,12 +298,17 @@ class GroupSetupViewModel(
                     error = if (result is GroupDraftWriteResult.Failure) GroupSetupError.DRAFT_UNAVAILABLE else null,
                 )
             }
-            if (existing == null) effectChannel.trySend(GroupSetupEffect.SelectGroup(groupId))
-            effectChannel.trySend(GroupSetupEffect.OpenGroup(groupId))
             if (mutableState.value.photoPending) {
                 effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId, confirmedEtag))
+            } else {
+                openConfirmedGroup(groupId)
             }
         }
+    }
+
+    private fun openConfirmedGroup(groupId: String) {
+        if (existing == null) effectChannel.trySend(GroupSetupEffect.SelectGroup(groupId))
+        effectChannel.trySend(GroupSetupEffect.OpenGroup(groupId))
     }
 
     private fun reloadConflict() {

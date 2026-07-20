@@ -5,8 +5,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import br.com.saqz.androidapp.groups.photo.AndroidPhotoEncoder
 import br.com.saqz.androidapp.groups.photo.AndroidPhotoFiles
+import br.com.saqz.androidapp.groups.photo.AndroidPhotoPreviewAdapter
 import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoEncodingResult
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -42,6 +44,16 @@ class AndroidGroupPhotoAdapterTest {
     @Test fun invalidBytesFailBoundsInspectionBeforeDecode() {
         val file = files.createSource().apply { writeBytes(byteArrayOf(1, 2, 3)) }
         assertEquals(null, files.metadata(file))
+    }
+
+    @Test fun previewReaderReturnsOnlyBoundedPrivateSourceBytes() {
+        val expected = byteArrayOf(1, 2, 3)
+        val file = files.createSource().apply { writeBytes(expected) }
+
+        val actual = AndroidPhotoPreviewAdapter(files).read(GroupPhotoPreviewHandle(file.name))
+
+        assertTrue(expected.contentEquals(actual))
+        assertEquals(null, AndroidPhotoPreviewAdapter(files).read(GroupPhotoPreviewHandle("missing.img")))
     }
 
     @Test fun encoderProducesBoundedStaticSquareJpeg() = runBlocking {

@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.PersistedRoleDto
+import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.groups.presentation.DeferredInviteIntent
@@ -105,6 +107,7 @@ internal data class AccessUiState(
     val createName: String = "",
     val createTimeZone: String = "",
     val createValidationAttempted: Boolean = false,
+    val createFlowKey: String = "",
     val settingsName: String = "",
     val settingsTimeZone: String = "",
     val invite: InviteToolState = InviteToolState(),
@@ -146,6 +149,8 @@ internal interface AccessRuntimeContract {
     val selectionState: StateFlow<GroupSelectionState>
     val administrationState: StateFlow<GroupAdministrationState>
     val inviteToolState: StateFlow<InviteToolState>
+    val groupProfileGateway: GroupProfileGateway
+    val groupPhotoGateway: GroupPhotoGateway
 
     fun onIntent(intent: AccessRuntimeIntent)
 
@@ -171,6 +176,8 @@ internal class AccessViewModel private constructor(
     private val routeState = MutableStateFlow(RouteState(createRequestId = runtime.newRequestId()))
     private val effectChannel = Channel<AccessUiEffect>(Channel.BUFFERED)
     val effects: Flow<AccessUiEffect> = effectChannel.receiveAsFlow()
+    internal val groupProfileGateway: GroupProfileGateway get() = runtime.groupProfileGateway
+    internal val groupPhotoGateway: GroupPhotoGateway get() = runtime.groupPhotoGateway
     private var closed = false
 
     private val coreState = combine(
@@ -198,6 +205,7 @@ internal class AccessViewModel private constructor(
             createName = route.createName,
             createTimeZone = route.createTimeZone,
             createValidationAttempted = route.createValidationAttempted,
+            createFlowKey = route.createRequestId,
             settingsName = route.settingsName,
             settingsTimeZone = route.settingsTimeZone,
             invite = invite,
@@ -252,6 +260,8 @@ internal class AccessViewModel private constructor(
             )
         }
     }
+
+    internal fun newCommandKey(): String = runtime.newRequestId()
 
     override fun onCleared() {
         closeRuntimeOnce()

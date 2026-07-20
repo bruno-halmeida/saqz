@@ -216,8 +216,6 @@ class GroupSetupViewModelTest {
         fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(true))
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
-        fixture.viewModel.effects.first()
-        fixture.viewModel.effects.first()
 
         assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID, "\"1\""), fixture.viewModel.effects.first())
         assertEquals("\"1\"", fixture.viewModel.state.value.etag)
@@ -225,6 +223,36 @@ class GroupSetupViewModelTest {
         assertTrue(fixture.viewModel.state.value.photoRetryAvailable)
         fixture.viewModel.onIntent(GroupSetupIntent.RetryPhotoUpload)
         assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID, "\"1\""), fixture.viewModel.effects.first())
+        assertEquals(1, fixture.gateway.creates.size)
+    }
+
+    @Test
+    fun `pending photo completes before created group navigation`() = runTest {
+        val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
+        fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(true))
+        fixture.viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID, "\"1\""), fixture.viewModel.effects.first())
+        fixture.viewModel.onIntent(GroupSetupIntent.PhotoUploadSucceeded)
+
+        assertEquals(GroupSetupEffect.SelectGroup(GROUP_ID), fixture.viewModel.effects.first())
+        assertEquals(GroupSetupEffect.OpenGroup(GROUP_ID), fixture.viewModel.effects.first())
+        assertFalse(fixture.viewModel.state.value.photoPending)
+    }
+
+    @Test
+    fun `cancelling pending photo after create continues without another create`() = runTest {
+        val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
+        fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(true))
+        fixture.viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+        fixture.viewModel.effects.first()
+
+        fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(false))
+
+        assertEquals(GroupSetupEffect.SelectGroup(GROUP_ID), fixture.viewModel.effects.first())
+        assertEquals(GroupSetupEffect.OpenGroup(GROUP_ID), fixture.viewModel.effects.first())
         assertEquals(1, fixture.gateway.creates.size)
     }
 

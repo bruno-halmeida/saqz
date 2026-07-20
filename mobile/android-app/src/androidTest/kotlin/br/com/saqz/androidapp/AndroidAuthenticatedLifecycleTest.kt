@@ -35,6 +35,7 @@ import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupInviteCodeListener
 import br.com.saqz.groups.port.GroupOperationResult
@@ -298,6 +299,7 @@ private class LifecycleCompositionFactory(
             links = fixture.links,
             localState = fixture.local,
             share = fixture.share,
+            groupPhotos = GroupPhotoRuntimeDependencies.Unconfigured,
             groupLinks = fixture.links,
             groupState = fixture.local,
         )

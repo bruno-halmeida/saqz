@@ -19,6 +19,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -27,6 +32,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected as semanticsSelected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -79,9 +85,9 @@ internal object GroupSetupTags {
 fun GroupSetupScreen(
     state: GroupSetupState,
     access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
-    photoState: GroupPhotoState = GroupPhotoState(),
-    onPhotoIntent: (GroupPhotoIntent) -> Unit = {},
-    photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Unit)? = null,
+    photoState: GroupPhotoState,
+    onPhotoIntent: (GroupPhotoIntent) -> Unit,
+    photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     onIntent: (GroupSetupIntent) -> Unit,
 ) {
     val editable = access == GroupSetupAccess.ORGANIZER && state.successGroupId == null
@@ -315,15 +321,32 @@ private fun SetupInput(
     error: String? = null,
     helper: StringResource? = null,
     onChange: (String) -> Unit,
-) = SaqzInput(
-    value = TextFieldValue(value),
-    onValueChange = { onChange(it.text) },
-    label = stringResource(label),
-    helperText = helper?.let { stringResource(it) },
-    errorText = error,
-    enabled = enabled,
-    inlineLabel = value.isEmpty(),
-)
+) {
+    var fieldValue by remember {
+        mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
+    }
+    LaunchedEffect(value) {
+        if (fieldValue.text != value) {
+            fieldValue = fieldValue.copy(
+                text = value,
+                selection = TextRange(value.length),
+                composition = null,
+            )
+        }
+    }
+    SaqzInput(
+        value = fieldValue,
+        onValueChange = {
+            fieldValue = it
+            onChange(it.text)
+        },
+        label = stringResource(label),
+        helperText = helper?.let { stringResource(it) },
+        errorText = error,
+        enabled = enabled,
+        inlineLabel = value.isEmpty(),
+    )
+}
 
 @Composable
 private fun <T> ChoiceField(
@@ -576,6 +599,8 @@ private fun <T> List<T>.replace(index: Int, value: T): List<T> = mapIndexed { cu
 private fun GroupSetupScreenPreview() = SaqzTheme {
     GroupSetupScreen(
         state = GroupSetupState(GroupSetupMode.CREATE, GroupSetupForm(), "preview"),
+        photoState = GroupPhotoState(),
+        onPhotoIntent = {},
         onIntent = {},
     )
 }

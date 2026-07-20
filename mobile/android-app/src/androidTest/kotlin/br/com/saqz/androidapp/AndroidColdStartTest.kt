@@ -9,14 +9,19 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 
 // Cold start proves the native launch screen hands straight to the real Compose shell:
 // no timer, no intermediate Compose splash, no artificial retention.
 @RunWith(AndroidJUnit4::class)
 class AndroidColdStartTest {
+    private val signedOut = SignedOutAccessRule()
+    private val composeRule = createAndroidComposeRule<MainActivity>()
+
     @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
+    val rules: TestRule = RuleChain.outerRule(signedOut).around(composeRule)
 
     @Test
     fun coldStartReachesLogin() {

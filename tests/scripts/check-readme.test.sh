@@ -41,10 +41,10 @@ require 'scripts/check-scope' 'scope gate'
 require 'scripts/check-bruno' 'Bruno contract gate'
 ok 'native gate commands'
 
-require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
+require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
 ok 'backend Gradle command'
 
-require 'mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
+require 'mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
 
 require ':core:common:allTests' 'core common suite'
 ok 'core common suite documented'
@@ -130,6 +130,14 @@ require '`mobile/features/access`' 'mobile access module'
 require 'compose-app -> features:access -> core:network' 'mobile access dependency direction'
 ok 'mobile access architecture inventory'
 
+require '`backend/features/groups`' 'backend Groups module'
+require 'bootstrap -> features:groups -> shared-kernel' 'backend Groups dependency direction'
+ok 'backend Groups architecture inventory'
+
+require '`mobile/features/groups`' 'mobile Groups module'
+require 'compose-app -> features:groups -> core:network' 'mobile Groups dependency direction'
+ok 'mobile Groups architecture inventory'
+
 require 'Docker.*PostgreSQL 16.*Testcontainers' 'disposable PostgreSQL prerequisite'
 require 'No local database URL or database credential is required' 'credential-free PostgreSQL tests'
 ok 'PostgreSQL Testcontainers configuration'
@@ -147,6 +155,7 @@ require 'does not require a live Branch key' 'credential-free Branch tests'
 ok 'Branch test configuration'
 
 require 'backend/gradlew -p backend :features:access:test :features:access:integrationTest --console=plain' 'focused backend access suites'
+require 'backend/gradlew -p backend :features:groups:test :features:groups:integrationTest --console=plain' 'focused backend Groups suites'
 require 'backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain' 'focused backend HTTP and emulator suites'
 ok 'focused backend access commands'
 
@@ -154,4 +163,14 @@ require 'mobile/gradlew -p mobile :core:network:allTests --console=plain' 'focus
 require 'mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain' 'focused mobile access suites'
 ok 'focused mobile access commands'
 
-[ "$count" -eq 29 ]
+require 'mobile/gradlew -p mobile :features:groups:compileAndroidMain :features:groups:allTests --console=plain' 'focused mobile Groups suites'
+ok 'focused Groups commands'
+
+require 'Group photos are private authenticated resources' 'private group photos'
+require 'manual tracking only' 'manual finance tracking'
+require 'does not process payments' 'no payment processing'
+require 'athletes' 'athlete finance audience'
+require 'only their own charges' 'athlete finance privacy'
+ok 'Groups privacy and finance boundaries'
+
+[ "$count" -eq 33 ]

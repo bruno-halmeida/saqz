@@ -104,7 +104,7 @@ internal class AndroidPhotoSelectionAdapter(
             GroupPhotoSelectionResult.Selected(
                 GroupPhotoSelection(
                     files.handle(file),
-                    GroupPhotoPreviewHandle(files.previewUri(file).toString()),
+                    GroupPhotoPreviewHandle(file.name),
                     metadata.width,
                     metadata.height,
                 ),

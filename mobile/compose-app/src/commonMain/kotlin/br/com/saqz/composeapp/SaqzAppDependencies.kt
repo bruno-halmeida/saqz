@@ -26,9 +26,31 @@ import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.port.GroupDraftStorePort
+import br.com.saqz.groups.port.GroupPhotoCachePort
+import br.com.saqz.groups.port.GroupPhotoEncoderPort
+import br.com.saqz.groups.port.GroupPhotoEncodingResult
+import br.com.saqz.groups.port.GroupPhotoPreviewPort
+import br.com.saqz.groups.port.GroupPhotoSelectionPort
+import br.com.saqz.groups.port.GroupPhotoSelectionResult
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftStorePort
 import br.com.saqz.groups.presentation.games.editor.GameDraftStorePort
+
+class GroupPhotoRuntimeDependencies(
+    val selection: GroupPhotoSelectionPort,
+    val encoder: GroupPhotoEncoderPort,
+    val cache: GroupPhotoCachePort,
+    val previews: GroupPhotoPreviewPort,
+) {
+    companion object {
+        val Unconfigured = GroupPhotoRuntimeDependencies(
+            selection = UnconfiguredGroupPhotoSelection,
+            encoder = UnconfiguredGroupPhotoEncoder,
+            cache = UnconfiguredGroupPhotoCache,
+            previews = GroupPhotoPreviewPort { null },
+        )
+    }
+}
 
 class SaqzAppDependencies(
     val environment: String,
@@ -37,6 +59,7 @@ class SaqzAppDependencies(
     val links: NativeLinkPort = UnconfiguredLinkPort,
     val localState: LocalAccessStatePort,
     val share: NativeSharePort,
+    val groupPhotos: GroupPhotoRuntimeDependencies,
     val groupLinks: NativeGroupLinkPort = UnconfiguredGroupLinkPort,
     val groupState: LocalGroupStatePort = UnconfiguredGroupStatePort,
     val groupDrafts: GroupDraftStorePort = UnconfiguredGroupDraftStore,
@@ -57,10 +80,31 @@ class SaqzAppDependencies(
             links = UnconfiguredLinkPort,
             localState = UnconfiguredLocalStatePort,
             share = UnconfiguredSharePort,
+            groupPhotos = GroupPhotoRuntimeDependencies.Unconfigured,
             groupLinks = UnconfiguredGroupLinkPort,
             groupState = UnconfiguredGroupStatePort,
         )
     }
+}
+
+private object UnconfiguredGroupPhotoSelection : GroupPhotoSelectionPort {
+    override suspend fun chooseCamera() = GroupPhotoSelectionResult.Failed
+    override suspend fun chooseLibrary() = GroupPhotoSelectionResult.Failed
+    override fun cleanup(source: br.com.saqz.groups.port.GroupPhotoSourceHandle) = Unit
+}
+
+private object UnconfiguredGroupPhotoEncoder : GroupPhotoEncoderPort {
+    override suspend fun encode(
+        source: br.com.saqz.groups.port.GroupPhotoSourceHandle,
+        crop: br.com.saqz.groups.port.GroupPhotoCrop,
+    ) = GroupPhotoEncodingResult.Failed
+
+    override fun cancel(source: br.com.saqz.groups.port.GroupPhotoSourceHandle) = Unit
+}
+
+private object UnconfiguredGroupPhotoCache : GroupPhotoCachePort {
+    override fun evict(groupId: String) = Unit
+    override fun clearAll() = Unit
 }
 
 private object NoOpCancelable : Cancelable {

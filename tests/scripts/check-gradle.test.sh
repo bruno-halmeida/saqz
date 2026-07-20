@@ -123,9 +123,9 @@ cat >"$expected" <<'EOF'
 credentials
 scope
 bruno
-backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
+backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
@@ -153,9 +153,9 @@ make_repo "$happy"
 ) >/dev/null
 happy_log="$happy/repo/invocations.log"
 
-required_suites=':core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
+required_suites=':core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
 
-# exactInventory: the mobile invocation lists exactly the five required suites.
+# exactInventory: the mobile invocation lists exactly the required suites.
 [ "$(mobile_line "$happy_log")" = "$required_suites" ] || {
     printf 'exactInventory: mobile suites were %s\n' "$(mobile_line "$happy_log")" >&2
     exit 1
@@ -215,15 +215,15 @@ printf 'ok %d - adbMissingFails\n' "$count"
 fail_case deviceMissingFails 'emulator/device is required' env NO_ANDROID_DEVICE=1
 fail_case zeroTestsFails 'zero tests discovered' env ZERO_TESTS=1
 
-# backendInventoryUnchanged: the backend invocation is byte-for-byte the original.
-backend_expected=':shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test'
+# backendInventory: the backend invocation is byte-for-byte the required inventory.
+backend_expected=':shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test'
 backend_actual=$(grep '^backend ' "$happy_log" | sed -E 's#.* -p [^ ]+/backend ##; s# --console=plain$##')
 [ "$backend_actual" = "$backend_expected" ] || {
-    printf 'backendInventoryUnchanged: backend suites were %s\n' "$backend_actual" >&2
+    printf 'backendInventory: backend suites were %s\n' "$backend_actual" >&2
     exit 1
 }
 count=$((count + 1))
-printf 'ok %d - backendInventoryUnchanged\n' "$count"
+printf 'ok %d - backendInventory\n' "$count"
 
 identity_build="$repository_root/backend/features/identity/build.gradle.kts"
 identity_test="$repository_root/backend/features/identity/src/test/kotlin/br/com/saqz/identity/adapter/output/firebase/FirebaseAdminTokenVerifierEmulatorTest.kt"
@@ -268,4 +268,23 @@ if grep -Eq 'BRANCH_KEY|GOOGLE_CLIENT|service.account|production.secret' "$repos
 fi
 count=$((count + 1)); printf 'ok %d - credentialFreeAccessGate\n' "$count"
 
-[ "$count" -eq 32 ]
+# --- T67: mandatory Groups inventory and mutation resistance ---------------
+
+case " $backend_actual " in
+    *' :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test '*) ;;
+    *) printf 'backend Groups inventory missing or out of order\n' >&2; exit 1 ;;
+esac
+count=$((count + 1)); printf 'ok %d - backendGroupsInventory\n' "$count"
+
+case " $(mobile_line "$happy_log") " in
+    *' :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests '*) ;;
+    *) printf 'mobile Groups inventory missing or out of order\n' >&2; exit 1 ;;
+esac
+count=$((count + 1)); printf 'ok %d - mobileGroupsInventory\n' "$count"
+
+fail_case groups-unit-failure '' env FAIL_TASK=:features:groups:test
+fail_case groups-integration-failure '' env FAIL_TASK=:features:groups:integrationTest
+fail_case groups-mobile-compile-failure '' env FAIL_TASK=:features:groups:compileAndroidMain
+fail_case groups-mobile-tests-failure '' env FAIL_TASK=:features:groups:allTests
+
+[ "$count" -eq 40 ]

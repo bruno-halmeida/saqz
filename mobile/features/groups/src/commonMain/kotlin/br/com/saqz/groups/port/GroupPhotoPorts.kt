@@ -76,6 +76,10 @@ interface GroupPhotoEncoderPort {
     fun cancel(source: GroupPhotoSourceHandle)
 }
 
+fun interface GroupPhotoPreviewPort {
+    fun read(preview: GroupPhotoPreviewHandle): ByteArray?
+}
+
 interface GroupPhotoCachePort {
     fun evict(groupId: String)
     fun clearAll()

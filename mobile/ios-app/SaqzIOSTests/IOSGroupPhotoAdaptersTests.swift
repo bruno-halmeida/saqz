@@ -38,6 +38,15 @@ final class IOSGroupPhotoAdaptersTests: XCTestCase {
     func testInvalidBytesFailMetadataBeforeDecode() throws {
         let fixture = try filesFixture(); let url = try fixture.files.store(Data([1, 2, 3])); XCTAssertNil(fixture.files.metadata(url))
     }
+    func testPreviewReaderReturnsOnlyPrivateSourceBytes() throws {
+        let fixture = try filesFixture(); let expected = Data([1, 2, 3]); let url = try fixture.files.store(expected)
+        let bytes = IOSPhotoPreviewAdapter(files: fixture.files).read(preview: GroupPhotoPreviewHandle(value: url.lastPathComponent))
+        let actual = bytes.map { array in
+            Data((0..<array.size).map { index in UInt8(bitPattern: array.get(index: index)) })
+        }
+        XCTAssertEqual(actual, expected)
+        XCTAssertNil(IOSPhotoPreviewAdapter(files: fixture.files).read(preview: GroupPhotoPreviewHandle(value: "missing.img")))
+    }
 
     func testEncoderProducesBoundedStaticSquareJPEG() throws {
         let fixture = try filesFixture(); let renderer = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 200))

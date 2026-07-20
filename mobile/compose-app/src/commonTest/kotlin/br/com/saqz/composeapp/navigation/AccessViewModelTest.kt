@@ -3,6 +3,8 @@ package br.com.saqz.composeapp.navigation
 import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.PersistedRoleDto
+import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.VersionedGroupDto
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthenticationIntent
@@ -347,6 +349,8 @@ class AccessViewModelTest {
         override val selectionState = selection
         override val administrationState = administration
         override val inviteToolState = invite
+        override val groupProfileGateway: GroupProfileGateway get() = error("not used by AccessViewModel tests")
+        override val groupPhotoGateway: GroupPhotoGateway get() = error("not used by AccessViewModel tests")
 
         override fun onIntent(intent: AccessRuntimeIntent) {
             intents += intent

@@ -1,6 +1,10 @@
 package br.com.saqz.groups.ui.setup
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
@@ -200,6 +204,35 @@ class GroupSetupScreenTest {
         assertEquals("Arena", assertIs<GroupSetupIntent.UpdateVenue>(intent).value?.name)
     }
 
+    @Test fun `controlled name preserves incremental keyboard order across recomposition`() = runComposeUiTest {
+        var observed = ""
+        setContent {
+            var form by remember { mutableStateOf(GroupSetupForm()) }
+            SaqzTheme {
+                GroupSetupScreen(
+                    state = state(form = form),
+                    photoState = GroupPhotoState(),
+                    onPhotoIntent = {},
+                    onIntent = { intent ->
+                        if (intent is GroupSetupIntent.UpdateName) {
+                            observed = intent.value
+                            form = form.copy(name = intent.value)
+                        }
+                    },
+                )
+            }
+        }
+        val name = onNodeWithContentDescription("Nome do grupo", useUnmergedTree = true)
+        name.performTextInput("a")
+        waitForIdle()
+        name.performTextInput("b")
+        waitForIdle()
+        name.performTextInput("c")
+        waitForIdle()
+
+        assertEquals("abc", observed)
+    }
+
     @Test fun `adding a slot emits local weekday time and duration defaults`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
         setup(onIntent = { intent = it })
@@ -323,7 +356,7 @@ class GroupSetupScreenTest {
         setContent {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                    GroupSetupScreen(state()) {}
+                    GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}) {}
                 }
             }
         }
@@ -334,7 +367,9 @@ class GroupSetupScreenTest {
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Box(Modifier.size(320.dp, 420.dp)) {
-                    SaqzTheme { GroupSetupScreen(state()) {} }
+                    SaqzTheme {
+                        GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}) {}
+                    }
                 }
             }
         }

@@ -24,6 +24,12 @@ import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.model.GroupTimeZone
+import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.ui.photo.GroupPhotoTags
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.port.NativeSharePort
 import br.com.saqz.access.port.OperationResult
@@ -148,6 +154,42 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
+    fun `authenticated create destination renders complete Groups setup instead of legacy form`() = runComposeUiTest {
+        rootWithSetup(
+            ready(GroupSelectionState.NoGroup).copy(page = AccessPage.CREATE_GROUP),
+            GroupSetupState(
+                mode = GroupSetupMode.CREATE,
+                form = GroupSetupForm(),
+                commandKey = "create-command",
+                timeZone = GroupTimeZone.parse("America/Sao_Paulo").let {
+                    (it as GroupTimeZone.ParseResult.Valid).value
+                },
+            ),
+        )
+
+        onNodeWithText("Perfil do grupo").assertExists()
+        onNodeWithText("Modalidade").assertExists()
+        onNodeWithText("Composição").assertExists()
+        onNodeWithText("Padrões para novos jogos").assertExists()
+        onNodeWithText("Padrões financeiros").assertExists()
+        onNodeWithText("Timezone").assertDoesNotExist()
+    }
+
+    @Test
+    fun `authenticated create destination forwards camera action across route seam`() = runComposeUiTest {
+        val photoIntents = mutableListOf<GroupPhotoIntent>()
+        rootWithSetup(
+            ready(GroupSelectionState.NoGroup).copy(page = AccessPage.CREATE_GROUP),
+            GroupSetupState(GroupSetupMode.CREATE, GroupSetupForm(), "create-command"),
+            onGroupPhotoIntent = photoIntents::add,
+        )
+
+        onNodeWithTag(GroupPhotoTags.Camera).performClick()
+
+        assertEquals(listOf<GroupPhotoIntent>(GroupPhotoIntent.ChooseCamera), photoIntents)
+    }
+
+    @Test
     fun `one selected membership renders current group and role`() = runComposeUiTest {
         root(active(ownerAdministration))
 
@@ -259,6 +301,21 @@ class AuthenticatedAccessRootTest {
         state: AccessRootSnapshot,
         onIntent: (AccessIntent) -> Unit = {},
     ) = setContent { SaqzTheme { AuthenticatedAccessRoot(state, onIntent = onIntent) } }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.rootWithSetup(
+        state: AccessRootSnapshot,
+        groupSetupState: GroupSetupState,
+        onGroupPhotoIntent: (GroupPhotoIntent) -> Unit = {},
+    ) = setContent {
+        SaqzTheme {
+            AuthenticatedAccessRoot(
+                state,
+                groupSetupState = groupSetupState,
+                onGroupPhotoIntent = onGroupPhotoIntent,
+                onIntent = {},
+            )
+        }
+    }
 
     private class RecordingSharePort(private val result: OperationResult) : NativeSharePort {
         val values = mutableListOf<String>()

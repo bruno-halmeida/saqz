@@ -62,7 +62,7 @@ fun GroupPhotoEditor(
     onIntent: (GroupPhotoIntent) -> Unit,
     onPrepared: (Boolean) -> Unit = {},
     onReloadTarget: () -> Unit = {},
-    preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Unit)? = null,
+    preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
 ) {
     val selectedPreview = state.selection?.preview
     val visiblePreview = selectedPreview ?: state.existing?.preview
@@ -161,7 +161,7 @@ fun GroupPhotoEditor(
 @Composable
 private fun PhotoPreview(
     visiblePreview: GroupPhotoPreviewHandle?,
-    preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Unit)?,
+    preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)?,
     groupName: String,
     busy: Boolean,
     description: String,
@@ -174,10 +174,13 @@ private fun PhotoPreview(
             .testTag(GroupPhotoTags.Preview),
         contentAlignment = Alignment.Center,
     ) {
-        if (visiblePreview == null || preview == null) {
-            PhotoFallback(groupName, Modifier.fillMaxWidth())
-        } else {
+        val rendered = if (visiblePreview != null && preview != null) {
             preview(visiblePreview, Modifier.fillMaxWidth().aspectRatio(1f))
+        } else {
+            false
+        }
+        if (!rendered) {
+            PhotoFallback(groupName, Modifier.fillMaxWidth())
         }
         if (busy) {
             CircularProgressIndicator(

@@ -13,6 +13,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import java.io.FileInputStream
 
@@ -21,8 +23,11 @@ import java.io.FileInputStream
 // measured on the real MainActivity launcher.
 @RunWith(AndroidJUnit4::class)
 class ModernAndroidBehaviorTest {
+    private val signedOut = SignedOutAccessRule()
+    private val composeRule = createAndroidComposeRule<MainActivity>()
+
     @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
+    val rules: TestRule = RuleChain.outerRule(signedOut).around(composeRule)
 
     @After
     fun resetConfiguration() {

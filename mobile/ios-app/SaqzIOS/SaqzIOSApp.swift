@@ -23,7 +23,7 @@ struct IOSAppComposition {
     let localState: IOSLocalAccessStateAdapter
     let groupState: IOSLocalGroupStateAdapter
     let share: IOSShareAdapter
-    let photos: IOSGroupPhotoAdapters?
+    let photos: IOSGroupPhotoAdapters
     let drafts: IOSGroupDraftAdapters
     let dependencies: SaqzAppDependencies
 
@@ -46,7 +46,7 @@ struct IOSAppComposition {
         localState: IOSLocalAccessStateAdapter,
         groupState: IOSLocalGroupStateAdapter,
         share: IOSShareAdapter,
-        photos: IOSGroupPhotoAdapters? = nil,
+        photos: IOSGroupPhotoAdapters,
         drafts: IOSGroupDraftAdapters
     ) -> IOSAppComposition {
         links.onColdStart(url: nil)
@@ -57,6 +57,12 @@ struct IOSAppComposition {
             links: IOSNoOpAccessLinkPort(),
             localState: localState,
             share: share,
+            groupPhotos: GroupPhotoRuntimeDependencies(
+                selection: photos.selection,
+                encoder: photos.encoder,
+                cache: photos.cache,
+                previews: photos.previews
+            ),
             groupLinks: links,
             groupState: groupState,
             groupDrafts: drafts.setup,

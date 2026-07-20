@@ -251,7 +251,6 @@ class AccessSessionConfiguration {
 
     @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
     @Bean fun attendanceRepository(dataSource: DataSource) = JdbcAttendanceCommandRepository(dataSource)
-    @Bean fun gameAttendanceCounts(repository: JdbcAttendanceCommandRepository): GameAttendanceCountSource = repository
     @Bean fun createGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository) = CreateGame(transaction, repository)
     @Bean fun editGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort) = EditGame(transaction, repository, effects)
     @Bean fun changeGameLifecycle(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort) = ChangeGameLifecycle(transaction, repository, effects)

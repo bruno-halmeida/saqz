@@ -9,7 +9,10 @@ count=0
 make_repo() {
     target=$1
     git clone -q "$repository_root" "$target/repo"
-    git -C "$repository_root" diff --binary HEAD -- mobile | git -C "$target/repo" apply
+    git -C "$repository_root" diff --binary HEAD -- mobile >"$target/mobile.patch"
+    if [ -s "$target/mobile.patch" ]; then
+        git -C "$target/repo" apply <"$target/mobile.patch"
+    fi
     cp "$repository_root/scripts/check-scope" "$target/repo/scripts/check-scope"
     cp "$repository_root/.gitignore" "$target/repo/.gitignore"
     cp "$repository_root/AGENTS.md" "$target/repo/AGENTS.md"

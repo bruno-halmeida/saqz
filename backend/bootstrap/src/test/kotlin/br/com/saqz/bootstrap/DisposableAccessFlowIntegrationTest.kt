@@ -157,14 +157,26 @@ class DisposableAccessFlowIntegrationTest {
     @Test
     fun `invalid group request rolls back all durable rows`() {
         val name = uniqueName()
-        val response = request("POST", "/api/groups", ownerToken, "{\"requestId\":\"${UUID.randomUUID()}\",\"name\":\"$name\",\"timeZone\":\"Invalid/Zone\"}")
+        val response = request(
+            "POST",
+            "/api/groups",
+            ownerToken,
+            completeGroupBody(name, "Invalid/Zone"),
+        )
 
         assertEquals(400, response.statusCode(), response.body())
         assertEquals(0, jdbc.queryForObject("select count(*) from access_groups where name = ?", Int::class.java, name))
     }
 
     private fun session(token: String) = request("PUT", "/api/session", token)
-    private fun createGroup(name: String) = request("POST", "/api/groups", ownerToken, "{\"requestId\":\"${UUID.randomUUID()}\",\"name\":\"$name\",\"timeZone\":\"America/Sao_Paulo\"}")
+    private fun createGroup(name: String) = request(
+        "POST",
+        "/api/groups",
+        ownerToken,
+        completeGroupBody(name, "America/Sao_Paulo"),
+    )
+    private fun completeGroupBody(name: String, timeZone: String) =
+        "{\"requestId\":\"${UUID.randomUUID()}\",\"name\":\"$name\",\"timeZone\":\"$timeZone\",\"modality\":\"COURT_VOLLEYBALL\",\"composition\":\"MIXED\"}"
     private fun rotateInvite(groupId: UUID) = request("POST", "/api/groups/$groupId/invite", ownerToken)
     private fun redeem(code: String) = request("POST", "/api/invites/redeem", athleteToken, "{\"code\":\"$code\"}")
     private fun groupId(response: HttpResponse<String>) = UUID.fromString(jsonValue(response.body(), "id"))

@@ -914,6 +914,10 @@ keys, cents, or timezone identifiers.
   session left on the shared emulator, so ten login-oriented cold-start and
   layout tests opened the authenticated flow instead of their declared login
   precondition. Covered by V51.
+- **B100 | 2026-07-20** — The first B99 isolation rule called `FirebaseAuth`
+  before the target application had initialized its default Firebase app, so
+  the rule failed before launching the activity. No new invariant added; V51
+  requires a pre-launch reset that does not depend on initialized app state.
 - **B101 | 2026-07-20** — The first group-setup selection semantics assignment
   collided with the generic `selected` parameter and failed Kotlin compilation.
   No new invariant added; an explicit semantics-property alias fixes this
@@ -922,6 +926,14 @@ keys, cents, or timezone identifiers.
   simultaneous root coordinates for sections outside the scroll viewport and
   failed on iOS. No new invariant added; each card is scrolled into view before
   its width is measured, avoiding platform-dependent clipped coordinates.
+- **B103 | 2026-07-20** — The production group-registration route rendered
+  camera/library actions with the setup screen's default empty photo state and
+  no-op callback, while Android/iOS photo adapters remained outside shared app
+  dependencies and the post-create upload effect was discarded. Covered by V52.
+- **B104 | 2026-07-20** — Group-registration inputs rebuilt
+  `TextFieldValue(text)` after every ViewModel update and discarded selection
+  and composition, resetting the cursor to zero and reversing incremental
+  keyboard input. Covered by V53.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -1034,6 +1046,13 @@ keys, cents, or timezone identifiers.
   precondition independently of emulator history; login-oriented tests SHALL
   clear persisted access state before launching the activity, while explicitly
   authenticated tests SHALL seed only their own fixture state.
+- **V52** — Every camera/library action rendered by a production group route
+  SHALL reach the same lifecycle-attached native selection adapter through a
+  shared photo coordinator; route tests SHALL prove the action crosses the
+  composition seam, and post-create upload effects SHALL never be discarded.
+- **V53** — Controlled Compose inputs that project text into a ViewModel SHALL
+  retain the latest `TextFieldValue` selection and composition while text is
+  unchanged; an incremental multi-character input test SHALL assert typed order.
 
 ## Success criteria
 

@@ -103,9 +103,11 @@ aggregate Gradle gate:
 
 ```bash
 backend/gradlew -p backend :features:access:test :features:access:integrationTest --console=plain
+backend/gradlew -p backend :features:groups:test :features:groups:integrationTest --console=plain
 backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain
 mobile/gradlew -p mobile :core:network:allTests --console=plain
 mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain
+mobile/gradlew -p mobile :features:groups:compileAndroidMain :features:groups:allTests --console=plain
 ```
 
 Run the complete local gate on macOS:
@@ -128,8 +130,8 @@ scripts/test-scripts
 `scripts/check-gradle` runs credential and scope checks first, then:
 
 ```bash
-backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
-mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
+mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 ```
 
 `scripts/check-ios` runs credential-free simulator tests:
@@ -182,9 +184,13 @@ direction is:
 bootstrap -> features:<feature> -> shared-kernel
 ```
 
-The implemented feature modules are `backend/features/identity` and
-`backend/features/access`. Access follows the concrete direction
-`bootstrap -> features:access -> shared-kernel`. Domain, application, and API
+The implemented feature modules are `backend/features/identity`,
+`backend/features/access`, and `backend/features/groups`. Access owns verified
+identity, account/session bootstrap, and selected-group reconciliation. Groups
+owns group profiles, memberships, invitations, venues, games, attendance,
+manual charges, and expenses. Both feature directions are independent:
+`bootstrap -> features:access -> shared-kernel` and
+`bootstrap -> features:groups -> shared-kernel`. Domain, application, and API
 contracts must not import Spring, Firebase, HTTP adapters, persistence, another
 feature's internals, or client code. Adapters are owned by their feature and are
 wired only by the Spring Boot composition root.
@@ -203,10 +209,18 @@ To add a backend feature:
 and iOS. `mobile/android-app` is the Android launcher. `mobile/ios-app` is the
 Xcode launcher and embeds the one `SaqzMobile` framework.
 
-Authenticated transport lives in `mobile/core/network`, while shared access
-behavior and UI live in `mobile/features/access`. Their concrete aggregation
-direction is `compose-app -> features:access -> core:network`; neither module
-imports backend implementation types.
+Authenticated transport lives in `mobile/core/network`; identity/session UI
+lives in `mobile/features/access`, and private group behavior and UI live in
+`mobile/features/groups`. The concrete aggregation directions are
+`compose-app -> features:access -> core:network` and
+`compose-app -> features:groups -> core:network`; no mobile module imports
+backend implementation types.
+
+Group photos are private authenticated resources and must never be documented
+or exposed as public URLs. Charges and expenses are manual tracking only: Saqz
+does not process payments, move money, store card data, or claim settlement.
+Organizer totals and expense details remain owner/admin-only, while athletes
+may see only their own charges.
 
 To add a KMP feature:
 

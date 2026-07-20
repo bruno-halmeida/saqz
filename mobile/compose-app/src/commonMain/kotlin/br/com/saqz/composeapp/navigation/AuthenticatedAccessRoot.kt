@@ -7,12 +7,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.saqz.groups.data.GroupApi
+import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.data.GroupPhotoApi
+import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
@@ -37,6 +44,11 @@ import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupSelectionStateMachine
 import br.com.saqz.groups.presentation.InviteUiError
+import br.com.saqz.groups.presentation.photo.GroupPhotoCoordinator
+import br.com.saqz.groups.presentation.photo.GroupPhotoError
+import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.presentation.photo.GroupPhotoStage
+import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupInviteCodeListener
 import br.com.saqz.groups.port.GroupOperationResult
@@ -45,13 +57,19 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.ui.BootstrapAccessScreen
-import br.com.saqz.groups.ui.CreateGroupIntent
-import br.com.saqz.groups.ui.CreateGroupScreen
-import br.com.saqz.groups.ui.CreateGroupUiState
+import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
+import br.com.saqz.groups.presentation.setup.GroupSetupEffect
+import br.com.saqz.groups.presentation.setup.GroupSetupInput
+import br.com.saqz.groups.presentation.setup.GroupSetupIntent
+import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import br.com.saqz.groups.ui.setup.GroupSetupScreen
 import br.com.saqz.groups.ui.ExpireInviteConfirmationDialog
 import br.com.saqz.groups.ui.ExpireInviteConfirmationIntent
 import br.com.saqz.groups.ui.GroupContextScreen
@@ -135,6 +153,42 @@ internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
     }
     val state by accessViewModel.state.collectAsState()
     val groupsNavigation by groupsViewModel.state.collectAsState()
+    val photoScope = rememberCoroutineScope()
+    val photoCoordinator = remember(accessViewModel, dependencies.groupPhotos) {
+        GroupPhotoCoordinator(
+            gateway = accessViewModel.groupPhotoGateway,
+            selections = dependencies.groupPhotos.selection,
+            encoder = dependencies.groupPhotos.encoder,
+            cache = dependencies.groupPhotos.cache,
+            scope = photoScope,
+        )
+    }
+    val groupPhotoState by photoCoordinator.state.collectAsState()
+    val groupSetupViewModel = if (state.page == AccessPage.CREATE_GROUP) {
+        viewModel<GroupSetupViewModel>(key = "group-setup-${state.createFlowKey}") {
+            GroupSetupViewModel(
+                input = GroupSetupInput(),
+                gateway = accessViewModel.groupProfileGateway,
+                timeZones = DefaultGroupSystemTimeZonePort(),
+                drafts = dependencies.groupDrafts,
+                commandKeys = GroupCommandKeyFactory { accessViewModel.newCommandKey() },
+            )
+        }
+    } else null
+    val groupSetupState = groupSetupViewModel?.state?.collectAsState()?.value
+    var setupPhotoUploadPending by remember(groupSetupViewModel) { mutableStateOf(false) }
+    LaunchedEffect(state.page, state.createFlowKey) {
+        if (state.page == AccessPage.CREATE_GROUP) {
+            setupPhotoUploadPending = false
+            photoCoordinator.onIntent(GroupPhotoIntent.Cancel)
+        }
+    }
+    LaunchedEffect(state.session) {
+        if (state.session == SessionAccessState.SignedOut) {
+            setupPhotoUploadPending = false
+            photoCoordinator.onIntent(GroupPhotoIntent.Logout)
+        }
+    }
     LaunchedEffect(groupsViewModel, state.selection) {
         groupsViewModel.onIntent(GroupsNavigationIntent.Reconcile(state.selection))
     }
@@ -143,11 +197,67 @@ internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
             handleAccessEffect(effect, dependencies.share, accessViewModel::onIntent)
         }
     }
+    if (groupSetupViewModel != null) {
+        LaunchedEffect(groupSetupViewModel, photoCoordinator) {
+            groupSetupViewModel.effects.collect { effect ->
+                when (effect) {
+                    is GroupSetupEffect.SelectGroup -> accessViewModel.onIntent(
+                        AccessIntent.Selection(GroupSelectionIntent.Select(effect.groupId)),
+                    )
+                    is GroupSetupEffect.OpenGroup -> Unit
+                    is GroupSetupEffect.UploadPhoto -> {
+                        setupPhotoUploadPending = true
+                        photoCoordinator.onIntent(GroupPhotoIntent.BindTarget(effect.groupId, effect.groupEtag))
+                        photoCoordinator.onIntent(GroupPhotoIntent.Upload)
+                    }
+                }
+            }
+        }
+        LaunchedEffect(groupSetupViewModel, photoCoordinator) {
+            photoCoordinator.state.collect { photo ->
+                if (!setupPhotoUploadPending) return@collect
+                when {
+                    photo.stage == GroupPhotoStage.IDLE && photo.selection == null && photo.existing != null -> {
+                        setupPhotoUploadPending = false
+                        groupSetupViewModel.onIntent(GroupSetupIntent.PhotoUploadSucceeded)
+                    }
+                    photo.error in setOf(
+                        GroupPhotoError.ENCODING_FAILED,
+                        GroupPhotoError.UPLOAD_FAILED,
+                        GroupPhotoError.STALE_VERSION,
+                        GroupPhotoError.TARGET_UNAVAILABLE,
+                    ) -> {
+                        setupPhotoUploadPending = false
+                        groupSetupViewModel.onIntent(GroupSetupIntent.PhotoUploadFailed)
+                    }
+                }
+            }
+        }
+    }
+    val onAccessIntent: (AccessIntent) -> Unit = { intent ->
+        if (intent == AccessIntent.ClosePage && state.page == AccessPage.CREATE_GROUP) {
+            setupPhotoUploadPending = false
+            photoCoordinator.onIntent(GroupPhotoIntent.Cancel)
+        }
+        accessViewModel.onIntent(intent)
+    }
     AuthenticatedAccessRoot(
         state = state,
-        onIntent = accessViewModel::onIntent,
+        onIntent = onAccessIntent,
         groupsNavigation = groupsNavigation,
         onGroupsIntent = groupsViewModel::onIntent,
+        groupSetupState = groupSetupState,
+        onGroupSetupIntent = groupSetupViewModel?.let { viewModel -> viewModel::onIntent } ?: {},
+        groupPhotoState = groupPhotoState,
+        onGroupPhotoIntent = { intent ->
+            if (intent == GroupPhotoIntent.Upload || intent == GroupPhotoIntent.RetryUpload) {
+                setupPhotoUploadPending = true
+            }
+            photoCoordinator.onIntent(intent)
+        },
+        groupPhotoPreview = { handle, modifier ->
+            GroupPhotoPreview(handle, dependencies.groupPhotos.previews, modifier)
+        },
     )
 }
 
@@ -172,6 +282,11 @@ internal fun AuthenticatedAccessRoot(
     state: AccessRootSnapshot,
     groupsNavigation: GroupsNavigationState? = null,
     onGroupsIntent: (GroupsNavigationIntent) -> Unit = {},
+    groupSetupState: GroupSetupState? = null,
+    onGroupSetupIntent: (GroupSetupIntent) -> Unit = {},
+    groupPhotoState: GroupPhotoState = GroupPhotoState(),
+    onGroupPhotoIntent: (GroupPhotoIntent) -> Unit = {},
+    groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     onIntent: (AccessIntent) -> Unit,
 ) {
     val desired = state.destination()
@@ -183,7 +298,18 @@ internal fun AuthenticatedAccessRoot(
     }
     key(destination) {
         Box(Modifier.fillMaxSize().testTag(AccessRootTag)) {
-            DestinationContent(destination, state, onIntent, groupsNavigation, onGroupsIntent)
+            DestinationContent(
+                destination,
+                state,
+                onIntent,
+                groupsNavigation,
+                onGroupsIntent,
+                groupSetupState,
+                onGroupSetupIntent,
+                groupPhotoState,
+                onGroupPhotoIntent,
+                groupPhotoPreview,
+            )
         }
     }
 }
@@ -191,6 +317,7 @@ internal fun AuthenticatedAccessRoot(
 internal fun AccessDestination.systemBackIntent(): AccessIntent? = when (this) {
     AccessDestination.REGISTRATION,
     AccessDestination.PASSWORD_RESET -> AccessIntent.Authentication(AuthenticationIntent.ShowLogin)
+    AccessDestination.CREATE_GROUP -> AccessIntent.ClosePage
     else -> null
 }
 
@@ -208,6 +335,8 @@ internal class AccessRuntime(
         invalidator,
     )
     private val groups = GroupApi(authenticatedNetwork)
+    override val groupProfileGateway: GroupProfileGateway = groups
+    override val groupPhotoGateway: GroupPhotoGateway = GroupPhotoApi(authenticatedNetwork)
     private val roles = RolesInvitesApi(authenticatedNetwork)
     private val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
     private val authentication = AuthenticationStateMachine(dependencies.auth) {
@@ -403,6 +532,11 @@ private fun DestinationContent(
     onIntent: (AccessIntent) -> Unit,
     groupsNavigation: GroupsNavigationState?,
     onGroupsIntent: (GroupsNavigationIntent) -> Unit,
+    groupSetupState: GroupSetupState?,
+    onGroupSetupIntent: (GroupSetupIntent) -> Unit,
+    groupPhotoState: GroupPhotoState,
+    onGroupPhotoIntent: (GroupPhotoIntent) -> Unit,
+    groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)?,
 ) {
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
@@ -473,20 +607,16 @@ private fun DestinationContent(
                 }
             }
         }
-        AccessDestination.CREATE_GROUP -> CreateGroupScreen(
-            state = CreateGroupUiState(
-                administration = state.administration,
-                name = state.createName,
-                timeZone = state.createTimeZone,
-                validationAttempted = state.createValidationAttempted,
-            ),
-        ) { intent ->
-            when (intent) {
-                is CreateGroupIntent.UpdateName -> onIntent(AccessIntent.UpdateCreateName(intent.value))
-                is CreateGroupIntent.UpdateTimeZone -> onIntent(AccessIntent.UpdateCreateTimeZone(intent.value))
-                CreateGroupIntent.Submit -> onIntent(AccessIntent.SubmitCreateGroup)
-                CreateGroupIntent.Back -> onIntent(AccessIntent.ClosePage)
-            }
+        AccessDestination.CREATE_GROUP -> if (groupSetupState == null) {
+            SaqzLoadingState()
+        } else {
+            GroupSetupScreen(
+                state = groupSetupState,
+                photoState = groupPhotoState,
+                onPhotoIntent = onGroupPhotoIntent,
+                photoPreview = groupPhotoPreview,
+                onIntent = onGroupSetupIntent,
+            )
         }
         AccessDestination.SETTINGS -> GroupSettingsScreen(
             GroupSettingsUiState(

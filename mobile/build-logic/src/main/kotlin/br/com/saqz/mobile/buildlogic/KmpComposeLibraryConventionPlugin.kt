@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 private const val COPY_COMPOSE_ANDROID_ASSETS = "copyAndroidMainComposeResourcesToAndroidAssets"
 private const val COMPOSE_ANDROID_ASSETS_DIR = "composeAndroidAssets"
+private const val COMPOSE_UI_TOOLING = "org.jetbrains.compose.ui:ui-tooling:1.11.1"
 
 // Compose library modules whose resources must reach the app APK. Kept here (not
 // per-app) so a module gaining composeResources needs no android-app edit.
@@ -19,6 +20,7 @@ class KmpComposeLibraryConventionPlugin : Plugin<Project> {
         extensions.configure(KotlinMultiplatformExtension::class.java) {
             jvmToolchain(21)
         }
+        dependencies.add("androidRuntimeClasspath", COMPOSE_UI_TOOLING)
         // AGP's KMP-library plugin leaves the Compose "copy resources to Android
         // assets" task without an outputDirectory, so compose resources never
         // reach the APK. Point it at a build dir; the application module adds

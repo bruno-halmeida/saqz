@@ -106,6 +106,23 @@ final class IOSPhotoByteSource: GroupPhotoByteSource {
     }
 }
 
+final class IOSPhotoPreviewAdapter: GroupPhotoPreviewPort {
+    private let files: IOSPhotoFiles
+    init(files: IOSPhotoFiles) { self.files = files }
+
+    func read(preview: GroupPhotoPreviewHandle) -> KotlinByteArray? {
+        let source = GroupPhotoSourceHandle(value: preview.value)
+        guard let url = files.file(source),
+              let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+              !data.isEmpty,
+              data.count <= IOSPhotoFiles.maximumBytes
+        else { return nil }
+        let bytes = KotlinByteArray(size: Int32(data.count))
+        data.enumerated().forEach { bytes.set(index: Int32($0.offset), value: Int8(bitPattern: $0.element)) }
+        return bytes
+    }
+}
+
 final class IOSPhotoEncoderAdapter: @preconcurrency GroupPhotoEncoderPort {
     private let files: IOSPhotoFiles
     init(files: IOSPhotoFiles) { self.files = files }
@@ -253,7 +270,7 @@ final class IOSPhotoSelectionAdapter: NSObject, @preconcurrency GroupPhotoSelect
             return
         }
         let selection = GroupPhotoSelection(
-            source: files.handle(url), preview: GroupPhotoPreviewHandle(value: url.absoluteString),
+            source: files.handle(url), preview: GroupPhotoPreviewHandle(value: url.lastPathComponent),
             width: Int32(metadata.width), height: Int32(metadata.height)
         )
         guard finish(GroupPhotoSelectionResultSelected(value: selection)) else { files.cleanup(url); return }
@@ -287,11 +304,13 @@ struct IOSGroupPhotoAdapters {
     let selection: IOSPhotoSelectionAdapter
     let encoder: IOSPhotoEncoderAdapter
     let cache: IOSPhotoCacheAdapter
+    let previews: IOSPhotoPreviewAdapter
     @MainActor static func makeLive(presenter: @escaping () -> UIViewController?) -> IOSGroupPhotoAdapters {
         let files = IOSPhotoFiles()
         return IOSGroupPhotoAdapters(
             selection: IOSPhotoSelectionAdapter(files: files, presenter: presenter),
-            encoder: IOSPhotoEncoderAdapter(files: files), cache: IOSPhotoCacheAdapter()
+            encoder: IOSPhotoEncoderAdapter(files: files), cache: IOSPhotoCacheAdapter(),
+            previews: IOSPhotoPreviewAdapter(files: files)
         )
     }
 }
