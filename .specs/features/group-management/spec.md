@@ -742,6 +742,9 @@ keys, cents, or timezone identifiers.
   imports for the experimental test annotation and bounded effect wait,
   cascading into inference errors. No new invariant added; cross-target test
   compilation already catches incomplete portable test imports.
+- **B52 | 2026-07-19** — The first executing T42 suite expected a bare BRL
+  value while the accessible detail copy prefixes it with `Valor:`. No new
+  invariant added; the UI test now asserts the complete visible label.
 
 ## Success criteria
 
