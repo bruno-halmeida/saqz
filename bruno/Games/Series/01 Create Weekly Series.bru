@@ -1,0 +1,19 @@
+meta {
+  name: Create Weekly Series
+  type: http
+  seq: 1
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/game-series
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{idToken}}
+}
+body:json {
+  {"requestId":"{{$guid}}","revisionId":"{{$guid}}","zoneId":"America/Sao_Paulo","localStartDate":"2026-08-12","slots":[{"slotKey":"{{$guid}}","weekday":"WEDNESDAY","localTime":"19:30:00","durationMinutes":90,"venue":{"name":"Arena Central","address":"Rua das Flores 100"},"capacity":24,"confirmationLeadMinutes":180,"gameFeeCents":2500,"title":"Treino semanal"}]}
+}
+tests {
+  test("created bounded series", function () { expect(res.status).to.equal(201); expect(res.body.occurrences.length).to.be.at.most(24); expect(res.body.occurrences[0].startsAt).to.exist; });
+}

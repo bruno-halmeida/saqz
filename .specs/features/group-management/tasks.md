@@ -1029,17 +1029,19 @@ edit/cancel commands with bounded responses and exact boundary semantics.
 
 **Done when:**
 
-- [ ] Multi-slot local rule/zone/boundary DTOs round-trip without client-supplied
+- [x] Multi-slot local rule/zone/boundary DTOs round-trip without client-supplied
   resolved instants.
-- [ ] ONLY_THIS and THIS_AND_FUTURE are explicit enum commands and reject
+- [x] ONLY_THIS and THIS_AND_FUTURE are explicit enum commands and reject
   impossible/past/completed/stale boundaries without partial changes.
-- [ ] Responses are bounded to the designed horizon and retries are equivalent.
-- [ ] Every series route has Bruno assertions and privacy-equivalent problems.
-- [ ] Backend HTTP gate passes; test count `Δ+18` or greater.
+- [x] Responses are bounded to the designed horizon and retries are equivalent.
+- [x] Every series route has Bruno assertions and privacy-equivalent problems.
+- [x] Backend HTTP gate passes; test count `Δ+19` with zero skipped/failing.
 
 **Tests:** Spring HTTP + Bruno (`Δ+18`).
 **Gate:** Backend HTTP + Safety.
 **Commit:** `feat(groups): expose recurring series api`
+**Status:** Complete; backend HTTP, Bruno, and safety gates passed with 19
+added service/controller cases and three explicit series contracts.
 
 ### T37: Add mobile game/series DTOs and gateway
 

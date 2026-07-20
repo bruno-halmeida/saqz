@@ -1,0 +1,22 @@
+meta {
+  name: Apply Series Boundary
+  type: http
+  seq: 3
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/game-series/{{seriesId}}/boundaries
+  body: json
+  auth: bearer
+}
+headers {
+  If-Match: {{seriesEtag}}
+}
+auth:bearer {
+  token: {{idToken}}
+}
+body:json {
+  {"requestId":"{{$guid}}","scope":"ONLY_THIS","action":"CANCEL","gameId":"{{gameId}}"}
+}
+tests {
+  test("explicit boundary command", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; });
+}

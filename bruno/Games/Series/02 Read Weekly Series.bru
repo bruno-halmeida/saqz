@@ -1,0 +1,16 @@
+meta {
+  name: Read Weekly Series
+  type: http
+  seq: 2
+}
+get {
+  url: {{baseUrl}}/api/groups/{{groupId}}/game-series/{{seriesId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{idToken}}
+}
+tests {
+  test("reads local rule and bounded instants", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.slots).to.be.an("array"); });
+}

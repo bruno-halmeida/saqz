@@ -30,7 +30,10 @@ import br.com.saqz.groups.application.membership.ListAccessMemberships
 import br.com.saqz.groups.application.photo.GroupPhotoService
 import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.groups.adapter.input.http.GameController
+import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
+import br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesBoundaryRepository
+import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
@@ -38,6 +41,9 @@ import br.com.saqz.groups.application.game.GameAttendanceCountSource
 import br.com.saqz.groups.application.game.GameSideEffectPort
 import br.com.saqz.groups.application.game.GetGame
 import br.com.saqz.groups.application.game.ListGames
+import br.com.saqz.groups.application.game.recurrence.GameIdFactory
+import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
+import br.com.saqz.groups.application.game.series.WeeklySeriesService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.groups.domain.GroupAccessPolicy
@@ -243,4 +249,10 @@ class AccessSessionConfiguration {
         list: ListGames,
         get: GetGame,
     ) = GameController(actor, create, edit, lifecycle, list, get)
+    @Bean fun gameIdFactory() = GameIdFactory(java.util.UUID::randomUUID)
+    @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
+    @Bean fun weeklySeriesService(repository: JdbcWeeklySeriesRepository, ids: GameIdFactory) = WeeklySeriesService(repository, ids, Clock.systemUTC())
+    @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
+    @Bean fun applySeriesBoundary(repository: JdbcSeriesBoundaryRepository, ids: GameIdFactory) = ApplySeriesBoundary(repository, ids::create, Clock.systemUTC())
+    @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
 }
