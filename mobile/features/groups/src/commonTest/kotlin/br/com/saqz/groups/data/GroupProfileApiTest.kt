@@ -1,16 +1,16 @@
 package br.com.saqz.groups.data
 
-import br.com.saqz.groups.domain.GroupComposition
-import br.com.saqz.groups.domain.GroupCreateCommand
-import br.com.saqz.groups.domain.GroupLevel
-import br.com.saqz.groups.domain.GroupModality
-import br.com.saqz.groups.domain.GroupPlayStyle
-import br.com.saqz.groups.domain.GroupRegularSlotForm
-import br.com.saqz.groups.domain.GroupSetupForm
-import br.com.saqz.groups.domain.GroupTimeZone
-import br.com.saqz.groups.domain.GroupUpdateCommand
-import br.com.saqz.groups.domain.GroupVenueForm
-import br.com.saqz.groups.domain.GroupWeekday
+import br.com.saqz.groups.model.GroupComposition
+import br.com.saqz.groups.model.GroupCreateCommand
+import br.com.saqz.groups.model.GroupLevel
+import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.model.GroupPlayStyle
+import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.model.GroupTimeZone
+import br.com.saqz.groups.model.GroupUpdateCommand
+import br.com.saqz.groups.model.GroupVenueForm
+import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkClient

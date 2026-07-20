@@ -1,4 +1,4 @@
-package br.com.saqz.groups.domain
+package br.com.saqz.groups.model
 
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupDraftFailure

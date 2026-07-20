@@ -1,8 +1,8 @@
 package br.com.saqz.groups.data
 
-import br.com.saqz.groups.domain.GroupCreateCommand
-import br.com.saqz.groups.domain.GroupSetupForm
-import br.com.saqz.groups.domain.GroupUpdateCommand
+import br.com.saqz.groups.model.GroupCreateCommand
+import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.model.GroupUpdateCommand
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkRequest

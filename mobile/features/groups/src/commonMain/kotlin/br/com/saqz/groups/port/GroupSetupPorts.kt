@@ -1,8 +1,8 @@
 package br.com.saqz.groups.port
 
-import br.com.saqz.groups.domain.GroupDraftKey
-import br.com.saqz.groups.domain.GroupSetupDraft
-import br.com.saqz.groups.domain.GroupTimeZone
+import br.com.saqz.groups.model.GroupDraftKey
+import br.com.saqz.groups.model.GroupSetupDraft
+import br.com.saqz.groups.model.GroupTimeZone
 import kotlinx.datetime.TimeZone
 
 sealed interface GroupSystemTimeZoneResult {

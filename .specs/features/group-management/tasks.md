@@ -545,7 +545,7 @@ resolver, existing endpoint paths.
 
 **What:** Model the complete API in KMP and define provider-neutral system
 timezone plus versioned non-sensitive draft persistence ports.
-**Where:** `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/{data,domain,port}/`,
+**Where:** `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/{data,model,port}/`,
 matching common tests.
 **Depends on:** T19.
 **Reuses:** `AuthenticatedNetworkClient`, `kotlinx-datetime`, currency/date

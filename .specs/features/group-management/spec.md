@@ -528,6 +528,15 @@ keys, cents, or timezone identifiers.
   JSON numeric accessors and the draft failure enum. No new invariant added;
   the existing Android/iOS KMP compilation gate caught the mechanical import
   omissions before any test could run.
+- **B11 | 2026-07-19** — T20 followed its original `domain/` mobile package
+  instruction, but the repository scope contract reserves domain/application
+  source segments for the authoritative backend; the pre-commit safety run
+  also missed the new untracked path because it inspected only `git ls-files`.
+  T20 now uses `model/`, and the scope gate includes non-ignored untracked
+  candidates. Covered by V8.
+- **V8** — Repository scope checks SHALL inspect tracked plus non-ignored
+  untracked candidate files, and mobile production/test source SHALL reject
+  `domain`, `usecase`, or `application` path segments before staging or commit.
 
 ## Success criteria
 

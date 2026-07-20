@@ -9,6 +9,7 @@ count=0
 make_repo() {
     target=$1
     git clone -q "$repository_root" "$target/repo"
+    git -C "$repository_root" diff --binary HEAD -- mobile | git -C "$target/repo" apply
     cp "$repository_root/scripts/check-scope" "$target/repo/scripts/check-scope"
     cp "$repository_root/.gitignore" "$target/repo/.gitignore"
     cp "$repository_root/AGENTS.md" "$target/repo/AGENTS.md"
@@ -101,6 +102,22 @@ fail_case cross-workspace-coupling 'cross-workspace Gradle coupling' sh -c \
 
 fail_case client-domain-application 'client domain or application source segment' sh -c \
     "mkdir -p mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/domain && printf 'package br.com.saqz.composeapp.domain\ninterface UserDomain\n' >mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/domain/UserDomain.kt"
+
+unstaged="$scratch_root/unstaged-client-domain"
+make_repo "$unstaged"
+(
+    cd "$unstaged/repo"
+    mkdir -p mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/domain
+    printf 'package br.com.saqz.groups.domain\ninterface GroupDomain\n' \
+        >mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/domain/GroupDomain.kt
+)
+if (cd "$unstaged/repo" && scripts/check-scope) >"$unstaged/stdout" 2>"$unstaged/stderr"; then
+    printf 'expected scope gate failure for unstaged client domain\n' >&2
+    exit 1
+fi
+grep -q 'client domain or application source segment' "$unstaged/stderr"
+count=$((count + 1))
+printf 'ok %d - unstaged-client-domain\n' "$count"
 
 fail_case retired-frontend-workspace 'retired frontend workspace' sh -c \
     "mkdir -p frontend && printf 'retired workspace\n' >frontend/README.md"
@@ -201,4 +218,4 @@ fail_case co-owner-capability 'co-owner capability' sh -c \
 fail_case tracked-secret-path 'tracked secret path' sh -c \
     "mkdir -p .secrets && printf '{}\n' >.secrets/service-account.json && git add -f .secrets/service-account.json"
 
-[ "$count" -eq 39 ]
+[ "$count" -eq 40 ]

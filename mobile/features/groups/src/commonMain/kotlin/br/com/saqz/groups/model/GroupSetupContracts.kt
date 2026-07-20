@@ -1,4 +1,4 @@
-package br.com.saqz.groups.domain
+package br.com.saqz.groups.model
 
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.Serializable
