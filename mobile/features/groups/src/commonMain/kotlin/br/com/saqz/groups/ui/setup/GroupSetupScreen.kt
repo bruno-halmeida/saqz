@@ -168,6 +168,7 @@ fun GroupSetupScreen(
                     preview = photoPreview,
                     sourceActionBorderColor = SaqzTheme.colors.primary,
                     compactIdle = true,
+                    prepared = state.photoPending,
                 )
                 SetupInput(
                     value = form.name,

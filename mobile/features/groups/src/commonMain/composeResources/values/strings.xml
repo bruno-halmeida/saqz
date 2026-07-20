@@ -145,13 +145,6 @@
     <string name="group_photo_optional">Opcional. Você pode continuar sem foto e alterar depois.</string>
     <string name="group_photo_camera">Câmera</string>
     <string name="group_photo_library">Galeria</string>
-    <string name="group_photo_crop">Ajuste o enquadramento quadrado</string>
-    <string name="group_photo_left">Esquerda</string>
-    <string name="group_photo_right">Direita</string>
-    <string name="group_photo_up">Cima</string>
-    <string name="group_photo_down">Baixo</string>
-    <string name="group_photo_zoom_out">Diminuir</string>
-    <string name="group_photo_zoom_in">Ampliar</string>
     <string name="group_photo_use">Usar esta foto</string>
     <string name="group_photo_upload">Salvar foto</string>
     <string name="group_photo_remove">Remover foto</string>

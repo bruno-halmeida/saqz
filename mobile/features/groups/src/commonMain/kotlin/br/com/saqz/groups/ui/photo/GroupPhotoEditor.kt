@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
@@ -24,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
@@ -35,7 +35,6 @@ import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzBottomSheet
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.photo.GroupPhotoError
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
@@ -56,17 +55,12 @@ object GroupPhotoTags {
     const val Camera = "group-photo-camera"
     const val Library = "group-photo-library"
     const val Add = "group-photo-add"
+    const val Picker = "group-photo-picker"
     const val Confirm = "group-photo-confirm"
     const val Cancel = "group-photo-cancel"
     const val Remove = "group-photo-remove"
     const val Retry = "group-photo-retry"
     const val Reload = "group-photo-reload"
-    const val MoveLeft = "group-photo-left"
-    const val MoveRight = "group-photo-right"
-    const val MoveUp = "group-photo-up"
-    const val MoveDown = "group-photo-down"
-    const val ZoomOut = "group-photo-zoom-out"
-    const val ZoomIn = "group-photo-zoom-in"
 }
 
 @Composable
@@ -82,6 +76,7 @@ fun GroupPhotoEditor(
     preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     sourceActionBorderColor: Color? = null,
     compactIdle: Boolean = false,
+    prepared: Boolean = false,
 ) {
     val selectedPreview = state.selection?.preview
     val visiblePreview = selectedPreview ?: state.existing?.preview
@@ -114,9 +109,19 @@ fun GroupPhotoEditor(
             if (visiblePreview == null) Res.string.group_photo_fallback_description
             else Res.string.group_photo_preview_description,
         )
-        if (selectedPreview == null) {
+        if (selectedPreview == null || (compactIdle && prepared)) {
             if (compactIdle) {
-                Box(Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {
+                val pickerModifier = if (canEdit) {
+                    Modifier.clickable(
+                        enabled = !busy,
+                        onClickLabel = stringResource(Res.string.group_photo_add),
+                    ) { sourceSheetVisible = true }.testTag(GroupPhotoTags.Picker)
+                } else {
+                    Modifier
+                }
+                Box(
+                    Modifier.size(128.dp).align(Alignment.CenterHorizontally).then(pickerModifier),
+                ) {
                     PhotoPreview(
                         visiblePreview = visiblePreview,
                         preview = preview,
@@ -186,8 +191,7 @@ fun GroupPhotoEditor(
         PhotoError(state.error, state, onIntent, onReloadTarget)
 
         if (!canEdit) return@Column
-        if (selectedPreview != null) {
-            CropActions(state.crop, enabled = !busy, onIntent)
+        if (selectedPreview != null && !prepared) {
             SaqzButton(
                 stringResource(if (deferUpload) Res.string.group_photo_use else Res.string.group_photo_upload),
                 {
@@ -239,10 +243,12 @@ fun GroupPhotoEditor(
             Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
                 PhotoSheetAction(Res.string.group_photo_take, GroupPhotoTags.Camera, sourceActionBorderColor) {
                     sourceSheetVisible = false
+                    onPrepared(false)
                     onIntent(GroupPhotoIntent.ChooseCamera)
                 }
                 PhotoSheetAction(Res.string.group_photo_choose_library, GroupPhotoTags.Library, sourceActionBorderColor) {
                     sourceSheetVisible = false
+                    onPrepared(false)
                     onIntent(GroupPhotoIntent.ChooseLibrary)
                 }
                 SaqzButton(
@@ -282,9 +288,11 @@ private fun PhotoPreview(
     photoIconFallback: Boolean = false,
     modifier: Modifier,
 ) {
+    val shape = RoundedCornerShape(SaqzTheme.metrics.cardRadius)
     Box(
         modifier = modifier
-            .background(SaqzTheme.colors.disabledSurface, RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+            .clip(shape)
+            .background(SaqzTheme.colors.disabledSurface, shape)
             .semantics { contentDescription = description }
             .testTag(GroupPhotoTags.Preview),
         contentAlignment = Alignment.Center,
@@ -360,50 +368,6 @@ private fun GroupPhotoMaterialIcon(resource: DrawableResource, color: Color, siz
         modifier = Modifier.size(size).clearAndSetSemantics {},
     )
 }
-
-@Composable
-private fun CropActions(crop: GroupPhotoCrop, enabled: Boolean, onIntent: (GroupPhotoIntent) -> Unit) {
-    Text(stringResource(Res.string.group_photo_crop), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textMuted)
-    val delta = 0.05f / crop.zoom
-    Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), modifier = Modifier.fillMaxWidth()) {
-        CropButton(Res.string.group_photo_left, GroupPhotoTags.MoveLeft, enabled && crop.centerX > 0f) {
-            onIntent(GroupPhotoIntent.ChangeCrop(crop.copy(centerX = (crop.centerX - delta).coerceAtLeast(0f))))
-        }
-        CropButton(Res.string.group_photo_right, GroupPhotoTags.MoveRight, enabled && crop.centerX < 1f) {
-            onIntent(GroupPhotoIntent.ChangeCrop(crop.copy(centerX = (crop.centerX + delta).coerceAtMost(1f))))
-        }
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), modifier = Modifier.fillMaxWidth()) {
-        CropButton(Res.string.group_photo_up, GroupPhotoTags.MoveUp, enabled && crop.centerY > 0f) {
-            onIntent(GroupPhotoIntent.ChangeCrop(crop.copy(centerY = (crop.centerY - delta).coerceAtLeast(0f))))
-        }
-        CropButton(Res.string.group_photo_down, GroupPhotoTags.MoveDown, enabled && crop.centerY < 1f) {
-            onIntent(GroupPhotoIntent.ChangeCrop(crop.copy(centerY = (crop.centerY + delta).coerceAtMost(1f))))
-        }
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), modifier = Modifier.fillMaxWidth()) {
-        CropButton(Res.string.group_photo_zoom_out, GroupPhotoTags.ZoomOut, enabled && crop.zoom > 1f) {
-            onIntent(GroupPhotoIntent.ChangeCrop(crop.copy(zoom = (crop.zoom - 0.25f).coerceAtLeast(1f))))
-        }
-        CropButton(Res.string.group_photo_zoom_in, GroupPhotoTags.ZoomIn, enabled && crop.zoom < 8f) {
-            onIntent(GroupPhotoIntent.ChangeCrop(crop.copy(zoom = (crop.zoom + 0.25f).coerceAtMost(8f))))
-        }
-    }
-}
-
-@Composable
-private fun androidx.compose.foundation.layout.RowScope.CropButton(
-    label: org.jetbrains.compose.resources.StringResource,
-    tag: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) = SaqzButton(
-    stringResource(label),
-    onClick,
-    variant = SaqzButtonVariant.Ghost,
-    enabled = enabled,
-    modifier = Modifier.weight(1f).sizeIn(minHeight = SaqzTheme.metrics.minimumTouchTarget).testTag(tag),
-)
 
 @Composable
 private fun PhotoError(

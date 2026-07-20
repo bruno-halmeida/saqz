@@ -4,7 +4,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,7 +20,6 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.port.GroupPhotoSelection
 import br.com.saqz.groups.port.GroupPhotoSourceHandle
@@ -75,11 +79,11 @@ class GroupPhotoEditorTest {
         assertEquals(listOf<GroupPhotoIntent>(GroupPhotoIntent.ChooseLibrary), intents)
     }
 
-    @Test fun `selection exposes square crop controls`() = runComposeUiTest {
+    @Test fun `selection uses automatic crop without manual controls`() = runComposeUiTest {
         setup(state = selectedState())
-        onNodeWithText("Ajuste o enquadramento quadrado").assertExists()
-        onNodeWithTag(GroupPhotoTags.MoveLeft).assertExists()
-        onNodeWithTag(GroupPhotoTags.ZoomIn).assertExists()
+        listOf("Esquerda", "Direita", "Cima", "Baixo", "Diminuir", "Ampliar").forEach {
+            onNodeWithText(it).assertDoesNotExist()
+        }
     }
 
     @Test fun `registration confirmation defers upload and marks photo prepared`() = runComposeUiTest {
@@ -89,6 +93,31 @@ class GroupPhotoEditorTest {
         onNodeWithTag(GroupPhotoTags.Confirm).performScrollTo().performClick()
         assertEquals(listOf(true), prepared)
         assertTrue(intents.isEmpty())
+    }
+
+    @Test fun `registration confirmation returns selected photo to compact state`() = runComposeUiTest {
+        setContent {
+            var prepared by remember { mutableStateOf(false) }
+            SaqzTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    GroupPhotoEditor(
+                        state = selectedState(),
+                        groupName = "Volei de Terca",
+                        canEdit = true,
+                        optional = true,
+                        deferUpload = true,
+                        onIntent = {},
+                        onPrepared = { prepared = it },
+                        compactIdle = true,
+                        prepared = prepared,
+                    )
+                }
+            }
+        }
+        onNodeWithTag(GroupPhotoTags.Confirm).performScrollTo().performClick()
+        onNodeWithTag(GroupPhotoTags.Confirm).assertDoesNotExist()
+        onNodeWithTag(GroupPhotoTags.Preview, useUnmergedTree = true).assertExists()
+        onNodeWithTag(GroupPhotoTags.Picker).assertHasClickAction()
     }
 
     @Test fun `profile confirmation uploads immediately`() = runComposeUiTest {
@@ -152,22 +181,6 @@ class GroupPhotoEditorTest {
         onNodeWithTag(GroupPhotoTags.Library).assertIsNotEnabled()
     }
 
-    @Test fun `move left changes crop center without changing zoom`() = runComposeUiTest {
-        val intents = mutableListOf<GroupPhotoIntent>()
-        setup(state = selectedState(), onIntent = intents::add)
-        onNodeWithTag(GroupPhotoTags.MoveLeft).performScrollTo().performClick()
-        val crop = assertIs<GroupPhotoIntent.ChangeCrop>(intents.single()).crop
-        assertEquals(0.45f, crop.centerX)
-        assertEquals(1f, crop.zoom)
-    }
-
-    @Test fun `zoom controls stay inside physical crop limits`() = runComposeUiTest {
-        val intents = mutableListOf<GroupPhotoIntent>()
-        setup(state = selectedState(crop = GroupPhotoCrop(zoom = 7.9f)), onIntent = intents::add)
-        onNodeWithTag(GroupPhotoTags.ZoomIn).performScrollTo().performClick()
-        assertEquals(8f, assertIs<GroupPhotoIntent.ChangeCrop>(intents.single()).crop.zoom)
-    }
-
     @Test fun `compact photo actions retain 48 dp touch targets`() = runComposeUiTest {
         setup()
         onNodeWithTag(GroupPhotoTags.Camera).performScrollTo().assertHeightIsAtLeast(48.dp)
@@ -192,17 +205,13 @@ class GroupPhotoEditorTest {
     }
 
     private companion object {
-        fun selectedState(
-            crop: GroupPhotoCrop = GroupPhotoCrop(),
-            error: GroupPhotoError? = null,
-        ) = GroupPhotoState(
+        fun selectedState(error: GroupPhotoError? = null) = GroupPhotoState(
             selection = GroupPhotoSelection(
                 GroupPhotoSourceHandle("source"),
                 GroupPhotoPreviewHandle("preview"),
                 width = 1200,
                 height = 900,
             ),
-            crop = crop,
             stage = GroupPhotoStage.CROPPING,
             error = error,
         )

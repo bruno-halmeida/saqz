@@ -87,17 +87,19 @@ class GroupSetupScreenTest {
         onNodeWithText("Foto do grupo").assertDoesNotExist()
         onNodeWithText("Opcional").assertDoesNotExist()
         onNodeWithText("SG").assertDoesNotExist()
-        val previewBounds = onNodeWithTag(GroupPhotoTags.Preview).fetchSemanticsNode().boundsInRoot
+        val previewBounds = onNodeWithTag(GroupPhotoTags.Preview, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val addBounds = onNodeWithTag(GroupPhotoTags.Add).assertExists().assertHasClickAction()
             .assertHeightIsAtLeast(44.dp).fetchSemanticsNode().boundsInRoot
-        onNodeWithTag(GroupPhotoTags.Preview).assertWidthIsAtLeast(112.dp)
+        val pickerBounds = onNodeWithTag(GroupPhotoTags.Picker).assertHasClickAction().fetchSemanticsNode().boundsInRoot
+        onNodeWithTag(GroupPhotoTags.Preview, useUnmergedTree = true).assertWidthIsAtLeast(112.dp)
         val sectionBounds = onNodeWithTag(GroupSetupTags.Profile).fetchSemanticsNode().boundsInRoot
         assertTrue(kotlin.math.abs(previewBounds.center.x - sectionBounds.center.x) < 1f)
         assertTrue(addBounds.center.x > previewBounds.center.x)
         assertTrue(addBounds.center.y > previewBounds.center.y)
+        assertTrue(pickerBounds.contains(previewBounds.center))
         onNodeWithTag(GroupPhotoTags.Camera).assertDoesNotExist()
         onNodeWithTag(GroupPhotoTags.Library).assertDoesNotExist()
-        onNodeWithTag(GroupPhotoTags.Add).performClick()
+        onNodeWithTag(GroupPhotoTags.Picker).performClick()
         onNodeWithText("Tirar foto").assertExists()
         onNodeWithText("Escolher da galeria").assertExists()
         onNodeWithText("Remover foto").assertExists()
@@ -282,6 +284,7 @@ class GroupSetupScreenTest {
         onNodeWithTag(GroupSetupTags.FinanceDefaults).assertDoesNotExist()
         onNodeWithTag(GroupSetupTags.Submit).assertDoesNotExist()
         onNodeWithTag(GroupPhotoTags.Add).assertDoesNotExist()
+        onNodeWithTag(GroupPhotoTags.Picker).assertDoesNotExist()
     }
 
     @Test fun `edit mode exposes stable title and save action`() = runComposeUiTest {
