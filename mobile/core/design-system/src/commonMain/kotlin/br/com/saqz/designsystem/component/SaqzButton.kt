@@ -83,6 +83,7 @@ fun SaqzButton(
     loading: Boolean = false,
     labelStyle: TextStyle? = null,
     contentColor: Color? = null,
+    borderColor: Color? = null,
     leadingContent: (@Composable (Color) -> Unit)? = null,
     trailingContent: (@Composable (Color) -> Unit)? = null,
 ) {
@@ -132,7 +133,7 @@ fun SaqzButton(
             .clip(shape)
             .background(container, shape)
             .then(
-                resolved.border?.let { Modifier.border(1.dp, it, shape) } ?: Modifier,
+                (borderColor ?: resolved.border)?.let { Modifier.border(1.dp, it, shape) } ?: Modifier,
             )
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.subGrid),
         contentAlignment = Alignment.Center,

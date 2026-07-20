@@ -162,6 +162,7 @@ fun LoginScreen(
                 kind = SaqzInputKind.Email,
                 enabled = !state.isLoading,
                 inlineLabel = true,
+                borderColor = colors.primary,
                 leadingContent = { MaterialIcon(Res.drawable.material_mail, colors.primary) },
                 modifier = Modifier.testTag(LoginTags.Email),
             )
@@ -173,6 +174,7 @@ fun LoginScreen(
                 kind = SaqzInputKind.Password,
                 enabled = !state.isLoading,
                 inlineLabel = true,
+                borderColor = colors.primary,
                 leadingContent = { MaterialIcon(Res.drawable.material_lock, colors.primary) },
                 modifier = Modifier.testTag(LoginTags.Password),
             )
@@ -346,6 +348,7 @@ private fun GoogleAction(label: String, onClick: () -> Unit, enabled: Boolean) {
             fontWeight = FontWeight.Medium,
         ),
         contentColor = SaqzTheme.colors.textPrimary,
+        borderColor = SaqzTheme.colors.primary,
         leadingContent = { GoogleIcon() },
         modifier = Modifier.fillMaxWidth().testTag(LoginTags.Google),
     )

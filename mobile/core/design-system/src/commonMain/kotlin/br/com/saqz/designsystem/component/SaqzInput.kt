@@ -73,6 +73,7 @@ fun SaqzInput(
     errorText: String? = null,
     enabled: Boolean = true,
     inlineLabel: Boolean = false,
+    borderColor: Color? = null,
     leadingContent: (@Composable () -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
@@ -101,6 +102,7 @@ fun SaqzInput(
                     1.dp,
                     when {
                         errorText != null -> colors.errorForeground
+                        borderColor != null -> borderColor
                         inlineLabel -> colors.border
                         else -> colors.controlBorder
                     },
