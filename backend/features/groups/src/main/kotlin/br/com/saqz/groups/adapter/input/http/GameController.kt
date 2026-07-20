@@ -9,6 +9,7 @@ import br.com.saqz.groups.application.game.GameReadResult
 import br.com.saqz.groups.application.game.GameView
 import br.com.saqz.groups.application.game.GetGame
 import br.com.saqz.groups.application.game.ListGames
+import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
 import br.com.saqz.groups.domain.game.CreateGameInput
 import br.com.saqz.groups.domain.game.GameDraftInput
 import br.com.saqz.groups.domain.game.GameMutation
@@ -57,6 +58,7 @@ data class GameResponse(
     val gameFeeCents: Long?, val notes: String?, val status: String, val version: Long,
     val confirmedCount: Int, val availableSpots: Int, val waitlistCount: Int,
     val financeReviewRequired: Boolean = false,
+    val ownAttendance: AttendanceEntryResponse? = null,
 )
 
 class GameNotFoundException : RuntimeException()
@@ -70,6 +72,7 @@ class GameController(
     private val lifecycle: ChangeGameLifecycle,
     private val listGames: ListGames,
     private val getGame: GetGame,
+    private val attendance: AttendanceDetailQuery? = null,
 ) {
     @PostMapping("/api/groups/{groupId}/games")
     fun create(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String, @RequestBody request: GameWriteRequest): ResponseEntity<GameResponse> {
@@ -85,11 +88,15 @@ class GameController(
         }
 
     @GetMapping("/api/groups/{groupId}/games/{gameId}")
-    fun read(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String, @PathVariable gameId: String): ResponseEntity<GameResponse> =
-        when (val result = getGame.execute(actors.resolve(identity), uuid(groupId), uuid(gameId))) {
-            is GameReadResult.Success -> ResponseEntity.ok().eTag(result.game.game.version.toString()).body(result.game.toResponse())
+    fun read(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String, @PathVariable gameId: String): ResponseEntity<GameResponse> {
+        val actor = actors.resolve(identity); val group = uuid(groupId); val game = uuid(gameId)
+        return when (val result = getGame.execute(actor, group, game)) {
+            is GameReadResult.Success -> ResponseEntity.ok().eTag(result.game.game.version.toString()).body(
+                result.game.toResponse().copy(ownAttendance = attendance?.find(actor, group, game)?.own?.let { AttendanceEntryResponse(it.memberId, it.status.name, it.waitlistSequence, it.version) }),
+            )
             GameReadResult.GameNotFound -> throw GameNotFoundException()
         }
+    }
 
     @PutMapping("/api/groups/{groupId}/games/{gameId}")
     fun edit(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String, @PathVariable gameId: String, @RequestHeader("If-Match", required = false) ifMatch: String?, @RequestBody request: GameWriteRequest) =

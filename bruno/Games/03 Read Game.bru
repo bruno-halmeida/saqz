@@ -12,5 +12,5 @@ auth:bearer {
   token: {{idToken}}
 }
 tests {
-  test("game with ETag", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.confirmedCount).to.be.a("number"); });
+  test("game with ETag", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.confirmedCount).to.be.a("number"); expect(res.body).to.have.property("ownAttendance"); });
 }

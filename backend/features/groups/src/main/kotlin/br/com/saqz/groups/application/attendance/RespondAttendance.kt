@@ -10,6 +10,7 @@ sealed interface AttendanceCommandResult {
     data class Success(
         val attendance: AttendanceRecord,
         val promoted: List<AttendanceRecord> = emptyList(),
+        val event: AttendanceEvent? = null,
     ) : AttendanceCommandResult
     data class Denied(val reason: AttendanceDenial) : AttendanceCommandResult
     data object Hidden : AttendanceCommandResult
@@ -72,8 +73,7 @@ class RespondAttendance(
             (aggregate.current?.version ?: 0) + 1,
         )
         repository.save(record)
-        repository.append(
-            AttendanceEvent(
+        val event = AttendanceEvent(
                 ids(),
                 aggregate.gameId,
                 aggregate.groupId,
@@ -84,14 +84,14 @@ class RespondAttendance(
                 decision.newStatus,
                 decision.reason,
                 timestamp,
-            ),
-        )
+            )
+        repository.append(event)
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
         val promoted = if (
             decision.oldStatus == AttendanceStatus.CONFIRMED &&
             decision.newStatus == AttendanceStatus.DECLINED
         ) promoteOne(aggregate, timestamp) else null
-        return AttendanceCommandResult.Success(record, listOfNotNull(promoted))
+        return AttendanceCommandResult.Success(record, listOfNotNull(promoted), event)
     }
 
     private fun promoteOne(aggregate: AttendanceAggregate, timestamp: Instant): AttendanceRecord? {

@@ -5,13 +5,15 @@ import br.com.saqz.groups.application.finance.charge.*
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.application.game.GameAttendanceCountSource
+import br.com.saqz.groups.application.game.GameAttendanceCounts
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceCommandRepository {
+class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceCommandRepository, AttendanceDetailQuery, GameAttendanceCountSource {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? {
@@ -130,6 +132,39 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             .param("version", expectedVersion)
             .update() == 1
 
+    override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? =
+        jdbc.sql(DETAIL)
+            .param("actor", actorId)
+            .param("group", groupId)
+            .param("game", gameId)
+            .query { rs, _ ->
+                val ownStatus = rs.getString("own_status")?.let(AttendanceStatus::valueOf)
+                val own = ownStatus?.let {
+                    AttendanceRecord(
+                        gameId, groupId, actorId, it,
+                        rs.getObject("waitlist_sequence", Long::class.javaObjectType),
+                        rs.getTimestamp("responded_at").toInstant(),
+                        rs.getTimestamp("attendance_updated_at").toInstant(),
+                        rs.getLong("attendance_version"),
+                    )
+                }
+                val confirmed = rs.getInt("confirmed_count")
+                val capacity = rs.getInt("capacity")
+                AttendanceDetail(
+                    own, confirmed, (capacity - confirmed).coerceAtLeast(0),
+                    rs.getInt("waitlist_count"), capacity, rs.getLong("game_version"),
+                )
+            }
+            .optional()
+            .orElse(null)
+
+    override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> = gameIds.associateWith { gameId ->
+        jdbc.sql(
+            "SELECT count(*) FILTER (WHERE status='CONFIRMED') AS confirmed," +
+                "count(*) FILTER (WHERE status='WAITLISTED') AS waitlisted FROM game_attendance WHERE game_id=:game",
+        ).param("game", gameId).query { rs, _ -> GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted")) }.single()
+    }
+
     private fun aggregate(rs: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int): AttendanceAggregate {
         val currentStatus = rs.getString("attendance_status")?.let(AttendanceStatus::valueOf)
         val current = currentStatus?.let {
@@ -206,6 +241,18 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             ORDER BY waitlist_sequence
             LIMIT 1
             FOR UPDATE
+        """
+        const val DETAIL = """
+            SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
+                   a.responded_at,a.updated_at AS attendance_updated_at,a.version AS attendance_version,
+                   (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
+                   (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count
+            FROM games g
+            JOIN access_groups ag ON ag.id=g.group_id
+            LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
+            LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
+            WHERE g.group_id=:group AND g.id=:game
+              AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
         """
     }
 }

@@ -1543,20 +1543,23 @@ capacity command endpoints with version/idempotency, privacy, and Bruno tests.
 
 **Done when:**
 
-- [ ] Athlete response targets only self and cannot author confirmed/waitlist
+- [x] Athlete response targets only self and cannot author confirmed/waitlist
   position, charge, actor, timestamp or capacity.
-- [ ] Organizer override explicitly names member/target response/reason and
+- [x] Organizer override explicitly names member/target response/reason and
   produces auditable output; capacity command uses game ETag.
-- [ ] Exact happy, full, deadline, frozen, invalid transition, stale, retry,
+- [x] Exact happy, full, deadline, frozen, invalid transition, stale, retry,
   unauthorized and privacy-hidden responses are asserted.
-- [ ] Game detail returns authoritative own response and aggregate counts
+- [x] Game detail returns authoritative own response and aggregate counts
   without exposing other attendance beyond allowed member view.
-- [ ] Every route has Bruno assertions; Backend HTTP gate passes with test count
+- [x] Every route has Bruno assertions; Backend HTTP gate passes with test count
   `Δ+20` or greater.
 
 **Tests:** Spring HTTP + Bruno (`Δ+20`).
 **Gate:** Backend HTTP + Safety.
 **Commit:** `feat(groups): expose attendance waitlist api`
+**Status:** Complete; 21 focused attendance HTTP cases plus the game-detail own
+response case, full Groups/bootstrap/architecture gate, four Bruno routes, and
+safety checks passed with privacy-safe authoritative projections.
 
 ### T54: Add attendance/finance concurrency discrimination sensors
 

@@ -2,6 +2,8 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.game.*
+import br.com.saqz.groups.application.attendance.*
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.*
 import br.com.saqz.sharedkernel.RequestIdentity
@@ -21,7 +23,8 @@ class GameControllerTest {
         repository = MemoryRepository(); effects = RecordingEffects()
         val tx = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
         val counts = GameAttendanceCountSource { ids -> ids.associateWith { GameAttendanceCounts(3, 2) } }
-        controller = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository), EditGame(tx, repository, effects), ChangeGameLifecycle(tx, repository, effects), ListGames(repository, counts), GetGame(repository, counts))
+        val attendance = AttendanceDetailQuery { _, _, gameId -> AttendanceDetail(AttendanceRecord(gameId, group, actor, AttendanceStatus.WAITLISTED, 4, START, START, 2), 3, 21, 2, 24, 1) }
+        controller = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository), EditGame(tx, repository, effects), ChangeGameLifecycle(tx, repository, effects), ListGames(repository, counts), GetGame(repository, counts), attendance)
     }
 
     @Test fun `create returns 201 quoted ETag and server state`() { val response = controller.create(ID, "$group", request()); assertEquals(201, response.statusCode.value()); assertEquals("\"1\"", response.headers.eTag); assertEquals("DRAFT", response.body!!.status); assertEquals(0, response.body!!.confirmedCount) }
@@ -34,6 +37,7 @@ class GameControllerTest {
     @Test fun `athlete list hides drafts`() { seed(); repository.role=GroupRole.ATHLETE; assertTrue(controller.list(ID,"$group").isEmpty()) }
     @Test fun `nonmember list is privacy not found`() { repository.role=null; assertFailsWith<GameNotFoundException>{controller.list(ID,"$group")} }
     @Test fun `read returns authoritative counts and quoted ETag`() { val game=seed(GameStatus.PUBLISHED); val response=controller.read(ID,"$group","${game.id}"); assertEquals("\"1\"",response.headers.eTag); assertEquals(3,response.body!!.confirmedCount) }
+    @Test fun `read includes only callers own attendance`() { val game=seed(GameStatus.PUBLISHED); val response=controller.read(ID,"$group","${game.id}"); assertEquals(actor,response.body!!.ownAttendance!!.memberId); assertEquals("WAITLISTED",response.body!!.ownAttendance!!.status); assertEquals(4,response.body!!.ownAttendance!!.waitlistPosition) }
     @Test fun `athlete draft read is hidden`() { val game=seed(); repository.role=GroupRole.ATHLETE; assertFailsWith<GameNotFoundException>{controller.read(ID,"$group","${game.id}")} }
     @Test fun `malformed resource identifiers are hidden`() { assertFailsWith<GameNotFoundException>{controller.read(ID,"bad","also-bad")} }
     @Test fun `edit returns incremented ETag and immutable response fields`() { val game=seed(); val response=controller.edit(ID,"$group","${game.id}","\"1\"",request().copy(requestId=null,title="Treino novo")); assertEquals("\"2\"",response.headers.eTag); assertEquals("Treino novo",response.body!!.title) }

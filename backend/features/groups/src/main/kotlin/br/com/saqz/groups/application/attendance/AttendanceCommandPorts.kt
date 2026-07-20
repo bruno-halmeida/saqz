@@ -74,3 +74,16 @@ data class CapacityAggregate(
     val gameFeeCents: Long?,
     val gameDate: LocalDate,
 )
+
+data class AttendanceDetail(
+    val own: AttendanceRecord?,
+    val confirmedCount: Int,
+    val availableSpots: Int,
+    val waitlistCount: Int,
+    val capacity: Int,
+    val gameVersion: Long,
+)
+
+fun interface AttendanceDetailQuery {
+    fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail?
+}

@@ -32,6 +32,7 @@ import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.groups.adapter.input.http.GameController
 import br.com.saqz.groups.adapter.input.http.ChargeController
 import br.com.saqz.groups.adapter.input.http.ExpenseController
+import br.com.saqz.groups.adapter.input.http.AttendanceController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesBoundaryRepository
@@ -39,6 +40,11 @@ import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
+import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
+import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
+import br.com.saqz.groups.application.attendance.AdjustGameCapacity
+import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
+import br.com.saqz.groups.application.attendance.RespondAttendance
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
@@ -244,7 +250,8 @@ class AccessSessionConfiguration {
 
     @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
     @Bean fun gameSideEffects() = GameSideEffectPort { _, _ -> }
-    @Bean fun gameAttendanceCounts() = GameAttendanceCountSource { emptyMap() }
+    @Bean fun attendanceRepository(dataSource: DataSource) = JdbcAttendanceCommandRepository(dataSource)
+    @Bean fun gameAttendanceCounts(repository: JdbcAttendanceCommandRepository): GameAttendanceCountSource = repository
     @Bean fun createGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository) = CreateGame(transaction, repository)
     @Bean fun editGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort) = EditGame(transaction, repository, effects)
     @Bean fun changeGameLifecycle(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort) = ChangeGameLifecycle(transaction, repository, effects)
@@ -257,7 +264,8 @@ class AccessSessionConfiguration {
         lifecycle: ChangeGameLifecycle,
         list: ListGames,
         get: GetGame,
-    ) = GameController(actor, create, edit, lifecycle, list, get)
+        attendance: AttendanceDetailQuery,
+    ) = GameController(actor, create, edit, lifecycle, list, get, attendance)
     @Bean fun gameIdFactory() = GameIdFactory(java.util.UUID::randomUUID)
     @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
     @Bean fun weeklySeriesService(repository: JdbcWeeklySeriesRepository, ids: GameIdFactory) = WeeklySeriesService(repository, ids, Clock.systemUTC())
@@ -266,6 +274,10 @@ class AccessSessionConfiguration {
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
+    @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
+    @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
+    @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
+    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery) = AttendanceController(actor, responses, capacities, details)
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)

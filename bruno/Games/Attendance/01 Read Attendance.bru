@@ -1,0 +1,14 @@
+meta {
+  name: Read Attendance
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/attendance
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("private own attendance and aggregate counts", function () { expect(res.status).to.equal(200); expect(res.body.confirmedCount).to.be.a("number"); expect(res.body.waitlistCount).to.be.a("number"); expect(res.body).to.have.property("ownAttendance"); });
+}

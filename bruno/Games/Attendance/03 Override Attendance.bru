@@ -1,0 +1,15 @@
+meta {
+  name: Override Attendance
+  type: http
+  seq: 3
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/attendance/override
+  body: json
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+body:json { {"requestId":"{{$guid}}","memberId":"{{memberId}}","intent":"CONFIRM","reason":"Confirmação do organizador"} }
+tests {
+  test("organizer override is audited", function () { expect(res.status).to.equal(200); expect(res.body.audit.source).to.equal("ORGANIZER"); expect(res.body.audit.reason).to.equal("Confirmação do organizador"); });
+}
