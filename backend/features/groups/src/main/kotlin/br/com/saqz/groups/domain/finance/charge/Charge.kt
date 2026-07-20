@@ -8,7 +8,7 @@ import java.util.UUID
 
 enum class ChargeStatus { PENDING, PAID, WAIVED, CANCELLED }
 sealed interface ChargeIdentity { data class Game(val gameId:UUID):ChargeIdentity;data class Monthly(val month:YearMonth):ChargeIdentity }
-data class Charge(val id:UUID,val groupId:UUID,val memberId:UUID,val identity:ChargeIdentity,val amountCents:Long,val dueDate:LocalDate,val status:ChargeStatus=ChargeStatus.PENDING,val version:Long=1){init{require(amountCents in 1..99_999_999);require(version>=1)}}
+data class Charge(val id:UUID,val groupId:UUID,val memberId:UUID,val identity:ChargeIdentity,val amountCents:Long,val dueDate:LocalDate,val status:ChargeStatus=ChargeStatus.PENDING,val version:Long=1,val reviewRequired:Boolean=false){init{require(amountCents in 1..99_999_999);require(version>=1)}}
 data class ChargeStatusCommand(val target:ChargeStatus,val note:String?=null)
 data class ChargeEvent(val id:UUID,val chargeId:UUID,val actorId:UUID,val oldStatus:ChargeStatus,val newStatus:ChargeStatus,val note:String?,val occurredAt:Instant)
 data class ChargeChange(val charge:Charge,val event:ChargeEvent)

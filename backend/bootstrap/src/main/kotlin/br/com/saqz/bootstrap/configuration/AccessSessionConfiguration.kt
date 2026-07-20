@@ -30,10 +30,13 @@ import br.com.saqz.groups.application.membership.ListAccessMemberships
 import br.com.saqz.groups.application.photo.GroupPhotoService
 import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.groups.adapter.input.http.GameController
+import br.com.saqz.groups.adapter.input.http.ChargeController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesBoundaryRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
@@ -44,6 +47,8 @@ import br.com.saqz.groups.application.game.ListGames
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
 import br.com.saqz.groups.application.game.series.WeeklySeriesService
+import br.com.saqz.groups.application.finance.charge.ChargeManagement
+import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.groups.domain.GroupAccessPolicy
@@ -59,6 +64,7 @@ import org.springframework.core.env.Environment
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.net.URI
 import java.time.Clock
+import java.time.Instant
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
@@ -255,4 +261,9 @@ class AccessSessionConfiguration {
     @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
     @Bean fun applySeriesBoundary(repository: JdbcSeriesBoundaryRepository, ids: GameIdFactory) = ApplySeriesBoundary(repository, ids::create, Clock.systemUTC())
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
+    @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
+    @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
+    @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
+    @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
+    @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)
 }

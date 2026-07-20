@@ -1,0 +1,16 @@
+meta {
+  name: Update Charge Status
+  type: http
+  seq: 4
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/charges/{{chargeId}}/status
+  body: json
+  auth: bearer
+}
+headers { If-Match: "{{chargeVersion}}" }
+auth:bearer { token: {{idToken}} }
+body:json { {"status":"PAID","note":"Registro manual"} }
+tests {
+  test("versioned manual status", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.events).to.be.an("array"); });
+}

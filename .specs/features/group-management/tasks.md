@@ -1326,19 +1326,21 @@ own-charge read endpoints with audit-safe problems and Bruno requests.
 
 **Done when:**
 
-- [ ] Organizer and athlete routes return exactly allowed fields; athlete
+- [x] Organizer and athlete routes return exactly allowed fields; athlete
   cannot infer other charges/totals/expenses.
-- [ ] Monthly request selects member IDs and reviewed amount/due date under a
+- [x] Monthly request selects member IDs and reviewed amount/due date under a
   stable key; retry returns equivalent charges.
-- [ ] Status commands require `If-Match`, derive actor/time/old state, append
+- [x] Status commands require `If-Match`, derive actor/time/old state, append
   audit, and reject amount/status fabrication or invalid transition.
-- [ ] Every route has Bruno assertions and responses never claim processed or
+- [x] Every route has Bruno assertions and responses never claim processed or
   settled payment.
-- [ ] Backend HTTP gate passes; test count `Δ+18` or greater.
+- [x] Backend HTTP gate passes; test count `Δ+18` or greater.
 
 **Tests:** Spring HTTP + Bruno (`Δ+18`).
 **Gate:** Backend HTTP + Safety.
 **Commit:** `feat(groups): expose manual charge api`
+**Status:** Complete; backend HTTP, bootstrap, Bruno, and safety gates passed
+with 19 added charge contract cases and four explicit route requests.
 
 ### T47: Implement expense domain, persistence, and audit
 

@@ -1,0 +1,17 @@
+meta {
+  name: Generate Monthly Charges
+  type: http
+  seq: 3
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/charges/monthly
+  body: json
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+body:json {
+  {"requestId":"{{$guid}}","month":"2026-08","amountCents":3000,"dueDate":"2026-08-10","memberIds":["{{memberId}}"]}
+}
+tests {
+  test("reviewed monthly charges", function () { expect(res.status).to.equal(200); expect(res.body.charges).to.be.an("array"); });
+}
