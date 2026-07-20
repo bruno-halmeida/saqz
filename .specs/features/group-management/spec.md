@@ -730,6 +730,14 @@ keys, cents, or timezone identifiers.
   while below-fold buttons need scrolling before iOS clicks register. No new
   product invariant added; tests target unmerged labeled fields and explicitly
   scroll action controls into view.
+- **B50 | 2026-07-19** — T41 fresh-eyes review found the composable generated
+  recurrence slot keys such as `slot-1`, while the accepted backend contract
+  parses each key as UUID. Covered by V19; slot identity generation moved to
+  the ViewModel's injected stable key factory.
+- **V19** — Every client-created game command, series revision, and recurrence
+  slot identity SHALL be an opaque UUID generated outside the visual
+  composable, persisted with the draft, and reused unchanged across
+  recomposition, restart, validation failure, and retry.
 
 ## Success criteria
 
