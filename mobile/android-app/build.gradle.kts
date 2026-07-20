@@ -158,6 +158,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(project(":core:design-system"))
+    androidTestImplementation(project(":features:groups"))
     androidTestImplementation("org.jetbrains.compose.components:components-resources:1.11.1")
     androidTestImplementation("org.jetbrains.compose.material:material:1.11.1")
     androidTestImplementation("org.jetbrains.compose.foundation:foundation:1.11.1")

@@ -8,6 +8,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.preflight_sentinel
+import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.ui.GroupOnboardingScreen
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.junit.Rule
@@ -36,5 +39,16 @@ class ResourcePackagingTest {
         }
 
         composeRule.onNodeWithContentDescription("apk-sentinel").assertExists()
+    }
+
+    @Test
+    fun apkRendersGroupsStringResourceV46() {
+        composeRule.setContent {
+            SaqzTheme {
+                GroupOnboardingScreen(GroupSelectionState.NoGroup) {}
+            }
+        }
+
+        composeRule.onNodeWithText("Voce ainda nao participa de um grupo").assertIsDisplayed()
     }
 }
