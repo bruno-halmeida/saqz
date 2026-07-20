@@ -1725,18 +1725,21 @@ pattern.
 
 **Done when:**
 
-- [ ] Athlete state loads only own charges and has no totals/status/monthly/
+- [x] Athlete state loads only own charges and has no totals/status/monthly/
   expense intents; organizer state loads full permitted data.
-- [ ] Monthly draft selects active members, reviews amount/due date, restores
+- [x] Monthly draft selects active members, reviews amount/due date, restores
   safely and generates once under a stable key.
-- [ ] Status intent preserves ETag, shows mandatory system audit outcome,
+- [x] Status intent preserves ETag, shows mandatory system audit outcome,
   handles stale reload, and never edits amount/actor/time.
-- [ ] States/copy consistently say manually tracked, not processed/settled.
-- [ ] Mobile quick gate passes; test count `Δ+18` or greater.
+- [x] States/copy consistently say manually tracked, not processed/settled.
+- [x] Mobile quick gate passes; test count `Δ+20`.
 
 **Tests:** KMP ViewModel/draft unit (`Δ+18`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): coordinate charge tracking`
+**Status:** Complete; 20 KMP ViewModel/draft cases and the mobile quick/safety
+gates passed across role isolation, restore/review, stable generation, status
+ETags/audit, authoritative refresh, conflict retry, and manual-only copy.
 
 ### T60: Build charge and monthly-generation UI
 
