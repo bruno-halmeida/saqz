@@ -809,6 +809,9 @@ keys, cents, or timezone identifiers.
   omitted `HttpResponseData` import and an ambiguous nullable ETag-list
   assertion. No new invariant added; portable common tests import transport
   types and nullable generic expectations explicitly.
+- **B71 | 2026-07-20** — The first T56 multiplatform compile exposed a JVM-only
+  `System.currentTimeMillis()` default clock in common source, breaking both
+  Android common compilation and Kotlin/Native. Covered by V27.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -832,6 +835,9 @@ keys, cents, or timezone identifiers.
 - **V26** — Functions returning nested generic types SHALL put whitespace
   between the closing generic delimiter and expression-body operator or use a
   block body; compressed `>=`-like token boundaries are prohibited.
+- **V27** — Common Kotlin source SHALL use only multiplatform clock APIs; JVM
+  platform time classes and `System` calls are prohibited outside JVM source
+  sets, and the Android plus Kotlin/Native compile gate SHALL enforce this.
 
 ## Success criteria
 
