@@ -899,6 +899,10 @@ keys, cents, or timezone identifiers.
   before a retained helper callback, so positional callback references bound to
   the new non-function parameter during Kotlin/Native test compilation.
   Covered by V40.
+- **B96 | 2026-07-20** — T67's fresh full gate exposed two Spring beans for
+  `GameAttendanceCountSource` (`attendanceRepository` and
+  `gameAttendanceCounts`), so the retained emulator application context failed
+  before its access-flow assertions. Covered by V48.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -995,6 +999,11 @@ keys, cents, or timezone identifiers.
   authenticated zero-membership and selector actions, SHALL render the complete
   Groups setup flow; the legacy name/timezone-only Access form SHALL not remain
   reachable or satisfy registration verification.
+- **V48** — The complete bootstrap application context SHALL resolve exactly one
+  intended collaborator for every Groups use-case port; adapters that implement
+  a broader port SHALL not create ambiguous candidates when a dedicated
+  projection bean is also registered, and the emulator context gate SHALL
+  enforce successful composition.
 
 ## Success criteria
 
