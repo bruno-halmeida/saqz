@@ -1,0 +1,24 @@
+meta {
+  name: Read Group Photo
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{backendUrl}}/api/groups/{{groupId}}/photo
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+tests {
+  test("member receives private cacheable media", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.be.oneOf(["image/jpeg", "image/png", "image/webp"]);
+    expect(res.getHeader("cache-control")).to.equal("private, no-cache");
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+  });
+}

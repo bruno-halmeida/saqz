@@ -1,0 +1,27 @@
+meta {
+  name: Upload Group Photo
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{backendUrl}}/api/groups/{{groupId}}/photo
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  If-Match: "1"
+}
+
+body:multipart-form {
+  file: @file({{groupPhotoFile}})
+}
+
+tests {
+  test("private photo is accepted with a new group ETag", function () {
+    expect(res.getStatus()).to.equal(204);
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+  });
+}

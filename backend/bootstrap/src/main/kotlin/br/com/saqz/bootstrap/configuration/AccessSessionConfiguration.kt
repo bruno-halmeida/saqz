@@ -11,6 +11,8 @@ import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
 import br.com.saqz.groups.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
+import br.com.saqz.groups.adapter.output.jdbc.photo.JdbcGroupPhotoRepository
+import br.com.saqz.groups.adapter.output.media.GroupPhotoValidator
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
@@ -25,6 +27,8 @@ import br.com.saqz.groups.application.invite.manage.RotateInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.membership.ChangeMemberRole
 import br.com.saqz.groups.application.membership.ListAccessMemberships
+import br.com.saqz.groups.application.photo.GroupPhotoService
+import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.groups.domain.GroupAccessPolicy
@@ -123,6 +127,18 @@ class AccessSessionConfiguration {
         updateGroupSettings: UpdateGroupSettings,
         getGroup: GetGroup,
     ) = AccessGroupSettingsController(verifiedGroupActorResolver, updateGroupSettings, getGroup)
+
+    @Bean fun groupPhotoRepository(dataSource: DataSource) = JdbcGroupPhotoRepository(dataSource)
+    @Bean fun groupPhotoValidator() = GroupPhotoValidator()
+    @Bean fun groupPhotoService(
+        getGroup: GetGroup,
+        validator: GroupPhotoValidator,
+        repository: JdbcGroupPhotoRepository,
+    ) = GroupPhotoService(getGroup, validator, repository)
+    @Bean fun groupPhotoController(
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
+        service: GroupPhotoService,
+    ) = GroupPhotoController(verifiedGroupActorResolver, service)
 
     @Bean
     fun membershipRepository(dataSource: DataSource) = JdbcMembershipRepository(dataSource)

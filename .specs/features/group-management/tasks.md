@@ -708,14 +708,14 @@ store.
 
 **Done when:**
 
-- [ ] PUT/GET/DELETE enforce exact role/member/privacy rules and missing/stale
+- [x] PUT/GET/DELETE enforce exact role/member/privacy rules and missing/stale
   `If-Match` behavior.
-- [ ] GET returns actual type, private/no-cache, ETag and bytes only after
+- [x] GET returns actual type, private/no-cache, ETag and bytes only after
   current membership; conditional read works without a public URL/key.
-- [ ] Multipart/request/decode failures map to stable safe problems and never
+- [x] Multipart/request/decode failures map to stable safe problems and never
   replace current media or leak parser/internal details.
-- [ ] Every photo route has Bruno method/path/status assertions.
-- [ ] Backend HTTP gate passes; test count `Δ+16` or greater.
+- [x] Every photo route has Bruno method/path/status assertions.
+- [x] Backend HTTP gate passes; test count `Δ+16` or greater.
 
 **Tests:** Spring multipart HTTP + Bruno (`Δ+16`).
 **Gate:** Backend HTTP + Safety.

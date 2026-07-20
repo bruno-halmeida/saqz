@@ -11,12 +11,17 @@ import br.com.saqz.groups.adapter.input.http.VersionConflictException
 import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
 import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
+import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
+import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.HttpRequestMethodNotSupportedException
+import org.springframework.web.multipart.MaxUploadSizeExceededException
+import org.springframework.web.multipart.MultipartException
+import org.springframework.web.multipart.support.MissingServletRequestPartException
 
 @RestControllerAdvice
 class SafeExceptionHandler(
@@ -91,6 +96,20 @@ class SafeExceptionHandler(
             ErrorCode.INVITE_ATTEMPT_LIMIT,
             retryAfterSeconds = failure.retryAfterSeconds,
         )
+    }
+
+    @ExceptionHandler(GroupPhotoTooLargeException::class, MaxUploadSizeExceededException::class)
+    fun photoTooLarge(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 413, ErrorCode.PHOTO_TOO_LARGE)
+    }
+
+    @ExceptionHandler(
+        InvalidGroupPhotoException::class,
+        MissingServletRequestPartException::class,
+        MultipartException::class,
+    )
+    fun invalidPhoto(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 400, ErrorCode.PHOTO_INVALID)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

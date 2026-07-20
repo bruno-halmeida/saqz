@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.output.media
 import br.com.saqz.groups.application.photo.GroupPhotoMediaType
 import br.com.saqz.groups.application.photo.GroupPhotoRejection
 import br.com.saqz.groups.application.photo.GroupPhotoValidationResult
+import br.com.saqz.groups.application.photo.GroupPhotoValidationPort
 import br.com.saqz.groups.application.photo.ValidatedGroupPhoto
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -13,8 +14,8 @@ import javax.imageio.ImageIO
 class GroupPhotoValidator(
     private val maximumBytes: Int = 5 * 1024 * 1024,
     private val maximumDimension: Int = 4096,
-) {
-    fun validate(declaredContentType: String, input: InputStream): GroupPhotoValidationResult {
+) : GroupPhotoValidationPort {
+    override fun validate(declaredContentType: String, input: InputStream): GroupPhotoValidationResult {
         val bytes = readBounded(input) ?: return rejected(GroupPhotoRejection.TOO_LARGE)
         if (bytes.isEmpty()) return rejected(GroupPhotoRejection.EMPTY)
         val actualType = detectType(bytes) ?: return rejected(GroupPhotoRejection.UNSUPPORTED_TYPE)

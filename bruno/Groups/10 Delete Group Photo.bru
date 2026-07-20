@@ -1,0 +1,23 @@
+meta {
+  name: Delete Group Photo
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{backendUrl}}/api/groups/{{groupId}}/photo
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  If-Match: "2"
+}
+
+tests {
+  test("private photo removal is idempotent and versioned", function () {
+    expect(res.getStatus()).to.equal(204);
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+  });
+}

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.photo
 
+import java.io.InputStream
 import java.util.UUID
 
 enum class GroupPhotoMediaType(val value: String) {
@@ -31,6 +32,10 @@ enum class GroupPhotoRejection {
 sealed interface GroupPhotoValidationResult {
     data class Valid(val photo: ValidatedGroupPhoto) : GroupPhotoValidationResult
     data class Rejected(val reason: GroupPhotoRejection) : GroupPhotoValidationResult
+}
+
+fun interface GroupPhotoValidationPort {
+    fun validate(declaredContentType: String, input: InputStream): GroupPhotoValidationResult
 }
 
 data class ReplaceGroupPhotoCommand(
