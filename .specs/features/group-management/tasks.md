@@ -1813,18 +1813,21 @@ audit-safe presentation, with no athlete discoverability.
 
 **Done when:**
 
-- [ ] Organizer can reach every expense/total/form action and sees required
+- [x] Organizer can reach every expense/total/form action and sees required
   validation plus create/edit/void audit feedback.
-- [ ] OTHER reveals required custom category; other choices clear/hide it;
+- [x] OTHER reveals required custom category; other choices clear/hide it;
   values display as BRL/local date, never raw cents/enum.
-- [ ] Copy never implies reimbursement, debt, settlement or money transfer; an
+- [x] Copy never implies reimbursement, debt, settlement or money transfer; an
   athlete has no route/action/hidden semantics for expenses/totals.
-- [ ] Compact/keyboard/max-text semantics retain ordered 48 dp actions.
-- [ ] Mobile quick gate passes; test count `Δ+14` or greater.
+- [x] Compact/keyboard/max-text semantics retain ordered 48 dp actions.
+- [x] Mobile quick gate passes; test count `Δ+17`.
 
 **Tests:** common Compose UI (`Δ+14`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): build expense tracking ui`
+**Status:** Complete; 17 Compose UI cases and the mobile quick/safety gates
+passed across athlete non-discoverability, localized totals/forms/history,
+conditional categories, confirmed voiding, safe copy, and 48 dp semantics.
 
 ### T63: Persist non-sensitive group drafts on Android
 

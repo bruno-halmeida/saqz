@@ -1,0 +1,37 @@
+package br.com.saqz.groups.ui.finance.expenses
+
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.*
+import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.data.finance.*
+import br.com.saqz.groups.presentation.finance.expenses.*
+import kotlin.test.*
+
+@OptIn(ExperimentalTestApi::class)
+class ExpenseScreenTest {
+    @Test fun `athlete has no expense route action or hidden semantics`()=runComposeUiTest{screen(state(role=GroupRoleDto.ATHLETE));onNodeWithText("Despesas e totais do grupo").assertDoesNotExist();onNodeWithTag(ExpenseTags.Create).assertDoesNotExist();onNodeWithTag(ExpenseTags.Totals).assertDoesNotExist();onAllNodesWithText("Despesa",substring=true,ignoreCase=true).assertCountEquals(0)}
+    @Test fun `organizer sees localized active expense and charge totals`()=runComposeUiTest{screen(state());onNodeWithText("Despesas ativas: R$ 123,45").assertExists();onNodeWithText("Pendentes: R$ 25,00").assertExists();onNodeWithText("Pagas registradas: R$ 50,00").assertExists()}
+    @Test fun `expense card localizes value date category and status`()=runComposeUiTest{screen(state());onNodeWithText("Água do jogo").assertExists();onNodeWithText("Valor: R$ 123,45").assertExists();onNodeWithText("Data: 12/08/2026").assertExists();onNodeWithText("Outra categoria • Água").assertExists();onNodeWithText("Ativa").assertExists()}
+    @Test fun `expense card shows notes and authoritative audit feedback`()=runComposeUiTest{screen(state());onNodeWithText("Compra manual").assertExists();onNodeWithText("Histórico: Criada em 2026-08-12T10:00:00Z").assertExists()}
+    @Test fun `new expense action is organizer only and explicit`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(state(),intents::add);onNodeWithTag(ExpenseTags.Create).performClick();assertEquals(ExpenseIntent.OpenCreate,intents.single())}
+    @Test fun `edit action dispatches exact resource`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(state(),intents::add);onNodeWithTag(ExpenseTags.edit(EXPENSE)).performScrollTo().performClick();assertEquals(ExpenseIntent.OpenEdit(EXPENSE),intents.single())}
+    @Test fun `void action only requests confirmation`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(state(),intents::add);onNodeWithTag(ExpenseTags.void(EXPENSE)).performScrollTo().performClick();assertEquals(ExpenseIntent.RequestVoid(EXPENSE),intents.single());assertFalse(intents.contains(ExpenseIntent.ConfirmVoid))}
+    @Test fun `void dialog preserves history copy and explicit confirmation`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(state().copy(pendingVoid=expense()),intents::add);onNodeWithText("Anular esta despesa?").assertExists();onNodeWithText("O registro de “Água do jogo” será anulado e o histórico será mantido.").assertExists();onNodeWithTag(ExpenseTags.VoidConfirm).performClick();assertEquals(ExpenseIntent.ConfirmVoid,intents.single())}
+    @Test fun `form text editing emits complete values`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(formState(),intents::add);field("Descrição").performTextReplacement("Arbitragem final");val update=assertIs<ExpenseIntent.UpdateForm>(intents.last());assertEquals("Arbitragem final",update.form.description);assertEquals("123,45",update.form.amountBrl);assertEquals(ExpenseCategoryDto.OTHER,update.form.category)}
+    @Test fun `other category reveals required custom field`()=runComposeUiTest{screen(formState());field("Nome da categoria").assertExists();onNodeWithTag(ExpenseTags.Custom).assertExists()}
+    @Test fun `preset category clears and hides custom value`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(formState(),intents::add);onNodeWithTag(ExpenseTags.category(ExpenseCategoryDto.REFEREE)).performScrollTo().performClick();val update=assertIs<ExpenseIntent.UpdateForm>(intents.single());assertEquals(ExpenseCategoryDto.REFEREE,update.form.category);assertEquals("",update.form.customCategory);field("Nome da categoria").assertDoesNotExist()}
+    @Test fun `save action submits validated draft`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(formState(),intents::add);onNodeWithTag(ExpenseTags.Save).performScrollTo().performClick();assertEquals(ExpenseIntent.Submit,intents.single())}
+    @Test fun `validation messages attach to exact form fields`()=runComposeUiTest{screen(formState().copy(fieldErrors=mapOf("description" to listOf("Descrição inválida"),"customCategory" to listOf("Categoria inválida"))));onNodeWithText("Descrição inválida").assertExists();onNodeWithText("Categoria inválida").assertExists()}
+    @Test fun `conflict retry remains reachable`()=runComposeUiTest{val intents=mutableListOf<ExpenseIntent>();screen(state().copy(error=ExpenseError.CONFLICT,retryAvailable=true),intents::add);onNodeWithTag(ExpenseTags.Retry).performScrollTo().performClick();assertEquals(ExpenseIntent.Retry,intents.single())}
+    @Test fun `copy contains no reimbursement debt settlement transfer or credential claim`()=runComposeUiTest{screen(state());listOf("reembolso","dívida","liquidação","transferência","credencial").forEach{onAllNodesWithText(it,substring=true,ignoreCase=true).assertCountEquals(0)}}
+    @Test fun `notes cap at 500 while actions expose ordered 48 dp semantics`()=runComposeUiTest{screen(formState());val notes=field("Observações (opcional)");notes.performScrollTo().performTextReplacement("x".repeat(501));assertEquals(500,notes.fetchSemanticsNode().config[SemanticsProperties.EditableText].text.length);val create=onNodeWithTag(ExpenseTags.Create).fetchSemanticsNode().config;val save=onNodeWithTag(ExpenseTags.Save).fetchSemanticsNode().config;assertTrue(create[ExpenseMinimumTouchTargetKey]);assertTrue(save[ExpenseMinimumTouchTargetKey]);assertEquals(1,create[ExpenseActionOrderKey]);assertEquals(10,save[ExpenseActionOrderKey])}
+    @Test fun `voided expense hides mutation actions and keeps localized history`()=runComposeUiTest{val voided=expense().copy(status=ExpenseStatusDto.VOIDED,version=4,events=expense().events+ExpenseEventDto("actor",ExpenseActionDto.VOIDED,"2026-08-13T10:00:00Z"));screen(state(expenses=listOf(voided)));onNodeWithText("Anulada").assertExists();onNodeWithText("Histórico: Anulada em 2026-08-13T10:00:00Z").assertExists();onNodeWithTag(ExpenseTags.edit(EXPENSE)).assertDoesNotExist();onNodeWithTag(ExpenseTags.void(EXPENSE)).assertDoesNotExist()}
+
+    private fun androidx.compose.ui.test.ComposeUiTest.screen(value:ExpenseState,onIntent:(ExpenseIntent)->Unit={})=setContent{SaqzTheme{ExpenseScreen(value,onIntent)}}
+    private fun androidx.compose.ui.test.ComposeUiTest.field(label:String)=onNodeWithContentDescription(label,useUnmergedTree=true)
+    private fun formState()=state().copy(draft=ExpenseDraft(groupId=GROUP,commandKey="key",form=ExpenseForm("Água do jogo","123,45","2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual")))
+    private fun state(role:GroupRoleDto=GroupRoleDto.OWNER,expenses:List<ExpenseDto> = listOf(expense()))=ExpenseState(GROUP,role,expenses,FinanceTotalsDto(2500,5000,1000,7000,12345),isLoading=false)
+    private fun expense()=ExpenseDto(EXPENSE,GROUP,"Água do jogo",12345,"2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual",ExpenseStatusDto.ACTIVE,3,listOf(ExpenseEventDto("actor",ExpenseActionDto.CREATED,"2026-08-12T10:00:00Z")))
+    private companion object{const val GROUP="group";const val EXPENSE="expense-1"}
+}
