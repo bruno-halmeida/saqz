@@ -942,15 +942,15 @@ available, and waitlist counts without client authority.
 
 **Done when:**
 
-- [ ] Organizer creates a DRAFT one-time game from defaults/overrides; no
+- [x] Organizer creates a DRAFT one-time game from defaults/overrides; no
   attendance or charge row is created.
-- [ ] Organizers see drafts; athletes see published/history only; non-members
+- [x] Organizers see drafts; athletes see published/history only; non-members
   and unknown resources share `404`.
-- [ ] Reads derive counts server-side and `availableSpots` never becomes
+- [x] Reads derive counts server-side and `availableSpots` never becomes
   negative after capacity reduction.
-- [ ] Versioned updates retain old row on stale/invalid write and preserve
+- [x] Versioned updates retain old row on stale/invalid write and preserve
   immutable snapshots.
-- [ ] Backend full gate passes; test count `Δ+12` or greater.
+- [x] Backend full gate passes; test count `Δ+20` with zero skipped/failing.
 
 **Tests:** unit + PostgreSQL integration (`Δ+12`).
 **Gate:** Backend full + Safety.
