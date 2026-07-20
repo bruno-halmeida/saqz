@@ -1,0 +1,19 @@
+meta {
+  name: Publish Game
+  type: http
+  seq: 5
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/publish
+  body: none
+  auth: bearer
+}
+headers {
+  If-Match: {{gameEtag}}
+}
+auth:bearer {
+  token: {{idToken}}
+}
+tests {
+  test("published", function () { expect(res.status).to.equal(200); expect(res.body.status).to.equal("PUBLISHED"); });
+}

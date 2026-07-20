@@ -1,0 +1,17 @@
+meta {
+  name: Create Game
+  type: http
+  seq: 1
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games
+  body: json
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+body:json {
+  {"requestId":"{{$guid}}","title":"Treino semanal","venue":{"name":"Arena Central","address":"Rua das Flores 100"},"localDate":"2026-08-12","localTime":"19:30:00","zoneId":"America/Sao_Paulo","startsAt":"2026-08-12T22:30:00Z","durationMinutes":90,"capacity":24,"confirmationDeadline":"2026-08-12T19:30:00Z","useDefaultGameFee":false,"gameFeeCents":2500}
+}
+tests {
+  test("created", function () { expect(res.status).to.equal(201); expect(res.body.status).to.equal("DRAFT"); expect(res.headers.etag).to.exist; });
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Cancel Game
+  type: http
+  seq: 6
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/cancel
+  body: none
+  auth: bearer
+}
+headers {
+  If-Match: {{gameEtag}}
+}
+auth:bearer {
+  token: {{idToken}}
+}
+tests {
+  test("cancel reports review without refund claim", function () { expect(res.status).to.equal(200); expect(res.body.status).to.equal("CANCELLED"); expect(res.body).to.have.property("financeReviewRequired"); expect(res.body).not.to.have.property("refunded"); });
+}

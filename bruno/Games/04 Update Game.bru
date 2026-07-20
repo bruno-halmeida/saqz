@@ -1,0 +1,22 @@
+meta {
+  name: Update Game
+  type: http
+  seq: 4
+}
+put {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}
+  body: json
+  auth: bearer
+}
+headers {
+  If-Match: {{gameEtag}}
+}
+auth:bearer {
+  token: {{idToken}}
+}
+body:json {
+  {"title":"Treino alterado","venue":{"name":"Arena Central","address":"Rua das Flores 100"},"localDate":"2026-08-12","localTime":"20:00:00","zoneId":"America/Sao_Paulo","startsAt":"2026-08-12T23:00:00Z","durationMinutes":90,"capacity":24,"confirmationDeadline":"2026-08-12T20:00:00Z","gameFeeCents":2500}
+}
+tests {
+  test("updated", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; });
+}

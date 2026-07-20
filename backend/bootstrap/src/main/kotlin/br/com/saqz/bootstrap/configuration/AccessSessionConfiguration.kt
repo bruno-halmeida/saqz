@@ -29,6 +29,15 @@ import br.com.saqz.groups.application.membership.ChangeMemberRole
 import br.com.saqz.groups.application.membership.ListAccessMemberships
 import br.com.saqz.groups.application.photo.GroupPhotoService
 import br.com.saqz.groups.adapter.input.http.GroupPhotoController
+import br.com.saqz.groups.adapter.input.http.GameController
+import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
+import br.com.saqz.groups.application.game.ChangeGameLifecycle
+import br.com.saqz.groups.application.game.CreateGame
+import br.com.saqz.groups.application.game.EditGame
+import br.com.saqz.groups.application.game.GameAttendanceCountSource
+import br.com.saqz.groups.application.game.GameSideEffectPort
+import br.com.saqz.groups.application.game.GetGame
+import br.com.saqz.groups.application.game.ListGames
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.groups.domain.GroupAccessPolicy
@@ -217,4 +226,21 @@ class AccessSessionConfiguration {
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         redeemInvite: RedeemInvite,
     ) = AccessInviteRedemptionController(verifiedGroupActorResolver, redeemInvite)
+
+    @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
+    @Bean fun gameSideEffects() = GameSideEffectPort { _, _ -> }
+    @Bean fun gameAttendanceCounts() = GameAttendanceCountSource { emptyMap() }
+    @Bean fun createGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository) = CreateGame(transaction, repository)
+    @Bean fun editGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort) = EditGame(transaction, repository, effects)
+    @Bean fun changeGameLifecycle(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort) = ChangeGameLifecycle(transaction, repository, effects)
+    @Bean fun listGames(repository: JdbcGameOccurrenceRepository, counts: GameAttendanceCountSource) = ListGames(repository, counts)
+    @Bean fun getGame(repository: JdbcGameOccurrenceRepository, counts: GameAttendanceCountSource) = GetGame(repository, counts)
+    @Bean fun gameController(
+        actor: VerifiedGroupActorResolver,
+        create: CreateGame,
+        edit: EditGame,
+        lifecycle: ChangeGameLifecycle,
+        list: ListGames,
+        get: GetGame,
+    ) = GameController(actor, create, edit, lifecycle, list, get)
 }

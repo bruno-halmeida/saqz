@@ -1001,18 +1001,20 @@ commands with privacy, ETags, stable problems, and Bruno requests.
 
 **Done when:**
 
-- [ ] Each route accepts/returns exact fields, derived counts/status/version and
+- [x] Each route accepts/returns exact fields, derived counts/status/version and
   quoted ETags; command DTOs cannot set server-owned target state/counts.
-- [ ] Happy, validation, malformed, stale, role, hidden-resource, invalid
+- [x] Happy, validation, malformed, stale, role, hidden-resource, invalid
   transition, replay and rollback outcomes have exact HTTP assertions.
-- [ ] Cancellation returns finance review information without claiming refund.
-- [ ] Every explicit route has a Bruno request with method/path/status/body
+- [x] Cancellation returns finance review information without claiming refund.
+- [x] Every explicit route has a Bruno request with method/path/status/body
   assertions.
-- [ ] Backend HTTP gate passes; test count `Δ+20` or greater.
+- [x] Backend HTTP gate passes; test count `Δ+20` with zero skipped/failing.
 
 **Tests:** Spring HTTP + Bruno (`Δ+20`).
 **Gate:** Backend HTTP + Safety.
 **Commit:** `feat(groups): expose game lifecycle api`
+**Status:** Complete; backend HTTP, Bruno, and safety gates passed with 20
+added controller cases and seven explicit route contracts.
 
 ### T36: Expose weekly series and boundary-command HTTP contracts
 

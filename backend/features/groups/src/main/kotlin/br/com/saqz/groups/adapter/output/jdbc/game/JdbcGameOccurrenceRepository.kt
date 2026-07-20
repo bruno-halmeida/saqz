@@ -54,8 +54,9 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
     }
 
     override fun create(game: Game): GameWriteResult {
-        bind(jdbc.sql(INSERT_GAME), game).update()
-        return GameWriteResult.Saved(game)
+        val inserted = bind(jdbc.sql(INSERT_GAME), game).update()
+        return if (inserted == 1) GameWriteResult.Saved(game)
+        else find(game.groupId, game.id)?.let(GameWriteResult::Saved) ?: GameWriteResult.NotFound
     }
 
     override fun update(game: Game, expectedVersion: Long): GameWriteResult {
@@ -170,6 +171,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 :venueAddress, :venueCourt, :capacity, :gameFeeCents, :notes,
                 :status, :detachedFromSeries, now(), now()
             )
+            ON CONFLICT (id) DO NOTHING
         """
 
         const val UPDATE_GAME = """

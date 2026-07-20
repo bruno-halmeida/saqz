@@ -13,6 +13,8 @@ import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
 import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
+import br.com.saqz.groups.adapter.input.http.GameNotFoundException
+import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -76,6 +78,16 @@ class SafeExceptionHandler(
     @ExceptionHandler(VersionConflictException::class)
     fun versionConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
+    }
+
+    @ExceptionHandler(GameNotFoundException::class)
+    fun gameNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.GAME_NOT_FOUND)
+    }
+
+    @ExceptionHandler(InvalidGameTransitionException::class)
+    fun invalidGameTransition(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.INVALID_GAME_TRANSITION)
     }
 
     @ExceptionHandler(InviteInvalidOrExpiredException::class)
