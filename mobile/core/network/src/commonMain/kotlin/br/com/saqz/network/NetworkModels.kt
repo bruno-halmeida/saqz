@@ -2,6 +2,8 @@ package br.com.saqz.network
 
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
+import io.ktor.http.ContentType
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.serialization.Serializable
 
 data class NetworkConfig(
@@ -9,6 +11,7 @@ data class NetworkConfig(
     val baseUrl: String,
     val requestTimeoutMillis: Long = 10_000,
     val maxErrorBodyBytes: Int = 16_384,
+    val maxBinaryBodyBytes: Int = 5 * 1024 * 1024,
 ) {
     init {
         val protocol = Url(baseUrl).protocol
@@ -17,6 +20,7 @@ data class NetworkConfig(
         }
         require(requestTimeoutMillis > 0) { "request timeout must be positive" }
         require(maxErrorBodyBytes > 0) { "error body limit must be positive" }
+        require(maxBinaryBodyBytes > 0) { "binary body limit must be positive" }
     }
 }
 
@@ -39,6 +43,8 @@ sealed interface NetworkError {
     data object Unavailable : NetworkError
 
     data object InvalidResponse : NetworkError
+
+    data object PayloadTooLarge : NetworkError
 }
 
 sealed interface NetworkResult<out T> {
@@ -54,6 +60,36 @@ data class NetworkRequest(
     val body: String? = null,
     val headers: Map<String, String> = emptyMap(),
 )
+
+data class NetworkMediaUpload(
+    val fieldName: String = "file",
+    val fileName: String,
+    val contentType: ContentType,
+    val contentLength: Long,
+    val etag: String? = null,
+    val openChannel: () -> ByteReadChannel,
+) {
+    init {
+        require(fieldName.matches(Regex("[A-Za-z0-9_-]+"))) { "invalid multipart field name" }
+        require(fileName.isNotBlank() && fileName.none { it == '\r' || it == '\n' || it == '"' }) {
+            "invalid multipart filename"
+        }
+        require(contentLength >= 0) { "content length must not be negative" }
+    }
+}
+
+data class NetworkBinaryBody(
+    val bytes: ByteArray,
+    val contentType: String,
+    val etag: String?,
+    val cacheControl: String?,
+) {
+    override fun equals(other: Any?): Boolean = other is NetworkBinaryBody &&
+        bytes.contentEquals(other.bytes) && contentType == other.contentType &&
+        etag == other.etag && cacheControl == other.cacheControl
+
+    override fun hashCode(): Int = bytes.contentHashCode()
+}
 
 data class NetworkResponseMetadata(
     val headers: Map<String, List<String>> = emptyMap(),

@@ -47,6 +47,22 @@ class AuthenticatedNetworkClient(
         network.executeNoContent(method, path, token, request)
     }
 
+    suspend fun uploadMedia(
+        method: HttpMethod,
+        path: String,
+        upload: NetworkMediaUpload,
+        request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<Unit> = authenticated { token ->
+        network.uploadMedia(method, path, upload, token, request)
+    }
+
+    suspend fun readBinary(
+        path: String,
+        request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<NetworkBinaryBody> = authenticated { token ->
+        network.readBinary(path, token, request)
+    }
+
     private suspend fun <T> authenticated(
         execute: suspend (String) -> NetworkResult<T>,
     ): NetworkResult<T> {

@@ -647,15 +647,15 @@ contracts and Ktor multipart APIs.
 
 **Done when:**
 
-- [ ] Upload streams/bounds bytes, carries content metadata/ETag, and retries
+- [x] Upload streams/bounds bytes, carries content metadata/ETag, and retries
   once after token refresh without changing the logical operation.
-- [ ] Binary read enforces a configured maximum before allocation and returns
+- [x] Binary read enforces a configured maximum before allocation and returns
   media type, ETag, and cache metadata.
-- [ ] Logs contain method/path/status/duration only—never payload, token,
+- [x] Logs contain method/path/status/duration only—never payload, token,
   filename, image metadata, or error-body overflow.
-- [ ] Cancellation closes channels/resources and remains cancellation, not a
+- [x] Cancellation closes channels/resources and remains cancellation, not a
   normalized failure.
-- [ ] Network quick gate passes; test count `Δ+12` or greater.
+- [x] Network quick gate passes; test count `Δ+12` or greater.
 
 **Tests:** Ktor MockEngine common unit (`Δ+12`).
 **Gate:** Network quick + Safety.
