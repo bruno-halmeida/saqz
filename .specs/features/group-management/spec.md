@@ -768,10 +768,16 @@ keys, cents, or timezone identifiers.
   generic return type whose closing angle bracket was parsed as the start of
   the expression-body operator. No new invariant added; response helpers use
   conventional spacing around generic type closers and expression bodies.
+- **B59 | 2026-07-20** — T49's first repository-wide backend gate exposed that
+  the Access migration sensor still expected two migrations after the existing
+  V3 group-photo schema had become part of that workspace. Covered by V21.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
   sides of each bound.
+- **V21** — Each workspace migration sensor SHALL assert the complete ordered
+  inventory it actually owns, and a migration addition or ownership move SHALL
+  update that inventory assertion in the same atomic task.
 
 ## Success criteria
 
