@@ -861,6 +861,9 @@ keys, cents, or timezone identifiers.
 - **B85 | 2026-07-20** — After fixing T65 route helper calls, a retained Compose
   test exposed the same callback-position regression in the expanded access
   root signature. Covered by V40.
+- **B86 | 2026-07-20** — T65 host tests compared sealed navigation intent lists
+  without an explicit expected collection type, reproducing Kotlin/Native type
+  inference ambiguity. Covered by V29.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
