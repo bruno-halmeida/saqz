@@ -1909,20 +1909,23 @@ state, Groups route factories, AD-025.
 
 **Done when:**
 
-- [ ] No-group opens setup; selected complete group opens private home; invite
+- [x] No-group opens setup; selected complete group opens private home; invite
   success selects/opens once; switch/remove/logout never flashes prior group.
-- [ ] INCOMPLETE legacy group remains readable and routes organizer to profile
+- [x] INCOMPLETE legacy group remains readable and routes organizer to profile
   completion while blocking game/attendance/finance mutations; athlete has no
   completion edit action.
-- [ ] Role/status determines exact People/Games/Finance navigation visibility;
+- [x] Role/status determines exact People/Games/Finance navigation visibility;
   athlete finance opens own charges only.
-- [ ] Route ViewModels are lifecycle-scoped, effects do not replay, and Access
+- [x] Route ViewModels are lifecycle-scoped, effects do not replay, and Access
   retains only auth/session routing.
-- [ ] Mobile integration gate passes; test count `Δ+18` or greater.
+- [x] Mobile integration gate passes; test count `Δ+18` or greater.
 
 **Tests:** Compose app navigation/ViewModel/UI (`Δ+18`).
 **Gate:** Mobile integration + Safety.
 **Commit:** `feat(mobile): integrate private group routes`
+**Status:** Complete; the lifecycle-scoped Groups navigator and stateless host
+added 18 state/effect cases plus 6 Compose host cases. Access, Groups and app
+integration tests passed together, followed by credential and scope safety.
 
 ### T66: Add cross-platform accessibility and lifecycle recovery journeys
 

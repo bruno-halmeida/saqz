@@ -130,13 +130,25 @@ internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
     val accessViewModel = viewModel<AccessViewModel>(key = "authenticated-access") {
         AccessViewModel(dependencies)
     }
+    val groupsViewModel = viewModel<GroupsNavigationViewModel>(key = "groups-navigation") {
+        GroupsNavigationViewModel()
+    }
     val state by accessViewModel.state.collectAsState()
+    val groupsNavigation by groupsViewModel.state.collectAsState()
+    LaunchedEffect(groupsViewModel, state.selection) {
+        groupsViewModel.onIntent(GroupsNavigationIntent.Reconcile(state.selection))
+    }
     LaunchedEffect(accessViewModel, dependencies.share) {
         accessViewModel.effects.collect { effect ->
             handleAccessEffect(effect, dependencies.share, accessViewModel::onIntent)
         }
     }
-    AuthenticatedAccessRoot(state, accessViewModel::onIntent)
+    AuthenticatedAccessRoot(
+        state = state,
+        onIntent = accessViewModel::onIntent,
+        groupsNavigation = groupsNavigation,
+        onGroupsIntent = groupsViewModel::onIntent,
+    )
 }
 
 internal fun handleAccessEffect(
@@ -156,7 +168,12 @@ internal fun handleAccessEffect(
 @OptIn(ExperimentalComposeUiApi::class)
 @Suppress("DEPRECATION")
 @Composable
-internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, onIntent: (AccessIntent) -> Unit) {
+internal fun AuthenticatedAccessRoot(
+    state: AccessRootSnapshot,
+    groupsNavigation: GroupsNavigationState? = null,
+    onGroupsIntent: (GroupsNavigationIntent) -> Unit = {},
+    onIntent: (AccessIntent) -> Unit,
+) {
     val desired = state.destination()
     val stack = AccessDestinationStack(desired).also { it.replace(desired) }
     val destination = stack.entries.single()
@@ -166,7 +183,7 @@ internal fun AuthenticatedAccessRoot(state: AccessRootSnapshot, onIntent: (Acces
     }
     key(destination) {
         Box(Modifier.fillMaxSize().testTag(AccessRootTag)) {
-            DestinationContent(destination, state, onIntent)
+            DestinationContent(destination, state, onIntent, groupsNavigation, onGroupsIntent)
         }
     }
 }
@@ -384,6 +401,8 @@ private fun DestinationContent(
     destination: AccessDestination,
     state: AccessRootSnapshot,
     onIntent: (AccessIntent) -> Unit,
+    groupsNavigation: GroupsNavigationState?,
+    onGroupsIntent: (GroupsNavigationIntent) -> Unit,
 ) {
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
@@ -421,15 +440,26 @@ private fun DestinationContent(
             }
         }
         AccessDestination.GROUP_CONTEXT -> {
-            GroupContextScreen(state.administration) { intent ->
-                onIntent(
-                    when (intent) {
-                        GroupContextIntent.SwitchGroup -> AccessIntent.SwitchGroup
-                        GroupContextIntent.OpenSettings -> AccessIntent.OpenSettings
-                        GroupContextIntent.OpenRoles -> AccessIntent.OpenMemberships
-                        GroupContextIntent.OpenInvite -> AccessIntent.OpenInvite
-                        GroupContextIntent.RequestLogout -> AccessIntent.RequestLogout
-                    },
+            if (groupsNavigation == null) {
+                GroupContextScreen(state.administration) { intent ->
+                    onIntent(
+                        when (intent) {
+                            GroupContextIntent.SwitchGroup -> AccessIntent.SwitchGroup
+                            GroupContextIntent.OpenSettings -> AccessIntent.OpenSettings
+                            GroupContextIntent.OpenRoles -> AccessIntent.OpenMemberships
+                            GroupContextIntent.OpenInvite -> AccessIntent.OpenInvite
+                            GroupContextIntent.RequestLogout -> AccessIntent.RequestLogout
+                        },
+                    )
+                }
+            } else {
+                GroupsNavigationHost(
+                    navigation = groupsNavigation,
+                    administration = state.administration,
+                    onNavigationIntent = onGroupsIntent,
+                    onOpenSettings = { onIntent(AccessIntent.OpenSettings) },
+                    onSwitchGroup = { onIntent(AccessIntent.SwitchGroup) },
+                    onRequestLogout = { onIntent(AccessIntent.RequestLogout) },
                 )
             }
             if (state.showLogoutConfirmation) {

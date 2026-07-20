@@ -258,7 +258,7 @@ class AuthenticatedAccessRootTest {
     private fun androidx.compose.ui.test.ComposeUiTest.root(
         state: AccessRootSnapshot,
         onIntent: (AccessIntent) -> Unit = {},
-    ) = setContent { SaqzTheme { AuthenticatedAccessRoot(state, onIntent) } }
+    ) = setContent { SaqzTheme { AuthenticatedAccessRoot(state, onIntent = onIntent) } }
 
     private class RecordingSharePort(private val result: OperationResult) : NativeSharePort {
         val values = mutableListOf<String>()
