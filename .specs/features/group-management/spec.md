@@ -715,6 +715,11 @@ keys, cents, or timezone identifiers.
   offscreen LazyColumn children before they were materialized. No new product
   invariant added; the list now exposes a semantic container tag so tests can
   scroll by index and then assert each materialized card.
+- **B47 | 2026-07-19** — The first T41 common-test compile imported
+  `assertExists` and `assertDoesNotExist` as top-level extensions although the
+  pinned Compose test API exposes them through interaction resolution. No new
+  invariant added; cross-target test compilation already detects incompatible
+  imports and the repository's established wildcard import is portable.
 
 ## Success criteria
 
