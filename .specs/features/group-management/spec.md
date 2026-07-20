@@ -854,6 +854,10 @@ keys, cents, or timezone identifiers.
 - **B83 | 2026-07-20** — A T65 targeted compile command assumed the conventional
   `compileKotlinAndroid` task although the Compose app's KMP configuration does
   not expose that task name. Covered by V39.
+- **B84 | 2026-07-20** — The T65 integration compile exposed trailing-lambda
+  calls to a helper whose function parameter preceded a defaulted non-function
+  parameter, causing Kotlin to bind the lambda to the wrong argument. Covered
+  by V40.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -919,6 +923,10 @@ keys, cents, or timezone identifiers.
 - **V39** — Mobile verification commands SHALL use task names exposed by the
   checked-in KMP build and accepted task gate table; ad hoc conventional task
   names SHALL be confirmed with the Gradle task inventory before use.
+- **V40** — Calls to Kotlin helpers whose callback is not the final parameter
+  SHALL name the callback argument explicitly; trailing-lambda syntax SHALL be
+  reserved for final function parameters, and common compilation SHALL enforce
+  this.
 
 ## Success criteria
 
