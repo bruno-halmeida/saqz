@@ -1,5 +1,6 @@
 package br.com.saqz.groups.ui.photo
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,8 +17,11 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.component.SaqzButton
@@ -31,6 +35,8 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.resources.*
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 object GroupPhotoTags {
@@ -211,22 +217,34 @@ internal fun groupPhotoInitials(groupName: String): String {
 
 @Composable
 private fun PhotoSourceActions(enabled: Boolean, onIntent: (GroupPhotoIntent) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), modifier = Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), modifier = Modifier.fillMaxWidth()) {
         SaqzButton(
             stringResource(Res.string.group_photo_camera),
             { onIntent(GroupPhotoIntent.ChooseCamera) },
             variant = SaqzButtonVariant.Secondary,
             enabled = enabled,
-            modifier = Modifier.weight(1f).testTag(GroupPhotoTags.Camera),
+            modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Camera),
+            leadingContent = { color -> GroupPhotoMaterialIcon(Res.drawable.material_photo_camera, color) },
         )
         SaqzButton(
             stringResource(Res.string.group_photo_library),
             { onIntent(GroupPhotoIntent.ChooseLibrary) },
             variant = SaqzButtonVariant.Secondary,
             enabled = enabled,
-            modifier = Modifier.weight(1f).testTag(GroupPhotoTags.Library),
+            modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Library),
+            leadingContent = { color -> GroupPhotoMaterialIcon(Res.drawable.material_photo_library, color) },
         )
     }
+}
+
+@Composable
+private fun GroupPhotoMaterialIcon(resource: DrawableResource, color: Color) {
+    Image(
+        painter = painterResource(resource),
+        contentDescription = null,
+        colorFilter = ColorFilter.tint(color),
+        modifier = Modifier.size(20.dp).clearAndSetSemantics {},
+    )
 }
 
 @Composable
