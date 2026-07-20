@@ -696,6 +696,11 @@ keys, cents, or timezone identifiers.
   nonexistent `compileKotlinAndroid` task and stopped before compiling product
   sources. No new invariant added; task execution must use the prescribed
   Mobile quick task names, including `compileAndroidMain` and `allTests`.
+- **B43 | 2026-07-19** — The first valid T40 cross-target compile parsed a
+  compressed generic fixture declaration ending in `Dto>=` as operators and
+  found that a nested fake gateway called instance fixture helpers without an
+  outer receiver. No new invariant added; Mobile quick's iOS common-test
+  compilation already catches both portable test-source errors.
 
 ## Success criteria
 
