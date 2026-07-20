@@ -720,6 +720,11 @@ keys, cents, or timezone identifiers.
   pinned Compose test API exposes them through interaction resolution. No new
   invariant added; cross-target test compilation already detects incompatible
   imports and the repository's established wildcard import is portable.
+- **B48 | 2026-07-19** — The first executing T41 iOS suite asserted emitted
+  intents immediately after queued Compose text/click actions, so callbacks
+  had not run on the test dispatcher. No new invariant added; mutating common
+  UI tests now synchronize with the Compose test clock before inspecting
+  emitted intents.
 
 ## Success criteria
 
