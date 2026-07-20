@@ -864,6 +864,10 @@ keys, cents, or timezone identifiers.
 - **B86 | 2026-07-20** — T65 host tests compared sealed navigation intent lists
   without an explicit expected collection type, reproducing Kotlin/Native type
   inference ambiguity. Covered by V29.
+- **B87 | 2026-07-20** — The first T66 iOS Dev aggregate signal-terminated one
+  retained local-state test without an assertion failure; xcresult identified
+  the terminated case and an isolated 105-case unit rerun passed. Covered by
+  V41.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -933,6 +937,10 @@ keys, cents, or timezone identifiers.
   SHALL name the callback argument explicitly; trailing-lambda syntax SHALL be
   reserved for final function parameters, and common compilation SHALL enforce
   this.
+- **V41** — An iOS native test terminated by the runner without an assertion
+  SHALL be diagnosed from its xcresult and reproduced in the narrow target;
+  isolated success does not replace the required subsequent fresh aggregate
+  pass or permit a skip/retry waiver.
 
 ## Success criteria
 
