@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -65,14 +66,20 @@ class GroupSetupScreenTest {
         assertTrue(kotlin.math.abs(gameDefaultsWidth - financeDefaultsWidth) < 1f)
     }
 
-    @Test fun `registration opens with centered brand and title`() = runComposeUiTest {
-        setup()
-        val screen = onNodeWithTag(GroupSetupTags.Screen).fetchSemanticsNode().boundsInRoot
-        val wordmark = onNodeWithTag(GroupSetupTags.Wordmark).fetchSemanticsNode().boundsInRoot
-        val title = onNodeWithTag(GroupSetupTags.Title).fetchSemanticsNode().boundsInRoot
-
-        assertTrue(kotlin.math.abs(screen.center.x - wordmark.center.x) < 1f)
-        assertTrue(kotlin.math.abs(screen.center.x - title.center.x) < 1f)
+    @Test fun `registration opens with default top bar actions and group title`() = runComposeUiTest {
+        var backs = 0
+        var mores = 0
+        setup(
+            state = state(form = GroupSetupForm(name = "Vôlei da Galera")),
+            onBack = { backs++ },
+            onMoreOptions = { mores++ },
+        )
+        onNodeWithTag(GroupSetupTags.Header).assertExists()
+        onNodeWithTag(GroupSetupTags.Title).assertTextEquals("Vôlei da Galera")
+        onNodeWithTag(GroupSetupTags.Back).assertHasClickAction().performClick()
+        onNodeWithTag(GroupSetupTags.More).assertHasClickAction().performClick()
+        assertEquals(1, backs)
+        assertEquals(1, mores)
     }
 
     @Test fun `required profile fields are discoverable`() = runComposeUiTest {
@@ -101,13 +108,14 @@ class GroupSetupScreenTest {
         onNodeWithText("Iniciante").assertIsNotSelected()
     }
 
-    @Test fun `idle photo actions sit beside the compact preview`() = runComposeUiTest {
+    @Test fun `idle photo actions stack beside the compact preview`() = runComposeUiTest {
         setup()
         val preview = onNodeWithTag(GroupPhotoTags.Preview).fetchSemanticsNode().boundsInRoot
         val camera = onNodeWithTag(GroupPhotoTags.Camera).fetchSemanticsNode().boundsInRoot
         val library = onNodeWithTag(GroupPhotoTags.Library).fetchSemanticsNode().boundsInRoot
         assertTrue(preview.right < camera.left)
-        assertTrue(kotlin.math.abs(camera.top - library.top) < 1f)
+        assertTrue(camera.top < library.top)
+        assertTrue(kotlin.math.abs(camera.left - library.left) < 1f)
     }
 
     @Test fun `optional profile fields are discoverable`() = runComposeUiTest {
@@ -289,7 +297,7 @@ class GroupSetupScreenTest {
 
     @Test fun `edit mode exposes save action`() = runComposeUiTest {
         setup(state(mode = GroupSetupMode.EDIT, form = requiredForm()))
-        onNodeWithText("Perfil e padrões do grupo").assertExists()
+        onNodeWithTag(GroupSetupTags.Title).assertTextEquals("Vôlei de terça")
         onNodeWithText("Salvar alterações").assertExists()
     }
 
@@ -427,6 +435,8 @@ class GroupSetupScreenTest {
         access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
         photoState: GroupPhotoState = GroupPhotoState(),
         onPhotoIntent: (GroupPhotoIntent) -> Unit = {},
+        onBack: () -> Unit = {},
+        onMoreOptions: () -> Unit = {},
         onIntent: (GroupSetupIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
@@ -436,6 +446,8 @@ class GroupSetupScreenTest {
                 access = access,
                 photoState = photoState,
                 onPhotoIntent = onPhotoIntent,
+                onBack = onBack,
+                onMoreOptions = onMoreOptions,
             )
         }
     }

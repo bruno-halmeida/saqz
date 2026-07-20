@@ -40,6 +40,7 @@
     <string name="invite_unavailable">Nao foi possivel atualizar o convite</string>
     <string name="group_setup_create_title">Novo grupo</string>
     <string name="group_setup_edit_title">Perfil e padrões do grupo</string>
+    <string name="group_setup_more_options">Mais opções</string>
     <string name="group_setup_profile_section">Perfil do grupo</string>
     <string name="group_setup_game_defaults_section">Padrões para novos jogos</string>
     <string name="group_setup_finance_defaults_section">Padrões financeiros</string>
