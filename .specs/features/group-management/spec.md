@@ -882,6 +882,19 @@ keys, cents, or timezone identifiers.
   PostgreSQL integration suites without this host's required Colima Docker
   socket and Testcontainers Ryuk override, so container startup failed before
   feature assertions executed. Covered by V45.
+- **B92 | 2026-07-20** — The Groups KMP module owned Compose string resources but
+  was absent from the Android application's static Compose-resource module
+  inventory, so generated accessors compiled while
+  `strings.commonMain.cvr` was omitted from the APK. Covered by V46.
+- **B93 | 2026-07-20** — The first B92 regression sensor imported the Groups
+  generated `Res` accessor directly from Android instrumentation even though
+  that accessor is internal to its KMP module. No new invariant added; Android
+  test compilation rejected the boundary violation, and the corrected sensor
+  renders the public Groups onboarding screen instead.
+- **B94 | 2026-07-20** — Device review after T66 showed the authenticated
+  no-group action still opened the retained two-field Access form instead of
+  the complete Groups setup screen already implemented for registration.
+  Covered by V47.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -969,6 +982,15 @@ keys, cents, or timezone identifiers.
   Testcontainers suites SHALL receive the active Docker daemon endpoint and
   any documented host-specific Ryuk setting; an environment startup failure
   SHALL not be treated as feature-test evidence.
+- **V46** — Every KMP Compose module consumed by the Android application that
+  owns runtime `composeResources` SHALL be included in the application's
+  Compose-resource asset inventory, and Android instrumentation SHALL render at
+  least one resource through that module's public UI surface from the installed
+  APK.
+- **V47** — Every production entry point for creating a group, including the
+  authenticated zero-membership and selector actions, SHALL render the complete
+  Groups setup flow; the legacy name/timezone-only Access form SHALL not remain
+  reachable or satisfy registration verification.
 
 ## Success criteria
 
