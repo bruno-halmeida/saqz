@@ -575,6 +575,13 @@ keys, cents, or timezone identifiers.
 - **V11** — Shared photo crop state SHALL express provider-neutral center and
   zoom values; every native encoder SHALL derive, clamp, and encode one equal-
   width/equal-height pixel region for portrait, landscape, and square sources.
+- **B19 | 2026-07-19** — The first Android photo encoder could not compile
+  because the provider-neutral encoded-source port exposed Ktor's
+  `ByteReadChannel`, leaking transport internals into the native adapter.
+  Covered by V12.
+- **V12** — Native photo selection/encoding ports SHALL expose only project
+  value types and Kotlin standard-library values; Ktor channel construction
+  SHALL remain inside the Groups data/network adapter.
 
 ## Success criteria
 
