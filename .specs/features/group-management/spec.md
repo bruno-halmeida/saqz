@@ -815,6 +815,9 @@ keys, cents, or timezone identifiers.
 - **B72 | 2026-07-20** — The next T56 Kotlin/Native test compile exposed that a
   wildcard `kotlinx.coroutines.test` import does not provide the root-package
   `ExperimentalCoroutinesApi` annotation. Covered by V28.
+- **B73 | 2026-07-20** — The first T57 Kotlin/Native test compile exposed a
+  subtype-inferred singleton list in a polymorphic intent assertion and an
+  assertion helper absent from the pinned Compose test API. Covered by V29.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -845,6 +848,9 @@ keys, cents, or timezone identifiers.
   explicitly import `kotlinx.coroutines.ExperimentalCoroutinesApi`; test-package
   wildcard imports SHALL not be assumed to provide it, and Kotlin/Native test
   compilation SHALL enforce this.
+- **V29** — Common Compose tests SHALL use assertion APIs available in the
+  repository's pinned Compose version and compare polymorphic emitted values
+  through explicitly typed collections or scalar elements.
 
 ## Success criteria
 
