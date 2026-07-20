@@ -1144,19 +1144,22 @@ profile defaults, game gateway.
 
 **Done when:**
 
-- [ ] New form copies current defaults once and later group/default state cannot
+- [x] New form copies current defaults once and later group/default state cannot
   rewrite the draft or existing game.
-- [ ] One-time/weekly mode, one-or-more weekly slots, date range, venue,
+- [x] One-time/weekly mode, one-or-more weekly slots, date range, venue,
   capacity, deadline, BRL fee and notes validate before request.
-- [ ] Edit requires ONLY_THIS/THIS_AND_FUTURE choice; invalid/stale response
+- [x] Edit requires ONLY_THIS/THIS_AND_FUTURE choice; invalid/stale response
   preserves draft and offers authoritative reload.
-- [ ] Restart/retry uses the same command key/version and cannot duplicate a
+- [x] Restart/retry uses the same command key/version and cannot duplicate a
   game/series.
-- [ ] Mobile quick gate passes; test count `Δ+18` or greater.
+- [x] Mobile quick gate passes; test count `Δ+18` or greater.
 
 **Tests:** KMP ViewModel/draft unit (`Δ+18`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): coordinate game editor`
+**Status:** Complete; Mobile quick and safety gates passed with 18 added
+cross-target editor/draft cases, plus deterministic prior game-list coroutine
+and lazy-list coverage.
 
 ### T41: Build one-time/weekly game editor UI
 

@@ -15,7 +15,7 @@ import br.com.saqz.groups.presentation.games.list.*
 enum class GamesTab { UPCOMING, PAST }
 data class GamesScreenState(val games:GamesState,val tab:GamesTab=GamesTab.UPCOMING)
 sealed interface GamesScreenIntent{data class SelectTab(val tab:GamesTab):GamesScreenIntent;data object Retry:GamesScreenIntent;data object Refresh:GamesScreenIntent;data object OpenCreate:GamesScreenIntent;data class OpenGame(val id:String):GamesScreenIntent}
-object GamesTags{const val Upcoming="games-upcoming";const val Past="games-past";const val Create="games-create";const val Retry="games-retry";fun card(id:String)="game-card-$id"}
+object GamesTags{const val Upcoming="games-upcoming";const val Past="games-past";const val Create="games-create";const val Retry="games-retry";const val List="games-list";fun card(id:String)="game-card-$id"}
 
 @Composable fun GamesScreen(state:GamesScreenState,onIntent:(GamesScreenIntent)->Unit){
     val games=state.games;val visible=if(state.tab==GamesTab.UPCOMING)games.upcoming else games.past
@@ -29,7 +29,7 @@ object GamesTags{const val Upcoming="games-upcoming";const val Past="games-past"
             games.isLoading->SaqzLoadingState()
             games.error!=null->Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text("Não foi possível carregar os jogos",color=SaqzTheme.colors.errorForeground);SaqzButton("Tentar novamente",{onIntent(GamesScreenIntent.Retry)},Modifier.fillMaxWidth().testTag(GamesTags.Retry))}
             visible.isEmpty()->Text(if(state.tab==GamesTab.UPCOMING)"Nenhum jogo próximo" else "Nenhum jogo no histórico",style=SaqzTheme.typography.body,color=SaqzTheme.colors.textSecondary)
-            else->LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){items(visible,key={it.id}){item->GameCard(item){onIntent(GamesScreenIntent.OpenGame(item.id))}}}
+            else->LazyColumn(Modifier.fillMaxSize().testTag(GamesTags.List),verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){items(visible,key={it.id}){item->GameCard(item){onIntent(GamesScreenIntent.OpenGame(item.id))}}}
         }
     }
 }
