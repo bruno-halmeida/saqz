@@ -657,6 +657,10 @@ keys, cents, or timezone identifiers.
   request blocks even though the same fields are valid in multiline Bruno
   syntax. No new product invariant added; the existing Bruno contract gate
   deterministically enforces the repository parser's supported request shape.
+- **B34 | 2026-07-19** — The second T35 Bruno gate could not pair three
+  concrete lifecycle requests with one regex-templated controller mapping.
+  No new product invariant added; the accepted task already requires every
+  explicit lifecycle route to have a discoverable matching contract.
 
 ## Success criteria
 
