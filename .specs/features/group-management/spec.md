@@ -661,6 +661,11 @@ keys, cents, or timezone identifiers.
   concrete lifecycle requests with one regex-templated controller mapping.
   No new product invariant added; the accepted task already requires every
   explicit lifecycle route to have a discoverable matching contract.
+- **B35 | 2026-07-19** — The first T37 Android compile parsed two compressed
+  generic return declarations ending in `Dto>=` as an operator sequence;
+  metadata compilation had skipped the common source. No new invariant added;
+  the mandatory Android main compile in Mobile quick catches target-visible
+  Kotlin syntax before task completion.
 
 ## Success criteria
 
