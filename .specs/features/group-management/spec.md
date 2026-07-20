@@ -626,6 +626,14 @@ keys, cents, or timezone identifiers.
   shell's JDK 17 and the backend gate stopped before compilation because the
   repository requires JDK 21. No new invariant added; the existing backend
   toolchain gate rejects an incompatible JVM deterministically.
+- **B29 | 2026-07-19** — T34 boundary design exposed that nulling an
+  `ONLY_THIS` occurrence's series identity would free its bounded unique key,
+  allowing the next replenishment to recreate the overridden or cancelled
+  occurrence. Covered by V16.
+- **V16** — A detached one-occurrence override/cancellation SHALL retain its
+  stable `(series_id, local_date, slot_key)` identity as a materialization
+  tombstone while being explicitly marked detached; replenishment SHALL never
+  recreate it.
 
 ## Success criteria
 
