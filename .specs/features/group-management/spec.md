@@ -546,6 +546,10 @@ keys, cents, or timezone identifiers.
   them, producing ambiguous overload resolution on Android and iOS. No new
   invariant added; the existing cross-target compile gate catches this API
   design error deterministically.
+- **B14 | 2026-07-19** — The first T23 media-test compile used a no-open fixture
+  lambda without the channel return required by its contract and compared a
+  nullable header list to an inferred non-null list. No new invariant added;
+  common-test compilation already catches both fixture type errors.
 
 ## Success criteria
 
