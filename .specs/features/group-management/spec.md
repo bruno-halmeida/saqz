@@ -774,6 +774,9 @@ keys, cents, or timezone identifiers.
 - **B60 | 2026-07-20** — After correcting the Access migration count, its exact
   table-inventory assertion separately exposed the omitted `group_photos`
   table. No new invariant added; V21 covers both migration and table inventory.
+- **B61 | 2026-07-20** — The first T50 unit run had two organizer cases expect
+  custom audit reasons that their decision contexts never supplied. No new
+  invariant added; audit assertions use the exact command input fixture.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
