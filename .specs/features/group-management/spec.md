@@ -777,6 +777,9 @@ keys, cents, or timezone identifiers.
 - **B61 | 2026-07-20** — The first T50 unit run had two organizer cases expect
   custom audit reasons that their decision contexts never supplied. No new
   invariant added; audit assertions use the exact command input fixture.
+- **B62 | 2026-07-20** — T51 repeated B54's integration-test annotation
+  ambiguity because wildcard imports again included both JUnit and Kotlin
+  `Test`. Covered by V22.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -784,6 +787,9 @@ keys, cents, or timezone identifiers.
 - **V21** — Each workspace migration sensor SHALL assert the complete ordered
   inventory it actually owns, and a migration addition or ownership move SHALL
   update that inventory assertion in the same atomic task.
+- **V22** — Kotlin test sources that combine JUnit lifecycle annotations with
+  Kotlin assertions SHALL import both APIs explicitly; wildcard imports from
+  either test package are prohibited.
 
 ## Success criteria
 
