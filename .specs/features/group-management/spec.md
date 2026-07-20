@@ -634,6 +634,12 @@ keys, cents, or timezone identifiers.
   stable `(series_id, local_date, slot_key)` identity as a materialization
   tombstone while being explicitly marked detached; replenishment SHALL never
   recreate it.
+- **B30 | 2026-07-19** — T34 boundary design found that editing from a series'
+  first occurrence must close the prior revision at `local_start_date - 1`, but
+  V4 rejected every active-through value before the start. Covered by V17.
+- **V17** — A superseded series revision MAY close exactly one day before its
+  local start when `THIS_AND_FUTURE` selects the first occurrence; no earlier
+  active-through boundary is valid.
 
 ## Success criteria
 
