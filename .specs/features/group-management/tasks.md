@@ -1296,18 +1296,21 @@ membership repository, stable command keys.
 
 **Done when:**
 
-- [ ] Confirmed paid game creates one PENDING immutable charge; waitlisted,
+- [x] Confirmed paid game creates one PENDING immutable charge; waitlisted,
   declined, no-response, free game and replay do not create extras.
-- [ ] Promotion creates the same one charge; withdrawal leaves it pending;
+- [x] Promotion creates the same one charge; withdrawal leaves it pending;
   game cancellation cancels pending and flags paid/waived for review.
-- [ ] Monthly generation validates month/amount/due date/selected active member,
+- [x] Monthly generation validates month/amount/due date/selected active member,
   retries idempotently, and never rewrites existing amounts after default edits.
-- [ ] Any injected charge/audit/member failure rolls back the command.
-- [ ] Backend full gate passes; test count `Δ+18` or greater.
+- [x] Any injected charge/audit/member failure rolls back the command.
+- [x] Backend full gate passes; test count `Δ+18` or greater.
 
 **Tests:** unit + PostgreSQL integration (`Δ+18`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): track game and monthly charges`
+**Status:** Complete; backend full and safety gates passed with 19 added unit
+and PostgreSQL transaction cases covering idempotency, promotion, withdrawal,
+cancellation review, monthly generation, immutable retries, and rollback.
 
 ### T46: Expose charge query, generation, and status HTTP contracts
 
