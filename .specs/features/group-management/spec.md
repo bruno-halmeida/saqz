@@ -541,6 +541,11 @@ keys, cents, or timezone identifiers.
   reusable optional choice control directly to required modality/composition
   intents. No new invariant added; the existing Android/iOS KMP compilation
   gate deterministically rejects the type mismatch before tests run.
+- **B13 | 2026-07-19** — The first T23 compile gave raw-media request and
+  binary-decode helpers the same name with only lambda shape distinguishing
+  them, producing ambiguous overload resolution on Android and iOS. No new
+  invariant added; the existing cross-target compile gate catches this API
+  design error deterministically.
 
 ## Success criteria
 
