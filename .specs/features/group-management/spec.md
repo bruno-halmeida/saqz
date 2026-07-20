@@ -757,6 +757,10 @@ keys, cents, or timezone identifiers.
   `RequestIdentity` positionally with the wrong field order. No new invariant
   added; authenticated HTTP fixtures use named identity arguments to remain
   stable as optional principal metadata evolves.
+- **B56 | 2026-07-20** — The first combined T46 HTTP gate was denied before
+  Gradle startup when the managed sandbox could not open its wrapper lock in
+  the user Gradle cache. No new invariant added; the identical approved Gradle
+  command must be rerun with the required filesystem permission.
 
 ## Success criteria
 
