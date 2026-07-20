@@ -843,6 +843,10 @@ keys, cents, or timezone identifiers.
   fixture using Kotlin source-property labels instead of the umbrella
   framework's generated constructor labels and complete parameter list.
   Covered by V36.
+- **B81 | 2026-07-20** — The first executing T64 persistence suite exposed
+  pre-decode schema inspection that rejected current Kotlin payloads when
+  serialization correctly omitted the default-valued schema field. Covered by
+  V37.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -898,6 +902,9 @@ keys, cents, or timezone identifiers.
 - **V36** — Swift construction of exported Kotlin values SHALL match the
   generated umbrella-framework header's exact labels and full parameter list;
   iOS native compilation SHALL enforce the interop contract.
+- **V37** — Native draft adapters SHALL deserialize versioned Kotlin payloads
+  before validating the typed schema value, so omitted serialization defaults
+  resolve to the model default while explicit old versions remain unsupported.
 
 ## Success criteria
 
