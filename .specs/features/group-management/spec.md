@@ -745,6 +745,10 @@ keys, cents, or timezone identifiers.
 - **B52 | 2026-07-19** — The first executing T42 suite expected a bare BRL
   value while the accessible detail copy prefixes it with `Valor:`. No new
   invariant added; the UI test now asserts the complete visible label.
+- **B53 | 2026-07-20** — The first T45 compile exposed that Spring JdbcClient
+  scalar UUID queries are nullable at the Kotlin boundary, even for NOT NULL
+  columns. No new invariant added; JDBC adapters explicitly discard impossible
+  null scalar results before passing identifiers into domain contracts.
 
 ## Success criteria
 
