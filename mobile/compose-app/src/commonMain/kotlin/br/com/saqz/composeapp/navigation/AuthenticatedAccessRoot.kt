@@ -93,6 +93,7 @@ import br.com.saqz.access.ui.PasswordResetScreen
 import br.com.saqz.access.ui.RegistrationScreen
 import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
+import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
@@ -144,8 +145,13 @@ internal class AccessDestinationStack(initial: AccessDestination) {
 }
 
 @Composable
-internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
-    val accessViewModel = viewModel<AccessViewModel>(key = "authenticated-access") {
+internal fun AuthenticatedAccessRoute(
+    dependencies: SaqzAppDependencies,
+    accessViewModelOverride: AccessViewModel? = null,
+    groupSetupViewModelOverride: GroupSetupViewModel? = null,
+    groupPhotos: GroupPhotoRuntimeDependencies = dependencies.groupPhotos,
+) {
+    val accessViewModel = accessViewModelOverride ?: viewModel<AccessViewModel>(key = "authenticated-access") {
         AccessViewModel(dependencies)
     }
     val groupsViewModel = viewModel<GroupsNavigationViewModel>(key = "groups-navigation") {
@@ -154,18 +160,18 @@ internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
     val state by accessViewModel.state.collectAsState()
     val groupsNavigation by groupsViewModel.state.collectAsState()
     val photoScope = rememberCoroutineScope()
-    val photoCoordinator = remember(accessViewModel, dependencies.groupPhotos) {
+    val photoCoordinator = remember(accessViewModel, groupPhotos) {
         GroupPhotoCoordinator(
             gateway = accessViewModel.groupPhotoGateway,
-            selections = dependencies.groupPhotos.selection,
-            encoder = dependencies.groupPhotos.encoder,
-            cache = dependencies.groupPhotos.cache,
+            selections = groupPhotos.selection,
+            encoder = groupPhotos.encoder,
+            cache = groupPhotos.cache,
             scope = photoScope,
         )
     }
     val groupPhotoState by photoCoordinator.state.collectAsState()
     val groupSetupViewModel = if (state.page == AccessPage.CREATE_GROUP) {
-        viewModel<GroupSetupViewModel>(key = "group-setup-${state.createFlowKey}") {
+        groupSetupViewModelOverride ?: viewModel<GroupSetupViewModel>(key = "group-setup-${state.createFlowKey}") {
             GroupSetupViewModel(
                 input = GroupSetupInput(),
                 gateway = accessViewModel.groupProfileGateway,
@@ -256,7 +262,7 @@ internal fun AuthenticatedAccessRoute(dependencies: SaqzAppDependencies) {
             photoCoordinator.onIntent(intent)
         },
         groupPhotoPreview = { handle, modifier ->
-            GroupPhotoPreview(handle, dependencies.groupPhotos.previews, modifier)
+            GroupPhotoPreview(handle, groupPhotos.previews, modifier)
         },
     )
 }
