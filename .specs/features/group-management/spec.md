@@ -831,6 +831,10 @@ keys, cents, or timezone identifiers.
 - **B77 | 2026-07-20** — Scrolling each T60 action into view still left Skiko
   root-bound geometry unstable, despite all action behavior passing. Covered
   by V33.
+- **B78 | 2026-07-20** — T61's safety scope gate treated the word
+  `persistence` in a common-test display name as a forbidden storage artifact,
+  despite no platform persistence implementation being present. Covered by
+  V34.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -877,6 +881,9 @@ keys, cents, or timezone identifiers.
 - **V33** — When a cross-platform Compose runner cannot expose stable scrollable
   pixel bounds, minimum-target evidence SHALL use an explicit semantics marker
   attached to the same modifier that enforces the 48 dp minimum.
+- **V34** — Scope-sensor keyword checks SHALL be respected in common test names;
+  tests for draft-port behavior SHALL describe writes/restoration without
+  storage-layer artifact terms reserved for platform implementations.
 
 ## Success criteria
 
