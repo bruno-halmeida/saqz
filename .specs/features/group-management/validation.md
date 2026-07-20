@@ -90,3 +90,69 @@ increased spacing/depth still merits a brief visual review on Android and iOS.
 **Independent post-fix test:** 45/45 passed.
 **Sensor:** 1/1 level-specific mutant killed.
 **Ranked gaps:** none; only the non-blocking manual visual review remains.
+
+---
+
+# Group Photo and Controlled Input Validation
+
+**Date:** 2026-07-20
+**Verdict:** PASS
+**Implementation commit:** `bed23c9d157cd9f1c818098340b334ed2555985d`
+**Route-test commit:** `164da9596d2e2c42d9f154cb35dc4d3280a56b4d`
+**Verifier:** independent sub-agent (author != verifier)
+
+## Scope and root cause
+
+- B103/V52: the group-registration UI exposed camera and gallery actions, but
+  the production route did not supply the native photo runtime dependencies and
+  discarded the post-create upload effect. The route now owns the real photo
+  coordinator, forwards both source intents, renders the selected preview, and
+  binds/uploads the encoded photo only after the group is created.
+- B104/V53: `SetupInput` recreated `TextFieldValue` from plain text after each
+  ViewModel recomposition, resetting the cursor/selection and causing subsequent
+  keystrokes to be inserted before earlier ones. It now retains the local
+  `TextFieldValue`, including selection and composition while parent text is
+  unchanged.
+
+**Spec anchors:** `.specs/features/group-management/spec.md:929-936`
+(B103/B104) and lines `1056-1063` (V52/V53).
+
+## Acceptance evidence
+
+| Invariant | Exact evidence | Result |
+| --- | --- | --- |
+| V52 — production camera/gallery actions reach native selection and the post-create upload effect is consumed | `AuthenticatedAccessRoot.kt:148-170,206-218,258-265` composes the real coordinator, handles `UploadPhoto`, forwards source intents, and uses the runtime preview port. `AuthenticatedAccessRootTest.kt:221-248` mounts `AuthenticatedAccessRoute`, independently observes gallery and camera calls, submits creation, and asserts the uploaded `groupId`, `etag`, and encoded bytes. | PASS |
+| V53 — controlled input preserves cursor/selection/composition across ViewModel recomposition | `GroupSetupScreen.kt:376-392` retains `TextFieldValue` locally and only rebuilds it for a real external text change. `GroupSetupScreenTest.kt:217-243` forces recomposition after every character and asserts the final value is exactly `"abc"`. | PASS |
+
+The independent verifier reported no Blocker, Major, or Minor findings. It also
+confirmed that removing either source-intent forwarding or the
+`UploadPhoto -> BindTarget -> Upload` chain makes the new route test fail.
+
+## Command evidence
+
+| Command | Result |
+| --- | --- |
+| `rtk mobile/gradlew -p mobile :compose-app:iosSimulatorArm64Test --tests 'br.com.saqz.composeapp.navigation.AuthenticatedAccessRootTest' --console=plain` | PASS — `BUILD SUCCESSFUL` in 26s; 24 tests, 0 failures/errors/skips. |
+| `rtk mobile/gradlew -p mobile :features:groups:allTests :compose-app:allTests --console=plain` | PASS — `BUILD SUCCESSFUL` in 45s; 103 tasks. |
+| Independent verifier: `rtk mobile/gradlew -p mobile :compose-app:allTests --console=plain` | PASS — `BUILD SUCCESSFUL` in 37s; 90 tasks. |
+| `rtk mobile/gradlew -p mobile :android-app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=br.com.saqz.androidapp.AndroidGroupPhotoAdapterTest --console=plain` | PASS — 5 Android native photo-adapter tests. |
+| `rtk scripts/check-ios` | PASS — dev 106 unit + 13 UI tests, release build, and prod 106 tests. |
+| `rtk scripts/check-credentials` | PASS — `ok - credential safety`. |
+| `rtk scripts/check-scope` | PASS — `ok - mobile-first scope`. |
+| `rtk git diff --check` | PASS — no whitespace errors. |
+
+## Aggregate Android note
+
+The feature-specific Android adapter tests pass. The broader
+`scripts/check-gradle` gate still stops in pre-existing instrumented-test
+harness failures outside B103/B104: an API 30 `ApplicationInfoFlags.of`
+`NoSuchMethodError` and FirebaseAuth access before FirebaseApp initialization in
+`SignedOutAccessRule`. No production or feature assertion for these fixes
+failed.
+
+## Summary
+
+**Overall:** Ready — PASS. Camera and gallery are connected through the
+production route on Android and iOS, the photo upload is sequenced after group
+creation, previews are available, and controlled typing remains in keyboard
+order across recompositions.
