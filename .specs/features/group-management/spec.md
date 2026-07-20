@@ -805,6 +805,10 @@ keys, cents, or timezone identifiers.
 - **B69 | 2026-07-20** — The first executing T55 compile repeated B58's nested
   generic expression-body parser ambiguity in two KMP response helpers.
   Covered by V26.
+- **B70 | 2026-07-20** — The next T55 Kotlin/Native test compile exposed an
+  omitted `HttpResponseData` import and an ambiguous nullable ETag-list
+  assertion. No new invariant added; portable common tests import transport
+  types and nullable generic expectations explicitly.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
