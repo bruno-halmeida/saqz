@@ -4,6 +4,7 @@ spring-boot = "4.1.0"
 firebase-admin = "9.10.0"
 archunit = "1.4.2"
 junit = "5.14.1"
+twelvemonkeys = "3.13.1"
 
 [libraries]
 firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebase-admin" }
@@ -16,6 +17,7 @@ flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 postgresql = { module = "org.postgresql:postgresql" }
 spring-jdbc = { module = "org.springframework:spring-jdbc" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

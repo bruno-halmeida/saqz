@@ -677,16 +677,16 @@ recorded. Skill: `tlc-spec-driven`; `backprop` on failure.
 
 **Done when:**
 
-- [ ] V3 stores exactly one photo/group with bytes, actual type, size,
+- [x] V3 stores exactly one photo/group with bytes, actual type, size,
   dimensions, digest, version, actor, and timestamps; normal group queries never
   select bytes.
-- [ ] Streaming limit rejects over 5 MiB before publication; decoded limit
+- [x] Streaming limit rejects over 5 MiB before publication; decoded limit
   rejects dimensions over 4096×4096 and invalid/empty data.
-- [ ] Declared/actual mismatch, GIF, PNG `acTL`, WebP `ANIM`/`ANMF`, corrupt and
+- [x] Declared/actual mismatch, GIF, PNG `acTL`, WebP `ANIM`/`ANMF`, corrupt and
   decompression-bomb fixtures are rejected before replacement.
-- [ ] Valid JPEG/PNG/WebP replacement and idempotent removal update group/photo
+- [x] Valid JPEG/PNG/WebP replacement and idempotent removal update group/photo
   versions atomically; injected failure preserves the old photo.
-- [ ] Backend full gate passes; test count `Δ+18` or greater.
+- [x] Backend full gate passes; test count `Δ+18` or greater.
 
 **Tests:** unit + PostgreSQL/media integration (`Δ+18`).
 **Gate:** Backend full + Safety.
