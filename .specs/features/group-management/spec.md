@@ -906,6 +906,10 @@ keys, cents, or timezone identifiers.
 - **B97 | 2026-07-20** — The first narrow B96 rerun called the backend wrapper
   outside the repository gate's JDK selection and inherited JDK 17, so the
   build guard rejected the environment before tests. Covered by V49.
+- **B98 | 2026-07-20** — After B96 was fixed, the retained disposable access
+  flow still created groups with only name/timezone; the accepted complete
+  registration contract correctly rejected the fixture for missing modality
+  and composition, cascading into invite scenarios. Covered by V50.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -1010,6 +1014,10 @@ keys, cents, or timezone identifiers.
 - **V49** — Direct backend verification commands SHALL select JDK 21 explicitly
   or run through a repository script that does so; a toolchain-guard failure
   SHALL not be reported as feature-test evidence.
+- **V50** — Retained end-to-end fixtures that create a valid group SHALL send
+  every currently required registration field and continue asserting the same
+  ownership/invitation outcomes; invalid fixtures SHALL omit or corrupt only
+  the field under test.
 
 ## Success criteria
 
