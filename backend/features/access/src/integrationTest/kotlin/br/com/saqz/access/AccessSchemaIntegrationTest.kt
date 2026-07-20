@@ -29,7 +29,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(2, flyway.migrate().migrationsExecuted)
+        assertEquals(3, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -56,6 +56,7 @@ class AccessSchemaIntegrationTest {
                 "group_venues",
                 "group_regular_slots",
                 "invite_redemption_limits",
+                "group_photos",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +
