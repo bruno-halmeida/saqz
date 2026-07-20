@@ -749,6 +749,10 @@ keys, cents, or timezone identifiers.
   scalar UUID queries are nullable at the Kotlin boundary, even for NOT NULL
   columns. No new invariant added; JDBC adapters explicitly discard impossible
   null scalar results before passing identifiers into domain contracts.
+- **B54 | 2026-07-20** — The next T45 integration-test compile imported both
+  JUnit's `Test` and Kotlin's `Test` through wildcards, making annotations
+  ambiguous. No new invariant added; integration tests use explicit JUnit
+  lifecycle annotations and explicit Kotlin assertion imports.
 
 ## Success criteria
 
