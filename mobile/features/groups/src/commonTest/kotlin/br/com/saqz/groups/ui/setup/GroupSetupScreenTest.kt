@@ -93,10 +93,12 @@ class GroupSetupScreenTest {
     }
 
     @Test fun `selected profile choice exposes its state`() = runComposeUiTest {
-        setup(state(form = requiredForm()))
+        setup(state(form = requiredForm().copy(level = GroupLevel.MIXED_LEVELS)))
         onNodeWithText("Vôlei de quadra").assertIsSelected()
         onNodeWithText("Vôlei de praia").assertIsNotSelected()
         onNodeWithText("Misto").assertIsSelected()
+        onNodeWithText("Todos os níveis").assertIsSelected()
+        onNodeWithText("Iniciante").assertIsNotSelected()
     }
 
     @Test fun `idle photo actions sit beside the compact preview`() = runComposeUiTest {

@@ -934,6 +934,10 @@ keys, cents, or timezone identifiers.
   `TextFieldValue(text)` after every ViewModel update and discarded selection
   and composition, resetting the cursor to zero and reversing incremental
   keyboard input. Covered by V53.
+- **B105 | 2026-07-20** — Independent validation found that the group-setup
+  selection test proved modality and composition semantics but omitted the
+  selected level named by AC3. No new invariant added; the existing generic
+  semantics test now covers a selected and unselected level.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
