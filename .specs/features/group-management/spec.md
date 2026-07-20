@@ -878,6 +878,10 @@ keys, cents, or timezone identifiers.
   patch, and the scope fixture piped that empty diff into `git apply`, which
   fails even though a clean source tree is a valid fixture input. Covered by
   V44.
+- **B91 | 2026-07-20** — T67's backend workspace-isolation run reached the real
+  PostgreSQL integration suites without this host's required Colima Docker
+  socket and Testcontainers Ryuk override, so container startup failed before
+  feature assertions executed. Covered by V45.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -961,6 +965,10 @@ keys, cents, or timezone identifiers.
 - **V44** — Script fixtures that optionally mirror a workspace diff SHALL apply
   it only when the generated patch is non-empty; clean committed source state
   SHALL remain a supported fixture input.
+- **V45** — Local aggregate and workspace-isolation invocations that execute
+  Testcontainers suites SHALL receive the active Docker daemon endpoint and
+  any documented host-specific Ryuk setting; an environment startup failure
+  SHALL not be treated as feature-test evidence.
 
 ## Success criteria
 
