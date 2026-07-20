@@ -519,6 +519,11 @@ keys, cents, or timezone identifiers.
 - **V7** — Groups integration tests MAY load Access-owned baseline migrations
   by explicit migration resource or filesystem location, but SHALL NOT add any
   backend feature-to-feature project dependency to make migrations visible.
+- **B9 | 2026-07-19** — The first T19 focused HTTP gate inherited the shell's
+  JDK 17 even though the repository gate and active handoff require JDK 21, so
+  Gradle rejected the invocation before compilation. No new invariant added;
+  the existing deterministic JDK 21 gate and handoff already detect and
+  document this environment prerequisite.
 
 ## Success criteria
 
