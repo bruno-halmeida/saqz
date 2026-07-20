@@ -1175,18 +1175,20 @@ resources and tests.
 
 **Done when:**
 
-- [ ] Required game fields and optional fee/notes are discoverable, prefilled,
+- [x] Required game fields and optional fee/notes are discoverable, prefilled,
   editable, and display field errors without a request.
-- [ ] Weekly mode supports multiple add/remove weekday/time/duration/venue
+- [x] Weekly mode supports multiple add/remove weekday/time/duration/venue
   slots and optional end date in the group-local presentation.
-- [ ] Edit/cancel clearly asks `Somente este jogo` or `Este e os próximos` and
+- [x] Edit/cancel clearly asks `Somente este jogo` or `Este e os próximos` and
   never defaults silently.
-- [ ] Compact/keyboard/max-text tests retain semantic order and 48 dp targets.
-- [ ] Mobile quick gate passes; test count `Δ+18` or greater.
+- [x] Compact/keyboard/max-text tests retain semantic order and 48 dp targets.
+- [x] Mobile quick gate passes; test count `Δ+18` or greater.
 
 **Tests:** common Compose UI (`Δ+18`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): build game editor ui`
+**Status:** Complete; Mobile quick and safety gates passed with 21 added
+cross-target Compose cases and durable ViewModel-owned UUID slot identity.
 
 ### T42: Implement game detail lifecycle route
 
