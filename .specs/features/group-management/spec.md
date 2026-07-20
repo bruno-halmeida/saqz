@@ -607,6 +607,14 @@ keys, cents, or timezone identifiers.
 - **V13** — Shared UI and test helper APIs with multiple callback parameters
   SHALL keep the established primary trailing-lambda callback last, or callers
   SHALL name every callback at the call site.
+- **B26 | 2026-07-19** — T29 fresh-eyes review found that post-create photo
+  upload emitted only a group ID even though the private photo mutation requires
+  the confirmed group ETag, making a valid `If-Match` handoff impossible.
+  Covered by V14.
+- **V14** — A confirmed create with pending private media SHALL retain or derive
+  the quoted group ETag from the authoritative returned version and include it
+  in the deferred upload handoff; the media upload SHALL never guess from draft
+  or pre-confirmation state.
 
 ## Success criteria
 
