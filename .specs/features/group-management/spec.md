@@ -601,6 +601,12 @@ keys, cents, or timezone identifiers.
   test viewport with zero visible bounds and making clicks no-ops. No new
   invariant added; the existing compact/keyboard semantic-flow criterion and
   Compose UI gate cover scroll reachability.
+- **B25 | 2026-07-19** — Adding a default photo callback after the setup test
+  fixture's established intent callback rebound existing trailing lambdas to
+  the wrong sealed-intent type. Covered by V13.
+- **V13** — Shared UI and test helper APIs with multiple callback parameters
+  SHALL keep the established primary trailing-lambda callback last, or callers
+  SHALL name every callback at the call site.
 
 ## Success criteria
 
