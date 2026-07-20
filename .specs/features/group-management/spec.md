@@ -550,6 +550,15 @@ keys, cents, or timezone identifiers.
   lambda without the channel return required by its contract and compared a
   nullable header list to an inferred non-null list. No new invariant added;
   common-test compilation already catches both fixture type errors.
+- **B15 | 2026-07-19** — A T23 oversized upload closed its input but left the
+  multipart destination open when the stream exceeded its declaration, so the
+  consumer waited until timeout; the declared-length read fixture also sent a
+  body inconsistent with its own header and was rejected by MockEngine before
+  the client bound ran. Covered by V9.
+- **V9** — Bounded media writers SHALL close both source and destination with
+  the original cause on size mismatch or cancellation, and binary reads SHALL
+  reject a coherent declared `Content-Length` above the configured limit before
+  consuming the response channel.
 
 ## Success criteria
 
