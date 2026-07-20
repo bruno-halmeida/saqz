@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 5 / T32 (deterministic recurrence and bounded materialization).
-- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, and T31 game values/default snapshots/lifecycle rules. T31 backend quick and safety gates passed with 37 added domain/application cases covering all-field validation, copied defaults and explicit fee clearing, draft visibility, organizer roles, optimistic conflicts, the transition matrix, and zero side effects on invalid/stale commands. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:903` — implement deterministic recurrence and bounded materialization.
-- **Next step**: Execute T32 with ZoneRules resolution, 12-week idempotent materialization, unit/integration coverage, backend full, and safety gates.
+- **Phase / Task**: Execute — Phase 5 / T33 (one-time game persistence and private reads).
+- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, T31 `7c20675`, and T32 deterministic recurrence/materialization. T32 backend full and safety gates passed with 28 added cases covering ordinary/gap/overlap resolution, multi-slot wall clocks, exact 12-week bounds, invalid-rule no-write behavior, retry/replenishment idempotency, and persisted immutable occurrence snapshots. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:932` — implement one-time game persistence and private reads.
+- **Next step**: Execute T33 with JDBC occurrence persistence, role-private list/read/count derivation, versioned updates, backend full, and safety gates.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main

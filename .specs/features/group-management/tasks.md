@@ -915,14 +915,14 @@ Skill: `tlc-spec-driven`; `backprop` on failure.
 
 **Done when:**
 
-- [ ] Ordinary times use the sole offset; gaps advance by transition duration;
+- [x] Ordinary times use the sole offset; gaps advance by transition duration;
   overlaps choose the earlier offset, with exact fixtures for each.
-- [ ] Multiple weekdays preserve each local wall-clock schedule across offset
+- [x] Multiple weekdays preserve each local wall-clock schedule across offset
   changes and store resolved instants/local fields.
-- [ ] Create/replenish/retry yields one bounded occurrence per identity and no
+- [x] Create/replenish/retry yields one bounded occurrence per identity and no
   unbounded write or duplicate.
-- [ ] Empty/invalid/end-before-start rules fail before writes.
-- [ ] Backend full gate passes; test count `Δ+18` or greater.
+- [x] Empty/invalid/end-before-start rules fail before writes.
+- [x] Backend full gate passes; test count `Δ+28` with zero skipped/failing.
 
 **Tests:** domain unit + PostgreSQL materialization integration (`Δ+18`).
 **Gate:** Backend full + Safety.
