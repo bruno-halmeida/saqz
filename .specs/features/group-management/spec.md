@@ -559,6 +559,10 @@ keys, cents, or timezone identifiers.
   the original cause on size mismatch or cancellation, and binary reads SHALL
   reject a coherent declared `Content-Length` above the configured limit before
   consuming the response channel.
+- **B16 | 2026-07-19** — The first T25 HTTP fixture named the existing
+  `GroupReadSnapshot.id` constructor argument `groupId`, so bootstrap test
+  compilation stopped before execution. No new invariant added; Kotlin named
+  argument checking already catches this fixture drift.
 
 ## Success criteria
 
