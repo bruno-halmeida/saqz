@@ -798,6 +798,10 @@ keys, cents, or timezone identifiers.
 - **B67 | 2026-07-20** — T55 transport design found the T53 controller mapped
   both deadline closure and frozen lifecycle to `INVALID_GAME_TRANSITION`, so
   mobile could not discriminate the required outcomes. Covered by V25.
+- **B68 | 2026-07-20** — The first T55 mobile gate was denied before Gradle
+  startup because the managed sandbox could not open the wrapper distribution
+  lock in the user Gradle cache. No new invariant added; rerun the identical
+  approved mobile Gradle command with the required filesystem permission.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
