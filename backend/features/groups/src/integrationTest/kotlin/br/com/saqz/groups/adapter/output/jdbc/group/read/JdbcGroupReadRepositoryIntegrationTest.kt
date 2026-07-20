@@ -2,7 +2,10 @@ package br.com.saqz.groups.adapter.output.jdbc.group.read
 
 import br.com.saqz.groups.testing.startAndAwaitJdbc
 import br.com.saqz.groups.testing.accessMigrationLocation
+import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.read.GroupReadKey
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.GroupRole
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
@@ -142,6 +145,106 @@ class JdbcGroupReadRepositoryIntegrationTest {
         assertEquals(1, counting.preparedStatements.get())
     }
 
+    @Test
+    fun `owner reads complete profile game defaults venue slots and finance defaults`() {
+        val owner = insertUser("profile-owner")
+        val group = insertCompleteGroup(owner)
+        val venue = insertDefaultVenue(group, "Arena Beach", "Rua Central 100", "Quadra 2")
+        insertSlot(group, venue, 1, "20:00", 120, 0)
+        insertSlot(group, null, 4, "19:30", 90, 1)
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(owner, group)))
+
+        assertEquals(GroupRole.OWNER, snapshot.role)
+        assertEquals(GroupProfileStatus.COMPLETE, snapshot.profileStatus)
+        assertEquals(GroupModality.COURT_VOLLEYBALL, snapshot.profile?.modality)
+        assertEquals(GroupComposition.MIXED, snapshot.profile?.composition)
+        assertEquals("São Paulo", snapshot.profile?.city)
+        assertEquals(18, snapshot.profile?.defaultCapacity)
+        assertEquals(180, snapshot.profile?.defaultConfirmationLeadMinutes)
+        assertEquals(venue, snapshot.profile?.defaultVenue?.id)
+        assertEquals("Arena Beach", snapshot.profile?.defaultVenue?.name)
+        assertEquals(listOf(1, 4), snapshot.profile?.regularSlots?.map { it.weekday.value })
+        assertEquals(1500, snapshot.financeDefaults?.defaultGameFeeCents)
+        assertEquals(7000, snapshot.financeDefaults?.monthlyFeeCents)
+        assertEquals(10, snapshot.financeDefaults?.monthlyDueDay)
+    }
+
+    @Test
+    fun `admin reads finance defaults`() {
+        val owner = insertUser("finance-owner")
+        val admin = insertUser("finance-admin")
+        val group = insertCompleteGroup(owner)
+        insertMembership(group, admin, "ADMIN")
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(admin, group)))
+
+        assertEquals(GroupRole.ADMIN, snapshot.role)
+        assertEquals(1500, snapshot.financeDefaults?.defaultGameFeeCents)
+        assertEquals(7000, snapshot.financeDefaults?.monthlyFeeCents)
+        assertEquals(10, snapshot.financeDefaults?.monthlyDueDay)
+    }
+
+    @Test
+    fun `athlete reads profile defaults but no finance defaults`() {
+        val owner = insertUser("athlete-profile-owner")
+        val athlete = insertUser("athlete-profile")
+        val group = insertCompleteGroup(owner)
+        insertMembership(group, athlete, "ATHLETE")
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(athlete, group)))
+
+        assertEquals(GroupRole.ATHLETE, snapshot.role)
+        assertEquals(GroupProfileStatus.COMPLETE, snapshot.profileStatus)
+        assertEquals(GroupModality.COURT_VOLLEYBALL, snapshot.profile?.modality)
+        assertEquals(null, snapshot.financeDefaults?.defaultGameFeeCents)
+        assertEquals(null, snapshot.financeDefaults?.monthlyFeeCents)
+        assertEquals(null, snapshot.financeDefaults?.monthlyDueDay)
+    }
+
+    @Test
+    fun `legacy group without modality or composition reads as incomplete`() {
+        val owner = insertUser("legacy-owner")
+        val group = insertGroup(owner, "Legacy Group")
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(owner, group)))
+
+        assertEquals(GroupProfileStatus.INCOMPLETE, snapshot.profileStatus)
+        assertEquals(null, snapshot.profile?.modality)
+        assertEquals(null, snapshot.profile?.composition)
+    }
+
+    @Test
+    fun `nonmember read has same absence of finance detail as unknown group`() {
+        val owner = insertUser("private-profile-owner")
+        val stranger = insertUser("private-profile-stranger")
+        val group = insertCompleteGroup(owner)
+
+        val nonmember = requireNotNull(repository.find(GroupReadKey(stranger, group)))
+        val missing = repository.find(GroupReadKey(stranger, UUID.randomUUID()))
+
+        assertEquals(null, nonmember.role)
+        assertEquals(null, nonmember.financeDefaults?.defaultGameFeeCents)
+        assertEquals(null, nonmember.financeDefaults?.monthlyFeeCents)
+        assertEquals(null, nonmember.financeDefaults?.monthlyDueDay)
+        assertEquals(null, missing)
+    }
+
+    @Test
+    fun `read query does not select photo expense or charge detail`() {
+        val owner = insertUser("privacy-query-owner")
+        val group = insertCompleteGroup(owner)
+        val counting = CountingDataSource(dataSource)
+        val countedRepository = JdbcGroupReadRepository(counting)
+
+        countedRepository.find(GroupReadKey(owner, group))
+
+        val sql = counting.sql.single().lowercase()
+        assertTrue(!sql.contains("photo"), sql)
+        assertTrue(!sql.contains("expense"), sql)
+        assertTrue(!sql.contains("charge"), sql)
+    }
+
     private fun insertUser(subject: String): UUID {
         val id = UUID.randomUUID()
         execute(
@@ -174,6 +277,42 @@ class JdbcGroupReadRepositoryIntegrationTest {
         )
     }
 
+    private fun insertCompleteGroup(owner: UUID): UUID {
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO access_groups (" +
+                "id, owner_user_id, creation_key, name, time_zone, version, privacy, currency, " +
+                "profile_status, modality, composition, description, city, level, play_style, " +
+                "default_capacity, default_confirmation_lead_minutes, default_game_fee_cents, " +
+                "monthly_fee_cents, monthly_due_day, created_at, updated_at" +
+                ") VALUES (" +
+                "'$id', '$owner', '${UUID.randomUUID()}', 'Complete Group', 'America/Sao_Paulo', 3, " +
+                "'PRIVATE', 'BRL', 'COMPLETE', 'COURT_VOLLEYBALL', 'MIXED', 'Training group', " +
+                "'São Paulo', 'INTERMEDIATE', 'FIVE_ONE', 18, 180, 1500, 7000, 10, now(), now()" +
+                ")",
+        )
+        return id
+    }
+
+    private fun insertDefaultVenue(group: UUID, name: String, address: String, court: String?): UUID {
+        val venue = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_venues (id, group_id, name, address, court, version, created_at, updated_at) " +
+                "VALUES ('$venue', '$group', '$name', '$address', ${court.sqlString()}, 1, now(), now())",
+        )
+        execute("UPDATE access_groups SET default_venue_id = '$venue' WHERE id = '$group'")
+        return venue
+    }
+
+    private fun insertSlot(group: UUID, venue: UUID?, weekday: Int, startTime: String, duration: Int, position: Int) {
+        execute(
+            "INSERT INTO group_regular_slots " +
+                "(id, group_id, venue_id, weekday, start_time, duration_minutes, position, version, created_at, updated_at) " +
+                "VALUES ('${UUID.randomUUID()}', '$group', ${venue.sqlUuid()}, $weekday, '$startTime', $duration, " +
+                "$position, 1, now(), now())",
+        )
+    }
+
     private fun explain(actor: UUID, group: UUID): String = connection().use { connection ->
         connection.createStatement().use { statement ->
             statement.execute("SET enable_seqscan = off")
@@ -200,6 +339,7 @@ class JdbcGroupReadRepositoryIntegrationTest {
         private val delegate: DataSource,
     ) : AbstractDataSource() {
         val preparedStatements = AtomicInteger()
+        val sql = mutableListOf<String>()
 
         override fun getConnection(): Connection = wrap(delegate.connection)
 
@@ -210,8 +350,15 @@ class JdbcGroupReadRepositoryIntegrationTest {
             Connection::class.java.classLoader,
             arrayOf(Connection::class.java),
         ) { _, method, arguments ->
-            if (method.name == "prepareStatement") preparedStatements.incrementAndGet()
+            if (method.name == "prepareStatement") {
+                preparedStatements.incrementAndGet()
+                sql += arguments?.firstOrNull()?.toString().orEmpty()
+            }
             method.invoke(connection, *(arguments ?: emptyArray()))
         } as Connection
     }
 }
+
+private fun String?.sqlString(): String = this?.let { "'$it'" } ?: "null"
+
+private fun UUID?.sqlUuid(): String = this?.let { "'$it'" } ?: "null"

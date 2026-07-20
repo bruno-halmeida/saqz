@@ -471,12 +471,12 @@ outcome.
 
 **Done when:**
 
-- [ ] OWNER/ADMIN/ATHLETE projections expose exactly their allowed fields.
-- [ ] Legacy rows missing modality/composition read as `INCOMPLETE`; complete
+- [x] OWNER/ADMIN/ATHLETE projections expose exactly their allowed fields.
+- [x] Legacy rows missing modality/composition read as `INCOMPLETE`; complete
   new rows read as `COMPLETE`.
-- [ ] Non-member and unknown group are indistinguishable and load no photo
+- [x] Non-member and unknown group are indistinguishable and load no photo
   bytes or finance/expense detail.
-- [ ] Backend full gate passes; test count `Δ+10` or greater.
+- [x] Backend full gate passes; test count `Δ+10` or greater.
 
 **Tests:** unit + PostgreSQL integration (`Δ+10`).
 **Gate:** Backend full + Safety.

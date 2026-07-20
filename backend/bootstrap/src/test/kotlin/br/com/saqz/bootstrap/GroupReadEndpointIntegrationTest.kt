@@ -1,7 +1,10 @@
 package br.com.saqz.bootstrap
 
 import br.com.saqz.groups.adapter.input.http.AccessGroupReadController
+import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.read.GetGroup
+import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
+import br.com.saqz.groups.application.read.GroupProfileReadModel
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
@@ -14,6 +17,8 @@ import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -128,6 +133,45 @@ class GroupReadEndpointIntegrationTest {
     }
 
     @Test
+    fun `member response includes profile status and non-financial defaults`() {
+        repository.snapshot = snapshot(GroupRole.ATHLETE, profile = profile(), financeDefaults = finance())
+
+        val body = json(getGroup(groupId))
+
+        assertEquals("COMPLETE", body["profileStatus"].stringValue())
+        assertEquals("COURT_VOLLEYBALL", body["profile"]["modality"].stringValue())
+        assertEquals("MIXED", body["profile"]["composition"].stringValue())
+        assertEquals("São Paulo", body["profile"]["city"].stringValue())
+        assertEquals(18, body["profile"]["defaultCapacity"].intValue())
+        assertTrue(body["financeDefaults"].isNull)
+    }
+
+    @Test
+    fun `organizer response includes finance defaults`() {
+        repository.snapshot = snapshot(GroupRole.ADMIN, profile = profile(), financeDefaults = finance())
+
+        val body = json(getGroup(groupId))
+
+        assertEquals(1500, body["financeDefaults"]["defaultGameFeeCents"].intValue())
+        assertEquals(7000, body["financeDefaults"]["monthlyFeeCents"].intValue())
+        assertEquals(10, body["financeDefaults"]["monthlyDueDay"].intValue())
+    }
+
+    @Test
+    fun `legacy incomplete profile status is serialized`() {
+        repository.snapshot = snapshot(
+            GroupRole.OWNER,
+            profileStatus = GroupProfileStatus.INCOMPLETE,
+            profile = profile(modality = null),
+        )
+
+        val body = json(getGroup(groupId))
+
+        assertEquals("INCOMPLETE", body["profileStatus"].stringValue())
+        assertTrue(body["profile"]["modality"].isNull)
+    }
+
+    @Test
     fun `missing bearer returns authentication problem without repository read`() {
         val response = getGroup(groupId, bearer = null)
 
@@ -146,12 +190,44 @@ class GroupReadEndpointIntegrationTest {
         assertEquals(json(response)["correlationId"].stringValue(), correlationHeader(response))
     }
 
-    private fun snapshot(role: GroupRole?) = GroupReadSnapshot(
+    private fun snapshot(
+        role: GroupRole?,
+        profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
+        profile: GroupProfileReadModel? = null,
+        financeDefaults: GroupFinanceDefaultsReadModel? = null,
+    ) = GroupReadSnapshot(
         groupId,
         AccessName.from("Training Club"),
         IanaTimeZone.from("America/Sao_Paulo"),
         role,
         7,
+        profileStatus,
+        profile,
+        financeDefaults,
+    )
+
+    private fun profile(
+        modality: GroupModality? = GroupModality.COURT_VOLLEYBALL,
+        composition: GroupComposition? = GroupComposition.MIXED,
+    ) = GroupProfileReadModel(
+        modality = modality,
+        composition = composition,
+        description = "Training group",
+        city = "São Paulo",
+        level = null,
+        customLevel = null,
+        playStyle = null,
+        customPlayStyle = null,
+        defaultVenue = null,
+        regularSlots = emptyList(),
+        defaultCapacity = 18,
+        defaultConfirmationLeadMinutes = 180,
+    )
+
+    private fun finance() = GroupFinanceDefaultsReadModel(
+        defaultGameFeeCents = 1500,
+        monthlyFeeCents = 7000,
+        monthlyDueDay = 10,
     )
 
     private fun getGroup(id: UUID, bearer: String? = "group-read-token"): HttpResponse<String> {

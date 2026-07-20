@@ -3,6 +3,7 @@ package br.com.saqz.groups.application.read
 import br.com.saqz.groups.domain.GroupAccessDecision
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupAction
+import br.com.saqz.groups.domain.GroupRole
 import java.util.UUID
 
 class GetGroup(
@@ -22,6 +23,11 @@ class GetGroup(
                     timeZone = snapshot.timeZone,
                     role = requireNotNull(snapshot.role),
                     version = snapshot.version,
+                    profileStatus = snapshot.profileStatus,
+                    profile = snapshot.profile,
+                    financeDefaults = snapshot.financeDefaults.takeIf {
+                        snapshot.role == GroupRole.OWNER || snapshot.role == GroupRole.ADMIN
+                    },
                 ),
             )
         }

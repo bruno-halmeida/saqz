@@ -4,9 +4,13 @@ import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.application.create.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 class GetGroupTest {
@@ -102,17 +106,98 @@ class GetGroupTest {
         assertEquals(listOf(GroupReadKey(actorId, requested)), fixture.repository.keys)
     }
 
+    @Test
+    fun `owner receives complete profile status and non-financial defaults`() {
+        val result = fixture(snapshot(GroupRole.OWNER, profile = profile())).useCase.execute(actorId, groupId)
+
+        val group = (result as GetGroupResult.Success).group
+        assertEquals(GroupProfileStatus.COMPLETE, group.profileStatus)
+        assertEquals(GroupModality.COURT_VOLLEYBALL, group.profile?.modality)
+        assertEquals(GroupComposition.MIXED, group.profile?.composition)
+        assertEquals("São Paulo", group.profile?.city)
+        assertEquals(18, group.profile?.defaultCapacity)
+        assertEquals(180, group.profile?.defaultConfirmationLeadMinutes)
+    }
+
+    @Test
+    fun `admin receives finance defaults`() {
+        val result = fixture(snapshot(GroupRole.ADMIN, financeDefaults = finance())).useCase.execute(actorId, groupId)
+
+        assertEquals(finance(), (result as GetGroupResult.Success).group.financeDefaults)
+    }
+
+    @Test
+    fun `owner receives finance defaults`() {
+        val result = fixture(snapshot(GroupRole.OWNER, financeDefaults = finance())).useCase.execute(actorId, groupId)
+
+        assertEquals(1500, (result as GetGroupResult.Success).group.financeDefaults?.defaultGameFeeCents)
+    }
+
+    @Test
+    fun `athlete receives profile but no finance defaults`() {
+        val result = fixture(
+            snapshot(GroupRole.ATHLETE, profile = profile(), financeDefaults = finance()),
+        ).useCase.execute(actorId, groupId)
+
+        val group = (result as GetGroupResult.Success).group
+        assertEquals(GroupRole.ATHLETE, group.role)
+        assertEquals(GroupModality.COURT_VOLLEYBALL, group.profile?.modality)
+        assertNull(group.financeDefaults)
+    }
+
+    @Test
+    fun `legacy incomplete profile status is preserved for members`() {
+        val result = fixture(
+            snapshot(GroupRole.OWNER, profileStatus = GroupProfileStatus.INCOMPLETE, profile = profile(modality = null)),
+        ).useCase.execute(actorId, groupId)
+
+        assertEquals(GroupProfileStatus.INCOMPLETE, (result as GetGroupResult.Success).group.profileStatus)
+    }
+
     private fun fixture(result: GroupReadSnapshot?): Fixture {
         val repository = RecordingGroupReadRepository(result)
         return Fixture(GetGroup(repository, GroupAccessPolicy()), repository)
     }
 
-    private fun snapshot(role: GroupRole?, id: UUID = groupId) = GroupReadSnapshot(
+    private fun snapshot(
+        role: GroupRole?,
+        id: UUID = groupId,
+        profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
+        profile: GroupProfileReadModel? = null,
+        financeDefaults: GroupFinanceDefaultsReadModel? = null,
+    ) = GroupReadSnapshot(
         id = id,
         name = AccessName.from("Training Club"),
         timeZone = IanaTimeZone.from("America/Sao_Paulo"),
         role = role,
         version = 7,
+        profileStatus = profileStatus,
+        profile = profile,
+        financeDefaults = financeDefaults,
+    )
+
+    private fun profile(
+        modality: GroupModality? = GroupModality.COURT_VOLLEYBALL,
+        composition: GroupComposition? = GroupComposition.MIXED,
+    ) = GroupProfileReadModel(
+        modality = modality,
+        composition = composition,
+        description = "Training group",
+        city = "São Paulo",
+        level = null,
+        customLevel = null,
+        playStyle = null,
+        customPlayStyle = null,
+        defaultVenue = null,
+        regularSlots = emptyList(),
+        defaultCapacity = 18,
+        defaultConfirmationLeadMinutes = 180,
+    )
+
+    private fun finance() = GroupFinanceDefaultsReadModel(
+        defaultGameFeeCents = 1500,
+        monthlyFeeCents = 7000,
+        monthlyDueDay = 10,
     )
 
     private data class Fixture(
