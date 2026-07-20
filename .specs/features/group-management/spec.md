@@ -711,6 +711,10 @@ keys, cents, or timezone identifiers.
   product invariant added; deterministic coroutine completion and semantic
   per-item scrolling are required so the existing cross-target gate remains
   reliable.
+- **B46 | 2026-07-19** — The repaired compact-list test still tried to locate
+  offscreen LazyColumn children before they were materialized. No new product
+  invariant added; the list now exposes a semantic container tag so tests can
+  scroll by index and then assert each materialized card.
 
 ## Success criteria
 
