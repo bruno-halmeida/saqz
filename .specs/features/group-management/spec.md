@@ -441,33 +441,22 @@ keys, cents, or timezone identifiers.
     choices remain distinguishable through fill, text, and check icon. Game and
     monthly fee inputs SHALL request a numeric decimal keyboard and reject
     non-numeric content while preserving the Brazilian currency mask.
-31. **GRP-UI-04** — WHEN the Groups entry reconciles an authenticated session
-    THEN zero memberships SHALL retain onboarding, exactly one membership SHALL
-    open that group's private detail, and two or more memberships SHALL show the
-    complete group list even when a stored group selection exists. WHEN a user
-    selects a listed group THEN only that group SHALL load and its detail SHALL
-    open; returning SHALL restore the list. The detail SHALL follow the attached
-    reference hierarchy with a top bar, group summary, next-game state,
-    available shortcuts, recent-notice state, member preview, and authorized
-    invitation action in semantic scroll order with 48 dp action targets.
-    Unavailable private game, notice, photo, or membership data SHALL render a
-    truthful empty or fallback state and SHALL never be fabricated.
-32. **GRP-REGRESSION-01** — WHEN delivered THEN existing auth, selection,
+31. **GRP-REGRESSION-01** — WHEN delivered THEN existing auth, selection,
     membership, invitation, logout, credential, workspace isolation, backend,
     Android, and iOS gates SHALL remain mandatory and green.
 
 ### Invitation and deep-link journey
 
-33. **INVITE-01** — WHEN an owner/admin generates, rotates, expires, or shares
+32. **INVITE-01** — WHEN an owner/admin generates, rotates, expires, or shares
     an invitation THEN exactly one opaque active capability SHALL be managed
     without placing private group or user data in the link or preview.
-34. **INVITE-02** — WHEN the active link opens cold, warm, or after installation
+33. **INVITE-02** — WHEN the active link opens cold, warm, or after installation
     before/after authentication THEN its code SHALL be delivered once, survive
     safe restart until a verified session is ready, and never bypass auth.
-35. **INVITE-03** — WHEN a valid code is redeemed or retried THEN membership
+34. **INVITE-03** — WHEN a valid code is redeemed or retried THEN membership
     SHALL be created at most once without downgrading an existing role, pending
     state SHALL clear, and the redeemed group SHALL become selected and open.
-36. **INVITE-04** — WHEN a code is invalid, expired, rotated, duplicated, or
+35. **INVITE-04** — WHEN a code is invalid, expired, rotated, duplicated, or
     rate-limited THEN no group data or existence SHALL leak, no duplicate
     membership/selection SHALL occur, and only retryable outcomes SHALL retain
     pending state.
