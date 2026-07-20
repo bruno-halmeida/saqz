@@ -223,11 +223,11 @@ class AuthenticatedAccessRootTest {
             ),
         )
 
-        onNodeWithText("Perfil do grupo").assertExists()
+        onNodeWithText("Identidade do grupo").assertExists()
         onNodeWithText("Modalidade").assertExists()
         onNodeWithText("Composição").assertExists()
-        onNodeWithText("Padrões para novos jogos").assertExists()
-        onNodeWithText("Padrões financeiros").assertExists()
+        onNodeWithText("Rotina dos jogos").assertExists()
+        onNodeWithText("Cobrança").assertExists()
         onNodeWithText("Timezone").assertDoesNotExist()
     }
 
@@ -247,8 +247,12 @@ class AuthenticatedAccessRootTest {
             }
             waitForIdle()
 
+            onNodeWithTag(GroupPhotoTags.Library).assertDoesNotExist()
+            onNodeWithTag(GroupPhotoTags.Camera).assertDoesNotExist()
+            onNodeWithTag(GroupPhotoTags.Add).performClick()
             onNodeWithTag(GroupPhotoTags.Library).performClick()
             waitUntil(timeoutMillis = 5_000) { fixture.selections.libraryCalls == 1 }
+            onNodeWithTag(GroupPhotoTags.Add).performClick()
             onNodeWithTag(GroupPhotoTags.Camera).performClick()
             waitUntil(timeoutMillis = 5_000) { fixture.selections.cameraCalls == 1 }
 

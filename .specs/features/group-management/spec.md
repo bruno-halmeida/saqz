@@ -966,6 +966,9 @@ keys, cents, or timezone identifiers.
   screen missed one Compose resource import and called `stringResource` inside
   a non-composable semantics lambda. No new invariant added; Android and iOS
   main compilation already reject both errors deterministically.
+- **B109 | 2026-07-20** — The aggregate mobile gate found that production-route
+  tests still expected legacy section titles and invoked camera/gallery actions
+  before opening the redesigned progressive photo sheet. Covered by V55.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -1088,6 +1091,10 @@ keys, cents, or timezone identifiers.
 - **V54** — Required-field validation tests SHALL explicitly construct each
   missing value they intend to reject and SHALL NOT depend on create-form
   defaults remaining absent.
+- **V55** — Production-route UI tests SHALL assert current setup section names
+  and SHALL reach progressive photo sources through the same visible add control
+  and bottom sheet used by the user; hidden camera/gallery actions SHALL not be
+  treated as directly reachable from the idle form.
 
 ## Success criteria
 
