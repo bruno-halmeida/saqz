@@ -856,15 +856,15 @@ schema integration tests.
 
 **Done when:**
 
-- [ ] Series stores zone/local boundaries/revision lineage; slots store stable
+- [x] Series stores zone/local boundaries/revision lineage; slots store stable
   key, weekday/time/duration/venue/capacity/deadline lead/fee snapshots.
-- [ ] Game stores local date/time/zone, resolved start/deadline, venue snapshot,
+- [x] Game stores local date/time/zone, resolved start/deadline, venue snapshot,
   capacity, optional fee/notes, lifecycle, optional series identity and version.
-- [ ] Unique `(series_id, local_date, slot_key)` prevents duplicate bounded
+- [x] Unique `(series_id, local_date, slot_key)` prevents duplicate bounded
   occurrences while detached overrides remain representable.
-- [ ] Invalid status, limits, fee, date/deadline and cross-group references fail
+- [x] Invalid status, limits, fee, date/deadline and cross-group references fail
   database constraints.
-- [ ] Backend full gate passes; test count `Δ+16` or greater.
+- [x] Backend full gate passes; test count `Δ+31` with zero skipped/failing.
 
 **Tests:** PostgreSQL migration/constraint integration (`Δ+16`).
 **Gate:** Backend full + Safety.
