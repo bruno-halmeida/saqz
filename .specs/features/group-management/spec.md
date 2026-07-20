@@ -784,6 +784,10 @@ keys, cents, or timezone identifiers.
   one-seat game even though the accepted game capacity range is `2..100`, so
   V4 rejected six fixtures before attendance ran. No new invariant added; V20
   already requires exact bound-derived fixtures.
+- **B64 | 2026-07-20** — T51's final-spot race proved that a confirmed-count
+  subquery embedded in the same PostgreSQL statement as `FOR UPDATE` can retain
+  the pre-wait READ_COMMITTED snapshot, allowing both racers to confirm.
+  Covered by V23.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -794,6 +798,9 @@ keys, cents, or timezone identifiers.
 - **V22** — Kotlin test sources that combine JUnit lifecycle annotations with
   Kotlin assertions SHALL import both APIs explicitly; wildcard imports from
   either test package are prohibited.
+- **V23** — A locked aggregate command SHALL acquire its serialization row in
+  one statement and perform capacity/state reads in a subsequent statement in
+  the same READ_COMMITTED transaction, so a waiter observes the prior commit.
 
 ## Success criteria
 
