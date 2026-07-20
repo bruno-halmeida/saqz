@@ -585,6 +585,9 @@ keys, cents, or timezone identifiers.
 - **B20 | 2026-07-19** — The first T28 Swift compile used Kotlin-style `in`
   syntax for a byte-count range guard. No new invariant added; the iOS native
   compile gate deterministically catches Swift syntax errors before tests run.
+- **B21 | 2026-07-19** — The second T28 Swift compile returned the Boolean
+  cleanup result from two `Void` guard branches. No new invariant added; the
+  existing iOS native compile gate deterministically catches return-type drift.
 
 ## Success criteria
 
