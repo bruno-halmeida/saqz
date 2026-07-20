@@ -1416,19 +1416,22 @@ unique indexes and row locking.
 
 **Done when:**
 
-- [ ] One row per game/member stores current CONFIRMED/DECLINED/WAITLISTED,
+- [x] One row per game/member stores current CONFIRMED/DECLINED/WAITLISTED,
   optional waitlist sequence, response/update times and version.
-- [ ] Waitlist sequence is non-null/unique only when WAITLISTED and never reused
+- [x] Waitlist sequence is non-null/unique only when WAITLISTED and never reused
   within a game; game keeps a monotonic allocator.
-- [ ] Attendance event rows preserve actor/source/old/new/reason/server time and
+- [x] Attendance event rows preserve actor/source/old/new/reason/server time and
   cannot be updated/deleted through adapters.
-- [ ] Cross-group/non-member references and contradictory status/sequence writes
+- [x] Cross-group/non-member references and contradictory status/sequence writes
   fail constraints.
-- [ ] Backend full gate passes; test count `Δ+14` or greater.
+- [x] Backend full gate passes; test count `Δ+14` or greater.
 
 **Tests:** PostgreSQL migration/constraint integration (`Δ+14`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): migrate attendance waitlist`
+**Status:** Complete; 17 real-PostgreSQL cases and the complete backend/safety
+gates passed, including monotonic non-reusable FIFO allocation and append-only
+attendance audit constraints.
 
 ### T50: Implement attendance transition and deadline rules
 
