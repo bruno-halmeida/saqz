@@ -666,6 +666,10 @@ keys, cents, or timezone identifiers.
   metadata compilation had skipped the common source. No new invariant added;
   the mandatory Android main compile in Mobile quick catches target-visible
   Kotlin syntax before task completion.
+- **B36 | 2026-07-19** — The first T37 test command passed JVM-only `--tests`
+  filtering to the KMP `allTests` aggregate, which rejected the unsupported
+  option before executing tests. No new invariant added; the task's prescribed
+  unfiltered Mobile quick command is already authoritative.
 
 ## Success criteria
 
