@@ -802,6 +802,9 @@ keys, cents, or timezone identifiers.
   startup because the managed sandbox could not open the wrapper distribution
   lock in the user Gradle cache. No new invariant added; rerun the identical
   approved mobile Gradle command with the required filesystem permission.
+- **B69 | 2026-07-20** — The first executing T55 compile repeated B58's nested
+  generic expression-body parser ambiguity in two KMP response helpers.
+  Covered by V26.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -822,6 +825,9 @@ keys, cents, or timezone identifiers.
 - **V25** — Distinct accepted client recovery outcomes SHALL have distinct,
   stable server problem codes and typed gateway mappings; controllers SHALL not
   collapse deadline, frozen, stale, hidden, or validation states.
+- **V26** — Functions returning nested generic types SHALL put whitespace
+  between the closing generic delimiter and expression-body operator or use a
+  block body; compressed `>=`-like token boundaries are prohibited.
 
 ## Success criteria
 
