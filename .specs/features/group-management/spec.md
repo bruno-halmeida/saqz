@@ -847,6 +847,10 @@ keys, cents, or timezone identifiers.
   pre-decode schema inspection that rejected current Kotlin payloads when
   serialization correctly omitted the default-valued schema field. Covered by
   V37.
+- **B82 | 2026-07-20** — The first T65 Kotlin/Native test compile exposed a
+  Flow terminal operator referenced as a qualified member without importing
+  its extension, which is not resolved consistently by common compilation.
+  Covered by V38.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -905,6 +909,10 @@ keys, cents, or timezone identifiers.
 - **V37** — Native draft adapters SHALL deserialize versioned Kotlin payloads
   before validating the typed schema value, so omitted serialization defaults
   resolve to the model default while explicit old versions remain unsupported.
+- **V38** — Common Kotlin tests SHALL explicitly import coroutine Flow terminal
+  operators and invoke them as extensions; package qualification SHALL not be
+  used as a substitute for an extension import, and Kotlin/Native test
+  compilation SHALL enforce this.
 
 ## Success criteria
 
