@@ -55,6 +55,24 @@ the first game. Later games copy those defaults and own their historical data.
 | Payments | Saqz tracks per-game and monthly charges manually; it never receives or processes money. |
 | Expenses | Manual group expense tracking is included; Saqz does not reimburse or settle expenses. |
 
+## Groups entry and detail presentation amendment
+
+- The Groups entry is list-first whenever the authenticated session contains
+  two or more memberships, even when a previously selected group was restored.
+- A session with exactly one membership opens that group's private detail
+  directly; zero memberships keep the existing onboarding/create flow.
+- Selecting a row in the multi-group list loads that exact group and opens its
+  detail. The detail exposes a return-to-list action only when there is a list
+  to return to.
+- The attached iOS reference defines the detail hierarchy: compact top bar,
+  group summary, next-game surface, shortcut row, recent-notice surface,
+  member preview, and invitation call to action.
+- Private data not present in the current mobile state is never fabricated.
+  Missing game, notice, photo, or membership data uses a truthful empty or
+  fallback presentation while preserving the reference hierarchy.
+- Global bottom navigation remains owned by the app shell and is not duplicated
+  inside the Groups route.
+
 ## Clarifying defaults accepted for this draft
 
 - A confirmed athlete who withdraws keeps the game charge pending until an

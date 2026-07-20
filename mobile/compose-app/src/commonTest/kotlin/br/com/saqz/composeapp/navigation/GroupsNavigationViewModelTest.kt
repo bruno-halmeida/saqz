@@ -34,6 +34,85 @@ class GroupsNavigationViewModelTest {
     }
 
     @Test
+    fun `multiple memberships show complete group list despite restored selection`() {
+        val viewModel = GroupsNavigationViewModel()
+
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = selectedState(owner),
+                memberships = memberships,
+            ),
+        )
+
+        assertUnscoped(viewModel, GroupsDestination.SELECTOR)
+        assertEquals(listOf("group-1", "next"), viewModel.state.value.memberships.map { it.groupId })
+    }
+
+    @Test
+    fun `exactly one membership opens its selected group detail`() {
+        val viewModel = GroupsNavigationViewModel()
+
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = selectedState(owner),
+                memberships = listOf(memberships.first()),
+            ),
+        )
+
+        assertEquals(GroupsDestination.HOME, viewModel.state.value.destination)
+        assertEquals(GROUP_ID, viewModel.state.value.groupId)
+    }
+
+    @Test
+    fun `listed group opens detail only after matching group is selected`() {
+        val viewModel = GroupsNavigationViewModel()
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = GroupSelectionState.Selector(memberships),
+                memberships = memberships,
+            ),
+        )
+
+        viewModel.onIntent(GroupsNavigationIntent.OpenGroup("next"))
+        assertEquals(GroupsDestination.LOADING, viewModel.state.value.destination)
+        assertEquals("next", viewModel.state.value.requestedGroupId)
+
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = selectedState(admin.copy(id = "next")),
+                memberships = memberships,
+            ),
+        )
+
+        assertEquals(GroupsDestination.HOME, viewModel.state.value.destination)
+        assertEquals("next", viewModel.state.value.groupId)
+        assertNull(viewModel.state.value.requestedGroupId)
+    }
+
+    @Test
+    fun `returning from multi group detail restores the complete list`() {
+        val viewModel = GroupsNavigationViewModel()
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = GroupSelectionState.Selector(memberships),
+                memberships = memberships,
+            ),
+        )
+        viewModel.onIntent(GroupsNavigationIntent.OpenGroup("next"))
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = selectedState(admin.copy(id = "next")),
+                memberships = memberships,
+            ),
+        )
+
+        viewModel.onIntent(GroupsNavigationIntent.OpenGroups)
+
+        assertUnscoped(viewModel, GroupsDestination.SELECTOR)
+        assertEquals(listOf("group-1", "next"), viewModel.state.value.memberships.map { it.groupId })
+    }
+
+    @Test
     fun `switch loading clears prior group instead of flashing it`() {
         val viewModel = selected(owner)
         viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.Loading("next")))
@@ -195,7 +274,10 @@ class GroupsNavigationViewModelTest {
         val owner = group(GroupRoleDto.OWNER)
         val admin = group(GroupRoleDto.ADMIN)
         val athlete = group(GroupRoleDto.ATHLETE)
-        val memberships = listOf(SessionMembershipDto("next", "Next", "ADMIN"))
+        val memberships = listOf(
+            SessionMembershipDto(GROUP_ID, "Private Group", "OWNER"),
+            SessionMembershipDto("next", "Next", "ADMIN"),
+        )
 
         fun group(role: GroupRoleDto) = GroupDto(
             id = GROUP_ID,

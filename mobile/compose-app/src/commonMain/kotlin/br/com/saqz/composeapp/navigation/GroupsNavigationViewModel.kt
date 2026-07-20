@@ -8,6 +8,7 @@ import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupFinanceVisibility
 import br.com.saqz.groups.presentation.GroupRoutePolicy
+import br.com.saqz.network.SessionMembershipDto
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,10 +46,17 @@ internal data class GroupsNavigationState(
     val groupId: String? = null,
     val access: GroupsNavigationAccess = GroupsNavigationAccess(),
     val gameId: String? = null,
+    val memberships: List<SessionMembershipDto> = emptyList(),
+    val requestedGroupId: String? = null,
 )
 
 internal sealed interface GroupsNavigationIntent {
-    data class Reconcile(val selection: GroupSelectionState) : GroupsNavigationIntent
+    data class Reconcile(
+        val selection: GroupSelectionState,
+        val memberships: List<SessionMembershipDto> = emptyList(),
+    ) : GroupsNavigationIntent
+    data class OpenGroup(val groupId: String) : GroupsNavigationIntent
+    data object OpenGroups : GroupsNavigationIntent
     data object OpenHome : GroupsNavigationIntent
     data object OpenProfileCompletion : GroupsNavigationIntent
     data object OpenPeople : GroupsNavigationIntent
@@ -69,7 +77,9 @@ internal class GroupsNavigationViewModel : ViewModel() {
 
     fun onIntent(intent: GroupsNavigationIntent) {
         when (intent) {
-            is GroupsNavigationIntent.Reconcile -> reconcile(intent.selection)
+            is GroupsNavigationIntent.Reconcile -> reconcile(intent.selection, intent.memberships)
+            is GroupsNavigationIntent.OpenGroup -> openGroup(intent.groupId)
+            GroupsNavigationIntent.OpenGroups -> openGroups()
             GroupsNavigationIntent.OpenHome -> navigate(GroupsDestination.HOME)
             GroupsNavigationIntent.OpenProfileCompletion -> navigate(GroupsDestination.PROFILE_COMPLETION)
             GroupsNavigationIntent.OpenPeople -> navigate(GroupsDestination.PEOPLE)
@@ -79,20 +89,64 @@ internal class GroupsNavigationViewModel : ViewModel() {
         }
     }
 
-    private fun reconcile(selection: GroupSelectionState) {
+    private fun reconcile(
+        selection: GroupSelectionState,
+        sessionMemberships: List<SessionMembershipDto>,
+    ) {
+        val memberships = when {
+            sessionMemberships.isNotEmpty() -> sessionMemberships
+            selection is GroupSelectionState.Selector -> selection.memberships
+            else -> mutableState.value.memberships
+        }
         when (selection) {
-            GroupSelectionState.NoGroup -> replaceUnscoped(GroupsDestination.SETUP)
-            is GroupSelectionState.Selector -> replaceUnscoped(GroupsDestination.SELECTOR)
-            is GroupSelectionState.Loading -> replaceUnscoped(GroupsDestination.LOADING)
-            is GroupSelectionState.LoadError -> replaceUnscoped(GroupsDestination.LOAD_ERROR)
-            is GroupSelectionState.Selected -> select(selection.group.group)
+            GroupSelectionState.NoGroup -> replaceUnscoped(GroupsDestination.SETUP, emptyList())
+            is GroupSelectionState.Selector -> showGroups(memberships)
+            is GroupSelectionState.Loading -> reconcilePending(
+                destination = GroupsDestination.LOADING,
+                groupId = selection.groupId,
+                memberships = memberships,
+            )
+            is GroupSelectionState.LoadError -> reconcilePending(
+                destination = GroupsDestination.LOAD_ERROR,
+                groupId = selection.groupId,
+                memberships = memberships,
+            )
+            is GroupSelectionState.Selected -> reconcileSelected(selection.group.group, memberships)
         }
     }
 
-    private fun select(group: GroupDto) {
+    private fun reconcilePending(
+        destination: GroupsDestination,
+        groupId: String,
+        memberships: List<SessionMembershipDto>,
+    ) {
+        val requestedGroupId = mutableState.value.requestedGroupId
+        if (memberships.size > 1 && requestedGroupId != groupId) {
+            showGroups(memberships)
+            return
+        }
+        replaceUnscoped(destination, memberships, requestedGroupId)
+    }
+
+    private fun reconcileSelected(group: GroupDto, memberships: List<SessionMembershipDto>) {
+        val current = mutableState.value
+        val detailAlreadyOpen = current.groupId == group.id && current.destination.isGroupScoped()
+        val requestedGroupLoaded = current.requestedGroupId == group.id
+        if (memberships.size > 1 && !detailAlreadyOpen && !requestedGroupLoaded) {
+            showGroups(memberships)
+            return
+        }
+        select(group, memberships)
+    }
+
+    private fun select(group: GroupDto, memberships: List<SessionMembershipDto>) {
         val current = mutableState.value
         if (current.groupId == group.id) {
-            mutableState.value = current.copy(access = accessFor(group))
+            mutableState.value = current.copy(
+                access = accessFor(group),
+                memberships = memberships,
+                requestedGroupId = null,
+            )
             enforceAllowedDestination(group)
             return
         }
@@ -101,13 +155,44 @@ internal class GroupsNavigationViewModel : ViewModel() {
             destination = destination,
             groupId = group.id,
             access = accessFor(group),
+            memberships = memberships,
         )
         effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id))
     }
 
-    private fun replaceUnscoped(destination: GroupsDestination) {
-        if (mutableState.value == GroupsNavigationState(destination = destination)) return
-        mutableState.value = GroupsNavigationState(destination = destination)
+    private fun replaceUnscoped(
+        destination: GroupsDestination,
+        memberships: List<SessionMembershipDto> = emptyList(),
+        requestedGroupId: String? = null,
+    ) {
+        val state = GroupsNavigationState(
+            destination = destination,
+            memberships = memberships,
+            requestedGroupId = requestedGroupId,
+        )
+        if (mutableState.value == state) return
+        mutableState.value = state
+    }
+
+    private fun showGroups(memberships: List<SessionMembershipDto>) {
+        replaceUnscoped(GroupsDestination.SELECTOR, memberships)
+    }
+
+    private fun openGroup(groupId: String) {
+        val current = mutableState.value
+        if (current.destination != GroupsDestination.SELECTOR) return
+        if (current.memberships.none { it.groupId == groupId }) return
+        replaceUnscoped(
+            destination = GroupsDestination.LOADING,
+            memberships = current.memberships,
+            requestedGroupId = groupId,
+        )
+    }
+
+    private fun openGroups() {
+        val memberships = mutableState.value.memberships
+        if (memberships.size < 2) return
+        showGroups(memberships)
     }
 
     private fun navigate(destination: GroupsDestination) {
@@ -180,4 +265,20 @@ internal class GroupsNavigationViewModel : ViewModel() {
         GroupsDestination.LOAD_ERROR,
         -> false
     }
+}
+
+private fun GroupsDestination.isGroupScoped(): Boolean = when (this) {
+    GroupsDestination.HOME,
+    GroupsDestination.PROFILE_COMPLETION,
+    GroupsDestination.PEOPLE,
+    GroupsDestination.GAMES,
+    GroupsDestination.GAME_DETAIL,
+    GroupsDestination.FINANCE,
+    GroupsDestination.OWN_CHARGES,
+    -> true
+    GroupsDestination.SETUP,
+    GroupsDestination.SELECTOR,
+    GroupsDestination.LOADING,
+    GroupsDestination.LOAD_ERROR,
+    -> false
 }
