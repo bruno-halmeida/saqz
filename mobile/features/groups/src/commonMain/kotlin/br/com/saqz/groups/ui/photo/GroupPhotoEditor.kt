@@ -70,6 +70,7 @@ fun GroupPhotoEditor(
     onPrepared: (Boolean) -> Unit = {},
     onReloadTarget: () -> Unit = {},
     preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
+    sourceActionBorderColor: Color? = null,
 ) {
     val selectedPreview = state.selection?.preview
     val visiblePreview = selectedPreview ?: state.existing?.preview
@@ -114,7 +115,13 @@ fun GroupPhotoEditor(
                     modifier = Modifier.size(104.dp),
                 )
                 if (canEdit) {
-                    Box(Modifier.weight(1f)) { PhotoSourceActions(enabled = !busy, onIntent) }
+                    Box(Modifier.weight(1f)) {
+                        PhotoSourceActions(
+                            enabled = !busy,
+                            borderColor = sourceActionBorderColor,
+                            onIntent = onIntent,
+                        )
+                    }
                 }
             }
         } else {
@@ -216,13 +223,14 @@ internal fun groupPhotoInitials(groupName: String): String {
 }
 
 @Composable
-private fun PhotoSourceActions(enabled: Boolean, onIntent: (GroupPhotoIntent) -> Unit) {
+private fun PhotoSourceActions(enabled: Boolean, borderColor: Color?, onIntent: (GroupPhotoIntent) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), modifier = Modifier.fillMaxWidth()) {
         SaqzButton(
             stringResource(Res.string.group_photo_camera),
             { onIntent(GroupPhotoIntent.ChooseCamera) },
             variant = SaqzButtonVariant.Secondary,
             enabled = enabled,
+            borderColor = borderColor,
             modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Camera),
             leadingContent = { color -> GroupPhotoMaterialIcon(Res.drawable.material_photo_camera, color) },
         )
@@ -231,6 +239,7 @@ private fun PhotoSourceActions(enabled: Boolean, onIntent: (GroupPhotoIntent) ->
             { onIntent(GroupPhotoIntent.ChooseLibrary) },
             variant = SaqzButtonVariant.Secondary,
             enabled = enabled,
+            borderColor = borderColor,
             modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Library),
             leadingContent = { color -> GroupPhotoMaterialIcon(Res.drawable.material_photo_library, color) },
         )

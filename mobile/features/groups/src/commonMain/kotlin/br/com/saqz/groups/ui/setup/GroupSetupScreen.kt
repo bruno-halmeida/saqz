@@ -132,6 +132,7 @@ fun GroupSetupScreen(
                     onPrepared = { onIntent(GroupSetupIntent.SetPhotoPending(it)) },
                     onReloadTarget = { onIntent(GroupSetupIntent.ReloadConflict) },
                     preview = photoPreview,
+                    sourceActionBorderColor = SaqzTheme.colors.primary,
                 )
                 SetupInput(form.name, Res.string.group_setup_name, editable, error(state, "name")) {
                     onIntent(GroupSetupIntent.UpdateName(it))
@@ -410,8 +411,9 @@ private fun <T> ChoiceField(
     onSelect: (T?) -> Unit,
     errorText: String? = null,
 ) {
+    val colors = SaqzTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-        Text(stringResource(label), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+        Text(stringResource(label), style = SaqzTheme.typography.caption, color = colors.textSecondary)
         val options = buildList<Pair<T?, String>> {
             if (optional) add(null to stringResource(Res.string.group_setup_not_defined))
             values.forEach { value -> add(value to labelFor(value)) }
@@ -428,6 +430,7 @@ private fun <T> ChoiceField(
                         { onSelect(value) },
                         variant = if (isSelected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
                         enabled = enabled,
+                        borderColor = colors.primary,
                         labelStyle = SaqzTheme.typography.caption,
                         modifier = Modifier.weight(1f).semantics { semanticsSelected = isSelected },
                     )
@@ -645,7 +648,7 @@ internal fun formatBrlInput(cents: Long?): String {
 
 private fun <T> List<T>.replace(index: Int, value: T): List<T> = mapIndexed { current, item -> if (current == index) value else item }
 
-@Preview
+@Preview(heightDp = 1600)
 @Composable
 private fun GroupSetupScreenPreview() = SaqzTheme {
     GroupSetupScreen(
