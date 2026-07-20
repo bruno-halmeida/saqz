@@ -6,6 +6,8 @@ import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupProfileStatusDto
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.presentation.GroupFinanceVisibility
+import br.com.saqz.groups.presentation.GroupRoutePolicy
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -148,15 +150,18 @@ internal class GroupsNavigationViewModel : ViewModel() {
     }
 
     private fun accessFor(group: GroupDto): GroupsNavigationAccess {
-        val organizer = group.role == GroupRoleDto.OWNER || group.role == GroupRoleDto.ADMIN
-        val complete = group.profileStatus == GroupProfileStatusDto.COMPLETE
+        val policy = GroupRoutePolicy.evaluate(group.role, group.profileStatus)
         return GroupsNavigationAccess(
-            showPeople = organizer,
-            showGames = true,
+            showPeople = policy.peopleVisible,
+            showGames = policy.gamesVisible,
             showFinance = true,
-            canCompleteProfile = organizer && !complete,
-            canMutateOperations = organizer && complete,
-            financeDestination = if (organizer) GroupsDestination.FINANCE else GroupsDestination.OWN_CHARGES,
+            canCompleteProfile = policy.profileCompletionVisible,
+            canMutateOperations = policy.operationsMutable,
+            financeDestination = if (policy.financeVisibility == GroupFinanceVisibility.ORGANIZER) {
+                GroupsDestination.FINANCE
+            } else {
+                GroupsDestination.OWN_CHARGES
+            },
         )
     }
 

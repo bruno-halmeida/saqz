@@ -1944,19 +1944,25 @@ fixtures, shared expected presentation fixtures.
 
 **Done when:**
 
-- [ ] Compact/keyboard/max text/Dynamic Type journeys reach every action in
+- [x] Compact/keyboard/max text/Dynamic Type journeys reach every action in
   semantic order with 48 dp-equivalent targets and useful labels.
-- [ ] Rotation/background/process/controller restart restores allowed drafts
+- [x] Rotation/background/process/controller restart restores allowed drafts
   and command keys without duplicate group/game/RSVP/charge/expense/invite.
-- [ ] Camera/library cancellation, offline/retry, stale ETag, logout, group
+- [x] Camera/library cancellation, offline/retry, stale ETag, logout, group
   switch and membership loss recover without private-data flash/cache leak.
-- [ ] Owner/admin/athlete journeys prove exact navigation and finance/privacy
+- [x] Owner/admin/athlete journeys prove exact navigation and finance/privacy
   visibility on both platforms.
-- [ ] Android native and iOS native gates pass; test count `Δ+16` or greater.
+- [x] Android native and iOS native gates pass; test count `Δ+16` or greater.
 
 **Tests:** Android instrumented + XCTest/XCUITest (`Δ+16`).
 **Gate:** Android native + iOS native + Safety.
 **Commit:** `test(groups): cover mobile group journeys`
+**Status:** Complete; 8 Android and 8 iOS native journey cases cover exact
+owner/admin/athlete routing, finance privacy, private-data invalidation and
+idempotent draft/command-key restoration. Android executed 53 instrumented
+tests; iOS executed 118 Dev tests (including 13 UI) and 105 Release unit tests,
+all with zero failures/skips. Groups/Compose allTests and both safety gates
+passed.
 
 ### T67: Update aggregate inventories, documentation, and run the full gate
 
