@@ -1235,19 +1235,21 @@ append-only event pattern.
 
 **Done when:**
 
-- [ ] Charges model GAME/MONTHLY identity, immutable positive BRL amount, due
+- [x] Charges model GAME/MONTHLY identity, immutable positive BRL amount, due
   date, status, creator/changer/review/version/timestamps.
-- [ ] Partial unique keys enforce one member/game and one member/group/month
+- [x] Partial unique keys enforce one member/game and one member/group/month
   charge.
-- [ ] Charge/expense event rows are append-only and expenses constrain exact
+- [x] Charge/expense event rows are append-only and expenses constrain exact
   fields/category/custom/status/version.
-- [ ] Schema contains no processor/payment credential/webhook/settlement/
+- [x] Schema contains no processor/payment credential/webhook/settlement/
   partial/refund/balance/transfer field or dependency.
-- [ ] Backend full gate passes; test count `Δ+18` or greater.
+- [x] Backend full gate passes; test count `Δ+18` or greater.
 
 **Tests:** PostgreSQL migration/constraint integration (`Δ+18`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): migrate manual finance tracking`
+**Status:** Complete; backend full and safety gates passed with 18 added
+PostgreSQL migration/constraint cases.
 
 ### T44: Implement charge domain, status, and visibility rules
 
