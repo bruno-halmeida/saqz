@@ -839,6 +839,10 @@ keys, cents, or timezone identifiers.
   fixture whose default parameter referenced instance state, which Swift
   forbids because default arguments are evaluated outside an instance context.
   Covered by V35.
+- **B80 | 2026-07-20** — The next T64 iOS native compile exposed a Swift
+  fixture using Kotlin source-property labels instead of the umbrella
+  framework's generated constructor labels and complete parameter list.
+  Covered by V36.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -891,6 +895,9 @@ keys, cents, or timezone identifiers.
 - **V35** — Swift fixture default arguments SHALL use literals, static members,
   or independent overloads; instance properties SHALL be supplied inside the
   function body, and iOS native compilation SHALL enforce this.
+- **V36** — Swift construction of exported Kotlin values SHALL match the
+  generated umbrella-framework header's exact labels and full parameter list;
+  iOS native compilation SHALL enforce the interop contract.
 
 ## Success criteria
 
