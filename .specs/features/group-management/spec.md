@@ -622,6 +622,10 @@ keys, cents, or timezone identifiers.
 - **V15** — Every successful versioned private-media mutation SHALL publish its
   returned group ETag into shared state before enabling another mutation; a
   visible consecutive replace/remove action SHALL be immediately executable.
+- **B28 | 2026-07-19** — The first T30 integration-test invocation used the
+  shell's JDK 17 and the backend gate stopped before compilation because the
+  repository requires JDK 21. No new invariant added; the existing backend
+  toolchain gate rejects an incompatible JVM deterministically.
 
 ## Success criteria
 
