@@ -1695,17 +1695,20 @@ expense endpoint contracts.
 
 **Done when:**
 
-- [ ] DTOs preserve integer cents/kind/month/game/member/status/audit/expense
+- [x] DTOs preserve integer cents/kind/month/game/member/status/audit/expense
   fields and never model credentials/settlement/partial/refund/balance.
-- [ ] Organizer and athlete gateway methods are separate so an athlete client
+- [x] Organizer and athlete gateway methods are separate so an athlete client
   cannot accidentally request group expense/total paths.
-- [ ] Monthly/status/expense retries preserve idempotency/ETags and map
+- [x] Monthly/status/expense retries preserve idempotency/ETags and map
   validation/stale/hidden/forbidden outcomes.
-- [ ] Mobile quick gate passes; test count `Δ+16` or greater.
+- [x] Mobile quick gate passes; test count `Δ+18`.
 
 **Tests:** KMP gateway unit (`Δ+16`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): model manual finance transport`
+**Status:** Complete; 18 KMP MockEngine cases and the mobile quick/safety gates
+passed across privacy-separated gateways, cents/vocabularies, audit/totals,
+stable auth replay, ETags, and typed finance failures.
 
 ### T59: Implement FinanceViewModel for charges and monthly generation
 

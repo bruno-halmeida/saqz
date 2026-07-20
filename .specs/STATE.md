@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 9 / T58 (mobile finance transport).
-- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, T31 `7c20675`, T32 `0dc87d4`, T33, T34 series boundaries, and T35–T57. T57 passed 18 Compose cases plus mobile quick and safety gates for exact attendance states, safe withdrawal copy, override/capacity protection, scrolling, semantics, and 48 dp controls. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:1685` — add mobile finance DTOs and gateway.
-- **Next step**: Execute T58 with separate organizer/athlete finance transport, exact cents/audit fields, stable retries and ETags, and typed validation/stale/hidden/forbidden failures.
+- **Phase / Task**: Execute — Phase 9 / T59 (charge FinanceViewModel).
+- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, T31 `7c20675`, T32 `0dc87d4`, T33, T34 series boundaries, and T35–T58. T58 passed 18 MockEngine cases plus mobile quick and safety gates for separate athlete/organizer finance transport, exact cents/audit fields, stable replay, ETags, and typed failures. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:1717` — implement FinanceViewModel for charges and monthly generation.
+- **Next step**: Execute T59 with role-safe charge state, persistent monthly draft/review, stable generation and status commands, conflict recovery, and unit coverage.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main
