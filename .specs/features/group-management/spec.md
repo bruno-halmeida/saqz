@@ -791,6 +791,10 @@ keys, cents, or timezone identifiers.
 - **B65 | 2026-07-20** — The first T53 test compile named the shared identity's
   subject parameter `firebaseSubject` instead of its actual `subject` name.
   No new invariant added; B55's named-fixture rule and compilation cover it.
+- **B66 | 2026-07-20** — T54 cancellation-sensor design found the production
+  game side-effect binding was a no-op and its port discarded group and actor
+  context, making required pending-charge cancellation impossible. Covered by
+  V24.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -804,6 +808,10 @@ keys, cents, or timezone identifiers.
 - **V23** — A locked aggregate command SHALL acquire its serialization row in
   one statement and perform capacity/state reads in a subsequent statement in
   the same READ_COMMITTED transaction, so a waiter observes the prior commit.
+- **V24** — A domain-command side-effect port SHALL carry the authoritative
+  saved aggregate and initiating actor whenever a required downstream effect
+  is group-scoped or audited; production composition SHALL bind every specified
+  effect to a non-no-op adapter.
 
 ## Success criteria
 
