@@ -1008,7 +1008,7 @@ internal fun formatBrlInput(cents: Long?): String {
     return "$grouped,$decimals"
 }
 
-@Preview(heightDp = 2000)
+@Preview()
 @Composable
 private fun GroupSetupScreenPreview() = SaqzTheme {
     GroupSetupScreen(
