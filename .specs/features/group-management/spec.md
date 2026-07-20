@@ -910,6 +910,10 @@ keys, cents, or timezone identifiers.
   flow still created groups with only name/timezone; the accepted complete
   registration contract correctly rejected the fixture for missing modality
   and composition, cascading into invite scenarios. Covered by V50.
+- **B99 | 2026-07-20** — T67's fresh Android aggregate inherited an authenticated
+  session left on the shared emulator, so ten login-oriented cold-start and
+  layout tests opened the authenticated flow instead of their declared login
+  precondition. Covered by V51.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -1018,6 +1022,10 @@ keys, cents, or timezone identifiers.
   every currently required registration field and continue asserting the same
   ownership/invitation outcomes; invalid fixtures SHALL omit or corrupt only
   the field under test.
+- **V51** — Android instrumented tests SHALL establish their declared session
+  precondition independently of emulator history; login-oriented tests SHALL
+  clear persisted access state before launching the activity, while explicitly
+  authenticated tests SHALL seed only their own fixture state.
 
 ## Success criteria
 
