@@ -156,3 +156,61 @@ failed.
 production route on Android and iOS, the photo upload is sequenced after group
 creation, previews are available, and controlled typing remains in keyboard
 order across recompositions.
+
+---
+
+# Novo Grupo Mobile Redesign Validation
+
+**Date:** 2026-07-20
+**Verdict:** PASS
+**Implementation commits:** `b41162d`, `65a2f80`
+**Integration-test follow-up:** `1e50f48`
+**Verifier:** independent sub-agent (author != verifier)
+
+## Acceptance evidence
+
+| Requirement | Evidence | Result |
+| --- | --- | --- |
+| Four-section mobile hierarchy and fixed create action | `GroupSetupScreen.kt:130-344` keeps one keyboard-safe scrolling body, renders identity, sports, routine, and billing surfaces, and places `StickySubmit` outside the scroll body. `GroupSetupScreenTest.kt:44-70,326-352` checks equal section widths, copy, sticky disabled/loading states, 360x800 at font scale 2, and 44 dp controls. | PASS |
+| Friendly editable defaults | `GroupSetupViewModel.kt:403-409` seeds court volleyball, mixed composition, all levels, 12 players, and 360 minutes while leaving photo, venue, slots, and fees absent. `GroupSetupViewModelTest.kt:49-56` checks the complete initial form; screen assertions are at `GroupSetupScreenTest.kt:73-83`. | PASS |
+| Centered prominent photo placeholder | `GroupPhotoEditor.kt:117-149,275-319` centers a 112 dp placeholder inside a 128 dp control, uses the muted gray camera icon, and overlays a 30 dp outlined plus inside a 44 dp target at the lower-right. `GroupSetupScreenTest.kt:85-105` checks centering, minimum size, absence of `SG`, overlay position, hidden source actions, and the progressive sheet. Android screenshot `/tmp/saqz-new-group-final.png` confirms the intended visual hierarchy. | PASS |
+| Saqz-blue button outlines and selected state | `GroupSetupScreen.kt:511-585,673-691,799-890` applies the primary outline to segmented choices, selectors, routine actions, selection-sheet rows, and every enabled `SetupButton`; active choices also use blue fill, white text, selected semantics, and a check icon. `GroupPhotoEditor.kt:130-145,218-271` applies the same outline to the add control and photo-sheet actions. | PASS |
+| Progressive selectors and complete registration capability | `GroupSetupScreen.kt:197-317,346-390,603-827` retains modality, composition, optional/custom level and court style, venue name/address/court, repeat weekday/time/duration, capacity, human-readable confirmation presets/custom value, per-game fee, monthly switch/fee/due day, and friendly timezone fallback. Tests at `GroupSetupScreenTest.kt:118-277` exercise conditional and nested paths. | PASS |
+| Numeric currency behavior | `GroupSetupScreen.kt:743-768,970-993` requests `KeyboardType.Decimal`, strips non-numeric content, limits two decimal positions, preserves the pt-BR mask, and emits integer cents. `GroupSetupScreenTest.kt:257-262,362-376` checks input-to-cents conversion, rejection, sanitization, and formatting. | PASS |
+| Submit, loading, draft, and error behavior | `GroupSetupScreen.kt:319-343,829-843` shows errors only from state, keeps recovery actions, disables submit until name is nonblank, and renders button loading feedback. Existing ViewModel draft/idempotency tests remain green. | PASS |
+| Post-create next action | `GroupContextScreens.kt:94-114` renders `Convidar a galera` as the primary authorized action; `GroupContextScreensTest.kt:24-31` proves visibility and `OpenInvite` dispatch. | PASS |
+| Production route matches the progressive UI | `AuthenticatedAccessRootTest.kt:223-234,247-257`, amended by `1e50f48`, checks current section names and reaches camera/gallery only after opening the photo sheet, satisfying V55. | PASS |
+
+## Command evidence
+
+| Command | Result |
+| --- | --- |
+| `rtk mobile/gradlew -p mobile :features:groups:iosSimulatorArm64Test --tests 'br.com.saqz.groups.ui.setup.GroupSetupScreenTest' --tests 'br.com.saqz.groups.ui.GroupContextScreensTest' --tests 'br.com.saqz.groups.presentation.setup.GroupSetupViewModelTest' --console=plain` | PASS — build successful; reports contain 36 setup-screen, 13 context-screen, and 22 setup-ViewModel tests with zero failures/errors/skips. |
+| `rtk mobile/gradlew -p mobile :compose-app:iosSimulatorArm64Test --tests 'br.com.saqz.composeapp.navigation.AuthenticatedAccessRootTest' --console=plain` | PASS — build successful in 23s; 25 tests, zero failures/errors/skips. |
+| `rtk mobile/gradlew -p mobile :android-app:assembleDevDebug --console=plain` | PASS — installable dev APK assembled successfully and reviewed on the 360 x 800-equivalent Android viewport. |
+| `JAVA_HOME=<JDK21> rtk scripts/check-gradle` | PARTIAL — backend, scope, credentials, KMP/iOS feature suites, and `compose-app:allTests` passed. The connected Android phase failed outside this change on three configured devices: Firebase was not initialized in the test process, API 30 lacked `ApplicationInfoFlags.of`, and a physical-device activity stayed stopped. No group-setup assertion failed; the already-failing multi-device run was stopped after the failures were conclusive. |
+| `rtk git diff --check b41162d^ b41162d`; same check for `65a2f80` and `1e50f48` | PASS — no whitespace errors. |
+
+## Discrimination sensor
+
+In detached worktree `/private/tmp/saqz-verify-65a2f80`, changed only the compact
+photo call from `photoIconFallback = true` to `false`. The focused command
+`rtk mobile/gradlew -p mobile :features:groups:iosSimulatorArm64Test --tests
+'br.com.saqz.groups.ui.setup.GroupSetupScreenTest.photo stays compact and opens
+source actions in a sheet' --console=plain` failed exactly 1/1 test. The mutant
+was therefore killed: the test detects regression from the photo icon back to
+the `SG` initials.
+
+## Residual risk
+
+Compose UI tests cannot introspect the platform keyboard layout itself. The
+numeric-decimal request is verified by direct production-code inspection while
+sanitization, masking, and emitted cents are automated. No blocker, major, or
+minor finding remains. The aggregate Android harness failures above remain an
+independent repository-infrastructure risk and are not caused by this feature.
+
+## Summary
+
+**Overall:** Ready — PASS. GRP-UI-03 and the latest photo, outline, gray-icon,
+numeric-value, progressive-flow, and invitation requirements are implemented
+and covered by feature and production-route tests.
