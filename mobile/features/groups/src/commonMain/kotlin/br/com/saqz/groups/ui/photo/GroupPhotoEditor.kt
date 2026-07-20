@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -311,4 +312,17 @@ private fun PhotoError(
         )
         else -> Unit
     }
+}
+
+@Preview
+@Composable
+private fun GroupPhotoEditorPreview() = SaqzTheme {
+    GroupPhotoEditor(
+        state = GroupPhotoState(),
+        groupName = "Saqz Runners",
+        canEdit = true,
+        optional = true,
+        deferUpload = true,
+        onIntent = {},
+    )
 }
