@@ -780,6 +780,10 @@ keys, cents, or timezone identifiers.
 - **B62 | 2026-07-20** — T51 repeated B54's integration-test annotation
   ambiguity because wildcard imports again included both JUnit and Kotlin
   `Test`. Covered by V22.
+- **B63 | 2026-07-20** — The first executing T51 PostgreSQL suite modeled a
+  one-seat game even though the accepted game capacity range is `2..100`, so
+  V4 rejected six fixtures before attendance ran. No new invariant added; V20
+  already requires exact bound-derived fixtures.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
