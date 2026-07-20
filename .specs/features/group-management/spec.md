@@ -874,6 +874,10 @@ keys, cents, or timezone identifiers.
 - **B89 | 2026-07-20** — T67's README privacy sensor required two clauses on a
   single physical line even though Markdown prose correctly wrapped the exact
   accepted statement across adjacent lines. Covered by V43.
+- **B90 | 2026-07-20** — The T67 script aggregate ran with no uncommitted mobile
+  patch, and the scope fixture piped that empty diff into `git apply`, which
+  fails even though a clean source tree is a valid fixture input. Covered by
+  V44.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -954,6 +958,9 @@ keys, cents, or timezone identifiers.
 - **V43** — README contract sensors SHALL verify stable required phrases without
   coupling a semantic assertion to Markdown line wrapping; separately required
   clauses SHALL be asserted independently when they may wrap.
+- **V44** — Script fixtures that optionally mirror a workspace diff SHALL apply
+  it only when the generated patch is non-empty; clean committed source state
+  SHALL remain a supported fixture input.
 
 ## Success criteria
 
