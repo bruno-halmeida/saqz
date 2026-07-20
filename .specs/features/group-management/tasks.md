@@ -1606,16 +1606,19 @@ matching MockEngine tests.
 
 **Done when:**
 
-- [ ] DTOs round-trip no-response/confirmed/declined/waitlisted and never permit
+- [x] DTOs round-trip no-response/confirmed/declined/waitlisted and never permit
   client-authored queue position/charge/aggregate count.
-- [ ] Self/override/capacity requests preserve command key/ETag through auth
+- [x] Self/override/capacity requests preserve command key/ETag through auth
   refresh and map full/deadline/frozen/stale/hidden outcomes distinctly.
-- [ ] Athlete DTO contains only allowed own response and aggregate counts.
-- [ ] Mobile quick gate passes; test count `Δ+12` or greater.
+- [x] Athlete DTO contains only allowed own response and aggregate counts.
+- [x] Mobile quick gate passes; test count `Δ+12` or greater.
 
 **Tests:** KMP gateway unit (`Δ+12`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): model attendance transport`
+**Status:** Complete; 16 KMP MockEngine cases and the mobile quick/safety gates
+passed across exact DTOs, full-as-waitlist success, stable auth-refresh replay,
+ETags, redaction, and distinct deadline/frozen/stale/hidden failures.
 
 ### T56: Integrate attendance into GameDetailViewModel
 
