@@ -582,6 +582,9 @@ keys, cents, or timezone identifiers.
 - **V12** — Native photo selection/encoding ports SHALL expose only project
   value types and Kotlin standard-library values; Ktor channel construction
   SHALL remain inside the Groups data/network adapter.
+- **B20 | 2026-07-19** — The first T28 Swift compile used Kotlin-style `in`
+  syntax for a byte-count range guard. No new invariant added; the iOS native
+  compile gate deterministically catches Swift syntax errors before tests run.
 
 ## Success criteria
 
