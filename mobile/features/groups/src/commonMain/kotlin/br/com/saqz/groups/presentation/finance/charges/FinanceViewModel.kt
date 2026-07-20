@@ -47,7 +47,7 @@ enum class FinanceError{UNAVAILABLE,DRAFT_UNAVAILABLE,VALIDATION,CONFLICT,HIDDEN
     val lastManualOutcome:String?=null,
 ){
     val organizer get()=role==GroupRoleDto.OWNER||role==GroupRoleDto.ADMIN
-    val manualTrackingNotice="Controle manual: nenhum pagamento é processado pelo app."
+    val manualTrackingNotice="Controle manual: o app apenas registra cobranças e seus status."
 }
 @Immutable data class ChargeTotalsState(val pendingCents:Long,val paidCents:Long,val waivedCents:Long,val cancelledCents:Long)
 

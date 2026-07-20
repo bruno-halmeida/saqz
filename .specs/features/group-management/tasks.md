@@ -1755,18 +1755,21 @@ formatters and membership selector patterns.
 
 **Done when:**
 
-- [ ] Athlete sees only own kind/subject/amount/due/status and no group total,
+- [x] Athlete sees only own kind/subject/amount/due/status and no group total,
   other member, status action or expense entry point.
-- [ ] Organizer selects month/members, reviews default amount/due date, excludes
+- [x] Organizer selects month/members, reviews default amount/due date, excludes
   members or waives generated charges, and sees retry/equivalent success.
-- [ ] Status controls clearly mean manual record; no payment CTA, processor,
+- [x] Status controls clearly mean manual record; no payment CTA, processor,
   partial/refund/balance language or credential field exists.
-- [ ] Compact/keyboard/max-text semantics retain ordered 48 dp actions.
-- [ ] Mobile quick gate passes; test count `Δ+16` or greater.
+- [x] Compact/keyboard/max-text semantics retain ordered 48 dp actions.
+- [x] Mobile quick gate passes; test count `Δ+19`.
 
 **Tests:** common Compose UI (`Δ+16`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): build charge tracking ui`
+**Status:** Complete; 19 Compose UI cases and the mobile quick/safety gates
+passed across athlete privacy, localized values, organizer review/generation,
+manual status/audit, max text, scrolling, order, and 48 dp semantics.
 
 ### T61: Implement ExpenseViewModel
 

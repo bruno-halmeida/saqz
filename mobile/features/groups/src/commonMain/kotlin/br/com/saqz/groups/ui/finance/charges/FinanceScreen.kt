@@ -1,0 +1,83 @@
+package br.com.saqz.groups.ui.finance.charges
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.component.*
+import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.data.finance.*
+import br.com.saqz.groups.presentation.finance.charges.*
+import br.com.saqz.groups.resources.*
+import org.jetbrains.compose.resources.stringResource
+
+object FinanceTags{const val Month="finance-month";const val Amount="finance-amount";const val DueDate="finance-due-date";const val Note="finance-note";const val Review="finance-review";const val Generate="finance-generate";const val Retry="finance-retry";const val Totals="finance-totals";fun member(id:String)="finance-member-$id";fun paid(id:String)="finance-paid-$id";fun waived(id:String)="finance-waived-$id";fun cancelled(id:String)="finance-cancelled-$id"}
+internal val FinanceMinimumTouchTargetKey=SemanticsPropertyKey<Boolean>("FinanceMinimumTouchTarget")
+internal val FinanceActionOrderKey=SemanticsPropertyKey<Int>("FinanceActionOrder")
+internal var SemanticsPropertyReceiver.financeMinimumTouchTarget by FinanceMinimumTouchTargetKey
+internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderKey
+
+@Composable fun FinanceScreen(state:FinanceState,onIntent:(FinanceIntent)->Unit){
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding)){
+        Text(stringResource(if(state.organizer)Res.string.finance_title_organizer else Res.string.finance_title_athlete),style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})
+        Text(state.manualTrackingNotice,color=SaqzTheme.colors.textSecondary)
+        if(state.isLoading)SaqzLoadingState() else {
+            if(state.organizer){state.totals?.let{Totals(it)};MonthlyPanel(state,onIntent)}
+            state.charges.forEach{ChargeCard(it,state.organizer,onIntent)}
+            state.lastManualOutcome?.let{Text(it,color=SaqzTheme.colors.textSecondary)}
+            state.error?.let{Text(stringResource(if(it==FinanceError.CONFLICT)Res.string.finance_conflict else Res.string.finance_error),color=SaqzTheme.colors.errorForeground)}
+            if(state.retryAvailable)SaqzButton(stringResource(Res.string.action_retry),{onIntent(FinanceIntent.Retry)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.Retry),SaqzButtonVariant.Secondary)
+        }
+    }
+}
+
+@Composable private fun Totals(value:ChargeTotalsState){SaqzCard(Modifier.fillMaxWidth().testTag(FinanceTags.Totals)){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(stringResource(Res.string.finance_totals),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()});Text(stringResource(Res.string.finance_pending,value.pendingCents.brl()),color=SaqzTheme.colors.textPrimary);Text(stringResource(Res.string.finance_paid,value.paidCents.brl()),color=SaqzTheme.colors.textSecondary);Text(stringResource(Res.string.finance_waived,value.waivedCents.brl()),color=SaqzTheme.colors.textSecondary);Text(stringResource(Res.string.finance_cancelled,value.cancelledCents.brl()),color=SaqzTheme.colors.textSecondary)}}}
+
+@Composable private fun MonthlyPanel(state:FinanceState,onIntent:(FinanceIntent)->Unit){
+    val initial=state.monthlyDraft
+    var month by remember(state.groupId){mutableStateOf(TextFieldValue(initial?.month.orEmpty()))}
+    var amount by remember(state.groupId){mutableStateOf(TextFieldValue(initial?.amountBrl.orEmpty()))}
+    var due by remember(state.groupId){mutableStateOf(TextFieldValue(initial?.dueDate.orEmpty()))}
+    var selected by remember(state.groupId){mutableStateOf(initial?.selectedMemberIds.orEmpty())}
+    fun update(){onIntent(FinanceIntent.UpdateMonthly(month.text,amount.text,due.text,selected))}
+    SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){
+        Text(stringResource(Res.string.finance_monthly_title),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})
+        SaqzInput(month,{month=it.copy(text=it.text.take(7));update()},stringResource(Res.string.finance_month),Modifier.testTag(FinanceTags.Month),errorText=state.fieldErrors["month"]?.firstOrNull())
+        SaqzInput(amount,{amount=it.copy(text=it.text.take(12));update()},stringResource(Res.string.finance_amount),Modifier.testTag(FinanceTags.Amount),helperText=stringResource(Res.string.finance_brl_helper),errorText=state.fieldErrors["amountBrl"]?.firstOrNull())
+        SaqzInput(due,{due=it.copy(text=it.text.take(10));update()},stringResource(Res.string.finance_due_date),Modifier.testTag(FinanceTags.DueDate),errorText=state.fieldErrors["dueDate"]?.firstOrNull())
+        Text(stringResource(Res.string.finance_members),color=SaqzTheme.colors.textPrimary)
+        state.members.forEach{member->val included=member.userId in selected;SaqzButton((if(included)"✓ " else "")+member.displayName,{selected=if(included)selected-member.userId else selected+member.userId;update()},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.member(member.userId)),SaqzButtonVariant.Secondary)}
+        SaqzButton(stringResource(Res.string.finance_review),{onIntent(FinanceIntent.ReviewMonthly)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.Review),enabled=!state.isMutating)
+        if(state.monthlyDraft?.reviewed==true){Text(stringResource(Res.string.finance_review_summary,state.monthlyDraft.month,state.monthlyDraft.amountBrl,state.monthlyDraft.dueDate,state.monthlyDraft.selectedMemberIds.size),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.finance_generate),{onIntent(FinanceIntent.GenerateMonthly)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.Generate),loading=state.isMutating)}
+    }}
+}
+
+@Composable private fun ChargeCard(charge:ChargeDto,organizer:Boolean,onIntent:(FinanceIntent)->Unit){
+    var note by remember(charge.id){mutableStateOf(TextFieldValue())}
+    SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){
+        Text(charge.subject(),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary)
+        if(organizer)Text(stringResource(Res.string.finance_member_value,charge.memberId),color=SaqzTheme.colors.textSecondary)
+        Text(stringResource(Res.string.finance_charge_amount,charge.amountCents.brl()),color=SaqzTheme.colors.textPrimary)
+        Text(stringResource(Res.string.finance_charge_due,charge.dueDate.localDate()),color=SaqzTheme.colors.textSecondary)
+        SaqzBadge(charge.status.label(),SaqzBadgeVariant.Neutral)
+        if(charge.reviewRequired)Text(stringResource(Res.string.finance_review_required),color=SaqzTheme.colors.textSecondary)
+        charge.events.lastOrNull()?.let{Text(stringResource(Res.string.finance_audit,it.newStatus.label(),it.occurredAt),color=SaqzTheme.colors.textSecondary)}
+        if(organizer&&charge.status==ChargeStatusDto.PENDING){SaqzInput(note,{note=it.copy(text=it.text.take(500))},stringResource(Res.string.finance_note),Modifier.testTag(FinanceTags.Note));SaqzButton(stringResource(Res.string.finance_record_paid),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.PAID,note.text))},Modifier.financeAction(1).testTag(FinanceTags.paid(charge.id)));SaqzButton(stringResource(Res.string.finance_record_waived),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.WAIVED,note.text))},Modifier.financeAction(2).testTag(FinanceTags.waived(charge.id)),SaqzButtonVariant.Secondary);SaqzButton(stringResource(Res.string.finance_record_cancelled),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.CANCELLED,note.text))},Modifier.financeAction(3).testTag(FinanceTags.cancelled(charge.id)),SaqzButtonVariant.Destructive)}
+    }}
+}
+
+@Composable private fun ChargeDto.subject()=when(kind){ChargeKindDto.GAME->stringResource(Res.string.finance_kind_game,gameId.orEmpty());ChargeKindDto.MONTHLY->stringResource(Res.string.finance_kind_month,month?.monthPtBr().orEmpty())}
+@Composable private fun ChargeStatusDto.label()=stringResource(when(this){ChargeStatusDto.PENDING->Res.string.finance_status_pending;ChargeStatusDto.PAID->Res.string.finance_status_paid;ChargeStatusDto.WAIVED->Res.string.finance_status_waived;ChargeStatusDto.CANCELLED->Res.string.finance_status_cancelled})
+private fun String.monthPtBr()=split('-').let{"${it[1]}/${it[0]}"}
+private fun String.localDate()=split('-').let{"${it[2]}/${it[1]}/${it[0]}"}
+private fun Long.brl()="R$ ${this/100},${(this%100).toString().padStart(2,'0')}"
+private fun Modifier.financeAction(order:Int)=fillMaxWidth().heightIn(min=48.dp).semantics{financeMinimumTouchTarget=true;financeActionOrder=order}
