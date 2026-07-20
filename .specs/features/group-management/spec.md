@@ -753,6 +753,10 @@ keys, cents, or timezone identifiers.
   JUnit's `Test` and Kotlin's `Test` through wildcards, making annotations
   ambiguous. No new invariant added; integration tests use explicit JUnit
   lifecycle annotations and explicit Kotlin assertion imports.
+- **B55 | 2026-07-20** — The first T46 controller-test compile constructed
+  `RequestIdentity` positionally with the wrong field order. No new invariant
+  added; authenticated HTTP fixtures use named identity arguments to remain
+  stable as optional principal metadata evolves.
 
 ## Success criteria
 
