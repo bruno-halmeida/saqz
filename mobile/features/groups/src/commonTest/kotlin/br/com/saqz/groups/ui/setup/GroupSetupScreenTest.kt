@@ -1,8 +1,14 @@
 package br.com.saqz.groups.ui.setup
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -12,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
@@ -78,6 +85,18 @@ class GroupSetupScreenTest {
         onNodeWithText("Descrição").assertExists()
         onNodeWithText("Cidade").assertExists()
         onNodeWithText("Nível").assertExists()
+    }
+
+    @Test fun `all game and finance defaults are discoverable without side effects`() = runComposeUiTest {
+        val intents = mutableListOf<GroupSetupIntent>()
+        setup(onIntent = intents::add)
+        onNodeWithText("Vagas para confirmação").assertExists()
+        onNodeWithText("Prazo para confirmar (minutos antes)").assertExists()
+        onNodeWithText("Valor por jogo").assertExists()
+        onNodeWithText("Mensalidade").assertExists()
+        onNodeWithTag(GroupSetupTags.AddVenue).assertExists()
+        onNodeWithTag(GroupSetupTags.AddSlot).assertExists()
+        assertEquals(emptyList(), intents)
     }
 
     @Test fun `detected timezone hides all timezone presentation`() = runComposeUiTest {
@@ -285,6 +304,32 @@ class GroupSetupScreenTest {
             }
         }
         onNodeWithTag(GroupSetupTags.Submit).performScrollTo().assertExists()
+    }
+
+    @Test fun `compact max text flow keeps every initial action reachable with touch targets`() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                Box(Modifier.size(320.dp, 420.dp)) {
+                    SaqzTheme { GroupSetupScreen(state()) {} }
+                }
+            }
+        }
+        listOf(
+            GroupPhotoTags.Camera,
+            GroupPhotoTags.Library,
+            GroupSetupTags.AddVenue,
+            GroupSetupTags.AddSlot,
+            GroupSetupTags.Submit,
+        ).forEach { tag ->
+            onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertHasClickAction()
+        }
+        listOf(
+            "Vôlei de quadra", "Vôlei de praia", "Futevôlei",
+            "Feminino", "Masculino", "Misto",
+            "Não definido", "Iniciante", "Intermediário", "Avançado", "Todos os níveis", "Personalizado",
+        ).forEach { label ->
+            onNodeWithText(label).performScrollTo().assertHeightIsAtLeast(48.dp).assertHasClickAction()
+        }
     }
 
     @Test fun `server permission error uses role-safe copy`() = runComposeUiTest {
