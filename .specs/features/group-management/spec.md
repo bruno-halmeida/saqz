@@ -537,6 +537,10 @@ keys, cents, or timezone identifiers.
 - **V8** — Repository scope checks SHALL inspect tracked plus non-ignored
   untracked candidate files, and mobile production/test source SHALL reject
   `domain`, `usecase`, or `application` path segments before staging or commit.
+- **B12 | 2026-07-19** — The first T22 compile passed nullable values from a
+  reusable optional choice control directly to required modality/composition
+  intents. No new invariant added; the existing Android/iOS KMP compilation
+  gate deterministically rejects the type mismatch before tests run.
 
 ## Success criteria
 
