@@ -95,7 +95,7 @@ class GroupSetupContractsTest {
         }
         override fun write(draft: GroupSetupDraft, done: (GroupDraftWriteResult) -> Unit) =
             done(GroupDraftWriteResult.Success)
-        override fun clear(key: GroupDraftKey, done: (GroupDraftWriteResult) -> Unit) =
+        override fun clear(key: GroupDraftKey, commandKey: String, done: (GroupDraftWriteResult) -> Unit) =
             done(GroupDraftWriteResult.Success)
     }
 }

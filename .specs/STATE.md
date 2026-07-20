@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 3 / T21 (GroupSetupViewModel state machine).
-- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `463dc86` mobile Groups module boundary, T09 `94ab9e8` complete mobile Groups ownership migration, T13 `85d841b` complete invitation/deep-link journey coverage, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, and T20 mobile group transport/timezone/safe-draft contracts. Backprops: `596f984`, `41317e7`, `1909915`. Required gates passed; T20 added 15 tests with zero skipped/failing. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:584` — implement the GroupSetupViewModel state machine.
-- **Next step**: Execute T21 with mobile quick and safety gates.
+- **Phase / Task**: Execute — Phase 3 / T22 (accessible group setup screen).
+- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `463dc86` mobile Groups module boundary, T09 `94ab9e8` complete mobile Groups ownership migration, T13 `85d841b` complete invitation/deep-link journey coverage, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, and T21 GroupSetupViewModel. Backprops: `596f984`, `41317e7`, `1909915`, `d5c8283`. T21 mobile quick and safety gates passed; its ViewModel suite added 20 tests with zero skipped/failing. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:601` — build the accessible group setup screen.
+- **Next step**: Execute T22 with Compose UI coverage, mobile quick, and safety gates.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main

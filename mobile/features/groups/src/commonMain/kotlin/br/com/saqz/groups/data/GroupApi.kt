@@ -158,6 +158,7 @@ interface GroupGateway {
 
 interface GroupProfileGateway {
     suspend fun createProfile(command: GroupCreateCommand): NetworkResult<GroupDto>
+    suspend fun readProfile(groupId: String): NetworkResult<VersionedGroupDto>
     suspend fun updateProfile(command: GroupUpdateCommand): NetworkResult<VersionedGroupDto>
 }
 
@@ -204,6 +205,8 @@ class GroupApi(
             ),
         )
 
+    override suspend fun readProfile(groupId: String): NetworkResult<VersionedGroupDto> = read(groupId)
+
     override suspend fun updateProfile(command: GroupUpdateCommand): NetworkResult<VersionedGroupDto> =
         network.execute(
             HttpMethod.Put,
@@ -230,8 +233,8 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
     return CompleteGroupRequestDto(
         requestId = requestId,
         name = form.name,
-        modality = form.modality.name,
-        composition = form.composition.name,
+        modality = requireNotNull(form.modality).name,
+        composition = requireNotNull(form.composition).name,
         description = form.description,
         city = form.city,
         level = form.level?.name,

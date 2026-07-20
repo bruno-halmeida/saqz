@@ -45,5 +45,5 @@ sealed interface GroupDraftWriteResult {
 interface GroupDraftStorePort {
     fun read(key: GroupDraftKey, done: (GroupDraftReadResult) -> Unit)
     fun write(draft: GroupSetupDraft, done: (GroupDraftWriteResult) -> Unit)
-    fun clear(key: GroupDraftKey, done: (GroupDraftWriteResult) -> Unit)
+    fun clear(key: GroupDraftKey, commandKey: String, done: (GroupDraftWriteResult) -> Unit)
 }

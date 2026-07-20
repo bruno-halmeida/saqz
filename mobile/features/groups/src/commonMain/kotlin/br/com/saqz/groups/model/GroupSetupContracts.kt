@@ -36,9 +36,9 @@ data class GroupRegularSlotForm(
 
 @Serializable
 data class GroupSetupForm(
-    val name: String,
-    val modality: GroupModality,
-    val composition: GroupComposition,
+    val name: String = "",
+    val modality: GroupModality? = null,
+    val composition: GroupComposition? = null,
     val description: String? = null,
     val city: String? = null,
     val level: GroupLevel? = null,

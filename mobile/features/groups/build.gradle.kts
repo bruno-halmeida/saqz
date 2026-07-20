@@ -33,6 +33,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.lifecycle.viewmodel.compose)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

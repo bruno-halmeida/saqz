@@ -586,13 +586,13 @@ patterns, group gateway and draft ports.
 
 **Done when:**
 
-- [ ] One immutable state exposes all sections, conditional visibility, local
+- [x] One immutable state exposes all sections, conditional visibility, local
   validation, loading/conflict/error/success and friendly timezone fallback.
-- [ ] Modality/preset intents immediately clear obsolete style/custom values.
-- [ ] Invalid submit makes no request; duplicate/restart retry uses one command
+- [x] Modality/preset intents immediately clear obsolete style/custom values.
+- [x] Invalid submit makes no request; duplicate/restart retry uses one command
   key; success selects and opens the returned group without creating a game.
-- [ ] Draft is cleared only for its confirmed successful command.
-- [ ] Mobile quick gate passes; test count `Δ+18` or greater.
+- [x] Draft is cleared only for its confirmed successful command.
+- [x] Mobile quick gate passes; test count `Δ+18` or greater.
 
 **Tests:** KMP ViewModel/state-machine unit (`Δ+18`).
 **Gate:** Mobile quick + Safety.
