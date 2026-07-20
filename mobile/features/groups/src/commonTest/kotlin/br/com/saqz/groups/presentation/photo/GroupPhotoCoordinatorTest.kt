@@ -38,7 +38,7 @@ class GroupPhotoCoordinatorTest {
 
         assertSame(fixture.selection, fixture.machine.state.value.selection)
         assertEquals(GroupPhotoStage.CROPPING, fixture.machine.state.value.stage)
-        assertEquals(GroupPhotoCrop(left = 0.25f, size = 0.5f), fixture.machine.state.value.crop)
+        assertEquals(GroupPhotoCrop(), fixture.machine.state.value.crop)
     }
 
     @Test fun `library selection uses provider neutral selection port`() = runTest {
@@ -85,9 +85,9 @@ class GroupPhotoCoordinatorTest {
 
     @Test fun `crop transform is shared immutable state`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(GroupPhotoIntent.ChangeCrop(GroupPhotoCrop(0.1f, 0.2f, 0.7f)))
+        fixture.machine.onIntent(GroupPhotoIntent.ChangeCrop(GroupPhotoCrop(0.1f, 0.2f, 2f)))
 
-        assertEquals(GroupPhotoCrop(0.1f, 0.2f, 0.7f), fixture.machine.state.value.crop)
+        assertEquals(GroupPhotoCrop(0.1f, 0.2f, 2f), fixture.machine.state.value.crop)
     }
 
     @Test fun `upload uses bound group id and current etag`() = runTest {

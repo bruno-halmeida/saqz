@@ -86,7 +86,7 @@ class GroupPhotoCoordinator(
                 is GroupPhotoSelectionResult.Selected -> {
                     mutableState.value.selection?.source?.let(selections::cleanup)
                     mutableState.update {
-                        it.copy(selection = result.value, crop = squareCrop(result.value), stage = GroupPhotoStage.CROPPING)
+                        it.copy(selection = result.value, crop = GroupPhotoCrop(), stage = GroupPhotoStage.CROPPING)
                     }
                 }
                 GroupPhotoSelectionResult.Cancelled -> mutableState.update { it.copy(stage = GroupPhotoStage.IDLE) }
@@ -182,11 +182,4 @@ class GroupPhotoCoordinator(
         mutableState.update { it.copy(error = GroupPhotoError.TARGET_UNAVAILABLE) }
     }
 
-    private fun squareCrop(selection: GroupPhotoSelection): GroupPhotoCrop = if (selection.width > selection.height) {
-        val size = selection.height.toFloat() / selection.width
-        GroupPhotoCrop(left = (1f - size) / 2f, size = size)
-    } else {
-        val size = selection.width.toFloat() / selection.height
-        GroupPhotoCrop(top = (1f - size) / 2f, size = size)
-    }
 }

@@ -11,9 +11,10 @@ class GroupPhotoPortsTest {
         assertFailsWith<IllegalArgumentException> { GroupPhotoPreviewHandle("") }
     }
 
-    @Test fun `crop rejects coordinates outside normalized square`() {
-        assertFailsWith<IllegalArgumentException> { GroupPhotoCrop(left = 0.5f, size = 0.6f) }
-        assertFailsWith<IllegalArgumentException> { GroupPhotoCrop(top = -0.1f) }
+    @Test fun `crop rejects centers and zoom outside shared bounds`() {
+        assertFailsWith<IllegalArgumentException> { GroupPhotoCrop(centerX = 1.1f) }
+        assertFailsWith<IllegalArgumentException> { GroupPhotoCrop(centerY = -0.1f) }
+        assertFailsWith<IllegalArgumentException> { GroupPhotoCrop(zoom = 0.9f) }
     }
 
     @Test fun `encoded payload accepts only bounded nonempty content`() {

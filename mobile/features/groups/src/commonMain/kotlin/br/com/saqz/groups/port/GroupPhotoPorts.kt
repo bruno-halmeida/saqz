@@ -28,13 +28,13 @@ data class GroupPhotoSelection(
 }
 
 data class GroupPhotoCrop(
-    val left: Float = 0f,
-    val top: Float = 0f,
-    val size: Float = 1f,
+    val centerX: Float = 0.5f,
+    val centerY: Float = 0.5f,
+    val zoom: Float = 1f,
 ) {
     init {
-        require(left in 0f..1f && top in 0f..1f && size > 0f && size <= 1f)
-        require(left + size <= 1.0001f && top + size <= 1.0001f)
+        require(centerX in 0f..1f && centerY in 0f..1f)
+        require(zoom in 1f..8f)
     }
 }
 
