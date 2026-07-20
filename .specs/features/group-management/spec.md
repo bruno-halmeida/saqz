@@ -684,6 +684,9 @@ keys, cents, or timezone identifiers.
   loading state, and `runTest` reported the leaked coroutine. No new invariant
   added; coroutine test completion already detects unfinished asynchronous
   work.
+- **B40 | 2026-07-19** — The first T39 compile passed a message argument to the
+  fixed shared `SaqzLoadingState` API. No new invariant added; Android and iOS
+  common compilation already detect design-system signature drift.
 
 ## Success criteria
 
