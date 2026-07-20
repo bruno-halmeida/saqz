@@ -745,8 +745,10 @@ private fun FeeEditor(cents: Long?, label: StringResource, enabled: Boolean, err
 private fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, error: String?, onChange: (Long?) -> Unit) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(if (cents == 0L) "" else formatBrlInput(cents))) }
     val external = if (cents == 0L) "" else formatBrlInput(cents)
-    LaunchedEffect(external) {
-        if (fieldValue.text != external) fieldValue = TextFieldValue(external, TextRange(external.length))
+    LaunchedEffect(cents) {
+        if ((parseBrlCents(fieldValue.text) ?: 0L) != cents) {
+            fieldValue = TextFieldValue(external, TextRange(external.length))
+        }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(label), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
@@ -754,7 +756,14 @@ private fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, err
             value = fieldValue,
             onValueChange = {
                 val sanitized = sanitizeBrlInput(it.text)
-                fieldValue = TextFieldValue(sanitized, TextRange(sanitized.length))
+                fieldValue = it.copy(
+                    text = sanitized,
+                    selection = TextRange(
+                        it.selection.start.coerceAtMost(sanitized.length),
+                        it.selection.end.coerceAtMost(sanitized.length),
+                    ),
+                    composition = null,
+                )
                 onChange(parseBrlCents(sanitized) ?: 0)
             },
             label = stringResource(label),

@@ -263,6 +263,50 @@ class GroupSetupScreenTest {
         assertEquals(1234L, assertIs<GroupSetupIntent.UpdateMonthlyFee>(intent).cents)
     }
 
+    @Test fun `controlled money input preserves incremental keyboard order`() = runComposeUiTest {
+        var observed = 0L
+        setContent {
+            var form by remember {
+                mutableStateOf(requiredForm().copy(monthlyFeeCents = 0, monthlyDueDay = 10))
+            }
+            SaqzTheme {
+                GroupSetupScreen(
+                    state = state(form = form),
+                    photoState = GroupPhotoState(),
+                    onPhotoIntent = {},
+                    onIntent = { intent ->
+                        if (intent is GroupSetupIntent.UpdateMonthlyFee) {
+                            observed = intent.cents ?: 0
+                            form = form.copy(monthlyFeeCents = intent.cents, monthlyDueDay = intent.dueDay)
+                        }
+                    },
+                )
+            }
+        }
+        val input = onNodeWithContentDescription("Valor da mensalidade", useUnmergedTree = true).performScrollTo()
+        listOf("1", "2", "3").forEach { input.performTextInput(it); waitForIdle() }
+        input.assertTextEquals("123")
+        assertEquals(12300L, observed)
+    }
+
+    @Test fun `money input applies genuine external value changes`() = runComposeUiTest {
+        var form by mutableStateOf(requiredForm().copy(monthlyFeeCents = 100, monthlyDueDay = 10))
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(
+                    state = state(form = form),
+                    photoState = GroupPhotoState(),
+                    onPhotoIntent = {},
+                    onIntent = {},
+                )
+            }
+        }
+        val input = onNodeWithContentDescription("Valor da mensalidade", useUnmergedTree = true).performScrollTo()
+        input.assertTextEquals("1,00")
+        runOnIdle { form = form.copy(monthlyFeeCents = 2500) }
+        input.assertTextEquals("25,00")
+    }
+
     @Test fun `detected timezone stays hidden and fallback uses friendly regions`() = runComposeUiTest {
         setup()
         onNodeWithTag(GroupSetupTags.TimeZone).assertDoesNotExist()
