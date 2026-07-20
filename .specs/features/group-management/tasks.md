@@ -1447,19 +1447,22 @@ application command ports and tests.
 
 **Done when:**
 
-- [ ] Athlete can confirm/decline/withdraw only on published game before
+- [x] Athlete can confirm/decline/withdraw only on published game before
   deadline; cancelled/completed closes self-service.
-- [ ] Confirmation decision is CONFIRMED below capacity and WAITLISTED at/over
+- [x] Confirmation decision is CONFIRMED below capacity and WAITLISTED at/over
   capacity; capacity decrease never demotes.
-- [ ] Organizer override accepts valid published attendance after deadline with
+- [x] Organizer override accepts valid published attendance after deadline with
   mandatory audit source/reason, but cannot mutate frozen cancelled/completed
   history except where spec explicitly permits finance correction.
-- [ ] Every old/new/no-response combination has an exact allowed/denied outcome.
-- [ ] Backend quick gate passes; test count `Δ+22` or greater.
+- [x] Every old/new/no-response combination has an exact allowed/denied outcome.
+- [x] Backend quick gate passes; test count `Δ+22` or greater.
 
 **Tests:** domain/application unit (`Δ+22`).
 **Gate:** Backend quick + Safety.
 **Commit:** `feat(groups): model attendance transitions`
+**Status:** Complete; 32 focused transition cases and the backend quick/safety
+gates passed across lifecycle, deadline, capacity, retry, charge, queue, and
+audited organizer-reason decisions.
 
 ### T51: Implement concurrency-safe confirmation and waitlisting
 
