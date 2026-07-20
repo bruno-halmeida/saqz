@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
@@ -28,6 +29,7 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.resources.*
+import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 
 object GroupPhotoTags {
@@ -90,24 +92,33 @@ fun GroupPhotoEditor(
             if (visiblePreview == null) Res.string.group_photo_fallback_description
             else Res.string.group_photo_preview_description,
         )
-        Box(
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f)
-                .background(SaqzTheme.colors.disabledSurface, RoundedCornerShape(SaqzTheme.metrics.cardRadius))
-                .semantics { contentDescription = previewDescription }
-                .testTag(GroupPhotoTags.Preview),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (visiblePreview == null || preview == null) {
-                PhotoFallback(groupName, Modifier.fillMaxWidth())
-            } else {
-                preview(visiblePreview, Modifier.fillMaxWidth().aspectRatio(1f))
-            }
-            if (busy) {
-                CircularProgressIndicator(
-                    color = SaqzTheme.colors.primary,
-                    modifier = Modifier.testTag(GroupPhotoTags.Progress),
+        if (selectedPreview == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+                verticalAlignment = Alignment.Top,
+            ) {
+                PhotoPreview(
+                    visiblePreview = visiblePreview,
+                    preview = preview,
+                    groupName = groupName,
+                    busy = busy,
+                    description = previewDescription,
+                    modifier = Modifier.size(104.dp),
                 )
+                if (canEdit) {
+                    Box(Modifier.weight(1f)) { PhotoSourceActions(enabled = !busy, onIntent) }
+                }
             }
+        } else {
+            PhotoPreview(
+                visiblePreview = visiblePreview,
+                preview = preview,
+                groupName = groupName,
+                busy = busy,
+                description = previewDescription,
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            )
         }
 
         PhotoError(state.error, state, onIntent, onReloadTarget)
@@ -134,9 +145,7 @@ fun GroupPhotoEditor(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Cancel),
             )
-        } else {
-            PhotoSourceActions(enabled = !busy, onIntent)
-            if (state.existing != null) {
+        } else if (state.existing != null) {
                 SaqzButton(
                     stringResource(Res.string.group_photo_remove),
                     { onIntent(GroupPhotoIntent.Remove) },
@@ -145,7 +154,36 @@ fun GroupPhotoEditor(
                     loading = state.stage == GroupPhotoStage.REMOVING,
                     modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Remove),
                 )
-            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoPreview(
+    visiblePreview: GroupPhotoPreviewHandle?,
+    preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Unit)?,
+    groupName: String,
+    busy: Boolean,
+    description: String,
+    modifier: Modifier,
+) {
+    Box(
+        modifier = modifier
+            .background(SaqzTheme.colors.disabledSurface, RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+            .semantics { contentDescription = description }
+            .testTag(GroupPhotoTags.Preview),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (visiblePreview == null || preview == null) {
+            PhotoFallback(groupName, Modifier.fillMaxWidth())
+        } else {
+            preview(visiblePreview, Modifier.fillMaxWidth().aspectRatio(1f))
+        }
+        if (busy) {
+            CircularProgressIndicator(
+                color = SaqzTheme.colors.primary,
+                modifier = Modifier.testTag(GroupPhotoTags.Progress),
+            )
         }
     }
 }

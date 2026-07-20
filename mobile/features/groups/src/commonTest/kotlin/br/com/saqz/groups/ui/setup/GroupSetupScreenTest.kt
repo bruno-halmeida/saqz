@@ -36,6 +36,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class GroupSetupScreenTest {
@@ -51,6 +52,25 @@ class GroupSetupScreenTest {
         onNodeWithText("Nome do grupo").assertExists()
         onNodeWithText("Modalidade").assertExists()
         onNodeWithText("Composição").assertExists()
+    }
+
+    @Test fun `profile choices use compact three column rows`() = runComposeUiTest {
+        setup()
+        val court = onNodeWithText("Vôlei de quadra").fetchSemanticsNode().boundsInRoot
+        val beach = onNodeWithText("Vôlei de praia").fetchSemanticsNode().boundsInRoot
+        val footvolley = onNodeWithText("Futevôlei").fetchSemanticsNode().boundsInRoot
+        assertTrue(kotlin.math.abs(court.top - beach.top) < 1f)
+        assertTrue(kotlin.math.abs(beach.top - footvolley.top) < 1f)
+        assertTrue(court.left < beach.left && beach.left < footvolley.left)
+    }
+
+    @Test fun `idle photo actions sit beside the compact preview`() = runComposeUiTest {
+        setup()
+        val preview = onNodeWithTag(GroupPhotoTags.Preview).fetchSemanticsNode().boundsInRoot
+        val camera = onNodeWithTag(GroupPhotoTags.Camera).fetchSemanticsNode().boundsInRoot
+        val library = onNodeWithTag(GroupPhotoTags.Library).fetchSemanticsNode().boundsInRoot
+        assertTrue(preview.right < camera.left)
+        assertTrue(kotlin.math.abs(camera.top - library.top) < 1f)
     }
 
     @Test fun `optional profile fields are discoverable`() = runComposeUiTest {
@@ -112,6 +132,15 @@ class GroupSetupScreenTest {
         setup(onIntent = { intent = it })
         onNodeWithTag(GroupSetupTags.AddVenue).performScrollTo().performClick()
         assertEquals(GroupSetupIntent.UpdateVenue(GroupVenueForm(name = "", address = "")), intent)
+    }
+
+    @Test fun `game default add actions share one compact row`() = runComposeUiTest {
+        setup()
+        onNodeWithTag(GroupSetupTags.AddVenue).performScrollTo()
+        val venue = onNodeWithTag(GroupSetupTags.AddVenue).fetchSemanticsNode().boundsInRoot
+        val slot = onNodeWithTag(GroupSetupTags.AddSlot).fetchSemanticsNode().boundsInRoot
+        assertTrue(kotlin.math.abs(venue.top - slot.top) < 1f)
+        assertTrue(venue.left < slot.left)
     }
 
     @Test fun `enabled venue exposes name address and court`() = runComposeUiTest {

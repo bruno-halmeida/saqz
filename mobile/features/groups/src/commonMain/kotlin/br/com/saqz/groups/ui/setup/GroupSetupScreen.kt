@@ -2,6 +2,8 @@ package br.com.saqz.groups.ui.setup
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -67,9 +69,9 @@ fun GroupSetupScreen(
     val form = state.form
     Column(
         Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
-            .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.sectionVerticalPadding)
+            .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.grid)
             .testTag(GroupSetupTags.Screen),
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) {
         Text(
             stringResource(if (state.mode == GroupSetupMode.CREATE) Res.string.group_setup_create_title else Res.string.group_setup_edit_title),
@@ -156,8 +158,17 @@ fun GroupSetupScreen(
 
         SetupSection(Res.string.group_setup_game_defaults_section, GroupSetupTags.GameDefaults) {
             Text(stringResource(Res.string.group_setup_optional_hint), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textMuted)
-            VenueEditor(form.defaultVenue, editable, state, onIntent)
-            SlotEditors(form.regularSlots, editable, state, onIntent)
+            if (editable && form.defaultVenue == null && form.regularSlots.isEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+                ) {
+                    AddVenueButton(onIntent, Modifier.weight(1f))
+                    AddSlotButton(form.regularSlots, onIntent, Modifier.weight(1f))
+                }
+            }
+            VenueEditor(form.defaultVenue, editable, state, onIntent, showAddAction = form.regularSlots.isNotEmpty())
+            SlotEditors(form.regularSlots, editable, state, onIntent, showAddAction = form.defaultVenue != null)
             SetupInput(form.defaultCapacity?.toString().orEmpty(), Res.string.group_setup_capacity, editable, error(state, "defaultCapacity")) {
                 onIntent(GroupSetupIntent.UpdateDefaultCapacity(it.toNullableInt()))
             }
@@ -254,6 +265,7 @@ private fun SetupInput(
     helperText = helper?.let { stringResource(it) },
     errorText = error,
     enabled = enabled,
+    inlineLabel = value.isEmpty(),
 )
 
 @Composable
@@ -269,23 +281,27 @@ private fun <T> ChoiceField(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         Text(stringResource(label), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
-        if (optional) {
-            SaqzButton(
-                stringResource(Res.string.group_setup_not_defined),
-                { onSelect(null) },
-                variant = if (selected == null) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        val options = buildList<Pair<T?, String>> {
+            if (optional) add(null to stringResource(Res.string.group_setup_not_defined))
+            values.forEach { value -> add(value to labelFor(value)) }
         }
-        values.forEach { value ->
-            SaqzButton(
-                labelFor(value),
-                { onSelect(value) },
-                variant = if (selected == value) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
-                enabled = enabled,
+        options.chunked(3).forEach { rowOptions ->
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+            ) {
+                rowOptions.forEach { (value, text) ->
+                    SaqzButton(
+                        text,
+                        { onSelect(value) },
+                        variant = if (selected == value) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
+                        enabled = enabled,
+                        labelStyle = SaqzTheme.typography.caption,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                repeat(3 - rowOptions.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
         errorText?.let { Text(it, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground) }
     }
@@ -297,14 +313,10 @@ private fun VenueEditor(
     editable: Boolean,
     state: GroupSetupState,
     onIntent: (GroupSetupIntent) -> Unit,
+    showAddAction: Boolean,
 ) {
     if (venue == null) {
-        if (editable) SaqzButton(
-            stringResource(Res.string.group_setup_add_venue),
-            { onIntent(GroupSetupIntent.UpdateVenue(GroupVenueForm(name = "", address = ""))) },
-            variant = SaqzButtonVariant.Secondary,
-            modifier = Modifier.fillMaxWidth().testTag(GroupSetupTags.AddVenue),
-        )
+        if (editable && showAddAction) AddVenueButton(onIntent, Modifier.fillMaxWidth())
         return
     }
     Text(stringResource(Res.string.group_setup_venue), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
@@ -331,6 +343,7 @@ private fun SlotEditors(
     editable: Boolean,
     state: GroupSetupState,
     onIntent: (GroupSetupIntent) -> Unit,
+    showAddAction: Boolean,
 ) {
     slots.forEachIndexed { index, slot ->
         Text(stringResource(Res.string.group_setup_slot_number, index + 1), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
@@ -355,19 +368,36 @@ private fun SlotEditors(
             modifier = Modifier.fillMaxWidth(),
         )
     }
-    if (editable) SaqzButton(
-        stringResource(Res.string.group_setup_add_slot),
-        {
-            onIntent(
-                GroupSetupIntent.UpdateSlots(
-                    slots + GroupRegularSlotForm(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 60),
-                ),
-            )
-        },
-        variant = SaqzButtonVariant.Secondary,
-        modifier = Modifier.fillMaxWidth().testTag(GroupSetupTags.AddSlot),
-    )
+    if (editable && (showAddAction || slots.isNotEmpty())) AddSlotButton(slots, onIntent, Modifier.fillMaxWidth())
 }
+
+@Composable
+private fun AddVenueButton(onIntent: (GroupSetupIntent) -> Unit, modifier: Modifier) = SaqzButton(
+    stringResource(Res.string.group_setup_add_venue),
+    { onIntent(GroupSetupIntent.UpdateVenue(GroupVenueForm(name = "", address = ""))) },
+    variant = SaqzButtonVariant.Secondary,
+    labelStyle = SaqzTheme.typography.caption,
+    modifier = modifier.testTag(GroupSetupTags.AddVenue),
+)
+
+@Composable
+private fun AddSlotButton(
+    slots: List<GroupRegularSlotForm>,
+    onIntent: (GroupSetupIntent) -> Unit,
+    modifier: Modifier,
+) = SaqzButton(
+    stringResource(Res.string.group_setup_add_slot),
+    {
+        onIntent(
+            GroupSetupIntent.UpdateSlots(
+                slots + GroupRegularSlotForm(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 60),
+            ),
+        )
+    },
+    variant = SaqzButtonVariant.Secondary,
+    labelStyle = SaqzTheme.typography.caption,
+    modifier = modifier.testTag(GroupSetupTags.AddSlot),
+)
 
 @Composable
 private fun FriendlyTimeZoneSelector(
