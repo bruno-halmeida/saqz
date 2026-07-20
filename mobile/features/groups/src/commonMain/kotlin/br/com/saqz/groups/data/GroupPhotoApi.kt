@@ -37,7 +37,7 @@ sealed interface GroupPhotoReadResult {
 interface GroupPhotoGateway {
     suspend fun upload(command: GroupPhotoUploadCommand): NetworkResult<GroupPhotoReceipt>
     suspend fun read(groupId: String, etag: String? = null): NetworkResult<GroupPhotoReadResult>
-    suspend fun remove(groupId: String, groupEtag: String): NetworkResult<Unit>
+    suspend fun remove(groupId: String, groupEtag: String): NetworkResult<GroupPhotoReceipt>
 }
 
 class GroupPhotoApi(private val network: AuthenticatedNetworkClient) : GroupPhotoGateway {
@@ -78,12 +78,17 @@ class GroupPhotoApi(private val network: AuthenticatedNetworkClient) : GroupPhot
         }
     }
 
-    override suspend fun remove(groupId: String, groupEtag: String): NetworkResult<Unit> =
-        network.executeNoContent(
+    override suspend fun remove(groupId: String, groupEtag: String): NetworkResult<GroupPhotoReceipt> =
+        when (val result = network.executeNoContent(
             HttpMethod.Delete,
             route(groupId),
             NetworkRequest(headers = mapOf(HttpHeaders.IfMatch to groupEtag)),
-        )
+        )) {
+            is NetworkResult.Failure -> result
+            is NetworkResult.Success -> result.metadata.header(HttpHeaders.ETag)?.let {
+                NetworkResult.Success(GroupPhotoReceipt(it), result.metadata)
+            } ?: NetworkResult.Failure(NetworkError.InvalidResponse)
+        }
 
     private fun route(groupId: String) = "api/groups/$groupId/photo"
 }

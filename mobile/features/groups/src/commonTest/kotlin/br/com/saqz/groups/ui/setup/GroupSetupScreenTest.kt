@@ -25,6 +25,13 @@ import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.presentation.photo.GroupPhotoState
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.port.GroupPhotoSelection
+import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.presentation.photo.GroupPhotoStage
+import br.com.saqz.groups.ui.photo.GroupPhotoTags
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -203,6 +210,38 @@ class GroupSetupScreenTest {
         assertEquals(GroupSetupIntent.RetryPhotoUpload, intent)
     }
 
+    @Test fun `registration photo is visibly optional and skippable`() = runComposeUiTest {
+        setup()
+        onNodeWithText("Opcional. Você pode continuar sem foto e alterar depois.").assertExists()
+        onNodeWithTag(GroupSetupTags.Submit).performScrollTo().assertExists()
+    }
+
+    @Test fun `prepared registration photo marks pending without uploading`() = runComposeUiTest {
+        var setupIntent: GroupSetupIntent? = null
+        val photoIntents = mutableListOf<GroupPhotoIntent>()
+        setup(
+            state = state(),
+            onIntent = { setupIntent = it },
+            photoState = GroupPhotoState(
+                selection = GroupPhotoSelection(
+                    GroupPhotoSourceHandle("source"), GroupPhotoPreviewHandle("preview"), 200, 100,
+                ),
+                stage = GroupPhotoStage.CROPPING,
+            ),
+            onPhotoIntent = photoIntents::add,
+        )
+        onNodeWithTag(GroupPhotoTags.Confirm).performScrollTo().performClick()
+        assertEquals(GroupSetupIntent.SetPhotoPending(true), setupIntent)
+        assertEquals(emptyList<GroupPhotoIntent>(), photoIntents)
+    }
+
+    @Test fun `athlete profile shows fallback without photo edit actions`() = runComposeUiTest {
+        setup(access = GroupSetupAccess.ATHLETE)
+        onNodeWithTag(GroupPhotoTags.Preview).assertExists()
+        onNodeWithTag(GroupPhotoTags.Camera).assertDoesNotExist()
+        onNodeWithTag(GroupPhotoTags.Library).assertDoesNotExist()
+    }
+
     @Test fun `loading keeps submit reachable but disabled`() = runComposeUiTest {
         setup(state(isLoading = true))
         onNodeWithTag(GroupSetupTags.Submit).performScrollTo().assertIsNotEnabled()
@@ -212,7 +251,7 @@ class GroupSetupScreenTest {
         setContent {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                    GroupSetupScreen(state(), {})
+                    GroupSetupScreen(state()) {}
                 }
             }
         }
@@ -251,8 +290,20 @@ class GroupSetupScreenTest {
     private fun androidx.compose.ui.test.ComposeUiTest.setup(
         state: GroupSetupState = state(),
         access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
+        photoState: GroupPhotoState = GroupPhotoState(),
+        onPhotoIntent: (GroupPhotoIntent) -> Unit = {},
         onIntent: (GroupSetupIntent) -> Unit = {},
-    ) = setContent { SaqzTheme { GroupSetupScreen(state, onIntent, access) } }
+    ) = setContent {
+        SaqzTheme {
+            GroupSetupScreen(
+                state = state,
+                onIntent = onIntent,
+                access = access,
+                photoState = photoState,
+                onPhotoIntent = onPhotoIntent,
+            )
+        }
+    }
 
     private companion object {
         val slot = GroupRegularSlotForm(weekday = GroupWeekday.WEDNESDAY, startTime = "19:30", durationMinutes = 90)

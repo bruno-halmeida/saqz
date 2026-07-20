@@ -33,7 +33,11 @@ import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.presentation.photo.GroupPhotoState
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.resources.*
+import br.com.saqz.groups.ui.photo.GroupPhotoEditor
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -53,8 +57,11 @@ internal object GroupSetupTags {
 @Composable
 fun GroupSetupScreen(
     state: GroupSetupState,
-    onIntent: (GroupSetupIntent) -> Unit,
     access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
+    photoState: GroupPhotoState = GroupPhotoState(),
+    onPhotoIntent: (GroupPhotoIntent) -> Unit = {},
+    photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Unit)? = null,
+    onIntent: (GroupSetupIntent) -> Unit,
 ) {
     val editable = access == GroupSetupAccess.ORGANIZER && state.successGroupId == null
     val form = state.form
@@ -74,6 +81,17 @@ fun GroupSetupScreen(
             Notice(stringResource(Res.string.group_setup_incomplete))
         }
         SetupSection(Res.string.group_setup_profile_section, GroupSetupTags.Profile) {
+            GroupPhotoEditor(
+                state = photoState,
+                groupName = form.name,
+                canEdit = access == GroupSetupAccess.ORGANIZER,
+                optional = state.mode == GroupSetupMode.CREATE,
+                deferUpload = state.mode == GroupSetupMode.CREATE && state.successGroupId == null,
+                onIntent = onPhotoIntent,
+                onPrepared = { onIntent(GroupSetupIntent.SetPhotoPending(it)) },
+                onReloadTarget = { onIntent(GroupSetupIntent.ReloadConflict) },
+                preview = photoPreview,
+            )
             SetupInput(form.name, Res.string.group_setup_name, editable, error(state, "name")) {
                 onIntent(GroupSetupIntent.UpdateName(it))
             }
@@ -469,7 +487,7 @@ private fun <T> List<T>.replace(index: Int, value: T): List<T> = mapIndexed { cu
 @Composable
 private fun GroupSetupScreenPreview() = SaqzTheme {
     GroupSetupScreen(
-        GroupSetupState(GroupSetupMode.CREATE, GroupSetupForm(), "preview"),
-        {},
+        state = GroupSetupState(GroupSetupMode.CREATE, GroupSetupForm(), "preview"),
+        onIntent = {},
     )
 }

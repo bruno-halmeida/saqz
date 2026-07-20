@@ -110,4 +110,26 @@
     <string name="group_setup_not_found">Este grupo não está disponível.</string>
     <string name="group_setup_forbidden">Você não tem permissão para editar este grupo.</string>
     <string name="group_setup_draft_unavailable">Não foi possível salvar o rascunho neste dispositivo.</string>
+    <string name="group_photo_title">Foto do grupo</string>
+    <string name="group_photo_optional">Opcional. Você pode continuar sem foto e alterar depois.</string>
+    <string name="group_photo_camera">Câmera</string>
+    <string name="group_photo_library">Galeria</string>
+    <string name="group_photo_crop">Ajuste o enquadramento quadrado</string>
+    <string name="group_photo_left">Esquerda</string>
+    <string name="group_photo_right">Direita</string>
+    <string name="group_photo_up">Cima</string>
+    <string name="group_photo_down">Baixo</string>
+    <string name="group_photo_zoom_out">Diminuir</string>
+    <string name="group_photo_zoom_in">Ampliar</string>
+    <string name="group_photo_use">Usar esta foto</string>
+    <string name="group_photo_upload">Salvar foto</string>
+    <string name="group_photo_remove">Remover foto</string>
+    <string name="group_photo_preview_description">Prévia quadrada da foto do grupo</string>
+    <string name="group_photo_fallback_description">Foto padrão do grupo</string>
+    <string name="group_photo_selection_failed">Não foi possível abrir esta foto. Escolha outra.</string>
+    <string name="group_photo_invalid">Esta foto não pôde ser processada. Ajuste ou escolha outra.</string>
+    <string name="group_photo_upload_failed">A foto não foi enviada. Sua seleção foi mantida.</string>
+    <string name="group_photo_remove_failed">A foto não foi removida. A foto atual foi mantida.</string>
+    <string name="group_photo_stale">O grupo mudou em outro dispositivo. Recarregue antes de salvar a foto.</string>
+    <string name="group_photo_target_unavailable">Salve o grupo antes de enviar a foto.</string>
 </resources>

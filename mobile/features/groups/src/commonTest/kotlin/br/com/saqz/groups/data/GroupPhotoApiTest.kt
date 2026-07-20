@@ -38,7 +38,7 @@ class GroupPhotoApiTest {
         api.upload(upload())
     }
 
-    @Test fun `upload returns exact private photo etag`() = runTest {
+    @Test fun `upload returns the updated group etag`() = runTest {
         val result = fixture { noContent(HttpStatusCode.OK, PHOTO_ETAG) }.upload(upload())
 
         assertEquals(PHOTO_ETAG, assertIs<NetworkResult.Success<GroupPhotoReceipt>>(result).value.etag)
@@ -84,10 +84,16 @@ class GroupPhotoApiTest {
             assertEquals("DELETE", request.method.value)
             assertEquals("/api/groups/$GROUP_ID/photo", request.url.encodedPath)
             assertEquals(GROUP_ETAG, request.headers[HttpHeaders.IfMatch])
-            respond("", HttpStatusCode.NoContent)
+            noContent(HttpStatusCode.NoContent, NEXT_GROUP_ETAG)
         }.remove(GROUP_ID, GROUP_ETAG)
 
-        assertIs<NetworkResult.Success<Unit>>(result)
+        assertEquals(NEXT_GROUP_ETAG, assertIs<NetworkResult.Success<GroupPhotoReceipt>>(result).value.etag)
+    }
+
+    @Test fun `remove without updated group etag is invalid`() = runTest {
+        val result = fixture { respond("", HttpStatusCode.NoContent) }.remove(GROUP_ID, GROUP_ETAG)
+
+        assertEquals(NetworkError.InvalidResponse, assertIs<NetworkResult.Failure>(result).error)
     }
 
     private fun upload() = GroupPhotoUploadCommand(
@@ -120,6 +126,7 @@ class GroupPhotoApiTest {
     private companion object {
         const val GROUP_ID = "018f4f4d-6634-7be1-a018-abcdef012345"
         const val GROUP_ETAG = "\"7\""
+        const val NEXT_GROUP_ETAG = "\"8\""
         const val PHOTO_ETAG = "\"photo-2\""
     }
 }

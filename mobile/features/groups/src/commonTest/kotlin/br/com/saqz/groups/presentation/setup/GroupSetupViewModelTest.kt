@@ -219,11 +219,12 @@ class GroupSetupViewModelTest {
         fixture.viewModel.effects.first()
         fixture.viewModel.effects.first()
 
-        assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID), fixture.viewModel.effects.first())
+        assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID, "\"1\""), fixture.viewModel.effects.first())
+        assertEquals("\"1\"", fixture.viewModel.state.value.etag)
         fixture.viewModel.onIntent(GroupSetupIntent.PhotoUploadFailed)
         assertTrue(fixture.viewModel.state.value.photoRetryAvailable)
         fixture.viewModel.onIntent(GroupSetupIntent.RetryPhotoUpload)
-        assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID), fixture.viewModel.effects.first())
+        assertEquals(GroupSetupEffect.UploadPhoto(GROUP_ID, "\"1\""), fixture.viewModel.effects.first())
         assertEquals(1, fixture.gateway.creates.size)
     }
 

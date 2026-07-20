@@ -828,14 +828,14 @@ role-aware group setup screen.
 
 **Done when:**
 
-- [ ] Optional registration photo is clearly skippable and uploads only after
+- [x] Optional registration photo is clearly skippable and uploads only after
   group success; failure never returns to/repeats group creation.
-- [ ] OWNER/ADMIN can choose/crop/replace/retry/remove; ATHLETE sees private
+- [x] OWNER/ADMIN can choose/crop/replace/retry/remove; ATHLETE sees private
   photo/fallback with no edit action.
-- [ ] Cancel/invalid/network/stale-version states keep prior media and provide
+- [x] Cancel/invalid/network/stale-version states keep prior media and provide
   accurate recoverable actions.
-- [ ] Compact/keyboard/max-text semantics retain ordered 48 dp actions.
-- [ ] Mobile quick gate passes; test count `Δ+14` or greater.
+- [x] Compact/keyboard/max-text semantics retain ordered 48 dp actions.
+- [x] Mobile quick gate passes; test count `Δ+27` with zero skipped/failing.
 
 **Tests:** common Compose UI (`Δ+14`).
 **Gate:** Mobile quick + Safety.

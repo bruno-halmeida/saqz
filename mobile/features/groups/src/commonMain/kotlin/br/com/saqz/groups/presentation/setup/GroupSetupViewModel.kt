@@ -97,7 +97,7 @@ sealed interface GroupSetupIntent {
 sealed interface GroupSetupEffect {
     data class SelectGroup(val groupId: String) : GroupSetupEffect
     data class OpenGroup(val groupId: String) : GroupSetupEffect
-    data class UploadPhoto(val groupId: String) : GroupSetupEffect
+    data class UploadPhoto(val groupId: String, val groupEtag: String) : GroupSetupEffect
 }
 
 fun interface GroupCommandKeyFactory { fun create(): String }
@@ -275,6 +275,7 @@ class GroupSetupViewModel(
 
     private fun confirmedSuccess(groupId: String, version: Long, etag: String?) {
         val commandKey = mutableState.value.commandKey
+        val confirmedEtag = etag ?: "\"$version\""
         drafts.clear(draftKey, commandKey) { result ->
             mutableState.update {
                 it.copy(
@@ -283,13 +284,15 @@ class GroupSetupViewModel(
                     successGroupId = groupId,
                     groupId = groupId,
                     groupVersion = version,
-                    etag = etag ?: it.etag,
+                    etag = confirmedEtag,
                     error = if (result is GroupDraftWriteResult.Failure) GroupSetupError.DRAFT_UNAVAILABLE else null,
                 )
             }
             if (existing == null) effectChannel.trySend(GroupSetupEffect.SelectGroup(groupId))
             effectChannel.trySend(GroupSetupEffect.OpenGroup(groupId))
-            if (mutableState.value.photoPending) effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId))
+            if (mutableState.value.photoPending) {
+                effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId, confirmedEtag))
+            }
         }
     }
 
@@ -319,8 +322,9 @@ class GroupSetupViewModel(
 
     private fun retryPhoto() {
         val groupId = mutableState.value.successGroupId ?: return
+        val groupEtag = mutableState.value.etag ?: return
         mutableState.update { it.copy(photoRetryAvailable = false) }
-        effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId))
+        effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId, groupEtag))
     }
 
     private fun fail(error: NetworkError) {

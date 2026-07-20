@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 4 / T29 (shared private-photo editor UI).
-- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, and T28 iOS private-photo adapters. T28 iOS native and safety gates passed; 15 new photo XCTest cases plus one lifecycle XCUITest passed and the complete Dev UI target ran 13 tests with zero failures. Backprop evidence: T28 compile failures `9f913bc`, `400080e`, and `1f273fc`. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:815` — add shared photo choose/crop/preview UI.
-- **Next step**: Execute T29 with shared editor UI, setup/profile integration, Compose UI tests, mobile quick, and safety gates.
+- **Phase / Task**: Execute — Phase 5 / T30 (games and series relational migration).
+- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, and T29 shared private-photo editor UI. T29 mobile quick and safety gates passed with 27 added tests covering registration deferral, role-aware controls, crop/accessibility semantics, recoverable failures, and versioned consecutive media mutations. Backprop evidence: T29 failures and fresh-eyes corrections are B23–B27 with invariants V13–V15. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:846` — add games and series migration.
+- **Next step**: Execute T30 with V4 series/game schema constraints, PostgreSQL integration coverage, backend quick, migration, and safety gates.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main

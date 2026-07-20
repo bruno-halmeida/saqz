@@ -18,6 +18,7 @@ import br.com.saqz.groups.port.GroupPhotoSelectionResult
 import br.com.saqz.groups.port.GroupPhotoSourceHandle
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
+import br.com.saqz.network.ApiProblem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -125,6 +126,21 @@ class GroupPhotoCoordinatorTest {
         assertTrue(fixture.machine.state.value.retryUpload)
     }
 
+    @Test fun `stale group version keeps selection but requires authoritative reload`() = runTest {
+        val fixture = fixture(this).existing().selected()
+        runCurrent()
+        fixture.gateway.uploadResult = NetworkResult.Failure(
+            NetworkError.ApiProblemError(ApiProblem(409, "VERSION_CONFLICT", "corr-409")),
+        )
+        fixture.machine.onIntent(GroupPhotoIntent.Upload)
+        runCurrent()
+
+        assertEquals(EXISTING, fixture.machine.state.value.existing)
+        assertSame(fixture.selection, fixture.machine.state.value.selection)
+        assertFalse(fixture.machine.state.value.retryUpload)
+        assertEquals(GroupPhotoError.STALE_VERSION, fixture.machine.state.value.error)
+    }
+
     @Test fun `retry uploads same confirmed group without a create dependency`() = runTest {
         val fixture = fixture(this).selected()
         runCurrent()
@@ -146,9 +162,22 @@ class GroupPhotoCoordinatorTest {
 
         assertEquals(ExistingGroupPhoto(PREVIEW, PHOTO_ETAG), fixture.machine.state.value.existing)
         assertNull(fixture.machine.state.value.selection)
-        assertNull(fixture.machine.state.value.groupEtag)
+        assertEquals(PHOTO_ETAG, fixture.machine.state.value.groupEtag)
         assertEquals(listOf(SOURCE), fixture.selections.cleaned)
         assertEquals(listOf(GROUP_ID), fixture.cache.evicted)
+    }
+
+    @Test fun `replace after upload uses returned group etag without refetch`() = runTest {
+        val fixture = fixture(this).selected()
+        runCurrent()
+        fixture.machine.onIntent(GroupPhotoIntent.Upload)
+        runCurrent()
+        fixture.machine.onIntent(GroupPhotoIntent.ChooseLibrary)
+        runCurrent()
+        fixture.machine.onIntent(GroupPhotoIntent.Upload)
+        runCurrent()
+
+        assertEquals(listOf(GROUP_ETAG, PHOTO_ETAG), fixture.gateway.uploads.map { it.groupEtag })
     }
 
     @Test fun `remove failure preserves existing photo`() = runTest {
@@ -161,14 +190,26 @@ class GroupPhotoCoordinatorTest {
         assertEquals(GroupPhotoError.REMOVE_FAILED, fixture.machine.state.value.error)
     }
 
-    @Test fun `successful remove shows fallback and invalidates current version`() = runTest {
+    @Test fun `successful remove shows fallback and retains returned group version`() = runTest {
         val fixture = fixture(this).existing()
         fixture.machine.onIntent(GroupPhotoIntent.Remove)
         runCurrent()
 
         assertNull(fixture.machine.state.value.existing)
-        assertNull(fixture.machine.state.value.groupEtag)
+        assertEquals(REMOVE_ETAG, fixture.machine.state.value.groupEtag)
         assertEquals(listOf(GROUP_ID), fixture.cache.evicted)
+    }
+
+    @Test fun `new upload after removal uses returned group etag without refetch`() = runTest {
+        val fixture = fixture(this).existing()
+        fixture.machine.onIntent(GroupPhotoIntent.Remove)
+        runCurrent()
+        fixture.machine.onIntent(GroupPhotoIntent.ChooseCamera)
+        runCurrent()
+        fixture.machine.onIntent(GroupPhotoIntent.Upload)
+        runCurrent()
+
+        assertEquals(REMOVE_ETAG, fixture.gateway.uploads.single().groupEtag)
     }
 
     @Test fun `cancel asks encoder and selector to clean transient source`() = runTest {
@@ -267,7 +308,7 @@ class GroupPhotoCoordinatorTest {
     private class FakeGateway : GroupPhotoGateway {
         val uploads = mutableListOf<GroupPhotoUploadCommand>()
         var uploadResult: NetworkResult<GroupPhotoReceipt> = NetworkResult.Success(GroupPhotoReceipt(PHOTO_ETAG))
-        var removeResult: NetworkResult<Unit> = NetworkResult.Success(Unit)
+        var removeResult: NetworkResult<GroupPhotoReceipt> = NetworkResult.Success(GroupPhotoReceipt(REMOVE_ETAG))
         override suspend fun upload(command: GroupPhotoUploadCommand) = uploadResult.also { uploads += command }
         override suspend fun read(groupId: String, etag: String?): NetworkResult<GroupPhotoReadResult> =
             NetworkResult.Failure(NetworkError.Unavailable)
@@ -285,6 +326,7 @@ class GroupPhotoCoordinatorTest {
         const val GROUP_ID = "group-1"
         const val GROUP_ETAG = "\"7\""
         const val PHOTO_ETAG = "\"photo-2\""
+        const val REMOVE_ETAG = "\"photo-3\""
         val SOURCE = GroupPhotoSourceHandle("source")
         val PREVIEW = GroupPhotoPreviewHandle("preview")
         val EXISTING = ExistingGroupPhoto(GroupPhotoPreviewHandle("existing-preview"), "\"photo-1\"")

@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class GroupPhotoStage { IDLE, SELECTING, CROPPING, ENCODING, UPLOADING, REMOVING }
-enum class GroupPhotoError { SELECTION_FAILED, ENCODING_FAILED, UPLOAD_FAILED, REMOVE_FAILED, TARGET_UNAVAILABLE }
+enum class GroupPhotoError { SELECTION_FAILED, ENCODING_FAILED, UPLOAD_FAILED, REMOVE_FAILED, STALE_VERSION, TARGET_UNAVAILABLE }
 
 data class ExistingGroupPhoto(val preview: GroupPhotoPreviewHandle, val etag: String)
 
@@ -113,7 +113,13 @@ class GroupPhotoCoordinator(
                     mutableState.update { it.copy(stage = GroupPhotoStage.UPLOADING) }
                     when (val result = gateway.upload(GroupPhotoUploadCommand(groupId, groupEtag, encoded.value))) {
                         is NetworkResult.Failure -> mutableState.update {
-                            it.copy(stage = GroupPhotoStage.CROPPING, retryUpload = true, error = GroupPhotoError.UPLOAD_FAILED)
+                            val error = result.error as? br.com.saqz.network.NetworkError.ApiProblemError
+                            val stale = error?.problem?.status == 409 && error.problem.code == "VERSION_CONFLICT"
+                            it.copy(
+                                stage = GroupPhotoStage.CROPPING,
+                                retryUpload = !stale,
+                                error = if (stale) GroupPhotoError.STALE_VERSION else GroupPhotoError.UPLOAD_FAILED,
+                            )
                         }
                         is NetworkResult.Success -> uploadSucceeded(groupId, selection, result.value)
                     }
@@ -129,7 +135,7 @@ class GroupPhotoCoordinator(
             it.copy(
                 existing = ExistingGroupPhoto(selection.preview, receipt.etag),
                 selection = null,
-                groupEtag = null,
+                groupEtag = receipt.etag,
                 stage = GroupPhotoStage.IDLE,
                 retryUpload = false,
                 error = null,
@@ -144,14 +150,19 @@ class GroupPhotoCoordinator(
         if (snapshot.stage != GroupPhotoStage.IDLE || snapshot.existing == null) return
         mutableState.update { it.copy(stage = GroupPhotoStage.REMOVING, error = null) }
         operation = scope.launch {
-            when (gateway.remove(groupId, groupEtag)) {
+            when (val result = gateway.remove(groupId, groupEtag)) {
                 is NetworkResult.Failure -> mutableState.update {
                     it.copy(stage = GroupPhotoStage.IDLE, error = GroupPhotoError.REMOVE_FAILED)
                 }
                 is NetworkResult.Success -> {
                     cache.evict(groupId)
                     mutableState.update {
-                        it.copy(existing = null, groupEtag = null, stage = GroupPhotoStage.IDLE, error = null)
+                        it.copy(
+                            existing = null,
+                            groupEtag = result.value.etag,
+                            stage = GroupPhotoStage.IDLE,
+                            error = null,
+                        )
                     }
                 }
             }
