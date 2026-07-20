@@ -738,6 +738,10 @@ keys, cents, or timezone identifiers.
   slot identity SHALL be an opaque UUID generated outside the visual
   composable, persisted with the draft, and reused unchanged across
   recomposition, restart, validation failure, and retry.
+- **B51 | 2026-07-19** — The first T42 common-test compile omitted coroutine
+  imports for the experimental test annotation and bounded effect wait,
+  cascading into inference errors. No new invariant added; cross-target test
+  compilation already catches incomplete portable test imports.
 
 ## Success criteria
 
