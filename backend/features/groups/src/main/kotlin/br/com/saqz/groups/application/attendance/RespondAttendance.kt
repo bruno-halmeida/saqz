@@ -7,7 +7,10 @@ import java.time.Instant
 import java.util.UUID
 
 sealed interface AttendanceCommandResult {
-    data class Success(val attendance: AttendanceRecord) : AttendanceCommandResult
+    data class Success(
+        val attendance: AttendanceRecord,
+        val promoted: List<AttendanceRecord> = emptyList(),
+    ) : AttendanceCommandResult
     data class Denied(val reason: AttendanceDenial) : AttendanceCommandResult
     data object Hidden : AttendanceCommandResult
     data object Forbidden : AttendanceCommandResult
@@ -84,7 +87,38 @@ class RespondAttendance(
             ),
         )
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
-        return AttendanceCommandResult.Success(record)
+        val promoted = if (
+            decision.oldStatus == AttendanceStatus.CONFIRMED &&
+            decision.newStatus == AttendanceStatus.DECLINED
+        ) promoteOne(aggregate, timestamp) else null
+        return AttendanceCommandResult.Success(record, listOfNotNull(promoted))
+    }
+
+    private fun promoteOne(aggregate: AttendanceAggregate, timestamp: Instant): AttendanceRecord? {
+        val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return null
+        val promoted = waiting.copy(
+            status = AttendanceStatus.CONFIRMED,
+            waitlistSequence = null,
+            updatedAt = timestamp,
+            version = waiting.version + 1,
+        )
+        repository.save(promoted)
+        repository.append(
+            AttendanceEvent(
+                ids(),
+                aggregate.gameId,
+                aggregate.groupId,
+                promoted.memberId,
+                aggregate.actorId,
+                AttendanceSource.SYSTEM,
+                AttendanceStatus.WAITLISTED,
+                AttendanceStatus.CONFIRMED,
+                null,
+                timestamp,
+            ),
+        )
+        charges.promoted(aggregate.copy(memberId = promoted.memberId, current = waiting), aggregate.actorId)
+        return promoted
     }
 
     private fun AttendanceAggregate.authorized(source: AttendanceSource): Boolean = when (source) {

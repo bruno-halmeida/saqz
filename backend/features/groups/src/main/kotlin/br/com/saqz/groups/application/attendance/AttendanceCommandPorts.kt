@@ -48,11 +48,29 @@ data class AttendanceEvent(
 
 interface AttendanceCommandRepository {
     fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate?
+    fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate?
     fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long
+    fun earliestWaitlisted(groupId: UUID, gameId: UUID): AttendanceRecord?
     fun save(record: AttendanceRecord)
     fun append(event: AttendanceEvent)
+    fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean
 }
 
 fun interface AttendanceChargePort {
     fun confirmed(aggregate: AttendanceAggregate, actorId: UUID)
+    fun promoted(aggregate: AttendanceAggregate, actorId: UUID) = confirmed(aggregate, actorId)
 }
+
+data class CapacityAggregate(
+    val groupId: UUID,
+    val gameId: UUID,
+    val actorId: UUID,
+    val actorRole: GroupRole?,
+    val gameStatus: GameStatus,
+    val confirmationDeadline: Instant,
+    val capacity: Int,
+    val confirmedCount: Int,
+    val version: Long,
+    val gameFeeCents: Long?,
+    val gameDate: LocalDate,
+)

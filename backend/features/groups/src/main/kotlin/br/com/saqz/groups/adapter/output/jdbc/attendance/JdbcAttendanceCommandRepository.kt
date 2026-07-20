@@ -42,6 +42,57 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
                 .single(),
         )
 
+    override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? {
+        val locked = jdbc.sql("SELECT id FROM games WHERE group_id=:group AND id=:game FOR UPDATE")
+            .param("group", groupId)
+            .param("game", gameId)
+            .query(UUID::class.java)
+            .optional()
+            .orElse(null)
+            ?: return null
+        check(locked == gameId)
+        return jdbc.sql(CAPACITY_AGGREGATE)
+            .param("group", groupId)
+            .param("game", gameId)
+            .param("actor", actorId)
+            .query { rs, _ ->
+                CapacityAggregate(
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("id", UUID::class.java),
+                    actorId,
+                    rs.getString("actor_role")?.let(GroupRole::valueOf),
+                    GameStatus.valueOf(rs.getString("game_status")),
+                    rs.getTimestamp("confirmation_deadline").toInstant(),
+                    rs.getInt("capacity"),
+                    rs.getInt("confirmed_count"),
+                    rs.getLong("version"),
+                    rs.getObject("game_fee_cents", Long::class.javaObjectType),
+                    rs.getObject("local_date", java.time.LocalDate::class.java),
+                )
+            }
+            .optional()
+            .orElse(null)
+    }
+
+    override fun earliestWaitlisted(groupId: UUID, gameId: UUID): AttendanceRecord? =
+        jdbc.sql(EARLIEST_WAITLISTED)
+            .param("group", groupId)
+            .param("game", gameId)
+            .query { rs, _ ->
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    AttendanceStatus.WAITLISTED,
+                    rs.getLong("waitlist_sequence"),
+                    rs.getTimestamp("responded_at").toInstant(),
+                    rs.getTimestamp("updated_at").toInstant(),
+                    rs.getLong("version"),
+                )
+            }
+            .optional()
+            .orElse(null)
+
     override fun save(record: AttendanceRecord) {
         check(
             jdbc.sql(SAVE)
@@ -71,6 +122,13 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             .param("occurred", Timestamp.from(event.occurredAt))
             .update()
     }
+
+    override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean =
+        jdbc.sql("UPDATE games SET capacity=:capacity,version=version+1,updated_at=now() WHERE id=:game AND version=:version")
+            .param("capacity", capacity)
+            .param("game", gameId)
+            .param("version", expectedVersion)
+            .update() == 1
 
     private fun aggregate(rs: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int): AttendanceAggregate {
         val currentStatus = rs.getString("attendance_status")?.let(AttendanceStatus::valueOf)
@@ -131,11 +189,37 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
                 (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at)
             VALUES (:id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred)
         """
+        const val CAPACITY_AGGREGATE = """
+            SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
+                   g.version,g.game_fee_cents,g.local_date,
+                   CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
+                   (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
+            FROM games g
+            JOIN access_groups ag ON ag.id=g.group_id
+            LEFT JOIN group_memberships actor ON actor.group_id=g.group_id AND actor.user_id=:actor
+            WHERE g.group_id=:group AND g.id=:game
+        """
+        const val EARLIEST_WAITLISTED = """
+            SELECT game_id,group_id,member_user_id,waitlist_sequence,responded_at,updated_at,version
+            FROM game_attendance
+            WHERE group_id=:group AND game_id=:game AND status='WAITLISTED'
+            ORDER BY waitlist_sequence
+            LIMIT 1
+            FOR UPDATE
+        """
     }
 }
 
 class AttendanceChargeAdapter(private val charges: ChargeTransactions) : AttendanceChargePort {
     override fun confirmed(aggregate: AttendanceAggregate, actorId: UUID) {
+        charge(aggregate, actorId, AttendanceBillingOutcome.CONFIRMED)
+    }
+
+    override fun promoted(aggregate: AttendanceAggregate, actorId: UUID) {
+        charge(aggregate, actorId, AttendanceBillingOutcome.PROMOTED)
+    }
+
+    private fun charge(aggregate: AttendanceAggregate, actorId: UUID, outcome: AttendanceBillingOutcome) {
         charges.attendance(
             GameChargeInput(
                 aggregate.groupId,
@@ -143,7 +227,7 @@ class AttendanceChargeAdapter(private val charges: ChargeTransactions) : Attenda
                 aggregate.memberId,
                 aggregate.gameFeeCents,
                 aggregate.gameDate,
-                AttendanceBillingOutcome.CONFIRMED,
+                outcome,
             ),
             actorId,
         )

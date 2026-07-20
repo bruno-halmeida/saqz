@@ -49,6 +49,24 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `simultaneous full confirmations allocate unique ordered waitlist sequences`() { val f = fixture(capacity = 2); repeat(2) { attendance(f, member(f.group, "occupied-$it"), "CONFIRMED") }; val second = member(f.group, "second"); val third = member(f.group, "third"); val results = concurrent(f, listOf(f.member, second, third)); assertEquals(listOf(1L, 2L, 3L), results.mapNotNull { it.waitlistSequence }.sorted()); assertEquals(3, int("SELECT waitlist_sequence_allocator FROM games WHERE id='${f.game}'")) }
     @Test fun `injected audit failure rolls back attendance and allocator`() { val f = fixture(capacity = 2); repeat(2) { attendance(f, member(f.group, "occupied-$it"), "CONFIRMED") }; val delegate = JdbcAttendanceCommandRepository(dataSource); val failing = object : AttendanceCommandRepository by delegate { override fun append(event: AttendanceEvent) { delegate.append(event); error("injected audit") } }; val service = service(failing); assertFailsWith<IllegalStateException> { service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM) }; assertEquals(2, count("game_attendance")); assertEquals(0, int("SELECT waitlist_sequence_allocator FROM games WHERE id='${f.game}'")); assertEquals(0, count("attendance_events")) }
     @Test fun `injected charge failure rolls back attendance audit allocator and charge`() { val f = fixture(fee = 2500); val real = chargePort(); val failing = AttendanceChargePort { aggregate, actor -> real.confirmed(aggregate, actor); error("injected charge") }; val service = RespondAttendance(JdbcTransactionRunner(dataSource), JdbcAttendanceCommandRepository(dataSource), failing, { NOW }); assertFailsWith<IllegalStateException> { service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM) }; listOf("game_attendance", "attendance_events", "group_charges", "group_charge_events").forEach { assertEquals(0, count(it), it) } }
+    @Test fun `confirmed withdrawal promotes exactly earliest fifo member`() { val f = promotionFixture(); val result = assertIs<AttendanceCommandResult.Success>(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); assertEquals(listOf(f.waiting.first()), result.promoted.map { it.memberId }); assertEquals("CONFIRMED", status(f.waiting.first())); assertEquals("WAITLISTED", status(f.waiting.last())) }
+    @Test fun `confirmed withdrawal keeps its existing pending charge`() { val f = promotionFixture(); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE); assertEquals("PENDING", string("SELECT status FROM group_charges WHERE member_user_id='${f.member}'")) }
+    @Test fun `paid game promotion creates one charge for promoted member`() { val f = promotionFixture(); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE); assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='${f.waiting.first()}'")); assertEquals(2, count("group_charges")) }
+    @Test fun `fifo promotion preserves later stable waitlist sequence`() { val f = promotionFixture(); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE); assertEquals(2, int("SELECT waitlist_sequence FROM game_attendance WHERE member_user_id='${f.waiting.last()}'")) }
+    @Test fun `withdrawal without waitlist promotes nobody`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val result = assertIs<AttendanceCommandResult.Success>(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); assertEquals(emptyList(), result.promoted) }
+    @Test fun `waitlisted withdrawal does not open or promote a capacity spot`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val later = member(f.group, "later"); waitlist(f, later, 2); val result = assertIs<AttendanceCommandResult.Success>(f.service.execute(waiting, f.group, f.game, intent = AttendanceIntent.DECLINE)); assertEquals(emptyList(), result.promoted); assertEquals("WAITLISTED", status(later)) }
+    @Test fun `capacity increase promotes exactly newly available fifo spots`() { val f = fullFixture(); val waiting = (1..3).map { member(f.group, "waiting-$it").also { id -> waitlist(f, id, it.toLong()) } }; val result = capacity(f).execute(f.owner, f.group, f.game, 1, 4); assertEquals(waiting.take(2), assertIs<CapacityCommandResult.Success>(result).promoted.map { it.memberId }); assertEquals("WAITLISTED", status(waiting.last())) }
+    @Test fun `capacity increase charges every paid game promotion once`() { val f = fullFixture(); val waiting = (1..2).map { member(f.group, "waiting-$it").also { id -> waitlist(f, id, it.toLong()) } }; capacity(f).execute(f.owner, f.group, f.game, 1, 4); assertEquals(waiting.toSet(), queryStrings("SELECT member_user_id::text FROM group_charges").map(UUID::fromString).toSet()) }
+    @Test fun `capacity increase stops when fifo is empty`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val result = assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 6)); assertEquals(listOf(waiting), result.promoted.map { it.memberId }); assertEquals(3, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")) }
+    @Test fun `capacity decrease silently demotes nobody`() { val f = fullFixture(capacity = 4, confirmed = 4); assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 2)); assertEquals(4, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")); assertEquals(2, int("SELECT capacity FROM games")) }
+    @Test fun `capacity below confirmed count blocks new confirmation`() { val f = fullFixture(capacity = 4, confirmed = 4); capacity(f).execute(f.owner, f.group, f.game, 1, 2); val newcomer = member(f.group, "newcomer"); assertEquals(AttendanceStatus.WAITLISTED, success(f.service.execute(newcomer, f.group, f.game, intent = AttendanceIntent.CONFIRM)).status) }
+    @Test fun `stale capacity version changes nothing`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); assertSame(CapacityCommandResult.Conflict, capacity(f).execute(f.owner, f.group, f.game, 2, 3)); assertEquals(2, int("SELECT capacity FROM games")); assertEquals("WAITLISTED", status(waiting)) }
+    @Test fun `capacity rejects values outside game bounds`() { val f = fixture(); assertSame(CapacityCommandResult.InvalidCapacity, capacity(f).execute(f.owner, f.group, f.game, 1, 1)); assertSame(CapacityCommandResult.InvalidCapacity, capacity(f).execute(f.owner, f.group, f.game, 1, 101)) }
+    @Test fun `athlete cannot adjust capacity`() { val f = fixture(); assertSame(CapacityCommandResult.Forbidden, capacity(f).execute(f.member, f.group, f.game, 1, 3)) }
+    @Test fun `cancelled game capacity and promotions are frozen`() { val f = fullFixture(); execute("UPDATE games SET status='CANCELLED' WHERE id='${f.game}'"); assertSame(CapacityCommandResult.Frozen, capacity(f).execute(f.owner, f.group, f.game, 1, 3)) }
+    @Test fun `injected promotion charge failure rolls back withdrawal promotion audit and charge`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val real = chargePort(); val failing = object : AttendanceChargePort { override fun confirmed(aggregate: AttendanceAggregate, actorId: UUID) = real.confirmed(aggregate, actorId); override fun promoted(aggregate: AttendanceAggregate, actorId: UUID) { real.promoted(aggregate, actorId); error("injected promotion") } }; val service = RespondAttendance(JdbcTransactionRunner(dataSource), JdbcAttendanceCommandRepository(dataSource), failing, { NOW }); assertFailsWith<IllegalStateException> { service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE) }; assertEquals("CONFIRMED", status(f.member)); assertEquals("WAITLISTED", status(waiting)); assertEquals(0, count("attendance_events")); assertEquals(0, count("group_charges")) }
+    @Test fun `concurrent withdraw and confirm preserve capacity and earliest promotion`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val newcomer = member(f.group, "newcomer"); race({ f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE) }, { f.service.execute(newcomer, f.group, f.game, intent = AttendanceIntent.CONFIRM) }); assertEquals(2, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")); assertEquals("CONFIRMED", status(waiting)); assertEquals("WAITLISTED", status(newcomer)) }
+    @Test fun `concurrent capacity increase and confirm preserve fifo and capacity`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val newcomer = member(f.group, "newcomer"); race({ capacity(f).execute(f.owner, f.group, f.game, 1, 3) }, { f.service.execute(newcomer, f.group, f.game, intent = AttendanceIntent.CONFIRM) }); assertEquals(3, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")); assertEquals("CONFIRMED", status(waiting)); assertEquals("WAITLISTED", status(newcomer)) }
 
     private fun concurrent(f: Fixture, members: List<UUID>): List<AttendanceRecord> {
         val barrier = CyclicBarrier(members.size + 1)
@@ -58,6 +76,31 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
             barrier.await()
             futures.map { it.get() }
         } finally { executor.shutdownNow() }
+    }
+
+    private fun race(first: () -> Any, second: () -> Any) {
+        val barrier = CyclicBarrier(3)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val futures = listOf(first, second).map { command -> executor.submit<Any> { barrier.await(); command() } }
+            barrier.await()
+            futures.forEach { it.get() }
+        } finally { executor.shutdownNow() }
+    }
+
+    private fun promotionFixture(): PromotionFixture {
+        val f = fixture(capacity = 2)
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)
+        attendance(f, member(f.group, "occupied"), "CONFIRMED")
+        val waiting = (1..2).map { member(f.group, "waiting-$it").also { id -> waitlist(f, id, it.toLong()) } }
+        return PromotionFixture(f.owner, f.member, f.group, f.game, f.service, waiting)
+    }
+
+    private fun fullFixture(capacity: Int = 2, confirmed: Int = capacity): Fixture {
+        val f = fixture(capacity = capacity)
+        attendance(f, f.member, "CONFIRMED")
+        repeat(confirmed - 1) { attendance(f, member(f.group, "occupied-$it"), "CONFIRMED") }
+        return f
     }
 
     private fun fixture(subject: String = "attendance", capacity: Int = 2, fee: Long? = 2500): Fixture {
@@ -70,8 +113,10 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         return Fixture(owner, member, group, game, service())
     }
     private fun service(repository: AttendanceCommandRepository = JdbcAttendanceCommandRepository(dataSource)) = RespondAttendance(JdbcTransactionRunner(dataSource), repository, chargePort(), { NOW })
+    private fun capacity(f: Fixture) = AdjustGameCapacity(JdbcTransactionRunner(dataSource), JdbcAttendanceCommandRepository(dataSource), chargePort(), { NOW })
     private fun chargePort() = AttendanceChargeAdapter(ChargeTransactions(JdbcTransactionRunner(dataSource), JdbcChargeTransactionRepository(dataSource)) { NOW })
     private fun attendance(f: Fixture, member: UUID, status: String) { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at) VALUES ('${f.game}','${f.group}','$member','$status',now(),now())") }
+    private fun waitlist(f: Fixture, member: UUID, sequence: Long) { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at) VALUES ('${f.game}','${f.group}','$member','WAITLISTED',$sequence,now(),now())") }
     private fun member(group: UUID, subject: String): UUID { val id = user(subject); execute("INSERT INTO group_memberships VALUES ('$group','$id','ATHLETE',now(),now())"); return id }
     private fun user(subject: String): UUID { val id = UUID.randomUUID(); execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-${UUID.randomUUID()}',true,'User',now(),now())"); return id }
     private fun success(result: AttendanceCommandResult) = assertIs<AttendanceCommandResult.Success>(result).attendance
@@ -80,8 +125,11 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     private fun count(table: String) = int("SELECT count(*) FROM $table")
     private fun int(sql: String) = query(sql) { it.getInt(1) }
     private fun string(sql: String) = query(sql) { it.getString(1) }
+    private fun status(member: UUID) = string("SELECT status FROM game_attendance WHERE member_user_id='$member'")
+    private fun queryStrings(sql: String): List<String> = connection().use { c -> c.createStatement().use { s -> s.executeQuery(sql).use { r -> buildList { while (r.next()) add(r.getString(1)) } } } }
     private fun <T> query(sql: String, read: (java.sql.ResultSet) -> T): T = connection().use { c -> c.createStatement().use { s -> s.executeQuery(sql).use { r -> check(r.next()); read(r) } } }
     private fun connection(): Connection = dataSource.connection
     private data class Fixture(val owner: UUID, val member: UUID, val group: UUID, val game: UUID, val service: RespondAttendance)
+    private data class PromotionFixture(val owner: UUID, val member: UUID, val group: UUID, val game: UUID, val service: RespondAttendance, val waiting: List<UUID>)
     private companion object { val NOW: Instant = Instant.parse("2026-08-01T10:00:00Z") }
 }

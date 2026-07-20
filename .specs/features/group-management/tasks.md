@@ -1510,19 +1510,22 @@ adjust capacity, and create promotion charges without forgiving withdrawals.
 
 **Done when:**
 
-- [ ] Confirmed withdrawal leaves existing charge PENDING, frees one spot and
+- [x] Confirmed withdrawal leaves existing charge PENDING, frees one spot and
   promotes exactly the earliest eligible waitlisted member in the same commit.
-- [ ] Capacity increase promotes as many FIFO members as new spots permit and
+- [x] Capacity increase promotes as many FIFO members as new spots permit and
   charges each paid-game promotion once.
-- [ ] Capacity below confirmed count demotes nobody and blocks new confirms
+- [x] Capacity below confirmed count demotes nobody and blocks new confirms
   until count falls below capacity.
-- [ ] Concurrent withdraw/increase/confirm operations preserve capacity, FIFO,
+- [x] Concurrent withdraw/increase/confirm operations preserve capacity, FIFO,
   unique sequence and unique charge invariants with rollback on failure.
-- [ ] Backend full gate passes; test count `Δ+16` or greater.
+- [x] Backend full gate passes; test count `Δ+16` or greater.
 
 **Tests:** unit + PostgreSQL concurrency integration (`Δ+16`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): promote waitlist atomically`
+**Status:** Complete; 18 focused PostgreSQL cases and the complete Groups
+unit/integration plus safety gates passed for withdrawal, FIFO promotion,
+capacity changes, charge preservation/creation, concurrent commands, and rollback.
 
 ### T53: Expose attendance self-service and override HTTP contracts
 
