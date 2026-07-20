@@ -524,6 +524,10 @@ keys, cents, or timezone identifiers.
   Gradle rejected the invocation before compilation. No new invariant added;
   the existing deterministic JDK 21 gate and handoff already detect and
   document this environment prerequisite.
+- **B10 | 2026-07-19** — The first T20 common-test compile omitted imports for
+  JSON numeric accessors and the draft failure enum. No new invariant added;
+  the existing Android/iOS KMP compilation gate caught the mechanical import
+  omissions before any test could run.
 
 ## Success criteria
 
