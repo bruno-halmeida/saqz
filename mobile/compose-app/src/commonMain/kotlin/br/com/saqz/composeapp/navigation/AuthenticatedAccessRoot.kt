@@ -162,6 +162,7 @@ internal fun AuthenticatedAccessRoute(
     }
     val state by accessViewModel.state.collectAsState()
     val groupsNavigation by groupsViewModel.state.collectAsState()
+    val sessionMemberships = (state.session as? SessionAccessState.Ready)?.session?.memberships.orEmpty()
     val photoScope = rememberCoroutineScope()
     val photoCoordinator = remember(accessViewModel, groupPhotos) {
         GroupPhotoCoordinator(
@@ -198,8 +199,13 @@ internal fun AuthenticatedAccessRoute(
             photoCoordinator.onIntent(GroupPhotoIntent.Logout)
         }
     }
-    LaunchedEffect(groupsViewModel, state.selection) {
-        groupsViewModel.onIntent(GroupsNavigationIntent.Reconcile(state.selection))
+    LaunchedEffect(groupsViewModel, state.selection, sessionMemberships) {
+        groupsViewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selection = state.selection,
+                memberships = sessionMemberships,
+            ),
+        )
     }
     LaunchedEffect(accessViewModel, dependencies.share) {
         accessViewModel.effects.collect { effect ->
@@ -584,15 +590,28 @@ private fun DestinationContent(
         AccessDestination.BOOTSTRAP -> BootstrapAccessScreen(state.session) { intent ->
             onIntent(AccessIntent.Session(intent))
         }
-        AccessDestination.GROUP_ONBOARDING -> GroupOnboardingScreen(state.selection) { intent ->
-            when (intent) {
-                is GroupOnboardingIntent.Select -> onIntent(
-                    AccessIntent.Selection(GroupSelectionIntent.Select(intent.groupId)),
+        AccessDestination.GROUP_ONBOARDING -> {
+            val onboardingNavigation = groupsNavigation?.takeIf { navigation ->
+                navigation.destination in setOf(
+                    GroupsDestination.SELECTOR,
+                    GroupsDestination.LOADING,
+                    GroupsDestination.LOAD_ERROR,
                 )
-                GroupOnboardingIntent.OpenCreateGroup -> onIntent(AccessIntent.OpenCreateGroup)
-                GroupOnboardingIntent.Retry -> onIntent(
-                    AccessIntent.Selection(GroupSelectionIntent.Retry),
-                )
+            }
+            if (onboardingNavigation != null) {
+                GroupsRouteContent(state, onboardingNavigation, onIntent, onGroupsIntent)
+            } else {
+                GroupOnboardingScreen(state.selection) { intent ->
+                    when (intent) {
+                        is GroupOnboardingIntent.Select -> onIntent(
+                            AccessIntent.Selection(GroupSelectionIntent.Select(intent.groupId)),
+                        )
+                        GroupOnboardingIntent.OpenCreateGroup -> onIntent(AccessIntent.OpenCreateGroup)
+                        GroupOnboardingIntent.Retry -> onIntent(
+                            AccessIntent.Selection(GroupSelectionIntent.Retry),
+                        )
+                    }
+                }
             }
         }
         AccessDestination.GROUP_CONTEXT -> {
@@ -609,14 +628,7 @@ private fun DestinationContent(
                     )
                 }
             } else {
-                GroupsNavigationHost(
-                    navigation = groupsNavigation,
-                    administration = state.administration,
-                    onNavigationIntent = onGroupsIntent,
-                    onOpenSettings = { onIntent(AccessIntent.OpenSettings) },
-                    onSwitchGroup = { onIntent(AccessIntent.SwitchGroup) },
-                    onRequestLogout = { onIntent(AccessIntent.RequestLogout) },
-                )
+                GroupsRouteContent(state, groupsNavigation, onIntent, onGroupsIntent)
             }
             if (state.showLogoutConfirmation) {
                 LogoutConfirmationDialog { intent ->
@@ -694,4 +706,27 @@ private fun DestinationContent(
             }
         }
     }
+}
+
+@Composable
+private fun GroupsRouteContent(
+    state: AccessRootSnapshot,
+    navigation: GroupsNavigationState,
+    onIntent: (AccessIntent) -> Unit,
+    onGroupsIntent: (GroupsNavigationIntent) -> Unit,
+) {
+    GroupsNavigationHost(
+        navigation = navigation,
+        administration = state.administration,
+        onNavigationIntent = onGroupsIntent,
+        onOpenSettings = { onIntent(AccessIntent.OpenSettings) },
+        onSelectGroup = { groupId ->
+            onGroupsIntent(GroupsNavigationIntent.OpenGroup(groupId))
+            onIntent(AccessIntent.Selection(GroupSelectionIntent.Select(groupId)))
+        },
+        onOpenCreateGroup = { onIntent(AccessIntent.OpenCreateGroup) },
+        onRetryGroup = { onIntent(AccessIntent.Selection(GroupSelectionIntent.Retry)) },
+        onOpenInvite = { onIntent(AccessIntent.OpenInvite) },
+        onRequestLogout = { onIntent(AccessIntent.RequestLogout) },
+    )
 }

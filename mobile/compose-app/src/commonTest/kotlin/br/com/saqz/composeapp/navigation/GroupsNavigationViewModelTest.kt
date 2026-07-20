@@ -22,14 +22,24 @@ class GroupsNavigationViewModelTest {
     @Test
     fun `no membership opens setup without group identity`() {
         val viewModel = selected(owner)
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.NoGroup))
+        viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.NoGroup, emptyList()))
         assertUnscoped(viewModel, GroupsDestination.SETUP)
+    }
+
+    @Test
+    fun `empty session memberships clear a stale selected group`() {
+        val viewModel = selected(owner)
+
+        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(owner), emptyList()))
+
+        assertUnscoped(viewModel, GroupsDestination.SETUP)
+        assertTrue(viewModel.state.value.memberships.isEmpty())
     }
 
     @Test
     fun `selector clears prior group before rendering choices`() {
         val viewModel = selected(owner)
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.Selector(memberships)))
+        viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.Selector(memberships), memberships))
         assertUnscoped(viewModel, GroupsDestination.SELECTOR)
     }
 
@@ -115,14 +125,24 @@ class GroupsNavigationViewModelTest {
     @Test
     fun `switch loading clears prior group instead of flashing it`() {
         val viewModel = selected(owner)
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.Loading("next")))
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                GroupSelectionState.Loading("next"),
+                listOf(SessionMembershipDto("next", "Next", "ADMIN")),
+            ),
+        )
         assertUnscoped(viewModel, GroupsDestination.LOADING)
     }
 
     @Test
     fun `membership loss error clears prior group identity`() {
         val viewModel = selected(owner)
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(GroupSelectionState.LoadError("removed")))
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                GroupSelectionState.LoadError("removed"),
+                listOf(SessionMembershipDto("removed", "Removed", "OWNER")),
+            ),
+        )
         assertUnscoped(viewModel, GroupsDestination.LOAD_ERROR)
     }
 
@@ -220,7 +240,12 @@ class GroupsNavigationViewModelTest {
     fun `new selected group replaces destination and old game identity atomically`() {
         val viewModel = selected(owner)
         viewModel.onIntent(GroupsNavigationIntent.OpenGameDetail("old-game"))
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(admin.copy(id = "next"))))
+        viewModel.onIntent(
+            GroupsNavigationIntent.Reconcile(
+                selectedState(admin.copy(id = "next")),
+                listOf(SessionMembershipDto("next", "Next", "ADMIN")),
+            ),
+        )
         assertEquals("next", viewModel.state.value.groupId)
         assertEquals(GroupsDestination.HOME, viewModel.state.value.destination)
         assertNull(viewModel.state.value.gameId)
@@ -230,12 +255,12 @@ class GroupsNavigationViewModelTest {
     fun `same selected group refresh preserves allowed route without duplicate effect`() = runTest {
         val viewModel = GroupsNavigationViewModel()
         val first = async { viewModel.effects.firstEffect() }
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(owner)))
+        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(owner), listOf(membership(owner))))
         runCurrent()
         assertEquals(GroupsDestination.HOME, first.await().destination)
         viewModel.onIntent(GroupsNavigationIntent.OpenGames)
         val refreshed = owner.copy(version = 2)
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(refreshed)))
+        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(refreshed), listOf(membership(refreshed))))
         assertEquals(GroupsDestination.GAMES, viewModel.state.value.destination)
     }
 
@@ -243,7 +268,7 @@ class GroupsNavigationViewModelTest {
     fun `destination effects are consumed once and never replay`() = runTest {
         val viewModel = GroupsNavigationViewModel()
         val initial = async { viewModel.effects.firstEffect() }
-        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(owner)))
+        viewModel.onIntent(GroupsNavigationIntent.Reconcile(selectedState(owner), listOf(membership(owner))))
         runCurrent()
         assertEquals(GroupsDestination.HOME, initial.await().destination)
         val effect = async { viewModel.effects.firstEffect() }
@@ -254,10 +279,12 @@ class GroupsNavigationViewModelTest {
     }
 
     private fun selected(group: GroupDto): GroupsNavigationViewModel = GroupsNavigationViewModel().also {
-        it.onIntent(GroupsNavigationIntent.Reconcile(selectedState(group)))
+        it.onIntent(GroupsNavigationIntent.Reconcile(selectedState(group), listOf(membership(group))))
     }
 
     private fun selectedState(group: GroupDto) = GroupSelectionState.Selected(VersionedGroupDto(group, "etag"))
+
+    private fun membership(group: GroupDto) = SessionMembershipDto(group.id, group.name, group.role.name)
 
     private fun assertUnscoped(viewModel: GroupsNavigationViewModel, destination: GroupsDestination) {
         assertEquals(destination, viewModel.state.value.destination)

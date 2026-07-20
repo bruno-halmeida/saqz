@@ -30,6 +30,7 @@ import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.model.GroupComposition
@@ -305,6 +306,104 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
+    fun `groups list selection routes the exact group through navigation and access`() = runComposeUiTest {
+        val accessIntents = mutableListOf<AccessIntent>()
+        val groupsIntents = mutableListOf<GroupsNavigationIntent>()
+        root(
+            state = ready(selector),
+            onIntent = accessIntents::add,
+            groupsNavigation = GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = session.memberships,
+            ),
+            onGroupsIntent = groupsIntents::add,
+        )
+
+        onNodeWithText("Beta").performClick()
+
+        assertEquals(
+            listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenGroup("beta")),
+            groupsIntents,
+        )
+        assertEquals(
+            listOf<AccessIntent>(AccessIntent.Selection(GroupSelectionIntent.Select("beta"))),
+            accessIntents,
+        )
+    }
+
+    @Test
+    fun `groups list create action opens the existing creation flow`() = runComposeUiTest {
+        val intents = mutableListOf<AccessIntent>()
+        root(
+            state = ready(selector),
+            onIntent = intents::add,
+            groupsNavigation = GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = session.memberships,
+            ),
+        )
+
+        onNodeWithText("Criar grupo").performClick()
+
+        assertEquals(listOf<AccessIntent>(AccessIntent.OpenCreateGroup), intents)
+    }
+
+    @Test
+    fun `group load retry uses the existing selection retry intent`() = runComposeUiTest {
+        val intents = mutableListOf<AccessIntent>()
+        root(
+            state = ready(GroupSelectionState.LoadError("beta")),
+            onIntent = intents::add,
+            groupsNavigation = GroupsNavigationState(
+                destination = GroupsDestination.LOAD_ERROR,
+                memberships = session.memberships,
+                requestedGroupId = "beta",
+            ),
+        )
+
+        onNodeWithText("Tentar novamente").performClick()
+
+        assertEquals(
+            listOf<AccessIntent>(AccessIntent.Selection(GroupSelectionIntent.Retry)),
+            intents,
+        )
+    }
+
+    @Test
+    fun `group detail connects settings invite and logout to existing access intents`() = runComposeUiTest {
+        val intents = mutableListOf<AccessIntent>()
+        root(
+            state = active(ownerAdministration),
+            onIntent = intents::add,
+            groupsNavigation = GroupsNavigationState(
+                destination = GroupsDestination.HOME,
+                groupId = group.group.id,
+                access = GroupsNavigationAccess(
+                    showPeople = true,
+                    showGames = true,
+                    showFinance = true,
+                    canMutateOperations = true,
+                    financeDestination = GroupsDestination.FINANCE,
+                ),
+                memberships = session.memberships,
+            ),
+        )
+
+        onNodeWithTag("groups-settings").performClick()
+        onNodeWithTag(GroupsNavigationTags.Invite).performScrollTo().performClick()
+        onNodeWithTag("groups-logout").performScrollTo().performClick()
+
+        assertEquals(
+            listOf(
+                AccessIntent.OpenSettings,
+                AccessIntent.OpenInvite,
+                AccessIntent.RequestLogout,
+            ),
+            intents,
+        )
+    }
+
+    @Test
     fun `owner context exposes settings roles and invite`() = runComposeUiTest {
         root(active(ownerAdministration))
 
@@ -380,7 +479,18 @@ class AuthenticatedAccessRootTest {
     private fun androidx.compose.ui.test.ComposeUiTest.root(
         state: AccessRootSnapshot,
         onIntent: (AccessIntent) -> Unit = {},
-    ) = setContent { SaqzTheme { AuthenticatedAccessRoot(state, onIntent = onIntent) } }
+        groupsNavigation: GroupsNavigationState? = null,
+        onGroupsIntent: (GroupsNavigationIntent) -> Unit = {},
+    ) = setContent {
+        SaqzTheme {
+            AuthenticatedAccessRoot(
+                state,
+                groupsNavigation = groupsNavigation,
+                onGroupsIntent = onGroupsIntent,
+                onIntent = onIntent,
+            )
+        }
+    }
 
     private fun androidx.compose.ui.test.ComposeUiTest.rootWithSetup(
         state: AccessRootSnapshot,
