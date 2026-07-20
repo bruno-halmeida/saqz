@@ -434,7 +434,13 @@ keys, cents, or timezone identifiers.
     initial suggestions, and a fixed submit action that remains disabled until
     the name is non-blank; every field and conditional capability from the
     registration contract SHALL remain reachable with visible labels and at
-    least 44 dp touch targets.
+    least 44 dp touch targets. The idle photo control SHALL be a centered,
+    prominent placeholder with a photo icon and a visually subtle add action
+    overlaid at its lower-right edge, and every
+    enabled form or sheet button SHALL use a Saqz-blue outline while selected
+    choices remain distinguishable through fill, text, and check icon. Game and
+    monthly fee inputs SHALL request a numeric decimal keyboard and reject
+    non-numeric content while preserving the Brazilian currency mask.
 31. **GRP-REGRESSION-01** — WHEN delivered THEN existing auth, selection,
     membership, invitation, logout, credential, workspace isolation, backend,
     Android, and iOS gates SHALL remain mandatory and green.
@@ -956,6 +962,10 @@ keys, cents, or timezone identifiers.
   field validation test inherit valid modality/composition suggestions, so its
   old empty-form expectation no longer described the scenario under test.
   Covered by V54.
+- **B108 | 2026-07-20** — The first cross-target compile of the redesigned setup
+  screen missed one Compose resource import and called `stringResource` inside
+  a non-composable semantics lambda. No new invariant added; Android and iOS
+  main compilation already reject both errors deterministically.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both

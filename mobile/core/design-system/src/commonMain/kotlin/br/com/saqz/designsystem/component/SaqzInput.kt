@@ -75,6 +75,11 @@ fun SaqzInput(
     inlineLabel: Boolean = false,
     borderColor: Color? = null,
     leadingContent: (@Composable () -> Unit)? = null,
+    placeholder: String? = null,
+    keyboardType: KeyboardType = keyboardTypeFor(kind),
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    showLabel: Boolean = true,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -90,7 +95,7 @@ fun SaqzInput(
             .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
-        if (!inlineLabel) {
+        if (showLabel && !inlineLabel) {
             Text(text = label, style = SaqzTheme.typography.caption, color = colors.textSecondary)
         }
         Row(
@@ -120,9 +125,9 @@ fun SaqzInput(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                if (inlineLabel && value.text.isEmpty()) {
+                if (value.text.isEmpty() && (placeholder != null || inlineLabel)) {
                     Text(
-                        text = label,
+                        text = placeholder ?: label,
                         style = SaqzTheme.typography.body,
                         color = if (enabled) colors.textMuted else colors.disabledForeground,
                     )
@@ -131,9 +136,10 @@ fun SaqzInput(
                     value = value,
                     onValueChange = onValueChange,
                     enabled = enabled,
-                    singleLine = true,
+                    singleLine = singleLine,
+                    minLines = minLines,
                     visualTransformation = visualTransformationFor(kind, revealed),
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardTypeFor(kind)),
+                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                     textStyle = SaqzTheme.typography.body.copy(color = colors.textPrimary),
                     modifier = Modifier
                         .fillMaxWidth()

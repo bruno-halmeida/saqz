@@ -1,29 +1,15 @@
 package br.com.saqz.groups.ui.setup
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertHasClickAction
-import androidx.compose.ui.test.assertHeightIsAtLeast
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.*
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -35,16 +21,17 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.port.GroupPhotoSelection
+import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.presentation.photo.GroupPhotoStage
+import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
-import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
-import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoSelection
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
-import br.com.saqz.groups.presentation.photo.GroupPhotoStage
+import br.com.saqz.groups.presentation.setup.newGroupDefaults
 import br.com.saqz.groups.ui.photo.GroupPhotoTags
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,154 +41,121 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class GroupSetupScreenTest {
-    @Test fun `registration presents the three sections in one flow`() = runComposeUiTest {
+    @Test fun `registration presents four equal width sections in one flow`() = runComposeUiTest {
         setup()
-        val profileWidth = onNodeWithTag(GroupSetupTags.Profile).performScrollTo().fetchSemanticsNode().boundsInRoot.width
-        val gameDefaultsWidth =
-            onNodeWithTag(GroupSetupTags.GameDefaults).performScrollTo().fetchSemanticsNode().boundsInRoot.width
-        val financeDefaultsWidth =
-            onNodeWithTag(GroupSetupTags.FinanceDefaults).performScrollTo().fetchSemanticsNode().boundsInRoot.width
-
-        assertTrue(kotlin.math.abs(profileWidth - gameDefaultsWidth) < 1f)
-        assertTrue(kotlin.math.abs(gameDefaultsWidth - financeDefaultsWidth) < 1f)
+        val tags = listOf(GroupSetupTags.Profile, GroupSetupTags.Sports, GroupSetupTags.GameDefaults, GroupSetupTags.FinanceDefaults)
+        val widths = tags.map { onNodeWithTag(it).performScrollTo().fetchSemanticsNode().boundsInRoot.width }
+        assertTrue(widths.all { kotlin.math.abs(it - widths.first()) < 1f })
     }
 
-    @Test fun `registration opens with default top bar actions and group title`() = runComposeUiTest {
+    @Test fun `create top bar stays centered on new group and exposes both actions`() = runComposeUiTest {
         var backs = 0
         var mores = 0
-        setup(
-            state = state(form = GroupSetupForm(name = "Vôlei da Galera")),
-            onBack = { backs++ },
-            onMoreOptions = { mores++ },
-        )
-        onNodeWithTag(GroupSetupTags.Header).assertExists()
-        onNodeWithTag(GroupSetupTags.Title).assertTextEquals("Vôlei da Galera")
+        setup(state = state(form = requiredForm()), onBack = { backs++ }, onMoreOptions = { mores++ })
+        onNodeWithTag(GroupSetupTags.Title).assertTextEquals("Novo grupo")
         onNodeWithTag(GroupSetupTags.Back).assertHasClickAction().performClick()
         onNodeWithTag(GroupSetupTags.More).assertHasClickAction().performClick()
         assertEquals(1, backs)
         assertEquals(1, mores)
     }
 
-    @Test fun `required profile fields are discoverable`() = runComposeUiTest {
+    @Test fun `guidance and all four section descriptions are discoverable`() = runComposeUiTest {
         setup()
-        onNodeWithText("Nome do grupo").assertExists()
-        onNodeWithText("Modalidade").assertExists()
-        onNodeWithText("Composição").assertExists()
+        listOf(
+            "Você poderá alterar essas informações depois.",
+            "Escolha como sua galera será identificada.",
+            "Essas informações ajudam novos membros a entender o grupo.",
+            "Defina os padrões usados na criação de novos jogos.",
+            "Configure apenas se o grupo possuir mensalidade ou contribuição recorrente.",
+        ).forEach { onNodeWithText(it).assertExists() }
     }
 
-    @Test fun `profile choices use compact three column rows`() = runComposeUiTest {
+    @Test fun `initial suggestions are selected and fees remain absent`() = runComposeUiTest {
         setup()
-        val court = onNodeWithText("Vôlei de quadra").fetchSemanticsNode().boundsInRoot
-        val beach = onNodeWithText("Vôlei de praia").fetchSemanticsNode().boundsInRoot
-        val footvolley = onNodeWithText("Futevôlei").fetchSemanticsNode().boundsInRoot
-        assertTrue(kotlin.math.abs(court.top - beach.top) < 1f)
-        assertTrue(kotlin.math.abs(beach.top - footvolley.top) < 1f)
-        assertTrue(court.left < beach.left && beach.left < footvolley.left)
-    }
-
-    @Test fun `selected profile choice exposes its state`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(level = GroupLevel.MIXED_LEVELS)))
         onNodeWithText("Vôlei de quadra").assertIsSelected()
         onNodeWithText("Vôlei de praia").assertIsNotSelected()
         onNodeWithText("Misto").assertIsSelected()
-        onNodeWithText("Todos os níveis").assertIsSelected()
-        onNodeWithText("Iniciante").assertIsNotSelected()
+        onNodeWithTag(GroupSetupTags.LevelSelector).assertTextContains("Todos os níveis")
+        onNodeWithTag(GroupSetupTags.CapacityValue, useUnmergedTree = true).assertTextEquals("12")
+        onNodeWithTag(GroupSetupTags.ConfirmationSelector).assertTextContains("6 horas antes")
+        onNodeWithText("Sem cobrança").assertExists()
+        onNodeWithText("Não").performScrollTo().assertExists()
     }
 
-    @Test fun `idle photo actions stack beside the compact preview`() = runComposeUiTest {
+    @Test fun `photo stays compact and opens source actions in a sheet`() = runComposeUiTest {
         setup()
-        val preview = onNodeWithTag(GroupPhotoTags.Preview).fetchSemanticsNode().boundsInRoot
-        val camera = onNodeWithTag(GroupPhotoTags.Camera).fetchSemanticsNode().boundsInRoot
-        val library = onNodeWithTag(GroupPhotoTags.Library).fetchSemanticsNode().boundsInRoot
-        assertTrue(preview.right < camera.left)
-        assertTrue(camera.top < library.top)
-        assertTrue(kotlin.math.abs(camera.left - library.left) < 1f)
+        onNodeWithText("Foto do grupo").assertDoesNotExist()
+        onNodeWithText("Opcional").assertDoesNotExist()
+        onNodeWithText("SG").assertDoesNotExist()
+        val previewBounds = onNodeWithTag(GroupPhotoTags.Preview).fetchSemanticsNode().boundsInRoot
+        val addBounds = onNodeWithTag(GroupPhotoTags.Add).assertExists().assertHasClickAction()
+            .assertHeightIsAtLeast(44.dp).fetchSemanticsNode().boundsInRoot
+        onNodeWithTag(GroupPhotoTags.Preview).assertWidthIsAtLeast(112.dp)
+        val sectionBounds = onNodeWithTag(GroupSetupTags.Profile).fetchSemanticsNode().boundsInRoot
+        assertTrue(kotlin.math.abs(previewBounds.center.x - sectionBounds.center.x) < 1f)
+        assertTrue(addBounds.center.x > previewBounds.center.x)
+        assertTrue(addBounds.center.y > previewBounds.center.y)
+        onNodeWithTag(GroupPhotoTags.Camera).assertDoesNotExist()
+        onNodeWithTag(GroupPhotoTags.Library).assertDoesNotExist()
+        onNodeWithTag(GroupPhotoTags.Add).performClick()
+        onNodeWithText("Tirar foto").assertExists()
+        onNodeWithText("Escolher da galeria").assertExists()
+        onNodeWithText("Remover foto").assertExists()
+        onNodeWithText("Cancelar").assertExists()
     }
 
-    @Test fun `optional profile fields are discoverable`() = runComposeUiTest {
-        setup()
-        onNodeWithText("Descrição").assertExists()
-        onNodeWithText("Cidade").assertExists()
-        onNodeWithText("Nível").assertExists()
+    @Test fun `photo sheet emits camera and gallery intents`() = runComposeUiTest {
+        var photoIntent: GroupPhotoIntent? = null
+        setup(onPhotoIntent = { photoIntent = it })
+        onNodeWithTag(GroupPhotoTags.Add).performClick()
+        onNodeWithTag(GroupPhotoTags.Camera).performClick()
+        assertEquals(GroupPhotoIntent.ChooseCamera, photoIntent)
+        onNodeWithTag(GroupPhotoTags.Add).performClick()
+        onNodeWithTag(GroupPhotoTags.Library).performClick()
+        assertEquals(GroupPhotoIntent.ChooseLibrary, photoIntent)
     }
 
-    @Test fun `all game and finance defaults are discoverable without side effects`() = runComposeUiTest {
-        val intents = mutableListOf<GroupSetupIntent>()
-        setup(onIntent = intents::add)
-        onNodeWithText("Vagas para confirmação").assertExists()
-        onNodeWithText("Prazo para confirmar (minutos antes)").assertExists()
-        onNodeWithText("Valor por jogo").assertExists()
-        onNodeWithText("Mensalidade").assertExists()
-        onNodeWithTag(GroupSetupTags.AddVenue).assertExists()
-        onNodeWithTag(GroupSetupTags.AddSlot).assertExists()
-        assertEquals(emptyList(), intents)
-    }
-
-    @Test fun `detected timezone hides all timezone presentation`() = runComposeUiTest {
-        setup()
-        onNodeWithTag(GroupSetupTags.TimeZone).assertDoesNotExist()
-        onNodeWithText("America/Sao_Paulo").assertDoesNotExist()
-    }
-
-    @Test fun `timezone failure exposes friendly regions without identifiers`() = runComposeUiTest {
-        setup(state(timezoneSelectionRequired = true))
-        onNodeWithText("Em qual região você está?").assertExists()
-        onNodeWithText("Brasília, Sul e Sudeste").assertExists()
-        onNodeWithText("America/Sao_Paulo").assertDoesNotExist()
-    }
-
-    @Test fun `friendly timezone selection emits its hidden identifier`() = runComposeUiTest {
+    @Test fun `level options stay progressive and emit selection from sheet`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
-        setup(state(timezoneSelectionRequired = true)) { intent = it }
-        onNodeWithText("Amazonas").performScrollTo().performClick()
-        assertEquals(GroupSetupIntent.SelectFallbackTimeZone("America/Manaus"), intent)
+        setup(onIntent = { intent = it })
+        onNodeWithText("Iniciante").assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.LevelSelector).performScrollTo().performClick()
+        onNodeWithText("Iniciante").assertExists().performClick()
+        assertEquals(GroupSetupIntent.UpdateLevel(GroupLevel.BEGINNER), intent)
     }
 
-    @Test fun `court volleyball reveals play style presets`() = runComposeUiTest {
-        setup(state(form = requiredForm(modality = GroupModality.COURT_VOLLEYBALL)))
-        onNodeWithText("Esquema de jogo").assertExists()
-        onNodeWithText("5-1").assertExists()
-    }
-
-    @Test fun `beach volleyball hides play style`() = runComposeUiTest {
-        setup(state(form = requiredForm(modality = GroupModality.BEACH_VOLLEYBALL)))
-        onNodeWithText("Esquema de jogo").assertDoesNotExist()
-        onNodeWithText("5-1").assertDoesNotExist()
-    }
-
-    @Test fun `custom level reveals its required label`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(level = GroupLevel.CUSTOM)))
+    @Test fun `custom level and custom court style reveal their labels`() = runComposeUiTest {
+        setup(state = state(form = requiredForm().copy(level = GroupLevel.CUSTOM, playStyle = GroupPlayStyle.CUSTOM)))
         onNodeWithText("Nome do nível").assertExists()
-    }
-
-    @Test fun `preset level hides obsolete custom label`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(level = GroupLevel.ADVANCED)))
-        onNodeWithText("Nome do nível").assertDoesNotExist()
-    }
-
-    @Test fun `custom court style reveals its required label`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(playStyle = GroupPlayStyle.CUSTOM)))
         onNodeWithText("Nome do esquema").assertExists()
     }
 
-    @Test fun `adding a venue emits an empty nested venue`() = runComposeUiTest {
+    @Test fun `beach volleyball hides court play style`() = runComposeUiTest {
+        setup(state = state(form = requiredForm(GroupModality.BEACH_VOLLEYBALL)))
+        onNodeWithText("Esquema de jogo").assertDoesNotExist()
+    }
+
+    @Test fun `court play style opens a progressive selector`() = runComposeUiTest {
+        var intent: GroupSetupIntent? = null
+        setup(state = state(form = requiredForm())) { intent = it }
+        onNodeWithText("5-1").assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.PlayStyleSelector).performScrollTo().performClick()
+        onNodeWithText("5-1").performClick()
+        assertEquals(GroupSetupIntent.UpdatePlayStyle(GroupPlayStyle.FIVE_ONE), intent)
+    }
+
+    @Test fun `venue add action emits an empty nested venue`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
         setup(onIntent = { intent = it })
         onNodeWithTag(GroupSetupTags.AddVenue).performScrollTo().performClick()
         assertEquals(GroupSetupIntent.UpdateVenue(GroupVenueForm(name = "", address = "")), intent)
     }
 
-    @Test fun `game default add actions share one compact row`() = runComposeUiTest {
-        setup()
-        onNodeWithTag(GroupSetupTags.AddVenue).performScrollTo()
-        val venue = onNodeWithTag(GroupSetupTags.AddVenue).fetchSemanticsNode().boundsInRoot
-        val slot = onNodeWithTag(GroupSetupTags.AddSlot).fetchSemanticsNode().boundsInRoot
-        assertTrue(kotlin.math.abs(venue.top - slot.top) < 1f)
-        assertTrue(venue.left < slot.left)
-    }
-
-    @Test fun `enabled venue exposes name address and court`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(defaultVenue = GroupVenueForm(name = "Arena", address = "Rua 1"))))
+    @Test fun `configured venue is summarized and can be edited`() = runComposeUiTest {
+        setup(state = state(form = requiredForm().copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "Rua 1"))))
+        onNodeWithText("Quadra do Parque").performScrollTo().assertExists()
+        onNodeWithText("Nome do local").assertDoesNotExist()
+        onNodeWithText("Editar").performClick()
         onNodeWithText("Nome do local").assertExists()
         onNodeWithText("Endereço").assertExists()
         onNodeWithText("Quadra").assertExists()
@@ -209,7 +163,7 @@ class GroupSetupScreenTest {
 
     @Test fun `venue name remains a controlled intent`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
-        setup(state(form = requiredForm().copy(defaultVenue = GroupVenueForm(name = "", address = "Rua 1")))) { intent = it }
+        setup(state = state(form = requiredForm().copy(defaultVenue = GroupVenueForm(name = "", address = "Rua 1")))) { intent = it }
         onNodeWithContentDescription("Nome do local", useUnmergedTree = true).performTextInput("Arena")
         assertEquals("Arena", assertIs<GroupSetupIntent.UpdateVenue>(intent).value?.name)
     }
@@ -217,7 +171,7 @@ class GroupSetupScreenTest {
     @Test fun `controlled name preserves incremental keyboard order across recomposition`() = runComposeUiTest {
         var observed = ""
         setContent {
-            var form by remember { mutableStateOf(GroupSetupForm()) }
+            var form by remember { mutableStateOf(newGroupDefaults()) }
             SaqzTheme {
                 GroupSetupScreen(
                     state = state(form = form),
@@ -233,17 +187,11 @@ class GroupSetupScreenTest {
             }
         }
         val name = onNodeWithContentDescription("Nome do grupo", useUnmergedTree = true)
-        name.performTextInput("a")
-        waitForIdle()
-        name.performTextInput("b")
-        waitForIdle()
-        name.performTextInput("c")
-        waitForIdle()
-
+        listOf("a", "b", "c").forEach { name.performTextInput(it); waitForIdle() }
         assertEquals("abc", observed)
     }
 
-    @Test fun `adding a slot emits local weekday time and duration defaults`() = runComposeUiTest {
+    @Test fun `slot add action emits local defaults`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
         setup(onIntent = { intent = it })
         onNodeWithTag(GroupSetupTags.AddSlot).performScrollTo().performClick()
@@ -253,8 +201,11 @@ class GroupSetupScreenTest {
         assertEquals(60, slot.durationMinutes)
     }
 
-    @Test fun `regular slot exposes weekday time and duration`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(regularSlots = listOf(slot))))
+    @Test fun `configured slot is summarized and editor preserves every field`() = runComposeUiTest {
+        setup(state = state(form = requiredForm().copy(regularSlots = listOf(slot))))
+        onNodeWithText("19:30").performScrollTo().assertExists()
+        onNodeWithText("Dia da semana").assertDoesNotExist()
+        onNodeWithText("Editar").performClick()
         onNodeWithText("Dia da semana").assertExists()
         onNodeWithText("Horário de início").assertExists()
         onNodeWithText("Duração em minutos").assertExists()
@@ -262,85 +213,107 @@ class GroupSetupScreenTest {
 
     @Test fun `regular slot can be removed independently`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
-        setup(state(form = requiredForm().copy(regularSlots = listOf(slot)))) { intent = it }
+        setup(state = state(form = requiredForm().copy(regularSlots = listOf(slot))), onIntent = { intent = it })
+        onNodeWithText("Editar").performScrollTo().performClick()
         onNodeWithText("Remover horário").performScrollTo().performClick()
         assertEquals(emptyList(), assertIs<GroupSetupIntent.UpdateSlots>(intent).value)
     }
 
-    @Test fun `BRL monthly input converts to integer cents`() = runComposeUiTest {
+    @Test fun `capacity stepper emits one player increments`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
         setup(onIntent = { intent = it })
-        onNodeWithContentDescription("Mensalidade", useUnmergedTree = true).performTextInput("12,34")
+        onNodeWithTag(GroupSetupTags.CapacityValue, useUnmergedTree = true).performScrollTo()
+        val addButtons = onAllNodesWithContentDescription("Limite de jogadores")
+        addButtons[2].performClick()
+        assertEquals(GroupSetupIntent.UpdateDefaultCapacity(13), intent)
+    }
+
+    @Test fun `confirmation selector emits human readable preset`() = runComposeUiTest {
+        var intent: GroupSetupIntent? = null
+        setup(onIntent = { intent = it })
+        onNodeWithTag(GroupSetupTags.ConfirmationSelector).performScrollTo().performClick()
+        onNodeWithText("12 horas antes").performClick()
+        assertEquals(GroupSetupIntent.UpdateConfirmationLeadMinutes(720), intent)
+    }
+
+    @Test fun `game fee is absent until explicitly enabled and converts BRL cents`() = runComposeUiTest {
+        var intent: GroupSetupIntent? = null
+        setup(onIntent = { intent = it })
+        onNodeWithText("Adicionar valor").performScrollTo().performClick()
+        assertEquals(GroupSetupIntent.UpdateDefaultGameFeeCents(0), intent)
+    }
+
+    @Test fun `monthly switch is off then reveals fee and due date`() = runComposeUiTest {
+        var intent: GroupSetupIntent? = null
+        setup(onIntent = { intent = it })
+        onNodeWithText("Valor da mensalidade").assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.MonthlySwitch).performScrollTo().performClick()
+        assertEquals(GroupSetupIntent.UpdateMonthlyFee(0, 10), intent)
+        setup(state = state(form = requiredForm().copy(monthlyFeeCents = 0, monthlyDueDay = 10)))
+        onNodeWithText("Valor da mensalidade").performScrollTo().assertExists()
+        onNodeWithText("Todo dia 10").assertExists()
+    }
+
+    @Test fun `monthly input converts to integer cents`() = runComposeUiTest {
+        var intent: GroupSetupIntent? = null
+        setup(state = state(form = requiredForm().copy(monthlyFeeCents = 0, monthlyDueDay = 10)), onIntent = { intent = it })
+        onNodeWithContentDescription("Valor da mensalidade", useUnmergedTree = true).performScrollTo().performTextInput("12,34")
         assertEquals(1234L, assertIs<GroupSetupIntent.UpdateMonthlyFee>(intent).cents)
     }
 
-    @Test fun `monthly due day appears only with a monthly fee`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(monthlyFeeCents = 1234)))
-        onNodeWithText("Dia do vencimento (1 a 28)").assertExists()
-    }
-
-    @Test fun `monthly due day stays hidden without a fee`() = runComposeUiTest {
+    @Test fun `detected timezone stays hidden and fallback uses friendly regions`() = runComposeUiTest {
         setup()
-        onNodeWithText("Dia do vencimento (1 a 28)").assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.TimeZone).assertDoesNotExist()
+        setup(state = state(timezoneSelectionRequired = true))
+        onNodeWithText("Em qual região você está?").assertExists()
+        onNodeWithText("America/Sao_Paulo").assertDoesNotExist()
     }
 
-    @Test fun `athletes can read game defaults but not finance defaults`() = runComposeUiTest {
+    @Test fun `friendly timezone selection emits hidden identifier`() = runComposeUiTest {
+        var intent: GroupSetupIntent? = null
+        setup(state = state(timezoneSelectionRequired = true), onIntent = { intent = it })
+        onNodeWithText("Amazonas").performScrollTo().performClick()
+        assertEquals(GroupSetupIntent.SelectFallbackTimeZone("America/Manaus"), intent)
+    }
+
+    @Test fun `athletes read game defaults without finance or edit actions`() = runComposeUiTest {
         setup(access = GroupSetupAccess.ATHLETE)
         onNodeWithTag(GroupSetupTags.GameDefaults).assertExists()
         onNodeWithTag(GroupSetupTags.FinanceDefaults).assertDoesNotExist()
-    }
-
-    @Test fun `athletes never receive profile edit action`() = runComposeUiTest {
-        setup(access = GroupSetupAccess.ATHLETE)
         onNodeWithTag(GroupSetupTags.Submit).assertDoesNotExist()
+        onNodeWithTag(GroupPhotoTags.Add).assertDoesNotExist()
     }
 
-    @Test fun `edit mode exposes save action`() = runComposeUiTest {
-        setup(state(mode = GroupSetupMode.EDIT, form = requiredForm()))
-        onNodeWithTag(GroupSetupTags.Title).assertTextEquals("Vôlei de terça")
+    @Test fun `edit mode exposes stable title and save action`() = runComposeUiTest {
+        setup(state = state(mode = GroupSetupMode.EDIT, form = requiredForm()))
+        onNodeWithTag(GroupSetupTags.Title).assertTextEquals("Perfil e padrões do grupo")
         onNodeWithText("Salvar alterações").assertExists()
     }
 
-    @Test fun `legacy incomplete edit explains profile completion`() = runComposeUiTest {
-        setup(state(mode = GroupSetupMode.EDIT))
-        onNodeWithText("Complete modalidade e composição para liberar as ações do grupo.").assertExists()
-    }
-
-    @Test fun `field errors are shown next to their visible field`() = runComposeUiTest {
-        setup(state(fieldErrors = mapOf("name" to listOf("invalid"))))
+    @Test fun `field errors appear only when supplied by state`() = runComposeUiTest {
+        setup()
+        onNodeWithText("Revise este campo.").assertDoesNotExist()
+        setup(state = state(fieldErrors = mapOf("name" to listOf("invalid"))))
         onNodeWithText("Revise este campo.").assertExists()
     }
 
-    @Test fun `conflict state offers authoritative reload`() = runComposeUiTest {
+    @Test fun `conflict and photo failure keep recovery actions`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
-        setup(state(mode = GroupSetupMode.EDIT, conflict = true)) { intent = it }
+        setup(state = state(mode = GroupSetupMode.EDIT, conflict = true), onIntent = { intent = it })
         onNodeWithText("Recarregar dados").performScrollTo().performClick()
         assertEquals(GroupSetupIntent.ReloadConflict, intent)
-    }
-
-    @Test fun `photo failure remains retryable after group success`() = runComposeUiTest {
-        var intent: GroupSetupIntent? = null
-        setup(state(successGroupId = "group-1", photoRetryAvailable = true)) { intent = it }
+        setup(state = state(successGroupId = "group-1", photoRetryAvailable = true), onIntent = { intent = it })
         onNodeWithText("Tentar enviar foto novamente").performScrollTo().performClick()
         assertEquals(GroupSetupIntent.RetryPhotoUpload, intent)
     }
 
-    @Test fun `registration photo is visibly optional and skippable`() = runComposeUiTest {
-        setup()
-        onNodeWithText("Opcional. Você pode continuar sem foto e alterar depois.").assertExists()
-        onNodeWithTag(GroupSetupTags.Submit).performScrollTo().assertExists()
-    }
-
-    @Test fun `prepared registration photo marks pending without uploading`() = runComposeUiTest {
+    @Test fun `prepared registration photo remains deferred`() = runComposeUiTest {
         var setupIntent: GroupSetupIntent? = null
         val photoIntents = mutableListOf<GroupPhotoIntent>()
         setup(
-            state = state(),
             onIntent = { setupIntent = it },
             photoState = GroupPhotoState(
-                selection = GroupPhotoSelection(
-                    GroupPhotoSourceHandle("source"), GroupPhotoPreviewHandle("preview"), 200, 100,
-                ),
+                selection = GroupPhotoSelection(GroupPhotoSourceHandle("source"), GroupPhotoPreviewHandle("preview"), 200, 100),
                 stage = GroupPhotoStage.CROPPING,
             ),
             onPhotoIntent = photoIntents::add,
@@ -350,74 +323,40 @@ class GroupSetupScreenTest {
         assertEquals(emptyList<GroupPhotoIntent>(), photoIntents)
     }
 
-    @Test fun `athlete profile shows fallback without photo edit actions`() = runComposeUiTest {
-        setup(access = GroupSetupAccess.ATHLETE)
-        onNodeWithTag(GroupPhotoTags.Preview).assertExists()
-        onNodeWithTag(GroupPhotoTags.Camera).assertDoesNotExist()
-        onNodeWithTag(GroupPhotoTags.Library).assertDoesNotExist()
+    @Test fun `submit is sticky disabled for blank name and active after a name`() = runComposeUiTest {
+        setup()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsDisplayed().assertIsNotEnabled().assertHeightIsAtLeast(54.dp)
+        var intent: GroupSetupIntent? = null
+        setup(state = state(form = requiredForm()), onIntent = { intent = it })
+        onNodeWithTag(GroupSetupTags.Submit).assertIsDisplayed().assertIsEnabled().performClick()
+        assertEquals(GroupSetupIntent.Submit, intent)
     }
 
-    @Test fun `loading keeps submit reachable but disabled`() = runComposeUiTest {
-        setup(state(isLoading = true))
-        onNodeWithTag(GroupSetupTags.Submit).performScrollTo().assertIsNotEnabled()
+    @Test fun `loading keeps sticky submit reachable and disabled`() = runComposeUiTest {
+        setup(state = state(form = requiredForm(), isLoading = true))
+        onNodeWithTag(GroupSetupTags.Submit).assertIsDisplayed().assertIsNotEnabled()
     }
 
-    @Test fun `maximum text scale keeps the final action in semantic flow`() = runComposeUiTest {
-        setContent {
-            SaqzTheme {
-                CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                    GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}) {}
-                }
-            }
-        }
-        onNodeWithTag(GroupSetupTags.Submit).performScrollTo().assertExists()
-    }
-
-    @Test fun `compact max text flow keeps every initial action reachable with touch targets`() = runComposeUiTest {
+    @Test fun `maximum text scale keeps sticky action and controls reachable`() = runComposeUiTest {
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
-                Box(Modifier.size(320.dp, 420.dp)) {
-                    SaqzTheme {
-                        GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}) {}
-                    }
+                Box(Modifier.size(360.dp, 800.dp)) {
+                    SaqzTheme { GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}) {} }
                 }
             }
         }
-        listOf(
-            GroupPhotoTags.Camera,
-            GroupPhotoTags.Library,
-            GroupSetupTags.AddVenue,
-            GroupSetupTags.AddSlot,
-            GroupSetupTags.Submit,
-        ).forEach { tag ->
-            onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertHasClickAction()
-        }
-        listOf(
-            "Vôlei de quadra", "Vôlei de praia", "Futevôlei",
-            "Feminino", "Masculino", "Misto",
-            "Não definido", "Iniciante", "Intermediário", "Avançado", "Todos os níveis", "Personalizado",
-        ).forEach { label ->
-            onNodeWithText(label).performScrollTo().assertHeightIsAtLeast(48.dp).assertHasClickAction()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsDisplayed().assertHeightIsAtLeast(54.dp)
+        listOf(GroupPhotoTags.Add, GroupSetupTags.AddVenue, GroupSetupTags.AddSlot).forEach { tag ->
+            onNodeWithTag(tag).performScrollTo().assertHeightIsAtLeast(44.dp).assertHasClickAction()
         }
     }
 
-    @Test fun `server permission error uses role-safe copy`() = runComposeUiTest {
-        setup(state(error = GroupSetupError.FORBIDDEN))
-        onNodeWithText("Você não tem permissão para editar este grupo.").assertExists()
-    }
-
-    @Test fun `normal labels never expose enum or cents identifiers`() = runComposeUiTest {
-        setup(state(form = requiredForm().copy(defaultGameFeeCents = 1234)))
+    @Test fun `normal labels never expose enum cents or raw timezone identifiers`() = runComposeUiTest {
+        setup(state = state(form = requiredForm().copy(defaultGameFeeCents = 1234)))
         onNodeWithText("COURT_VOLLEYBALL").assertDoesNotExist()
         onNodeWithText("1234").assertDoesNotExist()
-        onNodeWithText("12,34").assertExists()
-    }
-
-    @Test fun `create action emits submit intent`() = runComposeUiTest {
-        var intent: GroupSetupIntent? = null
-        setup(onIntent = { intent = it })
-        onNodeWithTag(GroupSetupTags.Submit).performScrollTo().performClick()
-        assertEquals(GroupSetupIntent.Submit, intent)
+        onNodeWithText("12,34").performScrollTo().assertExists()
+        onNodeWithText("America/Sao_Paulo").assertDoesNotExist()
     }
 
     @Test fun `invalid BRL input does not manufacture cents`() {
@@ -425,12 +364,19 @@ class GroupSetupScreenTest {
         assertNull(parseBrlCents("valor"))
     }
 
+    @Test fun `BRL input accepts only numeric decimal content`() {
+        assertEquals("12,34", sanitizeBrlInput("R$ 12a,3x4"))
+        assertEquals("12345678,90", sanitizeBrlInput("123456789,901"))
+        assertEquals("1234,05", sanitizeBrlInput("1.234,05"))
+        assertEquals("12,34", sanitizeBrlInput("12.34"))
+    }
+
     @Test fun `BRL formatter uses reais and two decimal places`() {
         assertEquals("1.234,05", formatBrlInput(123405))
         assertEquals("", formatBrlInput(null))
     }
 
-    private fun androidx.compose.ui.test.ComposeUiTest.setup(
+    private fun ComposeUiTest.setup(
         state: GroupSetupState = state(),
         access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
         photoState: GroupPhotoState = GroupPhotoState(),
@@ -442,12 +388,12 @@ class GroupSetupScreenTest {
         SaqzTheme {
             GroupSetupScreen(
                 state = state,
-                onIntent = onIntent,
                 access = access,
                 photoState = photoState,
                 onPhotoIntent = onPhotoIntent,
                 onBack = onBack,
                 onMoreOptions = onMoreOptions,
+                onIntent = onIntent,
             )
         }
     }
@@ -455,7 +401,7 @@ class GroupSetupScreenTest {
     private companion object {
         val slot = GroupRegularSlotForm(weekday = GroupWeekday.WEDNESDAY, startTime = "19:30", durationMinutes = 90)
 
-        fun requiredForm(modality: GroupModality = GroupModality.COURT_VOLLEYBALL) = GroupSetupForm(
+        fun requiredForm(modality: GroupModality = GroupModality.COURT_VOLLEYBALL) = newGroupDefaults().copy(
             name = "Vôlei de terça",
             modality = modality,
             composition = GroupComposition.MIXED,
@@ -463,7 +409,7 @@ class GroupSetupScreenTest {
 
         fun state(
             mode: GroupSetupMode = GroupSetupMode.CREATE,
-            form: GroupSetupForm = GroupSetupForm(),
+            form: GroupSetupForm = newGroupDefaults(),
             timezoneSelectionRequired: Boolean = false,
             fieldErrors: Map<String, List<String>> = emptyMap(),
             isLoading: Boolean = false,

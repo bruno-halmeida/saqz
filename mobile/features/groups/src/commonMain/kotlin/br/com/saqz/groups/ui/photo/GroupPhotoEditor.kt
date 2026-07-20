@@ -2,6 +2,8 @@ package br.com.saqz.groups.ui.photo
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +11,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
+import br.com.saqz.designsystem.component.SaqzBottomSheet
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
@@ -36,6 +44,7 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.resources.*
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -46,6 +55,7 @@ object GroupPhotoTags {
     const val Progress = "group-photo-progress"
     const val Camera = "group-photo-camera"
     const val Library = "group-photo-library"
+    const val Add = "group-photo-add"
     const val Confirm = "group-photo-confirm"
     const val Cancel = "group-photo-cancel"
     const val Remove = "group-photo-remove"
@@ -71,6 +81,7 @@ fun GroupPhotoEditor(
     onReloadTarget: () -> Unit = {},
     preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     sourceActionBorderColor: Color? = null,
+    compactIdle: Boolean = false,
 ) {
     val selectedPreview = state.selection?.preview
     val visiblePreview = selectedPreview ?: state.existing?.preview
@@ -80,16 +91,19 @@ fun GroupPhotoEditor(
         GroupPhotoStage.UPLOADING,
         GroupPhotoStage.REMOVING,
     )
+    var sourceSheetVisible by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Editor),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) {
-        Text(
-            stringResource(Res.string.group_photo_title),
-            style = SaqzTheme.typography.bodyStrong,
-            color = SaqzTheme.colors.textPrimary,
-        )
-        if (optional) {
+        if (!compactIdle) {
+            Text(
+                stringResource(Res.string.group_photo_title),
+                style = SaqzTheme.typography.bodyStrong,
+                color = SaqzTheme.colors.textPrimary,
+            )
+        }
+        if (optional && !compactIdle) {
             Text(
                 stringResource(Res.string.group_photo_optional),
                 style = SaqzTheme.typography.caption,
@@ -101,26 +115,60 @@ fun GroupPhotoEditor(
             else Res.string.group_photo_preview_description,
         )
         if (selectedPreview == null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
-                verticalAlignment = Alignment.Top,
-            ) {
-                PhotoPreview(
-                    visiblePreview = visiblePreview,
-                    preview = preview,
-                    groupName = groupName,
-                    busy = busy,
-                    description = previewDescription,
-                    modifier = Modifier.size(104.dp),
-                )
-                if (canEdit) {
-                    Box(Modifier.weight(1f)) {
-                        PhotoSourceActions(
-                            enabled = !busy,
-                            borderColor = sourceActionBorderColor,
-                            onIntent = onIntent,
-                        )
+            if (compactIdle) {
+                Box(Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {
+                    PhotoPreview(
+                        visiblePreview = visiblePreview,
+                        preview = preview,
+                        groupName = groupName,
+                        busy = busy,
+                        description = previewDescription,
+                        photoIconFallback = true,
+                        modifier = Modifier.size(112.dp).align(Alignment.TopCenter),
+                    )
+                    if (canEdit) {
+                        Box(
+                            Modifier.size(44.dp).align(Alignment.BottomEnd)
+                                .clickable(
+                                    enabled = !busy,
+                                    onClickLabel = stringResource(Res.string.group_photo_add),
+                                ) { sourceSheetVisible = true }
+                                .testTag(GroupPhotoTags.Add),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(
+                                Modifier.size(30.dp)
+                                    .background(SaqzTheme.colors.surface, CircleShape)
+                                    .border(1.dp, sourceActionBorderColor ?: SaqzTheme.colors.primary, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                GroupPhotoMaterialIcon(Res.drawable.material_add, SaqzTheme.colors.primary, 16.dp)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    PhotoPreview(
+                        visiblePreview = visiblePreview,
+                        preview = preview,
+                        groupName = groupName,
+                        busy = busy,
+                        description = previewDescription,
+                        modifier = Modifier.size(104.dp),
+                    )
+                    if (canEdit) {
+                        Box(Modifier.weight(1f)) {
+                            PhotoSourceActions(
+                                enabled = !busy,
+                                borderColor = sourceActionBorderColor,
+                                onIntent = onIntent,
+                            )
+                        }
                     }
                 }
             }
@@ -159,7 +207,7 @@ fun GroupPhotoEditor(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Cancel),
             )
-        } else if (state.existing != null) {
+        } else if (state.existing != null && !compactIdle) {
                 SaqzButton(
                     stringResource(Res.string.group_photo_remove),
                     { onIntent(GroupPhotoIntent.Remove) },
@@ -170,6 +218,58 @@ fun GroupPhotoEditor(
                 )
         }
     }
+
+    if (sourceSheetVisible) {
+        SaqzBottomSheet(
+            title = stringResource(Res.string.group_photo_add),
+            onCloseRequest = { sourceSheetVisible = false },
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            showCloseAction = false,
+            primaryAction = {
+                SaqzButton(
+                    stringResource(Res.string.action_cancel),
+                    { sourceSheetVisible = false },
+                    variant = SaqzButtonVariant.Ghost,
+                    borderColor = sourceActionBorderColor,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+                PhotoSheetAction(Res.string.group_photo_take, GroupPhotoTags.Camera, sourceActionBorderColor) {
+                    sourceSheetVisible = false
+                    onIntent(GroupPhotoIntent.ChooseCamera)
+                }
+                PhotoSheetAction(Res.string.group_photo_choose_library, GroupPhotoTags.Library, sourceActionBorderColor) {
+                    sourceSheetVisible = false
+                    onIntent(GroupPhotoIntent.ChooseLibrary)
+                }
+                SaqzButton(
+                    stringResource(Res.string.group_photo_remove),
+                    {
+                        sourceSheetVisible = false
+                        onIntent(GroupPhotoIntent.Remove)
+                    },
+                    variant = SaqzButtonVariant.Ghost,
+                    borderColor = sourceActionBorderColor,
+                    enabled = state.existing != null || state.selection != null,
+                    modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Remove),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoSheetAction(label: StringResource, tag: String, borderColor: Color?, onClick: () -> Unit) {
+    SaqzButton(
+        stringResource(label),
+        onClick,
+        variant = SaqzButtonVariant.Secondary,
+        borderColor = borderColor,
+        modifier = Modifier.fillMaxWidth().testTag(tag),
+    )
 }
 
 @Composable
@@ -179,6 +279,7 @@ private fun PhotoPreview(
     groupName: String,
     busy: Boolean,
     description: String,
+    photoIconFallback: Boolean = false,
     modifier: Modifier,
 ) {
     Box(
@@ -194,7 +295,7 @@ private fun PhotoPreview(
             false
         }
         if (!rendered) {
-            PhotoFallback(groupName, Modifier.fillMaxWidth())
+            PhotoFallback(groupName, photoIconFallback, Modifier.fillMaxWidth())
         }
         if (busy) {
             CircularProgressIndicator(
@@ -206,10 +307,14 @@ private fun PhotoPreview(
 }
 
 @Composable
-private fun PhotoFallback(groupName: String, modifier: Modifier = Modifier) {
+private fun PhotoFallback(groupName: String, photoIcon: Boolean, modifier: Modifier = Modifier) {
     val initials = groupPhotoInitials(groupName)
     Box(modifier.testTag(GroupPhotoTags.Fallback), contentAlignment = Alignment.Center) {
-        Text(initials, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textMuted)
+        if (photoIcon) {
+            GroupPhotoMaterialIcon(Res.drawable.material_photo_camera, SaqzTheme.colors.textMuted, 36.dp)
+        } else {
+            Text(initials, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textMuted)
+        }
     }
 }
 
@@ -247,12 +352,12 @@ private fun PhotoSourceActions(enabled: Boolean, borderColor: Color?, onIntent: 
 }
 
 @Composable
-private fun GroupPhotoMaterialIcon(resource: DrawableResource, color: Color) {
+private fun GroupPhotoMaterialIcon(resource: DrawableResource, color: Color, size: androidx.compose.ui.unit.Dp = 20.dp) {
     Image(
         painter = painterResource(resource),
         contentDescription = null,
         colorFilter = ColorFilter.tint(color),
-        modifier = Modifier.size(20.dp).clearAndSetSemantics {},
+        modifier = Modifier.size(size).clearAndSetSemantics {},
     )
 }
 

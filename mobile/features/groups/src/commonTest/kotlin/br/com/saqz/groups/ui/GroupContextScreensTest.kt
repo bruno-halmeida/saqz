@@ -21,7 +21,15 @@ import kotlin.test.assertEquals
 class GroupContextScreensTest {
     @Test fun `context shows authoritative group and role`() = runComposeUiTest { context(owner); onNodeWithText("Current Group").assertExists(); onNodeWithText("OWNER").assertExists() }
     @Test fun `athlete has read only context`() = runComposeUiTest { context(athlete); onNodeWithTag(GroupContextTags.Settings).assertDoesNotExist(); onNodeWithTag(GroupContextTags.Invite).assertDoesNotExist() }
-    @Test fun `admin can edit and invite but not roles`() = runComposeUiTest { context(admin); onNodeWithTag(GroupContextTags.Settings).assertExists(); onNodeWithTag(GroupContextTags.Invite).assertExists(); onNodeWithTag(GroupContextTags.Roles).assertDoesNotExist() }
+    @Test fun `admin can edit and invite but not roles`() = runComposeUiTest {
+        var intent: GroupContextIntent? = null
+        context(admin) { intent = it }
+        onNodeWithTag(GroupContextTags.Settings).assertExists()
+        onNodeWithText("Convidar a galera").assertExists()
+        onNodeWithTag(GroupContextTags.Invite).performClick()
+        assertEquals(GroupContextIntent.OpenInvite, intent)
+        onNodeWithTag(GroupContextTags.Roles).assertDoesNotExist()
+    }
     @Test fun `owner can manage roles`() = runComposeUiTest { context(owner); onNodeWithTag(GroupContextTags.Roles).assertExists() }
     @Test fun `role refresh removes stale actions`() = runComposeUiTest {
         var state by mutableStateOf(owner); setContent { SaqzTheme { GroupContextScreen(state) {} } }

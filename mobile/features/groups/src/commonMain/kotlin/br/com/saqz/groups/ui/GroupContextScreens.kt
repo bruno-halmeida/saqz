@@ -110,6 +110,7 @@ fun GroupContextScreen(
             stringResource(Res.string.group_invite),
             GroupContextTags.Invite,
             { onIntent(GroupContextIntent.OpenInvite) },
+            SaqzButtonVariant.Primary,
         )
         Action(
             stringResource(Res.string.logout),
