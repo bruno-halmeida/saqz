@@ -788,6 +788,9 @@ keys, cents, or timezone identifiers.
   subquery embedded in the same PostgreSQL statement as `FOR UPDATE` can retain
   the pre-wait READ_COMMITTED snapshot, allowing both racers to confirm.
   Covered by V23.
+- **B65 | 2026-07-20** — The first T53 test compile named the shared identity's
+  subject parameter `firebaseSubject` instead of its actual `subject` name.
+  No new invariant added; B55's named-fixture rule and compilation cover it.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
