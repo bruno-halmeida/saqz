@@ -127,8 +127,8 @@ keys, cents, or timezone identifiers.
 ## Group registration flow
 
 1. A verified user opens `Criar grupo`.
-2. One keyboard-safe, scrollable flow presents three clear sections: group
-   profile, optional game defaults, and optional finance defaults.
+2. One keyboard-safe, scrollable flow presents four clear sections: group
+   identity, sports profile, game routine, and optional billing.
 3. Required fields are name, modality, and composition. Every other user field
    is optional or conditionally required.
 4. Timezone is detected from the device. Detection failure uses a friendly
@@ -149,6 +149,10 @@ keys, cents, or timezone identifiers.
     never rolls back or duplicates the group and remains retryable.
 12. Success opens group context/profile. It creates no first game and may offer
     separate actions `Criar jogo` and `Fazer depois`.
+13. New registration starts with editable suggestions for court volleyball,
+    mixed composition, all levels, 12 players, and a six-hour confirmation
+    deadline. Photo, venue, regular slots, per-game fee, and monthly fee remain
+    absent until explicitly enabled.
 
 ## Group profile, defaults, and privacy
 
@@ -424,22 +428,29 @@ keys, cents, or timezone identifiers.
 29. **GRP-UI-02** — WHEN a request fails, app rotates/restarts, or retry occurs
     THEN non-sensitive drafts SHALL survive safely and no creation, RSVP,
     promotion, charge, or expense SHALL execute twice.
-30. **GRP-REGRESSION-01** — WHEN delivered THEN existing auth, selection,
+30. **GRP-UI-03** — WHEN create-group registration opens THEN it SHALL use a
+    centered `Novo grupo` app bar, four lightweight section surfaces,
+    progressive selectors for photo, level, deadline, and fees, editable
+    initial suggestions, and a fixed submit action that remains disabled until
+    the name is non-blank; every field and conditional capability from the
+    registration contract SHALL remain reachable with visible labels and at
+    least 44 dp touch targets.
+31. **GRP-REGRESSION-01** — WHEN delivered THEN existing auth, selection,
     membership, invitation, logout, credential, workspace isolation, backend,
     Android, and iOS gates SHALL remain mandatory and green.
 
 ### Invitation and deep-link journey
 
-31. **INVITE-01** — WHEN an owner/admin generates, rotates, expires, or shares
+32. **INVITE-01** — WHEN an owner/admin generates, rotates, expires, or shares
     an invitation THEN exactly one opaque active capability SHALL be managed
     without placing private group or user data in the link or preview.
-32. **INVITE-02** — WHEN the active link opens cold, warm, or after installation
+33. **INVITE-02** — WHEN the active link opens cold, warm, or after installation
     before/after authentication THEN its code SHALL be delivered once, survive
     safe restart until a verified session is ready, and never bypass auth.
-33. **INVITE-03** — WHEN a valid code is redeemed or retried THEN membership
+34. **INVITE-03** — WHEN a valid code is redeemed or retried THEN membership
     SHALL be created at most once without downgrading an existing role, pending
     state SHALL clear, and the redeemed group SHALL become selected and open.
-34. **INVITE-04** — WHEN a code is invalid, expired, rotated, duplicated, or
+35. **INVITE-04** — WHEN a code is invalid, expired, rotated, duplicated, or
     rate-limited THEN no group data or existence SHALL leak, no duplicate
     membership/selection SHALL occur, and only retryable outcomes SHALL retain
     pending state.
@@ -941,6 +952,10 @@ keys, cents, or timezone identifiers.
 - **B106 | 2026-07-20** — The first validation report used Markdown hard-break
   spaces that failed `git diff --check`. No new invariant added; plain line
   endings preserve the evidence without whitespace violations.
+- **B107 | 2026-07-20** — The registration-default amendment made a required-
+  field validation test inherit valid modality/composition suggestions, so its
+  old empty-form expectation no longer described the scenario under test.
+  Covered by V54.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -1060,6 +1075,9 @@ keys, cents, or timezone identifiers.
 - **V53** — Controlled Compose inputs that project text into a ViewModel SHALL
   retain the latest `TextFieldValue` selection and composition while text is
   unchanged; an incremental multi-character input test SHALL assert typed order.
+- **V54** — Required-field validation tests SHALL explicitly construct each
+  missing value they intend to reject and SHALL NOT depend on create-form
+  defaults remaining absent.
 
 ## Success criteria
 

@@ -47,6 +47,9 @@ the first game. Later games copy those defaults and own their historical data.
 | Lifecycle | Group deletion, ownership transfer, and leaving are out of scope. |
 | First game | Registration does not create or require a game. |
 | Group defaults | Venue, regular slots, capacity, confirmation deadline, per-game fee, monthly fee, and due day may be configured during registration. |
+| Registration presentation | Four lightweight surfaces: identity, sports profile, game routine, and billing; secondary choices open progressively instead of showing every option at once. |
+| Registration suggestions | Court volleyball, mixed composition, all levels, 12 players, and six hours before confirmation close are editable defaults; photo, venue, slots, and charges start absent. |
+| Registration action | A sticky `Criar grupo` action is disabled only while the name is blank or a request is loading; validation errors appear after interaction or submit. |
 | Game scheduling | One-time or weekly recurring; recurrence may use multiple weekdays. |
 | Attendance | Confirmed, declined, or waitlisted; waitlist promotion is automatic. |
 | Payments | Saqz tracks per-game and monthly charges manually; it never receives or processes money. |

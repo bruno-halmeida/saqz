@@ -119,7 +119,7 @@ class GroupSetupViewModel(
     private val mutableState = MutableStateFlow(
         GroupSetupState(
             mode = if (existing == null) GroupSetupMode.CREATE else GroupSetupMode.EDIT,
-            form = existing?.group?.toForm() ?: GroupSetupForm(),
+            form = existing?.group?.toForm() ?: newGroupDefaults(),
             commandKey = commandKeys.create(),
             groupId = existing?.group?.id,
             groupVersion = existing?.group?.version,
@@ -399,6 +399,14 @@ private fun String?.hasLength(min: Int, max: Int): Boolean {
     val value = this?.trim() ?: return false
     return value.length in min..max && value.none(Char::isISOControl)
 }
+
+internal fun newGroupDefaults() = GroupSetupForm(
+    modality = GroupModality.COURT_VOLLEYBALL,
+    composition = GroupComposition.MIXED,
+    level = GroupLevel.MIXED_LEVELS,
+    defaultCapacity = 12,
+    defaultConfirmationLeadMinutes = 360,
+)
 
 private fun String.toGroupTimeZone(): GroupTimeZone? =
     (GroupTimeZone.parse(this) as? GroupTimeZone.ParseResult.Valid)?.value

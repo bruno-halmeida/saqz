@@ -52,7 +52,7 @@ class GroupSetupViewModelTest {
         assertEquals(GroupSetupMode.CREATE, fixture.viewModel.state.value.mode)
         assertEquals("command-1", fixture.viewModel.state.value.commandKey)
         assertEquals("America/Sao_Paulo", fixture.viewModel.state.value.timeZone?.id)
-        assertEquals(GroupSetupForm(), fixture.viewModel.state.value.form)
+        assertEquals(newGroupDefaults(), fixture.viewModel.state.value.form)
         assertFalse(fixture.viewModel.state.value.timezoneSelectionRequired)
     }
 
@@ -91,7 +91,7 @@ class GroupSetupViewModelTest {
         val fixture = fixture(draftResult = GroupDraftReadResult.Failure(GroupDraftFailure.CORRUPT))
 
         assertEquals(GroupSetupError.DRAFT_UNAVAILABLE, fixture.viewModel.state.value.error)
-        assertEquals(GroupSetupForm(), fixture.viewModel.state.value.form)
+        assertEquals(newGroupDefaults(), fixture.viewModel.state.value.form)
     }
 
     @Test
@@ -140,7 +140,9 @@ class GroupSetupViewModelTest {
 
     @Test
     fun `invalid required form submits no request and exposes exact fields`() = runTest {
-        val fixture = fixture()
+        val fixture = fixture(
+            draftResult = GroupDraftReadResult.Success(draft(GroupSetupForm())),
+        )
 
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()

@@ -609,7 +609,7 @@ Compose resources and tests.
 **Reuses:** Saqz design-system inputs/buttons/cards/dialogs, pt-BR formatters,
 keyboard-safe layouts and semantic tags.
 **Requirement:** `GRP-REG-01`, `GRP-REG-05`, `GRP-DEFAULT-01..04`,
-`GRP-UI-01..02`.
+`GRP-UI-01..03`.
 
 **Tools:** MCP: none. Skill: `tlc-spec-driven`; `backprop` on failure.
 
@@ -2029,6 +2029,7 @@ batching unit and are never split between workers.
 | `ATTEND-01..04` | T30, T33, T45, T49..T57, T66..T67 |
 | `FIN-01..07` | T17..T18, T31, T43..T48, T50..T62, T66..T67 |
 | `GRP-UI-01..02` | T08, T09, T13, T20..T23, T26..T29, T32, T35..T42, T46, T48, T51..T67 |
+| `GRP-UI-03` | T22 redesign amendment |
 | `GRP-REGRESSION-01` | T01..T03, T08..T13, T65..T67 |
 | `INVITE-01..04` | T01, T03, T09, T13, T65..T67 |
 
