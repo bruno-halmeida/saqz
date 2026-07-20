@@ -588,6 +588,10 @@ keys, cents, or timezone identifiers.
 - **B21 | 2026-07-19** — The second T28 Swift compile returned the Boolean
   cleanup result from two `Void` guard branches. No new invariant added; the
   existing iOS native compile gate deterministically catches return-type drift.
+- **B22 | 2026-07-19** — The third T28 Swift compile accessed a non-Sendable
+  notification observer token from the main-actor adapter's nonisolated
+  `deinit`. No new invariant added; strict-concurrency iOS compilation already
+  rejects actor-isolation violations.
 
 ## Success criteria
 
