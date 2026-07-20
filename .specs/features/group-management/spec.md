@@ -653,6 +653,10 @@ keys, cents, or timezone identifiers.
   rejected the duplicate. No new invariant added; the accepted recurrence and
   boundary requirements already require unique stable identities and forbid
   rewriting completed games.
+- **B33 | 2026-07-19** — The first T35 Bruno gate rejected compact inline
+  request blocks even though the same fields are valid in multiline Bruno
+  syntax. No new product invariant added; the existing Bruno contract gate
+  deterministically enforces the repository parser's supported request shape.
 
 ## Success criteria
 
