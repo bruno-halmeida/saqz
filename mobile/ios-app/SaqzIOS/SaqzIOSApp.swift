@@ -24,6 +24,7 @@ struct IOSAppComposition {
     let groupState: IOSLocalGroupStateAdapter
     let share: IOSShareAdapter
     let photos: IOSGroupPhotoAdapters?
+    let drafts: IOSGroupDraftAdapters
     let dependencies: SaqzAppDependencies
 
     static func makeLive(configuration: IOSAppConfiguration = .bundled()) -> IOSAppComposition {
@@ -34,7 +35,8 @@ struct IOSAppComposition {
         let groupState = IOSLocalGroupStateAdapter(store: store)
         let share = IOSLocalAccessComposition.makeShare { IOSPresentationRoot.current }
         let photos = IOSGroupPhotoAdapters.makeLive(presenter: { IOSPresentationRoot.current })
-        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos)
+        let drafts = IOSGroupDraftAdapters.makeLive()
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos, drafts: drafts)
     }
 
     static func make(
@@ -44,7 +46,8 @@ struct IOSAppComposition {
         localState: IOSLocalAccessStateAdapter,
         groupState: IOSLocalGroupStateAdapter,
         share: IOSShareAdapter,
-        photos: IOSGroupPhotoAdapters? = nil
+        photos: IOSGroupPhotoAdapters? = nil,
+        drafts: IOSGroupDraftAdapters
     ) -> IOSAppComposition {
         links.onColdStart(url: nil)
         let dependencies = SaqzAppDependencies(
@@ -55,9 +58,13 @@ struct IOSAppComposition {
             localState: localState,
             share: share,
             groupLinks: links,
-            groupState: groupState
+            groupState: groupState,
+            groupDrafts: drafts.setup,
+            gameDrafts: drafts.game,
+            monthlyChargeDrafts: drafts.monthly,
+            expenseDrafts: drafts.expense
         )
-        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos, dependencies: dependencies)
+        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos, drafts: drafts, dependencies: dependencies)
     }
 }
 

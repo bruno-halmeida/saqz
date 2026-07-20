@@ -29,6 +29,14 @@ final class IOSAppCompositionTests: XCTestCase {
         let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.share as AnyObject) === fixture.composition.share)
     }
 
+    func testCompositionInjectsAllExactGroupDraftPorts() {
+        let composition = makeFixture().composition
+        XCTAssertTrue((composition.dependencies.groupDrafts as AnyObject) === composition.drafts.setup)
+        XCTAssertTrue((composition.dependencies.gameDrafts as AnyObject) === composition.drafts.game)
+        XCTAssertTrue((composition.dependencies.monthlyChargeDrafts as AnyObject) === composition.drafts.monthly)
+        XCTAssertTrue((composition.dependencies.expenseDrafts as AnyObject) === composition.drafts.expense)
+    }
+
     func testBranchDeferredSessionStartsExactlyOnceBeforeComposeConsumption() {
         let fixture = makeFixture(); XCTAssertEqual(fixture.branch.initializeCount, 1)
     }
@@ -67,9 +75,10 @@ final class IOSAppCompositionTests: XCTestCase {
         let firebase = FakeFirebase(); let google = FakeGoogle(); let branch = FakeBranch(); let store = FakeStore(); let share = FakeShare()
         let auth = IOSAuthAdapter(firebase: firebase, google: google); let links = IOSLinkAdapter(branch: branch)
         let local = IOSLocalAccessStateAdapter(store: store); let groupState = IOSLocalGroupStateAdapter(store: store); let shareAdapter = IOSShareAdapter(launcher: share)
+        let drafts = IOSGroupDraftAdapters.make(files: FakeDraftFiles())
         let composition = IOSAppComposition.make(
             configuration: IOSAppConfiguration(environment: "dev", apiBaseURL: "http://127.0.0.1:8080"),
-            auth: auth, links: links, localState: local, groupState: groupState, share: shareAdapter
+            auth: auth, links: links, localState: local, groupState: groupState, share: shareAdapter, drafts: drafts
         )
         return Fixture(composition: composition, google: google, branch: branch)
     }
@@ -111,6 +120,14 @@ final class IOSAppCompositionTests: XCTestCase {
 }
 
 @MainActor private final class FakeShare: IOSShareLauncher { func launch(text: String) throws {} }
+
+private final class FakeDraftFiles: IOSDraftFileClient {
+    var values: [String: Data] = [:]
+    func read(key: String) throws -> Data? { values[key] }
+    func write(_ data: Data, key: String) throws { values[key] = data }
+    func remove(key: String) throws { values.removeValue(forKey: key) }
+    func keys() throws -> [String] { Array(values.keys) }
+}
 
 @MainActor private final class RecordingInviteListener: @preconcurrency GroupInviteCodeListener {
     var codes: [String] = []; func onInviteCode(code: String) { codes.append(code) }

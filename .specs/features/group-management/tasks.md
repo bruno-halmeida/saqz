@@ -1875,18 +1875,21 @@ XCTest/lifecycle UI tests.
 
 **Done when:**
 
-- [ ] Draft values/versions/keys round-trip across controller/app recreation and
+- [x] Draft values/versions/keys round-trip across controller/app recreation and
   match Android/common contract fixtures.
-- [ ] Atomic writes and corrupt/old schema handling never auto-dispatch or lose
+- [x] Atomic writes and corrupt/old schema handling never auto-dispatch or lose
   an unrelated draft.
-- [ ] Tokens, invite codes, photo data/handles, payment credentials and raw
+- [x] Tokens, invite codes, photo data/handles, payment credentials and raw
   errors are structurally absent.
-- [ ] Matching success/logout/group-loss cleanup is exact and lifecycle-safe.
-- [ ] iOS native gate passes; test count `Δ+10` or greater.
+- [x] Matching success/logout/group-loss cleanup is exact and lifecycle-safe.
+- [x] iOS native gate passes; test count `Δ+10` or greater.
 
 **Tests:** XCTest + targeted XCUITest (`Δ+10`).
 **Gate:** iOS native + Safety.
 **Commit:** `feat(ios): persist safe group drafts`
+**Status:** Complete; 13 new XCTest cases passed in both Dev and Release,
+alongside 13 retained XCUITests in Dev, for 110 Dev and 97 Release tests with
+zero failures/skips; credential and scope safety passed.
 
 ### T65: Integrate Groups navigation, selection, and incomplete-profile gating
 

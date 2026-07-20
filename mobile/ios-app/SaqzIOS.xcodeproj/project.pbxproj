@@ -30,6 +30,8 @@
 		B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */; };
 		B60000000000000000000002 /* IOSGroupPhotoAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */; };
 		B60000000000000000000003 /* IOSGroupPhotoLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */; };
+		C70000000000000000000001 /* IOSGroupDraftAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000011 /* IOSGroupDraftAdapters.swift */; };
+		C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +76,8 @@
 		B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsPhoto/IOSGroupPhotoAdapters.swift; sourceTree = "<group>"; };
 		B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoAdaptersTests.swift; sourceTree = "<group>"; };
 		B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoLifecycleUITests.swift; sourceTree = "<group>"; };
+		C70000000000000000000011 /* IOSGroupDraftAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsDraft/IOSGroupDraftAdapters.swift; sourceTree = "<group>"; };
+		C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupDraftAdaptersTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +129,7 @@
 				A40000000000000000000011 /* IOSLocalAccessAdapters.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
 				B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */,
+				C70000000000000000000011 /* IOSGroupDraftAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
 			);
@@ -171,6 +176,7 @@
 				A10000000000000000000019 /* LaunchContractTests.swift */,
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
 				B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */,
+				C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */,
 			);
 			path = SaqzIOSTests;
 			sourceTree = "<group>";
@@ -353,6 +359,7 @@
 				A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
 				B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */,
+				C70000000000000000000001 /* IOSGroupDraftAdapters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -379,6 +386,7 @@
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
 				B60000000000000000000002 /* IOSGroupPhotoAdaptersTests.swift in Sources */,
+				C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
