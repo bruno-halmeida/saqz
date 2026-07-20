@@ -675,6 +675,10 @@ keys, cents, or timezone identifiers.
   argument was placed after a trailing handler lambda. No new invariant added;
   common-test compilation on the iOS simulator target catches portable call
   syntax before execution.
+- **B38 | 2026-07-19** — The first T38 KMP compile found that the selection
+  helper accepted the sealed parent intent while reading subtype-only group,
+  role, and date fields. No new invariant added; common compilation already
+  rejects missing intent narrowing deterministically.
 
 ## Success criteria
 
