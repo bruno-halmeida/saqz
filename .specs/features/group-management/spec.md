@@ -761,6 +761,13 @@ keys, cents, or timezone identifiers.
   Gradle startup when the managed sandbox could not open its wrapper lock in
   the user Gradle cache. No new invariant added; the identical approved Gradle
   command must be rerun with the required filesystem permission.
+- **B57 | 2026-07-20** — T47 spec review found V5 admitted expense category
+  `SERVICE` instead of the accepted `REFEREE` value and allowed an 80-character
+  custom category instead of 40. Covered by V20.
+- **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
+  for every confirmed closed vocabulary and length limit SHALL be derived from
+  the accepted spec table verbatim; tests SHALL assert every member and both
+  sides of each bound.
 
 ## Success criteria
 
