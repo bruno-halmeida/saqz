@@ -679,6 +679,11 @@ keys, cents, or timezone identifiers.
   helper accepted the sealed parent intent while reading subtype-only group,
   role, and date fields. No new invariant added; common compilation already
   rejects missing intent narrowing deterministically.
+- **B39 | 2026-07-19** — The first executing T38 suite left an intentionally
+  pending group-switch request incomplete after asserting the protected
+  loading state, and `runTest` reported the leaked coroutine. No new invariant
+  added; coroutine test completion already detects unfinished asynchronous
+  work.
 
 ## Success criteria
 
