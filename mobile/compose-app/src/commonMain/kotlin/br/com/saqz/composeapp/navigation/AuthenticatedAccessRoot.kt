@@ -1,7 +1,10 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -303,7 +306,12 @@ internal fun AuthenticatedAccessRoot(
         systemBackIntent?.let(onIntent)
     }
     key(destination) {
-        Box(Modifier.fillMaxSize().testTag(AccessRootTag)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .then(if (destination.respectsSafeArea()) Modifier.windowInsetsPadding(WindowInsets.safeDrawing) else Modifier)
+                .testTag(AccessRootTag),
+        ) {
             DestinationContent(
                 destination,
                 state,
@@ -318,6 +326,14 @@ internal fun AuthenticatedAccessRoot(
             )
         }
     }
+}
+
+internal fun AccessDestination.respectsSafeArea(): Boolean = when (this) {
+    AccessDestination.LOGIN,
+    AccessDestination.REGISTRATION,
+    AccessDestination.PASSWORD_RESET,
+    -> false
+    else -> true
 }
 
 internal fun AccessDestination.systemBackIntent(): AccessIntent? = when (this) {

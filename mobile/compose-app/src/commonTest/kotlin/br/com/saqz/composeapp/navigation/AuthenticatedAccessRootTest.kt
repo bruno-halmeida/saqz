@@ -82,7 +82,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class AuthenticatedAccessRootTest {
@@ -162,6 +164,18 @@ class AuthenticatedAccessRootTest {
     @Test
     fun `login does not consume system back`() {
         assertNull(AccessDestination.LOGIN.systemBackIntent())
+    }
+
+    @Test
+    fun `only signed out auth destinations ignore safe area`() {
+        assertFalse(AccessDestination.LOGIN.respectsSafeArea())
+        assertFalse(AccessDestination.REGISTRATION.respectsSafeArea())
+        assertFalse(AccessDestination.PASSWORD_RESET.respectsSafeArea())
+
+        assertTrue(AccessDestination.GROUP_CONTEXT.respectsSafeArea())
+        assertTrue(AccessDestination.CREATE_GROUP.respectsSafeArea())
+        assertTrue(AccessDestination.GROUP_ONBOARDING.respectsSafeArea())
+        assertTrue(AccessDestination.BOOTSTRAP.respectsSafeArea())
     }
 
     @Test
