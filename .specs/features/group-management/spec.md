@@ -596,6 +596,11 @@ keys, cents, or timezone identifiers.
   intents with inferred singleton and empty lists that Kotlin/Native could not
   type consistently. No new invariant added; common-test compilation already
   catches assertion type inference errors before execution.
+- **B24 | 2026-07-19** — The first T29 UI run mounted the square photo editor
+  without the production scroll container, leaving lower actions outside the
+  test viewport with zero visible bounds and making clicks no-ops. No new
+  invariant added; the existing compact/keyboard semantic-flow criterion and
+  Compose UI gate cover scroll reachability.
 
 ## Success criteria
 
