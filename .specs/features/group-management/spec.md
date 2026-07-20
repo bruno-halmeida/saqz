@@ -851,6 +851,9 @@ keys, cents, or timezone identifiers.
   Flow terminal operator referenced as a qualified member without importing
   its extension, which is not resolved consistently by common compilation.
   Covered by V38.
+- **B83 | 2026-07-20** — A T65 targeted compile command assumed the conventional
+  `compileKotlinAndroid` task although the Compose app's KMP configuration does
+  not expose that task name. Covered by V39.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -913,6 +916,9 @@ keys, cents, or timezone identifiers.
   operators and invoke them as extensions; package qualification SHALL not be
   used as a substitute for an extension import, and Kotlin/Native test
   compilation SHALL enforce this.
+- **V39** — Mobile verification commands SHALL use task names exposed by the
+  checked-in KMP build and accepted task gate table; ad hoc conventional task
+  names SHALL be confirmed with the Gradle task inventory before use.
 
 ## Success criteria
 
