@@ -563,6 +563,12 @@ keys, cents, or timezone identifiers.
   `GroupReadSnapshot.id` constructor argument `groupId`, so bootstrap test
   compilation stopped before execution. No new invariant added; Kotlin named
   argument checking already catches this fixture drift.
+- **B17 | 2026-07-19** — The first T26 common photo handles used the JVM-only
+  `JvmInline` annotation, so Android compilation passed while the iOS target
+  failed before tests. Covered by V10.
+- **V10** — Every provider-neutral Groups photo contract in `commonMain` SHALL
+  compile for both Android and iOS targets and SHALL NOT depend on platform-only
+  annotations or types.
 
 ## Success criteria
 
