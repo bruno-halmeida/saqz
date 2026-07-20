@@ -355,7 +355,7 @@ private fun SetupSection(title: StringResource, tag: String, content: @Composabl
         Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid + SaqzTheme.metrics.subGrid)) {
             Text(
                 stringResource(title),
-                style = SaqzTheme.typography.bodyStrong,
+                style = SaqzTheme.typography.lead.copy(fontWeight = FontWeight.SemiBold),
                 color = SaqzTheme.colors.textPrimary,
                 modifier = Modifier.semantics { heading() },
             )
