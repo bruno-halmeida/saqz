@@ -557,13 +557,13 @@ formatters, current selected-group local adapter pattern.
 
 **Done when:**
 
-- [ ] DTO serialization covers exact enums/nested values/null cleanup, ETags,
+- [x] DTO serialization covers exact enums/nested values/null cleanup, ETags,
   field problems, and no raw object key/public URL.
-- [ ] System timezone returns a valid zone or a typed failure; no raw timezone
+- [x] System timezone returns a valid zone or a typed failure; no raw timezone
   text field exists in the normal form contract.
-- [ ] Draft schema stores form values, group/version and stable command key but
+- [x] Draft schema stores form values, group/version and stable command key but
   excludes bearer tokens, invite codes, and photo bytes.
-- [ ] Mobile quick gate passes; test count `Δ+14` or greater.
+- [x] Mobile quick gate passes; test count `Δ+15` with zero skipped/failing.
 
 **Tests:** KMP gateway/domain/port unit (`Δ+14`).
 **Gate:** Mobile quick + Safety.
