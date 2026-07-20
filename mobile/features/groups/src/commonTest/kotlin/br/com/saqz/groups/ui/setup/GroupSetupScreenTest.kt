@@ -10,6 +10,8 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -49,9 +51,24 @@ import kotlin.test.assertTrue
 class GroupSetupScreenTest {
     @Test fun `registration presents the three sections in one flow`() = runComposeUiTest {
         setup()
-        onNodeWithTag(GroupSetupTags.Profile).assertExists()
-        onNodeWithTag(GroupSetupTags.GameDefaults).assertExists()
-        onNodeWithTag(GroupSetupTags.FinanceDefaults).assertExists()
+        val profileWidth = onNodeWithTag(GroupSetupTags.Profile).performScrollTo().fetchSemanticsNode().boundsInRoot.width
+        val gameDefaultsWidth =
+            onNodeWithTag(GroupSetupTags.GameDefaults).performScrollTo().fetchSemanticsNode().boundsInRoot.width
+        val financeDefaultsWidth =
+            onNodeWithTag(GroupSetupTags.FinanceDefaults).performScrollTo().fetchSemanticsNode().boundsInRoot.width
+
+        assertTrue(kotlin.math.abs(profileWidth - gameDefaultsWidth) < 1f)
+        assertTrue(kotlin.math.abs(gameDefaultsWidth - financeDefaultsWidth) < 1f)
+    }
+
+    @Test fun `registration opens with centered brand and title`() = runComposeUiTest {
+        setup()
+        val screen = onNodeWithTag(GroupSetupTags.Screen).fetchSemanticsNode().boundsInRoot
+        val wordmark = onNodeWithTag(GroupSetupTags.Wordmark).fetchSemanticsNode().boundsInRoot
+        val title = onNodeWithTag(GroupSetupTags.Title).fetchSemanticsNode().boundsInRoot
+
+        assertTrue(kotlin.math.abs(screen.center.x - wordmark.center.x) < 1f)
+        assertTrue(kotlin.math.abs(screen.center.x - title.center.x) < 1f)
     }
 
     @Test fun `required profile fields are discoverable`() = runComposeUiTest {
@@ -69,6 +86,13 @@ class GroupSetupScreenTest {
         assertTrue(kotlin.math.abs(court.top - beach.top) < 1f)
         assertTrue(kotlin.math.abs(beach.top - footvolley.top) < 1f)
         assertTrue(court.left < beach.left && beach.left < footvolley.left)
+    }
+
+    @Test fun `selected profile choice exposes its state`() = runComposeUiTest {
+        setup(state(form = requiredForm()))
+        onNodeWithText("Vôlei de quadra").assertIsSelected()
+        onNodeWithText("Vôlei de praia").assertIsNotSelected()
+        onNodeWithText("Misto").assertIsSelected()
     }
 
     @Test fun `idle photo actions sit beside the compact preview`() = runComposeUiTest {

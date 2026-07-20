@@ -914,6 +914,14 @@ keys, cents, or timezone identifiers.
   session left on the shared emulator, so ten login-oriented cold-start and
   layout tests opened the authenticated flow instead of their declared login
   precondition. Covered by V51.
+- **B101 | 2026-07-20** — The first group-setup selection semantics assignment
+  collided with the generic `selected` parameter and failed Kotlin compilation.
+  No new invariant added; an explicit semantics-property alias fixes this
+  mechanical name-resolution error.
+- **B102 | 2026-07-20** — The first group-setup card alignment assertion compared
+  simultaneous root coordinates for sections outside the scroll viewport and
+  failed on iOS. No new invariant added; each card is scrolled into view before
+  its width is measured, avoiding platform-dependent clipped coordinates.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both

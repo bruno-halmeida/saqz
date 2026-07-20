@@ -1,27 +1,42 @@
 package br.com.saqz.groups.ui.setup
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected as semanticsSelected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzCard
 import br.com.saqz.designsystem.component.SaqzInput
+import br.com.saqz.designsystem.resources.Res as DesignRes
+import br.com.saqz.designsystem.resources.saqz_wordmark
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
@@ -41,6 +56,7 @@ import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.resources.*
 import br.com.saqz.groups.ui.photo.GroupPhotoEditor
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 enum class GroupSetupAccess { ORGANIZER, ATHLETE }
@@ -54,6 +70,9 @@ internal object GroupSetupTags {
     const val AddVenue = "group-setup-add-venue"
     const val AddSlot = "group-setup-add-slot"
     const val TimeZone = "group-setup-timezone"
+    const val Header = "group-setup-header"
+    const val Wordmark = "group-setup-wordmark"
+    const val Title = "group-setup-title"
 }
 
 @Composable
@@ -67,17 +86,21 @@ fun GroupSetupScreen(
 ) {
     val editable = access == GroupSetupAccess.ORGANIZER && state.successGroupId == null
     val form = state.form
+    val metrics = SaqzTheme.metrics
     Column(
-        Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
-            .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.grid)
+        Modifier.fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid)
             .testTag(GroupSetupTags.Screen),
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        verticalArrangement = Arrangement.spacedBy(metrics.grid + metrics.subGrid),
     ) {
-        Text(
-            stringResource(if (state.mode == GroupSetupMode.CREATE) Res.string.group_setup_create_title else Res.string.group_setup_edit_title),
-            style = SaqzTheme.typography.lead,
-            color = SaqzTheme.colors.textPrimary,
-            modifier = Modifier.semantics { heading() },
+        GroupSetupHeader(
+            title = stringResource(
+                if (state.mode == GroupSetupMode.CREATE) Res.string.group_setup_create_title
+                else Res.string.group_setup_edit_title,
+            ),
         )
         if (state.mode == GroupSetupMode.EDIT && (form.modality == null || form.composition == null)) {
             Notice(stringResource(Res.string.group_setup_incomplete))
@@ -236,9 +259,43 @@ fun GroupSetupScreen(
 }
 
 @Composable
+private fun GroupSetupHeader(title: String) {
+    val colors = SaqzTheme.colors
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag(GroupSetupTags.Header),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+    ) {
+        Box(Modifier.fillMaxWidth().height(SaqzTheme.metrics.minimumTouchTarget)) {
+            Image(
+                painter = painterResource(DesignRes.drawable.saqz_wordmark),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(width = 80.dp, height = 24.dp)
+                    .testTag(GroupSetupTags.Wordmark),
+            )
+        }
+        Text(
+            text = title,
+            style = SaqzTheme.typography.lead.copy(fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center),
+            color = colors.textPrimary,
+            modifier = Modifier.fillMaxWidth().semantics { heading() }.testTag(GroupSetupTags.Title),
+        )
+    }
+}
+
+@Composable
 private fun SetupSection(title: StringResource, tag: String, content: @Composable () -> Unit) {
-    SaqzCard(Modifier.fillMaxWidth().testTag(tag)) {
-        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+    val shape = RoundedCornerShape(SaqzTheme.metrics.cardRadius)
+    SaqzCard(
+        Modifier
+            .fillMaxWidth()
+            .shadow(2.dp, shape, clip = false)
+            .border(1.dp, SaqzTheme.colors.hairline, shape)
+            .testTag(tag),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid + SaqzTheme.metrics.subGrid)) {
             Text(
                 stringResource(title),
                 style = SaqzTheme.typography.bodyStrong,
@@ -291,13 +348,14 @@ private fun <T> ChoiceField(
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
             ) {
                 rowOptions.forEach { (value, text) ->
+                    val isSelected = selected == value
                     SaqzButton(
                         text,
                         { onSelect(value) },
-                        variant = if (selected == value) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
+                        variant = if (isSelected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
                         enabled = enabled,
                         labelStyle = SaqzTheme.typography.caption,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).semantics { semanticsSelected = isSelected },
                     )
                 }
                 repeat(3 - rowOptions.size) { Spacer(Modifier.weight(1f)) }
