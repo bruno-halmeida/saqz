@@ -812,9 +812,9 @@ keys, cents, or timezone identifiers.
 - **B71 | 2026-07-20** — The first T56 multiplatform compile exposed a JVM-only
   `System.currentTimeMillis()` default clock in common source, breaking both
   Android common compilation and Kotlin/Native. Covered by V27.
-- **B72 | 2026-07-20** — The next T56 Kotlin/Native test compile exposed an
-  `ExperimentalCoroutinesApi` import from the root `kotlinx.coroutines`
-  package instead of `kotlinx.coroutines.test`. Covered by V28.
+- **B72 | 2026-07-20** — The next T56 Kotlin/Native test compile exposed that a
+  wildcard `kotlinx.coroutines.test` import does not provide the root-package
+  `ExperimentalCoroutinesApi` annotation. Covered by V28.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -841,9 +841,10 @@ keys, cents, or timezone identifiers.
 - **V27** — Common Kotlin source SHALL use only multiplatform clock APIs; JVM
   platform time classes and `System` calls are prohibited outside JVM source
   sets, and the Android plus Kotlin/Native compile gate SHALL enforce this.
-- **V28** — Common coroutine tests SHALL import experimental test annotations
-  from `kotlinx.coroutines.test`; root-package coroutine annotation imports are
-  prohibited, and Kotlin/Native test compilation SHALL enforce this.
+- **V28** — Common coroutine tests that opt in to experimental test APIs SHALL
+  explicitly import `kotlinx.coroutines.ExperimentalCoroutinesApi`; test-package
+  wildcard imports SHALL not be assumed to provide it, and Kotlin/Native test
+  compilation SHALL enforce this.
 
 ## Success criteria
 
