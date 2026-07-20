@@ -1386,18 +1386,20 @@ endpoints with ETags, privacy, redaction, and Bruno requests.
 
 **Done when:**
 
-- [ ] Exact DTOs use integer cents/local date/enum/custom fields and never
+- [x] Exact DTOs use integer cents/local date/enum/custom fields and never
   expose audit internals beyond specified actor/action/time history.
-- [ ] Organizer happy/validation/stale/void/retry outcomes and athlete/nonmember
+- [x] Organizer happy/validation/stale/void/retry outcomes and athlete/nonmember
   privacy paths have exact assertions.
-- [ ] Totals include only defined manual charges/expenses and make no settlement
+- [x] Totals include only defined manual charges/expenses and make no settlement
   or reimbursement claim.
-- [ ] Every route has Bruno method/path/status/body assertions.
-- [ ] Backend HTTP gate passes; test count `Δ+16` or greater.
+- [x] Every route has Bruno method/path/status/body assertions.
+- [x] Backend HTTP gate passes; test count `Δ+16` or greater.
 
 **Tests:** Spring HTTP + Bruno (`Δ+16`).
 **Gate:** Backend HTTP + Safety.
 **Commit:** `feat(groups): expose expense tracking api`
+**Status:** Complete; 18 focused HTTP cases, the full groups/bootstrap suite,
+Bruno route coverage, credential safety, and scope checks passed.
 
 ### T49: Add the attendance and waitlist migration
 

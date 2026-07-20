@@ -1,0 +1,15 @@
+meta {
+  name: Void Expense
+  type: http
+  seq: 4
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/expenses/{{expenseId}}/void
+  body: none
+  auth: bearer
+}
+headers { If-Match: "{{expenseVersion}}" }
+auth:bearer { token: {{idToken}} }
+tests {
+  test("void keeps audit", function () { expect(res.status).to.equal(200); expect(res.body.status).to.equal("VOIDED"); });
+}

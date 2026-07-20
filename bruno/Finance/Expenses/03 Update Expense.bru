@@ -1,0 +1,16 @@
+meta {
+  name: Update Expense
+  type: http
+  seq: 3
+}
+put {
+  url: {{baseUrl}}/api/groups/{{groupId}}/expenses/{{expenseId}}
+  body: json
+  auth: bearer
+}
+headers { If-Match: "{{expenseVersion}}" }
+auth:bearer { token: {{idToken}} }
+body:json { {"description":"Aluguel atualizado","amountCents":5500,"expenseDate":"2026-08-01","category":"VENUE"} }
+tests {
+  test("versioned expense update", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; });
+}

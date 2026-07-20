@@ -31,12 +31,14 @@ import br.com.saqz.groups.application.photo.GroupPhotoService
 import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.groups.adapter.input.http.GameController
 import br.com.saqz.groups.adapter.input.http.ChargeController
+import br.com.saqz.groups.adapter.input.http.ExpenseController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesBoundaryRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
@@ -49,6 +51,7 @@ import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
 import br.com.saqz.groups.application.game.series.WeeklySeriesService
 import br.com.saqz.groups.application.finance.charge.ChargeManagement
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
+import br.com.saqz.groups.application.finance.expense.ExpenseService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.groups.domain.GroupAccessPolicy
@@ -266,4 +269,7 @@ class AccessSessionConfiguration {
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)
+    @Bean fun expenseRepository(dataSource: DataSource) = JdbcExpenseRepository(dataSource)
+    @Bean fun expenseService(transaction: JdbcTransactionRunner, repository: JdbcExpenseRepository) = ExpenseService(transaction, repository, java.util.UUID::randomUUID, Instant::now)
+    @Bean fun expenseController(actor: VerifiedGroupActorResolver, expenses: ExpenseService, charges: ChargeManagement) = ExpenseController(actor, expenses, charges)
 }

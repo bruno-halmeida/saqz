@@ -1,0 +1,15 @@
+meta {
+  name: Create Expense
+  type: http
+  seq: 2
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/expenses
+  body: json
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+body:json { {"requestId":"{{$guid}}","description":"Aluguel da quadra","amountCents":5000,"expenseDate":"2026-08-01","category":"VENUE"} }
+tests {
+  test("created manual expense", function () { expect(res.status).to.equal(201); expect(res.headers.etag).to.exist; });
+}

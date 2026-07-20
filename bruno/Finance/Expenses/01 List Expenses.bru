@@ -1,0 +1,14 @@
+meta {
+  name: List Expenses
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/groups/{{groupId}}/expenses
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("organizer expenses", function () { expect(res.status).to.equal(200); expect(res.body.expenses).to.be.an("array"); });
+}
