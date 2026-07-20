@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 2 / T18 (versioned group profile/default updates).
-- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `463dc86` mobile Groups module boundary, T09 `94ab9e8` complete mobile Groups ownership migration, T13 `85d841b` complete invitation/deep-link journey coverage, backprop `596f984` for invite `Retry-After`, T14 `124250c` profile/default/venue/slot migration, T15 `d85ccb0` group profile/default domain validation, T16 `e5fd6d3` complete group aggregate registration, and T17 privacy-safe group read projections. Required gates passed. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:493` — add organizer-only optimistic updates for profile/defaults/venue/slots.
-- **Next step**: Execute T18 with backend full and safety gates.
+- **Phase / Task**: Execute — Phase 2 / T19 (complete group HTTP contracts).
+- **Completed**: T01 `49a4730` shared integration contracts, T02 `024d689` backend Groups boundary, T03 `dfd35d8` complete backend ownership migration, T08 `463dc86` mobile Groups module boundary, T09 `94ab9e8` complete mobile Groups ownership migration, T13 `85d841b` complete invitation/deep-link journey coverage, backprop `596f984` for invite `Retry-After`, T14 `124250c` profile/default/venue/slot migration, T15 `d85ccb0` group profile/default domain validation, T16 `e5fd6d3` complete group aggregate registration, T17 `0946523` privacy-safe group read projections, and T18 versioned profile/default updates. Required gates passed. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:523` — expose complete group registration/read/update HTTP contracts and Bruno examples.
+- **Next step**: Execute T19 with backend full and safety gates.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main

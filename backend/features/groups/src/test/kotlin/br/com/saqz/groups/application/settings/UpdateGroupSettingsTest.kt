@@ -4,11 +4,20 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.domain.group.CourtPlayStyle
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
+import br.com.saqz.groups.domain.group.GroupVenueInput
+import br.com.saqz.groups.domain.group.RegularSlotInput
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
 import org.junit.jupiter.api.Test
+import java.time.DayOfWeek
+import java.time.LocalTime
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -94,6 +103,100 @@ class UpdateGroupSettingsTest {
     }
 
     @Test
+    fun `owner updates complete profile defaults with current timezone and expected version`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val venueId = UUID.randomUUID()
+        val slotId = UUID.randomUUID()
+
+        val result = fixture.useCase.execute(
+            actor,
+            groupId,
+            3,
+            UpdateGroupProfileInput(
+                profile = profile(
+                    modality = GroupModality.BEACH_VOLLEYBALL,
+                    playStyle = null,
+                    defaultVenue = GroupVenueInput("Arena Beach", "Rua Central 100", "Quadra 2"),
+                    regularSlots = listOf(RegularSlotInput(DayOfWeek.MONDAY, LocalTime.of(20, 0), 120)),
+                    monthlyFeeCents = 7000,
+                    monthlyDueDay = 10,
+                ),
+                defaultVenueId = venueId,
+                regularSlotIds = listOf(slotId),
+            ),
+        )
+
+        assertTrue(result is UpdateGroupSettingsResult.Success)
+        val command = fixture.settings.commands.single()
+        assertEquals(groupId, command.groupId)
+        assertEquals(3, command.expectedVersion)
+        assertEquals(IanaTimeZone.from("UTC"), command.timeZone)
+        assertEquals("New Group", command.profile?.name)
+        assertEquals(GroupModality.BEACH_VOLLEYBALL, command.profile?.modality)
+        assertEquals(venueId, command.defaultVenueId)
+        assertEquals(listOf(slotId), command.regularSlotIds)
+        assertEquals(7000, command.profile?.monthlyFeeCents)
+    }
+
+    @Test
+    fun `admin can update complete profile defaults`() {
+        val result = fixture(GroupRole.ADMIN).useCase.execute(
+            actor,
+            groupId,
+            3,
+            UpdateGroupProfileInput(profile = profile()),
+        )
+
+        assertTrue(result is UpdateGroupSettingsResult.Success)
+    }
+
+    @Test
+    fun `athlete cannot update profile defaults`() {
+        val fixture = fixture(GroupRole.ATHLETE)
+
+        assertSame(
+            UpdateGroupSettingsResult.AccessForbidden,
+            fixture.useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(profile())),
+        )
+        assertTrue(fixture.settings.commands.isEmpty())
+    }
+
+    @Test
+    fun `profile validation completes before transaction`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        val result = fixture.useCase.execute(
+            actor,
+            groupId,
+            3,
+            UpdateGroupProfileInput(
+                GroupProfileDefaultsInput(
+                    name = "",
+                    modality = GroupModality.BEACH_VOLLEYBALL,
+                    composition = null,
+                    playStyle = CourtPlayStyle.FIVE_ONE,
+                ),
+            ),
+        )
+
+        assertTrue(result is UpdateGroupSettingsResult.InvalidProfile)
+        assertEquals(setOf("name", "composition", "playStyle"), result.errors.map { it.field }.toSet())
+        assertEquals(0, fixture.transaction.calls)
+        assertTrue(fixture.settings.commands.isEmpty())
+    }
+
+    @Test
+    fun `stale profile expected version returns conflict without write`() {
+        val fixture = fixture(GroupRole.OWNER, currentVersion = 4)
+
+        assertSame(
+            UpdateGroupSettingsResult.VersionConflict,
+            fixture.useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(profile())),
+        )
+        assertTrue(fixture.settings.commands.isEmpty())
+    }
+
+    @Test
     fun `write failure escapes transaction for rollback`() {
         val failure = IllegalStateException("write failed")
         val fixture = fixture(GroupRole.OWNER, failure = failure)
@@ -134,6 +237,30 @@ class UpdateGroupSettingsTest {
 
     private fun updated(role: GroupRole) = UpdatedGroupSettings(
         groupId, AccessName.from("New Group"), IanaTimeZone.from("Europe/Lisbon"), role, 4,
+    )
+
+    private fun profile(
+        modality: GroupModality = GroupModality.COURT_VOLLEYBALL,
+        playStyle: CourtPlayStyle? = CourtPlayStyle.FIVE_ONE,
+        defaultVenue: GroupVenueInput? = null,
+        regularSlots: List<RegularSlotInput> = emptyList(),
+        monthlyFeeCents: Long? = null,
+        monthlyDueDay: Int? = null,
+    ) = GroupProfileDefaultsInput(
+        name = "New Group",
+        modality = modality,
+        composition = GroupComposition.MIXED,
+        description = "Training group",
+        city = "São Paulo",
+        level = GroupLevel.INTERMEDIATE,
+        playStyle = playStyle,
+        defaultVenue = defaultVenue,
+        regularSlots = regularSlots,
+        defaultCapacity = 18,
+        defaultConfirmationLeadMinutes = 180,
+        defaultGameFeeCents = 1500,
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
     )
 
     private data class Fixture(

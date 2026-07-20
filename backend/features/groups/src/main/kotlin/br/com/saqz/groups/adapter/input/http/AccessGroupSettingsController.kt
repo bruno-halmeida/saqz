@@ -77,6 +77,9 @@ class AccessGroupSettingsController(
                     }
                 },
             )
+            is UpdateGroupSettingsResult.InvalidProfile -> throw InvalidGroupRequestException(
+                result.errors.groupBy({ it.field }, { it.message }),
+            )
             is UpdateGroupSettingsResult.Success -> ResponseEntity
                 .ok()
                 .eTag(result.settings.version.toString())

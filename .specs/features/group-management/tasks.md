@@ -497,14 +497,14 @@ transaction runner.
 
 **Done when:**
 
-- [ ] OWNER/ADMIN update; ATHLETE gets `403`; non-member/unknown gets identical
+- [x] OWNER/ADMIN update; ATHLETE gets `403`; non-member/unknown gets identical
   `404`; stale/missing version never mutates.
-- [ ] Modality/preset changes clear obsolete values in the same transaction.
-- [ ] Venue/slot replacement is atomic and preserves valid stable IDs where
+- [x] Modality/preset changes clear obsolete values in the same transaction.
+- [x] Venue/slot replacement is atomic and preserves valid stable IDs where
   submitted.
-- [ ] Before/after fixtures prove all pre-existing series/game/attendance/
+- [x] Before/after fixtures prove all pre-existing series/game/attendance/
   charge/expense rows are semantically unchanged.
-- [ ] Backend full gate passes; test count `Δ+14` or greater.
+- [x] Backend full gate passes; test count `Δ+14` or greater.
 
 **Tests:** unit + PostgreSQL integration (`Δ+14`).
 **Gate:** Backend full + Safety.
