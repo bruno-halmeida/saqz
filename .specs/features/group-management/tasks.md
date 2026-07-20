@@ -1844,19 +1844,21 @@ composition, JVM/instrumented tests.
 
 **Done when:**
 
-- [ ] Drafts restore exact type/version/group/resource/ETag/command key and
+- [x] Drafts restore exact type/version/group/resource/ETag/command key and
   allowed form values after process recreation.
-- [ ] Writes are atomic; corrupt/old schema returns typed discard/migration
+- [x] Writes are atomic; corrupt/old schema returns typed discard/migration
   outcome and never dispatches a command automatically.
-- [ ] Storage rejects/excludes bearer tokens, invite codes, photo bytes/handles,
+- [x] Storage rejects/excludes bearer tokens, invite codes, photo bytes/handles,
   payment credentials and raw server errors.
-- [ ] Confirmed success clears only its matching draft; logout/group loss clears
+- [x] Confirmed success clears only its matching draft; logout/group loss clears
   scoped drafts.
-- [ ] Android native gate passes; test count `Δ+10` or greater.
+- [x] Android native gate passes; test count `Δ+10` or greater.
 
 **Tests:** Android JVM + instrumented (`Δ+10`).
 **Gate:** Android native + Safety.
 **Commit:** `feat(android): persist safe group drafts`
+**Status:** Complete; 12 JVM and 2 targeted instrumented cases passed alongside
+the 43 retained Android instrumented cases, plus credential and scope safety.
 
 ### T64: Persist non-sensitive group drafts on iOS
 

@@ -213,9 +213,9 @@
 ## Handoff
 
 - **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute — Phase 10 / T63 (Android group draft storage).
-- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, T31 `7c20675`, T32 `0dc87d4`, T33, T34 series boundaries, and T35–T62. T62 passed 17 Compose cases plus mobile quick and safety gates for organizer expense/totals UI, conditional forms, audit history, athlete non-discoverability, safe copy, and accessibility semantics. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): `.specs/features/group-management/tasks.md:1842` — persist non-sensitive group drafts on Android.
-- **Next step**: Execute T63 with atomic app-private versioned storage for setup/game/monthly/expense drafts, typed corrupt/old outcomes, scoped clears, and Android native tests.
+- **Phase / Task**: Execute — Phase 10 / T64 (iOS group draft storage).
+- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, T31 `7c20675`, T32 `0dc87d4`, T33, T34 series boundaries, and T35–T63. T63 passed 12 Android JVM persistence cases and all 45 connected instrumented cases, including 2 new app-private recreation/scoped-cleanup cases, plus safety gates. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
+- **In-progress** (file:line): `.specs/features/group-management/tasks.md:1863` — persist non-sensitive group drafts on iOS.
+- **Next step**: Execute T64 with atomic app-container versioned storage for setup/game/monthly/expense drafts, exact lifecycle cleanup, and native tests.
 - **Blockers**: None; backend Gradle requires JDK 21 and Testcontainers requires `DOCKER_HOST=unix:///Users/bruno_almeida/.colima/default/docker.sock` in this environment. Local Testcontainers gates also require `TESTCONTAINERS_RYUK_DISABLED=true` unless the Ryuk sidecar starts reliably.
 - **Branch**: main

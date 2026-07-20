@@ -25,6 +25,10 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.GroupDraftStorePort
+import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
+import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftStorePort
+import br.com.saqz.groups.presentation.games.editor.GameDraftStorePort
 
 class SaqzAppDependencies(
     val environment: String,
@@ -35,6 +39,10 @@ class SaqzAppDependencies(
     val share: NativeSharePort,
     val groupLinks: NativeGroupLinkPort = UnconfiguredGroupLinkPort,
     val groupState: LocalGroupStatePort = UnconfiguredGroupStatePort,
+    val groupDrafts: GroupDraftStorePort = UnconfiguredGroupDraftStore,
+    val gameDrafts: GameDraftStorePort = UnconfiguredGameDraftStore,
+    val monthlyChargeDrafts: MonthlyChargeDraftStorePort = UnconfiguredMonthlyDraftStore,
+    val expenseDrafts: ExpenseDraftStorePort = UnconfiguredExpenseDraftStore,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }
@@ -107,4 +115,25 @@ private object UnconfiguredGroupStatePort : LocalGroupStatePort {
     override fun writeSelectedGroupId(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
     override fun readPendingInvite(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
     override fun writePendingInvite(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+}
+
+private object UnconfiguredGroupDraftStore : GroupDraftStorePort {
+    override fun read(key: br.com.saqz.groups.model.GroupDraftKey, done: (br.com.saqz.groups.port.GroupDraftReadResult) -> Unit) = done(br.com.saqz.groups.port.GroupDraftReadResult.Success(null))
+    override fun write(draft: br.com.saqz.groups.model.GroupSetupDraft, done: (br.com.saqz.groups.port.GroupDraftWriteResult) -> Unit) = done(br.com.saqz.groups.port.GroupDraftWriteResult.Success)
+    override fun clear(key: br.com.saqz.groups.model.GroupDraftKey, commandKey: String, done: (br.com.saqz.groups.port.GroupDraftWriteResult) -> Unit) = done(br.com.saqz.groups.port.GroupDraftWriteResult.Success)
+}
+private object UnconfiguredGameDraftStore : GameDraftStorePort {
+    override fun read(groupId:String,resourceId:String?,done:(br.com.saqz.groups.presentation.games.editor.GameDraftReadResult)->Unit)=done(br.com.saqz.groups.presentation.games.editor.GameDraftReadResult.Success(null))
+    override fun write(draft:br.com.saqz.groups.presentation.games.editor.GameEditorDraft,done:(br.com.saqz.groups.presentation.games.editor.GameDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.games.editor.GameDraftWriteResult.Success)
+    override fun clear(groupId:String,resourceId:String?,commandKey:String,done:(br.com.saqz.groups.presentation.games.editor.GameDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.games.editor.GameDraftWriteResult.Success)
+}
+private object UnconfiguredMonthlyDraftStore : MonthlyChargeDraftStorePort {
+    override fun read(groupId:String,done:(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult)->Unit)=done(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult.Success(null))
+    override fun write(draft:br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft,done:(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult.Success)
+    override fun clear(groupId:String,commandKey:String,done:(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult.Success)
+}
+private object UnconfiguredExpenseDraftStore : ExpenseDraftStorePort {
+    override fun read(groupId:String,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult.Success(null))
+    override fun write(draft:br.com.saqz.groups.presentation.finance.expenses.ExpenseDraft,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult.Success)
+    override fun clear(groupId:String,expenseId:String?,commandKey:String,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult.Success)
 }

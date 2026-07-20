@@ -17,6 +17,7 @@ import br.com.saqz.androidapp.access.BranchSdkSessionClient
 import br.com.saqz.androidapp.access.CredentialManagerGoogleClient
 import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
 import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
+import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
 import br.com.saqz.composeapp.SaqzAppDependencies
 import kotlinx.coroutines.CoroutineScope
 
@@ -58,6 +59,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
         )
         val share = AndroidShareAdapter(ActivityShareLauncher(activity))
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
+        val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
         return AndroidAppComposition(
             dependencies = SaqzAppDependencies(
                 environment = BuildConfig.ENVIRONMENT,
@@ -68,6 +70,10 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                 share = share,
                 groupLinks = AndroidGroupLinkAdapter(links),
                 groupState = AndroidGroupStateAdapter(localState),
+                groupDrafts = drafts.setup,
+                gameDrafts = drafts.game,
+                monthlyChargeDrafts = drafts.monthly,
+                expenseDrafts = drafts.expense,
             ),
             links = links,
             photos = photos,
