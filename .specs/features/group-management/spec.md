@@ -764,6 +764,10 @@ keys, cents, or timezone identifiers.
 - **B57 | 2026-07-20** — T47 spec review found V5 admitted expense category
   `SERVICE` instead of the accepted `REFEREE` value and allowed an 80-character
   custom category instead of 40. Covered by V20.
+- **B58 | 2026-07-20** — The first T48 compile exposed an ambiguous nested
+  generic return type whose closing angle bracket was parsed as the start of
+  the expression-body operator. No new invariant added; response helpers use
+  conventional spacing around generic type closers and expression bodies.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
