@@ -27,6 +27,9 @@
 		A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */; };
 		A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000011 /* IOSAppCompositionTests.swift */; };
 		A50000000000000000000002 /* IOSAuthenticatedLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */; };
+		B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */; };
+		B60000000000000000000002 /* IOSGroupPhotoAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */; };
+		B60000000000000000000003 /* IOSGroupPhotoLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +71,9 @@
 		A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdaptersTests.swift; sourceTree = "<group>"; };
 		A50000000000000000000011 /* IOSAppCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppCompositionTests.swift; sourceTree = "<group>"; };
 		A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthenticatedLifecycleUITests.swift; sourceTree = "<group>"; };
+		B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsPhoto/IOSGroupPhotoAdapters.swift; sourceTree = "<group>"; };
+		B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoAdaptersTests.swift; sourceTree = "<group>"; };
+		B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoLifecycleUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +124,7 @@
 				A30000000000000000000011 /* IOSLinkAdapter.swift */,
 				A40000000000000000000011 /* IOSLocalAccessAdapters.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
+				B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
 			);
@@ -130,6 +137,7 @@
 				A10000000000000000000013 /* SaqzIOSUITests.swift */,
 				A1000000000000000000001C /* AccessibilityUITests.swift */,
 				A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */,
+				B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */,
 			);
 			path = SaqzIOSUITests;
 			sourceTree = "<group>";
@@ -162,6 +170,7 @@
 				A50000000000000000000011 /* IOSAppCompositionTests.swift */,
 				A10000000000000000000019 /* LaunchContractTests.swift */,
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
+				B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */,
 			);
 			path = SaqzIOSTests;
 			sourceTree = "<group>";
@@ -343,6 +352,7 @@
 				A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */,
 				A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
+				B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -353,6 +363,7 @@
 				A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */,
 				A1000000000000000000000A /* AccessibilityUITests.swift in Sources */,
 				A50000000000000000000002 /* IOSAuthenticatedLifecycleUITests.swift in Sources */,
+				B60000000000000000000003 /* IOSGroupPhotoLifecycleUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -367,6 +378,7 @@
 				A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */,
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
+				B60000000000000000000002 /* IOSGroupPhotoAdaptersTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

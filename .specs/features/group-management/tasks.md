@@ -800,13 +800,13 @@ privacy model and app container APIs.
 
 **Done when:**
 
-- [ ] Library picker exposes only selected media; camera/library cancellation
+- [x] Library picker exposes only selected media; camera/library cancellation
   and denial return typed outcomes without stale presentation.
-- [ ] Metadata/bounds are checked before full decode and crop encoding produces
+- [x] Metadata/bounds are checked before full decode and crop encoding produces
   one static accepted-format square payload within limits.
-- [ ] Background/foreground, controller recreation, logout and cleanup remove
+- [x] Background/foreground, controller recreation, logout and cleanup remove
   temp/cache data without duplicate callbacks.
-- [ ] iOS native gate passes; test count `Δ+10` or greater.
+- [x] iOS native gate passes; test count `Δ+16` with zero skipped/failing.
 
 **Tests:** XCTest + targeted XCUITest (`Δ+10`).
 **Gate:** iOS native + Safety.

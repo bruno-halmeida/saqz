@@ -23,6 +23,7 @@ struct IOSAppComposition {
     let localState: IOSLocalAccessStateAdapter
     let groupState: IOSLocalGroupStateAdapter
     let share: IOSShareAdapter
+    let photos: IOSGroupPhotoAdapters?
     let dependencies: SaqzAppDependencies
 
     static func makeLive(configuration: IOSAppConfiguration = .bundled()) -> IOSAppComposition {
@@ -32,7 +33,8 @@ struct IOSAppComposition {
         let localState = IOSLocalAccessStateAdapter(store: store)
         let groupState = IOSLocalGroupStateAdapter(store: store)
         let share = IOSLocalAccessComposition.makeShare { IOSPresentationRoot.current }
-        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share)
+        let photos = IOSGroupPhotoAdapters.makeLive(presenter: { IOSPresentationRoot.current })
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos)
     }
 
     static func make(
@@ -41,7 +43,8 @@ struct IOSAppComposition {
         links: IOSLinkAdapter,
         localState: IOSLocalAccessStateAdapter,
         groupState: IOSLocalGroupStateAdapter,
-        share: IOSShareAdapter
+        share: IOSShareAdapter,
+        photos: IOSGroupPhotoAdapters? = nil
     ) -> IOSAppComposition {
         links.onColdStart(url: nil)
         let dependencies = SaqzAppDependencies(
@@ -54,7 +57,7 @@ struct IOSAppComposition {
             groupLinks: links,
             groupState: groupState
         )
-        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, dependencies: dependencies)
+        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos, dependencies: dependencies)
     }
 }
 
