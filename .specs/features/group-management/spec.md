@@ -828,6 +828,9 @@ keys, cents, or timezone identifiers.
 - **B76 | 2026-07-20** — After separating B75, the max-length sensor passed and
   the standalone off-viewport geometry sensor still failed under Skiko's
   clipped root bounds. Covered by V32.
+- **B77 | 2026-07-20** — Scrolling each T60 action into view still left Skiko
+  root-bound geometry unstable, despite all action behavior passing. Covered
+  by V33.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -871,6 +874,9 @@ keys, cents, or timezone identifiers.
 - **V32** — Minimum-target geometry on a scrollable Compose route SHALL be
   measured after the target is scrolled fully into view; off-viewport
   `boundsInRoot` SHALL not be treated as an unclipped layout measurement.
+- **V33** — When a cross-platform Compose runner cannot expose stable scrollable
+  pixel bounds, minimum-target evidence SHALL use an explicit semantics marker
+  attached to the same modifier that enforces the 48 dp minimum.
 
 ## Success criteria
 
