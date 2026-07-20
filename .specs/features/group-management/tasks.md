@@ -1058,16 +1058,18 @@ formatters.
 
 **Done when:**
 
-- [ ] Every DTO/enum/nested slot and nullable fee/notes field round-trips with
+- [x] Every DTO/enum/nested slot and nullable fee/notes field round-trips with
   server-derived counts/instants read-only.
-- [ ] Create/commands preserve stable request keys/ETags through auth refresh.
-- [ ] Field, hidden-resource, conflict and lifecycle problems map to distinct
+- [x] Create/commands preserve stable request keys/ETags through auth refresh.
+- [x] Field, hidden-resource, conflict and lifecycle problems map to distinct
   presentation-safe outcomes.
-- [ ] Mobile quick gate passes; test count `Δ+16` or greater.
+- [x] Mobile quick gate passes; test count `Δ+16` with zero skipped/failing.
 
 **Tests:** KMP gateway unit (`Δ+16`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): model game transport`
+**Status:** Complete; Mobile quick and safety gates passed with 16 added
+MockEngine/error-classification cases on Android and iOS common targets.
 
 ### T38: Implement GamesViewModel
 
