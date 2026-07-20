@@ -212,6 +212,7 @@ data class Game(
     val snapshot: GameSnapshot,
     val status: GameStatus = GameStatus.DRAFT,
     val version: Long = 1,
+    val detachedFromSeries: Boolean = false,
 )
 
 object GameLifecyclePolicy {

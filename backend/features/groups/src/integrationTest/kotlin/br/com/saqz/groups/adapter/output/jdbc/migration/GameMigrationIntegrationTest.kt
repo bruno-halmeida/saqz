@@ -73,6 +73,7 @@ class GameMigrationIntegrationTest {
     @Test fun `series rejects active boundary outside local range`() {
         val group = completeGroup("series-boundary")
         assertFails { series(group, start = "2026-08-10", end = "2026-08-20", activeThrough = "2026-08-21") }
+        assertFails { series(group, start = "2026-08-10", end = "2026-08-20", activeThrough = "2026-08-08") }
     }
 
     @Test fun `series rejects invalid revision and version`() {
@@ -182,14 +183,17 @@ class GameMigrationIntegrationTest {
     }
 
     @Test
-    fun `detached overrides remain representable without bounded identity collision`() {
+    fun `detached override retains bounded occurrence identity as tombstone`() {
         val group = completeGroup("detached")
         val venue = venue(group)
+        val series = series(group)
+        val slot = slot(group, series.revision, venue)
+        val game = game(group, venue, series, slot)
 
-        game(group, venue)
-        game(group, venue)
+        execute("UPDATE games SET detached_from_series = true WHERE id = '$game'")
 
-        assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group' AND series_id IS NULL"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE id = '$game' AND detached_from_series AND series_id IS NOT NULL"))
+        assertFails { game(group, venue, series, slot) }
     }
 
     @Test fun `game rejects partial series identity`() {
@@ -269,6 +273,7 @@ class GameMigrationIntegrationTest {
             "series_revision_id" to "'$revision'",
             "group_id" to "'$group'",
             "slot_key" to "'${UUID.randomUUID()}'",
+            "title" to "'Treino semanal'",
             "weekday" to "3",
             "local_time" to "TIME '19:30'",
             "duration_minutes" to "90",

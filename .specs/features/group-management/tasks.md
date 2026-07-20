@@ -970,18 +970,22 @@ game lifecycle/version rules.
 
 **Done when:**
 
-- [ ] ONLY_THIS detaches/overrides exactly the selected occurrence.
-- [ ] THIS_AND_FUTURE closes the old revision before the boundary and creates
+- [x] ONLY_THIS detaches/overrides exactly the selected occurrence.
+- [x] THIS_AND_FUTURE closes the old revision before the boundary and creates
   one successor with regenerated future occurrences.
-- [ ] Past/completed occurrences plus their snapshots/history remain unchanged;
+- [x] Past/completed occurrences plus their snapshots/history remain unchanged;
   cancelled future rows retain stable identities/history.
-- [ ] Concurrent/retried edits cannot create overlapping revisions or duplicate
+- [x] Concurrent/retried edits cannot create overlapping revisions or duplicate
   occurrences; injected failure rolls back the entire boundary change.
-- [ ] Backend full gate passes; test count `Δ+16` or greater.
+- [x] Backend full gate passes; test count `Δ+17` with zero skipped/failing.
 
 **Tests:** unit + PostgreSQL integration (`Δ+16`).
 **Gate:** Backend full + Safety.
 **Commit:** `feat(groups): persist series edit boundaries`
+**Status:** Complete; backend full and safety gates passed with 17 added unit
+and PostgreSQL cases covering exact detachment, successor regeneration,
+history/completed preservation, cancellation identities, retry, concurrency,
+and injected transaction rollback.
 
 ### T35: Expose one-time game and lifecycle HTTP contracts
 

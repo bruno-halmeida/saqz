@@ -134,9 +134,9 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         )
         slots.forEach { slot ->
             execute(
-                "INSERT INTO game_series_slots (series_revision_id, group_id, slot_key, weekday, local_time, duration_minutes, " +
+                "INSERT INTO game_series_slots (series_revision_id, group_id, slot_key, title, weekday, local_time, duration_minutes, " +
                     "venue_id, venue_name, venue_address, venue_court, capacity, confirmation_lead_minutes, game_fee_cents, created_at) VALUES " +
-                    "('$revision', '$group', '${slot.key}', ${slot.day.value}, TIME '${slot.time}', 90, '$venue', " +
+                    "('$revision', '$group', '${slot.key}', 'Treino semanal', ${slot.day.value}, TIME '${slot.time}', 90, '$venue', " +
                     "'Arena Central', 'Rua das Flores 100', 'Quadra 2', 24, 180, 2500, now())",
             )
         }

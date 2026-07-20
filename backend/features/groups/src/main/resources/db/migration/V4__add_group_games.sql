@@ -30,7 +30,7 @@ CREATE TABLE game_series (
     ),
     CONSTRAINT ck_game_series_active_boundary CHECK (
         active_through_date IS NULL OR (
-            active_through_date >= local_start_date
+            active_through_date >= local_start_date - 1
             AND (local_end_date IS NULL OR active_through_date <= local_end_date)
         )
     ),
@@ -46,6 +46,7 @@ CREATE TABLE game_series_slots (
     series_revision_id uuid NOT NULL,
     group_id uuid NOT NULL,
     slot_key uuid NOT NULL,
+    title varchar(120) NOT NULL,
     weekday smallint NOT NULL,
     local_time time NOT NULL,
     duration_minutes integer NOT NULL,
@@ -64,6 +65,11 @@ CREATE TABLE game_series_slots (
         FOREIGN KEY (group_id, venue_id) REFERENCES group_venues (group_id, id),
     CONSTRAINT ck_game_series_slots_weekday CHECK (weekday BETWEEN 1 AND 7),
     CONSTRAINT ck_game_series_slots_duration CHECK (duration_minutes BETWEEN 15 AND 480),
+    CONSTRAINT ck_game_series_slots_title CHECK (
+        title = btrim(title)
+        AND char_length(title) BETWEEN 2 AND 120
+        AND title !~ '[[:cntrl:]]'
+    ),
     CONSTRAINT ck_game_series_slots_venue_name CHECK (
         venue_name = btrim(venue_name)
         AND char_length(venue_name) BETWEEN 2 AND 120
@@ -111,6 +117,7 @@ CREATE TABLE games (
     game_fee_cents bigint,
     notes varchar(500),
     status varchar(16) NOT NULL DEFAULT 'DRAFT',
+    detached_from_series boolean NOT NULL DEFAULT false,
     finance_review_required boolean NOT NULL DEFAULT false,
     version bigint NOT NULL DEFAULT 1,
     created_at timestamptz NOT NULL,
@@ -127,6 +134,7 @@ CREATE TABLE games (
         (series_id IS NULL AND series_revision_id IS NULL AND slot_key IS NULL)
         OR (series_id IS NOT NULL AND series_revision_id IS NOT NULL AND slot_key IS NOT NULL)
     ),
+    CONSTRAINT ck_games_detached_identity CHECK (NOT detached_from_series OR series_id IS NOT NULL),
     CONSTRAINT ck_games_title CHECK (
         title = btrim(title)
         AND char_length(title) BETWEEN 2 AND 120

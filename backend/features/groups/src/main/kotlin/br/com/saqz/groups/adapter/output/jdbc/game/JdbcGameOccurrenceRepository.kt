@@ -108,6 +108,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             .param("gameFeeCents", snapshot.gameFeeCents, Types.BIGINT)
             .param("notes", snapshot.notes, Types.VARCHAR)
             .param("status", game.status.name)
+            .param("detachedFromSeries", game.detachedFromSeries)
     }
 
     private fun mapGame(rs: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int): Game = Game(
@@ -133,6 +134,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         ),
         status = GameStatus.valueOf(rs.getString("status")),
         version = rs.getLong("version"),
+        detachedFromSeries = rs.getBoolean("detached_from_series"),
     )
 
     private companion object {
@@ -161,12 +163,12 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 id, group_id, title, local_date, local_time, zone_id, starts_at,
                 duration_minutes, confirmation_deadline, venue_id, venue_name,
                 venue_address, venue_court, capacity, game_fee_cents, notes,
-                status, created_at, updated_at
+                status, detached_from_series, created_at, updated_at
             ) VALUES (
                 :id, :groupId, :title, :localDate, :localTime, :zoneId, :startsAt,
                 :durationMinutes, :confirmationDeadline, :venueId, :venueName,
                 :venueAddress, :venueCourt, :capacity, :gameFeeCents, :notes,
-                :status, now(), now()
+                :status, :detachedFromSeries, now(), now()
             )
         """
 
@@ -177,7 +179,8 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 confirmation_deadline = :confirmationDeadline, venue_id = :venueId,
                 venue_name = :venueName, venue_address = :venueAddress, venue_court = :venueCourt,
                 capacity = :capacity, game_fee_cents = :gameFeeCents, notes = :notes,
-                status = :status, version = version + 1, updated_at = now()
+                status = :status, detached_from_series = :detachedFromSeries,
+                version = version + 1, updated_at = now()
             WHERE id = :id AND group_id = :groupId AND version = :expectedVersion
         """
 
@@ -185,7 +188,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             SELECT g.id, g.group_id, g.title, g.local_date, g.local_time, g.zone_id,
                    g.starts_at, g.duration_minutes, g.confirmation_deadline, g.venue_id,
                    g.venue_name, g.venue_address, g.venue_court, g.capacity,
-                   g.game_fee_cents, g.notes, g.status, g.version
+                   g.game_fee_cents, g.notes, g.status, g.version, g.detached_from_series
             FROM games g
         """
     }
