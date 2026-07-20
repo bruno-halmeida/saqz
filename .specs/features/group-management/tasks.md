@@ -1664,18 +1664,21 @@ presentation, withdrawal charge warning, and organizer override/capacity UI.
 
 **Done when:**
 
-- [ ] Member sees Confirmar/Não vou/withdraw actions only when legal plus exact
+- [x] Member sees Confirmar/Não vou/withdraw actions only when legal plus exact
   confirmed/waitlisted position/available/deadline states.
-- [ ] Withdrawal confirmation says the tracked charge remains pending; no copy
+- [x] Withdrawal confirmation says the tracked charge remains pending; no copy
   claims automatic refund/payment processing.
-- [ ] Organizer UI requires override reason and exposes capacity-below-confirmed
+- [x] Organizer UI requires override reason and exposes capacity-below-confirmed
   warning without demotion controls.
-- [ ] Compact/keyboard/max-text semantics retain ordered 48 dp controls.
-- [ ] Mobile quick gate passes; test count `Δ+16` or greater.
+- [x] Compact/keyboard/max-text semantics retain ordered 48 dp controls.
+- [x] Mobile quick gate passes; test count `Δ+18`.
 
 **Tests:** common Compose UI (`Δ+16`).
 **Gate:** Mobile quick + Safety.
 **Commit:** `feat(groups): build attendance waitlist ui`
+**Status:** Complete; 18 Compose UI cases and the mobile quick/safety gates
+passed across exact response states, safe withdrawal copy, organizer override,
+capacity protection, 500-character input, scrolling, order, and 48 dp targets.
 
 ### T58: Add mobile finance DTOs and gateway
 
