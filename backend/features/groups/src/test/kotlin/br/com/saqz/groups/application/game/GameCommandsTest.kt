@@ -263,7 +263,7 @@ class GameCommandsTest {
 
     private class FakeEffects : GameSideEffectPort {
         val calls = mutableListOf<Pair<UUID, Set<GameSideEffect>>>()
-        override fun apply(gameId: UUID, effects: Set<GameSideEffect>) { calls += gameId to effects }
+        override fun apply(game: Game, actorId: UUID, effects: Set<GameSideEffect>) { calls += game.id to effects }
     }
 
     private data class Fixture(

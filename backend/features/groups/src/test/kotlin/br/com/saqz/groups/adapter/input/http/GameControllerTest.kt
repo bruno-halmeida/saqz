@@ -63,6 +63,6 @@ class GameControllerTest {
         override fun list(groupId:UUID)=if(groupId==group) games.values.toList() else emptyList()
         override fun find(groupId:UUID,gameId:UUID)=if(groupId==group)games[gameId] else null
     }
-    private class RecordingEffects:GameSideEffectPort { var last:Set<GameSideEffect> = emptySet(); override fun apply(gameId:UUID,effects:Set<GameSideEffect>){last=effects} }
+    private class RecordingEffects:GameSideEffectPort { var last:Set<GameSideEffect> = emptySet(); override fun apply(game:Game,actorId:UUID,effects:Set<GameSideEffect>){last=effects} }
     private companion object { val ID=RequestIdentity("subject",emailVerified=true,displayName="Player"); val DATE=LocalDate.of(2026,8,12); val START=Instant.parse("2026-08-12T22:30:00Z") }
 }

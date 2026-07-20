@@ -40,7 +40,7 @@ enum class GameSideEffect {
 }
 
 fun interface GameSideEffectPort {
-    fun apply(gameId: UUID, effects: Set<GameSideEffect>)
+    fun apply(game: Game, actorId: UUID, effects: Set<GameSideEffect>)
 }
 
 sealed interface GameCommandResult {
@@ -92,7 +92,7 @@ class EditGame(
         }
         when (val write = repository.update(context.game.copy(snapshot = snapshot), expectedVersion)) {
             is GameWriteResult.Saved -> {
-                sideEffects.apply(gameId, setOf(GameSideEffect.SCHEDULE_CHANGED))
+                sideEffects.apply(write.game, actor, setOf(GameSideEffect.SCHEDULE_CHANGED))
                 GameCommandResult.Success(write.game)
             }
             GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict
@@ -124,7 +124,7 @@ class ChangeGameLifecycle(
             val changed = context.game.copy(status = requireNotNull(GameLifecyclePolicy.target(mutation)))
             when (val write = repository.update(changed, expectedVersion)) {
                 is GameWriteResult.Saved -> {
-                    sideEffects.apply(gameId, mutation.effects())
+                    sideEffects.apply(write.game, actor, mutation.effects())
                     GameCommandResult.Success(write.game)
                 }
                 GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict

@@ -141,7 +141,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         val result = EditGame(
             transaction(),
             fixture.repository,
-            GameSideEffectPort { _, _ -> effectCalls++ },
+            GameSideEffectPort { _, _, _ -> effectCalls++ },
         ).execute(
             fixture.owner,
             fixture.group,

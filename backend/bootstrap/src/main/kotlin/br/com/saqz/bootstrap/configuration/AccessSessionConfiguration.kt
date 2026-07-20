@@ -57,6 +57,7 @@ import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
 import br.com.saqz.groups.application.game.series.WeeklySeriesService
 import br.com.saqz.groups.application.finance.charge.ChargeManagement
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
+import br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects
 import br.com.saqz.groups.application.finance.expense.ExpenseService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
@@ -249,7 +250,6 @@ class AccessSessionConfiguration {
     ) = AccessInviteRedemptionController(verifiedGroupActorResolver, redeemInvite)
 
     @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
-    @Bean fun gameSideEffects() = GameSideEffectPort { _, _ -> }
     @Bean fun attendanceRepository(dataSource: DataSource) = JdbcAttendanceCommandRepository(dataSource)
     @Bean fun gameAttendanceCounts(repository: JdbcAttendanceCommandRepository): GameAttendanceCountSource = repository
     @Bean fun createGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository) = CreateGame(transaction, repository)
@@ -274,6 +274,7 @@ class AccessSessionConfiguration {
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
+    @Bean fun gameSideEffects(charges: ChargeTransactions): GameSideEffectPort = GameFinanceSideEffects(charges)
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)

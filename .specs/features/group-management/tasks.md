@@ -1576,17 +1576,20 @@ cases/adapters; no timing sleeps.
 
 **Done when:**
 
-- [ ] Sensors race final-spot confirms, confirm/withdraw, two promotions,
+- [x] Sensors race final-spot confirms, confirm/withdraw, two promotions,
   capacity increase/decrease, command retry and game cancellation.
-- [ ] Assertions prove no overbooking, duplicate sequence/charge/audit,
+- [x] Assertions prove no overbooking, duplicate sequence/charge/audit,
   non-FIFO promotion, silent demotion, lost status, or partial rollback.
-- [ ] Each sensor deterministically fails if its row lock, uniqueness guard or
+- [x] Each sensor deterministically fails if its row lock, uniqueness guard or
   transaction boundary is removed in scratch mutation.
-- [ ] Backend full gate passes; test count `Δ+10` or greater.
+- [x] Backend full gate passes; test count `Δ+10` or greater.
 
 **Tests:** PostgreSQL concurrency integration (`Δ+10`).
 **Gate:** Backend full + Safety.
 **Commit:** `test(groups): harden attendance concurrency`
+**Status:** Complete; 10 barrier-driven PostgreSQL mutation sensors and the
+complete Groups plus safety gates passed, including cancellation-time charge
+reconciliation through a non-no-op actor-aware side-effect binding.
 
 ### T55: Add mobile attendance DTOs and gateway
 
