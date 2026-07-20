@@ -822,6 +822,9 @@ keys, cents, or timezone identifiers.
   longer scrollable detail surface left an existing reload control and new
   organizer fields outside the viewport during direct test interaction.
   Covered by V30.
+- **B75 | 2026-07-20** — The first executing T60 Compose suite left one combined
+  max-length/scroll-geometry sensor failing while all behavioral cases passed.
+  Covered by V31.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -858,6 +861,10 @@ keys, cents, or timezone identifiers.
 - **V30** — Compose tests that interact with controls inside a scrollable route
   SHALL bring each target into the viewport before click or text input; route
   growth SHALL not make existing actions unreachable or their tests flaky.
+- **V31** — A Compose accessibility sensor SHALL assert input bounds and action
+  geometry from stable semantics snapshots; unrelated max-length and spatial
+  assertions SHALL be separated when scrolling or recomposition can invalidate
+  one snapshot without changing product behavior.
 
 ## Success criteria
 
