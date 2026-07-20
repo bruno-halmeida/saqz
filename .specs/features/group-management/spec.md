@@ -725,6 +725,11 @@ keys, cents, or timezone identifiers.
   had not run on the test dispatcher. No new invariant added; mutating common
   UI tests now synchronize with the Compose test clock before inspecting
   emitted intents.
+- **B49 | 2026-07-19** — T41 test synchronization exposed that tagged
+  `SaqzInput` wrappers merge semantics without the inner field's focus action,
+  while below-fold buttons need scrolling before iOS clicks register. No new
+  product invariant added; tests target unmerged labeled fields and explicitly
+  scroll action controls into view.
 
 ## Success criteria
 
