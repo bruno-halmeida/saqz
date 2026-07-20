@@ -835,6 +835,10 @@ keys, cents, or timezone identifiers.
   `persistence` in a common-test display name as a forbidden storage artifact,
   despite no platform persistence implementation being present. Covered by
   V34.
+- **B79 | 2026-07-20** — The first T64 iOS native compile exposed a Swift test
+  fixture whose default parameter referenced instance state, which Swift
+  forbids because default arguments are evaluated outside an instance context.
+  Covered by V35.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -884,6 +888,9 @@ keys, cents, or timezone identifiers.
 - **V34** — Scope-sensor keyword checks SHALL be respected in common test names;
   tests for draft-port behavior SHALL describe writes/restoration without
   storage-layer artifact terms reserved for platform implementations.
+- **V35** — Swift fixture default arguments SHALL use literals, static members,
+  or independent overloads; instance properties SHALL be supplied inside the
+  function body, and iOS native compilation SHALL enforce this.
 
 ## Success criteria
 
