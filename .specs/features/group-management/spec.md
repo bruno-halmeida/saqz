@@ -647,6 +647,12 @@ keys, cents, or timezone identifiers.
 - **V18** — Every series slot revision SHALL persist every value required to
   regenerate an immutable game occurrence snapshot, including its title;
   successor materialization SHALL use only the accepted revision rule.
+- **B32 | 2026-07-19** — The first T34 boundary integration run attempted to
+  insert a regenerated successor occurrence when the same stable identity was
+  already occupied by a completed historical game, and PostgreSQL correctly
+  rejected the duplicate. No new invariant added; the accepted recurrence and
+  boundary requirements already require unique stable identities and forbid
+  rewriting completed games.
 
 ## Success criteria
 
