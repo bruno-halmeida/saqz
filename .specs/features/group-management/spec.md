@@ -895,6 +895,10 @@ keys, cents, or timezone identifiers.
   no-group action still opened the retained two-field Access form instead of
   the complete Groups setup screen already implemented for registration.
   Covered by V47.
+- **B95 | 2026-07-20** — The first B94 regression test inserted setup state
+  before a retained helper callback, so positional callback references bound to
+  the new non-function parameter during Kotlin/Native test compilation.
+  Covered by V40.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
