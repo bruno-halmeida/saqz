@@ -7,4 +7,5 @@
     <string name="action_close">Fechar</string>
     <string name="action_show_password">Mostrar senha</string>
     <string name="action_hide_password">Ocultar senha</string>
+    <string name="topbar_back">Voltar</string>
 </resources>

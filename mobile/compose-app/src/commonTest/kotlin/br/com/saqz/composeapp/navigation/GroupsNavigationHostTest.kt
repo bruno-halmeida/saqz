@@ -22,6 +22,9 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.component.SaqzTopBarBackTag
+import br.com.saqz.designsystem.component.SaqzTopBarTag
+import br.com.saqz.designsystem.component.SaqzTopBarTitleTag
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupProfileDto
@@ -54,8 +57,8 @@ class GroupsNavigationHostTest {
     fun `selected group home renders one shared top bar and bottom menu`() = runComposeUiTest {
         host(owner, access(GroupRoleDto.OWNER))
 
-        onNodeWithTag(GroupsNavigationTags.TopBar).assertIsDisplayed()
-        onNodeWithTag(GroupsNavigationTags.TopBarTitle).assertTextEquals("Private Group")
+        onNodeWithTag(SaqzTopBarTag).assertIsDisplayed()
+        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Private Group")
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
         onNodeWithTag("saqz-bottom-nav-item-0").assertIsSelected()
         onNodeWithTag("saqz-bottom-nav-item-1").assertIsNotSelected()
@@ -71,7 +74,7 @@ class GroupsNavigationHostTest {
             ),
         )
 
-        onNodeWithTag(GroupsNavigationTags.TopBarTitle).assertTextEquals("Detalhes do jogo")
+        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Detalhes do jogo")
         onNodeWithTag("saqz-bottom-nav-item-0").assertIsNotSelected()
         onNodeWithTag("saqz-bottom-nav-item-1").assertIsSelected()
     }
@@ -104,7 +107,7 @@ class GroupsNavigationHostTest {
             access(GroupRoleDto.ATHLETE).copy(destination = GroupsDestination.OWN_CHARGES),
         )
 
-        onNodeWithTag(GroupsNavigationTags.TopBarTitle).assertTextEquals("Minhas cobranças")
+        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Minhas cobranças")
         onNodeWithTag("saqz-bottom-nav-item-2").assertIsSelected()
         onNodeWithTag("saqz-bottom-nav-item-3").assertDoesNotExist()
         onNodeWithText("Pessoas").assertDoesNotExist()
@@ -120,7 +123,7 @@ class GroupsNavigationHostTest {
             ),
         )
 
-        onNodeWithTag(GroupsNavigationTags.TopBar).assertDoesNotExist()
+        onNodeWithTag(SaqzTopBarTag).assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
     }
 
@@ -133,7 +136,7 @@ class GroupsNavigationHostTest {
             intents,
         )
 
-        onNodeWithTag(GroupsNavigationTags.BackToList).performClick()
+        onNodeWithTag(SaqzTopBarBackTag).performClick()
 
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenHome), intents)
     }
@@ -275,7 +278,7 @@ class GroupsNavigationHostTest {
             intents = intents,
         )
 
-        onNodeWithTag(GroupsNavigationTags.BackToList).performClick()
+        onNodeWithTag(SaqzTopBarBackTag).performClick()
 
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenGroups), intents)
     }
@@ -287,7 +290,7 @@ class GroupsNavigationHostTest {
             navigation = access(GroupRoleDto.OWNER).copy(memberships = sessionGroups.take(1)),
         )
 
-        onNodeWithTag(GroupsNavigationTags.BackToList).assertDoesNotExist()
+        onNodeWithTag(SaqzTopBarBackTag).assertDoesNotExist()
     }
 
     @Test
@@ -316,7 +319,7 @@ class GroupsNavigationHostTest {
             .performScrollTo()
             .assertIsDisplayed()
             .assertHeightIsAtLeast(48.dp)
-        onNodeWithTag(GroupsNavigationTags.TopBar).assertIsDisplayed()
+        onNodeWithTag(SaqzTopBarTag).assertIsDisplayed()
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
     }
 

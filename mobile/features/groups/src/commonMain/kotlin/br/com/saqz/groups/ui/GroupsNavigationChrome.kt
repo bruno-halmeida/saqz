@@ -55,6 +55,7 @@ import br.com.saqz.groups.resources.nav_home
 import br.com.saqz.designsystem.component.SaqzBottomNav
 import br.com.saqz.designsystem.component.SaqzBottomNavItem
 import br.com.saqz.designsystem.component.SaqzLoadingState
+import br.com.saqz.designsystem.component.SaqzTopBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
 import org.jetbrains.compose.resources.DrawableResource
@@ -185,58 +186,20 @@ private fun GroupTopBar(
     onBack: (() -> Unit)?,
     onOpenSettings: (() -> Unit)?,
 ) {
-    Column(
-        Modifier.fillMaxWidth()
-            .background(SaqzTheme.colors.surface)
-            .testTag(GroupsNavigationTags.TopBar),
-    ) {
-        Box(
-            Modifier.fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (onBack != null) {
-                CompactAction(
-                    Res.drawable.material_arrow_back,
-                    stringResource(Res.string.groups_back),
-                    GroupsNavigationTags.BackToList,
-                    onBack,
-                    Modifier.align(Alignment.CenterStart),
-                )
-            }
-            Text(
-                title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp)
-                    .testTag(GroupsNavigationTags.TopBarTitle),
-                style = SaqzTheme.typography.lead.copy(
-                    fontSize = 20.sp,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = SaqzTheme.colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-            if (onOpenSettings != null) {
+    SaqzTopBar(
+        title = title,
+        onBack = onBack,
+        trailingContent = onOpenSettings?.let {
+            {
                 CompactAction(
                     Res.drawable.material_more_horiz,
                     stringResource(Res.string.groups_more_options),
                     "groups-settings",
-                    onOpenSettings,
-                    Modifier.align(Alignment.CenterEnd),
+                    it,
                 )
             }
-        }
-        Box(
-            Modifier.fillMaxWidth()
-                .height(1.dp)
-                .background(SaqzTheme.colors.hairline),
-        )
-    }
+        },
+    )
 }
 
 @Composable

@@ -62,7 +62,6 @@ object GroupsNavigationTags {
     const val List = "groups-list"
     const val ListItemPrefix = "groups-list-item-"
     const val Home = "groups-home"
-    const val BackToList = "groups-back-to-list"
     const val Summary = "groups-summary"
     const val SummaryPhoto = "groups-summary-photo"
     const val SummaryPhotoSkeleton = "groups-summary-photo-skeleton"
@@ -83,8 +82,6 @@ object GroupsNavigationTags {
     const val GameDetail = "groups-game-detail"
     const val Finance = "groups-finance"
     const val OwnCharges = "groups-own-charges"
-    const val TopBar = "groups-top-bar"
-    const val TopBarTitle = "groups-top-bar-title"
     const val BottomMenu = "groups-bottom-menu"
 }
 

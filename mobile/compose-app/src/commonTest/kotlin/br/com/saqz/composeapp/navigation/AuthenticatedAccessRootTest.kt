@@ -76,6 +76,7 @@ import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.port.NativeSharePort
 import br.com.saqz.access.port.OperationResult
 import br.com.saqz.access.port.ResultCallback
+import br.com.saqz.designsystem.component.SaqzTopBarTag
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionDto
 import br.com.saqz.network.SessionMembershipDto
@@ -115,7 +116,7 @@ class AuthenticatedAccessRootTest {
         root(snapshot())
 
         onNodeWithTag("login-submit").assertExists()
-        onNodeWithTag(GroupsNavigationTags.TopBar).assertDoesNotExist()
+        onNodeWithTag(SaqzTopBarTag).assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
         onNodeWithText("Current Group").assertDoesNotExist()
         onNodeWithText("Componentes").assertDoesNotExist()
