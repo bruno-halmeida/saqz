@@ -33,6 +33,11 @@ import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
+import br.com.saqz.groups.presentation.navigation.GroupsDestination
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
 import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupCreateCommand

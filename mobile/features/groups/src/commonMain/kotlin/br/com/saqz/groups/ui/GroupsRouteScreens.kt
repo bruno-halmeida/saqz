@@ -1,4 +1,4 @@
-package br.com.saqz.composeapp.groups
+package br.com.saqz.groups.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
@@ -50,69 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.composeapp.navigation.GroupPhotoRenderState
-import br.com.saqz.composeapp.navigation.GroupsDestination
-import br.com.saqz.composeapp.navigation.GroupsNavigationAccess
-import br.com.saqz.composeapp.navigation.GroupsNavigationIntent
-import br.com.saqz.composeapp.navigation.GroupsNavigationState
-import br.com.saqz.composeapp.navigation.GroupsNavigationTags
-import br.com.saqz.composeapp.resources.Res
-import br.com.saqz.composeapp.resources.groups_back_home
-import br.com.saqz.composeapp.resources.groups_choose
-import br.com.saqz.composeapp.resources.groups_complete_profile
-import br.com.saqz.composeapp.resources.groups_create
-import br.com.saqz.composeapp.resources.groups_finance
-import br.com.saqz.composeapp.resources.groups_games
-import br.com.saqz.composeapp.resources.groups_invite_hint
-import br.com.saqz.composeapp.resources.groups_invite_title
-import br.com.saqz.composeapp.resources.groups_load_error
-import br.com.saqz.composeapp.resources.groups_location_empty
-import br.com.saqz.composeapp.resources.groups_logout
-import br.com.saqz.composeapp.resources.groups_members
-import br.com.saqz.composeapp.resources.groups_members_count
-import br.com.saqz.composeapp.resources.groups_members_empty
-import br.com.saqz.composeapp.resources.groups_next_game
-import br.com.saqz.composeapp.resources.groups_next_game_empty
-import br.com.saqz.composeapp.resources.groups_next_game_hint
-import br.com.saqz.composeapp.resources.groups_notices
-import br.com.saqz.composeapp.resources.groups_notices_empty
-import br.com.saqz.composeapp.resources.groups_own_charges
-import br.com.saqz.composeapp.resources.groups_people
-import br.com.saqz.composeapp.resources.groups_private
-import br.com.saqz.composeapp.resources.groups_profile_incomplete
-import br.com.saqz.composeapp.resources.groups_retry
-import br.com.saqz.composeapp.resources.groups_role_admin
-import br.com.saqz.composeapp.resources.groups_role_athlete
-import br.com.saqz.composeapp.resources.groups_role_owner
-import br.com.saqz.composeapp.resources.groups_schedule_empty
-import br.com.saqz.composeapp.resources.groups_schedule_pattern
-import br.com.saqz.composeapp.resources.groups_see_games
-import br.com.saqz.composeapp.resources.groups_send_invite
-import br.com.saqz.composeapp.resources.groups_settings
-import br.com.saqz.composeapp.resources.groups_title
-import br.com.saqz.composeapp.resources.groups_view_all
-import br.com.saqz.composeapp.resources.groups_weekday_friday
-import br.com.saqz.composeapp.resources.groups_weekday_monday
-import br.com.saqz.composeapp.resources.groups_weekday_saturday
-import br.com.saqz.composeapp.resources.groups_weekday_sunday
-import br.com.saqz.composeapp.resources.groups_weekday_thursday
-import br.com.saqz.composeapp.resources.groups_weekday_tuesday
-import br.com.saqz.composeapp.resources.groups_weekday_wednesday
-import br.com.saqz.composeapp.resources.material_arrow_forward
-import br.com.saqz.composeapp.resources.material_campaign
-import br.com.saqz.composeapp.resources.material_calendar
-import br.com.saqz.composeapp.resources.material_group_add
-import br.com.saqz.composeapp.resources.material_location_on
-import br.com.saqz.composeapp.resources.material_payments
-import br.com.saqz.composeapp.resources.material_settings
-import br.com.saqz.designsystem.component.SaqzBadge
-import br.com.saqz.designsystem.component.SaqzBadgeVariant
-import br.com.saqz.designsystem.component.SaqzButton
-import br.com.saqz.designsystem.component.SaqzButtonVariant
-import br.com.saqz.designsystem.component.SaqzCard
-import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupProfileDto
 import br.com.saqz.groups.data.GroupProfileStatusDto
@@ -124,16 +64,77 @@ import br.com.saqz.groups.data.MembershipDto
 import br.com.saqz.groups.data.VersionedGroupDto
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.navigation.GroupsDestination
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
+import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.groups_back_home
+import br.com.saqz.groups.resources.groups_choose
+import br.com.saqz.groups.resources.groups_complete_profile
+import br.com.saqz.groups.resources.groups_create
+import br.com.saqz.groups.resources.groups_finance
+import br.com.saqz.groups.resources.groups_games
+import br.com.saqz.groups.resources.groups_invite_hint
+import br.com.saqz.groups.resources.groups_invite_title
+import br.com.saqz.groups.resources.groups_load_error
+import br.com.saqz.groups.resources.groups_location_empty
+import br.com.saqz.groups.resources.groups_logout
+import br.com.saqz.groups.resources.groups_members
+import br.com.saqz.groups.resources.groups_members_count
+import br.com.saqz.groups.resources.groups_members_empty
+import br.com.saqz.groups.resources.groups_next_game
+import br.com.saqz.groups.resources.groups_next_game_empty
+import br.com.saqz.groups.resources.groups_next_game_hint
+import br.com.saqz.groups.resources.groups_notices
+import br.com.saqz.groups.resources.groups_notices_empty
+import br.com.saqz.groups.resources.groups_own_charges
+import br.com.saqz.groups.resources.groups_people
+import br.com.saqz.groups.resources.groups_private
+import br.com.saqz.groups.resources.groups_profile_incomplete
+import br.com.saqz.groups.resources.groups_retry
+import br.com.saqz.groups.resources.groups_role_admin
+import br.com.saqz.groups.resources.groups_role_athlete
+import br.com.saqz.groups.resources.groups_role_owner
+import br.com.saqz.groups.resources.groups_schedule_empty
+import br.com.saqz.groups.resources.groups_schedule_pattern
+import br.com.saqz.groups.resources.groups_see_games
+import br.com.saqz.groups.resources.groups_send_invite
+import br.com.saqz.groups.resources.groups_settings
+import br.com.saqz.groups.resources.groups_title
+import br.com.saqz.groups.resources.groups_view_all
+import br.com.saqz.groups.resources.groups_weekday_friday
+import br.com.saqz.groups.resources.groups_weekday_monday
+import br.com.saqz.groups.resources.groups_weekday_saturday
+import br.com.saqz.groups.resources.groups_weekday_sunday
+import br.com.saqz.groups.resources.groups_weekday_thursday
+import br.com.saqz.groups.resources.groups_weekday_tuesday
+import br.com.saqz.groups.resources.groups_weekday_wednesday
+import br.com.saqz.groups.resources.material_arrow_forward
+import br.com.saqz.groups.resources.material_campaign
+import br.com.saqz.groups.resources.material_calendar
+import br.com.saqz.groups.resources.material_group_add
+import br.com.saqz.groups.resources.material_location_on
+import br.com.saqz.groups.resources.material_payments
+import br.com.saqz.groups.resources.material_settings
+import br.com.saqz.designsystem.component.SaqzBadge
+import br.com.saqz.designsystem.component.SaqzBadgeVariant
+import br.com.saqz.designsystem.component.SaqzButton
+import br.com.saqz.designsystem.component.SaqzButtonVariant
+import br.com.saqz.designsystem.component.SaqzCard
+import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionMembershipDto
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun GroupsListScreen(
+fun GroupsListScreen(
     memberships: List<SessionMembershipDto>,
     onSelectGroup: (String) -> Unit,
     onOpenCreateGroup: () -> Unit,
@@ -198,7 +199,7 @@ internal fun GroupsListScreen(
 }
 
 @Composable
-internal fun GroupDetailScreen(
+fun GroupDetailScreen(
     group: GroupDto,
     administration: GroupAdministrationState,
     navigation: GroupsNavigationState,
@@ -250,7 +251,7 @@ internal fun GroupDetailScreen(
 }
 
 @Composable
-internal fun RoutePage(
+fun RoutePage(
     title: String,
     body: String,
     tag: String,
@@ -275,7 +276,7 @@ internal fun RoutePage(
 }
 
 @Composable
-internal fun GroupLoadError(onRetry: () -> Unit) {
+fun GroupLoadError(onRetry: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.Center,

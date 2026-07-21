@@ -11,6 +11,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.port.GroupPhotoPreviewPort
+import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import kotlin.test.Test

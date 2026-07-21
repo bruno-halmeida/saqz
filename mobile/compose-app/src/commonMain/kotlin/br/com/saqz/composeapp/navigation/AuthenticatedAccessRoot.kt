@@ -28,6 +28,10 @@ import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.attendance.AttendanceApi
 import br.com.saqz.groups.data.attendance.share.AttendanceShareApi
 import br.com.saqz.groups.data.game.GameApi
+import br.com.saqz.groups.presentation.navigation.GroupsDestination
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
+import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
 import br.com.saqz.access.port.Cancelable

@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.port.GroupPhotoPreviewPort
+import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -17,8 +18,6 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-internal enum class GroupPhotoRenderState { LOADING, SUCCESS, FAILURE }
 
 @Composable
 internal fun GroupPhotoPreview(

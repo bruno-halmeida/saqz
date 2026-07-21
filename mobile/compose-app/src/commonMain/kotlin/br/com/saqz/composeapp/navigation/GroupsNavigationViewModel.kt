@@ -1,6 +1,5 @@
 package br.com.saqz.composeapp.navigation
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupProfileStatusDto
@@ -8,6 +7,12 @@ import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupFinanceVisibility
 import br.com.saqz.groups.presentation.GroupRoutePolicy
+import br.com.saqz.groups.presentation.navigation.GroupsDestination
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationEffect
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
+import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
+import br.com.saqz.groups.presentation.navigation.isGroupScoped
 import br.com.saqz.network.SessionMembershipDto
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -15,59 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
-
-internal enum class GroupsDestination {
-    SETUP,
-    SELECTOR,
-    LOADING,
-    LOAD_ERROR,
-    HOME,
-    PROFILE_COMPLETION,
-    PEOPLE,
-    GAMES,
-    GAME_DETAIL,
-    FINANCE,
-    OWN_CHARGES,
-}
-
-@Immutable
-internal data class GroupsNavigationAccess(
-    val showPeople: Boolean = false,
-    val showGames: Boolean = false,
-    val showFinance: Boolean = false,
-    val canCompleteProfile: Boolean = false,
-    val canMutateOperations: Boolean = false,
-    val financeDestination: GroupsDestination? = null,
-)
-
-@Immutable
-internal data class GroupsNavigationState(
-    val destination: GroupsDestination = GroupsDestination.SETUP,
-    val groupId: String? = null,
-    val access: GroupsNavigationAccess = GroupsNavigationAccess(),
-    val gameId: String? = null,
-    val memberships: List<SessionMembershipDto> = emptyList(),
-    val requestedGroupId: String? = null,
-)
-
-internal sealed interface GroupsNavigationIntent {
-    data class Reconcile(
-        val selection: GroupSelectionState,
-        val memberships: List<SessionMembershipDto>,
-    ) : GroupsNavigationIntent
-    data class OpenGroup(val groupId: String) : GroupsNavigationIntent
-    data object OpenGroups : GroupsNavigationIntent
-    data object OpenHome : GroupsNavigationIntent
-    data object OpenProfileCompletion : GroupsNavigationIntent
-    data object OpenPeople : GroupsNavigationIntent
-    data object OpenGames : GroupsNavigationIntent
-    data class OpenGameDetail(val gameId: String) : GroupsNavigationIntent
-    data object OpenFinance : GroupsNavigationIntent
-}
-
-internal sealed interface GroupsNavigationEffect {
-    data class DestinationChanged(val destination: GroupsDestination, val groupId: String) : GroupsNavigationEffect
-}
 
 internal class GroupsNavigationViewModel : ViewModel() {
     private val mutableState = MutableStateFlow(GroupsNavigationState())
@@ -315,20 +267,4 @@ internal class GroupsNavigationViewModel : ViewModel() {
         GroupsDestination.LOAD_ERROR,
         -> false
     }
-}
-
-private fun GroupsDestination.isGroupScoped(): Boolean = when (this) {
-    GroupsDestination.HOME,
-    GroupsDestination.PROFILE_COMPLETION,
-    GroupsDestination.PEOPLE,
-    GroupsDestination.GAMES,
-    GroupsDestination.GAME_DETAIL,
-    GroupsDestination.FINANCE,
-    GroupsDestination.OWN_CHARGES,
-    -> true
-    GroupsDestination.SETUP,
-    GroupsDestination.SELECTOR,
-    GroupsDestination.LOADING,
-    GroupsDestination.LOAD_ERROR,
-    -> false
 }
