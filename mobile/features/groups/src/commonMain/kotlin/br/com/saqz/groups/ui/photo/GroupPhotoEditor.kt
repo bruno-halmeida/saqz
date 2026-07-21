@@ -378,6 +378,7 @@ private fun PhotoError(
 ) {
     if (error == null) return
     val label = when (error) {
+        GroupPhotoError.READ_FAILED -> return
         GroupPhotoError.SELECTION_FAILED -> Res.string.group_photo_selection_failed
         GroupPhotoError.ENCODING_FAILED -> Res.string.group_photo_invalid
         GroupPhotoError.UPLOAD_FAILED -> Res.string.group_photo_upload_failed

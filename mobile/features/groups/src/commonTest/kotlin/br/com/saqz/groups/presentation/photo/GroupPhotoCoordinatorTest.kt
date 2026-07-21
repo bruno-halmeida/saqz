@@ -5,6 +5,7 @@ import br.com.saqz.groups.data.GroupPhotoReadResult
 import br.com.saqz.groups.data.GroupPhotoReceipt
 import br.com.saqz.groups.data.GroupPhotoUploadCommand
 import br.com.saqz.groups.port.EncodedGroupPhoto
+import br.com.saqz.groups.port.CachedGroupPhoto
 import br.com.saqz.groups.port.GroupPhotoByteSource
 import br.com.saqz.groups.port.GroupPhotoCachePort
 import br.com.saqz.groups.port.GroupPhotoCrop
@@ -20,6 +21,9 @@ import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.ApiProblem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -31,6 +35,115 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupPhotoCoordinatorTest {
+    @Test fun `cache miss reads private photo and caches the 200 response`() = runTest {
+        val fixture = fixture(this, bind = false)
+        fixture.gateway.readResult = NetworkResult.Success(
+            GroupPhotoReadResult.Available(byteArrayOf(4, 5, 6), "image/png", PHOTO_ETAG),
+        )
+
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>(GROUP_ID to null), fixture.gateway.reads)
+        assertEquals(listOf<Byte>(4, 5, 6), fixture.cache.writes.single().bytes.toList())
+        assertEquals(LOADED_EXISTING, fixture.machine.state.value.existing)
+        assertEquals(GROUP_ETAG, fixture.machine.state.value.groupEtag)
+        assertEquals(GroupPhotoStage.IDLE, fixture.machine.state.value.stage)
+    }
+
+    @Test fun `cache hit is hidden until private endpoint confirms 304`() = runTest {
+        val fixture = fixture(this, bind = false)
+        fixture.cache.entries[GROUP_ID] = CACHED
+        fixture.gateway.readResult = NetworkResult.Success(GroupPhotoReadResult.NotModified)
+
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        assertNull(fixture.machine.state.value.existing)
+        assertEquals(GroupPhotoStage.LOADING, fixture.machine.state.value.stage)
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>(GROUP_ID to PHOTO_ETAG), fixture.gateway.reads)
+        assertEquals(LOADED_EXISTING, fixture.machine.state.value.existing)
+    }
+
+    @Test fun `missing private photo shows fallback without a visible read error`() = runTest {
+        val fixture = fixture(this, bind = false)
+        fixture.gateway.readResult = NetworkResult.Failure(NetworkError.HttpStatus(404))
+
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        runCurrent()
+
+        assertNull(fixture.machine.state.value.existing)
+        assertNull(fixture.machine.state.value.error)
+        assertEquals(listOf(GROUP_ID), fixture.cache.evicted)
+        assertEquals(GroupPhotoStage.IDLE, fixture.machine.state.value.stage)
+    }
+
+    @Test fun `transient read failure never exposes cached photo`() = runTest {
+        val fixture = fixture(this, bind = false)
+        fixture.cache.entries[GROUP_ID] = CACHED
+        fixture.gateway.readResult = NetworkResult.Failure(NetworkError.Unavailable)
+
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        runCurrent()
+
+        assertNull(fixture.machine.state.value.existing)
+        assertEquals(GroupPhotoError.READ_FAILED, fixture.machine.state.value.error)
+    }
+
+    @Test fun `invalid cache entry falls back to unconditional authenticated read`() = runTest {
+        val fixture = fixture(this, bind = false)
+        fixture.cache.invalidGroups += GROUP_ID
+        fixture.gateway.readResult = NetworkResult.Success(
+            GroupPhotoReadResult.Available(byteArrayOf(7), "image/jpeg", PHOTO_ETAG),
+        )
+
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>(GROUP_ID to null), fixture.gateway.reads)
+        assertEquals(LOADED_EXISTING, fixture.machine.state.value.existing)
+    }
+
+    @Test fun `late response from previous group cannot replace current group photo`() = runTest {
+        val fixture = fixture(this, bind = false)
+        val first = CompletableDeferred<NetworkResult<GroupPhotoReadResult>>()
+        val second = CompletableDeferred<NetworkResult<GroupPhotoReadResult>>()
+        fixture.gateway.readBlock = { groupId, _ ->
+            withContext(NonCancellable) { if (groupId == GROUP_ID) first.await() else second.await() }
+        }
+
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        runCurrent()
+        fixture.machine.onIntent(GroupPhotoIntent.Load(OTHER_GROUP_ID, OTHER_GROUP_ETAG))
+        runCurrent()
+        first.complete(NetworkResult.Success(GroupPhotoReadResult.Available(byteArrayOf(1), "image/png", PHOTO_ETAG)))
+        runCurrent()
+
+        assertEquals(OTHER_GROUP_ID, fixture.machine.state.value.groupId)
+        assertNull(fixture.machine.state.value.existing)
+        assertEquals(GroupPhotoStage.LOADING, fixture.machine.state.value.stage)
+
+        second.complete(NetworkResult.Failure(NetworkError.HttpStatus(404)))
+        runCurrent()
+        assertEquals(OTHER_GROUP_ID, fixture.machine.state.value.groupId)
+        assertNull(fixture.machine.state.value.existing)
+    }
+
+    @Test fun `logout ignores a late private photo response and clears all cache`() = runTest {
+        val fixture = fixture(this, bind = false)
+        val response = CompletableDeferred<NetworkResult<GroupPhotoReadResult>>()
+        fixture.gateway.readBlock = { _, _ -> withContext(NonCancellable) { response.await() } }
+        fixture.machine.onIntent(GroupPhotoIntent.Load(GROUP_ID, GROUP_ETAG))
+        runCurrent()
+
+        fixture.machine.onIntent(GroupPhotoIntent.Logout)
+        response.complete(NetworkResult.Success(GroupPhotoReadResult.Available(byteArrayOf(1), "image/png", PHOTO_ETAG)))
+        runCurrent()
+
+        assertEquals(GroupPhotoState(), fixture.machine.state.value)
+        assertTrue(fixture.cache.clearedAll)
+        assertTrue(fixture.cache.writes.isEmpty())
+    }
     @Test fun `camera selection exposes bounded preview and centered square crop`() = runTest {
         val fixture = fixture(this)
         fixture.machine.onIntent(GroupPhotoIntent.ChooseCamera)
@@ -160,9 +273,9 @@ class GroupPhotoCoordinatorTest {
         fixture.machine.onIntent(GroupPhotoIntent.Upload)
         runCurrent()
 
-        assertEquals(ExistingGroupPhoto(PREVIEW, PHOTO_ETAG), fixture.machine.state.value.existing)
+        assertEquals(ExistingGroupPhoto(PREVIEW), fixture.machine.state.value.existing)
         assertNull(fixture.machine.state.value.selection)
-        assertEquals(PHOTO_ETAG, fixture.machine.state.value.groupEtag)
+        assertEquals(UPLOAD_GROUP_ETAG, fixture.machine.state.value.groupEtag)
         assertEquals(listOf(SOURCE), fixture.selections.cleaned)
         assertEquals(listOf(GROUP_ID), fixture.cache.evicted)
     }
@@ -177,7 +290,7 @@ class GroupPhotoCoordinatorTest {
         fixture.machine.onIntent(GroupPhotoIntent.Upload)
         runCurrent()
 
-        assertEquals(listOf(GROUP_ETAG, PHOTO_ETAG), fixture.gateway.uploads.map { it.groupEtag })
+        assertEquals(listOf(GROUP_ETAG, UPLOAD_GROUP_ETAG), fixture.gateway.uploads.map { it.groupEtag })
     }
 
     @Test fun `remove failure preserves existing photo`() = runTest {
@@ -307,28 +420,49 @@ class GroupPhotoCoordinatorTest {
 
     private class FakeGateway : GroupPhotoGateway {
         val uploads = mutableListOf<GroupPhotoUploadCommand>()
-        var uploadResult: NetworkResult<GroupPhotoReceipt> = NetworkResult.Success(GroupPhotoReceipt(PHOTO_ETAG))
+        val reads = mutableListOf<Pair<String, String?>>()
+        var uploadResult: NetworkResult<GroupPhotoReceipt> = NetworkResult.Success(GroupPhotoReceipt(UPLOAD_GROUP_ETAG))
         var removeResult: NetworkResult<GroupPhotoReceipt> = NetworkResult.Success(GroupPhotoReceipt(REMOVE_ETAG))
+        var readResult: NetworkResult<GroupPhotoReadResult> = NetworkResult.Failure(NetworkError.Unavailable)
+        var readBlock: (suspend (String, String?) -> NetworkResult<GroupPhotoReadResult>)? = null
         override suspend fun upload(command: GroupPhotoUploadCommand) = uploadResult.also { uploads += command }
-        override suspend fun read(groupId: String, etag: String?): NetworkResult<GroupPhotoReadResult> =
-            NetworkResult.Failure(NetworkError.Unavailable)
+        override suspend fun read(groupId: String, etag: String?): NetworkResult<GroupPhotoReadResult> {
+            reads += groupId to etag
+            return readBlock?.invoke(groupId, etag) ?: readResult
+        }
         override suspend fun remove(groupId: String, groupEtag: String) = removeResult
     }
 
     private class FakeCache : GroupPhotoCachePort {
+        data class Write(val groupId: String, val bytes: ByteArray, val photoEtag: String)
+        val entries = mutableMapOf<String, CachedGroupPhoto>()
+        val invalidGroups = mutableSetOf<String>()
+        val writes = mutableListOf<Write>()
         val evicted = mutableListOf<String>()
         var clearedAll = false
+        override fun read(groupId: String) = entries[groupId].takeUnless { groupId in invalidGroups }
+        override fun write(groupId: String, bytes: ByteArray, photoEtag: String): CachedGroupPhoto {
+            writes += Write(groupId, bytes, photoEtag)
+            return CachedGroupPhoto(GroupPhotoPreviewHandle("existing-preview"), photoEtag).also {
+                entries[groupId] = it
+            }
+        }
         override fun evict(groupId: String) { evicted += groupId }
         override fun clearAll() { clearedAll = true }
     }
 
     private companion object {
         const val GROUP_ID = "group-1"
+        const val OTHER_GROUP_ID = "group-2"
         const val GROUP_ETAG = "\"7\""
+        const val OTHER_GROUP_ETAG = "\"11\""
         const val PHOTO_ETAG = "\"photo-2\""
+        const val UPLOAD_GROUP_ETAG = "\"8\""
         const val REMOVE_ETAG = "\"photo-3\""
         val SOURCE = GroupPhotoSourceHandle("source")
         val PREVIEW = GroupPhotoPreviewHandle("preview")
         val EXISTING = ExistingGroupPhoto(GroupPhotoPreviewHandle("existing-preview"), "\"photo-1\"")
+        val LOADED_EXISTING = ExistingGroupPhoto(GroupPhotoPreviewHandle("existing-preview"), PHOTO_ETAG)
+        val CACHED = CachedGroupPhoto(GroupPhotoPreviewHandle("existing-preview"), PHOTO_ETAG)
     }
 }

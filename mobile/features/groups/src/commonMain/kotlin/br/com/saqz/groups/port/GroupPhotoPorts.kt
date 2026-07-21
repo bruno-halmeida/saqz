@@ -80,7 +80,16 @@ fun interface GroupPhotoPreviewPort {
     fun read(preview: GroupPhotoPreviewHandle): ByteArray?
 }
 
+data class CachedGroupPhoto(
+    val preview: GroupPhotoPreviewHandle,
+    val photoEtag: String,
+) {
+    init { require(photoEtag.isNotBlank()) }
+}
+
 interface GroupPhotoCachePort {
+    fun read(groupId: String): CachedGroupPhoto?
+    fun write(groupId: String, bytes: ByteArray, photoEtag: String): CachedGroupPhoto?
     fun evict(groupId: String)
     fun clearAll()
 }

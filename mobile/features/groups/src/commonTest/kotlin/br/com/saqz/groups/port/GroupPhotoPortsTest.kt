@@ -24,4 +24,14 @@ class GroupPhotoPortsTest {
         }
         assertEquals(1, EncodedGroupPhoto(GroupPhotoMediaType.PNG, 1, source).contentLength)
     }
+
+    @Test fun `cached photo keeps an opaque preview separate from its photo etag`() {
+        val cached = CachedGroupPhoto(GroupPhotoPreviewHandle("cache-preview"), "\"photo-7\"")
+
+        assertEquals("cache-preview", cached.preview.value)
+        assertEquals("\"photo-7\"", cached.photoEtag)
+        assertFailsWith<IllegalArgumentException> {
+            CachedGroupPhoto(GroupPhotoPreviewHandle("cache-preview"), " ")
+        }
+    }
 }

@@ -3,6 +3,8 @@ package br.com.saqz.groups.presentation.photo
 import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.GroupPhotoReceipt
 import br.com.saqz.groups.data.GroupPhotoUploadCommand
+import br.com.saqz.groups.data.GroupPhotoReadResult
+import br.com.saqz.groups.port.CachedGroupPhoto
 import br.com.saqz.groups.port.GroupPhotoCachePort
 import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoEncoderPort
@@ -20,10 +22,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class GroupPhotoStage { IDLE, SELECTING, CROPPING, ENCODING, UPLOADING, REMOVING }
-enum class GroupPhotoError { SELECTION_FAILED, ENCODING_FAILED, UPLOAD_FAILED, REMOVE_FAILED, STALE_VERSION, TARGET_UNAVAILABLE }
+enum class GroupPhotoStage { IDLE, LOADING, SELECTING, CROPPING, ENCODING, UPLOADING, REMOVING }
+enum class GroupPhotoError {
+    READ_FAILED,
+    SELECTION_FAILED,
+    ENCODING_FAILED,
+    UPLOAD_FAILED,
+    REMOVE_FAILED,
+    STALE_VERSION,
+    TARGET_UNAVAILABLE,
+}
 
-data class ExistingGroupPhoto(val preview: GroupPhotoPreviewHandle, val etag: String)
+data class ExistingGroupPhoto(
+    val preview: GroupPhotoPreviewHandle,
+    val photoEtag: String? = null,
+)
 
 data class GroupPhotoState(
     val groupId: String? = null,
@@ -38,6 +51,7 @@ data class GroupPhotoState(
 
 sealed interface GroupPhotoIntent {
     data class BindTarget(val groupId: String, val groupEtag: String) : GroupPhotoIntent
+    data class Load(val groupId: String, val groupEtag: String) : GroupPhotoIntent
     data class SetExisting(val photo: ExistingGroupPhoto?) : GroupPhotoIntent
     data object ChooseCamera : GroupPhotoIntent
     data object ChooseLibrary : GroupPhotoIntent
@@ -60,12 +74,14 @@ class GroupPhotoCoordinator(
     private val mutableState = MutableStateFlow(GroupPhotoState())
     val state: StateFlow<GroupPhotoState> = mutableState.asStateFlow()
     private var operation: Job? = null
+    private var loadGeneration = 0L
 
     fun onIntent(intent: GroupPhotoIntent) {
         when (intent) {
             is GroupPhotoIntent.BindTarget -> mutableState.update {
                 it.copy(groupId = intent.groupId, groupEtag = intent.groupEtag, error = null)
             }
+            is GroupPhotoIntent.Load -> load(intent.groupId, intent.groupEtag)
             is GroupPhotoIntent.SetExisting -> mutableState.update { it.copy(existing = intent.photo, error = null) }
             GroupPhotoIntent.ChooseCamera -> select(selections::chooseCamera)
             GroupPhotoIntent.ChooseLibrary -> select(selections::chooseLibrary)
@@ -77,6 +93,63 @@ class GroupPhotoCoordinator(
             GroupPhotoIntent.Logout -> purge(clearAll = true)
         }
     }
+
+    private fun load(groupId: String, groupEtag: String) {
+        operation?.cancel()
+        operation = null
+        loadGeneration += 1
+        val generation = loadGeneration
+        val cached = runCatching { cache.read(groupId) }.getOrNull()
+        mutableState.value = GroupPhotoState(
+            groupId = groupId,
+            groupEtag = groupEtag,
+            stage = GroupPhotoStage.LOADING,
+        )
+        operation = scope.launch {
+            val result = gateway.read(groupId, cached?.photoEtag)
+            if (!isCurrentLoad(groupId, generation)) return@launch
+            when (result) {
+                is NetworkResult.Failure -> finishReadFailure(groupId, result.error)
+                is NetworkResult.Success -> finishReadSuccess(groupId, cached, result.value)
+            }
+        }
+    }
+
+    private fun finishReadSuccess(
+        groupId: String,
+        cached: CachedGroupPhoto?,
+        result: GroupPhotoReadResult,
+    ) {
+        val photo = when (result) {
+            GroupPhotoReadResult.NotModified -> cached
+            is GroupPhotoReadResult.Available -> runCatching {
+                cache.write(groupId, result.bytes, result.etag)
+            }.getOrNull()
+        }
+        mutableState.update {
+            it.copy(
+                existing = photo?.let { value -> ExistingGroupPhoto(value.preview, value.photoEtag) },
+                stage = GroupPhotoStage.IDLE,
+                error = if (photo == null) GroupPhotoError.READ_FAILED else null,
+            )
+        }
+    }
+
+    private fun finishReadFailure(groupId: String, error: br.com.saqz.network.NetworkError) {
+        val notFound = error == br.com.saqz.network.NetworkError.HttpStatus(404) ||
+            (error as? br.com.saqz.network.NetworkError.ApiProblemError)?.problem?.status == 404
+        if (notFound) cache.evict(groupId)
+        mutableState.update {
+            it.copy(
+                existing = null,
+                stage = GroupPhotoStage.IDLE,
+                error = if (notFound) null else GroupPhotoError.READ_FAILED,
+            )
+        }
+    }
+
+    private fun isCurrentLoad(groupId: String, generation: Long): Boolean =
+        generation == loadGeneration && mutableState.value.groupId == groupId
 
     private fun select(block: suspend () -> GroupPhotoSelectionResult) {
         if (mutableState.value.stage !in setOf(GroupPhotoStage.IDLE, GroupPhotoStage.CROPPING)) return
@@ -133,7 +206,7 @@ class GroupPhotoCoordinator(
         cache.evict(groupId)
         mutableState.update {
             it.copy(
-                existing = ExistingGroupPhoto(selection.preview, receipt.etag),
+                existing = ExistingGroupPhoto(selection.preview),
                 selection = null,
                 groupEtag = receipt.etag,
                 stage = GroupPhotoStage.IDLE,
@@ -183,6 +256,7 @@ class GroupPhotoCoordinator(
     }
 
     private fun purge(clearAll: Boolean) {
+        loadGeneration += 1
         val groupId = mutableState.value.groupId
         cleanupSelection()
         if (clearAll) cache.clearAll() else groupId?.let(cache::evict)
