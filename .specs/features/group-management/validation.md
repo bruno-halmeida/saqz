@@ -281,3 +281,78 @@ zero rather than inferred coverage.
 private photo in the correct group context, revalidates the session-private
 cache by photo ETag, and renders only the current skeleton, current cropped
 photo, or initials fallback.
+
+---
+
+# Final Independent Closure Verification — T67, V56 and V51
+
+**Date:** 2026-07-21
+**Verifier:** independent verification agent (fresh detached worktree)
+**Scope:** `117e262^..b68c02d`, verified at exact snapshot `b68c02d`
+**Verdict:** PASS
+
+## Spec-anchored evidence
+
+- **V56 / B110 — selected-group private photo:** the authenticated read is
+  dispatched only for the current selected-group context; the coordinator
+  enters `LOADING`, keeps cached content hidden until a matching `304`, replaces
+  it on `200`, falls back on `404`/transient/decode failure, and ignores stale
+  responses after group change, logout, or membership loss. The 104 dp slot
+  renders skeleton, cropped Coil content, or initials without composing another
+  group's photo. Evidence: `AuthenticatedAccessRoot.kt`,
+  `GroupPhotoCoordinator.kt`, `CoilGroupPhotoCache.kt`,
+  `GroupPhotoPreview.kt`, `AuthenticatedAccessRootTest.kt`,
+  `GroupPhotoCoordinatorTest.kt`, `GroupsNavigationHostTest.kt`, and
+  `GroupPhotoPreviewTest.kt`.
+- **V51 / B100 — Android signed-out cold start:** `SignedOutAccessRule`
+  initializes the named Firebase app/auth before signing out and before activity
+  launch. The focused cold-start instrumentation suite passed 2/2.
+- **T67 — complete delivery gate:** `scripts/check-gradle` contains the exact
+  Groups backend/mobile tasks in order and propagates each relevant failure;
+  the script-contract suites lock the inventory, ordering, zero-test behavior,
+  and README privacy/focused-command clauses.
+
+## Fresh verification results
+
+| Check | Result |
+| --- | --- |
+| `tests/scripts/check-gradle.test.sh` | PASS — 42/42 cases |
+| `tests/scripts/check-readme.test.sh` | PASS — 33/33 cases |
+| `scripts/check-credentials` | PASS |
+| `scripts/check-scope` | PASS |
+| `scripts/check-bruno` | PASS |
+| `:compose-app:iosSimulatorArm64Test --tests 'br.com.saqz.composeapp.navigation.GroupsNavigationHostTest'` | PASS — 16/16 |
+| `:android-app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=br.com.saqz.androidapp.AndroidColdStartTest` | PASS — 2/2 |
+| `scripts/check-all` at `b68c02d` | PASS — complete Gradle/KMP/Android, iOS, and landing gates |
+| Android instrumentation within `check-gradle` | PASS — 55/55 |
+| SaqzProd iOS unit suite within `check-ios` | PASS — 106/106 |
+| `git diff --check 117e262^ b68c02d` | PASS |
+
+## Mutation discrimination
+
+Three scratch-only mutations were injected in the detached worktree and all
+were killed:
+
+1. Removing `:features:groups:allTests` from `scripts/check-gradle` made the
+   inventory contract fail.
+2. Reversing the selected-group ownership predicate in `GroupsNavigationHost`
+   made 3 of 16 focused UI tests fail, including the no-previous-group-photo
+   assertion.
+3. Reverting `SignedOutAccessRule` to direct default `FirebaseAuth` access made
+   both cold-start tests fail with the original uninitialized
+   `Default FirebaseApp` error.
+
+**Mutation score:** 3/3 killed, 0 survived.
+
+## UAT and scope isolation
+
+The user confirmed that the MBJR selected-group photo renders successfully.
+The main branch later advanced beyond `b68c02d` with attendance-sharing work;
+failures observed in that post-range work do not invalidate this exact-snapshot
+closure. The detached verification worktree was removed cleanly.
+
+## Summary
+
+**Overall:** Ready — PASS. T67, V56/B110, and V51/B100 are independently
+verified with a complete green repository gate and discriminating regression
+sensors.

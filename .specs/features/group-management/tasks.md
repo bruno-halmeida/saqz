@@ -1980,23 +1980,28 @@ resource preflight/contracts, feature docs status only after evidence.
 
 **Done when:**
 
-- [ ] `check-gradle` requires Groups backend unit/integration and mobile
+- [x] `check-gradle` requires Groups backend unit/integration and mobile
   compile/allTests in exact order, propagates each failure, and rejects zero
   discovered tests.
-- [ ] Script tests kill removal of Groups suites, Bruno coverage, architecture
+- [x] Script tests kill removal of Groups suites, Bruno coverage, architecture
   inventory, resource preflight, credential/scope/workspace checks and native
   gates.
-- [ ] README documents exact group test commands/manual-tracking privacy and has
+- [x] README documents exact group test commands/manual-tracking privacy and has
   no stale Access ownership, public-photo or payment-processing claim.
-- [ ] Fresh `rtk scripts/check-all` passes with no skipped/weakened tests and
+- [x] Fresh `rtk scripts/check-all` passes with no skipped/weakened tests and
   no unrelated diff; discovered before/after counts are recorded.
-- [ ] Tasks status may become `Done` only after the subsequent independent
+- [x] Tasks status may become `Done` only after the subsequent independent
   Verifier writes PASS `validation.md`.
 
 **Tests:** shell mutation contracts + complete retained/new product suites
 (`Δ+8` script cases; no suite count decrease).
 **Gate:** Script contract + Gradle aggregate + Complete aggregate + Safety.
 **Commit:** `chore(groups): enforce complete group delivery gate`
+**Status:** Complete (`678d869`; Android precondition follow-up `b68c02d`).
+Independent verification passed at the exact `b68c02d` snapshot: script
+contracts were 42/42 and 33/33, Android instrumentation was 55/55, iOS Prod was
+106/106, `scripts/check-all` exited zero, and all 3 discrimination mutations
+were killed.
 
 ## Phase Execution Map
 
