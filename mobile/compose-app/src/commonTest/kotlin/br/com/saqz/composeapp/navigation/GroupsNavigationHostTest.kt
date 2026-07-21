@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -67,11 +68,15 @@ class GroupsNavigationHostTest {
         onNodeWithText("Ter • 19:30").assertExists()
         onNodeWithText("Próximo jogo").assertExists()
         onNodeWithText("Nenhum jogo agendado").assertExists()
-        onNodeWithText("Atalhos").assertExists()
+        onNodeWithTag(GroupsNavigationTags.Shortcuts).assertExists()
+        onNodeWithTag(GroupsNavigationTags.ShortcutGames).assertHeightIsAtLeast(56.dp)
+        onNodeWithTag(GroupsNavigationTags.ShortcutPeople).assertHeightIsAtLeast(56.dp)
+        onNodeWithTag(GroupsNavigationTags.ShortcutFinance).assertHeightIsAtLeast(56.dp)
+        onNodeWithTag(GroupsNavigationTags.ShortcutSettings).assertHeightIsAtLeast(56.dp)
         onNodeWithText("Avisos").assertExists()
         onNodeWithText("Nenhum aviso recente").assertExists()
         onNodeWithText("Membros").assertExists()
-        onNodeWithText("Ana Lima").assertExists()
+        onNodeWithContentDescription("Ana Lima").assertExists()
         onNodeWithText("Convidar mais gente").assertExists()
     }
 
