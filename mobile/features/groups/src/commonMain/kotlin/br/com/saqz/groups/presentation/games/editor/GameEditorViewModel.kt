@@ -1,47 +1,163 @@
 package br.com.saqz.groups.presentation.games.editor
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.game.*
+import br.com.saqz.groups.data.game.GameGateway
+import br.com.saqz.groups.data.game.GameGatewayFailure
+import br.com.saqz.groups.data.game.VersionedGameDto
+import br.com.saqz.groups.data.game.VersionedSeriesDto
+import br.com.saqz.groups.data.game.toGameGatewayFailure
 import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 
-@Serializable enum class GameEditorMode { ONE_TIME, WEEKLY }
-@Serializable data class GameEditorForm(val title:String="",val venue:GameVenueDto?=null,val localDate:String="",val localTime:String="",val zoneId:String="",val startsAt:String="",val durationMinutes:String="",val capacity:String="",val confirmationDeadline:String="",val gameFeeBrl:String="",val notes:String="",val localEndDate:String="",val slots:List<WeeklySlotDto> = emptyList())
-@Serializable data class GameEditorDraft(val schemaVersion:Int=CURRENT_SCHEMA,val groupId:String,val gameId:String?,val seriesId:String?,val commandKey:String,val etag:String?,val mode:GameEditorMode,val form:GameEditorForm,val scope:SeriesBoundaryScopeDto?=null){companion object{const val CURRENT_SCHEMA=1}}
-data class GameEditorDefaults(val title:String,val venue:GameVenueDto?,val zoneId:String,val durationMinutes:Int?,val capacity:Int?,val confirmationLeadMinutes:Int?,val gameFeeCents:Long?)
-data class GameEditorInput(val groupId:String,val defaults:GameEditorDefaults,val existing:VersionedGameDto?=null,val series:VersionedSeriesDto?=null)
-sealed interface GameDraftReadResult{data class Success(val draft:GameEditorDraft?):GameDraftReadResult;data object Failure:GameDraftReadResult}
-sealed interface GameDraftWriteResult{data object Success:GameDraftWriteResult;data object Failure:GameDraftWriteResult}
-interface GameDraftStorePort{fun read(groupId:String,resourceId:String?,done:(GameDraftReadResult)->Unit);fun write(draft:GameEditorDraft,done:(GameDraftWriteResult)->Unit);fun clear(groupId:String,resourceId:String?,commandKey:String,done:(GameDraftWriteResult)->Unit)}
-fun interface GameCommandKeyFactory{fun create():String}
-enum class GameEditorError{UNAVAILABLE,DRAFT_UNAVAILABLE,CONFLICT,HIDDEN,INVALID_LIFECYCLE}
-@Immutable data class GameEditorState(val draft:GameEditorDraft,val fieldErrors:Map<String,List<String>> = emptyMap(),val isLoading:Boolean=false,val error:GameEditorError?=null,val reloadAvailable:Boolean=false,val successId:String?=null)
-sealed interface GameEditorIntent{data class SetMode(val mode:GameEditorMode):GameEditorIntent;data class UpdateForm(val form:GameEditorForm):GameEditorIntent;data object AddSlot:GameEditorIntent;data class SetScope(val scope:SeriesBoundaryScopeDto):GameEditorIntent;data object Submit:GameEditorIntent;data object Reload:GameEditorIntent}
-sealed interface GameEditorEffect{data class Saved(val id:String):GameEditorEffect;data class Reload(val groupId:String,val gameId:String):GameEditorEffect}
+class GameEditorViewModel(
+    private val input: GameEditorInput,
+    private val gateway: GameGateway,
+    private val store: GameDraftStorePort,
+    private val keys: GameCommandKeyFactory,
+    testScope: CoroutineScope? = null,
+) : ViewModel() {
+    private val scope = testScope ?: viewModelScope
+    private val initial = input.toGameEditorDraft(keys.create())
+    private val mutableState = MutableStateFlow(GameEditorState(initial))
+    val state: StateFlow<GameEditorState> = mutableState.asStateFlow()
 
-class GameEditorViewModel(private val input:GameEditorInput,private val gateway:GameGateway,private val store:GameDraftStorePort,private val keys:GameCommandKeyFactory,testScope:CoroutineScope?=null):ViewModel(){
-    private val scope=testScope?:viewModelScope;private val initial=input.toDraft(keys.create());private val mutable=MutableStateFlow(GameEditorState(initial));val state:StateFlow<GameEditorState> = mutable.asStateFlow();private val channel=Channel<GameEditorEffect>(Channel.BUFFERED);val effects:Flow<GameEditorEffect> = channel.receiveAsFlow()
-    init{store.read(input.groupId,input.existing?.game?.id){result->when(result){is GameDraftReadResult.Success->result.draft?.takeIf{it.schemaVersion==GameEditorDraft.CURRENT_SCHEMA&&it.groupId==input.groupId}?.let{mutable.value=GameEditorState(it)};GameDraftReadResult.Failure->mutable.value=mutable.value.copy(error=GameEditorError.DRAFT_UNAVAILABLE)}}}
-    fun onIntent(intent:GameEditorIntent){when(intent){is GameEditorIntent.SetMode->update{copy(mode=intent.mode,scope=null)};is GameEditorIntent.UpdateForm->update{copy(form=intent.form)};GameEditorIntent.AddSlot->update{copy(form=form.copy(slots=form.slots+form.newSlot(keys.create())))};is GameEditorIntent.SetScope->update{copy(scope=intent.scope)};GameEditorIntent.Submit->submit();GameEditorIntent.Reload->reload()}}
-    private fun update(change:GameEditorDraft.()->GameEditorDraft){mutable.value=mutable.value.copy(draft=mutable.value.draft.change(),fieldErrors=emptyMap(),error=null,reloadAvailable=false);persist()}
-    private fun persist(){store.write(mutable.value.draft){if(it==GameDraftWriteResult.Failure)mutable.value=mutable.value.copy(error=GameEditorError.DRAFT_UNAVAILABLE)}}
-    private fun submit(){val current=mutable.value;if(current.isLoading)return;val errors=validate(current.draft);if(errors.isNotEmpty()){mutable.value=current.copy(fieldErrors=errors);return};persist();mutable.value=current.copy(isLoading=true,error=null,fieldErrors=emptyMap());scope.launch{execute(current.draft)}}
-    private suspend fun execute(draft:GameEditorDraft){val result=when{input.existing==null&&draft.mode==GameEditorMode.ONE_TIME->gateway.create(input.groupId,draft.form.gameCommand(draft.commandKey));input.existing==null->gateway.createSeries(input.groupId,draft.seriesCommand());draft.mode==GameEditorMode.ONE_TIME->gateway.edit(input.groupId,input.existing.game.id,requireNotNull(draft.etag),draft.form.gameCommand());else->{val series=requireNotNull(input.series);gateway.boundary(input.groupId,series.series.id,requireNotNull(draft.etag),draft.boundary(series))}}
-        when(result){is NetworkResult.Success<*>->{val id=when(val value=result.value){is VersionedGameDto->value.game.id;is VersionedSeriesDto->value.series.id;else->error("unexpected result")};store.clear(input.groupId,input.existing?.game?.id,draft.commandKey){};mutable.value=mutable.value.copy(isLoading=false,successId=id);channel.trySend(GameEditorEffect.Saved(id))};is NetworkResult.Failure->failure(result.error.toGameGatewayFailure())}}
-    private fun failure(failure:GameGatewayFailure){mutable.value=when(failure){is GameGatewayFailure.Validation->mutable.value.copy(isLoading=false,fieldErrors=failure.fields);GameGatewayFailure.Conflict->mutable.value.copy(isLoading=false,error=GameEditorError.CONFLICT,reloadAvailable=true);GameGatewayFailure.HiddenResource->mutable.value.copy(isLoading=false,error=GameEditorError.HIDDEN,reloadAvailable=true);GameGatewayFailure.InvalidLifecycle->mutable.value.copy(isLoading=false,error=GameEditorError.INVALID_LIFECYCLE,reloadAvailable=true);else->mutable.value.copy(isLoading=false,error=GameEditorError.UNAVAILABLE)}}
-    private fun reload(){val game=input.existing?.game?:return;if(!mutable.value.reloadAvailable)return;channel.trySend(GameEditorEffect.Reload(input.groupId,game.id))}
+    private val effectChannel = Channel<GameEditorEffect>(Channel.BUFFERED)
+    val effects: Flow<GameEditorEffect> = effectChannel.receiveAsFlow()
+
+    init {
+        store.read(input.groupId, input.existing?.game?.id) { result ->
+            when (result) {
+                is GameDraftReadResult.Success -> result.draft
+                    ?.takeIf {
+                        it.schemaVersion == GameEditorDraft.CURRENT_SCHEMA && it.groupId == input.groupId
+                    }
+                    ?.let { mutableState.value = GameEditorState(it) }
+                GameDraftReadResult.Failure -> mutableState.value = mutableState.value.copy(
+                    error = GameEditorError.DRAFT_UNAVAILABLE,
+                )
+            }
+        }
+    }
+
+    fun onIntent(intent: GameEditorIntent) {
+        when (intent) {
+            is GameEditorIntent.SetMode -> update { copy(mode = intent.mode, scope = null) }
+            is GameEditorIntent.UpdateForm -> update { copy(form = intent.form) }
+            GameEditorIntent.AddSlot -> update {
+                copy(form = form.copy(slots = form.slots + form.newWeeklySlot(keys.create())))
+            }
+            is GameEditorIntent.SetScope -> update { copy(scope = intent.scope) }
+            GameEditorIntent.Submit -> submit()
+            GameEditorIntent.Reload -> reload()
+        }
+    }
+
+    private fun update(change: GameEditorDraft.() -> GameEditorDraft) {
+        mutableState.value = mutableState.value.copy(
+            draft = mutableState.value.draft.change(),
+            fieldErrors = emptyMap(),
+            error = null,
+            reloadAvailable = false,
+        )
+        persist()
+    }
+
+    private fun persist() {
+        store.write(mutableState.value.draft) {
+            if (it == GameDraftWriteResult.Failure) {
+                mutableState.value = mutableState.value.copy(error = GameEditorError.DRAFT_UNAVAILABLE)
+            }
+        }
+    }
+
+    private fun submit() {
+        val current = mutableState.value
+        if (current.isLoading) return
+
+        val errors = validateGameEditor(current.draft)
+        if (errors.isNotEmpty()) {
+            mutableState.value = current.copy(fieldErrors = errors)
+            return
+        }
+        persist()
+        mutableState.value = current.copy(isLoading = true, error = null, fieldErrors = emptyMap())
+        scope.launch { execute(current.draft) }
+    }
+
+    private suspend fun execute(draft: GameEditorDraft) {
+        val result = when {
+            input.existing == null && draft.mode == GameEditorMode.ONE_TIME -> {
+                gateway.create(input.groupId, draft.form.toGameWriteCommand(draft.commandKey))
+            }
+            input.existing == null -> gateway.createSeries(input.groupId, draft.toSeriesWriteCommand())
+            draft.mode == GameEditorMode.ONE_TIME -> gateway.edit(
+                input.groupId,
+                input.existing.game.id,
+                requireNotNull(draft.etag),
+                draft.form.toGameWriteCommand(),
+            )
+            else -> {
+                val series = requireNotNull(input.series)
+                gateway.boundary(
+                    input.groupId,
+                    series.series.id,
+                    requireNotNull(draft.etag),
+                    draft.toBoundaryCommand(series),
+                )
+            }
+        }
+        when (result) {
+            is NetworkResult.Success<*> -> {
+                val id = when (val value = result.value) {
+                    is VersionedGameDto -> value.game.id
+                    is VersionedSeriesDto -> value.series.id
+                    else -> error("unexpected result")
+                }
+                store.clear(input.groupId, input.existing?.game?.id, draft.commandKey) {}
+                mutableState.value = mutableState.value.copy(isLoading = false, successId = id)
+                effectChannel.trySend(GameEditorEffect.Saved(id))
+            }
+            is NetworkResult.Failure -> failure(result.error.toGameGatewayFailure())
+        }
+    }
+
+    private fun failure(failure: GameGatewayFailure) {
+        mutableState.value = when (failure) {
+            is GameGatewayFailure.Validation -> mutableState.value.copy(
+                isLoading = false,
+                fieldErrors = failure.fields,
+            )
+            GameGatewayFailure.Conflict -> mutableState.value.copy(
+                isLoading = false,
+                error = GameEditorError.CONFLICT,
+                reloadAvailable = true,
+            )
+            GameGatewayFailure.HiddenResource -> mutableState.value.copy(
+                isLoading = false,
+                error = GameEditorError.HIDDEN,
+                reloadAvailable = true,
+            )
+            GameGatewayFailure.InvalidLifecycle -> mutableState.value.copy(
+                isLoading = false,
+                error = GameEditorError.INVALID_LIFECYCLE,
+                reloadAvailable = true,
+            )
+            else -> mutableState.value.copy(isLoading = false, error = GameEditorError.UNAVAILABLE)
+        }
+    }
+
+    private fun reload() {
+        val game = input.existing?.game ?: return
+        if (!mutableState.value.reloadAvailable) return
+
+        effectChannel.trySend(GameEditorEffect.Reload(input.groupId, game.id))
+    }
 }
-private fun GameEditorInput.toDraft(key:String):GameEditorDraft{val game=existing?.game;val form=if(game==null)GameEditorForm(defaults.title,defaults.venue,zoneId=defaults.zoneId,durationMinutes=defaults.durationMinutes?.toString().orEmpty(),capacity=defaults.capacity?.toString().orEmpty(),gameFeeBrl=defaults.gameFeeCents?.let{it.centsToBrl()}.orEmpty())else GameEditorForm(game.title,game.venue,game.localDate,game.localTime,game.zoneId,game.startsAt,game.durationMinutes.toString(),game.capacity.toString(),game.confirmationDeadline,game.gameFeeCents?.centsToBrl().orEmpty(),game.notes.orEmpty());return GameEditorDraft(groupId=groupId,gameId=game?.id,seriesId=series?.series?.id,commandKey=key,etag=existing?.etag?:series?.etag,mode=if(series==null)GameEditorMode.ONE_TIME else GameEditorMode.WEEKLY,form=form)}
-private fun validate(draft:GameEditorDraft)=buildMap<String,List<String>>{fun required(name:String,value:String){if(value.isBlank())put(name,listOf("is required"))};val f=draft.form;required("title",f.title);if(f.venue==null)put("venue",listOf("is required"));required("localDate",f.localDate);required("zoneId",f.zoneId);if(f.localEndDate.isNotBlank()&&f.localEndDate<f.localDate)put("localEndDate",listOf("must not be before start date"));if(f.durationMinutes.toIntOrNull() !in 15..480)put("durationMinutes",listOf("must be between 15 and 480"));if(f.capacity.toIntOrNull() !in 2..100)put("capacity",listOf("must be between 2 and 100"));if(f.gameFeeBrl.isNotBlank()&&f.gameFeeBrl.brlToCents()==null)put("gameFeeBrl",listOf("must be a valid BRL amount"));if(f.notes.trim().let{it.isNotEmpty()&&it.length !in 2..500})put("notes",listOf("must be between 2 and 500 characters"));if(draft.mode==GameEditorMode.ONE_TIME){required("localTime",f.localTime);required("startsAt",f.startsAt);required("confirmationDeadline",f.confirmationDeadline);if(f.startsAt.isNotBlank()&&f.confirmationDeadline>f.startsAt)put("confirmationDeadline",listOf("must not be after start"))}else{if(f.slots.isEmpty())put("slots",listOf("must not be empty"));f.slots.forEachIndexed{i,slot->if(slot.localTime.isBlank())put("slots[$i].localTime",listOf("is required"));if(slot.durationMinutes !in 15..480)put("slots[$i].durationMinutes",listOf("must be between 15 and 480"));if(slot.capacity !in 2..100)put("slots[$i].capacity",listOf("must be between 2 and 100"));if(slot.confirmationLeadMinutes !in 0..10080)put("slots[$i].confirmationLeadMinutes",listOf("must be between 0 and 10080"));if(slot.title.isBlank())put("slots[$i].title",listOf("is required"));if(slot.venue.name.isBlank()||slot.venue.address.isBlank())put("slots[$i].venue",listOf("is required"))};if(draft.gameId!=null&&draft.scope==null)put("scope",listOf("is required"))}}
-private fun GameEditorForm.gameCommand(key:String?=null)=GameWriteCommand(key,title,venue,localDate,localTime,zoneId,startsAt,durationMinutes.toIntOrNull(),capacity.toIntOrNull(),confirmationDeadline,gameFeeBrl.brlToCents(),false,notes.trim().ifBlank{null})
-private fun GameEditorForm.newSlot(key:String)=WeeklySlotDto(key,WeekdayDto.MONDAY,"19:00:00",durationMinutes.toIntOrNull()?:90,venue?:GameVenueDto(null,"",""),capacity.toIntOrNull()?:12,180,gameFeeBrl.brlToCents(),title)
-private fun GameEditorDraft.seriesCommand()=WeeklySeriesWriteCommand(seriesId?:commandKey,commandKey,form.zoneId,form.localDate,form.localEndDate.ifBlank{null},form.slots)
-private fun GameEditorDraft.boundary(series:VersionedSeriesDto)=SeriesBoundaryCommand(commandKey,requireNotNull(scope),SeriesBoundaryActionDto.EDIT,gameId=gameId,boundary=form.localDate,currentRevisionId=series.series.revisionId,successor=if(scope==SeriesBoundaryScopeDto.THIS_AND_FUTURE)seriesCommand()else null,replacement=if(scope==SeriesBoundaryScopeDto.ONLY_THIS)form.gameCommand()else null)
-private fun Long.centsToBrl()="${this/100},${(this%100).toString().padStart(2,'0')}"
-private fun String.brlToCents():Long?{val clean=trim().replace("R$","").trim();if(!clean.matches(Regex("[0-9]+([,.][0-9]{1,2})?")))return null;val parts=clean.replace('.',',').split(',');return parts[0].toLongOrNull()?.times(100)?.plus(parts.getOrNull(1)?.padEnd(2,'0')?.toLongOrNull()?:0)}

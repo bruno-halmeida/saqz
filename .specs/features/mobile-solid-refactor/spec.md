@@ -25,6 +25,9 @@ observable behavior.
 5. **SOLID-05** - `GroupsRouteChrome` SHALL compose only the shared route
    layout and navigation bars; destination-specific screen rendering SHALL live
    in `GroupsDestinationContent`.
+6. **SOLID-06** - `GameEditorViewModel.kt` SHALL declare only
+   `GameEditorViewModel`; its models, MVI contracts, draft port, validation,
+   and command mapping SHALL live in focused files in the same package.
 
 ## Out of Scope
 
