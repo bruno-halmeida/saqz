@@ -10,6 +10,9 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -41,6 +44,94 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class GroupsNavigationHostTest {
+    @Test
+    fun `selected group home renders one shared top bar and bottom menu`() = runComposeUiTest {
+        host(owner, access(GroupRoleDto.OWNER))
+
+        onNodeWithTag(GroupsNavigationTags.TopBar).assertIsDisplayed()
+        onNodeWithTag(GroupsNavigationTags.TopBarTitle).assertTextEquals("Private Group")
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
+        onNodeWithTag("saqz-bottom-nav-item-0").assertIsSelected()
+        onNodeWithTag("saqz-bottom-nav-item-1").assertIsNotSelected()
+    }
+
+    @Test
+    fun `game detail keeps games selected and shows its exact title`() = runComposeUiTest {
+        host(
+            owner,
+            access(GroupRoleDto.OWNER).copy(
+                destination = GroupsDestination.GAME_DETAIL,
+                gameId = "game-1",
+            ),
+        )
+
+        onNodeWithTag(GroupsNavigationTags.TopBarTitle).assertTextEquals("Detalhes do jogo")
+        onNodeWithTag("saqz-bottom-nav-item-0").assertIsNotSelected()
+        onNodeWithTag("saqz-bottom-nav-item-1").assertIsSelected()
+    }
+
+    @Test
+    fun `bottom menu emits each existing typed navigation intent once`() = runComposeUiTest {
+        val intents = mutableListOf<GroupsNavigationIntent>()
+        host(owner, access(GroupRoleDto.OWNER), intents)
+
+        onNodeWithTag("saqz-bottom-nav-item-0").performClick()
+        onNodeWithTag("saqz-bottom-nav-item-1").performClick()
+        onNodeWithTag("saqz-bottom-nav-item-2").performClick()
+        onNodeWithTag("saqz-bottom-nav-item-3").performClick()
+
+        assertEquals(
+            listOf(
+                GroupsNavigationIntent.OpenHome,
+                GroupsNavigationIntent.OpenGames,
+                GroupsNavigationIntent.OpenPeople,
+                GroupsNavigationIntent.OpenFinance,
+            ),
+            intents,
+        )
+    }
+
+    @Test
+    fun `athlete bottom menu hides people and selects own charges`() = runComposeUiTest {
+        host(
+            athlete,
+            access(GroupRoleDto.ATHLETE).copy(destination = GroupsDestination.OWN_CHARGES),
+        )
+
+        onNodeWithTag(GroupsNavigationTags.TopBarTitle).assertTextEquals("Minhas cobranças")
+        onNodeWithTag("saqz-bottom-nav-item-2").assertIsSelected()
+        onNodeWithTag("saqz-bottom-nav-item-3").assertDoesNotExist()
+        onNodeWithText("Pessoas").assertDoesNotExist()
+    }
+
+    @Test
+    fun `unselected group route has no shared product chrome`() = runComposeUiTest {
+        host(
+            owner,
+            GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = sessionGroups,
+            ),
+        )
+
+        onNodeWithTag(GroupsNavigationTags.TopBar).assertDoesNotExist()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
+    }
+
+    @Test
+    fun `nested route top bar returns to group home once`() = runComposeUiTest {
+        val intents = mutableListOf<GroupsNavigationIntent>()
+        host(
+            owner,
+            access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.GAMES),
+            intents,
+        )
+
+        onNodeWithTag(GroupsNavigationTags.BackToList).performClick()
+
+        assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenHome), intents)
+    }
+
     @Test
     fun `multiple groups render the complete list and select the exact row`() = runComposeUiTest {
         val selectedGroups = mutableListOf<String>()
@@ -219,6 +310,8 @@ class GroupsNavigationHostTest {
             .performScrollTo()
             .assertIsDisplayed()
             .assertHeightIsAtLeast(48.dp)
+        onNodeWithTag(GroupsNavigationTags.TopBar).assertIsDisplayed()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
     }
 
     @Test

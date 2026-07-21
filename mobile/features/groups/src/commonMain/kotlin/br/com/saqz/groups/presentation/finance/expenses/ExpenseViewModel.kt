@@ -1,52 +1,305 @@
 package br.com.saqz.groups.presentation.finance.expenses
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.finance.*
+import br.com.saqz.groups.data.finance.ExpenseCategoryDto
+import br.com.saqz.groups.data.finance.ExpenseDto
+import br.com.saqz.groups.data.finance.ExpenseListDto
+import br.com.saqz.groups.data.finance.ExpenseStatusDto
+import br.com.saqz.groups.data.finance.FinanceGatewayFailure
+import br.com.saqz.groups.data.finance.toFinanceGatewayFailure
+import br.com.saqz.groups.data.finance.MonthlyChargeCommandDto
+import br.com.saqz.groups.data.finance.OrganizerFinanceGateway
+import br.com.saqz.groups.data.finance.ExpenseWriteCommandDto
+import br.com.saqz.groups.data.finance.ChargeStatusCommandDto
 import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 
-@Serializable data class ExpenseForm(val description:String="",val amountBrl:String="",val expenseDate:String="",val category:ExpenseCategoryDto?=null,val customCategory:String="",val notes:String="")
-@Serializable data class ExpenseDraft(val schemaVersion:Int=CURRENT_SCHEMA,val groupId:String,val expenseId:String?=null,val etag:String?=null,val commandKey:String,val form:ExpenseForm){companion object{const val CURRENT_SCHEMA=1}}
-sealed interface ExpenseDraftReadResult{data class Success(val draft:ExpenseDraft?):ExpenseDraftReadResult;data object Failure:ExpenseDraftReadResult}
-sealed interface ExpenseDraftWriteResult{data object Success:ExpenseDraftWriteResult;data object Failure:ExpenseDraftWriteResult}
-interface ExpenseDraftStorePort{fun read(groupId:String,done:(ExpenseDraftReadResult)->Unit);fun write(draft:ExpenseDraft,done:(ExpenseDraftWriteResult)->Unit);fun clear(groupId:String,expenseId:String?,commandKey:String,done:(ExpenseDraftWriteResult)->Unit)}
-fun interface ExpenseCommandKeyFactory{fun create():String}
+class ExpenseViewModel(
+    private val groupId: String,
+    private val role: GroupRoleDto,
+    private val gateway: OrganizerFinanceGateway?,
+    private val drafts: ExpenseDraftStorePort,
+    private val keys: ExpenseCommandKeyFactory,
+    testScope: CoroutineScope? = null,
+) : ViewModel() {
+    private val scope = testScope ?: viewModelScope
+    private val mutable = MutableStateFlow(
+        ExpenseState(
+            groupId,
+            role,
+            isLoading = role == GroupRoleDto.OWNER || role == GroupRoleDto.ADMIN,
+        ),
+    )
+    val state: StateFlow<ExpenseState> = mutable.asStateFlow()
+    private val channel = Channel<ExpenseEffect>(Channel.BUFFERED)
+    val effects: Flow<ExpenseEffect> = channel.receiveAsFlow()
+    private var retry: ExpenseOperation? = null
 
-enum class ExpenseError{UNAVAILABLE,DRAFT_UNAVAILABLE,VALIDATION,CONFLICT,HIDDEN,FORBIDDEN,INVALID_LIFECYCLE}
-@Immutable data class ExpenseState(val groupId:String,val role:GroupRoleDto,val expenses:List<ExpenseDto> = emptyList(),val totals:FinanceTotalsDto?=null,val draft:ExpenseDraft?=null,val pendingVoid:ExpenseDto?=null,val fieldErrors:Map<String,List<String>> = emptyMap(),val isLoading:Boolean=true,val isMutating:Boolean=false,val error:ExpenseError?=null,val reloadAvailable:Boolean=false,val retryAvailable:Boolean=false,val lastAuditOutcome:String?=null){val organizer get()=role==GroupRoleDto.OWNER||role==GroupRoleDto.ADMIN;val routeAvailable get()=organizer}
-sealed interface ExpenseIntent{data object Refresh:ExpenseIntent;data object OpenCreate:ExpenseIntent;data class OpenEdit(val expenseId:String):ExpenseIntent;data class UpdateForm(val form:ExpenseForm):ExpenseIntent;data object Submit:ExpenseIntent;data class RequestVoid(val expenseId:String):ExpenseIntent;data object DismissVoid:ExpenseIntent;data object ConfirmVoid:ExpenseIntent;data object Retry:ExpenseIntent}
-sealed interface ExpenseEffect{data class Saved(val expenseId:String):ExpenseEffect;data class Voided(val expenseId:String):ExpenseEffect}
-private sealed interface ExpenseOperation{data class Save(val draft:ExpenseDraft):ExpenseOperation;data class Void(val expenseId:String,val etag:String):ExpenseOperation}
+    init {
+        if (mutable.value.organizer) {
+            restore()
+            load()
+        }
+    }
 
-class ExpenseViewModel(private val groupId:String,private val role:GroupRoleDto,private val gateway:OrganizerFinanceGateway?,private val drafts:ExpenseDraftStorePort,private val keys:ExpenseCommandKeyFactory,testScope:CoroutineScope?=null):ViewModel(){
-    private val scope=testScope?:viewModelScope;private val mutable=MutableStateFlow(ExpenseState(groupId,role,isLoading=role==GroupRoleDto.OWNER||role==GroupRoleDto.ADMIN));val state:StateFlow<ExpenseState> = mutable.asStateFlow();private val channel=Channel<ExpenseEffect>(Channel.BUFFERED);val effects:Flow<ExpenseEffect> = channel.receiveAsFlow();private var retry:ExpenseOperation?=null
-    init{if(mutable.value.organizer){restore();load()}}
-    fun onIntent(intent:ExpenseIntent){when(intent){ExpenseIntent.Refresh->load();ExpenseIntent.OpenCreate->openCreate();is ExpenseIntent.OpenEdit->openEdit(intent.expenseId);is ExpenseIntent.UpdateForm->update(intent.form);ExpenseIntent.Submit->submit();is ExpenseIntent.RequestVoid->requestVoid(intent.expenseId);ExpenseIntent.DismissVoid->if(!mutable.value.isMutating)mutable.value=mutable.value.copy(pendingVoid=null);ExpenseIntent.ConfirmVoid->confirmVoid();ExpenseIntent.Retry->retry?.let(::execute)}}
-    private fun restore(){drafts.read(groupId){result->when(result){is ExpenseDraftReadResult.Success->result.draft?.takeIf{it.schemaVersion==ExpenseDraft.CURRENT_SCHEMA&&it.groupId==groupId}?.let{mutable.value=mutable.value.copy(draft=it)};ExpenseDraftReadResult.Failure->mutable.value=mutable.value.copy(error=ExpenseError.DRAFT_UNAVAILABLE)}}}
-    private fun load(){val current=mutable.value;if(!current.organizer||current.isMutating)return;val api=gateway?:return fail(FinanceGatewayFailure.Forbidden);mutable.value=current.copy(isLoading=true,error=null,reloadAvailable=false);scope.launch{when(val listed=api.expenses(groupId)){is NetworkResult.Failure->fail(listed.error.toFinanceGatewayFailure());is NetworkResult.Success->when(val totals=api.totals(groupId)){is NetworkResult.Failure->fail(totals.error.toFinanceGatewayFailure());is NetworkResult.Success->mutable.value=mutable.value.copy(expenses=listed.value.expenses,totals=totals.value,isLoading=false,error=null)}}}}
-    private fun openCreate(){val current=mutable.value;if(!current.organizer||current.isMutating)return;val draft=ExpenseDraft(groupId=groupId,commandKey=keys.create(),form=ExpenseForm());mutable.value=current.copy(draft=draft,fieldErrors=emptyMap(),error=null);persist(draft)}
-    private fun openEdit(id:String){val current=mutable.value;if(!current.organizer||current.isMutating)return;val expense=current.expenses.firstOrNull{it.id==id}?:return;val draft=ExpenseDraft(groupId=groupId,expenseId=id,etag="\"${expense.version}\"",commandKey=keys.create(),form=expense.form());mutable.value=current.copy(draft=draft,fieldErrors=emptyMap(),error=null);persist(draft)}
-    private fun update(form:ExpenseForm){val current=mutable.value;val draft=current.draft?:return;if(!current.organizer||current.isMutating)return;val normalized=if(form.category!=ExpenseCategoryDto.OTHER)form.copy(customCategory="")else form;val changed=draft.copy(form=normalized);mutable.value=current.copy(draft=changed,fieldErrors=emptyMap(),error=null,reloadAvailable=false);persist(changed)}
-    private fun submit(){val current=mutable.value;val draft=current.draft?:return;if(!current.organizer||current.isMutating)return;val errors=draft.form.validate();if(errors.isNotEmpty()){mutable.value=current.copy(fieldErrors=errors,error=ExpenseError.VALIDATION);return};execute(ExpenseOperation.Save(draft))}
-    private fun requestVoid(id:String){val current=mutable.value;if(!current.organizer||current.isMutating)return;current.expenses.firstOrNull{it.id==id&&it.status==ExpenseStatusDto.ACTIVE}?.let{mutable.value=current.copy(pendingVoid=it,error=null)}}
-    private fun confirmVoid(){val current=mutable.value;val expense=current.pendingVoid?:return;if(!current.organizer||current.isMutating)return;execute(ExpenseOperation.Void(expense.id,"\"${expense.version}\""))}
-    private fun execute(operation:ExpenseOperation){val api=gateway?:return;val current=mutable.value;if(!current.organizer||current.isMutating)return;retry=operation;mutable.value=current.copy(isMutating=true,error=null,retryAvailable=false,fieldErrors=emptyMap());scope.launch{when(operation){is ExpenseOperation.Save->{val draft=operation.draft;val command=draft.form.command(if(draft.expenseId==null)draft.commandKey else null);val result=if(draft.expenseId==null)api.createExpense(groupId,command)else api.editExpense(groupId,draft.expenseId,requireNotNull(draft.etag),command);when(result){is NetworkResult.Success->saved(api,draft,result.value.expense);is NetworkResult.Failure->fail(result.error.toFinanceGatewayFailure())}};is ExpenseOperation.Void->when(val result=api.voidExpense(groupId,operation.expenseId,operation.etag)){is NetworkResult.Success->voided(api,result.value.expense);is NetworkResult.Failure->fail(result.error.toFinanceGatewayFailure())}}}}
-    private suspend fun saved(api:OrganizerFinanceGateway,draft:ExpenseDraft,expense:ExpenseDto){retry=null;drafts.clear(groupId,draft.expenseId,draft.commandKey){};refreshAfter(api);mutable.value=mutable.value.copy(draft=null,isMutating=false,error=null,reloadAvailable=false,retryAvailable=false,lastAuditOutcome="Despesa registrada no histórico manual.");channel.trySend(ExpenseEffect.Saved(expense.id))}
-    private suspend fun voided(api:OrganizerFinanceGateway,expense:ExpenseDto){retry=null;refreshAfter(api);mutable.value=mutable.value.copy(pendingVoid=null,isMutating=false,error=null,reloadAvailable=false,retryAvailable=false,lastAuditOutcome="Despesa anulada no histórico manual.");channel.trySend(ExpenseEffect.Voided(expense.id))}
-    private suspend fun refreshAfter(api:OrganizerFinanceGateway){val listed=api.expenses(groupId);val totals=api.totals(groupId);if(listed is NetworkResult.Success)mutable.value=mutable.value.copy(expenses=listed.value.expenses);if(totals is NetworkResult.Success)mutable.value=mutable.value.copy(totals=totals.value)}
-    private fun persist(draft:ExpenseDraft){drafts.write(draft){if(it==ExpenseDraftWriteResult.Failure)mutable.value=mutable.value.copy(error=ExpenseError.DRAFT_UNAVAILABLE)}}
-    private fun fail(failure:FinanceGatewayFailure){val error=when(failure){is FinanceGatewayFailure.Validation->ExpenseError.VALIDATION;FinanceGatewayFailure.Conflict->ExpenseError.CONFLICT;FinanceGatewayFailure.HiddenResource->ExpenseError.HIDDEN;FinanceGatewayFailure.Forbidden->ExpenseError.FORBIDDEN;FinanceGatewayFailure.InvalidLifecycle->ExpenseError.INVALID_LIFECYCLE;else->ExpenseError.UNAVAILABLE};mutable.value=mutable.value.copy(isLoading=false,isMutating=false,error=error,fieldErrors=(failure as? FinanceGatewayFailure.Validation)?.fields.orEmpty(),reloadAvailable=error==ExpenseError.CONFLICT,retryAvailable=error==ExpenseError.CONFLICT||error==ExpenseError.UNAVAILABLE)}
+    fun onIntent(intent: ExpenseIntent) {
+        when (intent) {
+            ExpenseIntent.Refresh -> load()
+            ExpenseIntent.OpenCreate -> openCreate()
+            is ExpenseIntent.OpenEdit -> openEdit(intent.expenseId)
+            is ExpenseIntent.UpdateForm -> update(intent.form)
+            ExpenseIntent.Submit -> submit()
+            is ExpenseIntent.RequestVoid -> requestVoid(intent.expenseId)
+            ExpenseIntent.DismissVoid -> if (!mutable.value.isMutating) {
+                mutable.value = mutable.value.copy(pendingVoid = null)
+            }
+            ExpenseIntent.ConfirmVoid -> confirmVoid()
+            ExpenseIntent.Retry -> retry?.let(::execute)
+        }
+    }
+
+    private fun restore() {
+        drafts.read(groupId) { result ->
+            when (result) {
+                is ExpenseDraftReadResult.Success -> result.draft
+                    ?.takeIf {
+                        it.schemaVersion == ExpenseDraft.CURRENT_SCHEMA &&
+                            it.groupId == groupId
+                    }
+                    ?.let { mutable.value = mutable.value.copy(draft = it) }
+
+                ExpenseDraftReadResult.Failure -> {
+                    mutable.value = mutable.value.copy(error = ExpenseError.DRAFT_UNAVAILABLE)
+                }
+            }
+        }
+    }
+
+    private fun load() {
+        val current = mutable.value
+        if (!current.organizer || current.isMutating) return
+        val api = gateway ?: return fail(FinanceGatewayFailure.Forbidden)
+
+        mutable.value = current.copy(isLoading = true, error = null, reloadAvailable = false)
+        scope.launch {
+            when (val listed = api.expenses(groupId)) {
+                is NetworkResult.Failure -> fail(listed.error.toFinanceGatewayFailure())
+
+                is NetworkResult.Success -> when (val totals = api.totals(groupId)) {
+                    is NetworkResult.Failure -> fail(totals.error.toFinanceGatewayFailure())
+                    is NetworkResult.Success -> mutable.value = mutable.value.copy(
+                        expenses = listed.value.expenses,
+                        totals = totals.value,
+                        isLoading = false,
+                        error = null,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun openCreate() {
+        val current = mutable.value
+        if (!current.organizer || current.isMutating) return
+
+        val draft = ExpenseDraft(
+            groupId = groupId,
+            commandKey = keys.create(),
+            form = ExpenseForm(),
+        )
+        mutable.value = current.copy(draft = draft, fieldErrors = emptyMap(), error = null)
+        persist(draft)
+    }
+
+    private fun openEdit(id: String) {
+        val current = mutable.value
+        if (!current.organizer || current.isMutating) return
+
+        val expense = current.expenses.firstOrNull { it.id == id } ?: return
+        val draft = ExpenseDraft(
+            groupId = groupId,
+            expenseId = id,
+            etag = "\"${expense.version}\"",
+            commandKey = keys.create(),
+            form = expense.form(),
+        )
+        mutable.value = current.copy(draft = draft, fieldErrors = emptyMap(), error = null)
+        persist(draft)
+    }
+
+    private fun update(form: ExpenseForm) {
+        val current = mutable.value
+        val draft = current.draft ?: return
+        if (!current.organizer || current.isMutating) return
+
+        val normalized = if (form.category != ExpenseCategoryDto.OTHER) {
+            form.copy(customCategory = "")
+        } else {
+            form
+        }
+        val changed = draft.copy(form = normalized)
+        mutable.value = current.copy(
+            draft = changed,
+            fieldErrors = emptyMap(),
+            error = null,
+            reloadAvailable = false,
+        )
+        persist(changed)
+    }
+
+    private fun submit() {
+        val current = mutable.value
+        val draft = current.draft ?: return
+        if (!current.organizer || current.isMutating) return
+
+        val errors = draft.form.validate()
+        if (errors.isNotEmpty()) {
+            mutable.value = current.copy(fieldErrors = errors, error = ExpenseError.VALIDATION)
+            return
+        }
+
+        execute(ExpenseOperation.Save(draft))
+    }
+
+    private fun requestVoid(id: String) {
+        val current = mutable.value
+        if (!current.organizer || current.isMutating) return
+
+        current.expenses.firstOrNull { it.id == id && it.status == ExpenseStatusDto.ACTIVE }
+            ?.let { mutable.value = current.copy(pendingVoid = it, error = null) }
+    }
+
+    private fun confirmVoid() {
+        val current = mutable.value
+        val expense = current.pendingVoid ?: return
+        if (!current.organizer || current.isMutating) return
+        execute(ExpenseOperation.Void(expense.id, "\"${expense.version}\""))
+    }
+
+    private fun execute(operation: ExpenseOperation) {
+        val api = gateway ?: return
+        val current = mutable.value
+        if (!current.organizer || current.isMutating) return
+
+        retry = operation
+        mutable.value = current.copy(
+            isMutating = true,
+            error = null,
+            retryAvailable = false,
+            fieldErrors = emptyMap(),
+        )
+
+        scope.launch {
+            when (operation) {
+                is ExpenseOperation.Save -> {
+                    val draft = operation.draft
+                    val command = draft.form.command(
+                        if (draft.expenseId == null) draft.commandKey else null,
+                    )
+                    val result = if (draft.expenseId == null) {
+                        api.createExpense(groupId, command)
+                    } else {
+                        api.editExpense(groupId, draft.expenseId, requireNotNull(draft.etag), command)
+                    }
+
+                    when (result) {
+                        is NetworkResult.Success -> saved(api, draft, result.value.expense)
+                        is NetworkResult.Failure -> fail(result.error.toFinanceGatewayFailure())
+                    }
+                }
+
+                is ExpenseOperation.Void -> when (
+                    val result = api.voidExpense(groupId, operation.expenseId, operation.etag)
+                ) {
+                    is NetworkResult.Success -> voided(api, result.value.expense)
+                    is NetworkResult.Failure -> fail(result.error.toFinanceGatewayFailure())
+                }
+            }
+        }
+    }
+
+    private suspend fun saved(
+        api: OrganizerFinanceGateway,
+        draft: ExpenseDraft,
+        expense: ExpenseDto,
+    ) {
+        retry = null
+        drafts.clear(groupId, draft.expenseId, draft.commandKey) {}
+        refreshAfter(api)
+        mutable.value = mutable.value.copy(
+            draft = null,
+            isMutating = false,
+            error = null,
+            reloadAvailable = false,
+            retryAvailable = false,
+            lastAuditOutcome = "Despesa registrada no histórico manual.",
+        )
+        channel.trySend(ExpenseEffect.Saved(expense.id))
+    }
+
+    private suspend fun voided(api: OrganizerFinanceGateway, expense: ExpenseDto) {
+        retry = null
+        refreshAfter(api)
+        mutable.value = mutable.value.copy(
+            pendingVoid = null,
+            isMutating = false,
+            error = null,
+            reloadAvailable = false,
+            retryAvailable = false,
+            lastAuditOutcome = "Despesa anulada no histórico manual.",
+        )
+        channel.trySend(ExpenseEffect.Voided(expense.id))
+    }
+
+    private suspend fun refreshAfter(api: OrganizerFinanceGateway) {
+        val listed = api.expenses(groupId)
+        val totals = api.totals(groupId)
+        if (listed is NetworkResult.Success) {
+            mutable.value = mutable.value.copy(expenses = listed.value.expenses)
+        }
+        if (totals is NetworkResult.Success) {
+            mutable.value = mutable.value.copy(totals = totals.value)
+        }
+    }
+
+    private fun persist(draft: ExpenseDraft) {
+        drafts.write(draft) {
+            if (it == ExpenseDraftWriteResult.Failure) {
+                mutable.value = mutable.value.copy(error = ExpenseError.DRAFT_UNAVAILABLE)
+            }
+        }
+    }
+
+    private fun fail(failure: FinanceGatewayFailure) {
+        val error = when (failure) {
+            is FinanceGatewayFailure.Validation -> ExpenseError.VALIDATION
+            FinanceGatewayFailure.Conflict -> ExpenseError.CONFLICT
+            FinanceGatewayFailure.HiddenResource -> ExpenseError.HIDDEN
+            FinanceGatewayFailure.Forbidden -> ExpenseError.FORBIDDEN
+            FinanceGatewayFailure.InvalidLifecycle -> ExpenseError.INVALID_LIFECYCLE
+            else -> ExpenseError.UNAVAILABLE
+        }
+        mutable.value = mutable.value.copy(
+            isLoading = false,
+            isMutating = false,
+            error = error,
+            fieldErrors = (failure as? FinanceGatewayFailure.Validation)?.fields.orEmpty(),
+            reloadAvailable = error == ExpenseError.CONFLICT,
+            retryAvailable = error == ExpenseError.CONFLICT || error == ExpenseError.UNAVAILABLE,
+        )
+    }
 }
 
-private fun ExpenseDto.form()=ExpenseForm(description,amountCents.centsToBrl(),expenseDate,category,customCategory.orEmpty(),notes.orEmpty())
-private fun ExpenseForm.command(key:String?)=ExpenseWriteCommandDto(key,description.trim(),requireNotNull(amountBrl.brlToCents()),expenseDate,requireNotNull(category),customCategory.trim().ifBlank{null},notes.trim().ifBlank{null})
-private fun ExpenseForm.validate()=buildMap<String,List<String>>{val description=description.trim();if(description.length !in 2..160||description.any(Char::isISOControl))put("description",listOf("is invalid"));val amount=amountBrl.brlToCents();if(amount==null||amount !in 1..99_999_999)put("amountBrl",listOf("is invalid"));if(!expenseDate.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")))put("expenseDate",listOf("is invalid"));if(category==null)put("category",listOf("is required"));if(category==ExpenseCategoryDto.OTHER&&customCategory.trim().let{it.length !in 2..40||it.any(Char::isISOControl)})put("customCategory",listOf("is invalid"));if(notes.trim().let{it.isNotEmpty()&&(it.length !in 2..500||it.any(Char::isISOControl))})put("notes",listOf("is invalid"))}
-private fun Long.centsToBrl()="${this/100},${(this%100).toString().padStart(2,'0')}"
-private fun String.brlToCents():Long?{val clean=trim().replace("R$","").trim();if(!clean.matches(Regex("[0-9]+([,.][0-9]{1,2})?")))return null;val parts=clean.replace('.',',').split(',');return parts[0].toLongOrNull()?.times(100)?.plus(parts.getOrNull(1)?.padEnd(2,'0')?.toLongOrNull()?:0)}
+private sealed interface ExpenseOperation {
+    data class Save(val draft: ExpenseDraft) : ExpenseOperation
+    data class Void(val expenseId: String, val etag: String) : ExpenseOperation
+}

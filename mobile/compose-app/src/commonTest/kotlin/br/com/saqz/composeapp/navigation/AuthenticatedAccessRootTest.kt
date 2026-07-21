@@ -110,6 +110,8 @@ class AuthenticatedAccessRootTest {
         root(snapshot())
 
         onNodeWithTag("login-submit").assertExists()
+        onNodeWithTag(GroupsNavigationTags.TopBar).assertDoesNotExist()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
         onNodeWithText("Current Group").assertDoesNotExist()
         onNodeWithText("Componentes").assertDoesNotExist()
     }
