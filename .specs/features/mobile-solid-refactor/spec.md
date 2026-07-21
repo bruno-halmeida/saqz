@@ -28,6 +28,10 @@ observable behavior.
 6. **SOLID-06** - `GameEditorViewModel.kt` SHALL declare only
    `GameEditorViewModel`; its models, MVI contracts, draft port, validation,
    and command mapping SHALL live in focused files in the same package.
+7. **SOLID-07** - `GameDetailViewModel.kt` SHALL declare only
+   `GameDetailViewModel`; its lifecycle and attendance actions, error, command
+   key factory, state, MVI contracts, and attendance operation SHALL live in
+   focused files in the same package.
 
 ## Out of Scope
 

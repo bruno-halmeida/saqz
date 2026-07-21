@@ -1,6 +1,5 @@
 package br.com.saqz.groups.presentation.games.detail
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.GroupRoleDto
@@ -18,90 +17,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlin.time.Clock
 import kotlin.random.Random
-
-enum class GameLifecycleAction(val mutation:String) { PUBLISH("publish"), CANCEL("cancel"), COMPLETE("complete") }
-enum class AttendanceAction { CONFIRM, DECLINE, WITHDRAW }
-enum class GameDetailError { UNAVAILABLE, HIDDEN, CONFLICT, INVALID_LIFECYCLE, DEADLINE, FROZEN, VALIDATION }
-fun interface AttendanceCommandKeyFactory { fun create():String }
-
-@Immutable
-data class GameDetailState(
-    val groupId:String,
-    val gameId:String,
-    val role:GroupRoleDto,
-    val game:GameDto?=null,
-    val etag:String?=null,
-    val attendance:AttendanceDetailDto?=null,
-    val attendanceEtag:String?=null,
-    val attendanceOpen:Boolean=false,
-    val isLoading:Boolean=true,
-    val isMutating:Boolean=false,
-    val isAttendanceMutating:Boolean=false,
-    val pendingAction:GameLifecycleAction?=null,
-    val pendingAttendanceAction:AttendanceAction?=null,
-    val attendanceCommandKey:String?=null,
-    val error:GameDetailError?=null,
-    val attendanceError:GameDetailError?=null,
-    val reloadAvailable:Boolean=false,
-    val retryAttendanceAvailable:Boolean=false,
-    val isAttendanceLinkLoading:Boolean=false,
-    val attendanceLinkUrl:String?=null,
-    val attendanceLinkError:GameDetailError?=null,
-    val isAttendanceShareSnapshotLoading:Boolean=false,
-    val attendanceShareSnapshot:AttendanceShareImageModel?=null,
-    val attendanceShareError:GameDetailError?=null,
-    val showAttendanceSharePrivacy:Boolean=false,
-) {
-    val organizer get()=role==GroupRoleDto.OWNER||role==GroupRoleDto.ADMIN
-    val canEdit get()=organizer&&(game?.status==GameStatusDto.DRAFT||game?.status==GameStatusDto.PUBLISHED)
-    val actions get()=when{!organizer->emptyList();game?.status==GameStatusDto.DRAFT->listOf(GameLifecycleAction.PUBLISH);game?.status==GameStatusDto.PUBLISHED->listOf(GameLifecycleAction.CANCEL,GameLifecycleAction.COMPLETE);else->emptyList()}
-    val terminal get()=game?.status==GameStatusDto.CANCELLED||game?.status==GameStatusDto.COMPLETED
-    val ownAttendance get()=attendance?.ownAttendance
-    val confirmedCount get()=attendance?.confirmedCount?:game?.confirmedCount?:0
-    val availableSpots get()=attendance?.availableSpots?:game?.availableSpots?:0
-    val waitlistCount get()=attendance?.waitlistCount?:game?.waitlistCount?:0
-    val waitlistPosition get()=ownAttendance?.waitlistPosition
-    val withdrawalKeepsCharge get()=pendingAttendanceAction==AttendanceAction.WITHDRAW&&game?.gameFeeCents!=null
-    val attendanceActions get()=if(!attendanceOpen||game?.status!=GameStatusDto.PUBLISHED)emptySet() else when(ownAttendance?.status){null->setOf(AttendanceAction.CONFIRM,AttendanceAction.DECLINE);AttendanceStatusDto.CONFIRMED->setOf(AttendanceAction.WITHDRAW);AttendanceStatusDto.DECLINED->setOf(AttendanceAction.CONFIRM);AttendanceStatusDto.WAITLISTED->setOf(AttendanceAction.WITHDRAW)}
-}
-
-sealed interface GameDetailIntent {
-    data object Refresh:GameDetailIntent
-    data object RefreshAttendance:GameDetailIntent
-    data object OpenEdit:GameDetailIntent
-    data class RequestLifecycle(val action:GameLifecycleAction):GameDetailIntent
-    data object DismissConfirmation:GameDetailIntent
-    data object ConfirmLifecycle:GameDetailIntent
-    data object Reload:GameDetailIntent
-    data class RequestAttendance(val action:AttendanceAction):GameDetailIntent
-    data object DismissAttendance:GameDetailIntent
-    data object ConfirmAttendance:GameDetailIntent
-    data class OverrideAttendance(val memberId:String,val intent:AttendanceIntentDto,val reason:String):GameDetailIntent
-    data class ChangeCapacity(val capacity:Int):GameDetailIntent
-    data object RetryAttendance:GameDetailIntent
-    data object RequestAttendanceLinkShare:GameDetailIntent
-    data object RetryAttendanceLinkShare:GameDetailIntent
-    data object RequestAttendanceImageShare:GameDetailIntent
-    data object ConfirmAttendanceImageShare:GameDetailIntent
-    data object CancelAttendanceImageShare:GameDetailIntent
-    data class ReportAttendanceShareResult(val successful:Boolean):GameDetailIntent
-}
-
-sealed interface GameDetailEffect {
-    data class OpenEdit(val groupId:String,val gameId:String):GameDetailEffect
-    data class LifecycleApplied(val action:GameLifecycleAction):GameDetailEffect
-    data class AttendanceApplied(val status:AttendanceStatusDto,val promotedCount:Int,val refreshCharges:Boolean):GameDetailEffect
-    data class CapacityApplied(val capacity:Int,val promotedCount:Int):GameDetailEffect
-    data class ShareAttendanceLink(val url:String):GameDetailEffect
-    data class ShareAttendanceImage(val image:AttendanceShareImageModel):GameDetailEffect
-}
-
-private sealed interface AttendanceOperation {
-    val key:String
-    data class Self(val action:AttendanceAction,override val key:String):AttendanceOperation
-    data class Override(val memberId:String,val intent:AttendanceIntentDto,val reason:String,override val key:String):AttendanceOperation
-    data class Capacity(val capacity:Int,val etag:String,override val key:String):AttendanceOperation
-}
 
 class GameDetailViewModel(
     private val gateway:GameGateway,
