@@ -44,8 +44,6 @@ class JdbcAttendanceShareSnapshotIntegrationTest {
     @Test
     fun `snapshot access preserves owner admin athlete and hidden roles`() {
         val fixture = fixture("roles")
-        insertMembership(fixture.group, fixture.admin, "ADMIN")
-        insertMembership(fixture.group, fixture.athlete, "ATHLETE")
         val outsider = insertUser("roles-outsider")
 
         assertEquals(AttendanceShareSnapshotAccess(br.com.saqz.groups.domain.GroupRole.OWNER), repository.findSnapshotAccess(fixture.owner, fixture.group, fixture.game))
@@ -57,15 +55,17 @@ class JdbcAttendanceShareSnapshotIntegrationTest {
     @Test
     fun `snapshot read orders sections deterministically and omits no response members`() {
         val fixture = fixture("snapshot-order")
-        insertAttendance(fixture.game, fixture.group, fixture.owner, "CONFIRMED", null, "Bruno")
+        val confirmedBruno = insertUser("snapshot-order-confirmed", "Bruno")
+        insertMembership(fixture.group, confirmedBruno, "ATHLETE")
+        insertAttendance(fixture.game, fixture.group, confirmedBruno, "CONFIRMED", null, "Bruno")
         insertAttendance(fixture.game, fixture.group, fixture.admin, "CONFIRMED", null, "Ana")
-        insertAttendance(fixture.game, fixture.group, fixture.athlete, "WAITLISTED", 2, "Carlos")
         val waitlistLeader = insertUser("snapshot-order-wait-1", "Bianca")
-        insertAttendance(fixture.game, fixture.group, waitlistLeader, "WAITLISTED", 1, "Bianca")
-        val declined = insertUser("snapshot-order-declined", "Zeca")
-        insertAttendance(fixture.game, fixture.group, declined, "DECLINED", null, "Zeca")
         insertMembership(fixture.group, waitlistLeader, "ATHLETE")
+        insertAttendance(fixture.game, fixture.group, waitlistLeader, "WAITLISTED", 1, "Bianca")
+        insertAttendance(fixture.game, fixture.group, fixture.athlete, "WAITLISTED", 2, "Carlos")
+        val declined = insertUser("snapshot-order-declined", "Zeca")
         insertMembership(fixture.group, declined, "ATHLETE")
+        insertAttendance(fixture.game, fixture.group, declined, "DECLINED", null, "Zeca")
 
         val snapshot = repository.readSnapshot(fixture.group, fixture.game)
 

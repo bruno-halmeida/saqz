@@ -26,6 +26,7 @@ import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.port.GroupDraftStorePort
+import br.com.saqz.groups.port.GroupAttendanceSharePort
 import br.com.saqz.groups.port.GroupPhotoEncoderPort
 import br.com.saqz.groups.port.GroupPhotoEncodingResult
 import br.com.saqz.groups.port.GroupPhotoPreviewPort
@@ -56,6 +57,7 @@ class SaqzAppDependencies(
     val links: NativeLinkPort = UnconfiguredLinkPort,
     val localState: LocalAccessStatePort,
     val share: NativeSharePort,
+    val attendanceShare: GroupAttendanceSharePort = UnconfiguredAttendanceSharePort,
     val groupPhotos: GroupPhotoRuntimeDependencies,
     val groupLinks: NativeGroupLinkPort = UnconfiguredGroupLinkPort,
     val groupState: LocalGroupStatePort = UnconfiguredGroupStatePort,
@@ -77,6 +79,7 @@ class SaqzAppDependencies(
             links = UnconfiguredLinkPort,
             localState = UnconfiguredLocalStatePort,
             share = UnconfiguredSharePort,
+            attendanceShare = UnconfiguredAttendanceSharePort,
             groupPhotos = GroupPhotoRuntimeDependencies.Unconfigured,
             groupLinks = UnconfiguredGroupLinkPort,
             groupState = UnconfiguredGroupStatePort,
@@ -140,6 +143,11 @@ private object UnconfiguredLocalStatePort : LocalAccessStatePort {
 
 private object UnconfiguredSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object UnconfiguredAttendanceSharePort : GroupAttendanceSharePort {
+    override fun shareLink(url: String, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+    override fun shareImage(image: br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
 }
 
 private object UnconfiguredGroupLinkPort : NativeGroupLinkPort {

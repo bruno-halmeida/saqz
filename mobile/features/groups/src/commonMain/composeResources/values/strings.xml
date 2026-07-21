@@ -224,6 +224,12 @@
     <string name="attendance_capacity">Capacidade</string>
     <string name="attendance_capacity_warning">A capacidade não pode ficar abaixo dos %1$d já confirmados. Ninguém será removido.</string>
     <string name="attendance_capacity_save">Atualizar capacidade</string>
+    <string name="attendance_share_link">Compartilhar link</string>
+    <string name="attendance_share_list">Compartilhar lista</string>
+    <string name="attendance_share_privacy_title">Compartilhar lista de presença?</string>
+    <string name="attendance_share_privacy_body">Os nomes sairão do Saqz ao abrir a folha de compartilhamento. Continue apenas se você quiser enviar esta lista.</string>
+    <string name="attendance_share_continue">Continuar</string>
+    <string name="attendance_share_unavailable">Não foi possível preparar o compartilhamento agora.</string>
     <string name="finance_title_athlete">Minhas cobranças</string>
     <string name="finance_title_organizer">Controle financeiro</string>
     <string name="finance_totals">Totais registrados</string>

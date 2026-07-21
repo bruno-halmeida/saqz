@@ -46,6 +46,7 @@ object GameDetailTags {
     const val Attendance="game-detail-attendance";const val AttendConfirm="attendance-confirm";const val AttendDecline="attendance-decline";const val AttendWithdraw="attendance-withdraw";const val AttendDialogConfirm="attendance-dialog-confirm";const val AttendRetry="attendance-retry"
     const val OverrideMember="attendance-override-member";const val OverrideReason="attendance-override-reason";const val OverrideConfirm="attendance-override-confirm";const val OverrideDecline="attendance-override-decline"
     const val Capacity="attendance-capacity";const val SaveCapacity="attendance-capacity-save";const val CapacityWarning="attendance-capacity-warning"
+    const val ShareLink="attendance-share-link";const val ShareList="attendance-share-list";const val SharePrivacyConfirm="attendance-share-privacy-confirm"
 }
 
 @Composable fun GameDetailScreen(state:GameDetailState,onIntent:(GameDetailIntent)->Unit){
@@ -63,6 +64,7 @@ object GameDetailTags {
     }
     state.pendingAction?.let{action->SaqzDialog(action.confirmTitle(),{onIntent(GameDetailIntent.DismissConfirmation)},primaryAction={SaqzButton(stringResource(Res.string.game_detail_confirm),{onIntent(GameDetailIntent.ConfirmLifecycle)},Modifier.testTag(GameDetailTags.Confirm),loading=state.isMutating)}){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){if(action==GameLifecycleAction.CANCEL)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.game_detail_dismiss),{onIntent(GameDetailIntent.DismissConfirmation)},Modifier.fillMaxWidth(),SaqzButtonVariant.Secondary)}}}
     state.pendingAttendanceAction?.let{action->AttendanceConfirmation(state,action,onIntent)}
+    if(state.showAttendanceSharePrivacy)AttendanceSharePrivacyDialog(onIntent)
 }
 
 @Composable private fun AttendancePanel(state:GameDetailState,onIntent:(GameDetailIntent)->Unit){
@@ -82,6 +84,12 @@ object GameDetailTags {
         state.attendanceError?.let{Text(it.attendanceErrorLabel(),color=SaqzTheme.colors.errorForeground)}
         if(state.retryAttendanceAvailable)SaqzButton(stringResource(Res.string.attendance_retry),{onIntent(GameDetailIntent.RetryAttendance)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.AttendRetry),SaqzButtonVariant.Secondary)
         if(state.organizer)OrganizerAttendance(state,onIntent)
+        if(state.organizer){
+            if(state.game?.status==GameStatusDto.PUBLISHED&&state.attendanceOpen)SaqzButton(stringResource(Res.string.attendance_share_link),{onIntent(if(state.attendanceLinkUrl==null)GameDetailIntent.RequestAttendanceLinkShare else GameDetailIntent.RetryAttendanceLinkShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareLink),SaqzButtonVariant.Secondary,loading=state.isAttendanceLinkLoading)
+            SaqzButton(stringResource(Res.string.attendance_share_list),{onIntent(GameDetailIntent.RequestAttendanceImageShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareList),SaqzButtonVariant.Secondary,loading=state.isAttendanceShareSnapshotLoading)
+            state.attendanceLinkError?.let{Text(stringResource(Res.string.attendance_share_unavailable),color=SaqzTheme.colors.errorForeground)}
+            state.attendanceShareError?.let{Text(stringResource(Res.string.attendance_share_unavailable),color=SaqzTheme.colors.errorForeground)}
+        }
     }}
 }
 
@@ -110,6 +118,10 @@ object GameDetailTags {
         if(action==AttendanceAction.WITHDRAW&&state.withdrawalKeepsCharge)Text(stringResource(Res.string.attendance_withdraw_charge_warning),color=SaqzTheme.colors.textSecondary)
         SaqzButton(stringResource(Res.string.game_detail_dismiss),{onIntent(GameDetailIntent.DismissAttendance)},Modifier.fillMaxWidth().heightIn(min=48.dp),SaqzButtonVariant.Secondary)
     }}
+}
+
+@Composable private fun AttendanceSharePrivacyDialog(onIntent:(GameDetailIntent)->Unit){
+    SaqzDialog(stringResource(Res.string.attendance_share_privacy_title),{onIntent(GameDetailIntent.CancelAttendanceImageShare)},primaryAction={SaqzButton(stringResource(Res.string.attendance_share_continue),{onIntent(GameDetailIntent.ConfirmAttendanceImageShare)},Modifier.heightIn(min=48.dp).testTag(GameDetailTags.SharePrivacyConfirm))}){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(stringResource(Res.string.attendance_share_privacy_body),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.action_cancel),{onIntent(GameDetailIntent.CancelAttendanceImageShare)},Modifier.fillMaxWidth().heightIn(min=48.dp),SaqzButtonVariant.Secondary)}}
 }
 
 @Composable private fun ErrorPanel(state:GameDetailState,onIntent:(GameDetailIntent)->Unit){Text(stringResource(if(state.error==GameDetailError.CONFLICT||state.error==GameDetailError.INVALID_LIFECYCLE)Res.string.game_detail_conflict else Res.string.game_detail_error),color=SaqzTheme.colors.errorForeground);if(state.reloadAvailable||state.game==null)SaqzButton(stringResource(Res.string.game_detail_reload),{onIntent(GameDetailIntent.Reload)},Modifier.fillMaxWidth().testTag(GameDetailTags.Reload))}

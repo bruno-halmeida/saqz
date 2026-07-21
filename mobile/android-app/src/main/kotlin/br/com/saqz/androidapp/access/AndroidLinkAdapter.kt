@@ -30,7 +30,7 @@ internal class AndroidLinkAdapter(
     private val branch: AndroidBranchSessionClient,
 ) : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var accessListener: InviteCodeListener? = null
-    private var groupListener: GroupLinkEventListener? = null
+    private val groupListeners = mutableSetOf<GroupLinkEventListener>()
     private var pendingAccessCode: String? = null
     private var pendingGroupEvent: GroupLinkEvent? = null
     private var lastAcceptedEventKey: String? = null
@@ -49,14 +49,11 @@ internal class AndroidLinkAdapter(
     }
 
     override fun start(listener: GroupLinkEventListener): GroupCancelable {
-        groupListener = listener
+        groupListeners += listener
         pendingGroupEvent?.let(listener::onEvent)
-        pendingGroupEvent = null
         return object : GroupCancelable {
             override fun cancel() {
-                if (this@AndroidLinkAdapter.groupListener === listener) {
-                    this@AndroidLinkAdapter.groupListener = null
-                }
+                groupListeners -= listener
             }
         }
     }
@@ -87,8 +84,12 @@ internal class AndroidLinkAdapter(
             val current = accessListener
             if (current == null) pendingAccessCode = accepted.code else current.onInviteCode(accepted.code)
         }
-        val currentGroupListener = groupListener
-        if (currentGroupListener == null) pendingGroupEvent = accepted else currentGroupListener.onEvent(accepted)
+        if (groupListeners.isEmpty()) {
+            pendingGroupEvent = accepted
+        } else {
+            pendingGroupEvent = null
+            groupListeners.forEach { it.onEvent(accepted) }
+        }
     }
 
     private companion object {

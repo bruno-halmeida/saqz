@@ -55,6 +55,7 @@ import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupSelectionStateMachine
 import br.com.saqz.groups.presentation.InviteUiError
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
+import br.com.saqz.groups.presentation.games.detail.GameDetailEffect
 import br.com.saqz.groups.presentation.games.detail.GameDetailState
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoCoordinator
@@ -301,6 +302,25 @@ internal fun AuthenticatedAccessRoute(
     LaunchedEffect(accessViewModel, dependencies.share) {
         accessViewModel.effects.collect { effect ->
             handleAccessEffect(effect, dependencies.share, groupsViewModel::onIntent, accessViewModel::onIntent)
+        }
+    }
+    if (gameDetailViewModel != null) {
+        LaunchedEffect(gameDetailViewModel, dependencies.attendanceShare) {
+            gameDetailViewModel.effects.collect { effect ->
+                when (effect) {
+                    is GameDetailEffect.ShareAttendanceLink -> dependencies.attendanceShare.shareLink(effect.url, object : GroupResultCallback {
+                        override fun complete(result: GroupOperationResult) {
+                            gameDetailViewModel.onIntent(GameDetailIntent.ReportAttendanceShareResult(result is GroupOperationResult.Success))
+                        }
+                    })
+                    is GameDetailEffect.ShareAttendanceImage -> dependencies.attendanceShare.shareImage(effect.image, object : GroupResultCallback {
+                        override fun complete(result: GroupOperationResult) {
+                            gameDetailViewModel.onIntent(GameDetailIntent.ReportAttendanceShareResult(result is GroupOperationResult.Success))
+                        }
+                    })
+                    else -> Unit
+                }
+            }
         }
     }
     if (groupSetupViewModel != null) {

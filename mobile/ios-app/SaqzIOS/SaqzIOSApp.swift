@@ -23,6 +23,7 @@ struct IOSAppComposition {
     let localState: IOSLocalAccessStateAdapter
     let groupState: IOSLocalGroupStateAdapter
     let share: IOSShareAdapter
+    let attendanceShare: IOSAttendanceShareAdapter
     let photos: IOSGroupPhotoAdapters
     let drafts: IOSGroupDraftAdapters
     let dependencies: SaqzAppDependencies
@@ -34,9 +35,10 @@ struct IOSAppComposition {
         let localState = IOSLocalAccessStateAdapter(store: store)
         let groupState = IOSLocalGroupStateAdapter(store: store)
         let share = IOSLocalAccessComposition.makeShare { IOSPresentationRoot.current }
+        let attendanceShare = IOSAttendanceShareAdapter(presenter: { IOSPresentationRoot.current })
         let photos = IOSGroupPhotoAdapters.makeLive(presenter: { IOSPresentationRoot.current })
         let drafts = IOSGroupDraftAdapters.makeLive()
-        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos, drafts: drafts)
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts)
     }
 
     static func make(
@@ -46,6 +48,7 @@ struct IOSAppComposition {
         localState: IOSLocalAccessStateAdapter,
         groupState: IOSLocalGroupStateAdapter,
         share: IOSShareAdapter,
+        attendanceShare: IOSAttendanceShareAdapter,
         photos: IOSGroupPhotoAdapters,
         drafts: IOSGroupDraftAdapters
     ) -> IOSAppComposition {
@@ -57,6 +60,7 @@ struct IOSAppComposition {
             links: IOSNoOpAccessLinkPort(),
             localState: localState,
             share: share,
+            attendanceShare: attendanceShare,
             groupPhotos: GroupPhotoRuntimeDependencies(
                 selection: photos.selection,
                 encoder: photos.encoder,
@@ -69,7 +73,7 @@ struct IOSAppComposition {
             monthlyChargeDrafts: drafts.monthly,
             expenseDrafts: drafts.expense
         )
-        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, photos: photos, drafts: drafts, dependencies: dependencies)
+        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
     }
 }
 

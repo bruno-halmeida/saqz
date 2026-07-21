@@ -99,8 +99,8 @@ class AndroidAuthenticatedLifecycleTest {
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
 
-        assertEquals(1, state.links.startCalls)
-        assertEquals(1, state.links.activeSubscriptions)
+        assertEquals(2, state.links.startCalls)
+        assertEquals(2, state.links.activeSubscriptions)
         assertEquals(1, state.local.pendingReads)
         assertEquals(LifecycleFixture.RESTORED_INVITE, state.local.pending)
     }
@@ -112,7 +112,7 @@ class AndroidAuthenticatedLifecycleTest {
         compose.waitForIdle()
 
         assertEquals(1, state.auth.observeCalls)
-        assertEquals(1, state.links.startCalls)
+        assertEquals(2, state.links.startCalls)
         assertEquals(listOf<String?>(null), state.links.coldUrls)
     }
 
@@ -389,7 +389,7 @@ private class LifecycleAuthPort : NativeAuthPort {
 
 private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var listener: InviteCodeListener? = null
-    private var groupListener: GroupLinkEventListener? = null
+    private val groupListeners = mutableSetOf<GroupLinkEventListener>()
     var startCalls = 0
     var activeSubscriptions = 0
     val coldUrls = mutableListOf<String?>()
@@ -412,11 +412,10 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
     override fun start(listener: GroupLinkEventListener): GroupCancelable {
         startCalls++
         activeSubscriptions++
-        groupListener = listener
+        groupListeners += listener
         return object : GroupCancelable {
             override fun cancel() {
-                if (this@LifecycleLinkPort.groupListener === listener) {
-                    this@LifecycleLinkPort.groupListener = null
+                if (groupListeners.remove(listener)) {
                     activeSubscriptions--
                 }
             }
@@ -432,7 +431,8 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
     }
 
     fun emit(code: String) {
-        groupListener?.onEvent(GroupLinkEvent.Invite(code)) ?: listener?.onInviteCode(code)
+        if (groupListeners.isNotEmpty()) groupListeners.forEach { it.onEvent(GroupLinkEvent.Invite(code)) }
+        else listener?.onInviteCode(code)
     }
 }
 

@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.attendance.*
+import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
+import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotDto
 import br.com.saqz.groups.data.game.*
+import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImage
+import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
 import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -40,6 +44,13 @@ data class GameDetailState(
     val attendanceError:GameDetailError?=null,
     val reloadAvailable:Boolean=false,
     val retryAttendanceAvailable:Boolean=false,
+    val isAttendanceLinkLoading:Boolean=false,
+    val attendanceLinkUrl:String?=null,
+    val attendanceLinkError:GameDetailError?=null,
+    val isAttendanceShareSnapshotLoading:Boolean=false,
+    val attendanceShareSnapshot:AttendanceShareImageModel?=null,
+    val attendanceShareError:GameDetailError?=null,
+    val showAttendanceSharePrivacy:Boolean=false,
 ) {
     val organizer get()=role==GroupRoleDto.OWNER||role==GroupRoleDto.ADMIN
     val canEdit get()=organizer&&(game?.status==GameStatusDto.DRAFT||game?.status==GameStatusDto.PUBLISHED)
@@ -68,6 +79,12 @@ sealed interface GameDetailIntent {
     data class OverrideAttendance(val memberId:String,val intent:AttendanceIntentDto,val reason:String):GameDetailIntent
     data class ChangeCapacity(val capacity:Int):GameDetailIntent
     data object RetryAttendance:GameDetailIntent
+    data object RequestAttendanceLinkShare:GameDetailIntent
+    data object RetryAttendanceLinkShare:GameDetailIntent
+    data object RequestAttendanceImageShare:GameDetailIntent
+    data object ConfirmAttendanceImageShare:GameDetailIntent
+    data object CancelAttendanceImageShare:GameDetailIntent
+    data class ReportAttendanceShareResult(val successful:Boolean):GameDetailIntent
 }
 
 sealed interface GameDetailEffect {
@@ -75,6 +92,8 @@ sealed interface GameDetailEffect {
     data class LifecycleApplied(val action:GameLifecycleAction):GameDetailEffect
     data class AttendanceApplied(val status:AttendanceStatusDto,val promotedCount:Int,val refreshCharges:Boolean):GameDetailEffect
     data class CapacityApplied(val capacity:Int,val promotedCount:Int):GameDetailEffect
+    data class ShareAttendanceLink(val url:String):GameDetailEffect
+    data class ShareAttendanceImage(val image:AttendanceShareImageModel):GameDetailEffect
 }
 
 private sealed interface AttendanceOperation {
@@ -91,6 +110,7 @@ class GameDetailViewModel(
     role:GroupRoleDto,
     testScope:CoroutineScope?=null,
     private val attendanceGateway:AttendanceGateway?=null,
+    private val attendanceShareGateway:AttendanceShareGateway?=null,
     private val keys:AttendanceCommandKeyFactory=AttendanceCommandKeyFactory{"attendance-${Random.nextLong()}"},
     private val now:()->Instant={Clock.System.now()},
 ):ViewModel(){
@@ -115,6 +135,12 @@ class GameDetailViewModel(
         is GameDetailIntent.OverrideAttendance->override(intent)
         is GameDetailIntent.ChangeCapacity->capacity(intent.capacity)
         GameDetailIntent.RetryAttendance->retryOperation?.let(::execute)
+        GameDetailIntent.RequestAttendanceLinkShare->shareAttendanceLink(false)
+        GameDetailIntent.RetryAttendanceLinkShare->shareAttendanceLink(true)
+        GameDetailIntent.RequestAttendanceImageShare->requestAttendanceImageShare()
+        GameDetailIntent.ConfirmAttendanceImageShare->confirmAttendanceImageShare()
+        GameDetailIntent.CancelAttendanceImageShare->mutable.value=mutable.value.copy(showAttendanceSharePrivacy=false)
+        is GameDetailIntent.ReportAttendanceShareResult->reportAttendanceShareResult(intent.successful)
     }}
 
     private fun load(){
@@ -177,6 +203,31 @@ class GameDetailViewModel(
     }
     private fun attendanceFailed(failure:AttendanceGatewayFailure){val error=failure.error();mutable.value=mutable.value.copy(isAttendanceMutating=false,attendanceError=error,retryAttendanceAvailable=error in setOf(GameDetailError.CONFLICT,GameDetailError.UNAVAILABLE),reloadAvailable=error==GameDetailError.CONFLICT)}
     private fun fail(failure:GameGatewayFailure){val error=when(failure){GameGatewayFailure.Conflict->GameDetailError.CONFLICT;GameGatewayFailure.HiddenResource->GameDetailError.HIDDEN;GameGatewayFailure.InvalidLifecycle->GameDetailError.INVALID_LIFECYCLE;else->GameDetailError.UNAVAILABLE};mutable.value=mutable.value.copy(isMutating=false,pendingAction=null,error=error,reloadAvailable=error==GameDetailError.CONFLICT||error==GameDetailError.INVALID_LIFECYCLE)}
+    private fun shareAttendanceLink(retry:Boolean){
+        val current=mutable.value
+        val url=current.attendanceLinkUrl
+        if(retry&&url!=null){channel.trySend(GameDetailEffect.ShareAttendanceLink(url));return}
+        if(current.isAttendanceLinkLoading||!current.organizer||current.game?.status!=GameStatusDto.PUBLISHED||!current.attendanceOpen)return
+        val share=attendanceShareGateway?:return
+        mutable.value=current.copy(isAttendanceLinkLoading=true,attendanceLinkError=null)
+        scope.launch{when(val result=share.rotateLink(current.groupId,current.gameId)){
+            is NetworkResult.Success->{mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkUrl=result.value.url,attendanceLinkError=null);channel.trySend(GameDetailEffect.ShareAttendanceLink(result.value.url))}
+            is NetworkResult.Failure->mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkError=GameDetailError.UNAVAILABLE)
+        }}
+    }
+    private fun requestAttendanceImageShare(){
+        val current=mutable.value
+        if(current.isAttendanceShareSnapshotLoading||!current.organizer)return
+        if(current.attendanceShareSnapshot!=null){mutable.value=current.copy(showAttendanceSharePrivacy=true,attendanceShareError=null);return}
+        val share=attendanceShareGateway?:return
+        mutable.value=current.copy(isAttendanceShareSnapshotLoading=true,attendanceShareError=null)
+        scope.launch{when(val result=share.readSnapshot(current.groupId,current.gameId)){
+            is NetworkResult.Success->{val image=AttendanceShareImage.from(result.value);mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareSnapshot=image,attendanceShareError=null,showAttendanceSharePrivacy=true)}
+            is NetworkResult.Failure->mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareError=GameDetailError.UNAVAILABLE)
+        }}
+    }
+    private fun confirmAttendanceImageShare(){val image=mutable.value.attendanceShareSnapshot?:return;mutable.value=mutable.value.copy(showAttendanceSharePrivacy=false);channel.trySend(GameDetailEffect.ShareAttendanceImage(image))}
+    private fun reportAttendanceShareResult(successful:Boolean){if(!successful&&mutable.value.attendanceShareSnapshot!=null)mutable.value=mutable.value.copy(attendanceShareError=GameDetailError.UNAVAILABLE)}
 
     private fun GameDto.attendanceOpen()=status==GameStatusDto.PUBLISHED&&runCatching{now()<=Instant.parse(confirmationDeadline)}.getOrDefault(false)
     private fun AttendanceAction.intent()=if(this==AttendanceAction.CONFIRM)AttendanceIntentDto.CONFIRM else AttendanceIntentDto.DECLINE

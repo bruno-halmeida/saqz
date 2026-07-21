@@ -15,6 +15,7 @@ import br.com.saqz.androidapp.access.AndroidShareLauncher
 import br.com.saqz.androidapp.access.BranchSdkSessionClient
 import br.com.saqz.androidapp.access.CredentialManagerGoogleClient
 import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
+import br.com.saqz.androidapp.groups.attendance.share.AndroidAttendanceShareAdapter
 import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
 import br.com.saqz.composeapp.SaqzAppDependencies
@@ -57,6 +58,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
         val store = AndroidEncryptedAccessStateStore(context.applicationContext)
         val localState = AndroidLocalAccessStateAdapter(store)
         val share = AndroidShareAdapter(ActivityShareLauncher(activity))
+        val attendanceShare = AndroidAttendanceShareAdapter(context.applicationContext)
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
         return AndroidAppComposition(
@@ -67,6 +69,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                 links = links,
                 localState = localState,
                 share = share,
+                attendanceShare = attendanceShare,
                 groupPhotos = GroupPhotoRuntimeDependencies(
                     selection = photos.selection,
                     encoder = photos.encoder,

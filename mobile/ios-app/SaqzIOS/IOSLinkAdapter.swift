@@ -14,7 +14,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
     private static let inviteParameter = "saqz_invite"
     private static let attendanceParameter = "saqz_attendance"
     private let branch: IOSBranchSessionClient
-    private var listener: GroupLinkEventListener?
+    private var listeners: [ObjectIdentifier: GroupLinkEventListener] = [:]
     private var pendingEvent: GroupLinkEvent?
     private var lastAcceptedEventKey: String?
 
@@ -23,14 +23,13 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
     }
 
     func start(listener_ listener: GroupLinkEventListener) -> GroupCancelable {
-        self.listener = listener
+        self.listeners[ObjectIdentifier(listener)] = listener
         if let pendingEvent {
             listener.onEvent(event: pendingEvent)
-            self.pendingEvent = nil
         }
         return IOSLinkCancellation { [weak self, weak listener] in
-            guard self?.listener === listener else { return }
-            self?.listener = nil
+            guard let listener else { return }
+            self?.listeners.removeValue(forKey: ObjectIdentifier(listener))
         }
     }
 
@@ -55,17 +54,21 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
 
     private func accept(_ event: GroupLinkEvent?) {
         guard let event else { return }
-        let eventKey: String = switch event {
-        case let invite as GroupLinkEventInvite: "invite:\(invite.code)"
-        case let attendance as GroupLinkEventAttendance: "attendance:\(attendance.code)"
-        default: return
+        let eventKey: String
+        if let invite = event as? GroupLinkEventInvite {
+            eventKey = "invite:\(invite.code)"
+        } else if let attendance = event as? GroupLinkEventAttendance {
+            eventKey = "attendance:\(attendance.code)"
+        } else {
+            return
         }
         guard eventKey != lastAcceptedEventKey else { return }
         lastAcceptedEventKey = eventKey
-        if let listener {
-            listener.onEvent(event: event)
-        } else {
+        if listeners.isEmpty {
             pendingEvent = event
+        } else {
+            pendingEvent = nil
+            listeners.values.forEach { $0.onEvent(event: event) }
         }
     }
 
@@ -75,11 +78,11 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
         let inviteValues = components.queryItems?.filter { $0.name == inviteParameter }.compactMap(\ .value).filter(isValidInviteCode) ?? []
         let attendanceValues = components.queryItems?.filter { $0.name == attendanceParameter }.compactMap(\ .value).filter(isValidInviteCode) ?? []
         if !inviteValues.isEmpty && !attendanceValues.isEmpty { return nil }
-        if let invite = inviteValues.last { return GroupLinkEvent.Invite(code: invite) }
-        if let attendance = attendanceValues.last { return GroupLinkEvent.Attendance(code: attendance) }
+        if let invite = inviteValues.last { return GroupLinkEventInvite(code: invite) }
+        if let attendance = attendanceValues.last { return GroupLinkEventAttendance(code: attendance) }
         let parts = url.path.split(separator: "/").map(String.init)
         if parts.count == 2, parts[0] == "attendance", isValidInviteCode(parts[1]) {
-            return GroupLinkEvent.Attendance(code: parts[1])
+            return GroupLinkEventAttendance(code: parts[1])
         }
         return nil
     }
@@ -88,8 +91,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
         let invite = (parameters?[inviteParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
         let attendance = (parameters?[attendanceParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
         if invite != nil && attendance != nil { return nil }
-        if let invite { return GroupLinkEvent.Invite(code: invite) }
-        if let attendance { return GroupLinkEvent.Attendance(code: attendance) }
+        if let invite { return GroupLinkEventInvite(code: invite) }
+        if let attendance { return GroupLinkEventAttendance(code: attendance) }
         return nil
     }
 
