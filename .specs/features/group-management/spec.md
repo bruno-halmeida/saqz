@@ -183,6 +183,14 @@ keys, cents, or timezone identifiers.
   fallback mark.
 - Storage provider and raw object key never become durable public API fields.
 - Production media is private; only current members may retrieve it.
+- The selected-group home reads the photo through the authenticated private
+  endpoint. While group identity or bytes are reconciling, its stable 104 dp
+  summary slot shows a skeleton; a valid photo is cropped to fill the slot, and
+  absence, read failure, or decode failure shows the group initials.
+- A session-private cache may retain only bounded photo bytes and their photo
+  ETag. A cache hit is displayed only after authenticated `304` revalidation;
+  `200` replaces it atomically, while `404`, transient failure, logout,
+  membership loss, and process start never expose stale bytes.
 
 ## Invitation links and deep links
 
@@ -969,6 +977,10 @@ keys, cents, or timezone identifiers.
 - **B109 | 2026-07-20** — The aggregate mobile gate found that production-route
   tests still expected legacy section titles and invoked camera/gallery actions
   before opening the redesigned progressive photo sheet. Covered by V55.
+- **B110 | 2026-07-21** — The selected-group home always rendered initials even
+  when its authenticated private photo existed, and the unfinished native-cache
+  approach mixed group and photo ETags while risking a previous-group preview
+  during reconciliation. Covered by V56.
 - **V20** — Persistence constraints, domain enums, transport DTOs, and UI labels
   for every confirmed closed vocabulary and length limit SHALL be derived from
   the accepted spec table verbatim; tests SHALL assert every member and both
@@ -1095,6 +1107,11 @@ keys, cents, or timezone identifiers.
   and SHALL reach progressive photo sources through the same visible add control
   and bottom sheet used by the user; hidden camera/gallery actions SHALL not be
   treated as directly reachable from the idle form.
+- **V56** — The selected-group home SHALL read its photo only in matching
+  authenticated group context, revalidate cached bytes with the photo ETag, and
+  render a stable skeleton, the current cropped photo, or initials fallback; it
+  SHALL never render unconditional initials for an available photo or compose a
+  preview belonging to another group.
 
 ## Success criteria
 

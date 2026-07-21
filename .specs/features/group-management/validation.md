@@ -214,3 +214,70 @@ independent repository-infrastructure risk and are not caused by this feature.
 **Overall:** Ready — PASS. GRP-UI-03 and the latest photo, outline, gray-icon,
 numeric-value, progressive-flow, and invitation requirements are implemented
 and covered by feature and production-route tests.
+
+---
+
+# Selected-Group Private Photo Validation
+
+**Date:** 2026-07-21
+**Verdict:** PASS
+**Implementation commits:** `117e262`, `4c17e5c`
+**Verifier:** independent sub-agent (author != verifier)
+
+## Scope and spec anchors
+
+- B110/V56 cover the selected-group home summary card only.
+- The backend private photo endpoint contract stayed unchanged.
+- The authenticated route now owns loading, reconciliation, session-private
+  caching, and fallback rendering for the selected group photo.
+
+**Spec anchors:** `.specs/features/group-management/spec.md:186-193`,
+`.specs/features/group-management/spec.md:980-983`,
+`.specs/features/group-management/spec.md:1110-1114`.
+
+## Spec-anchored acceptance evidence
+
+| Criterion | Exact evidence | Result |
+| --- | --- | --- |
+| V56 — selected-group home reads the photo only in matching authenticated group context | `compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/AuthenticatedAccessRoot.kt:221-238` gates loading to the selected home/group context. `compose-app/src/commonTest/kotlin/br/com/saqz/composeapp/navigation/AuthenticatedAccessRootTest.kt:274-301` asserts the matching-group read, while lines `235-267` assert no read during the create flow. | PASS |
+| V56 — cache bytes are revalidated with the photo ETag and reused only after `304` | `features/groups/src/commonMain/kotlin/br/com/saqz/groups/photo/GroupPhotoCoordinator.kt:97-135` issues generation-scoped loads and keeps cached bytes hidden until `304`. `features/groups/src/commonMain/kotlin/br/com/saqz/groups/photo/GroupPhotoApi.kt:65-78` sends `If-None-Match`. `features/groups/src/commonTest/kotlin/br/com/saqz/groups/photo/GroupPhotoCoordinatorTest.kt:54-65` asserts the cache-hit `304` path. | PASS |
+| V56 — `200` replaces cache atomically; `404`, transient failure, invalid cache, logout, and membership loss do not expose stale bytes | `features/groups/src/commonTest/kotlin/br/com/saqz/groups/photo/GroupPhotoCoordinatorTest.kt:38-51` covers cache miss/`200`; lines `68-90` cover `404` and transient failure without stale bytes; lines `132-145,338-356` cover logout and membership loss cleanup. `android-app/src/commonMain/kotlin/br/com/saqz/androidapp/photo/CoilGroupPhotoCache.kt:12-115` provides bounded atomic cache replacement and invalid-handle rejection; `android-app/src/commonTest/kotlin/br/com/saqz/androidapp/photo/CoilGroupPhotoCacheTest.kt:27-89` verifies replacement, limits, and cleanup. | PASS |
+| V56 — the summary slot stays stable and renders skeleton, cropped current photo, or initials fallback without previous-group flash | `compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/GroupsNavigationHost.kt:485-541` renders the 104 dp slot, shimmer/static skeleton, crop, and initials fallback. `compose-app/src/commonTest/kotlin/br/com/saqz/composeapp/navigation/GroupsNavigationHostTest.kt:105-169` covers skeleton, valid image, decode failure fallback, stable dimensions, and no previous-group preview. `features/groups/src/commonMain/kotlin/br/com/saqz/groups/photo/GroupPhotoPreview.kt:42-59` uses `ContentScale.Crop`; `features/groups/src/commonTest/kotlin/br/com/saqz/groups/photo/GroupPhotoPreviewTest.kt:20-39` covers real decode and invalid bytes. | PASS |
+| User-facing UAT — the MBJR group photo renders in the selected-group home | User confirmation in session after debugging the MBJR group photo. | PASS |
+
+The independent verifier reported no Blocker, Major, or Minor findings against
+`117e262^..4c17e5c`.
+
+## Command evidence
+
+| Command | Result |
+| --- | --- |
+| `rtk ./gradlew :features:groups:allTests` | PASS — focused Groups suite green. |
+| `rtk ./gradlew :compose-app:allTests` | PASS — focused Compose app suite green. |
+| `rtk ./gradlew :android-app:compileDevDebugKotlin --rerun-tasks --no-build-cache` | PASS — Android compile contract green. |
+| `rtk ./gradlew :android-app:assembleDevDebug :android-app:testDevDebugUnitTest` | PASS — Android assembly and unit tests green. |
+| `rtk scripts/check-ios` | PASS — iOS contract green, including 106 tests. |
+| `rtk scripts/check-credentials` | PASS — `ok - credential safety`. |
+| `rtk scripts/check-scope` | PASS — `ok - mobile-first scope`. |
+| Independent verifier rerun: `rtk ./gradlew :features:groups:allTests :compose-app:allTests --no-daemon` | PASS — `BUILD SUCCESSFUL` in 53s; 104 tasks, 16 executed and 88 up-to-date. |
+| `rtk git diff --check 117e262^ 4c17e5c` | PASS — no whitespace errors. |
+
+## Aggregate gate note
+
+`rtk scripts/check-gradle` remains intentionally deferred to the end of the
+broader spec, per the agreed workflow for this feature stream. The prior local
+attempt was inconclusive because unrelated backend integration tests cycle
+Postgres Testcontainers slowly and were not needed to validate B110/V56.
+
+## Discrimination sensor status
+
+No mutation sensor was executed in this verifier pass because the independent
+agent was constrained to read-only inspection. Evidence is therefore explicit
+zero rather than inferred coverage.
+
+## Summary
+
+**Overall:** Ready — PASS. The selected-group home now reads the authenticated
+private photo in the correct group context, revalidates the session-private
+cache by photo ETag, and renders only the current skeleton, current cropped
+photo, or initials fallback.
