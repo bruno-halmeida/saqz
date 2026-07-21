@@ -23,6 +23,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.saqz.composeapp.groups.GroupDetailScreen
+import br.com.saqz.composeapp.groups.GroupLoadError
+import br.com.saqz.composeapp.groups.GroupsListScreen
+import br.com.saqz.composeapp.groups.RoutePage
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.groups_back
 import br.com.saqz.composeapp.resources.groups_complete_profile

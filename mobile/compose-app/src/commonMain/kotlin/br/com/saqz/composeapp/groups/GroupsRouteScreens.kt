@@ -1,4 +1,4 @@
-package br.com.saqz.composeapp.navigation
+package br.com.saqz.composeapp.groups
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
@@ -52,6 +52,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.saqz.composeapp.navigation.GroupPhotoRenderState
+import br.com.saqz.composeapp.navigation.GroupsDestination
+import br.com.saqz.composeapp.navigation.GroupsNavigationAccess
+import br.com.saqz.composeapp.navigation.GroupsNavigationIntent
+import br.com.saqz.composeapp.navigation.GroupsNavigationState
+import br.com.saqz.composeapp.navigation.GroupsNavigationTags
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.groups_back_home
 import br.com.saqz.composeapp.resources.groups_choose
