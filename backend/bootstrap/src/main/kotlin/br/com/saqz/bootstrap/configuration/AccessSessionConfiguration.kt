@@ -6,8 +6,11 @@ import br.com.saqz.groups.adapter.input.http.AccessGroupSettingsController
 import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
 import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
 import br.com.saqz.groups.adapter.input.http.AccessMembershipController
+import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.groups.adapter.output.crypto.JcaAttendanceLinkTokenGenerator
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
+import br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
@@ -18,7 +21,11 @@ import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionReposit
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
 import br.com.saqz.groups.adapter.output.link.BranchInviteLinkFactory
+import br.com.saqz.groups.application.attendance.share.ReadAttendanceShareSnapshot
+import br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink
+import br.com.saqz.groups.application.attendance.share.RotateAttendanceLink
 import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
@@ -248,6 +255,56 @@ class AccessSessionConfiguration {
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         redeemInvite: RedeemInvite,
     ) = AccessInviteRedemptionController(verifiedGroupActorResolver, redeemInvite)
+
+    @Bean
+    fun attendanceLinkRepository(dataSource: DataSource) = JdbcAttendanceLinkRepository(dataSource)
+
+    @Bean
+    fun attendanceLinkTokenGenerator() = JcaAttendanceLinkTokenGenerator()
+
+    @Bean
+    fun attendanceLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
+        BranchAttendanceLinkFactory(URI(branchDomain))
+
+    @Bean
+    fun rotateAttendanceLink(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcAttendanceLinkRepository,
+        tokenGenerator: JcaAttendanceLinkTokenGenerator,
+        linkFactory: BranchAttendanceLinkFactory,
+    ) = RotateAttendanceLink(
+        transaction,
+        repository,
+        GroupAccessPolicy(),
+        tokenGenerator,
+        linkFactory,
+        Clock.systemUTC(),
+    )
+
+    @Bean
+    fun resolveAttendanceLink(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcAttendanceLinkRepository,
+    ) = ResolveAttendanceLink(transaction, repository, Clock.systemUTC())
+
+    @Bean
+    fun readAttendanceShareSnapshot(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcAttendanceLinkRepository,
+    ) = ReadAttendanceShareSnapshot(transaction, repository, GroupAccessPolicy())
+
+    @Bean
+    fun attendanceShareController(
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
+        rotateAttendanceLink: RotateAttendanceLink,
+        resolveAttendanceLink: ResolveAttendanceLink,
+        readAttendanceShareSnapshot: ReadAttendanceShareSnapshot,
+    ) = AttendanceShareController(
+        verifiedGroupActorResolver,
+        rotateAttendanceLink,
+        resolveAttendanceLink,
+        readAttendanceShareSnapshot,
+    )
 
     @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
     @Bean fun attendanceRepository(dataSource: DataSource) = JdbcAttendanceCommandRepository(dataSource)

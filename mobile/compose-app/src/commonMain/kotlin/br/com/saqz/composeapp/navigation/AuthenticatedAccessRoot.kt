@@ -25,6 +25,9 @@ import br.com.saqz.groups.data.GroupProfileGateway
 import br.com.saqz.groups.data.GroupPhotoApi
 import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.RolesInvitesApi
+import br.com.saqz.groups.data.attendance.AttendanceApi
+import br.com.saqz.groups.data.attendance.share.AttendanceShareApi
+import br.com.saqz.groups.data.game.GameApi
 import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
 import br.com.saqz.access.port.Cancelable
@@ -41,6 +44,9 @@ import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.DeferredInviteStateMachine
+import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
+import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
+import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkStateMachine
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
@@ -48,13 +54,15 @@ import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupSelectionStateMachine
 import br.com.saqz.groups.presentation.InviteUiError
+import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
+import br.com.saqz.groups.presentation.games.detail.GameDetailState
+import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoCoordinator
 import br.com.saqz.groups.presentation.photo.GroupPhotoError
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupCancelable
-import br.com.saqz.groups.port.GroupInviteCodeListener
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -87,6 +95,7 @@ import br.com.saqz.groups.ui.InviteManagementScreen
 import br.com.saqz.groups.ui.InviteManagementIntent
 import br.com.saqz.groups.ui.InviteManagementUiState
 import br.com.saqz.groups.ui.InviteToolState
+import br.com.saqz.groups.ui.games.detail.GameDetailScreen
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.groups.ui.LogoutConfirmationDialog
 import br.com.saqz.groups.ui.LogoutConfirmationIntent
@@ -187,6 +196,23 @@ internal fun AuthenticatedAccessRoute(
             scope = photoScope,
         )
     }
+    val gameDetailNetwork = remember(dependencies.environment, dependencies.apiBaseUrl) {
+        createPlatformNetworkClient(
+            NetworkConfig(environment = dependencies.environment, baseUrl = dependencies.apiBaseUrl),
+        )
+    }
+    DisposableEffect(gameDetailNetwork) {
+        onDispose { gameDetailNetwork.close() }
+    }
+    val gameDetailAuthenticatedNetwork = remember(gameDetailNetwork, dependencies) {
+        AuthenticatedNetworkClient(
+            gameDetailNetwork,
+            NativeTokenProvider(dependencies),
+            object : SessionInvalidator { override fun invalidate() = Unit },
+        )
+    }
+    val gameGateway = remember(gameDetailAuthenticatedNetwork) { GameApi(gameDetailAuthenticatedNetwork) }
+    val attendanceGateway = remember(gameDetailAuthenticatedNetwork) { AttendanceApi(gameDetailAuthenticatedNetwork) }
     val groupPhotoState by photoCoordinator.state.collectAsState()
     LaunchedEffect(groupPhotoState.groupId, groupPhotoState.existing?.preview) {
         if (groupPhotoState.existing == null) {
@@ -205,6 +231,22 @@ internal fun AuthenticatedAccessRoute(
         }
     } else null
     val groupSetupState = groupSetupViewModel?.state?.collectAsState()?.value
+    val gameDetailViewModel = groupsNavigation.takeIf {
+        it.destination == GroupsDestination.GAME_DETAIL && it.groupId != null && it.gameId != null
+    }?.let { navigation ->
+        viewModel<GameDetailViewModel>(key = "game-detail-${navigation.groupId}-${navigation.gameId}") {
+            GameDetailViewModel(
+                gateway = gameGateway,
+                groupId = navigation.groupId!!,
+                gameId = navigation.gameId!!,
+                role = state.administration.group?.group?.role
+                    ?: (state.selection as? GroupSelectionState.Selected)?.group?.group?.role
+                    ?: br.com.saqz.groups.data.GroupRoleDto.ATHLETE,
+                attendanceGateway = attendanceGateway,
+            )
+        }
+    }
+    val gameDetailState = gameDetailViewModel?.state?.collectAsState()?.value
     var setupPhotoUploadPending by remember(groupSetupViewModel) { mutableStateOf(false) }
     LaunchedEffect(state.page, state.createFlowKey) {
         if (state.page == AccessPage.CREATE_GROUP) {
@@ -258,7 +300,7 @@ internal fun AuthenticatedAccessRoute(
     }
     LaunchedEffect(accessViewModel, dependencies.share) {
         accessViewModel.effects.collect { effect ->
-            handleAccessEffect(effect, dependencies.share, accessViewModel::onIntent)
+            handleAccessEffect(effect, dependencies.share, groupsViewModel::onIntent, accessViewModel::onIntent)
         }
     }
     if (groupSetupViewModel != null) {
@@ -326,12 +368,15 @@ internal fun AuthenticatedAccessRoute(
         groupPhotoDetailPreview = { handle, modifier ->
             GroupPhotoPreview(handle, photoCache, photoImageLoader, modifier)
         },
+        gameDetailState = gameDetailState,
+        onGameDetailIntent = gameDetailViewModel?.let { viewModel -> viewModel::onIntent } ?: {},
     )
 }
 
 internal fun handleAccessEffect(
     effect: AccessUiEffect,
     share: NativeSharePort,
+    onGroupsIntent: (GroupsNavigationIntent) -> Unit,
     onIntent: (AccessIntent) -> Unit,
 ) {
     when (effect) {
@@ -340,6 +385,7 @@ internal fun handleAccessEffect(
                 onIntent(AccessIntent.ShareFinished(result is OperationResult.Success))
             }
         })
+        is AccessUiEffect.OpenAttendanceGame -> onGroupsIntent(GroupsNavigationIntent.OpenGameDetail(effect.gameId))
     }
 }
 
@@ -356,6 +402,8 @@ internal fun AuthenticatedAccessRoot(
     onGroupPhotoIntent: (GroupPhotoIntent) -> Unit = {},
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     groupPhotoDetailPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
+    gameDetailState: GameDetailState? = null,
+    onGameDetailIntent: (GameDetailIntent) -> Unit = {},
     onIntent: (AccessIntent) -> Unit,
 ) {
     val desired = state.destination()
@@ -384,6 +432,8 @@ internal fun AuthenticatedAccessRoot(
                 onGroupPhotoIntent,
                 groupPhotoPreview,
                 groupPhotoDetailPreview,
+                gameDetailState,
+                onGameDetailIntent,
             )
         }
     }
@@ -421,6 +471,7 @@ internal class AccessRuntime(
     override val groupProfileGateway: GroupProfileGateway = groups
     override val groupPhotoGateway: GroupPhotoGateway = GroupPhotoApi(authenticatedNetwork)
     private val roles = RolesInvitesApi(authenticatedNetwork)
+    private val attendanceSharing = AttendanceShareApi(authenticatedNetwork)
     private val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
     private val authentication = AuthenticationStateMachine(dependencies.auth) {
         session.onIntent(SessionIntent.Accept(it))
@@ -433,6 +484,12 @@ internal class AccessRuntime(
     }
     private val invites = DeferredInviteStateMachine(groupLinks, groupState, roles, scope) {
         selection.onIntent(GroupSelectionIntent.Select(it))
+    }
+    private val mutableAttendanceDestination = MutableStateFlow<AttendanceLinkDestination?>(null)
+    override val attendanceDestinationState = mutableAttendanceDestination.asStateFlow()
+    private val attendanceLinks = DeferredAttendanceLinkStateMachine(groupLinks, groupState, attendanceSharing, scope) {
+        selection.onIntent(GroupSelectionIntent.Select(it.groupId))
+        mutableAttendanceDestination.value = it
     }
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())
     override val inviteToolState = mutableInviteToolState.asStateFlow()
@@ -457,6 +514,8 @@ internal class AccessRuntime(
             is AccessRuntimeIntent.Selection -> selection.onIntent(intent.intent)
             is AccessRuntimeIntent.Administration -> administration.onIntent(intent.intent)
             is AccessRuntimeIntent.DeferredInvite -> invites.onIntent(intent.intent)
+            is AccessRuntimeIntent.DeferredAttendance -> attendanceLinks.onIntent(intent.intent)
+            AccessRuntimeIntent.ConsumeAttendanceDestination -> mutableAttendanceDestination.value = null
             is AccessRuntimeIntent.ShowGroupSelector -> showGroupSelector(intent.session)
             AccessRuntimeIntent.RotateInvite -> rotateInvite()
             AccessRuntimeIntent.ExpireInvite -> expireInvite()
@@ -479,12 +538,15 @@ internal class AccessRuntime(
         })
         invites.onIntent(DeferredInviteIntent.Start)
         invites.onIntent(DeferredInviteIntent.Restore)
+        attendanceLinks.onIntent(DeferredAttendanceLinkIntent.Start)
+        attendanceLinks.onIntent(DeferredAttendanceLinkIntent.Restore)
     }
 
     private fun close() {
         authSubscription?.cancel()
         authSubscription = null
         invites.onIntent(DeferredInviteIntent.Stop)
+        attendanceLinks.onIntent(DeferredAttendanceLinkIntent.Stop)
         network.close()
     }
 
@@ -621,6 +683,8 @@ private fun DestinationContent(
     onGroupPhotoIntent: (GroupPhotoIntent) -> Unit,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)?,
     groupPhotoDetailPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
+    gameDetailState: GameDetailState?,
+    onGameDetailIntent: (GameDetailIntent) -> Unit,
 ) {
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
@@ -662,6 +726,8 @@ private fun DestinationContent(
                     onGroupsIntent,
                     groupPhotoState,
                     groupPhotoDetailPreview,
+                    gameDetailState,
+                    onGameDetailIntent,
                 )
             } else {
                 GroupOnboardingScreen(state.selection) { intent ->
@@ -698,6 +764,8 @@ private fun DestinationContent(
                     onGroupsIntent,
                     groupPhotoState,
                     groupPhotoDetailPreview,
+                    gameDetailState,
+                    onGameDetailIntent,
                 )
             }
             if (state.showLogoutConfirmation) {
@@ -786,12 +854,16 @@ private fun GroupsRouteContent(
     onGroupsIntent: (GroupsNavigationIntent) -> Unit,
     groupPhotoState: GroupPhotoState,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
+    gameDetailState: GameDetailState?,
+    onGameDetailIntent: (GameDetailIntent) -> Unit,
 ) {
     GroupsNavigationHost(
         navigation = navigation,
         administration = state.administration,
         groupPhotoState = groupPhotoState,
         groupPhotoPreview = groupPhotoPreview,
+        gameDetailState = gameDetailState,
+        onGameDetailIntent = onGameDetailIntent,
         onNavigationIntent = onGroupsIntent,
         onOpenSettings = { onIntent(AccessIntent.OpenSettings) },
         onSelectGroup = { groupId ->

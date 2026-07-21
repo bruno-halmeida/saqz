@@ -110,6 +110,7 @@ class AndroidLocalAccessAdaptersTest {
         var selected: String?,
         var pending: String?,
     ) : AndroidAccessStateStore {
+        var pendingAttendance: String? = null
         var failReads = false
         var failWrites = false
 
@@ -122,6 +123,11 @@ class AndroidLocalAccessAdaptersTest {
         override fun writePendingInvite(value: String?) {
             if (failWrites) error("write failed")
             pending = value
+        }
+        override fun readPendingAttendanceLink(): String? = pendingAttendance.also { if (failReads) error("read failed") }
+        override fun writePendingAttendanceLink(value: String?) {
+            if (failWrites) error("write failed")
+            pendingAttendance = value
         }
     }
 

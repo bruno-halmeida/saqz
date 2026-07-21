@@ -37,7 +37,8 @@ import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.groups.port.GroupCancelable
-import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupLinkEvent
+import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -388,7 +389,7 @@ private class LifecycleAuthPort : NativeAuthPort {
 
 private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var listener: InviteCodeListener? = null
-    private var groupListener: GroupInviteCodeListener? = null
+    private var groupListener: GroupLinkEventListener? = null
     var startCalls = 0
     var activeSubscriptions = 0
     val coldUrls = mutableListOf<String?>()
@@ -408,7 +409,7 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
         }
     }
 
-    override fun start(listener: GroupInviteCodeListener): GroupCancelable {
+    override fun start(listener: GroupLinkEventListener): GroupCancelable {
         startCalls++
         activeSubscriptions++
         groupListener = listener
@@ -431,7 +432,7 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
     }
 
     fun emit(code: String) {
-        groupListener?.onInviteCode(code) ?: listener?.onInviteCode(code)
+        groupListener?.onEvent(GroupLinkEvent.Invite(code)) ?: listener?.onInviteCode(code)
     }
 }
 
@@ -475,6 +476,14 @@ private class LifecycleLocalState(
     override fun writePendingInvite(value: String?, done: GroupResultCallback) {
         pending = value
         pendingWrites += value
+        done.complete(GroupOperationResult.Success)
+    }
+
+    override fun readPendingAttendanceLink(done: GroupValueCallback) {
+        done.complete(GroupValueResult.Success(null))
+    }
+
+    override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) {
         done.complete(GroupOperationResult.Success)
     }
 }

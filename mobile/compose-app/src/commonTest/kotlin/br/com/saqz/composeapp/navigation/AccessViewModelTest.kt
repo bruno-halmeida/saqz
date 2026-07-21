@@ -10,6 +10,8 @@ import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.groups.presentation.DeferredInviteIntent
+import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
+import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupAdministrationState
@@ -101,6 +103,7 @@ class AccessViewModelTest {
         assertEquals(
             listOf(
                 AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.SetSessionReady(true)),
+                AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.SetSessionReady(true)),
                 AccessRuntimeIntent.Selection(GroupSelectionIntent.Reconcile(session)),
             ),
             runtime.intents,
@@ -125,6 +128,7 @@ class AccessViewModelTest {
         assertEquals(
             listOf<AccessRuntimeIntent>(
                 AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.SetSessionReady(false)),
+                AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.SetSessionReady(false)),
             ),
             runtime.intents,
         )
@@ -145,6 +149,18 @@ class AccessViewModelTest {
             ),
             runtime.intents,
         )
+    }
+
+    @Test
+    fun `attendance destination opens exact game once selected group matches`() = runTest {
+        val (viewModel, runtime) = fixture()
+
+        runtime.selection.value = GroupSelectionState.Selected(group)
+        runtime.attendanceDestination.value = AttendanceLinkDestination(GROUP_ID, "game-42")
+        runCurrent()
+
+        assertEquals(AccessUiEffect.OpenAttendanceGame("game-42"), viewModel.effects.first())
+        assertTrue(runtime.intents.contains(AccessRuntimeIntent.ConsumeAttendanceDestination))
     }
 
     @Test
@@ -262,6 +278,7 @@ class AccessViewModelTest {
         assertEquals(
             listOf(
                 AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.Logout),
+                AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.Logout),
                 AccessRuntimeIntent.Session(SessionIntent.Logout),
             ),
             runtime.intents,
@@ -340,6 +357,7 @@ class AccessViewModelTest {
         val selection = MutableStateFlow<GroupSelectionState>(GroupSelectionState.NoGroup)
         val administration = MutableStateFlow(GroupAdministrationState())
         val invite = MutableStateFlow(InviteToolState())
+        val attendanceDestination = MutableStateFlow<AttendanceLinkDestination?>(null)
         val intents = mutableListOf<AccessRuntimeIntent>()
         private var requestCounter = 0
 
@@ -349,6 +367,7 @@ class AccessViewModelTest {
         override val selectionState = selection
         override val administrationState = administration
         override val inviteToolState = invite
+        override val attendanceDestinationState = attendanceDestination
         override val groupProfileGateway: GroupProfileGateway get() = error("not used by AccessViewModel tests")
         override val groupPhotoGateway: GroupPhotoGateway get() = error("not used by AccessViewModel tests")
 

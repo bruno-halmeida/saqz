@@ -221,6 +221,8 @@ class GroupSelectionStateMachineTest {
         override fun writeSelectedGroupId(value: String?, done: ResultCallback) { writes += value; done.complete(GroupOperationResult.Success) }
         override fun readPendingInvite(done: ValueCallback) = done.complete(GroupValueResult.Success(null))
         override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
+        override fun readPendingAttendanceLink(done: ValueCallback) = done.complete(GroupValueResult.Success(null))
+        override fun writePendingAttendanceLink(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
     }
 
     private class FakeGroupGateway : GroupGateway {

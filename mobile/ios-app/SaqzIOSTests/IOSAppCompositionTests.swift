@@ -119,6 +119,7 @@ final class IOSAppCompositionTests: XCTestCase {
 @MainActor private final class FakeStore: IOSAccessStateStore {
     func readSelectedGroupID() throws -> String? { nil }; func writeSelectedGroupID(_ value: String?) throws {}
     func readPendingInvite() throws -> String? { nil }; func writePendingInvite(_ value: String?) throws {}
+    func readPendingAttendanceLink() throws -> String? { nil }; func writePendingAttendanceLink(_ value: String?) throws {}
 }
 
 @MainActor private final class FakeShare: IOSShareLauncher { func launch(text: String) throws {} }
@@ -131,6 +132,9 @@ private final class FakeDraftFiles: IOSDraftFileClient {
     func keys() throws -> [String] { Array(values.keys) }
 }
 
-@MainActor private final class RecordingInviteListener: @preconcurrency GroupInviteCodeListener {
-    var codes: [String] = []; func onInviteCode(code: String) { codes.append(code) }
+@MainActor private final class RecordingInviteListener: @preconcurrency GroupLinkEventListener {
+    var codes: [String] = []
+    func onEvent(event: GroupLinkEvent) {
+        if let invite = event as? GroupLinkEventInvite { codes.append(invite.code) }
+    }
 }

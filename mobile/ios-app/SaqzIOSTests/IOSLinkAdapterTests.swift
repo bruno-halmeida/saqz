@@ -93,6 +93,13 @@ final class IOSLinkAdapterTests: XCTestCase {
         fixture.start(); XCTAssertEqual(fixture.received, [Self.codeB])
     }
 
+    func testAttendanceLinkDispatchesTypedEvent() {
+        let fixture = Fixture(); fixture.start()
+        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/attendance?saqz_attendance=\(Self.codeA)")!)
+        XCTAssertEqual(fixture.attendanceReceived, [Self.codeA])
+        XCTAssertEqual(fixture.received, [])
+    }
+
     func testCancellationStopsDeliveryWithoutStoppingBranchLifecycle() {
         let fixture = Fixture(); let cancellation = fixture.start(); cancellation.cancel()
         fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
@@ -112,7 +119,8 @@ final class IOSLinkAdapterTests: XCTestCase {
     private final class Fixture {
         let branch = FakeBranchSessionClient(); lazy var adapter = IOSLinkAdapter(branch: branch)
         var received: [String] = []
-        func start() -> GroupCancelable { adapter.start(listener_: RecordingInviteCodeListener { self.received.append($0) }) }
+        var attendanceReceived: [String] = []
+        func start() -> GroupCancelable { adapter.start(listener_: RecordingLinkEventListener(invite: { self.received.append($0) }, attendance: { self.attendanceReceived.append($0) })) }
     }
 
     private static let codeA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -130,8 +138,18 @@ private final class FakeBranchSessionClient: IOSBranchSessionClient {
 }
 
 @MainActor
-private final class RecordingInviteCodeListener: @preconcurrency GroupInviteCodeListener {
-    private let action: (String) -> Void
-    init(_ action: @escaping (String) -> Void) { self.action = action }
-    func onInviteCode(code: String) { action(code) }
+private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
+    private let invite: (String) -> Void
+    private let attendance: (String) -> Void
+    init(invite: @escaping (String) -> Void, attendance: @escaping (String) -> Void) {
+        self.invite = invite
+        self.attendance = attendance
+    }
+    func onEvent(event: GroupLinkEvent) {
+        if let inviteEvent = event as? GroupLinkEventInvite {
+            invite(inviteEvent.code)
+        } else if let attendanceEvent = event as? GroupLinkEventAttendance {
+            attendance(attendanceEvent.code)
+        }
+    }
 }

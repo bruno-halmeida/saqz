@@ -32,6 +32,7 @@ import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
 import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupCreateCommand
@@ -504,7 +505,7 @@ class AuthenticatedAccessRootTest {
         val share = RecordingSharePort(OperationResult.Success)
         val intents = mutableListOf<AccessIntent>()
 
-        handleAccessEffect(AccessUiEffect.RequestShare("https://example.test/invite"), share, intents::add)
+        handleAccessEffect(AccessUiEffect.RequestShare("https://example.test/invite"), share, {}, intents::add)
 
         assertEquals(listOf("https://example.test/invite"), share.values)
         assertEquals(listOf<AccessIntent>(AccessIntent.ShareFinished(successful = true)), intents)
@@ -689,6 +690,7 @@ class AuthenticatedAccessRootTest {
         override val selectionState = MutableStateFlow(initialSelection)
         override val administrationState = MutableStateFlow(initialAdministration)
         override val inviteToolState = MutableStateFlow(InviteToolState())
+        override val attendanceDestinationState = MutableStateFlow<AttendanceLinkDestination?>(null)
 
         override fun onIntent(intent: AccessRuntimeIntent) = Unit
         override fun newRequestId(): String = "route-request"

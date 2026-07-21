@@ -18,15 +18,22 @@ interface GroupResultCallback { fun complete(result: GroupOperationResult) }
 
 interface GroupValueCallback { fun complete(result: GroupValueResult) }
 
-interface GroupInviteCodeListener { fun onInviteCode(code: String) }
+sealed interface GroupLinkEvent {
+    data class Invite(val code: String) : GroupLinkEvent
+    data class Attendance(val code: String) : GroupLinkEvent
+}
 
-interface NativeGroupLinkPort { fun start(listener: GroupInviteCodeListener): GroupCancelable }
+interface GroupLinkEventListener { fun onEvent(event: GroupLinkEvent) }
+
+interface NativeGroupLinkPort { fun start(listener: GroupLinkEventListener): GroupCancelable }
 
 interface LocalGroupStatePort {
     fun readSelectedGroupId(done: GroupValueCallback)
     fun writeSelectedGroupId(value: String?, done: GroupResultCallback)
     fun readPendingInvite(done: GroupValueCallback)
     fun writePendingInvite(value: String?, done: GroupResultCallback)
+    fun readPendingAttendanceLink(done: GroupValueCallback)
+    fun writePendingAttendanceLink(value: String?, done: GroupResultCallback)
 }
 
 typealias Cancelable = GroupCancelable
@@ -35,6 +42,7 @@ typealias OperationResult = GroupOperationResult
 typealias ResultCallback = GroupResultCallback
 typealias ValueCallback = GroupValueCallback
 typealias ValueResult = GroupValueResult
-typealias InviteCodeListener = GroupInviteCodeListener
+typealias LinkEvent = GroupLinkEvent
+typealias LinkEventListener = GroupLinkEventListener
 typealias NativeLinkPort = NativeGroupLinkPort
 typealias LocalAccessStatePort = LocalGroupStatePort

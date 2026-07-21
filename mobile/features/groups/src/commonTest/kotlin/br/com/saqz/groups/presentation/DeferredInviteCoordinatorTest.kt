@@ -227,15 +227,17 @@ class DeferredInviteStateMachineTest {
     }
 
     private class FakeLinks : NativeLinkPort {
-        var starts = 0; private var listener: InviteCodeListener? = null
-        override fun start(listener: InviteCodeListener): Cancelable { starts += 1; this.listener = listener; return object : Cancelable { override fun cancel() { this@FakeLinks.listener = null } } }
-        fun emit(code: String) = listener!!.onInviteCode(code)
+        var starts = 0; private var listener: LinkEventListener? = null
+        override fun start(listener: LinkEventListener): Cancelable { starts += 1; this.listener = listener; return object : Cancelable { override fun cancel() { this@FakeLinks.listener = null } } }
+        fun emit(code: String) = listener!!.onEvent(GroupLinkEvent.Invite(code))
     }
 
     private class FakeLocal(private val stored: String?) : LocalAccessStatePort {
         val writes = mutableListOf<String?>()
         override fun readPendingInvite(done: ValueCallback) = done.complete(GroupValueResult.Success(stored))
         override fun writePendingInvite(value: String?, done: ResultCallback) { writes += value; done.complete(GroupOperationResult.Success) }
+        override fun readPendingAttendanceLink(done: ValueCallback) = done.complete(GroupValueResult.Success(null))
+        override fun writePendingAttendanceLink(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
         override fun readSelectedGroupId(done: ValueCallback) = done.complete(GroupValueResult.Success(null))
         override fun writeSelectedGroupId(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
     }

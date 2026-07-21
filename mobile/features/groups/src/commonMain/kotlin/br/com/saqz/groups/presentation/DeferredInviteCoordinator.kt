@@ -3,7 +3,8 @@ package br.com.saqz.groups.presentation
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.port.GroupCancelable
-import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupLinkEvent
+import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -75,8 +76,10 @@ class DeferredInviteStateMachine(
 
     private fun start() {
         if (subscription != null) return
-        subscription = links.start(object : GroupInviteCodeListener {
-            override fun onInviteCode(code: String) = receive(code)
+        subscription = links.start(object : GroupLinkEventListener {
+            override fun onEvent(event: GroupLinkEvent) {
+                if (event is GroupLinkEvent.Invite) receive(event.code)
+            }
         })
     }
 

@@ -18,7 +18,7 @@ import br.com.saqz.access.port.TokenResult
 import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
 import br.com.saqz.groups.port.GroupCancelable
-import br.com.saqz.groups.port.GroupInviteCodeListener
+import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -143,7 +143,7 @@ private object UnconfiguredSharePort : NativeSharePort {
 }
 
 private object UnconfiguredGroupLinkPort : NativeGroupLinkPort {
-    override fun start(listener: GroupInviteCodeListener): GroupCancelable = object : GroupCancelable { override fun cancel() = Unit }
+    override fun start(listener: GroupLinkEventListener): GroupCancelable = object : GroupCancelable { override fun cancel() = Unit }
 }
 
 private object UnconfiguredGroupStatePort : LocalGroupStatePort {
@@ -151,6 +151,8 @@ private object UnconfiguredGroupStatePort : LocalGroupStatePort {
     override fun writeSelectedGroupId(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
     override fun readPendingInvite(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
     override fun writePendingInvite(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+    override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
+    override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
 }
 
 private object UnconfiguredGroupDraftStore : GroupDraftStorePort {

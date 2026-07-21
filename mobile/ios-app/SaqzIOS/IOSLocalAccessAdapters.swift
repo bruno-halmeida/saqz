@@ -11,6 +11,8 @@ protocol IOSAccessStateStore: AnyObject {
     func writeSelectedGroupID(_ value: String?) throws
     func readPendingInvite() throws -> String?
     func writePendingInvite(_ value: String?) throws
+    func readPendingAttendanceLink() throws -> String?
+    func writePendingAttendanceLink(_ value: String?) throws
 }
 
 protocol IOSKeychainClient: AnyObject {
@@ -38,6 +40,7 @@ final class LiveIOSKeychainClient: IOSKeychainClient {
 final class IOSUserDefaultsKeychainAccessStateStore: IOSAccessStateStore {
     static let selectedGroupKey = "saqz.access.selected-group-id"
     static let pendingInviteAccount = "pending-invite-v1"
+    static let pendingAttendanceAccount = "pending-attendance-link-v1"
     private let defaults: UserDefaults
     private let keychain: IOSKeychainClient
     private let service: String
@@ -66,8 +69,32 @@ final class IOSUserDefaultsKeychainAccessStateStore: IOSAccessStateStore {
     }
 
     func writePendingInvite(_ value: String?) throws {
+        try writeSecret(value, account: Self.pendingInviteAccount)
+    }
+
+    func readPendingAttendanceLink() throws -> String? {
+        try readSecret(account: Self.pendingAttendanceAccount)
+    }
+
+    func writePendingAttendanceLink(_ value: String?) throws {
+        try writeSecret(value, account: Self.pendingAttendanceAccount)
+    }
+
+    private func readSecret(account: String) throws -> String? {
+        var query = baseQuery(account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        let (status, data) = keychain.copyMatching(query)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data, let value = String(data: data, encoding: .utf8) else {
+            throw IOSAccessStateStoreError.unavailable
+        }
+        return value
+    }
+
+    private func writeSecret(_ value: String?, account: String) throws {
         guard let value else {
-            let status = keychain.delete(baseQuery)
+            let status = keychain.delete(baseQuery(account: account))
             guard status == errSecSuccess || status == errSecItemNotFound else { throw IOSAccessStateStoreError.unavailable }
             return
         }
@@ -75,19 +102,19 @@ final class IOSUserDefaultsKeychainAccessStateStore: IOSAccessStateStore {
         var updateAttributes: [String: Any] = [kSecValueData as String: data]
         updateAttributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         updateAttributes[kSecAttrSynchronizable as String] = false
-        let status = keychain.update(baseQuery, attributes: updateAttributes)
+        let status = keychain.update(baseQuery(account: account), attributes: updateAttributes)
         if status == errSecSuccess { return }
         guard status == errSecItemNotFound else { throw IOSAccessStateStoreError.unavailable }
-        var addAttributes = baseQuery
+        var addAttributes = baseQuery(account: account)
         updateAttributes.forEach { addAttributes[$0.key] = $0.value }
         guard keychain.add(addAttributes) == errSecSuccess else { throw IOSAccessStateStoreError.unavailable }
     }
 
-    private var baseQuery: [String: Any] {
+    private func baseQuery(account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: Self.pendingInviteAccount,
+            kSecAttrAccount as String: account,
             kSecAttrSynchronizable as String: false,
         ]
     }
@@ -123,6 +150,8 @@ final class IOSLocalGroupStateAdapter: @preconcurrency LocalGroupStatePort {
     func writeSelectedGroupId(value: String?, done_ done: GroupResultCallback) { write(done) { try store.writeSelectedGroupID(value) } }
     func readPendingInvite(done_ done: GroupValueCallback) { read(done, store.readPendingInvite) }
     func writePendingInvite(value: String?, done_ done: GroupResultCallback) { write(done) { try store.writePendingInvite(value) } }
+    func readPendingAttendanceLink(done_ done: GroupValueCallback) { read(done, store.readPendingAttendanceLink) }
+    func writePendingAttendanceLink(value: String?, done_ done: GroupResultCallback) { write(done) { try store.writePendingAttendanceLink(value) } }
 
     private func read(_ done: GroupValueCallback, _ operation: () throws -> String?) {
         do { done.complete(result_____: GroupValueResultSuccess(value: try operation())) }

@@ -4,6 +4,7 @@ enum class GroupAction {
     READ_GROUP,
     UPDATE_SETTINGS,
     MANAGE_INVITE,
+    MANAGE_ATTENDANCE_SHARE,
     MANAGE_ROLES,
 }
 
@@ -23,6 +24,7 @@ class GroupAccessPolicy {
             GroupAction.READ_GROUP -> true
             GroupAction.UPDATE_SETTINGS,
             GroupAction.MANAGE_INVITE,
+            GroupAction.MANAGE_ATTENDANCE_SHARE,
             -> role == GroupRole.OWNER || role == GroupRole.ADMIN
             GroupAction.MANAGE_ROLES -> role == GroupRole.OWNER
         }

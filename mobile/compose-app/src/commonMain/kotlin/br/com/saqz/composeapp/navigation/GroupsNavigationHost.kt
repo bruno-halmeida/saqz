@@ -117,9 +117,12 @@ import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.GroupWeekdayDto
 import br.com.saqz.groups.data.MembershipDto
 import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
+import br.com.saqz.groups.presentation.games.detail.GameDetailState
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.ui.games.detail.GameDetailScreen
 import br.com.saqz.network.SessionMembershipDto
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -158,6 +161,8 @@ internal fun GroupsNavigationHost(
     administration: GroupAdministrationState,
     groupPhotoState: GroupPhotoState = GroupPhotoState(),
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
+    gameDetailState: GameDetailState? = null,
+    onGameDetailIntent: (GameDetailIntent) -> Unit = {},
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
     onOpenSettings: () -> Unit,
     onSelectGroup: (String) -> Unit,
@@ -212,12 +217,18 @@ internal fun GroupsNavigationHost(
             tag = GroupsNavigationTags.Games,
             onNavigationIntent = onNavigationIntent,
         )
-        GroupsDestination.GAME_DETAIL -> RoutePage(
-            title = "Detalhes do jogo",
-            body = "Jogo ${navigation.gameId.orEmpty()}",
-            tag = GroupsNavigationTags.GameDetail,
-            onNavigationIntent = onNavigationIntent,
-        )
+        GroupsDestination.GAME_DETAIL -> if (gameDetailState == null) {
+            RoutePage(
+                title = "Detalhes do jogo",
+                body = "Jogo ${navigation.gameId.orEmpty()}",
+                tag = GroupsNavigationTags.GameDetail,
+                onNavigationIntent = onNavigationIntent,
+            )
+        } else {
+            Box(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameDetail)) {
+                GameDetailScreen(gameDetailState, onGameDetailIntent)
+            }
+        }
         GroupsDestination.FINANCE -> RoutePage(
             title = stringResource(Res.string.groups_finance),
             body = "Cobranças e despesas são registros manuais; o Saqz não processa pagamentos.",

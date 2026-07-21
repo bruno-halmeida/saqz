@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.PersistedRoleDto
 import br.com.saqz.groups.data.GroupProfileGateway
 import br.com.saqz.groups.data.GroupPhotoGateway
+import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
+import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.groups.presentation.DeferredInviteIntent
@@ -42,6 +44,8 @@ sealed interface AccessIntent {
     data class Administration(val intent: GroupAdministrationIntent) : AccessIntent
 
     data class DeferredInvite(val intent: DeferredInviteIntent) : AccessIntent
+
+    data class DeferredAttendance(val intent: DeferredAttendanceLinkIntent) : AccessIntent
 
     data object OpenCreateGroup : AccessIntent
 
@@ -94,6 +98,8 @@ sealed interface AccessIntent {
 
 sealed interface AccessUiEffect {
     data class RequestShare(val text: String) : AccessUiEffect
+
+    data class OpenAttendanceGame(val gameId: String) : AccessUiEffect
 }
 
 @Immutable
@@ -132,6 +138,10 @@ internal sealed interface AccessRuntimeIntent {
 
     data class DeferredInvite(val intent: DeferredInviteIntent) : AccessRuntimeIntent
 
+    data class DeferredAttendance(val intent: DeferredAttendanceLinkIntent) : AccessRuntimeIntent
+
+    data object ConsumeAttendanceDestination : AccessRuntimeIntent
+
     data class ShowGroupSelector(val session: SessionDto) : AccessRuntimeIntent
 
     data object RotateInvite : AccessRuntimeIntent
@@ -149,6 +159,7 @@ internal interface AccessRuntimeContract {
     val selectionState: StateFlow<GroupSelectionState>
     val administrationState: StateFlow<GroupAdministrationState>
     val inviteToolState: StateFlow<InviteToolState>
+    val attendanceDestinationState: StateFlow<AttendanceLinkDestination?>
     val groupProfileGateway: GroupProfileGateway
     val groupPhotoGateway: GroupPhotoGateway
 
@@ -221,6 +232,7 @@ internal class AccessViewModel private constructor(
     init {
         runtime.sessionState.onEach(::reconcileSession).launchIn(scope)
         runtime.selectionState.onEach(::reconcileSelection).launchIn(scope)
+        runtime.attendanceDestinationState.onEach(::reconcileAttendanceDestination).launchIn(scope)
         runtime.onIntent(AccessRuntimeIntent.Start)
     }
 
@@ -231,6 +243,7 @@ internal class AccessViewModel private constructor(
             is AccessIntent.Selection -> runtime.onIntent(AccessRuntimeIntent.Selection(intent.intent))
             is AccessIntent.Administration -> runtime.onIntent(AccessRuntimeIntent.Administration(intent.intent))
             is AccessIntent.DeferredInvite -> runtime.onIntent(AccessRuntimeIntent.DeferredInvite(intent.intent))
+            is AccessIntent.DeferredAttendance -> runtime.onIntent(AccessRuntimeIntent.DeferredAttendance(intent.intent))
             AccessIntent.OpenCreateGroup -> openCreateGroup()
             is AccessIntent.UpdateCreateName -> updateRoute { copy(createName = intent.value) }
             is AccessIntent.UpdateCreateTimeZone -> updateRoute { copy(createTimeZone = intent.value) }
@@ -282,6 +295,7 @@ internal class AccessViewModel private constructor(
 
     private fun reconcileSession(session: SessionAccessState) {
         runtime.onIntent(AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.SetSessionReady(session is SessionAccessState.Ready)))
+        runtime.onIntent(AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.SetSessionReady(session is SessionAccessState.Ready)))
         when (session) {
             is SessionAccessState.Ready -> runtime.onIntent(
                 AccessRuntimeIntent.Selection(GroupSelectionIntent.Reconcile(session.session)),
@@ -298,7 +312,18 @@ internal class AccessViewModel private constructor(
         runtime.onIntent(
             AccessRuntimeIntent.Administration(GroupAdministrationIntent.SetGroup(selected.group)),
         )
+        reconcileAttendanceDestination(runtime.attendanceDestinationState.value)
         updateRoute { copy(page = AccessPage.CONTEXT) }
+    }
+
+    private fun reconcileAttendanceDestination(destination: AttendanceLinkDestination?) {
+        val selected = runtime.selectionState.value as? GroupSelectionState.Selected ?: return
+        destination
+            ?.takeIf { it.groupId == selected.group.group.id }
+            ?.let {
+                effectChannel.trySend(AccessUiEffect.OpenAttendanceGame(it.gameId))
+                runtime.onIntent(AccessRuntimeIntent.ConsumeAttendanceDestination)
+            }
     }
 
     private fun openCreateGroup() {
@@ -360,6 +385,7 @@ internal class AccessViewModel private constructor(
     private fun confirmLogout() {
         updateRoute { copy(showLogoutConfirmation = false) }
         runtime.onIntent(AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.Logout))
+        runtime.onIntent(AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.Logout))
         runtime.onIntent(AccessRuntimeIntent.Session(SessionIntent.Logout))
     }
 

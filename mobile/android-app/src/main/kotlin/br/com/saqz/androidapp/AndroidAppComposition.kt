@@ -8,8 +8,7 @@ import br.com.saqz.androidapp.access.AndroidEncryptedAccessStateStore
 import br.com.saqz.androidapp.access.AndroidGoogleCredentialClient
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.androidapp.access.AndroidLinkAdapter
-import br.com.saqz.androidapp.access.AndroidGroupLinkAdapter
-import br.com.saqz.androidapp.access.AndroidGroupStateAdapter
+import br.com.saqz.androidapp.access.AndroidLocalGroupStateAdapter
 import br.com.saqz.androidapp.access.AndroidLocalAccessStateAdapter
 import br.com.saqz.androidapp.access.AndroidShareAdapter
 import br.com.saqz.androidapp.access.AndroidShareLauncher
@@ -55,9 +54,8 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
             firebase = FirebaseSdkAuthClient(firebase),
             google = ActivityGoogleCredentialClient(activity, scope),
         )
-        val localState = AndroidLocalAccessStateAdapter(
-            AndroidEncryptedAccessStateStore(context.applicationContext),
-        )
+        val store = AndroidEncryptedAccessStateStore(context.applicationContext)
+        val localState = AndroidLocalAccessStateAdapter(store)
         val share = AndroidShareAdapter(ActivityShareLauncher(activity))
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
@@ -74,8 +72,8 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                     encoder = photos.encoder,
                     previews = photos.previews,
                 ),
-                groupLinks = AndroidGroupLinkAdapter(links),
-                groupState = AndroidGroupStateAdapter(localState),
+                groupLinks = links,
+                groupState = AndroidLocalGroupStateAdapter(store),
                 groupDrafts = drafts.setup,
                 gameDrafts = drafts.game,
                 monthlyChargeDrafts = drafts.monthly,

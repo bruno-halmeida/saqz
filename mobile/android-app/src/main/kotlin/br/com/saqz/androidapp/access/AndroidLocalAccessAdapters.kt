@@ -24,6 +24,8 @@ internal interface AndroidAccessStateStore {
     fun writeSelectedGroupId(value: String?)
     fun readPendingInvite(): String?
     fun writePendingInvite(value: String?)
+    fun readPendingAttendanceLink(): String?
+    fun writePendingAttendanceLink(value: String?)
 }
 
 internal class AndroidLocalAccessStateAdapter(
@@ -38,6 +40,11 @@ internal class AndroidLocalAccessStateAdapter(
 
     override fun writePendingInvite(value: String?, done: ResultCallback) =
         write(done) { store.writePendingInvite(value) }
+
+    fun readPendingAttendanceLink(done: ValueCallback) = read(done, store::readPendingAttendanceLink)
+
+    fun writePendingAttendanceLink(value: String?, done: ResultCallback) =
+        write(done) { store.writePendingAttendanceLink(value) }
 
     private fun read(done: ValueCallback, block: () -> String?) {
         try {
@@ -76,6 +83,13 @@ internal class AndroidEncryptedAccessStateStore(
         commit(PENDING_INVITE_KEY, value?.let(cipher::encrypt))
     }
 
+    override fun readPendingAttendanceLink(): String? =
+        preferences.getString(PENDING_ATTENDANCE_LINK_KEY, null)?.let(cipher::decrypt)
+
+    override fun writePendingAttendanceLink(value: String?) {
+        commit(PENDING_ATTENDANCE_LINK_KEY, value?.let(cipher::encrypt))
+    }
+
     private fun commit(key: String, value: String?) {
         val editor = preferences.edit()
         if (value == null) editor.remove(key) else editor.putString(key, value)
@@ -86,6 +100,7 @@ internal class AndroidEncryptedAccessStateStore(
         const val PREFERENCES_NAME = "saqz_access_state"
         private const val SELECTED_GROUP_KEY = "selected_group_id"
         private const val PENDING_INVITE_KEY = "pending_invite_ciphertext"
+        private const val PENDING_ATTENDANCE_LINK_KEY = "pending_attendance_link_ciphertext"
     }
 }
 

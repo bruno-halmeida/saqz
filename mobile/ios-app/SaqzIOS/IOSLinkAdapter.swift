@@ -12,20 +12,21 @@ protocol IOSBranchSessionClient: AnyObject {
 @MainActor
 final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
     private static let inviteParameter = "saqz_invite"
+    private static let attendanceParameter = "saqz_attendance"
     private let branch: IOSBranchSessionClient
-    private var listener: GroupInviteCodeListener?
-    private var pendingCode: String?
-    private var lastAcceptedCode: String?
+    private var listener: GroupLinkEventListener?
+    private var pendingEvent: GroupLinkEvent?
+    private var lastAcceptedEventKey: String?
 
     init(branch: IOSBranchSessionClient) {
         self.branch = branch
     }
 
-    func start(listener_ listener: GroupInviteCodeListener) -> GroupCancelable {
+    func start(listener_ listener: GroupLinkEventListener) -> GroupCancelable {
         self.listener = listener
-        if let pendingCode {
-            listener.onInviteCode(code: pendingCode)
-            self.pendingCode = nil
+        if let pendingEvent {
+            listener.onEvent(event: pendingEvent)
+            self.pendingEvent = nil
         }
         return IOSLinkCancellation { [weak self, weak listener] in
             guard self?.listener === listener else { return }
@@ -34,38 +35,62 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
     }
 
     func onColdStart(url: URL?) {
-        accept(Self.directInviteCode(url))
+        accept(Self.directEvent(url))
         branch.initialize { [weak self] parameters in
-            self?.accept(parameters?[Self.inviteParameter] as? String)
+            self?.accept(Self.branchEvent(parameters))
         }
     }
 
     @discardableResult
     func onOpenURL(_ url: URL) -> Bool {
-        accept(Self.directInviteCode(url))
+        accept(Self.directEvent(url))
         return branch.handle(url: url)
     }
 
     @discardableResult
     func onContinueUserActivity(_ activity: NSUserActivity) -> Bool {
-        accept(Self.directInviteCode(activity.webpageURL))
+        accept(Self.directEvent(activity.webpageURL))
         return branch.continueActivity(activity)
     }
 
-    private func accept(_ candidate: String?) {
-        guard let code = candidate, Self.isValidInviteCode(code), code != lastAcceptedCode else { return }
-        lastAcceptedCode = code
+    private func accept(_ event: GroupLinkEvent?) {
+        guard let event else { return }
+        let eventKey: String = switch event {
+        case let invite as GroupLinkEventInvite: "invite:\(invite.code)"
+        case let attendance as GroupLinkEventAttendance: "attendance:\(attendance.code)"
+        default: return
+        }
+        guard eventKey != lastAcceptedEventKey else { return }
+        lastAcceptedEventKey = eventKey
         if let listener {
-            listener.onInviteCode(code: code)
+            listener.onEvent(event: event)
         } else {
-            pendingCode = code
+            pendingEvent = event
         }
     }
 
-    static func directInviteCode(_ url: URL?) -> String? {
+    static func directEvent(_ url: URL?) -> GroupLinkEvent? {
         guard let url, url.scheme?.lowercased() == "https",
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-        return components.queryItems?.last { $0.name == inviteParameter }?.value
+        let inviteValues = components.queryItems?.filter { $0.name == inviteParameter }.compactMap(\ .value).filter(isValidInviteCode) ?? []
+        let attendanceValues = components.queryItems?.filter { $0.name == attendanceParameter }.compactMap(\ .value).filter(isValidInviteCode) ?? []
+        if !inviteValues.isEmpty && !attendanceValues.isEmpty { return nil }
+        if let invite = inviteValues.last { return GroupLinkEvent.Invite(code: invite) }
+        if let attendance = attendanceValues.last { return GroupLinkEvent.Attendance(code: attendance) }
+        let parts = url.path.split(separator: "/").map(String.init)
+        if parts.count == 2, parts[0] == "attendance", isValidInviteCode(parts[1]) {
+            return GroupLinkEvent.Attendance(code: parts[1])
+        }
+        return nil
+    }
+
+    static func branchEvent(_ parameters: [String: Any]?) -> GroupLinkEvent? {
+        let invite = (parameters?[inviteParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
+        let attendance = (parameters?[attendanceParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
+        if invite != nil && attendance != nil { return nil }
+        if let invite { return GroupLinkEvent.Invite(code: invite) }
+        if let attendance { return GroupLinkEvent.Attendance(code: attendance) }
+        return nil
     }
 
     static func isValidInviteCode(_ value: String?) -> Bool {

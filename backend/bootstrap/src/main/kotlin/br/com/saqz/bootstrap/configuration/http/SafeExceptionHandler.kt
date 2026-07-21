@@ -7,6 +7,9 @@ import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as Acce
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
+import br.com.saqz.groups.adapter.input.http.AttendanceLinkAttemptLimitException
+import br.com.saqz.groups.adapter.input.http.AttendanceLinkInvalidOrExpiredException
+import br.com.saqz.groups.adapter.input.http.AttendanceLinkUnavailableException
 import br.com.saqz.groups.adapter.input.http.VersionConflictException
 import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
 import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
@@ -120,6 +123,31 @@ class SafeExceptionHandler(
             ErrorCode.INVITE_ATTEMPT_LIMIT,
             retryAfterSeconds = failure.retryAfterSeconds,
         )
+    }
+
+    @ExceptionHandler(AttendanceLinkInvalidOrExpiredException::class)
+    fun attendanceLinkInvalidOrExpired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.ATTENDANCE_LINK_INVALID_OR_EXPIRED)
+    }
+
+    @ExceptionHandler(AttendanceLinkAttemptLimitException::class)
+    fun attendanceLinkAttemptLimit(
+        failure: AttendanceLinkAttemptLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            429,
+            ErrorCode.ATTENDANCE_LINK_ATTEMPT_LIMIT,
+            retryAfterSeconds = failure.retryAfterSeconds,
+        )
+    }
+
+    @ExceptionHandler(AttendanceLinkUnavailableException::class)
+    fun attendanceLinkUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503, ErrorCode.ATTENDANCE_LINK_UNAVAILABLE)
     }
 
     @ExceptionHandler(GroupPhotoTooLargeException::class, MaxUploadSizeExceededException::class)

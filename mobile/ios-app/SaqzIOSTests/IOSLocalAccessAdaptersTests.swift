@@ -99,11 +99,13 @@ private final class FakeKeychainClient: IOSKeychainClient {
 
 @MainActor
 private final class FakeAccessStateStore: IOSAccessStateStore {
-    var selected: String?; var pending: String?; var failReads = false; var failWrites = false
+    var selected: String?; var pending: String?; var pendingAttendance: String?; var failReads = false; var failWrites = false
     func readSelectedGroupID() throws -> String? { if failReads { throw IOSAccessStateStoreError.unavailable }; return selected }
     func writeSelectedGroupID(_ value: String?) throws { if failWrites { throw IOSAccessStateStoreError.unavailable }; selected = value }
     func readPendingInvite() throws -> String? { if failReads { throw IOSAccessStateStoreError.unavailable }; return pending }
     func writePendingInvite(_ value: String?) throws { if failWrites { throw IOSAccessStateStoreError.unavailable }; pending = value }
+    func readPendingAttendanceLink() throws -> String? { if failReads { throw IOSAccessStateStoreError.unavailable }; return pendingAttendance }
+    func writePendingAttendanceLink(_ value: String?) throws { if failWrites { throw IOSAccessStateStoreError.unavailable }; pendingAttendance = value }
 }
 
 @MainActor
