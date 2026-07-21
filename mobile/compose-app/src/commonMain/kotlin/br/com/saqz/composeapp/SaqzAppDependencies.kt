@@ -26,7 +26,6 @@ import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.port.GroupDraftStorePort
-import br.com.saqz.groups.port.GroupPhotoCachePort
 import br.com.saqz.groups.port.GroupPhotoEncoderPort
 import br.com.saqz.groups.port.GroupPhotoEncodingResult
 import br.com.saqz.groups.port.GroupPhotoPreviewPort
@@ -39,14 +38,12 @@ import br.com.saqz.groups.presentation.games.editor.GameDraftStorePort
 class GroupPhotoRuntimeDependencies(
     val selection: GroupPhotoSelectionPort,
     val encoder: GroupPhotoEncoderPort,
-    val cache: GroupPhotoCachePort,
     val previews: GroupPhotoPreviewPort,
 ) {
     companion object {
         val Unconfigured = GroupPhotoRuntimeDependencies(
             selection = UnconfiguredGroupPhotoSelection,
             encoder = UnconfiguredGroupPhotoEncoder,
-            cache = UnconfiguredGroupPhotoCache,
             previews = GroupPhotoPreviewPort { null },
         )
     }
@@ -100,11 +97,6 @@ private object UnconfiguredGroupPhotoEncoder : GroupPhotoEncoderPort {
     ) = GroupPhotoEncodingResult.Failed
 
     override fun cancel(source: br.com.saqz.groups.port.GroupPhotoSourceHandle) = Unit
-}
-
-private object UnconfiguredGroupPhotoCache : GroupPhotoCachePort {
-    override fun evict(groupId: String) = Unit
-    override fun clearAll() = Unit
 }
 
 private object NoOpCancelable : Cancelable {

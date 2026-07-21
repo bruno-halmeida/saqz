@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -106,6 +107,8 @@ import br.com.saqz.network.SessionApi
 import br.com.saqz.network.SessionInvalidator
 import br.com.saqz.network.TokenResult
 import br.com.saqz.network.createPlatformNetworkClient
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -164,16 +167,32 @@ internal fun AuthenticatedAccessRoute(
     val groupsNavigation by groupsViewModel.state.collectAsState()
     val sessionMemberships = (state.session as? SessionAccessState.Ready)?.session?.memberships.orEmpty()
     val photoScope = rememberCoroutineScope()
-    val photoCoordinator = remember(accessViewModel, groupPhotos) {
+    val platformContext = LocalPlatformContext.current
+    val photoCache = remember(accessViewModel) { CoilGroupPhotoCache() }
+    val photoImageLoader = remember(accessViewModel, platformContext) {
+        ImageLoader.Builder(platformContext).build()
+    }
+    DisposableEffect(photoCache, photoImageLoader) {
+        onDispose {
+            photoImageLoader.shutdown()
+            photoCache.shutdown()
+        }
+    }
+    val photoCoordinator = remember(accessViewModel, groupPhotos, photoCache) {
         GroupPhotoCoordinator(
             gateway = accessViewModel.groupPhotoGateway,
             selections = groupPhotos.selection,
             encoder = groupPhotos.encoder,
-            cache = groupPhotos.cache,
+            cache = photoCache,
             scope = photoScope,
         )
     }
     val groupPhotoState by photoCoordinator.state.collectAsState()
+    LaunchedEffect(groupPhotoState.groupId, groupPhotoState.existing?.preview) {
+        if (groupPhotoState.existing == null) {
+            photoImageLoader.memoryCache?.clear()
+        }
+    }
     val groupSetupViewModel = if (state.page == AccessPage.CREATE_GROUP) {
         groupSetupViewModelOverride ?: viewModel<GroupSetupViewModel>(key = "group-setup-${state.createFlowKey}") {
             GroupSetupViewModel(
@@ -197,6 +216,36 @@ internal fun AuthenticatedAccessRoute(
         if (state.session == SessionAccessState.SignedOut) {
             setupPhotoUploadPending = false
             photoCoordinator.onIntent(GroupPhotoIntent.Logout)
+        }
+    }
+    val versionedGroup = state.administration.group
+    LaunchedEffect(
+        state.page,
+        groupsNavigation.destination,
+        groupsNavigation.groupId,
+        versionedGroup?.group?.id,
+        versionedGroup?.etag,
+    ) {
+        val selectedGroup = versionedGroup ?: return@LaunchedEffect
+        if (
+            state.page == AccessPage.CONTEXT &&
+            groupsNavigation.destination == GroupsDestination.HOME &&
+            groupsNavigation.groupId == selectedGroup.group.id
+        ) {
+            photoCoordinator.onIntent(
+                GroupPhotoIntent.Load(selectedGroup.group.id, selectedGroup.etag),
+            )
+        }
+    }
+    LaunchedEffect(sessionMemberships, groupPhotoState.groupId, state.page, state.selection) {
+        if (state.page == AccessPage.CREATE_GROUP) return@LaunchedEffect
+        val loadedGroupId = groupPhotoState.groupId ?: return@LaunchedEffect
+        val selectedGroupId = (state.selection as? GroupSelectionState.Selected)?.group?.group?.id
+        if (
+            selectedGroupId != loadedGroupId &&
+            sessionMemberships.none { it.groupId == loadedGroupId }
+        ) {
+            photoCoordinator.onIntent(GroupPhotoIntent.MembershipLost)
         }
     }
     LaunchedEffect(groupsViewModel, state.selection, sessionMemberships) {
@@ -271,7 +320,11 @@ internal fun AuthenticatedAccessRoute(
             photoCoordinator.onIntent(intent)
         },
         groupPhotoPreview = { handle, modifier ->
-            GroupPhotoPreview(handle, groupPhotos.previews, modifier)
+            GroupPhotoPreview(handle, groupPhotos.previews, photoImageLoader, modifier) ==
+                GroupPhotoRenderState.SUCCESS
+        },
+        groupPhotoDetailPreview = { handle, modifier ->
+            GroupPhotoPreview(handle, photoCache, photoImageLoader, modifier)
         },
     )
 }
@@ -302,6 +355,7 @@ internal fun AuthenticatedAccessRoot(
     groupPhotoState: GroupPhotoState = GroupPhotoState(),
     onGroupPhotoIntent: (GroupPhotoIntent) -> Unit = {},
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
+    groupPhotoDetailPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
     onIntent: (AccessIntent) -> Unit,
 ) {
     val desired = state.destination()
@@ -329,6 +383,7 @@ internal fun AuthenticatedAccessRoot(
                 groupPhotoState,
                 onGroupPhotoIntent,
                 groupPhotoPreview,
+                groupPhotoDetailPreview,
             )
         }
     }
@@ -565,6 +620,7 @@ private fun DestinationContent(
     groupPhotoState: GroupPhotoState,
     onGroupPhotoIntent: (GroupPhotoIntent) -> Unit,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)?,
+    groupPhotoDetailPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
 ) {
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
@@ -599,7 +655,14 @@ private fun DestinationContent(
                 )
             }
             if (onboardingNavigation != null) {
-                GroupsRouteContent(state, onboardingNavigation, onIntent, onGroupsIntent)
+                GroupsRouteContent(
+                    state,
+                    onboardingNavigation,
+                    onIntent,
+                    onGroupsIntent,
+                    groupPhotoState,
+                    groupPhotoDetailPreview,
+                )
             } else {
                 GroupOnboardingScreen(state.selection) { intent ->
                     when (intent) {
@@ -628,7 +691,14 @@ private fun DestinationContent(
                     )
                 }
             } else {
-                GroupsRouteContent(state, groupsNavigation, onIntent, onGroupsIntent)
+                GroupsRouteContent(
+                    state,
+                    groupsNavigation,
+                    onIntent,
+                    onGroupsIntent,
+                    groupPhotoState,
+                    groupPhotoDetailPreview,
+                )
             }
             if (state.showLogoutConfirmation) {
                 LogoutConfirmationDialog { intent ->
@@ -714,10 +784,14 @@ private fun GroupsRouteContent(
     navigation: GroupsNavigationState,
     onIntent: (AccessIntent) -> Unit,
     onGroupsIntent: (GroupsNavigationIntent) -> Unit,
+    groupPhotoState: GroupPhotoState,
+    groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
 ) {
     GroupsNavigationHost(
         navigation = navigation,
         administration = state.administration,
+        groupPhotoState = groupPhotoState,
+        groupPhotoPreview = groupPhotoPreview,
         onNavigationIntent = onGroupsIntent,
         onOpenSettings = { onIntent(AccessIntent.OpenSettings) },
         onSelectGroup = { groupId ->

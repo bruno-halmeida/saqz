@@ -72,7 +72,6 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                 groupPhotos = GroupPhotoRuntimeDependencies(
                     selection = photos.selection,
                     encoder = photos.encoder,
-                    cache = photos.cache,
                     previews = photos.previews,
                 ),
                 groupLinks = AndroidGroupLinkAdapter(links),

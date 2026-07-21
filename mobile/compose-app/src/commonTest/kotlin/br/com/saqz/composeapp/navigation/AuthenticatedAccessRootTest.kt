@@ -53,7 +53,6 @@ import br.com.saqz.groups.port.EncodedGroupPhoto
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
-import br.com.saqz.groups.port.GroupPhotoCachePort
 import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoEncoderPort
 import br.com.saqz.groups.port.GroupPhotoEncodingResult
@@ -265,8 +264,43 @@ class AuthenticatedAccessRootTest {
             assertEquals("created-group", upload.groupId)
             assertEquals("\"1\"", upload.groupEtag)
             assertEquals(listOf<Byte>(1, 2, 3), upload.photo.source.read().toList())
+            assertEquals(emptyList(), fixture.photos.reads)
         } finally {
             fixture.scope.cancel()
+        }
+    }
+
+    @Test
+    fun `production route reads photo only after selected group context is reconciled`() = runComposeUiTest {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val photos = RecordingPhotoGateway()
+        val selectedSession = SessionDto(
+            user = session.user,
+            memberships = listOf(SessionMembershipDto("current", "Current Group", "OWNER")),
+        )
+        val runtime = PhotoRouteRuntime(
+            groupProfileGateway = RecordingProfileGateway(),
+            groupPhotoGateway = photos,
+            initialSession = SessionAccessState.Ready(selectedSession),
+            initialSelection = GroupSelectionState.Selected(group),
+            initialAdministration = ownerAdministration,
+        )
+        val access = AccessViewModel(runtime, scope)
+        try {
+            setContent {
+                SaqzTheme {
+                    AuthenticatedAccessRoute(
+                        dependencies = SaqzAppDependencies.Unconfigured,
+                        accessViewModelOverride = access,
+                    )
+                }
+            }
+
+            waitUntil(timeoutMillis = 5_000) { photos.reads.isNotEmpty() }
+
+            assertEquals(listOf(Pair<String, String?>("current", null)), photos.reads)
+        } finally {
+            scope.cancel()
         }
     }
 
@@ -538,7 +572,6 @@ class AuthenticatedAccessRootTest {
         val dependencies = GroupPhotoRuntimeDependencies(
             selection = selections,
             encoder = ImmediatePhotoEncoder,
-            cache = NoOpPhotoCache,
             previews = GroupPhotoPreviewPort { null },
         )
         return ProductionPhotoRouteFixture(scope, access, setup, selections, photos, dependencies)
@@ -592,21 +625,19 @@ class AuthenticatedAccessRootTest {
         override fun cancel(source: GroupPhotoSourceHandle) = Unit
     }
 
-    private object NoOpPhotoCache : GroupPhotoCachePort {
-        override fun evict(groupId: String) = Unit
-        override fun clearAll() = Unit
-    }
-
     private class RecordingPhotoGateway : GroupPhotoGateway {
         val uploads = mutableListOf<GroupPhotoUploadCommand>()
+        val reads = mutableListOf<Pair<String, String?>>()
 
         override suspend fun upload(command: GroupPhotoUploadCommand): NetworkResult<GroupPhotoReceipt> {
             uploads += command
             return NetworkResult.Success(GroupPhotoReceipt("\"2\""))
         }
 
-        override suspend fun read(groupId: String, etag: String?): NetworkResult<GroupPhotoReadResult> =
-            NetworkResult.Success(GroupPhotoReadResult.NotModified)
+        override suspend fun read(groupId: String, etag: String?): NetworkResult<GroupPhotoReadResult> {
+            reads += groupId to etag
+            return NetworkResult.Success(GroupPhotoReadResult.NotModified)
+        }
 
         override suspend fun remove(groupId: String, groupEtag: String): NetworkResult<GroupPhotoReceipt> =
             NetworkResult.Success(GroupPhotoReceipt("\"2\""))
@@ -648,12 +679,15 @@ class AuthenticatedAccessRootTest {
     private class PhotoRouteRuntime(
         override val groupProfileGateway: GroupProfileGateway,
         override val groupPhotoGateway: GroupPhotoGateway,
+        initialSession: SessionAccessState = SessionAccessState.Ready(session),
+        initialSelection: GroupSelectionState = GroupSelectionState.NoGroup,
+        initialAdministration: GroupAdministrationState = GroupAdministrationState(),
     ) : AccessRuntimeContract {
         override val authObservedState = MutableStateFlow(true)
         override val authenticationState = MutableStateFlow(AuthenticationState())
-        override val sessionState = MutableStateFlow<SessionAccessState>(SessionAccessState.Ready(session))
-        override val selectionState = MutableStateFlow<GroupSelectionState>(GroupSelectionState.NoGroup)
-        override val administrationState = MutableStateFlow(GroupAdministrationState())
+        override val sessionState = MutableStateFlow(initialSession)
+        override val selectionState = MutableStateFlow(initialSelection)
+        override val administrationState = MutableStateFlow(initialAdministration)
         override val inviteToolState = MutableStateFlow(InviteToolState())
 
         override fun onIntent(intent: AccessRuntimeIntent) = Unit

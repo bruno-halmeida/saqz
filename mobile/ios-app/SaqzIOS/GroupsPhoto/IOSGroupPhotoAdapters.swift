@@ -286,30 +286,15 @@ final class IOSPhotoSelectionAdapter: NSObject, @preconcurrency GroupPhotoSelect
     }
 }
 
-final class IOSPhotoCacheAdapter: GroupPhotoCachePort {
-    private let manager: FileManager; private let directory: URL
-    init(manager: FileManager = .default) {
-        self.manager = manager
-        directory = manager.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("GroupPhotoCache")
-    }
-    func evict(groupId: String) {
-        let prefix = String(groupId.hashValue) + "-"
-        (try? manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil))?
-            .filter { $0.lastPathComponent.hasPrefix(prefix) }.forEach { try? manager.removeItem(at: $0) }
-    }
-    func clearAll() { try? manager.removeItem(at: directory) }
-}
-
 struct IOSGroupPhotoAdapters {
     let selection: IOSPhotoSelectionAdapter
     let encoder: IOSPhotoEncoderAdapter
-    let cache: IOSPhotoCacheAdapter
     let previews: IOSPhotoPreviewAdapter
     @MainActor static func makeLive(presenter: @escaping () -> UIViewController?) -> IOSGroupPhotoAdapters {
         let files = IOSPhotoFiles()
         return IOSGroupPhotoAdapters(
             selection: IOSPhotoSelectionAdapter(files: files, presenter: presenter),
-            encoder: IOSPhotoEncoderAdapter(files: files), cache: IOSPhotoCacheAdapter(),
+            encoder: IOSPhotoEncoderAdapter(files: files),
             previews: IOSPhotoPreviewAdapter(files: files)
         )
     }

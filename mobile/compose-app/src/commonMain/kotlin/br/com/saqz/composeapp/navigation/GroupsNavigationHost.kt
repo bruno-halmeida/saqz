@@ -1,6 +1,11 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,10 +35,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -110,6 +117,9 @@ import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.GroupWeekdayDto
 import br.com.saqz.groups.data.MembershipDto
 import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.photo.GroupPhotoStage
+import br.com.saqz.groups.presentation.photo.GroupPhotoState
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.network.SessionMembershipDto
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -121,6 +131,10 @@ internal object GroupsNavigationTags {
     const val Home = "groups-home"
     const val BackToList = "groups-back-to-list"
     const val Summary = "groups-summary"
+    const val SummaryPhoto = "groups-summary-photo"
+    const val SummaryPhotoSkeleton = "groups-summary-photo-skeleton"
+    const val SummaryPhotoImage = "groups-summary-photo-image"
+    const val SummaryPhotoFallback = "groups-summary-photo-fallback"
     const val NextGame = "groups-next-game"
     const val Shortcuts = "groups-shortcuts"
     const val ShortcutGames = "groups-shortcut-games"
@@ -142,6 +156,8 @@ internal object GroupsNavigationTags {
 internal fun GroupsNavigationHost(
     navigation: GroupsNavigationState,
     administration: GroupAdministrationState,
+    groupPhotoState: GroupPhotoState = GroupPhotoState(),
+    groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
     onOpenSettings: () -> Unit,
     onSelectGroup: (String) -> Unit,
@@ -166,6 +182,8 @@ internal fun GroupsNavigationHost(
                 group = group,
                 administration = administration,
                 navigation = navigation,
+                groupPhotoState = groupPhotoState,
+                groupPhotoPreview = groupPhotoPreview,
                 onNavigationIntent = onNavigationIntent,
                 onOpenSettings = onOpenSettings,
                 onOpenInvite = onOpenInvite,
@@ -285,6 +303,8 @@ private fun GroupDetailScreen(
     group: GroupDto,
     administration: GroupAdministrationState,
     navigation: GroupsNavigationState,
+    groupPhotoState: GroupPhotoState,
+    groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenInvite: () -> Unit,
@@ -304,7 +324,7 @@ private fun GroupDetailScreen(
             onBack = { onNavigationIntent(GroupsNavigationIntent.OpenGroups) },
             onOpenSettings = onOpenSettings,
         )
-        GroupSummary(group, administration.memberships)
+        GroupSummary(group, administration.memberships, groupPhotoState, groupPhotoPreview)
         NextGameCard(
             showGames = navigation.access.showGames,
             onOpenGames = { onNavigationIntent(GroupsNavigationIntent.OpenGames) },
@@ -400,7 +420,12 @@ private fun CompactAction(
 }
 
 @Composable
-private fun GroupSummary(group: GroupDto, memberships: List<MembershipDto>) {
+private fun GroupSummary(
+    group: GroupDto,
+    memberships: List<MembershipDto>,
+    photoState: GroupPhotoState,
+    photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
+) {
     HomeCard(
         modifier = Modifier.fillMaxWidth().testTag(GroupsNavigationTags.Summary),
         contentPadding = 12.dp,
@@ -410,7 +435,7 @@ private fun GroupSummary(group: GroupDto, memberships: List<MembershipDto>) {
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            InitialsAvatar(group.name, 104.dp)
+            GroupSummaryPhoto(group, photoState, photoPreview)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -455,6 +480,81 @@ private fun GroupSummary(group: GroupDto, memberships: List<MembershipDto>) {
             }
         }
     }
+}
+
+@Composable
+private fun GroupSummaryPhoto(
+    group: GroupDto,
+    state: GroupPhotoState,
+    preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        Modifier.size(104.dp)
+            .clip(shape)
+            .testTag(GroupsNavigationTags.SummaryPhoto),
+    ) {
+        val belongsToGroup = state.groupId == group.id
+        val existing = state.existing
+        when {
+            !belongsToGroup || state.stage == GroupPhotoStage.LOADING -> GroupPhotoSkeleton(Modifier.fillMaxSize())
+            existing == null -> InitialsAvatar(
+                group.name,
+                104.dp,
+                Modifier.testTag(GroupsNavigationTags.SummaryPhotoFallback),
+            )
+            else -> {
+                val rendered = preview?.invoke(
+                    existing.preview,
+                    Modifier.fillMaxSize().testTag(GroupsNavigationTags.SummaryPhotoImage),
+                ) ?: GroupPhotoRenderState.FAILURE
+                when (rendered) {
+                    GroupPhotoRenderState.LOADING -> GroupPhotoSkeleton(Modifier.fillMaxSize())
+                    GroupPhotoRenderState.FAILURE -> InitialsAvatar(
+                        group.name,
+                        104.dp,
+                        Modifier.testTag(GroupsNavigationTags.SummaryPhotoFallback),
+                    )
+                    GroupPhotoRenderState.SUCCESS -> Unit
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupPhotoSkeleton(modifier: Modifier) {
+    val reducedMotion = SaqzTheme.motion.maxTranslation == 0.dp
+    val progress = if (reducedMotion) {
+        0.5f
+    } else {
+        val transition = rememberInfiniteTransition(label = "group-photo-shimmer")
+        val animated by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1_200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "group-photo-shimmer-progress",
+        )
+        animated
+    }
+    val base = SaqzTheme.colors.surfaceSubtle
+    val highlight = SaqzTheme.colors.surface
+    Box(
+        modifier
+            .drawWithCache {
+                val center = size.width * (progress * 2f - 0.5f)
+                val brush = Brush.linearGradient(
+                    colors = listOf(base, highlight, base),
+                    start = Offset(center - size.width, 0f),
+                    end = Offset(center + size.width, size.height),
+                )
+                onDrawBehind { drawRect(brush) }
+            }
+            .testTag(GroupsNavigationTags.SummaryPhotoSkeleton),
+    )
 }
 
 @Composable
@@ -849,10 +949,14 @@ private fun HomeCard(
 }
 
 @Composable
-private fun InitialsAvatar(name: String, size: androidx.compose.ui.unit.Dp) {
+private fun InitialsAvatar(
+    name: String,
+    size: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+) {
     val shape = if (size <= 48.dp) CircleShape else RoundedCornerShape(14.dp)
     Box(
-        Modifier.size(size)
+        modifier.size(size)
             .clip(shape)
             .background(
                 brush = Brush.linearGradient(

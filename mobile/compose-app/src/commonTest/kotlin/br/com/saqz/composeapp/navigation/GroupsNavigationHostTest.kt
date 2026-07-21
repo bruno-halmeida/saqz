@@ -3,11 +3,14 @@ package br.com.saqz.composeapp.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -28,6 +31,10 @@ import br.com.saqz.groups.data.MembershipDto
 import br.com.saqz.groups.data.VersionedGroupDto
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
+import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
+import br.com.saqz.groups.presentation.photo.GroupPhotoStage
+import br.com.saqz.groups.presentation.photo.GroupPhotoState
+import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.network.SessionMembershipDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -82,13 +89,84 @@ class GroupsNavigationHostTest {
 
     @Test
     fun `unloaded private data renders truthful fallback states`() = runComposeUiTest {
-        host(group = owner, navigation = access(GroupRoleDto.OWNER))
+        host(
+            group = owner,
+            navigation = access(GroupRoleDto.OWNER),
+            photoState = GroupPhotoState(groupId = owner.id),
+        )
 
         onNodeWithText("Local ainda não definido").assertExists()
         onNodeWithText("Horário ainda não definido").assertExists()
         onNodeWithText("Nenhum jogo agendado").assertExists()
         onNodeWithText("Nenhum aviso recente").assertExists()
         onNodeWithText("Participantes ainda não carregados").assertExists()
+    }
+
+    @Test
+    fun `matching group loading renders a stable 104 dp skeleton`() = runComposeUiTest {
+        host(
+            group = owner,
+            navigation = access(GroupRoleDto.OWNER),
+            photoState = GroupPhotoState(groupId = owner.id, stage = GroupPhotoStage.LOADING),
+        )
+
+        onNodeWithTag(GroupsNavigationTags.SummaryPhoto)
+            .assertWidthIsEqualTo(104.dp)
+            .assertHeightIsEqualTo(104.dp)
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoSkeleton).assertExists()
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoFallback).assertDoesNotExist()
+    }
+
+    @Test
+    fun `valid photo occupies the stable crop slot`() = runComposeUiTest {
+        host(
+            group = owner,
+            navigation = access(GroupRoleDto.OWNER),
+            photoState = photoState(owner.id),
+            photoPreview = { _, modifier ->
+                Box(modifier)
+                GroupPhotoRenderState.SUCCESS
+            },
+        )
+
+        onNodeWithTag(GroupsNavigationTags.SummaryPhoto)
+            .assertWidthIsEqualTo(104.dp)
+            .assertHeightIsEqualTo(104.dp)
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoImage).assertExists()
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoSkeleton).assertDoesNotExist()
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoFallback).assertDoesNotExist()
+    }
+
+    @Test
+    fun `decode failure falls back to initials without visible error`() = runComposeUiTest {
+        host(
+            group = owner,
+            navigation = access(GroupRoleDto.OWNER),
+            photoState = photoState(owner.id),
+            photoPreview = { _, _ -> GroupPhotoRenderState.FAILURE },
+        )
+
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoFallback).assertExists()
+        onNodeWithText("PG").assertExists()
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoSkeleton).assertDoesNotExist()
+    }
+
+    @Test
+    fun `photo from another group is never composed while selection reconciles`() = runComposeUiTest {
+        val rendered = mutableListOf<GroupPhotoPreviewHandle>()
+        host(
+            group = owner,
+            navigation = access(GroupRoleDto.OWNER),
+            photoState = photoState("previous-group"),
+            photoPreview = { handle, _ ->
+                rendered += handle
+                GroupPhotoRenderState.SUCCESS
+            },
+        )
+
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoSkeleton).assertExists()
+        onNodeWithTag(GroupsNavigationTags.SummaryPhotoImage).assertDoesNotExist()
+        assertEquals(emptyList(), rendered)
     }
 
     @Test
@@ -202,11 +280,18 @@ class GroupsNavigationHostTest {
         intents: MutableList<GroupsNavigationIntent> = mutableListOf(),
         selectedGroups: MutableList<String> = mutableListOf(),
         groupMembers: List<MembershipDto> = emptyList(),
+        photoState: GroupPhotoState = GroupPhotoState(),
+        photoPreview: (@Composable (
+            GroupPhotoPreviewHandle,
+            Modifier,
+        ) -> GroupPhotoRenderState)? = null,
     ) = setContent {
         SaqzTheme {
             GroupsNavigationHost(
                 navigation = navigation,
                 administration = administration(group, groupMembers),
+                groupPhotoState = photoState,
+                groupPhotoPreview = photoPreview,
                 onNavigationIntent = intents::add,
                 onOpenSettings = {},
                 onSelectGroup = selectedGroups::add,
@@ -251,6 +336,11 @@ class GroupsNavigationHostTest {
     )
 
     private companion object {
+        fun photoState(groupId: String) = GroupPhotoState(
+            groupId = groupId,
+            existing = ExistingGroupPhoto(GroupPhotoPreviewHandle("preview"), "photo-etag"),
+        )
+
         val owner = group(GroupRoleDto.OWNER)
         val athlete = group(GroupRoleDto.ATHLETE)
         val sessionGroups = listOf(
