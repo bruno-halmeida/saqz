@@ -1,9 +1,5 @@
 package br.com.saqz.groups.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
@@ -21,21 +17,14 @@ import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.action_back
 import br.com.saqz.groups.resources.action_cancel
-import br.com.saqz.groups.resources.group_invite
 import br.com.saqz.groups.resources.group_name
-import br.com.saqz.groups.resources.group_roles
-import br.com.saqz.groups.resources.group_settings
-import br.com.saqz.groups.resources.group_switch
 import br.com.saqz.groups.resources.group_timezone
-import br.com.saqz.groups.resources.logout
 import br.com.saqz.groups.resources.logout_confirm
 import br.com.saqz.groups.resources.logout_title
 import br.com.saqz.groups.resources.settings_conflict
 import br.com.saqz.groups.resources.settings_reload
 import br.com.saqz.groups.resources.settings_save
 import br.com.saqz.groups.resources.settings_title
-import br.com.saqz.designsystem.component.SaqzBadge
-import br.com.saqz.designsystem.component.SaqzBadgeVariant
 import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzDialog
@@ -43,18 +32,10 @@ import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
-internal object GroupContextTags {
-    const val Switch = "context-switch"; const val Settings = "context-settings"
-    const val Roles = "context-roles"; const val Invite = "context-invite"; const val Logout = "context-logout"
-    const val Save = "settings-save"; const val Reload = "settings-reload"; const val LogoutConfirm = "logout-confirm"
-}
-
-sealed interface GroupContextIntent {
-    data object SwitchGroup : GroupContextIntent
-    data object OpenSettings : GroupContextIntent
-    data object OpenRoles : GroupContextIntent
-    data object OpenInvite : GroupContextIntent
-    data object RequestLogout : GroupContextIntent
+internal object GroupSettingsTags {
+    const val Save = "settings-save"
+    const val Reload = "settings-reload"
+    const val LogoutConfirm = "logout-confirm"
 }
 
 @Immutable
@@ -78,50 +59,6 @@ sealed interface LogoutConfirmationIntent {
 }
 
 @Composable
-fun GroupContextScreen(
-    state: GroupAdministrationState,
-    onIntent: (GroupContextIntent) -> Unit,
-) {
-    val group = state.group?.group ?: return
-    Column(
-        Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(group.name, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
-            SaqzBadge(group.role.name, SaqzBadgeVariant.Neutral)
-        }
-        Action(
-            stringResource(Res.string.group_switch),
-            GroupContextTags.Switch,
-            { onIntent(GroupContextIntent.SwitchGroup) },
-        )
-        if (state.actions.canEditSettings) Action(
-            stringResource(Res.string.group_settings),
-            GroupContextTags.Settings,
-            { onIntent(GroupContextIntent.OpenSettings) },
-        )
-        if (state.actions.canManageRoles) Action(
-            stringResource(Res.string.group_roles),
-            GroupContextTags.Roles,
-            { onIntent(GroupContextIntent.OpenRoles) },
-        )
-        if (state.actions.canManageInvite) Action(
-            stringResource(Res.string.group_invite),
-            GroupContextTags.Invite,
-            { onIntent(GroupContextIntent.OpenInvite) },
-            SaqzButtonVariant.Primary,
-        )
-        Action(
-            stringResource(Res.string.logout),
-            GroupContextTags.Logout,
-            { onIntent(GroupContextIntent.RequestLogout) },
-            SaqzButtonVariant.Ghost,
-        )
-    }
-}
-
-@Composable
 fun GroupSettingsScreen(
     state: GroupSettingsUiState,
     onIntent: (GroupSettingsIntent) -> Unit,
@@ -141,14 +78,18 @@ fun GroupSettingsScreen(
     )
     if (state.administration.versionConflict) {
         Text(stringResource(Res.string.settings_conflict), color = SaqzTheme.colors.errorForeground)
-        Action(
+        SaqzButton(
             stringResource(Res.string.settings_reload),
-            GroupContextTags.Reload,
             { onIntent(GroupSettingsIntent.Reload) },
+            Modifier.fillMaxWidth().testTag(GroupSettingsTags.Reload),
         )
     }
-    SaqzButton(stringResource(Res.string.settings_save), { onIntent(GroupSettingsIntent.Save) }, loading = state.administration.isLoading,
-        modifier = Modifier.fillMaxWidth().testTag(GroupContextTags.Save))
+    SaqzButton(
+        stringResource(Res.string.settings_save),
+        { onIntent(GroupSettingsIntent.Save) },
+        loading = state.administration.isLoading,
+        modifier = Modifier.fillMaxWidth().testTag(GroupSettingsTags.Save),
+    )
     SaqzButton(
         stringResource(Res.string.action_back),
         { onIntent(GroupSettingsIntent.Back) },
@@ -166,7 +107,7 @@ fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit) {
             SaqzButton(
                 stringResource(Res.string.logout_confirm),
                 { onIntent(LogoutConfirmationIntent.Confirm) },
-                Modifier.testTag(GroupContextTags.LogoutConfirm),
+                Modifier.testTag(GroupSettingsTags.LogoutConfirm),
             )
         },
     ) {
@@ -178,20 +119,10 @@ fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit) {
     }
 }
 
-@Composable
-private fun Action(label: String, tag: String, click: () -> Unit, variant: SaqzButtonVariant = SaqzButtonVariant.Secondary) =
-    SaqzButton(label, click, Modifier.fillMaxWidth().testTag(tag), variant)
-
 private val previewGroupState = GroupAdministrationState(
     group = VersionedGroupDto(GroupDto("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRoleDto.OWNER), "preview-etag"),
     actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
 )
-
-@Preview
-@Composable
-private fun GroupContextScreenPreview() = SaqzTheme {
-    GroupContextScreen(previewGroupState) {}
-}
 
 @Preview
 @Composable

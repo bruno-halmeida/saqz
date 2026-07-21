@@ -308,24 +308,6 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
-    fun `one selected membership renders current group and role`() = runComposeUiTest {
-        root(active(ownerAdministration))
-
-        onNodeWithText("Current Group").assertExists()
-        onNodeWithText("OWNER").assertExists()
-    }
-
-    @Test
-    fun `group switch routes through one action`() = runComposeUiTest {
-        val intents = mutableListOf<AccessIntent>()
-        root(active(ownerAdministration), intents::add)
-
-        onNodeWithTag("context-switch").performClick()
-
-        assertEquals(listOf<AccessIntent>(AccessIntent.SwitchGroup), intents)
-    }
-
-    @Test
     fun `switch loading removes previous protected content before new load`() = runComposeUiTest {
         root(ready(GroupSelectionState.Loading("beta")))
 
@@ -438,24 +420,6 @@ class AuthenticatedAccessRootTest {
             ),
             intents,
         )
-    }
-
-    @Test
-    fun `owner context exposes settings roles and invite`() = runComposeUiTest {
-        root(active(ownerAdministration))
-
-        onNodeWithTag("context-settings").assertExists()
-        onNodeWithTag("context-roles").assertExists()
-        onNodeWithTag("context-invite").assertExists()
-    }
-
-    @Test
-    fun `role refresh to athlete removes every privileged action`() = runComposeUiTest {
-        root(active(athleteAdministration))
-
-        onNodeWithTag("context-settings").assertDoesNotExist()
-        onNodeWithTag("context-roles").assertDoesNotExist()
-        onNodeWithTag("context-invite").assertDoesNotExist()
     }
 
     @Test
@@ -751,10 +715,6 @@ class AuthenticatedAccessRootTest {
         val ownerAdministration = GroupAdministrationState(
             group = group,
             actions = GroupActions(true, true, true),
-        )
-        val athleteAdministration = GroupAdministrationState(
-            group = group.copy(group = group.group.copy(role = GroupRoleDto.ATHLETE)),
-            actions = GroupActions(false, false, false),
         )
     }
 }

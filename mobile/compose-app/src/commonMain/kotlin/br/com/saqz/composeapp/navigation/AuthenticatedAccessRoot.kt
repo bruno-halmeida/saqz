@@ -85,8 +85,6 @@ import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
 import br.com.saqz.groups.ui.setup.GroupSetupScreen
 import br.com.saqz.groups.ui.ExpireInviteConfirmationDialog
 import br.com.saqz.groups.ui.ExpireInviteConfirmationIntent
-import br.com.saqz.groups.ui.GroupContextScreen
-import br.com.saqz.groups.ui.GroupContextIntent
 import br.com.saqz.groups.ui.GroupOnboardingScreen
 import br.com.saqz.groups.ui.GroupOnboardingIntent
 import br.com.saqz.groups.ui.GroupSettingsScreen
@@ -765,17 +763,7 @@ private fun DestinationContent(
         }
         AccessDestination.GROUP_CONTEXT -> {
             if (groupsNavigation == null) {
-                GroupContextScreen(state.administration) { intent ->
-                    onIntent(
-                        when (intent) {
-                            GroupContextIntent.SwitchGroup -> AccessIntent.SwitchGroup
-                            GroupContextIntent.OpenSettings -> AccessIntent.OpenSettings
-                            GroupContextIntent.OpenRoles -> AccessIntent.OpenMemberships
-                            GroupContextIntent.OpenInvite -> AccessIntent.OpenInvite
-                            GroupContextIntent.RequestLogout -> AccessIntent.RequestLogout
-                        },
-                    )
-                }
+                SaqzLoadingState()
             } else {
                 GroupsRouteContent(
                     state,
