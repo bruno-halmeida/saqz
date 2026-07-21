@@ -22,6 +22,9 @@ observable behavior.
 4. **SOLID-04** - The groups route host SHALL live in a UI package; no file in
    `composeapp/navigation` SHALL compose `GroupsDestinationContent` or
    `GroupsRouteChrome`.
+5. **SOLID-05** - `GroupsRouteChrome` SHALL compose only the shared route
+   layout and navigation bars; destination-specific screen rendering SHALL live
+   in `GroupsDestinationContent`.
 
 ## Out of Scope
 
