@@ -55,8 +55,10 @@ SH
 set -eu
 printf 'mobile %s\n' "$*" >>"$LOG_FILE"
 mobile_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+aar_dir="$mobile_dir/core/design-system/build/outputs/aar"
 results_dir="$mobile_dir/build/test-results/stub"
-mkdir -p "$results_dir"
+mkdir -p "$aar_dir" "$results_dir"
+: >"$aar_dir/design-system.aar"
 tests_attr=1
 [ "${ZERO_TESTS:-0}" = 0 ] || tests_attr=0
 printf '<testsuite tests="%s"></testsuite>\n' "$tests_attr" >"$results_dir/TEST-stub.xml"
@@ -71,6 +73,12 @@ case " $* " in
         ;;
 esac
 SH
+    cat >"$target/repo/bin/unzip" <<'SH'
+#!/bin/sh
+set -eu
+[ "${MISSING_PREVIEW_RESOURCE:-0}" = 0 ] || exit 0
+printf '%s\n' 'assets/composeResources/br.com.saqz.designsystem.resources/drawable/preflight_sentinel.xml'
+SH
     cat >"$target/repo/bin/adb" <<'SH'
 #!/bin/sh
 set -eu
@@ -83,7 +91,8 @@ fi
 SH
     chmod +x "$target/repo/scripts/check-credentials" "$target/repo/scripts/check-scope" \
         "$target/repo/scripts/check-bruno" \
-        "$target/repo/backend/gradlew" "$target/repo/mobile/gradlew" "$target/repo/bin/adb"
+        "$target/repo/backend/gradlew" "$target/repo/mobile/gradlew" \
+        "$target/repo/bin/adb" "$target/repo/bin/unzip"
     : >"$log"
 }
 
@@ -125,7 +134,7 @@ scope
 bruno
 backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
@@ -153,7 +162,7 @@ make_repo "$happy"
 ) >/dev/null
 happy_log="$happy/repo/invocations.log"
 
-required_suites=':core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
+required_suites=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
 
 # exactInventory: the mobile invocation lists exactly the required suites.
 [ "$(mobile_line "$happy_log")" = "$required_suites" ] || {
@@ -214,6 +223,8 @@ printf 'ok %d - adbMissingFails\n' "$count"
 
 fail_case deviceMissingFails 'emulator/device is required' env NO_ANDROID_DEVICE=1
 fail_case zeroTestsFails 'zero tests discovered' env ZERO_TESTS=1
+# V1: a resource-owning Compose KMP Android library must carry its own resources.
+fail_case v1-preview-resource-missing 'missing Compose resources required by Preview' env MISSING_PREVIEW_RESOURCE=1
 
 # backendInventory: the backend invocation is byte-for-byte the required inventory.
 backend_expected=':shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test'
@@ -287,4 +298,4 @@ fail_case groups-integration-failure '' env FAIL_TASK=:features:groups:integrati
 fail_case groups-mobile-compile-failure '' env FAIL_TASK=:features:groups:compileAndroidMain
 fail_case groups-mobile-tests-failure '' env FAIL_TASK=:features:groups:allTests
 
-[ "$count" -eq 40 ]
+[ "$count" -eq 42 ]

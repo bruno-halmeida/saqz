@@ -47,6 +47,7 @@ fi
 "$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
     :core:common:allTests \
     :core:design-system:allTests \
+    :core:design-system:bundleAndroidMainAar \
     :core:network:allTests \
     :features:access:compileAndroidMain \
     :features:access:allTests \
@@ -56,6 +57,15 @@ fi
     :android-app:testDevDebugUnitTest \
     :android-app:connectedDevDebugAndroidTest \
     --console=plain
+
+design_system_aar="$repository_root/mobile/core/design-system/build/outputs/aar/design-system.aar"
+preview_resource='assets/composeResources/br.com.saqz.designsystem.resources/drawable/preflight_sentinel.xml'
+
+[ -f "$design_system_aar" ] ||
+    fail "design-system Android AAR was not produced"
+
+unzip -Z1 "$design_system_aar" | grep -Fqx "$preview_resource" ||
+    fail "design-system Android AAR is missing Compose resources required by Preview"
 
 discovered_tests=$(
     find "$repository_root/mobile" -type f -name '*.xml' \
