@@ -111,6 +111,7 @@ import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkConfig
@@ -869,7 +870,7 @@ private fun GroupsRouteContent(
     gameDetailState: GameDetailState?,
     onGameDetailIntent: (GameDetailIntent) -> Unit,
 ) {
-    GroupsNavigationHost(
+    GroupsRouteHost(
         navigation = navigation,
         administration = state.administration,
         groupPhotoState = groupPhotoState,

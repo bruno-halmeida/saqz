@@ -1,4 +1,4 @@
-package br.com.saqz.composeapp.navigation
+package br.com.saqz.composeapp.ui.groups
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -52,7 +52,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
-class GroupsNavigationHostTest {
+class GroupsRouteHostTest {
     @Test
     fun `selected group home renders one shared top bar and bottom menu`() = runComposeUiTest {
         host(owner, access(GroupRoleDto.OWNER))
@@ -299,7 +299,7 @@ class GroupsNavigationHostTest {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Box(Modifier.size(320.dp, 420.dp)) {
                     SaqzTheme {
-                        GroupsNavigationHost(
+                        GroupsRouteHost(
                             navigation = access(GroupRoleDto.OWNER),
                             administration = administration(owner),
                             onNavigationIntent = {},
@@ -389,7 +389,7 @@ class GroupsNavigationHostTest {
         ) -> GroupPhotoRenderState)? = null,
     ) = setContent {
         SaqzTheme {
-            GroupsNavigationHost(
+            GroupsRouteHost(
                 navigation = navigation,
                 administration = administration(group, groupMembers),
                 groupPhotoState = photoState,

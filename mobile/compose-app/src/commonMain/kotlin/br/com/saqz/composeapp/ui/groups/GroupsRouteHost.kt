@@ -1,4 +1,4 @@
-package br.com.saqz.composeapp.navigation
+package br.com.saqz.composeapp.ui.groups
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,7 +15,7 @@ import br.com.saqz.groups.ui.GroupsDestinationContent
 import br.com.saqz.groups.ui.GroupsRouteChrome
 
 @Composable
-internal fun GroupsNavigationHost(
+internal fun GroupsRouteHost(
     navigation: GroupsNavigationState,
     administration: GroupAdministrationState,
     groupPhotoState: GroupPhotoState = GroupPhotoState(),
