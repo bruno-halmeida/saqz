@@ -8,6 +8,7 @@ dependencies {
     implementation("com.android.tools.build:gradle:9.1.0")
     implementation("org.jetbrains.compose:compose-gradle-plugin:1.11.1")
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10")
+    implementation("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.8")
 }
 
 gradlePlugin {
@@ -19,6 +20,10 @@ gradlePlugin {
         register("androidApplication") {
             id = "saqz.android-application"
             implementationClass = "br.com.saqz.mobile.buildlogic.AndroidApplicationConventionPlugin"
+        }
+        register("detekt") {
+            id = "saqz.detekt"
+            implementationClass = "br.com.saqz.mobile.buildlogic.DetektConventionPlugin"
         }
     }
 }

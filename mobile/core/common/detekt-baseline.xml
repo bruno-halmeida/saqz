@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ReturnCount:SaqzDateTimeFormatter.kt$fun formatLocalDatePtBrString(iso: String): String</ID>
+  </CurrentIssues>
+</SmellBaseline>

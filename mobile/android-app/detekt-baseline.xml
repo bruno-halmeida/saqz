@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>EmptyElseBlock:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest.FakePreferences$if(failWrites)return false</ID>
+    <ID>LargeClass:AndroidAuthAdapterTest.kt$AndroidAuthAdapterTest</ID>
+    <ID>MaxLineLength:AndroidAuthAdapterTest.kt$AndroidAuthAdapterTest.FakeFirebaseAuthClient$override</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidDraftPreferences</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidDraftReadResult&lt;out T&gt;</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftAdapters$Companion</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftAdapters$internal data</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$Companion</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun clearExpense(groupId:String,resourceId:String?=null,commandKey:String)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun clearGame(groupId:String,resourceId:String?=null,commandKey:String)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun clearMonthly(groupId:String,commandKey:String)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun readExpense(groupId:String,resourceId:String?=null)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun readGame(groupId:String,resourceId:String?=null)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun readMonthly(groupId:String)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun readSetup(key:GroupDraftKey)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun writeExpense(value:ExpenseDraft)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$fun writeMonthly(value:MonthlyChargeDraft)</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$private fun &lt;T&gt; clear(ref:AndroidDraftRef,serializer:KSerializer&lt;T&gt;,commandKey:String,key:(T)-&gt;String):Boolean</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$private fun &lt;T&gt; read(ref:AndroidDraftRef,serializer:KSerializer&lt;T&gt;,schema:Int,version:(T)-&gt;Int):AndroidDraftReadResult&lt;T&gt;</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$private fun &lt;T&gt; write(ref:AndroidDraftRef,serializer:KSerializer&lt;T&gt;,value:T):Boolean</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$private fun JsonElement.safeKeys():Boolean</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$AndroidGroupDraftStore$private fun parseKey(key:String):AndroidDraftRef?</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$ExpenseAdapter : ExpenseDraftStorePort</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$GameAdapter : GameDraftStorePort</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$MonthlyAdapter : MonthlyChargeDraftStorePort</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStore.kt$SetupAdapter : GroupDraftStorePort</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun clearExpenseOnlyRemovesMatchingResourceIdPreservingSiblings()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun corruptEnvelopeReturnsTypedCorruptWithoutDraft()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun expenseDraftRoundTripsConditionalFormVersionAndKey()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun failedAtomicCommitKeepsPreviouslyCommittedValue()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun gameDraftRoundTripsExactResourceEtagKeyAndAllowedValues()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun groupLossClearsOnlyMatchingGroupDrafts()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun logoutClearsEveryGroupDraftWithoutTouchingUnrelatedPreference()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun mismatchedSuccessKeyPreservesDraftAndMatchingKeyClearsOnlyTarget()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun monthlyDraftRoundTripsSelectionReviewAndStableKey()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun oldPayloadSchemaReturnsTypedUnsupportedWithoutDraft()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun recreatedRepositoryReadsPreviouslyCommittedDrafts()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun serializedStructureExcludesSecretMediaPaymentAndRawErrorFields()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$@Test fun setupDraftRoundTripsExactVersionGroupEtagKeyAndForm()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$Companion</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$FakePreferences : AndroidDraftPreferences</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$private fun expense()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$private fun game()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$private fun monthly()</ID>
+    <ID>MaxLineLength:AndroidGroupDraftStoreTest.kt$AndroidGroupDraftStoreTest$private fun setup()</ID>
+    <ID>MaxLineLength:AndroidGroupPorts.kt$AndroidLocalGroupStateAdapter$override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback)</ID>
+    <ID>MaxLineLength:AndroidLinkAdapter.kt$AndroidLinkAdapter.Companion$val attendanceCodes = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }.map { it.second }.filter(::isValidInviteCode).distinct()</ID>
+    <ID>TooManyFunctions:AndroidAuthAdapter.kt$FirebaseSdkAuthClient : AndroidFirebaseAuthClient</ID>
+    <ID>TooManyFunctions:AndroidGroupDraftStore.kt$AndroidGroupDraftStore</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:KtorGroupGateway.kt$id.isBlank() || name.isBlank() || timeZone.isBlank() || version == null || role == null</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.multiplatform)
+    id("saqz.detekt")
 }
 
 kotlin {

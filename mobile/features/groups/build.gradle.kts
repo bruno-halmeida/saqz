@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     id("saqz.kmp-compose-library")
+    id("saqz.detekt")
 }
 
 kotlin {

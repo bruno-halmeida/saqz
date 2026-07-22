@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AccessViewModel.kt$AccessViewModel$fun onIntent(intent: AccessIntent)</ID>
+    <ID>FunctionNaming:Drawable0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainDrawable0Resources(map: MutableMap&lt;String, DrawableResource&gt;)</ID>
+    <ID>FunctionNaming:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>LargeClass:AccessViewModel.kt$AccessViewModel : ViewModel</ID>
+    <ID>LargeClass:GroupsNavigationViewModel.kt$GroupsNavigationViewModel : ViewModel</ID>
+    <ID>LongParameterList:AccessOrchestrator.kt$AccessOrchestrator$( private val auth: NativeAuthPort, private val localAccessState: LocalAccessStatePort, override val groupProfileGateway: GroupProfileGateway, override val groupPhotoGateway: GroupPhotoGateway, override val sessionInvalidator: SessionInvalidator, private val authentication: AuthenticationStateMachine, private val session: SessionAccessStateMachine, private val selection: GroupSelectionStateMachine, private val administration: GroupAdministrationStateMachine, private val inviteTools: InviteToolStateMachine, private val invites: DeferredInviteStateMachine, private val attendanceLinks: DeferredAttendanceLinkStateMachine, private val attendanceDestinations: AttendanceDestinationStore, private val requestIds: RequestIdGenerator, scope: CoroutineScope, )</ID>
+    <ID>LongParameterList:SaqzNativePorts.kt$SaqzNativePorts$( val auth: NativeAuthPort, val links: NativeLinkPort, val localAccessState: LocalAccessStatePort, val share: NativeSharePort, val attendanceShare: GroupAttendanceSharePort, val groupPhotoSelection: GroupPhotoSelectionPort, val groupPhotoEncoder: GroupPhotoEncoderPort, val groupPhotoPreviews: GroupPhotoPreviewPort, val groupLinks: NativeGroupLinkPort, val localGroupState: LocalGroupStatePort, )</ID>
+    <ID>LongParameterList:SaqzPlatformDependencies.kt$SaqzPlatformDependencies$( val environment: String, val apiBaseUrl: String, val auth: NativeAuthPort, val links: NativeLinkPort, val localState: LocalAccessStatePort, val share: NativeSharePort, val attendanceShare: GroupAttendanceSharePort, val groupPhotos: GroupPhotoRuntimeDependencies, val groupLinks: NativeGroupLinkPort, val groupState: LocalGroupStatePort, val groupDrafts: GroupDraftStorePort, val gameDrafts: GameDraftStorePort, val monthlyChargeDrafts: MonthlyChargeDraftStorePort, val expenseDrafts: ExpenseDraftStorePort, )</ID>
+    <ID>MaxLineLength:AuthenticatedAccessRoot.kt$&lt;no name provided&gt;$gameDetailViewModel.onIntent(GameDetailIntent.ReportAttendanceShareResult(result is GroupOperationResult.Success))</ID>
+    <ID>MaxLineLength:AuthenticatedAccessRoot.kt$is GameDetailEffect.ShareAttendanceImage</ID>
+    <ID>MaxLineLength:AuthenticatedAccessRoot.kt$is GameDetailEffect.ShareAttendanceLink</ID>
+    <ID>TooManyFunctions:AccessViewModel.kt$AccessViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:CoilGroupPhotoCache.kt$CoilGroupPhotoCache : GroupPhotoCachePortGroupPhotoPreviewPort</ID>
+    <ID>TooManyFunctions:GroupsNavigationViewModel.kt$GroupsNavigationViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:SaqzCatalogScreen.kt$br.com.saqz.composeapp.catalog.SaqzCatalogScreen.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

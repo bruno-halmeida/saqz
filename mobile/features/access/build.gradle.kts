@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.multiplatform)
     id("saqz.kmp-compose-library")
+    id("saqz.detekt")
 }
 
 kotlin {

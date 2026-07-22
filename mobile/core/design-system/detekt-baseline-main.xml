@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>FunctionNaming:Font0.androidMain.kt$@InternalResourceApi internal fun _collectAndroidMainFont0Resources(map: MutableMap&lt;String, FontResource&gt;)</ID>
+  </CurrentIssues>
+</SmellBaseline>

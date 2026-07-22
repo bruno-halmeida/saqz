@@ -1,0 +1,290 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:GameDetailViewModel.kt$GameDetailViewModel$fun onIntent(intent:GameDetailIntent)</ID>
+    <ID>CyclomaticComplexMethod:GameEditorValidator.kt$internal fun validateGameEditor(draft: GameEditorDraft): Map&lt;String, List&lt;String&gt;&gt;</ID>
+    <ID>CyclomaticComplexMethod:GroupSetupSupport.kt$internal fun validateGroupSetup(state: GroupSetupState): Map&lt;String, List&lt;String&gt;&gt;</ID>
+    <ID>CyclomaticComplexMethod:GroupSetupViewModel.kt$GroupSetupViewModel$fun onIntent(intent: GroupSetupIntent)</ID>
+    <ID>EmptyElseBlock:ExpenseScreen.kt$if(category!=ExpenseCategoryDto.OTHER)custom=TextFieldValue()</ID>
+    <ID>EmptyElseBlock:GameDetailScreen.kt$if(action==GameLifecycleAction.CANCEL)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary)</ID>
+    <ID>EmptyElseBlock:GameDetailViewModel.kt$GameDetailViewModel$if(!current.organizer||current.isAttendanceMutating)return</ID>
+    <ID>EmptyElseBlock:GameDetailViewModel.kt$GameDetailViewModel$if(current.isAttendanceMutating||attendanceGateway==null)return</ID>
+    <ID>EmptyElseBlock:GameDetailViewModel.kt$GameDetailViewModel$if(current.isMutating||action !in current.actions)return</ID>
+    <ID>EmptyElseBlock:GameDetailViewModel.kt$GameDetailViewModel$if(intent.memberId.isBlank()||intent.reason.trim().length&lt;2){mutable.value=current.copy(attendanceError=GameDetailError.VALIDATION);return}</ID>
+    <ID>EmptyElseBlock:GameDetailViewModel.kt$GameDetailViewModel$if(value !in 2..100){mutable.value=current.copy(attendanceError=GameDetailError.VALIDATION);return}</ID>
+    <ID>FunctionNaming:Drawable0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainDrawable0Resources(map: MutableMap&lt;String, DrawableResource&gt;)</ID>
+    <ID>FunctionNaming:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>FunctionNaming:String1.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString1Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>FunctionNaming:String2.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString2Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>FunctionNaming:String3.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString3Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>LargeClass:ExpenseViewModel.kt$ExpenseViewModel : ViewModel</ID>
+    <ID>LargeClass:FinanceViewModel.kt$FinanceViewModel : ViewModel</ID>
+    <ID>LargeClass:GroupAdministrationCoordinator.kt$GroupAdministrationStateMachine</ID>
+    <ID>LargeClass:GroupPhotoCoordinator.kt$GroupPhotoCoordinator</ID>
+    <ID>LargeClass:GroupSetupViewModel.kt$GroupSetupViewModel : ViewModel</ID>
+    <ID>LongMethod:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>LongMethod:String1.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString1Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>LongMethod:String2.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString2Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>LongParameterList:DeferredLinkStateMachine.kt$DeferredLinkStateMachine$( private val links: NativeGroupLinkPort, private val eventFilter: (GroupLinkEvent) -&gt; String?, private val readPending: (GroupValueCallback) -&gt; Unit, private val writePending: (String?, GroupResultCallback) -&gt; Unit, private val resolve: suspend (String) -&gt; DeferredResolution&lt;T, E&gt;, private val resolvedState: (T) -&gt; S, private val onResolved: (T) -&gt; Unit, private val initialState: () -&gt; S, private val pendingState: () -&gt; S, private val receivingState: (S) -&gt; S, private val processing: (S) -&gt; Boolean, private val retryAfter: (S) -&gt; Int?, private val processingState: (S, Boolean) -&gt; S, private val clearedState: (S) -&gt; S, private val failureState: (S, E) -&gt; Pair&lt;S, Boolean&gt;, private val scope: CoroutineScope, )</ID>
+    <ID>LongParameterList:DraftMutationSupport.kt$DraftMutationSupport$( private val capability: FinanceCapability, private val scope: CoroutineScope, private val state: () -&gt; S, private val setState: (S) -&gt; Unit, private val canMutate: (S) -&gt; Boolean, private val mutatingState: (S) -&gt; S, private val failedState: (S, FinanceGatewayFailure, E) -&gt; S, private val mapFailure: (FinanceGatewayFailure) -&gt; E, )</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceApi$override suspend fun capacity(groupId:String,gameId:String,etag:String,command:CapacityCommand)</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceApi$override suspend fun override(groupId:String,gameId:String,command:OverrideAttendanceCommand)</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceApi$override suspend fun read(groupId:String,gameId:String)</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceApi$override suspend fun respond(groupId:String,gameId:String,command:SelfAttendanceCommand)</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceAuditDto</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceDetailDto</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceEntryDto</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$AttendanceMutationDto</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$OverrideAttendanceCommand</ID>
+    <ID>MaxLineLength:AttendanceApi.kt$is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Connectivity,NetworkError.Unavailable,NetworkError.PayloadTooLarge-&gt;AttendanceGatewayFailure.Temporary</ID>
+    <ID>MaxLineLength:DeferredAttendanceLinkCoordinator.kt$DeferredAttendanceLinkStateMachine$is DeferredLinkFailure.AttemptLimit -&gt; state.copy(isResolving = false, error = AttendanceLinkUiError.ATTEMPT_LIMIT, retryAfterSeconds = failure.retryAfterSeconds) to false</ID>
+    <ID>MaxLineLength:DeferredAttendanceLinkCoordinator.kt$DeferredAttendanceLinkStateMachine${</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$@Composable private fun ExpenseActionDto.label()</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$@Composable private fun ExpenseCard(expense:ExpenseDto,onIntent:(ExpenseIntent)-&gt;Unit)</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$@Composable private fun ExpenseCategoryDto.label()</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$@Composable private fun ExpenseStatusDto.label()</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$@Composable private fun ExpenseTotals(value:FinanceTotalsDto)</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$Column</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$ExpenseCategoryDto.entries.forEachIndexed{i,category-&gt;SaqzButton((if(form.category==category)"✓ " else "")+category.label(),{if(category!=ExpenseCategoryDto.OTHER)custom=TextFieldValue();changed(form.copy(category=category,customCategory=if(category==ExpenseCategoryDto.OTHER)custom.text else ""))},Modifier.expenseAction(i+1).testTag(ExpenseTags.category(category)),SaqzButtonVariant.Secondary)}</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$ExpenseTags</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$SaqzButton(stringResource(Res.string.expense_create),{onIntent(ExpenseIntent.OpenCreate)},Modifier.expenseAction(1).testTag(ExpenseTags.Create))</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$SaqzButton(stringResource(Res.string.expense_save),{onIntent(ExpenseIntent.Submit)},Modifier.expenseAction(10).testTag(ExpenseTags.Save),loading=state.isMutating)</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$SaqzInput(amount,{amount=it.copy(text=it.text.take(12));changed(form.copy(amountBrl=amount.text))},stringResource(Res.string.expense_amount),Modifier.testTag(ExpenseTags.Amount),helperText=stringResource(Res.string.finance_brl_helper),errorText=state.fieldErrors["amountBrl"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$SaqzInput(date,{date=it.copy(text=it.text.take(10));changed(form.copy(expenseDate=date.text))},stringResource(Res.string.expense_date),Modifier.testTag(ExpenseTags.Date),errorText=state.fieldErrors["expenseDate"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$SaqzInput(description,{description=it.copy(text=it.text.take(160));changed(form.copy(description=description.text))},stringResource(Res.string.expense_description),Modifier.testTag(ExpenseTags.Description),errorText=state.fieldErrors["description"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$SaqzInput(notes,{notes=it.copy(text=it.text.take(500));changed(form.copy(notes=notes.text))},stringResource(Res.string.expense_notes),Modifier.testTag(ExpenseTags.Notes),errorText=state.fieldErrors["notes"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$Text(stringResource(Res.string.expense_title),style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$Text(stringResource(if(draft.expenseId==null)Res.string.expense_form_create else Res.string.expense_form_edit),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$if(form.category==ExpenseCategoryDto.OTHER)SaqzInput(custom,{custom=it.copy(text=it.text.take(40));changed(form.copy(customCategory=custom.text))},stringResource(Res.string.expense_custom_category),Modifier.testTag(ExpenseTags.Custom),errorText=state.fieldErrors["customCategory"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$if(state.retryAvailable)SaqzButton(stringResource(Res.string.action_retry),{onIntent(ExpenseIntent.Retry)},Modifier.expenseAction(99).testTag(ExpenseTags.Retry),SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$private fun Modifier.expenseAction(order:Int)</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$state.error?.let{Text(stringResource(if(it==ExpenseError.CONFLICT)Res.string.expense_conflict else Res.string.expense_error),color=SaqzTheme.colors.errorForeground)}</ID>
+    <ID>MaxLineLength:ExpenseScreen.kt$state.pendingVoid?.let{expense-&gt;SaqzDialog(stringResource(Res.string.expense_void_title),{onIntent(ExpenseIntent.DismissVoid)},primaryAction={SaqzButton(stringResource(Res.string.expense_void_confirm),{onIntent(ExpenseIntent.ConfirmVoid)},Modifier.expenseAction(1).testTag(ExpenseTags.VoidConfirm),SaqzButtonVariant.Destructive,loading=state.isMutating)}){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(stringResource(Res.string.expense_void_body,expense.description),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.game_detail_dismiss),{onIntent(ExpenseIntent.DismissVoid)},Modifier.expenseAction(2),SaqzButtonVariant.Secondary)}}}</ID>
+    <ID>MaxLineLength:FinanceApi.kt$AthleteFinanceApi$override suspend fun ownCharges(groupId:String)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$ChargeDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$ChargeEventDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$ChargeListDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$ExpenseDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$ExpenseWriteCommandDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$FinanceTotalsDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$MonthlyChargeCommandDto</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$override suspend fun createExpense(groupId:String,command:ExpenseWriteCommandDto)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$override suspend fun editExpense(groupId:String,expenseId:String,etag:String,command:ExpenseWriteCommandDto)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$override suspend fun generateMonthly(groupId:String,command:MonthlyChargeCommandDto)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$override suspend fun totals(groupId:String)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$override suspend fun updateChargeStatus(groupId:String,chargeId:String,etag:String,command:ChargeStatusCommandDto)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$override suspend fun voidExpense(groupId:String,expenseId:String,etag:String)</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$private fun NetworkResult&lt;ChargeDto&gt;.versionedCharge(): NetworkResult&lt;VersionedChargeDto&gt;</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceApi$private fun NetworkResult&lt;ExpenseDto&gt;.versionedExpense(): NetworkResult&lt;VersionedExpenseDto&gt;</ID>
+    <ID>MaxLineLength:FinanceApi.kt$OrganizerFinanceGateway$suspend fun updateChargeStatus(groupId:String,chargeId:String,etag:String,command:ChargeStatusCommandDto):NetworkResult&lt;VersionedChargeDto&gt;</ID>
+    <ID>MaxLineLength:FinanceApi.kt$is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Connectivity,NetworkError.Unavailable,NetworkError.PayloadTooLarge-&gt;FinanceGatewayFailure.Temporary</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$@Composable private</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$@Composable private fun ChargeDto.subject()</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$@Composable private fun ChargeStatusDto.label()</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$Column</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$FinanceTags</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$SaqzButton(stringResource(Res.string.finance_review),{onIntent(FinanceIntent.ReviewMonthly)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.Review),enabled=!state.isMutating)</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$SaqzInput(amount,{amount=it.copy(text=it.text.take(12));update()},stringResource(Res.string.finance_amount),Modifier.testTag(FinanceTags.Amount),helperText=stringResource(Res.string.finance_brl_helper),errorText=state.fieldErrors["amountBrl"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$SaqzInput(due,{due=it.copy(text=it.text.take(10));update()},stringResource(Res.string.finance_due_date),Modifier.testTag(FinanceTags.DueDate),errorText=state.fieldErrors["dueDate"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$SaqzInput(month,{month=it.copy(text=it.text.take(7));update()},stringResource(Res.string.finance_month),Modifier.testTag(FinanceTags.Month),errorText=state.fieldErrors["month"]?.firstOrNull())</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$Text(stringResource(Res.string.finance_monthly_title),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$Text(stringResource(if(state.organizer)Res.string.finance_title_organizer else Res.string.finance_title_athlete),style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$charge.events.lastOrNull()?.let{Text(stringResource(Res.string.finance_audit,it.newStatus.label(),it.occurredAt),color=SaqzTheme.colors.textSecondary)}</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$if(organizer&amp;&amp;charge.status==ChargeStatusDto.PENDING){SaqzInput(note,{note=it.copy(text=it.text.take(500))},stringResource(Res.string.finance_note),Modifier.testTag(FinanceTags.Note));SaqzButton(stringResource(Res.string.finance_record_paid),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.PAID,note.text))},Modifier.financeAction(1).testTag(FinanceTags.paid(charge.id)));SaqzButton(stringResource(Res.string.finance_record_waived),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.WAIVED,note.text))},Modifier.financeAction(2).testTag(FinanceTags.waived(charge.id)),SaqzButtonVariant.Secondary);SaqzButton(stringResource(Res.string.finance_record_cancelled),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.CANCELLED,note.text))},Modifier.financeAction(3).testTag(FinanceTags.cancelled(charge.id)),SaqzButtonVariant.Destructive)}</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$if(state.monthlyDraft?.reviewed==true){Text(stringResource(Res.string.finance_review_summary,state.monthlyDraft.month,state.monthlyDraft.amountBrl,state.monthlyDraft.dueDate,state.monthlyDraft.selectedMemberIds.size),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.finance_generate),{onIntent(FinanceIntent.GenerateMonthly)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.Generate),loading=state.isMutating)}</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$if(state.retryAvailable)SaqzButton(stringResource(Res.string.action_retry),{onIntent(FinanceIntent.Retry)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.Retry),SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$private fun Modifier.financeAction(order:Int)</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$state.error?.let{Text(stringResource(if(it==FinanceError.CONFLICT)Res.string.finance_conflict else Res.string.finance_error),color=SaqzTheme.colors.errorForeground)}</ID>
+    <ID>MaxLineLength:FinanceScreen.kt$state.members.forEach{member-&gt;val included=member.userId in selected;SaqzButton((if(included)"✓ " else "")+member.displayName,{selected=if(included)selected-member.userId else selected+member.userId;update()},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(FinanceTags.member(member.userId)),SaqzButtonVariant.Secondary)}</ID>
+    <ID>MaxLineLength:FinanceViewModel.kt$FinanceViewModel$is FinanceOperation.Status</ID>
+    <ID>MaxLineLength:FinanceViewModel.kt$FinanceViewModel$when</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun boundary(groupId:String,seriesId:String,etag:String,command:SeriesBoundaryCommand)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun create(groupId:String,command:GameWriteCommand)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun createSeries(groupId:String,command:WeeklySeriesWriteCommand)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun edit(groupId:String,gameId:String,etag:String,command:GameWriteCommand)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun lifecycle(groupId:String,gameId:String,etag:String,mutation:String)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun list(groupId:String)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun read(groupId:String,gameId:String)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameApi$override suspend fun readSeries(groupId:String,seriesId:String)</ID>
+    <ID>MaxLineLength:GameApi.kt$GameDto</ID>
+    <ID>MaxLineLength:GameApi.kt$GameGatewayFailure</ID>
+    <ID>MaxLineLength:GameApi.kt$GameWriteCommand</ID>
+    <ID>MaxLineLength:GameApi.kt$SeriesBoundaryCommand</ID>
+    <ID>MaxLineLength:GameApi.kt$SeriesOccurrenceDto</ID>
+    <ID>MaxLineLength:GameApi.kt$WeeklySeriesDto</ID>
+    <ID>MaxLineLength:GameApi.kt$WeeklySeriesWriteCommand</ID>
+    <ID>MaxLineLength:GameApi.kt$WeeklySlotDto</ID>
+    <ID>MaxLineLength:GameApi.kt$is NetworkError.ApiProblemError-&gt;when(problem.code){"VALIDATION_FAILED"-&gt;GameGatewayFailure.Validation(problem.fieldErrors.orEmpty());"GAME_NOT_FOUND","GROUP_NOT_FOUND"-&gt;GameGatewayFailure.HiddenResource;"VERSION_CONFLICT"-&gt;GameGatewayFailure.Conflict;"INVALID_GAME_TRANSITION"-&gt;GameGatewayFailure.InvalidLifecycle;"AUTHENTICATION_REQUIRED"-&gt;GameGatewayFailure.Authentication;else-&gt;if(problem.status&gt;=500)GameGatewayFailure.Temporary else GameGatewayFailure.InvalidResponse}</ID>
+    <ID>MaxLineLength:GameApi.kt$is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Connectivity,NetworkError.Unavailable,NetworkError.PayloadTooLarge-&gt;GameGatewayFailure.Temporary</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$@Composable private fun AttendanceAction.attendanceConfirmTitle()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$@Composable private fun AttendanceAction.attendanceLabel()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$@Composable private fun ErrorPanel(state:GameDetailState,onIntent:(GameDetailIntent)-&gt;Unit)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$@Composable private fun GameDetailError.attendanceErrorLabel()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$@Composable private fun GameLifecycleAction.confirmTitle()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$@Composable private fun GameLifecycleAction.label()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$AttendanceStatusDto.WAITLISTED-&gt;Text(stringResource(Res.string.attendance_status_waitlisted,state.waitlistPosition?:0),color=SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$Column</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$GameDetailTags$const val Attendance="game-detail-attendance";</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$GameDetailTags$const val Capacity="attendance-capacity";</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$GameDetailTags$const val Edit="game-detail-edit";</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$GameDetailTags$const val OverrideMember="attendance-override-member";</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$GameDetailTags$const val ShareLink="attendance-share-link";</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzButton(stringResource(Res.string.attendance_capacity_save),{capacityValue?.let{onIntent(GameDetailIntent.ChangeCapacity(it))}},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.SaveCapacity),SaqzButtonVariant.Secondary,enabled=validCapacity)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzButton(stringResource(Res.string.attendance_override_confirm),{onIntent(GameDetailIntent.OverrideAttendance(member.text.trim(),AttendanceIntentDto.CONFIRM,reason.text))},Modifier.weight(1f).heightIn(min=48.dp).testTag(GameDetailTags.OverrideConfirm),enabled=validOverride)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzButton(stringResource(Res.string.attendance_override_decline),{onIntent(GameDetailIntent.OverrideAttendance(member.text.trim(),AttendanceIntentDto.DECLINE,reason.text))},Modifier.weight(1f).heightIn(min=48.dp).testTag(GameDetailTags.OverrideDecline),SaqzButtonVariant.Secondary,enabled=validOverride)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzButton(stringResource(Res.string.attendance_share_list),{onIntent(GameDetailIntent.RequestAttendanceImageShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareList),SaqzButtonVariant.Secondary,loading=state.isAttendanceShareSnapshotLoading)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzButton(stringResource(Res.string.game_detail_dismiss),{onIntent(GameDetailIntent.DismissAttendance)},Modifier.fillMaxWidth().heightIn(min=48.dp),SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzCard</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(game.title,style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary);Text("${formatLocalDatePtBrString(game.localDate)} às ${game.localTime.take(5)}",color=SaqzTheme.colors.textSecondary);Text(game.venue.name,color=SaqzTheme.colors.textPrimary);Text(game.venue.address,color=SaqzTheme.colors.textSecondary);Row(horizontalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){SaqzBadge(game.status.label(),SaqzBadgeVariant.Neutral);Text(game.availability(),color=SaqzTheme.colors.textPrimary)};Text("Duração: ${game.durationMinutes} min",color=SaqzTheme.colors.textSecondary);game.gameFeeCents?.let{Text("Valor: ${formatBrl(it)}",color=SaqzTheme.colors.textSecondary)};game.notes?.let{Text(it,color=SaqzTheme.colors.textSecondary)}}}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzDialog</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzDialog(stringResource(Res.string.attendance_share_privacy_title),{onIntent(GameDetailIntent.CancelAttendanceImageShare)},primaryAction={SaqzButton(stringResource(Res.string.attendance_share_continue),{onIntent(GameDetailIntent.ConfirmAttendanceImageShare)},Modifier.heightIn(min=48.dp).testTag(GameDetailTags.SharePrivacyConfirm))}){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(stringResource(Res.string.attendance_share_privacy_body),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.action_cancel),{onIntent(GameDetailIntent.CancelAttendanceImageShare)},Modifier.fillMaxWidth().heightIn(min=48.dp),SaqzButtonVariant.Secondary)}}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzInput(capacity,{capacity=it.copy(text=it.text.filter(Char::isDigit).take(3))},stringResource(Res.string.attendance_capacity),Modifier.testTag(GameDetailTags.Capacity))</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzInput(member,{member=it.copy(text=it.text.take(64))},stringResource(Res.string.attendance_member_id),Modifier.testTag(GameDetailTags.OverrideMember))</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$SaqzInput(reason,{reason=it.copy(text=it.text.take(500))},stringResource(Res.string.attendance_override_reason),Modifier.testTag(GameDetailTags.OverrideReason),helperText=stringResource(Res.string.attendance_reason_helper))</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$Text(stringResource(Res.string.attendance_organizer_title),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$Text(stringResource(Res.string.attendance_title),style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$Text(stringResource(Res.string.game_detail_title),style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(action==AttendanceAction.WITHDRAW&amp;&amp;state.withdrawalKeepsCharge)Text(stringResource(Res.string.attendance_withdraw_charge_warning),color=SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(belowConfirmed)Text(stringResource(Res.string.attendance_capacity_warning,state.confirmedCount),color=SaqzTheme.colors.errorForeground,modifier=Modifier.testTag(GameDetailTags.CapacityWarning))</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(game.status==GameStatusDto.CANCELLED||game.financeReviewRequired)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(state.canEdit)SaqzButton(stringResource(Res.string.game_detail_edit),{onIntent(GameDetailIntent.OpenEdit)},Modifier.fillMaxWidth().testTag(GameDetailTags.Edit),SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(state.game?.status==GameStatusDto.PUBLISHED&amp;&amp;state.attendanceOpen)SaqzButton(stringResource(Res.string.attendance_share_link),{onIntent(if(state.attendanceLinkUrl==null)GameDetailIntent.RequestAttendanceLinkShare else GameDetailIntent.RetryAttendanceLinkShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareLink),SaqzButtonVariant.Secondary,loading=state.isAttendanceLinkLoading)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(state.retryAttendanceAvailable)SaqzButton(stringResource(Res.string.attendance_retry),{onIntent(GameDetailIntent.RetryAttendance)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.AttendRetry),SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$if(state.waitlistCount&gt;0)Text(stringResource(Res.string.attendance_waitlist_count,state.waitlistCount),color=SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$private fun AttendanceAction.attendanceTag()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$private fun GameLifecycleAction.tag()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$private fun GameStatusDto.label()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$private fun br.com.saqz.groups.data.game.GameDto.availability()</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$state.actions.forEach{action-&gt;SaqzButton(action.label(),{onIntent(GameDetailIntent.RequestLifecycle(action))},Modifier.fillMaxWidth().testTag(action.tag()),if(action==GameLifecycleAction.CANCEL)SaqzButtonVariant.Destructive else SaqzButtonVariant.Primary,loading=state.isMutating)}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$state.attendanceActions.sortedBy{it.ordinal}.forEach{action-&gt;SaqzButton(action.attendanceLabel(),{onIntent(GameDetailIntent.RequestAttendance(action))},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(action.attendanceTag()),if(action==AttendanceAction.WITHDRAW)SaqzButtonVariant.Destructive else if(action==AttendanceAction.DECLINE)SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,loading=state.isAttendanceMutating)}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$state.attendanceLinkError?.let{Text(stringResource(Res.string.attendance_share_unavailable),color=SaqzTheme.colors.errorForeground)}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$state.attendanceShareError?.let{Text(stringResource(Res.string.attendance_share_unavailable),color=SaqzTheme.colors.errorForeground)}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$state.pendingAction?.let{action-&gt;SaqzDialog(action.confirmTitle(),{onIntent(GameDetailIntent.DismissConfirmation)},primaryAction={SaqzButton(stringResource(Res.string.game_detail_confirm),{onIntent(GameDetailIntent.ConfirmLifecycle)},Modifier.testTag(GameDetailTags.Confirm),loading=state.isMutating)}){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){if(action==GameLifecycleAction.CANCEL)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary);SaqzButton(stringResource(Res.string.game_detail_dismiss),{onIntent(GameDetailIntent.DismissConfirmation)},Modifier.fillMaxWidth(),SaqzButtonVariant.Secondary)}}}</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$val validOverride=member.text.isNotBlank()&amp;&amp;reason.text.trim().length in 2..500&amp;&amp;!reason.text.any(Char::isISOControl)&amp;&amp;!state.isAttendanceMutating</ID>
+    <ID>MaxLineLength:GameDetailScreen.kt$when{state.terminal-&gt;Text(stringResource(Res.string.attendance_frozen),color=SaqzTheme.colors.textSecondary);game.status==GameStatusDto.PUBLISHED&amp;&amp;!state.attendanceOpen-&gt;Text(stringResource(Res.string.attendance_deadline_closed),color=SaqzTheme.colors.textSecondary);else-&gt;Text(stringResource(Res.string.attendance_deadline,game.confirmationDeadline),color=SaqzTheme.colors.textSecondary)}</ID>
+    <ID>MaxLineLength:GameDetailState.kt$GameDetailState$val actions get()=when{!organizer-&gt;emptyList();game?.status==GameStatusDto.DRAFT-&gt;listOf(GameLifecycleAction.PUBLISH);game?.status==GameStatusDto.PUBLISHED-&gt;listOf(GameLifecycleAction.CANCEL,GameLifecycleAction.COMPLETE);else-&gt;emptyList()}</ID>
+    <ID>MaxLineLength:GameDetailState.kt$GameDetailState$val attendanceActions get()=if(!attendanceOpen||game?.status!=GameStatusDto.PUBLISHED)emptySet() else when(ownAttendance?.status){null-&gt;setOf(AttendanceAction.CONFIRM,AttendanceAction.DECLINE);AttendanceStatusDto.CONFIRMED-&gt;setOf(AttendanceAction.WITHDRAW);AttendanceStatusDto.DECLINED-&gt;setOf(AttendanceAction.CONFIRM);AttendanceStatusDto.WAITLISTED-&gt;setOf(AttendanceAction.WITHDRAW)}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$GameDetailIntent.DismissAttendance-&gt;if(!mutable.value.isAttendanceMutating)mutable.value=mutable.value.copy(pendingAttendanceAction=null,attendanceCommandKey=null)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$if(current.attendanceShareSnapshot!=null){mutable.value=current.copy(showAttendanceSharePrivacy=true,attendanceShareError=null);return}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$if(current.isAttendanceLinkLoading||!current.organizer||current.game?.status!=GameStatusDto.PUBLISHED||!current.attendanceOpen)return</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is AttendanceOperation.Capacity-&gt;when(val result=attendance.capacity(current.groupId,current.gameId,operation.etag,CapacityCommand(operation.key,operation.capacity))){is NetworkResult.Success-&gt;capacityApplied(result.value);is NetworkResult.Failure-&gt;attendanceFailed(result.error.toAttendanceGatewayFailure())}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is AttendanceOperation.Override-&gt;when(val result=attendance.override(current.groupId,current.gameId,OverrideAttendanceCommand(operation.key,operation.memberId,operation.intent,operation.reason))){is NetworkResult.Success-&gt;applied(result.value.value,result.value.etag,false);is NetworkResult.Failure-&gt;attendanceFailed(result.error.toAttendanceGatewayFailure())}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is AttendanceOperation.Self-&gt;when(val result=attendance.respond(current.groupId,current.gameId,SelfAttendanceCommand(operation.key,operation.action.intent()))){is NetworkResult.Success-&gt;applied(result.value.value,result.value.etag,true);is NetworkResult.Failure-&gt;attendanceFailed(result.error.toAttendanceGatewayFailure())}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Failure-&gt;mutable.value=mutable.value.copy(game=null,etag=null,isLoading=false,error=if(result.error.toGameGatewayFailure()==GameGatewayFailure.HiddenResource)GameDetailError.HIDDEN else GameDetailError.UNAVAILABLE)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Failure-&gt;mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkError=GameDetailError.UNAVAILABLE)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Failure-&gt;mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareError=GameDetailError.UNAVAILABLE)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Failure-&gt;mutable.value=mutable.value.copy(isLoading=false,attendanceError=result.error.toAttendanceGatewayFailure().error())</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Success-&gt;{mutable.value=mutable.value.copy(game=result.value.game,etag=result.value.etag,attendanceOpen=result.value.game.attendanceOpen(),error=null);loadAttendance(current.groupId,current.gameId)}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Success-&gt;{mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkUrl=result.value.url,attendanceLinkError=null);channel.trySend(GameDetailEffect.ShareAttendanceLink(result.value.url))}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$is NetworkResult.Success-&gt;{val image=AttendanceShareImage.from(result.value);mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareSnapshot=image,attendanceShareError=null,showAttendanceSharePrivacy=true)}</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$mutable.value=mutable.value.copy(attendance=detail,attendanceEtag=etag,isAttendanceMutating=false,pendingAttendanceAction=null,attendanceCommandKey=null,attendanceError=null,retryAttendanceAvailable=false).syncGame(detail)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$mutable.value=mutable.value.copy(attendance=result.value.detail,etag=result.etag,isAttendanceMutating=false,attendanceError=null,retryAttendanceAvailable=false).syncGame(result.value.detail)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun AttendanceGatewayFailure.error()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun GameDetailState.syncGame(detail:AttendanceDetailDto)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun GameDto.attendanceOpen()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun attendanceFailed(failure:AttendanceGatewayFailure)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun capacity(value:Int)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun confirm()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun confirmAttendance()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun confirmAttendanceImageShare()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun fail(failure:GameGatewayFailure)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun openEdit()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun override(intent:GameDetailIntent.OverrideAttendance)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun refreshAttendance()</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun reportAttendanceShareResult(successful:Boolean)</ID>
+    <ID>MaxLineLength:GameDetailViewModel.kt$GameDetailViewModel$private fun request(action:GameLifecycleAction)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$@Composable private fun EditorInput(value: String, label: org.jetbrains.compose.resources.StringResource, error: String?, tag: String, change: (String) -&gt; Unit)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$@Composable private fun ErrorText(value: String)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$@Composable private fun ModeButton(label: String, tag: String, selected: Boolean, modifier: Modifier, click: () -&gt; Unit)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$@Composable private fun ModeButton(label: org.jetbrains.compose.resources.StringResource, tag: String, selected: Boolean, modifier: Modifier, click: () -&gt; Unit)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$@Composable private fun SlotInput(index: Int, name: String, value: String, label: org.jetbrains.compose.resources.StringResource, state: GameEditorState, form: GameEditorForm, slot: WeeklySlotDto, onIntent: (GameEditorIntent) -&gt; Unit, update: (String) -&gt; WeeklySlotDto)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.capacity, Res.string.game_editor_capacity, state.errorFor("capacity"), GameEditorTags.field("capacity")) { onIntent(GameEditorIntent.UpdateForm(form.copy(capacity = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.durationMinutes, Res.string.game_editor_duration, state.errorFor("durationMinutes"), GameEditorTags.field("duration")) { onIntent(GameEditorIntent.UpdateForm(form.copy(durationMinutes = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.gameFeeBrl, Res.string.game_editor_fee, state.errorFor("gameFeeBrl"), GameEditorTags.field("fee")) { onIntent(GameEditorIntent.UpdateForm(form.copy(gameFeeBrl = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.localDate, Res.string.game_editor_start_date, state.errorFor("localDate"), GameEditorTags.field("localDate")) { onIntent(GameEditorIntent.UpdateForm(form.copy(localDate = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.localEndDate, Res.string.game_editor_end_date, state.errorFor("localEndDate"), GameEditorTags.field("localEndDate")) { onIntent(GameEditorIntent.UpdateForm(form.copy(localEndDate = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.localTime, Res.string.game_editor_start_time, state.errorFor("localTime"), GameEditorTags.field("localTime")) { onIntent(GameEditorIntent.UpdateForm(form.copy(localTime = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.notes, Res.string.game_editor_notes, state.errorFor("notes"), GameEditorTags.field("notes")) { onIntent(GameEditorIntent.UpdateForm(form.copy(notes = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.title, Res.string.game_editor_title, state.errorFor("title"), GameEditorTags.field("title")) { onIntent(GameEditorIntent.UpdateForm(form.copy(title = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.venue?.address.orEmpty(), Res.string.game_editor_venue_address, state.errorFor("venue"), GameEditorTags.field("venueAddress")) { onIntent(GameEditorIntent.UpdateForm(form.copy(venue = form.venue.withAddress(it)))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.venue?.name.orEmpty(), Res.string.game_editor_venue_name, state.errorFor("venue"), GameEditorTags.field("venueName")) { onIntent(GameEditorIntent.UpdateForm(form.copy(venue = form.venue.withName(it)))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$EditorInput(form.zoneId, Res.string.game_editor_timezone, state.errorFor("zoneId"), GameEditorTags.field("zoneId")) { onIntent(GameEditorIntent.UpdateForm(form.copy(zoneId = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$ModeButton(Res.string.game_editor_one_time, GameEditorTags.OneTime, draft.mode == GameEditorMode.ONE_TIME, Modifier.weight(1f)) { onIntent(GameEditorIntent.SetMode(GameEditorMode.ONE_TIME)) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$ModeButton(Res.string.game_editor_only_this, GameEditorTags.ScopeOnly, state.draft.scope == SeriesBoundaryScopeDto.ONLY_THIS, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScopeDto.ONLY_THIS)) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$ModeButton(Res.string.game_editor_this_future, GameEditorTags.ScopeFuture, state.draft.scope == SeriesBoundaryScopeDto.THIS_AND_FUTURE, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScopeDto.THIS_AND_FUTURE)) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$ModeButton(Res.string.game_editor_weekly, GameEditorTags.Weekly, draft.mode == GameEditorMode.WEEKLY, Modifier.weight(1f)) { onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY)) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SaqzButton(stringResource(Res.string.game_editor_add_slot), { onIntent(GameEditorIntent.AddSlot) }, Modifier.fillMaxWidth().testTag(GameEditorTags.AddSlot), SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SaqzButton(stringResource(Res.string.game_editor_remove_slot), { onIntent(GameEditorIntent.UpdateForm(form.copy(slots = form.slots.filterIndexed { i, _ -&gt; i != index }))) }, Modifier.fillMaxWidth().testTag(GameEditorTags.removeSlot(index)), SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SaqzButton(stringResource(Res.string.game_editor_submit), { onIntent(GameEditorIntent.Submit) }, Modifier.fillMaxWidth().testTag(GameEditorTags.Submit), loading = state.isLoading)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "capacity", slot.capacity.toString(), Res.string.game_editor_capacity, state, form, slot, onIntent) { value -&gt; slot.copy(capacity = value.toIntOrNull() ?: 0) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "confirmationLeadMinutes", slot.confirmationLeadMinutes.toString(), Res.string.game_editor_confirmation_lead, state, form, slot, onIntent) { value -&gt; slot.copy(confirmationLeadMinutes = value.toIntOrNull() ?: 0) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "durationMinutes", slot.durationMinutes.toString(), Res.string.game_editor_duration, state, form, slot, onIntent) { value -&gt; slot.copy(durationMinutes = value.toIntOrNull() ?: 0) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "localTime", slot.localTime, Res.string.game_editor_start_time, state, form, slot, onIntent) { value -&gt; slot.copy(localTime = value) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "title", slot.title, Res.string.game_editor_title, state, form, slot, onIntent) { value -&gt; slot.copy(title = value) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "venue", slot.venue.name, Res.string.game_editor_venue_name, state, form, slot, onIntent) { value -&gt; slot.copy(venue = slot.venue.copy(name = value)) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$SlotInput(index, "venueAddress", slot.venue.address, Res.string.game_editor_venue_address, state, form, slot, onIntent) { value -&gt; slot.copy(venue = slot.venue.copy(address = value)) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$Text(stringResource(Res.string.game_editor_slot, index + 1), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$Text(stringResource(Res.string.game_editor_slots), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary, modifier = Modifier.semantics { heading() })</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$WeekdayDto.entries.forEach { weekday -&gt; ModeButton(weekday.label(), GameEditorTags.weekday(index, weekday), slot.weekday == weekday, Modifier.fillMaxWidth()) { form.updateSlot(index, slot.copy(weekday = weekday), onIntent) } }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$if (draft.mode == GameEditorMode.ONE_TIME) EditorInput(form.confirmationDeadline, Res.string.game_editor_deadline, state.errorFor("confirmationDeadline"), GameEditorTags.field("deadline")) { onIntent(GameEditorIntent.UpdateForm(form.copy(confirmationDeadline = it))) }</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$if (state.reloadAvailable) SaqzButton(stringResource(Res.string.game_editor_reload), { onIntent(GameEditorIntent.Reload) }, Modifier.fillMaxWidth().testTag(GameEditorTags.Reload))</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$private fun GameEditorForm.updateSlot(index: Int, slot: WeeklySlotDto, onIntent: (GameEditorIntent) -&gt; Unit)</ID>
+    <ID>MaxLineLength:GameEditorScreen.kt$private fun WeekdayDto.label()</ID>
+    <ID>MaxLineLength:GamesScreen.kt$@Composable private fun GameCard(item:GameListItem,onClick:()-&gt;Unit)</ID>
+    <ID>MaxLineLength:GamesScreen.kt$Column</ID>
+    <ID>MaxLineLength:GamesScreen.kt$GamesScreenIntent</ID>
+    <ID>MaxLineLength:GamesScreen.kt$GamesTags</ID>
+    <ID>MaxLineLength:GamesScreen.kt$SaqzButton("Histórico",{onIntent(GamesScreenIntent.SelectTab(GamesTab.PAST))},Modifier.weight(1f).testTag(GamesTags.Past),if(state.tab==GamesTab.PAST)SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GamesScreen.kt$SaqzButton("Próximos",{onIntent(GamesScreenIntent.SelectTab(GamesTab.UPCOMING))},Modifier.weight(1f).testTag(GamesTags.Upcoming),if(state.tab==GamesTab.UPCOMING)SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary)</ID>
+    <ID>MaxLineLength:GamesScreen.kt$else-&gt;LazyColumn(Modifier.fillMaxSize().testTag(GamesTags.List),verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){items(visible,key={it.id}){item-&gt;GameCard(item){onIntent(GamesScreenIntent.OpenGame(item.id))}}}</ID>
+    <ID>MaxLineLength:GamesScreen.kt$games.error!=null-&gt;Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text("Não foi possível carregar os jogos",color=SaqzTheme.colors.errorForeground);SaqzButton("Tentar novamente",{onIntent(GamesScreenIntent.Retry)},Modifier.fillMaxWidth().testTag(GamesTags.Retry))}</ID>
+    <ID>MaxLineLength:GamesScreen.kt$if(games.canCreate)SaqzButton("Novo jogo",{onIntent(GamesScreenIntent.OpenCreate)},Modifier.fillMaxWidth().testTag(GamesTags.Create))</ID>
+    <ID>MaxLineLength:GamesScreen.kt$private fun GameListItem.availability()</ID>
+    <ID>MaxLineLength:GamesScreen.kt$private fun GameStatusDto.label()</ID>
+    <ID>MaxLineLength:GamesScreen.kt$visible.isEmpty()-&gt;Text(if(state.tab==GamesTab.UPCOMING)"Nenhum jogo próximo" else "Nenhum jogo no histórico",style=SaqzTheme.typography.body,color=SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GroupOnboardingScreens.kt$TextFieldValue(state.timeZone)</ID>
+    <ID>MaxLineLength:GroupOnboardingScreens.kt$errorText</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Modifier.fillMaxWidth().heightIn(min = 52.dp).background(SaqzTheme.colors.surfacePearl, RoundedCornerShape(10.dp)).padding(start = 14.dp)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Modifier.size(52.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = description }</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupButton(stringResource(Res.string.action_cancel), onClose, variant = SaqzButtonVariant.Ghost, modifier = Modifier.fillMaxWidth())</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupButton(stringResource(Res.string.group_setup_add_value), { onChange(0) }, variant = SaqzButtonVariant.Ghost, enabled = enabled)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupButton(stringResource(Res.string.group_setup_done), onDone, variant = SaqzButtonVariant.Ghost, enabled = editable &amp;&amp; venue.name.isNotBlank())</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupButton(stringResource(Res.string.group_setup_remove_value), { onChange(null) }, variant = SaqzButtonVariant.Ghost, enabled = enabled)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupButton(stringResource(Res.string.group_setup_remove_venue), { onIntent(GroupSetupIntent.UpdateVenue(null)) }, variant = SaqzButtonVariant.Ghost, enabled = editable)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupButton(stringResource(label), { onIntent(GroupSetupIntent.SelectFallbackTimeZone(identifier)) }, variant = SaqzButtonVariant.Secondary, enabled = editable, modifier = Modifier.fillMaxWidth())</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$SetupInput</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(label, style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = if (active) SaqzTheme.colors.primary else SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(Res.string.group_setup_capacity), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(Res.string.group_setup_monthly_question), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(Res.string.group_setup_no_charge), style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(Res.string.group_setup_slot_number, index + 1), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(Res.string.group_setup_timezone_region), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(if (active) Res.string.group_setup_monthly_yes else Res.string.group_setup_monthly_no), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(label), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(stringResource(label), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(summary, style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$Text(value, style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$internal</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$leadingContent = { Text("R$", style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary) }</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$onCheckedChange = { checked -&gt; onIntent(GroupSetupIntent.UpdateMonthlyFee(if (checked) 0 else null, if (checked) defaultMonthlyDueDay else null)) }</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$stringResource(if (state.mode == GroupSetupMode.CREATE) Res.string.group_setup_create_action else Res.string.group_setup_save_action)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$textStyle = SaqzTheme.typography.bodyStrong.copy(color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center, letterSpacing = 0.sp)</ID>
+    <ID>MaxLineLength:GroupSetupComponents.kt$val title = stringResource(if (mode == GroupSetupMode.CREATE) Res.string.group_setup_create_title else Res.string.group_setup_edit_title)</ID>
+    <ID>MaxLineLength:GroupSetupScreen.kt$SetupInput</ID>
+    <ID>NewLineAtEndOfFile:GroupPhotoRenderState.kt$br.com.saqz.groups.presentation.photo.GroupPhotoRenderState.kt</ID>
+    <ID>TooManyFunctions:DeferredLinkStateMachine.kt$DeferredLinkStateMachine&lt;S, T, E&gt;</ID>
+    <ID>TooManyFunctions:ExpenseViewModel.kt$ExpenseViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:FinanceViewModel.kt$FinanceViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:GameDetailScreen.kt$br.com.saqz.groups.ui.games.detail.GameDetailScreen.kt</ID>
+    <ID>TooManyFunctions:GameDetailViewModel.kt$GameDetailViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:GameEditorScreen.kt$br.com.saqz.groups.ui.games.editor.GameEditorScreen.kt</ID>
+    <ID>TooManyFunctions:GroupAdministrationCoordinator.kt$GroupAdministrationStateMachine</ID>
+    <ID>TooManyFunctions:GroupPhotoCoordinator.kt$GroupPhotoCoordinator</ID>
+    <ID>TooManyFunctions:GroupSelectionCoordinator.kt$GroupSelectionStateMachine</ID>
+    <ID>TooManyFunctions:GroupSetupComponents.kt$br.com.saqz.groups.ui.setup.components.GroupSetupComponents.kt</ID>
+    <ID>TooManyFunctions:GroupSetupViewModel.kt$GroupSetupViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:GroupsRouteScreens.kt$br.com.saqz.groups.ui.GroupsRouteScreens.kt</ID>
+    <ID>UnusedParameter:GameEditorScreen.kt$slot: WeeklySlotDto</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("saqz.android-application")
+    id("saqz.detekt")
 }
 
 data class FirebaseAndroidConfig(

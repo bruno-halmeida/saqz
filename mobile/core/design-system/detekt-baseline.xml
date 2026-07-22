@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>FunctionNaming:Drawable0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainDrawable0Resources(map: MutableMap&lt;String, DrawableResource&gt;)</ID>
+    <ID>FunctionNaming:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>NewLineAtEndOfFile:SaqzTopBar.kt$br.com.saqz.designsystem.component.SaqzTopBar.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

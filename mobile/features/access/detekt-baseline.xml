@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>FunctionNaming:Drawable0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainDrawable0Resources(map: MutableMap&lt;String, DrawableResource&gt;)</ID>
+    <ID>FunctionNaming:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>LongMethod:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
+    <ID>TooManyFunctions:AuthenticationCoordinator.kt$AuthenticationStateMachine</ID>
+    <ID>TooManyFunctions:VerifiedSessionCoordinator.kt$SessionAccessStateMachine : SessionInvalidator</ID>
+  </CurrentIssues>
+</SmellBaseline>

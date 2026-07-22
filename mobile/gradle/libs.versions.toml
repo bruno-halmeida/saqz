@@ -9,6 +9,7 @@ branch = "5.21.1"
 coil = "3.5.0"
 compile-sdk = "36"
 compose = "1.11.1"
+detekt = "1.23.8"
 firebase-bom = "34.15.0"
 google-id = "1.1.1"
 junit = "4.13.2"
@@ -30,6 +31,7 @@ compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }

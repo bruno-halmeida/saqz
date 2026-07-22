@@ -1,0 +1,85 @@
+complexity:
+  LongMethod:
+    threshold: 80
+    ignoreAnnotated:
+      - 'Composable'
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 8
+    ignoreDefaultParameters: true
+    ignoreAnnotated:
+      - 'Composable'
+  ComplexCondition:
+    threshold: 5
+  CyclomaticComplexMethod:
+    threshold: 20
+    ignoreAnnotated:
+      - 'Composable'
+  LargeClass:
+    threshold: 150
+    ignoreAnnotated:
+      - 'Composable'
+
+coroutines:
+  GlobalCoroutineUsage:
+    active: true
+  RedundantSuspendModifier:
+    active: true
+
+empty-blocks:
+  EmptyFunctionBlock:
+    ignoreOverridden: true
+
+exceptions:
+  SwallowedException:
+    active: false
+  TooGenericExceptionCaught:
+    active: false
+
+naming:
+  FunctionNaming:
+    functionPattern: '([a-z][a-zA-Z0-9]*)|(`.*`)'
+    ignoreAnnotated:
+      - 'Composable'
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Za-z][_A-Za-z0-9]*'
+  ObjectPropertyNaming:
+    constantPattern: '[A-Za-z][_A-Za-z0-9]*'
+  PackageNaming:
+    packagePattern: '[a-z]+(\.[a-z][a-z0-9]*)*'
+  MatchingDeclarationName:
+    active: false
+
+potential-bugs:
+  UnsafeCallOnNullableType:
+    active: false
+  HasPlatformType:
+    active: true
+
+style:
+  MaxLineLength:
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+  ReturnCount:
+    max: 4
+    excludedFunctions:
+      - "equals"
+  ForbiddenComment:
+    active: false
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: false
+  UseDataClass:
+    active: false
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 2
+  ThrowsCount:
+    max: 3
+  DestructuringDeclarationWithTooManyEntries:
+    maxDestructuringEntries: 5
+  UnusedPrivateMember:
+    ignoreAnnotated:
+      - 'Preview'
+      - 'Composable'
