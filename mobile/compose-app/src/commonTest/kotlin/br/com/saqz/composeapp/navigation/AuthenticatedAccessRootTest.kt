@@ -44,7 +44,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
-import br.com.saqz.groups.ui.InviteToolState
+import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupCreateCommand
 import br.com.saqz.groups.model.GroupDraftKey

@@ -22,7 +22,6 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
 import br.com.saqz.groups.data.GroupProfileGateway
 import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
@@ -50,7 +49,7 @@ import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupSelectionStateMachine
-import br.com.saqz.groups.presentation.InviteUiError
+import br.com.saqz.groups.presentation.InviteToolStateMachine
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
 import br.com.saqz.groups.presentation.games.detail.GameDetailEffect
 import br.com.saqz.groups.presentation.games.detail.GameDetailState
@@ -87,7 +86,6 @@ import br.com.saqz.groups.ui.GroupsSelectorChrome
 import br.com.saqz.groups.ui.InviteManagementScreen
 import br.com.saqz.groups.ui.InviteManagementIntent
 import br.com.saqz.groups.ui.InviteManagementUiState
-import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.groups.ui.LogoutConfirmationDialog
@@ -106,14 +104,12 @@ import br.com.saqz.composeapp.di.GameDetailViewModelParameters
 import br.com.saqz.composeapp.di.GroupSetupViewModelParameters
 import br.com.saqz.composeapp.home.AuthenticatedHomeScreen
 import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
-import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionInvalidator
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.random.Random
@@ -490,19 +486,18 @@ internal class AccessRuntime(
     override val groupProfileGateway: GroupProfileGateway,
     override val groupPhotoGateway: GroupPhotoGateway,
     override val sessionInvalidator: SessionInvalidator,
-    private val roles: RolesInvitesGateway,
     private val authentication: AuthenticationStateMachine,
     private val session: SessionAccessStateMachine,
     private val selection: GroupSelectionStateMachine,
     private val administration: GroupAdministrationStateMachine,
+    private val inviteTools: InviteToolStateMachine,
     private val invites: DeferredInviteStateMachine,
     private val attendanceLinks: DeferredAttendanceLinkStateMachine,
     private val attendanceDestinations: AttendanceDestinationStore,
     private val scope: CoroutineScope,
 ) : AccessRuntimeContract {
     override val attendanceDestinationState = attendanceDestinations.destination
-    private val mutableInviteToolState = MutableStateFlow(InviteToolState())
-    override val inviteToolState = mutableInviteToolState.asStateFlow()
+    override val inviteToolState = inviteTools.state
     private val mutableAuthObservedState = MutableStateFlow(false)
     override val authObservedState = mutableAuthObservedState.asStateFlow()
     override val authenticationState = authentication.state
@@ -561,41 +556,11 @@ internal class AccessRuntime(
         })
     }
 
-    private fun rotateInvite() {
-        val groupId = administration.state.value.group?.group?.id ?: return
-        if (mutableInviteToolState.value.isLoading) return
-        mutableInviteToolState.value = mutableInviteToolState.value.copy(isLoading = true, error = null)
-        scope.launch {
-            mutableInviteToolState.value = when (val result = roles.rotateInvite(groupId)) {
-                is NetworkResult.Success -> InviteToolState(inviteUrl = result.value.inviteUrl)
-                is NetworkResult.Failure -> mutableInviteToolState.value.copy(
-                    isLoading = false,
-                    error = InviteUiError.UNAVAILABLE,
-                )
-            }
-        }
-    }
+    private fun rotateInvite() = inviteTools.rotate()
 
-    private fun expireInvite() {
-        val groupId = administration.state.value.group?.group?.id ?: return
-        if (mutableInviteToolState.value.isLoading) return
-        mutableInviteToolState.value = mutableInviteToolState.value.copy(isLoading = true, error = null)
-        scope.launch {
-            mutableInviteToolState.value = when (roles.expireInvite(groupId)) {
-                is NetworkResult.Success -> InviteToolState()
-                is NetworkResult.Failure -> mutableInviteToolState.value.copy(
-                    isLoading = false,
-                    error = InviteUiError.UNAVAILABLE,
-                )
-            }
-        }
-    }
+    private fun expireInvite() = inviteTools.expire()
 
-    private fun shareFinished(successful: Boolean) {
-        if (!successful) {
-            mutableInviteToolState.value = mutableInviteToolState.value.copy(error = InviteUiError.UNAVAILABLE)
-        }
-    }
+    private fun shareFinished(successful: Boolean) = inviteTools.shareFinished(successful)
 
     override fun newRequestId(): String {
         val bytes = Random.nextBytes(16)

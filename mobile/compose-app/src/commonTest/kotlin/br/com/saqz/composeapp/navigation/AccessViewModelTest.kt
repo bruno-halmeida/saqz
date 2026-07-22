@@ -20,7 +20,7 @@ import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.InviteUiError
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.groups.ui.InviteToolState
+import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.network.SessionDto
 import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.network.SessionUserDto

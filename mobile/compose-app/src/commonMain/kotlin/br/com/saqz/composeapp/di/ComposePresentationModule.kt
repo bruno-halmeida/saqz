@@ -5,6 +5,7 @@ import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
+import br.com.saqz.groups.presentation.InviteToolStateMachine
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
 import br.com.saqz.groups.presentation.setup.GroupSetupInput
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
@@ -29,17 +30,24 @@ internal data class GameDetailViewModelParameters(
 
 internal val composePresentationModule = module {
     factory { parameters ->
+        InviteToolStateMachine(
+            roles = get(),
+            groupId = { get<br.com.saqz.groups.presentation.GroupAdministrationStateMachine>().state.value.group?.group?.id },
+            scope = parameters.get<CoroutineScope>(),
+        )
+    }
+    factory { parameters ->
         AccessRuntime(
             auth = get(),
             localAccessState = get(),
             groupProfileGateway = get(),
             groupPhotoGateway = get(),
             sessionInvalidator = get(),
-            roles = get(),
             authentication = get(),
             session = get(),
             selection = get(),
             administration = get(),
+            inviteTools = get { parametersOf(parameters.get<CoroutineScope>()) },
             invites = get(),
             attendanceLinks = get(),
             attendanceDestinations = get(),

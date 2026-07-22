@@ -12,7 +12,7 @@ import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.groups.ui.InviteToolState
+import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.groups.ui.CreateGroupUiState
 import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope

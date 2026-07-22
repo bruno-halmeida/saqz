@@ -5,7 +5,7 @@ import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
-import br.com.saqz.groups.ui.InviteToolState
+import br.com.saqz.groups.presentation.InviteToolState
 
 @Immutable
 internal data class AccessUiState(

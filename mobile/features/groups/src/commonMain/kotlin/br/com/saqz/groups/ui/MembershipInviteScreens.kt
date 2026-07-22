@@ -20,6 +20,7 @@ import br.com.saqz.groups.data.PersistedRoleDto
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.InviteUiError
+import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.groups.resources.*
 import br.com.saqz.designsystem.component.SaqzBadge
 import br.com.saqz.designsystem.component.SaqzBadgeVariant
@@ -41,14 +42,6 @@ internal object MembershipInviteTags {
 
     fun role(userId: String) = "membership-role-$userId"
 }
-
-@Immutable
-data class InviteToolState(
-    val inviteUrl: String? = null,
-    val isLoading: Boolean = false,
-    val error: InviteUiError? = null,
-    val retryAfterSeconds: Int? = null,
-)
 
 sealed interface MembershipAdministrationIntent {
     data class ChangeRole(val userId: String, val role: PersistedRoleDto) : MembershipAdministrationIntent
