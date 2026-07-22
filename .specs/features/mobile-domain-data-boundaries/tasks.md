@@ -812,6 +812,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T23: Define games and recurrence domain contracts
 
+**Status:** Complete — `2800ee0`; focused gate passed.
+
 **What:** Create framework-free game, venue, status, version, weekly recurrence, slot, series-boundary commands/results/errors and game gateway capabilities in Groups domain.
 
 **Where:** `features/groups/domain/src/commonMain/**/game/**`; co-located tests.
@@ -838,6 +840,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `feat(groups-domain): define games and recurrence contracts`
 
 ### T24: Implement game and recurrence data mapping
+
+**Status:** Complete — `46393c2`; focused gate passed.
 
 **What:** Move game/series DTOs and API operations into Groups data, implement domain gateways, and preserve exact endpoints, commands, ETags, failures, retries and cancellation.
 
@@ -866,6 +870,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T25: Switch games list presentation to domain contracts
 
+**Status:** Complete — `f064a54`; focused gate and boundary scan passed.
+
 **What:** Convert games list ViewModel/state/intent/item mapping/screen inputs to domain models and gateway results.
 
 **Where:** `features/groups/src/commonMain/**/games/list/**`; corresponding tests/UI tests.
@@ -888,6 +894,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups): use domain games in list`
 
 ### T26: Switch game editor presentation to domain contracts
+
+**Status:** Complete — `bb31216`; focused gates and `:android-app:assembleDevDebug` passed.
 
 **What:** Convert game editor ViewModel, commands, draft models/store seams, recurrence/boundary mapping and screen inputs to domain types/results.
 
@@ -916,6 +924,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T27: Switch game-detail lifecycle presentation to domain contracts
 
+**Status:** Complete — `8dc2ee4`; focused gate passed.
+
 **What:** Convert game-detail loading and lifecycle mutation behavior (excluding attendance, handled next) to domain game models/results/errors.
 
 **Where:** `features/groups/src/commonMain/**/games/detail/**` game/lifecycle portions and focused tests.
@@ -938,6 +948,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups): use domain games in detail lifecycle`
 
 ### T28: Define attendance domain models and capability contracts
+
+**Status:** Complete — `69dbe32`; focused gate passed.
 
 **What:** Create attendance entry/detail/audit/capacity/mutation/status/intent/command/version/error models and gateway capabilities in Groups domain.
 
@@ -962,6 +974,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T29: Implement attendance data mapping and mutations
 
+**Status:** Complete — `47a31d8`; focused gate passed.
+
 **What:** Move attendance DTOs/API into Groups data and implement read/respond/override/capacity mappings with exact routes, commands, ETags, failures, retry rules and cancellation.
 
 **Where:** `features/groups/data/src/commonMain/**/attendance/**` excluding share; migrated `AttendanceApiTest` and mapper tests.
@@ -984,6 +998,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups-data): map attendance transport to domain`
 
 ### T30: Switch game-detail attendance presentation to domain contracts
+
+**Status:** Complete — `cccb1fc`; focused Groups and compose-app gates passed.
 
 **What:** Convert game-detail attendance state/intents/operations/capacity/override/retry behavior and screen inputs to domain attendance contracts.
 

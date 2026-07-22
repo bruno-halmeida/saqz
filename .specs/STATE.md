@@ -245,10 +245,10 @@
 ## Handoff
 
 - **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/`
-- **Phase / Task**: Execute — Batches 1–4 complete (T01–T22); Batch 5 covers games and attendance (T23–T30).
+- **Phase / Task**: Execute — Batches 1–5 complete (T01–T30); final Batch 6 covers finance, integration and verification (T31–T37).
 - **Completed**: Specify, Discuss and Design; task authoring T01–T37.
-- **In-progress**: Batch 5 (T23–T30) ready to start with one worker; no parallel execution.
-- **Next step**: Execute T23–T30 atomically with reviewed Kotlin/Gradle indentation. Preserve unrelated concurrent commits; run only focused gates through T36 and `rtk scripts/check-all` once in T37.
+- **In-progress**: Final Batch 6 (T31–T37) ready to start with one worker; no parallel execution.
+- **Next step**: Execute T31–T36 with focused gates, then run `rtk scripts/check-all` once in T37 and perform independent verification. Preserve unrelated concurrent commits.
 - **Blockers**: none.
 - **Uncommitted files**: `.specs/STATE.md`, `.specs/features/mobile-domain-data-boundaries/spec.md`, `design.md`, `tasks.md`.
 - **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending; mobile-solid-refactor-wave-2 remains incomplete and must not be silently overwritten or mixed into this feature's commits.
