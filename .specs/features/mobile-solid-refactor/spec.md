@@ -36,6 +36,9 @@ observable behavior.
    `GroupSetupViewModel`; its mode, input, error, state, MVI contracts, command
    key factory, and pure setup helpers SHALL live in focused files in the same
    package without changing photo, timezone, or draft behavior.
+9. **SOLID-09** - `FinanceViewModel.kt` SHALL declare only
+   `FinanceViewModel`; `FinanceOperation` SHALL live in a focused file in the
+   same package without changing charge behavior or API.
 
 ## Out of Scope
 

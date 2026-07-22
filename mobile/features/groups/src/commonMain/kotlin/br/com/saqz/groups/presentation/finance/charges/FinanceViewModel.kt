@@ -312,12 +312,3 @@ class FinanceViewModel(
         )
     }
 }
-
-private sealed interface FinanceOperation {
-    data class Monthly(val draft: MonthlyChargeDraft) : FinanceOperation
-    data class Status(
-        val chargeId: String,
-        val etag: String,
-        val command: ChargeStatusCommandDto,
-    ) : FinanceOperation
-}
