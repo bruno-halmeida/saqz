@@ -47,11 +47,13 @@ kotlin {
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
+            implementation(libs.koin.test)
         }
     }
 }
