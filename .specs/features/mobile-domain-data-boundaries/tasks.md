@@ -102,6 +102,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T01: Add the shared framework-free domain result/error module
 
+**Status:** Complete — `edc58b5`; focused gate passed.
+
 **What:** Create `:core:domain` with the approved typed result, empty success, helpers, validation details, data errors, and genuinely shared opaque identifiers.
 
 **Where:** `settings.gradle.kts`; `core/domain/build.gradle.kts`; `core/domain/src/commonMain/**`; `core/domain/src/commonTest/**`.
@@ -134,6 +136,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T02: Separate known connectivity from unknown core transport failures
 
+**Status:** Complete — `3286f22`; focused gate passed.
+
 **What:** Refine `NetworkError` and `NetworkClient` so retry eligibility can distinguish connectivity from unknown exceptions without changing existing timeout, HTTP, problem, payload, logging, or cancellation behavior.
 
 **Where:** `core/network/src/commonMain/.../NetworkModels.kt`; `NetworkClient.kt`; focused `core/network/src/commonTest/**`.
@@ -164,6 +168,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(network): distinguish connectivity from unknown failures`
 
 ### T03: Implement the deterministic bounded transport retry helper
+
+**Status:** Complete — `1d3bf55`; focused gate passed.
 
 **What:** Add a reusable retry mechanism beside `NetworkResult`, invoked explicitly by feature data code with `RetrySafety.Never`, `Read`, or `IdempotentWrite`.
 
@@ -198,6 +204,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T04: Declare Access domain and data child modules
 
+**Status:** Complete — `ae57e2b`; focused compile gate passed.
+
 **What:** Add empty compilable `:features:access:domain` and `:features:access:data` KMP modules without changing current Access behavior or dependencies yet.
 
 **Where:** `settings.gradle.kts`; `features/access/domain/build.gradle.kts`; `features/access/data/build.gradle.kts`.
@@ -227,6 +235,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `build(access): declare domain and data modules`
 
 ### T05: Declare Groups domain and data child modules
+
+**Status:** Complete — `605fd70`; focused compile gate passed.
 
 **What:** Add empty compilable `:features:groups:domain` and `:features:groups:data` KMP modules without changing Groups behavior or dependencies yet.
 
