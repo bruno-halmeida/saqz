@@ -27,7 +27,9 @@ import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.attendance.AttendanceGateway
 import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
+import br.com.saqz.groups.data.attendance.AttendanceApi
 import br.com.saqz.groups.data.game.GameGateway
+import br.com.saqz.groups.data.game.GameApi
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.port.GroupAttendanceSharePort
@@ -219,8 +221,10 @@ class SaqzKoinModulesTest {
         assertSame(koin.get<RolesInvitesApi>(), koin.get<RolesInvitesGateway>())
         koin.get<GroupPhotoGateway>()
         koin.get<AttendanceShareGateway>()
-        koin.get<GameGateway>()
-        koin.get<AttendanceGateway>()
+        val gameApi = koin.get<GameApi>()
+        assertSame(gameApi, koin.get<GameGateway>())
+        val attendanceApi = koin.get<AttendanceApi>()
+        assertSame(attendanceApi, koin.get<AttendanceGateway>())
 
         koin.get<GroupSelectionStateMachine>()
         koin.get<GroupAdministrationStateMachine>()
