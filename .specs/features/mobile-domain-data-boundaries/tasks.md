@@ -633,6 +633,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T17: Define group-photo domain and native capability contracts
 
+**Status:** Complete — `d2b21ce`; focused gate passed.
+
 **What:** Create Groups domain models, remote capability, media outcomes, version values, and provider-neutral native photo selection/encoding/preview contracts.
 
 **Where:** `features/groups/domain/src/commonMain/**/photo/**`; move relevant contracts from `groups/port/GroupPhotoPorts.kt`; co-located tests.
@@ -660,6 +662,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `feat(groups-domain): define photo capability contracts`
 
 ### T18: Implement group-photo transport and domain mapping
+
+**Status:** Complete — `0cd2870`; focused gate passed.
 
 **What:** Move photo API implementation/transport models into Groups data and implement upload/read/remove domain capabilities with exact media limits, ETags, 304 behavior, retries and cancellation.
 
@@ -690,6 +694,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T19: Switch group-photo presentation and Android adapters to domain contracts
 
+**Status:** Complete — `b6dc9db`; focused gates passed.
+
 **What:** Convert photo coordinator/list loader/editor/app consumers and Android photo adapters to Groups domain contracts without changing selection, crop, preview, caching or retry behavior.
 
 **Where:** `features/groups/src/commonMain/**/photo/**`; relevant `compose-app` photo consumers; `android-app/src/main/**/groups/photo/**`; focused common/Android tests.
@@ -717,6 +723,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups): consume photo domain contracts`
 
 ### T20: Define attendance-link and sharing domain contracts
+
+**Status:** Complete — `e0e0be5`; focused gate passed.
 
 **What:** Add Groups domain models/capabilities/errors for attendance links, resolved destinations, share snapshots/images, attempt limits and provider-neutral native sharing/link ports.
 
@@ -746,6 +754,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T21: Implement attendance-link and share-snapshot data mapping
 
+**Status:** Complete — `a5c5094`; focused gate passed.
+
 **What:** Move attendance-share DTOs/API into Groups data and implement rotate/resolve/read-snapshot domain capabilities with exact routes, safe failures, retry rules and cancellation.
 
 **Where:** `features/groups/data/src/commonMain/**/attendance/share/**`; migrated `AttendanceShareApiTest` and mapper coverage.
@@ -772,6 +782,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups-data): map attendance sharing transport`
 
 ### T22: Switch attendance sharing presentation and Android adapter to domain
+
+**Status:** Complete — `14c35dd`; focused gate and `:android-app:assembleDevDebug` passed (B19/V1).
 
 **What:** Convert deferred attendance-link coordinator, share-image mapping/UI state, compose-app destination store and Android share adapter to Groups domain contracts.
 
