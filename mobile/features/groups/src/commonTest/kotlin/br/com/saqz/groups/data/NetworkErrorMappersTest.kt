@@ -9,7 +9,10 @@ import kotlin.test.assertIs
 class NetworkErrorMappersTest {
     @Test
     fun setupValidationMaps400ToValidation() {
-        assertEquals(SetupFailure.Validation, problem(400).toSetupFailure())
+        val errors = mapOf("name" to listOf("required"))
+        val result = problem(400, fieldErrors = errors).toSetupFailure()
+        val validation = assertIs<SetupFailure.Validation>(result)
+        assertEquals(errors, validation.fieldErrors)
     }
 
     @Test
@@ -40,7 +43,10 @@ class NetworkErrorMappersTest {
 
     @Test
     fun administrationMapsSameStatusCodesAsSetup() {
-        assertEquals(AdministrationFailure.Validation, problem(400).toAdministrationFailure())
+        val errors = mapOf("name" to listOf("required"))
+        val result = problem(400, fieldErrors = errors).toAdministrationFailure()
+        val validation = assertIs<AdministrationFailure.Validation>(result)
+        assertEquals(errors, validation.fieldErrors)
         assertEquals(AdministrationFailure.Forbidden, problem(403).toAdministrationFailure())
         assertEquals(AdministrationFailure.NotFound, problem(404).toAdministrationFailure())
         assertEquals(AdministrationFailure.Conflict, problem(409, "VERSION_CONFLICT").toAdministrationFailure())
@@ -106,12 +112,13 @@ class NetworkErrorMappersTest {
         status: Int,
         code: String? = null,
         retryAfterSeconds: Int? = null,
+        fieldErrors: Map<String, List<String>>? = null,
     ): NetworkError = NetworkError.ApiProblemError(
         ApiProblem(
             status = status,
             code = code,
             correlationId = "corr",
-            fieldErrors = null,
+            fieldErrors = fieldErrors,
             retryAfterSeconds = retryAfterSeconds,
         ),
     )

@@ -3,6 +3,8 @@ package br.com.saqz.groups.presentation.setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.data.SetupFailure
+import br.com.saqz.groups.data.toSetupFailure
 import br.com.saqz.groups.model.GroupCreateCommand
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupDraftResource
@@ -204,7 +206,7 @@ class GroupSetupViewModel(
         when (val result = gateway.updateProfile(GroupUpdateCommand(requireNotNull(snapshot.groupId), requireNotNull(snapshot.etag), snapshot.form))) {
             is NetworkResult.Success -> confirmedSuccess(result.value.group.id, result.value.group.version, result.value.etag)
             is NetworkResult.Failure -> {
-                if (result.error.isProblem(409, "VERSION_CONFLICT")) {
+                if (result.error.toSetupFailure() == SetupFailure.Conflict) {
                     mutableState.update { it.copy(isLoading = false, conflict = true) }
                 } else fail(result.error)
             }
@@ -271,18 +273,27 @@ class GroupSetupViewModel(
     }
 
     private fun fail(error: NetworkError) {
-        val problem = (error as? NetworkError.ApiProblemError)?.problem
-        mutableState.update {
-            it.copy(
-                isLoading = false,
-                fieldErrors = problem?.fieldErrors.orEmpty(),
-                error = when (problem?.status) {
-                    403 -> GroupSetupError.FORBIDDEN
-                    404 -> GroupSetupError.NOT_FOUND
-                    400 -> null
-                    else -> GroupSetupError.UNAVAILABLE
-                },
-            )
+        when (val failure = error.toSetupFailure()) {
+            is SetupFailure.Validation -> mutableState.update {
+                it.copy(
+                    isLoading = false,
+                    fieldErrors = failure.fieldErrors,
+                    error = null,
+                )
+            }
+            else -> mutableState.update {
+                it.copy(
+                    isLoading = false,
+                    fieldErrors = emptyMap(),
+                    error = when (failure) {
+                        SetupFailure.Conflict -> GroupSetupError.UNAVAILABLE
+                        SetupFailure.Forbidden -> GroupSetupError.FORBIDDEN
+                        SetupFailure.NotFound -> GroupSetupError.NOT_FOUND
+                        SetupFailure.Unavailable -> GroupSetupError.UNAVAILABLE
+                        is SetupFailure.Validation -> error("exhaustive")
+                    },
+                )
+            }
         }
     }
 

@@ -1,6 +1,8 @@
 package br.com.saqz.groups.presentation.attendance.share
 
+import br.com.saqz.groups.data.DeferredLinkFailure
 import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
+import br.com.saqz.groups.data.toDeferredLinkFailure
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -151,20 +153,22 @@ class DeferredAttendanceLinkStateMachine(
     }
 
     private fun handleFailure(error: NetworkError) {
-        val problem = (error as? NetworkError.ApiProblemError)?.problem
-        when {
-            problem?.status == 404 && problem.code == "ATTENDANCE_LINK_INVALID_OR_EXPIRED" -> {
+        when (val failure = error.toDeferredLinkFailure(
+            invalidCode = "ATTENDANCE_LINK_INVALID_OR_EXPIRED",
+            attemptLimitCode = "ATTENDANCE_LINK_ATTEMPT_LIMIT",
+        )) {
+            DeferredLinkFailure.InvalidOrExpired -> {
                 clearPending()
                 mutableState.value = DeferredAttendanceLinkState(error = AttendanceLinkUiError.INVALID_OR_EXPIRED)
             }
-            problem?.status == 429 && problem.code == "ATTENDANCE_LINK_ATTEMPT_LIMIT" -> {
+            is DeferredLinkFailure.AttemptLimit -> {
                 mutableState.value = mutableState.value.copy(
                     isResolving = false,
                     error = AttendanceLinkUiError.ATTEMPT_LIMIT,
-                    retryAfterSeconds = problem.retryAfterSeconds,
+                    retryAfterSeconds = failure.retryAfterSeconds,
                 )
             }
-            else -> mutableState.value = mutableState.value.copy(
+            DeferredLinkFailure.Unavailable -> mutableState.value = mutableState.value.copy(
                 isResolving = false,
                 error = AttendanceLinkUiError.UNAVAILABLE,
             )

@@ -7,7 +7,7 @@ sealed interface SetupFailure {
     data object Conflict : SetupFailure
     data object Forbidden : SetupFailure
     data object NotFound : SetupFailure
-    data object Validation : SetupFailure
+    data class Validation(val fieldErrors: Map<String, List<String>>) : SetupFailure
     data object Unavailable : SetupFailure
 }
 
@@ -17,7 +17,7 @@ fun NetworkError.toSetupFailure(): SetupFailure = when (this) {
 }
 
 private fun ApiProblem.toSetupFailure(): SetupFailure = when {
-    status == 400 -> SetupFailure.Validation
+    status == 400 -> SetupFailure.Validation(fieldErrors.orEmpty())
     status == 403 -> SetupFailure.Forbidden
     status == 404 -> SetupFailure.NotFound
     code == "VERSION_CONFLICT" -> SetupFailure.Conflict
@@ -28,7 +28,7 @@ sealed interface AdministrationFailure {
     data object Conflict : AdministrationFailure
     data object Forbidden : AdministrationFailure
     data object NotFound : AdministrationFailure
-    data object Validation : AdministrationFailure
+    data class Validation(val fieldErrors: Map<String, List<String>>) : AdministrationFailure
     data object Unavailable : AdministrationFailure
 }
 
@@ -38,7 +38,7 @@ fun NetworkError.toAdministrationFailure(): AdministrationFailure = when (this) 
 }
 
 private fun ApiProblem.toAdministrationFailure(): AdministrationFailure = when {
-    status == 400 -> AdministrationFailure.Validation
+    status == 400 -> AdministrationFailure.Validation(fieldErrors.orEmpty())
     status == 403 -> AdministrationFailure.Forbidden
     status == 404 -> AdministrationFailure.NotFound
     code == "VERSION_CONFLICT" -> AdministrationFailure.Conflict

@@ -1,7 +1,9 @@
 package br.com.saqz.groups.presentation
 
+import br.com.saqz.groups.data.DeferredLinkFailure
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.RolesInvitesGateway
+import br.com.saqz.groups.data.toDeferredLinkFailure
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -150,20 +152,22 @@ class DeferredInviteStateMachine(
     }
 
     private fun handleFailure(error: NetworkError) {
-        val problem = (error as? NetworkError.ApiProblemError)?.problem
-        when {
-            problem?.status == 404 && problem.code == "INVITE_INVALID_OR_EXPIRED" -> {
+        when (val failure = error.toDeferredLinkFailure(
+            invalidCode = "INVITE_INVALID_OR_EXPIRED",
+            attemptLimitCode = "INVITE_ATTEMPT_LIMIT",
+        )) {
+            DeferredLinkFailure.InvalidOrExpired -> {
                 clearPending()
                 mutableState.value = InviteState(error = InviteUiError.INVALID_OR_EXPIRED)
             }
-            problem?.status == 429 && problem.code == "INVITE_ATTEMPT_LIMIT" -> {
+            is DeferredLinkFailure.AttemptLimit -> {
                 mutableState.value = mutableState.value.copy(
                     isRedeeming = false,
                     error = InviteUiError.ATTEMPT_LIMIT,
-                    retryAfterSeconds = problem.retryAfterSeconds,
+                    retryAfterSeconds = failure.retryAfterSeconds,
                 )
             }
-            else -> mutableState.value = mutableState.value.copy(
+            DeferredLinkFailure.Unavailable -> mutableState.value = mutableState.value.copy(
                 isRedeeming = false,
                 error = InviteUiError.UNAVAILABLE,
             )

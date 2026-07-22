@@ -4,6 +4,8 @@ import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.GroupPhotoReceipt
 import br.com.saqz.groups.data.GroupPhotoUploadCommand
 import br.com.saqz.groups.data.GroupPhotoReadResult
+import br.com.saqz.groups.data.PhotoFailure
+import br.com.saqz.groups.data.toPhotoFailure
 import br.com.saqz.groups.port.CachedGroupPhoto
 import br.com.saqz.groups.port.GroupPhotoCachePort
 import br.com.saqz.groups.port.GroupPhotoCrop
@@ -136,14 +138,13 @@ class GroupPhotoCoordinator(
     }
 
     private fun finishReadFailure(groupId: String, error: br.com.saqz.network.NetworkError) {
-        val notFound = error == br.com.saqz.network.NetworkError.HttpStatus(404) ||
-            (error as? br.com.saqz.network.NetworkError.ApiProblemError)?.problem?.status == 404
-        if (notFound) cache.evict(groupId)
+        val failure = error.toPhotoFailure()
+        if (failure == PhotoFailure.NotFound) cache.evict(groupId)
         mutableState.update {
             it.copy(
                 existing = null,
                 stage = GroupPhotoStage.IDLE,
-                error = if (notFound) null else GroupPhotoError.READ_FAILED,
+                error = if (failure == PhotoFailure.NotFound) null else GroupPhotoError.READ_FAILED,
             )
         }
     }
@@ -186,12 +187,11 @@ class GroupPhotoCoordinator(
                     mutableState.update { it.copy(stage = GroupPhotoStage.UPLOADING) }
                     when (val result = gateway.upload(GroupPhotoUploadCommand(groupId, groupEtag, encoded.value))) {
                         is NetworkResult.Failure -> mutableState.update {
-                            val error = result.error as? br.com.saqz.network.NetworkError.ApiProblemError
-                            val stale = error?.problem?.status == 409 && error.problem.code == "VERSION_CONFLICT"
+                            val failure = result.error.toPhotoFailure()
                             it.copy(
                                 stage = GroupPhotoStage.CROPPING,
-                                retryUpload = !stale,
-                                error = if (stale) GroupPhotoError.STALE_VERSION else GroupPhotoError.UPLOAD_FAILED,
+                                retryUpload = failure != PhotoFailure.StaleVersion,
+                                error = if (failure == PhotoFailure.StaleVersion) GroupPhotoError.STALE_VERSION else GroupPhotoError.UPLOAD_FAILED,
                             )
                         }
                         is NetworkResult.Success -> uploadSucceeded(groupId, selection, result.value)

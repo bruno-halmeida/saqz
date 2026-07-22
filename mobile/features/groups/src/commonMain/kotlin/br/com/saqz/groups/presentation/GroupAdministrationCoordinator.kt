@@ -1,11 +1,13 @@
 package br.com.saqz.groups.presentation
 
+import br.com.saqz.groups.data.AdministrationFailure
 import br.com.saqz.groups.data.GroupGateway
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.MembershipDto
 import br.com.saqz.groups.data.PersistedRoleDto
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.data.toAdministrationFailure
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
@@ -99,7 +101,7 @@ class GroupAdministrationStateMachine(
             when (val result = groups.update(group.group.id, group.etag, name, timeZone)) {
                 is NetworkResult.Success -> setUpdatedGroup(result.value)
                 is NetworkResult.Failure -> {
-                    if (result.error.isProblem(409, "VERSION_CONFLICT")) reloadAfterConflict(group.group.id)
+                    if (result.error.toAdministrationFailure() == AdministrationFailure.Conflict) reloadAfterConflict(group.group.id)
                     else fail(result.error)
                 }
             }
@@ -175,17 +177,24 @@ class GroupAdministrationStateMachine(
     }
 
     private fun fail(error: NetworkError) {
-        val problem = (error as? NetworkError.ApiProblemError)?.problem
-        mutableState.value = mutableState.value.copy(
-            isLoading = false,
-            fieldErrors = problem?.fieldErrors.orEmpty(),
-            error = when {
-                problem?.status == 403 -> GroupAdministrationError.FORBIDDEN
-                problem?.status == 404 -> GroupAdministrationError.NOT_FOUND
-                problem?.status == 400 -> null
-                else -> GroupAdministrationError.UNAVAILABLE
-            },
-        )
+        when (val failure = error.toAdministrationFailure()) {
+            is AdministrationFailure.Validation -> mutableState.value = mutableState.value.copy(
+                isLoading = false,
+                fieldErrors = failure.fieldErrors,
+                error = null,
+            )
+            else -> mutableState.value = mutableState.value.copy(
+                isLoading = false,
+                fieldErrors = emptyMap(),
+                error = when (failure) {
+                    AdministrationFailure.Conflict -> GroupAdministrationError.UNAVAILABLE
+                    AdministrationFailure.Forbidden -> GroupAdministrationError.FORBIDDEN
+                    AdministrationFailure.NotFound -> GroupAdministrationError.NOT_FOUND
+                    AdministrationFailure.Unavailable -> GroupAdministrationError.UNAVAILABLE
+                    is AdministrationFailure.Validation -> error("exhaustive")
+                },
+            )
+        }
     }
 }
 
@@ -194,6 +203,3 @@ private fun actionsFor(role: GroupRoleDto): GroupActions = when (role) {
     GroupRoleDto.ADMIN -> GroupActions(true, false, true)
     GroupRoleDto.ATHLETE -> GroupActions(false, false, false)
 }
-
-private fun NetworkError.isProblem(status: Int, code: String): Boolean =
-    br.com.saqz.network.isProblem(this, status, code)

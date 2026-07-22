@@ -12,7 +12,6 @@ import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
-import br.com.saqz.network.NetworkError
 
 internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String>> = buildMap {
     val form = state.form
@@ -81,9 +80,6 @@ internal fun GroupSetupState.toDraft(draftKey: GroupDraftKey) = GroupSetupDraft(
     commandKey = commandKey,
     form = form,
 )
-
-internal fun NetworkError.isProblem(status: Int, code: String): Boolean =
-    br.com.saqz.network.isProblem(this, status, code)
 
 private fun String?.hasLength(min: Int, max: Int): Boolean {
     val value = this?.trim() ?: return false
