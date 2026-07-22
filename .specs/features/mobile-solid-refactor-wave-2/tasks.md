@@ -305,8 +305,6 @@ T27 → T28 → T29 → T30
 
 **Status**: completed (2d4a2c7)
 
-**Status**: in_progress
-
 **What**: Criar `AuthUiError.messageRes()` (`when` exaustivo, sem `else`) e `NativeFailureCode.toUiError()` em `features/access/presentation`; migrar `LoginScreen`, `RegistrationScreen`, `IdentityCompletionScreens` e os dois coordinators para as fontes únicas.
 **Where**: `mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/presentation/`; consumidores em `ui/LoginScreen.kt:402-410`, `ui/RegistrationScreen.kt:257-263`, `ui/IdentityCompletionScreens.kt:270-275`, `presentation/AuthenticationCoordinator.kt:203-211`, `presentation/VerifiedSessionCoordinator.kt:239-247`
 **Depends on**: None
@@ -356,7 +354,7 @@ T27 → T28 → T29 → T30
 
 ### T11: Features/groups consome os formatters centrais de BRL e data
 
-**Status**: completed (pending commit)
+**Status**: completed (cd8c882)
 
 **What**: Substituir as 5 implementações locais de BRL e os helpers de data duplicados pelos formatters de `core/common` (T05/T06), removendo o código local.
 **Where**: `mobile/features/groups/.../ui/setup/GroupSetupScreen.kt:980-1009`, `presentation/finance/expenses/ExpenseRules.kt:58-68`, `presentation/finance/charges/FinanceChargeRules.kt:42-50`, `ui/finance/charges/FinanceScreen.kt:80-82`, `ui/finance/expenses/ExpenseScreen.kt:72-73`
@@ -380,6 +378,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T12: Environment tipado em NetworkConfig
+
+**Status**: completed (pending commit)
 
 **What**: Substituir a decisão por string mágica `"prod"` por `enum class Environment { Dev, Prod }` em `NetworkConfig`; factories Android/iOS decidem logging pelo enum; quem constrói `NetworkConfig` passa o enum.
 **Where**: `mobile/core/network/src/commonMain/kotlin/br/com/saqz/network/NetworkClient.kt` (config), `mobile/core/network/src/androidMain/kotlin/br/com/saqz/network/PlatformNetworkClient.android.kt:10-14`, `mobile/core/network/src/iosMain/kotlin/br/com/saqz/network/PlatformNetworkClient.ios.kt:9-13`; produtores de `environment` (`SaqzAppEnvironment.kt`, composition)

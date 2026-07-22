@@ -15,6 +15,7 @@ import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
+import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionInvalidator
@@ -222,7 +223,7 @@ class GroupProfileApiTest {
     private fun zone() = assertIs<GroupTimeZone.ParseResult.Valid>(GroupTimeZone.parse("America/Sao_Paulo")).value
 
     private fun fixture(response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): GroupApi {
-        val network = NetworkClient(MockEngine { request -> response(request) }, NetworkConfig("test", "https://api.example.test/"))
+        val network = NetworkClient(MockEngine { request -> response(request) }, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"))
         return GroupApi(AuthenticatedNetworkClient(network, Tokens(), NoopInvalidator()))
     }
 

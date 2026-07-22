@@ -18,8 +18,9 @@ import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
 import br.com.saqz.androidapp.groups.attendance.share.AndroidAttendanceShareAdapter
 import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
-import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
+import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.network.toNetworkEnvironment
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AndroidAppComposition(
@@ -63,7 +64,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
         return AndroidAppComposition(
             dependencies = SaqzAppDependencies(
-                environment = BuildConfig.ENVIRONMENT,
+                environment = BuildConfig.ENVIRONMENT.toNetworkEnvironment(),
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 auth = auth,
                 links = links,

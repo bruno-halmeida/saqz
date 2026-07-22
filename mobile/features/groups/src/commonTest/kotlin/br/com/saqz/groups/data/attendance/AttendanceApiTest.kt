@@ -30,7 +30,7 @@ class AttendanceApiTest {
 
     private suspend fun readStatus(status:String):AttendanceStatusDto{val result=api{detailResponse(detail(status,null))}.read(GROUP,GAME);return assertIs<NetworkResult.Success<AttendanceDetailDto>>(result).value.ownAttendance!!.status}
     private fun detail(status:String,position:Long?)="""{"ownAttendance":{"memberId":"$MEMBER","status":"$status","waitlistPosition":${position?:"null"},"version":2},"confirmedCount":2,"availableSpots":1,"waitlistCount":1,"capacity":3}"""
-    private fun api(tokens:IdTokenProvider=Tokens(),handler:suspend MockRequestHandleScope.(HttpRequestData)->HttpResponseData):AttendanceApi{val network=NetworkClient(MockEngine{request->handler(request)},NetworkConfig("test","https://api.example.test/"));return AttendanceApi(AuthenticatedNetworkClient(network,tokens,NoopInvalidator()))}
+    private fun api(tokens:IdTokenProvider=Tokens(),handler:suspend MockRequestHandleScope.(HttpRequestData)->HttpResponseData):AttendanceApi{val network=NetworkClient(MockEngine{request->handler(request)},NetworkConfig(NetworkEnvironment.Test,"https://api.example.test/"));return AttendanceApi(AuthenticatedNetworkClient(network,tokens,NoopInvalidator()))}
     private fun MockRequestHandleScope.detailResponse(body:String)=respond(body,headers=jsonHeaders())
     private fun MockRequestHandleScope.mutationResponse(body:String=MUTATION_JSON,etag:String="\"2\"")=respond(body,headers=versionedHeaders(etag))
     private fun MockRequestHandleScope.capacityResponse(etag:String="\"2\"")=respond(CAPACITY_JSON,headers=versionedHeaders(etag))

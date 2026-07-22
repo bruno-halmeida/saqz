@@ -206,7 +206,7 @@ class AuthenticatedSessionTransportTest {
         timeoutMillis: Long = 10_000,
     ): Fixture {
         val invalidator = RecordingInvalidator()
-        val network = NetworkClient(engine, NetworkConfig("test", "https://api.example.test/", timeoutMillis))
+        val network = NetworkClient(engine, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/", timeoutMillis))
         val authenticated = AuthenticatedNetworkClient(network, tokens, invalidator)
         return Fixture(SessionApi(authenticated), tokens, invalidator)
     }

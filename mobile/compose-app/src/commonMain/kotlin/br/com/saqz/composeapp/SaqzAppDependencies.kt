@@ -18,6 +18,7 @@ import br.com.saqz.access.port.TokenResult
 import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
 import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
@@ -51,7 +52,7 @@ class GroupPhotoRuntimeDependencies(
 }
 
 class SaqzAppDependencies(
-    val environment: String,
+    val environment: NetworkEnvironment,
     val apiBaseUrl: String,
     val auth: NativeAuthPort,
     val links: NativeLinkPort = UnconfiguredLinkPort,
@@ -67,13 +68,13 @@ class SaqzAppDependencies(
     val expenseDrafts: ExpenseDraftStorePort = UnconfiguredExpenseDraftStore,
 ) {
     init {
-        require(environment.isNotBlank()) { "environment must not be blank" }
+        require(environment != NetworkEnvironment.Unconfigured) { "environment must not be Unconfigured" }
         require(apiBaseUrl.isNotBlank()) { "API base URL must not be blank" }
     }
 
     internal companion object {
         val Unconfigured = SaqzAppDependencies(
-            environment = "unconfigured",
+            environment = NetworkEnvironment.Unconfigured,
             apiBaseUrl = "https://api.invalid",
             auth = UnconfiguredAuthPort,
             links = UnconfiguredLinkPort,

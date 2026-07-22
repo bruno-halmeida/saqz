@@ -26,7 +26,7 @@ class NetworkClientTest {
             respond("{\"value\":\"ok\"}", headers = jsonHeaders())
         }
 
-        val result = client(engine, NetworkConfig("dev", "https://dev.example.test/api/"))
+        val result = client(engine, NetworkConfig(NetworkEnvironment.Dev, "https://dev.example.test/api/"))
             .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
 
         assertEquals(ProbeResponse("ok"), assertIs<NetworkResult.Success<ProbeResponse>>(result).value)
@@ -34,7 +34,7 @@ class NetworkClientTest {
 
     @Test
     fun `base URL rejects non HTTP schemes`() {
-        assertFailsWith<IllegalArgumentException> { NetworkConfig("dev", "file:///private/config") }
+        assertFailsWith<IllegalArgumentException> { NetworkConfig(NetworkEnvironment.Dev, "file:///private/config") }
     }
 
     @Test
@@ -99,7 +99,7 @@ class NetworkClientTest {
     @Test
     fun `oversized error body is not parsed or retained`() = runTest {
         val secret = "sensitive-body-" + "x".repeat(100)
-        val config = NetworkConfig("test", "https://api.example.test/", maxErrorBodyBytes = 32)
+        val config = NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/", maxErrorBodyBytes = 32)
         val result = client(responding(secret, HttpStatusCode.BadGateway), config)
             .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
 
@@ -114,7 +114,7 @@ class NetworkClientTest {
             delay(100)
             respond("{\"value\":\"late\"}", headers = jsonHeaders())
         }
-        val config = NetworkConfig("test", "https://api.example.test/", requestTimeoutMillis = 10)
+        val config = NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/", requestTimeoutMillis = 10)
         val result = client(engine, config).execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
 
         assertEquals(NetworkError.Timeout, assertFailure(result))
@@ -142,7 +142,7 @@ class NetworkClientTest {
         }
         val client = NetworkClient(
             engine,
-            NetworkConfig("dev", "https://api.example.test/"),
+            NetworkConfig(NetworkEnvironment.Dev, "https://api.example.test/"),
             NetworkLogger(messages::add),
         )
 
@@ -184,7 +184,7 @@ class NetworkClientTest {
 
     private fun client(
         engine: MockEngine,
-        config: NetworkConfig = NetworkConfig("test", "https://api.example.test/"),
+        config: NetworkConfig = NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"),
     ) = NetworkClient(engine, config)
 
     private fun responding(body: String, status: HttpStatusCode = HttpStatusCode.OK) = MockEngine {

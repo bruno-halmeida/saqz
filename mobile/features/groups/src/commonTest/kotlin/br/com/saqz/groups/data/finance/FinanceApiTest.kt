@@ -34,7 +34,7 @@ class FinanceApiTest {
     private fun expense(key:String?=null)=ExpenseWriteCommandDto(key,"Água do jogo",12345,"2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual")
     private fun athlete(handler:suspend MockRequestHandleScope.(HttpRequestData)->HttpResponseData)=AthleteFinanceApi(auth(Tokens(),handler))
     private fun organizer(tokens:IdTokenProvider=Tokens(),handler:suspend MockRequestHandleScope.(HttpRequestData)->HttpResponseData)=OrganizerFinanceApi(auth(tokens,handler))
-    private fun auth(tokens:IdTokenProvider,handler:suspend MockRequestHandleScope.(HttpRequestData)->HttpResponseData):AuthenticatedNetworkClient{val network=NetworkClient(MockEngine{request->handler(request)},NetworkConfig("test","https://api.example.test/"));return AuthenticatedNetworkClient(network,tokens,NoopInvalidator())}
+    private fun auth(tokens:IdTokenProvider,handler:suspend MockRequestHandleScope.(HttpRequestData)->HttpResponseData):AuthenticatedNetworkClient{val network=NetworkClient(MockEngine{request->handler(request)},NetworkConfig(NetworkEnvironment.Test,"https://api.example.test/"));return AuthenticatedNetworkClient(network,tokens,NoopInvalidator())}
     private fun MockRequestHandleScope.json(body:String)=respond(body,headers=jsonHeaders())
     private fun MockRequestHandleScope.versioned(body:String,etag:String)=respond(body,headers=headersOf(HttpHeaders.ContentType to listOf("application/json"),HttpHeaders.ETag to listOf(etag)))
     private fun MockRequestHandleScope.unauthorized()=respond("""{"status":401,"code":"AUTHENTICATION_REQUIRED","correlationId":"c"}""",HttpStatusCode.Unauthorized,jsonHeaders())

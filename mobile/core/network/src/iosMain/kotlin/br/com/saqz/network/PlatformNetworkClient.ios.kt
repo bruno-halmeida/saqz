@@ -6,7 +6,7 @@ actual fun createPlatformNetworkClient(config: NetworkConfig): NetworkClient =
     NetworkClient(
         Darwin.create(),
         config,
-        logger = if (config.environment == "prod") {
+        logger = if (config.environment == NetworkEnvironment.Prod) {
             NetworkLogger {}
         } else {
             NetworkLogger { println("SaqzNetwork: $it") }

@@ -235,7 +235,7 @@ class PrivateMediaNetworkTest {
         NetworkClient(engine, config(maximum, errorMaximum))
 
     private fun config(maximum: Int = 1024, errorMaximum: Int = 32) =
-        NetworkConfig("test", "https://api.example.test/", maxErrorBodyBytes = errorMaximum, maxBinaryBodyBytes = maximum)
+        NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/", maxErrorBodyBytes = errorMaximum, maxBinaryBodyBytes = maximum)
 
     private fun upload(
         bytes: ByteArray,

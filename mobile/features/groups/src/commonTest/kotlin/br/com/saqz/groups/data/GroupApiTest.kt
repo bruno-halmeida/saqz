@@ -5,6 +5,7 @@ import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
+import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionInvalidator
@@ -181,7 +182,7 @@ class GroupApiTest {
     private fun fixture(
         response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
     ): Fixture {
-        val network = NetworkClient(MockEngine { request -> response(request) }, NetworkConfig("test", "https://api.example.test/"))
+        val network = NetworkClient(MockEngine { request -> response(request) }, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"))
         return Fixture(GroupApi(AuthenticatedNetworkClient(network, Tokens(), NoopInvalidator())))
     }
 

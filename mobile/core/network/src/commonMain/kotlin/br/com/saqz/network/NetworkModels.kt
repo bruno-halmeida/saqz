@@ -6,8 +6,22 @@ import io.ktor.http.ContentType
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.serialization.Serializable
 
+enum class NetworkEnvironment {
+    Dev,
+    Prod,
+    Test,
+    Unconfigured,
+}
+
+fun String.toNetworkEnvironment(): NetworkEnvironment = when (lowercase()) {
+    "prod" -> NetworkEnvironment.Prod
+    "test" -> NetworkEnvironment.Test
+    "unconfigured" -> NetworkEnvironment.Unconfigured
+    else -> NetworkEnvironment.Dev
+}
+
 data class NetworkConfig(
-    val environment: String,
+    val environment: NetworkEnvironment,
     val baseUrl: String,
     val requestTimeoutMillis: Long = 10_000,
     val maxErrorBodyBytes: Int = 16_384,
