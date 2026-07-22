@@ -60,7 +60,10 @@ fun startSaqzKoin(dependencies: SaqzAppDependencies) {
 
 fun loadSaqzPlatformDependencies(dependencies: SaqzAppDependencies) {
     checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before loading platform dependencies" }
-    platformModule?.let(::unloadKoinModules)
+    platformModule?.let { previous ->
+        unloadKoinModules(commonModules + previous)
+        loadKoinModules(commonModules)
+    }
     platformModule = platformBindingsModule(dependencies).also(::loadKoinModules)
 }
 

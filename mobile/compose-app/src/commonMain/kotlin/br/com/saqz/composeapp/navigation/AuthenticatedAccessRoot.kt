@@ -20,14 +20,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
-import br.com.saqz.groups.data.GroupApi
 import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupPhotoApi
 import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.RolesInvitesApi
-import br.com.saqz.groups.data.attendance.AttendanceApi
-import br.com.saqz.groups.data.attendance.share.AttendanceShareApi
-import br.com.saqz.groups.data.game.GameApi
+import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
@@ -35,7 +30,8 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
 import br.com.saqz.access.port.Cancelable
-import br.com.saqz.access.port.NativeFailureCode
+import br.com.saqz.access.port.LocalAccessStatePort
+import br.com.saqz.access.port.NativeAuthPort
 import br.com.saqz.access.port.NativeSharePort
 import br.com.saqz.access.port.OperationResult
 import br.com.saqz.access.port.ResultCallback
@@ -46,7 +42,6 @@ import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.DeferredInviteStateMachine
-import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkStateMachine
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
@@ -67,15 +62,9 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupListPhotoLoader
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
-import br.com.saqz.groups.port.GroupValueCallback
-import br.com.saqz.groups.port.GroupValueResult
-import br.com.saqz.groups.port.LocalGroupStatePort
-import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
@@ -112,19 +101,13 @@ import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
-import br.com.saqz.composeapp.di.DelegatingSessionInvalidator
+import br.com.saqz.composeapp.di.AttendanceDestinationStore
 import br.com.saqz.composeapp.di.GameDetailViewModelParameters
 import br.com.saqz.composeapp.di.GroupSetupViewModelParameters
-import br.com.saqz.composeapp.di.NativeTokenProvider
 import br.com.saqz.composeapp.home.AuthenticatedHomeScreen
 import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
-import br.com.saqz.network.AuthenticatedNetworkClient
-import br.com.saqz.network.NetworkConfig
-import br.com.saqz.network.toNetworkEnvironment
 import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionApi
 import br.com.saqz.network.SessionInvalidator
-import br.com.saqz.network.createPlatformNetworkClient
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.CoroutineScope
@@ -177,10 +160,7 @@ internal fun AuthenticatedAccessRoute(
     groupSetupViewModelOverride: GroupSetupViewModel? = null,
     groupPhotos: GroupPhotoRuntimeDependencies = dependencies.groupPhotos,
 ) {
-    val accessViewModel = accessViewModelOverride ?: koinViewModel<AccessViewModel>(
-        key = "authenticated-access",
-        parameters = { parametersOf(dependencies) },
-    )
+    val accessViewModel = accessViewModelOverride ?: koinViewModel<AccessViewModel>(key = "authenticated-access")
     val groupsViewModel = koinViewModel<GroupsNavigationViewModel>(key = "groups-navigation")
     val state by accessViewModel.state.collectAsState()
     val groupsNavigation by groupsViewModel.state.collectAsState()
@@ -212,23 +192,6 @@ internal fun AuthenticatedAccessRoute(
             cache = photoCache,
         )
     }
-    val gameDetailNetwork = remember(dependencies.environment, dependencies.apiBaseUrl) {
-        createPlatformNetworkClient(
-            NetworkConfig(environment = dependencies.environment.toNetworkEnvironment(), baseUrl = dependencies.apiBaseUrl),
-        )
-    }
-    DisposableEffect(gameDetailNetwork) {
-        onDispose { gameDetailNetwork.close() }
-    }
-    val gameDetailAuthenticatedNetwork = remember(gameDetailNetwork, dependencies, accessViewModel) {
-        AuthenticatedNetworkClient(
-            gameDetailNetwork,
-            NativeTokenProvider(dependencies.auth),
-            accessViewModel.sessionInvalidator,
-        )
-    }
-    val gameGateway = remember(gameDetailAuthenticatedNetwork) { GameApi(gameDetailAuthenticatedNetwork) }
-    val attendanceGateway = remember(gameDetailAuthenticatedNetwork) { AttendanceApi(gameDetailAuthenticatedNetwork) }
     val groupPhotoState by photoCoordinator.state.collectAsState()
     LaunchedEffect(groupPhotoState.groupId, groupPhotoState.existing?.preview) {
         if (groupPhotoState.existing == null) {
@@ -242,9 +205,6 @@ internal fun AuthenticatedAccessRoute(
                 parametersOf(
                     GroupSetupViewModelParameters(
                         input = GroupSetupInput(),
-                        gateway = accessViewModel.groupProfileGateway,
-                        timeZones = DefaultGroupSystemTimeZonePort(),
-                        drafts = dependencies.groupDrafts,
                         commandKeys = GroupCommandKeyFactory { accessViewModel.newCommandKey() },
                     ),
                 )
@@ -260,13 +220,11 @@ internal fun AuthenticatedAccessRoute(
             parameters = {
                 parametersOf(
                     GameDetailViewModelParameters(
-                        gateway = gameGateway,
                         groupId = navigation.groupId!!,
                         gameId = navigation.gameId!!,
                         role = state.administration.group?.group?.role
                     ?: (state.selection as? GroupSelectionState.Selected)?.group?.group?.role
                             ?: br.com.saqz.groups.data.GroupRoleDto.ATHLETE,
-                        attendanceGateway = attendanceGateway,
                     ),
                 )
             },
@@ -527,43 +485,22 @@ internal fun AccessDestination.systemBackIntent(): AccessIntent? = when (this) {
 }
 
 internal class AccessRuntime(
-    private val dependencies: SaqzAppDependencies,
+    private val auth: NativeAuthPort,
+    private val localAccessState: LocalAccessStatePort,
+    override val groupProfileGateway: GroupProfileGateway,
+    override val groupPhotoGateway: GroupPhotoGateway,
+    override val sessionInvalidator: SessionInvalidator,
+    private val roles: RolesInvitesGateway,
+    private val authentication: AuthenticationStateMachine,
+    private val session: SessionAccessStateMachine,
+    private val selection: GroupSelectionStateMachine,
+    private val administration: GroupAdministrationStateMachine,
+    private val invites: DeferredInviteStateMachine,
+    private val attendanceLinks: DeferredAttendanceLinkStateMachine,
+    private val attendanceDestinations: AttendanceDestinationStore,
     private val scope: CoroutineScope,
 ) : AccessRuntimeContract {
-    private val network = createPlatformNetworkClient(
-        NetworkConfig(environment = dependencies.environment.toNetworkEnvironment(), baseUrl = dependencies.apiBaseUrl),
-    )
-    private val invalidator = DelegatingSessionInvalidator()
-    private val authenticatedNetwork = AuthenticatedNetworkClient(
-        network,
-        NativeTokenProvider(dependencies.auth),
-        invalidator,
-    )
-    private val groups = GroupApi(authenticatedNetwork)
-    override val groupProfileGateway: GroupProfileGateway = groups
-    override val groupPhotoGateway: GroupPhotoGateway = GroupPhotoApi(authenticatedNetwork)
-    override val sessionInvalidator: SessionInvalidator = invalidator
-    private val roles = RolesInvitesApi(authenticatedNetwork)
-    private val attendanceSharing = AttendanceShareApi(authenticatedNetwork)
-    private val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)
-    private val authentication = AuthenticationStateMachine(dependencies.auth) {
-        session.onIntent(SessionIntent.Accept(it))
-    }
-    private val groupState = dependencies.groupState
-    private val groupLinks = dependencies.groupLinks
-    private val selection = GroupSelectionStateMachine(groupState, groups, scope)
-    private val administration = GroupAdministrationStateMachine(groups, roles, scope) {
-        selection.onIntent(GroupSelectionIntent.Select(it))
-    }
-    private val invites = DeferredInviteStateMachine(groupLinks, groupState, roles, scope) {
-        selection.onIntent(GroupSelectionIntent.Select(it))
-    }
-    private val mutableAttendanceDestination = MutableStateFlow<AttendanceLinkDestination?>(null)
-    override val attendanceDestinationState = mutableAttendanceDestination.asStateFlow()
-    private val attendanceLinks = DeferredAttendanceLinkStateMachine(groupLinks, groupState, attendanceSharing, scope) {
-        selection.onIntent(GroupSelectionIntent.Select(it.groupId))
-        mutableAttendanceDestination.value = it
-    }
+    override val attendanceDestinationState = attendanceDestinations.destination
     private val mutableInviteToolState = MutableStateFlow(InviteToolState())
     override val inviteToolState = mutableInviteToolState.asStateFlow()
     private val mutableAuthObservedState = MutableStateFlow(false)
@@ -573,10 +510,6 @@ internal class AccessRuntime(
     override val selectionState = selection.state
     override val administrationState = administration.state
     private var authSubscription: Cancelable? = null
-
-    init {
-        invalidator.delegate = session
-    }
 
     override fun onIntent(intent: AccessRuntimeIntent) {
         when (intent) {
@@ -588,7 +521,7 @@ internal class AccessRuntime(
             is AccessRuntimeIntent.Administration -> administration.onIntent(intent.intent)
             is AccessRuntimeIntent.DeferredInvite -> invites.onIntent(intent.intent)
             is AccessRuntimeIntent.DeferredAttendance -> attendanceLinks.onIntent(intent.intent)
-            AccessRuntimeIntent.ConsumeAttendanceDestination -> mutableAttendanceDestination.value = null
+            AccessRuntimeIntent.ConsumeAttendanceDestination -> attendanceDestinations.consume()
             is AccessRuntimeIntent.ShowGroupSelector -> showGroupSelector(intent.session)
             AccessRuntimeIntent.RotateInvite -> rotateInvite()
             AccessRuntimeIntent.ExpireInvite -> expireInvite()
@@ -598,7 +531,7 @@ internal class AccessRuntime(
 
     private fun start() {
         if (authSubscription != null) return
-        authSubscription = dependencies.auth.observe(object : AuthStateListener {
+        authSubscription = auth.observe(object : AuthStateListener {
             override fun onStateChanged(state: AuthState) {
                 mutableAuthObservedState.value = true
                 when (state) {
@@ -620,11 +553,10 @@ internal class AccessRuntime(
         authSubscription = null
         invites.onIntent(DeferredInviteIntent.Stop)
         attendanceLinks.onIntent(DeferredAttendanceLinkIntent.Stop)
-        network.close()
     }
 
     private fun showGroupSelector(session: br.com.saqz.network.SessionDto) {
-        dependencies.localState.writeSelectedGroupId(null, resultCallback {
+        localAccessState.writeSelectedGroupId(null, resultCallback {
             selection.onIntent(GroupSelectionIntent.Reconcile(session))
         })
     }

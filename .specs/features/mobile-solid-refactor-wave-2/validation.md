@@ -88,3 +88,48 @@ PASS
 
 ### Conclusion
 T15-T18 are complete: Koin is installed, its layered graph is verified, platform roots bootstrap it safely, root ViewModels resolve through Koin, and production fallback stubs are removed without changing the current authenticated runtime behavior.
+
+---
+
+## Manual graph removal validation
+
+Date: 2026-07-22  
+Verifier: independent general-purpose agent (source review) plus targeted Android/KMP/iOS gates.
+
+### Acceptance criteria evidence
+- [x] `createPlatformNetworkClient` exists in `compose-app/commonMain` only in `di/NetworkModule.kt` (import + singleton factory).
+- [x] `AccessRuntime` receives gateways, state machines, ports, and invalidator through constructor injection; it no longer creates or closes network/API infrastructure.
+- [x] `SaqzKoinBootstrapTest.kt:36` — `assertSame(koin.get<GroupProfileGateway>(), runtime.groupProfileGateway)` proves runtime profile operations use the Koin binding.
+- [x] `SaqzKoinBootstrapTest.kt:37` — `assertSame(koin.get<GroupPhotoGateway>(), runtime.groupPhotoGateway)` proves runtime photo operations use the Koin binding.
+- [x] `SaqzKoinModulesTest.kt:138` — `assertSame(koin.get<AuthenticatedNetworkClient>(), koin.get<AuthenticatedNetworkClient>())` proves authenticated networking is singleton-scoped.
+- [x] `SaqzKoinBootstrapTest.kt:54` — `assertNotSame(first, koin.get<AuthenticatedNetworkClient>())` proves replacing platform bindings disposes/recreates the common singleton graph.
+- [x] Group setup and game detail inject all service dependencies through Koin; assisted parameters contain only input, command-key factory, IDs, and role.
+- [x] Attendance sharing is injected into `GameDetailViewModel`, preserving link/image share behavior covered by `GameDetailAttendanceViewModelTest`.
+
+### Gates
+```text
+rtk ./gradlew :features:groups:allTests --console=plain -q
+PASS
+
+rtk ./gradlew :compose-app:allTests --console=plain -q
+PASS (existing Compose test deprecation warnings only)
+
+rtk ./gradlew :android-app:testDevDebugUnitTest :android-app:compileDevDebugAndroidTestKotlin --console=plain -q
+PASS
+
+rtk ./gradlew :compose-app:linkDebugFrameworkIosArm64 :compose-app:linkDebugFrameworkIosSimulatorArm64 -q
+PASS
+
+rtk git diff --check
+PASS
+```
+
+### Independent verification
+- First pass found the missing `AttendanceShareGateway` ViewModel binding; implementation was corrected.
+- Second pass: PASS with no blocker, high, or other concrete source findings.
+
+### Test adequacy
+All new assertions map directly to NAV-01/NAV-02 graph ownership and lifecycle criteria. They assert object identity/replacement rather than implementation call counts; no existing assertions were weakened or removed.
+
+### Conclusion
+The authenticated runtime, setup flow, game detail, attendance, and photo consumers now use the verified Koin graph. Manual client/API/state-machine construction was removed from the route/runtime while existing behavior and platform lifecycle boundaries were preserved.

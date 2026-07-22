@@ -14,7 +14,6 @@ import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.ui.CreateGroupUiState
-import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -33,8 +32,8 @@ internal class AccessViewModel private constructor(
     runtimeFactory: (CoroutineScope) -> AccessRuntimeContract,
     testScope: CoroutineScope?,
 ) : ViewModel() {
-    constructor(dependencies: SaqzAppDependencies) : this(
-        runtimeFactory = { AccessRuntime(dependencies, it) },
+    internal constructor(runtimeFactory: (CoroutineScope) -> AccessRuntimeContract) : this(
+        runtimeFactory = runtimeFactory,
         testScope = null,
     )
 
