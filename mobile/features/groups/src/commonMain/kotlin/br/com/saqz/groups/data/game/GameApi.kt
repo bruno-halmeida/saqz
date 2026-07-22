@@ -27,7 +27,8 @@ sealed interface GameGatewayFailure { data class Validation(val fields:Map<Strin
 fun NetworkError.toGameGatewayFailure():GameGatewayFailure=when(this){
     is NetworkError.ApiProblemError->when(problem.code){"VALIDATION_FAILED"->GameGatewayFailure.Validation(problem.fieldErrors.orEmpty());"GAME_NOT_FOUND","GROUP_NOT_FOUND"->GameGatewayFailure.HiddenResource;"VERSION_CONFLICT"->GameGatewayFailure.Conflict;"INVALID_GAME_TRANSITION"->GameGatewayFailure.InvalidLifecycle;"AUTHENTICATION_REQUIRED"->GameGatewayFailure.Authentication;else->if(problem.status>=500)GameGatewayFailure.Temporary else GameGatewayFailure.InvalidResponse}
     NetworkError.InvalidResponse->GameGatewayFailure.InvalidResponse
-    is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Unavailable,NetworkError.PayloadTooLarge->GameGatewayFailure.Temporary
+    NetworkError.Unknown->GameGatewayFailure.InvalidResponse
+    is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Connectivity,NetworkError.Unavailable,NetworkError.PayloadTooLarge->GameGatewayFailure.Temporary
 }
 
 interface GameGateway {

@@ -47,7 +47,8 @@ sealed interface FinanceGatewayFailure {
 fun NetworkError.toFinanceGatewayFailure():FinanceGatewayFailure=when(this){
     is NetworkError.ApiProblemError->problem.toFinanceFailure()
     NetworkError.InvalidResponse->FinanceGatewayFailure.InvalidResponse
-    is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Unavailable,NetworkError.PayloadTooLarge->FinanceGatewayFailure.Temporary
+    NetworkError.Unknown->FinanceGatewayFailure.InvalidResponse
+    is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Connectivity,NetworkError.Unavailable,NetworkError.PayloadTooLarge->FinanceGatewayFailure.Temporary
 }
 
 private fun ApiProblem.toFinanceFailure():FinanceGatewayFailure=when(code){

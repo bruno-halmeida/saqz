@@ -43,7 +43,8 @@ fun NetworkError.toAttendanceGatewayFailure():AttendanceGatewayFailure=when(this
         else->if(problem.status>=500)AttendanceGatewayFailure.Temporary else AttendanceGatewayFailure.InvalidResponse
     }
     NetworkError.InvalidResponse->AttendanceGatewayFailure.InvalidResponse
-    is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Unavailable,NetworkError.PayloadTooLarge->AttendanceGatewayFailure.Temporary
+    NetworkError.Unknown->AttendanceGatewayFailure.InvalidResponse
+    is NetworkError.HttpStatus,NetworkError.Timeout,NetworkError.Connectivity,NetworkError.Unavailable,NetworkError.PayloadTooLarge->AttendanceGatewayFailure.Temporary
 }
 
 interface AttendanceGateway {
