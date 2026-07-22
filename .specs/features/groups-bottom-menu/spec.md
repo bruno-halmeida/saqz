@@ -1,5 +1,45 @@
 # Groups Bottom Menu Specification
 
+## Authenticated Start Amendment (2026-07-22)
+
+This amendment supersedes the selector-as-start behavior in MENU-07 and the
+historical five-tab composition while preserving selector menu placement and
+all group-scoped behavior.
+
+1. **MENU-10** - WHEN authenticated product content first renders THEN a
+   placeholder home screen SHALL render with the label "Home screen" and the
+   four-item bottom menu SHALL select Início.
+2. **MENU-11** - WHEN Grupos is activated from the placeholder home screen THEN
+   the existing groups entry flow SHALL render: the selector with Grupos
+   selected when memberships exist, or group onboarding when none exist.
+3. **MENU-12** - WHEN Início is activated from the group selector THEN the
+   placeholder home screen SHALL render again without changing group selection.
+4. **MENU-13** - WHEN the bottom menu renders THEN it SHALL contain exactly
+   Início, Grupos, Avisos, and Mais in that order. Jogos remains reachable from
+   group context and SHALL not render as a bottom-menu item.
+
+## Placement Amendment (2026-07-22)
+
+This amendment supersedes the original menu-placement requirements in MENU-01,
+MENU-02, MENU-04, and the selector edge case below. The later authenticated
+start amendment supersedes its menu composition; styling remains unchanged.
+
+1. **MENU-07** - WHEN the group selector renders THEN the bottom menu SHALL
+   render below the group list with exactly four items in the order Início,
+   Grupos, Avisos, Mais,
+   and Grupos SHALL expose selected semantics.
+2. **MENU-08** - WHEN any group-scoped destination renders, including group
+   home, game detail, Avisos, and Mais, THEN the bottom menu SHALL not render.
+3. **MENU-09** - WHEN a selector bottom-menu item is activated THEN it SHALL
+   emit its existing typed navigation intent exactly once.
+
+Navigation behavior beyond intent emission is unchanged. Because the selector
+is unscoped, this amendment does not introduce implicit group selection for
+group-specific destinations.
+
+The tests and validation evidence for this amendment replace the earlier
+placement evidence while preserving the historical requirements below.
+
 ## Problem Statement
 
 The group bottom menu exposes role-gated destinations (Início, Jogos, Pessoas,
@@ -93,6 +133,13 @@ bottom menu so that I can reach every primary area from any group route.
 | MENU-04 | P1 | Validated |
 | MENU-05 | P1 | Validated |
 | MENU-06 | P1 | Validated |
+| MENU-07 | P1 | Validated by MENU-10 amendment |
+| MENU-08 | P1 | Validated |
+| MENU-09 | P1 | Validated by MENU-13 amendment |
+| MENU-10 | P1 | Validated |
+| MENU-11 | P1 | Validated |
+| MENU-12 | P1 | Validated |
+| MENU-13 | P1 | Validated |
 
 ## Success Criteria
 

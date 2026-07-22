@@ -79,6 +79,23 @@ change the landing content; `scripts/check-landing` compares it with baseline
 `c03a8ccbc800b70a982b1f9bb93a4b0af3d87c44`, verifies the Pages workflow
 contract, and checks `index.html` plus local assets over HTTP.
 
+## Remotion Media
+
+Code-driven Saqz videos live in the independent `remotion/` workspace. It is
+media-production tooling, not a browser product or a dependency of backend,
+mobile, or the landing page.
+
+```bash
+cd remotion
+npm install
+npm run check
+npm run render:stills
+npm run render:all
+```
+
+Remotion Studio is available through `npm run dev`. Generated PNG and MP4 files
+are written to the ignored `remotion/out/` directory.
+
 ## Local Gates
 
 ### Authentication and access test environment
@@ -169,6 +186,8 @@ free of credentials and other secrets.
   logic. It must build without `backend/`.
 - `landing-page/` is static public content, not a product application
   workspace and not a dependency of backend or mobile builds.
+- `remotion/` owns its npm dependencies and media compositions. It may reuse
+  versioned Saqz source assets but is not a runtime dependency of any product.
 - The repository root has no Gradle wrapper, settings, catalog, or build logic.
 - Backend and mobile must not use composite builds, shared build logic, project
   dependencies, or compiled artifacts from sibling workspaces.

@@ -104,7 +104,7 @@
 - **Trade-off**: The mobile Gradle graph gains two modules and one pure-KMP convention, increasing configuration overhead.
 - **Scope**: All current and future shared Android/iOS presentation foundations and mobile feature modules.
 - **Date**: 2026-07-15
-- **Status**: active
+- **Status**: partially superseded by AD-029 (route ownership moves to `:navigation`; `:compose-app` remains composition root and sole exported framework)
 
 ### AD-014
 - **Decision**: Web navigation uses Angular Router and shared mobile navigation uses Navigation Compose 2; route ownership remains in each application shell.
@@ -226,10 +226,26 @@
 - **Date**: 2026-07-21
 - **Status**: active
 
+### AD-029
+- **Decision**: Mobile product navigation displays (`AccessNavigationHost`, `GroupsNavigationHost`, `FinanceNavigationHost`) and navigation handlers live in a first-level KMP module `:navigation` (`mobile/navigation/`); screens and serializable `NavKey` route contracts remain in their respective feature modules; no feature depends on `:navigation` or Navigation Compose 3 UI; `:compose-app` remains the composition root, owns the app-local Home/Catalog navigation display, and is the sole framework exported to iOS. Navigation Compose 3 Multiplatform is the single source of truth for all mobile routes through app-owned back stacks rendered by `NavDisplay`; legacy `navigation-compose:2.9.2` is removed. Partially supersedes AD-013 (route-host ownership moves to `:navigation`; `:compose-app` remains composition root and sole exported framework).
+- **Reason**: Navigation Compose 3 is officially supported by Compose Multiplatform 1.10+ on Android and iOS and its user-owned back stacks directly support the required per-tab stacks, deterministic reconciliation, and one shared back mutation for TopBar/system back. Centralizing Navigation Compose 3 displays in a dedicated module keeps Access, Groups, and Finance navigation independent of the app shell and of each other while preventing feature ViewModels from importing navigation UI APIs; the current single-destination model ignores navigation history (e.g., GameDetail back lands on the group home instead of Games).
+- **Trade-off**: The mobile Gradle graph gains one module; feature route-contract source sets depend on the lightweight Navigation Compose 3 key contract; `:navigation` depends on `:features:groups` and `:features:access` for route contracts and screens; non-JVM targets require an explicitly maintained polymorphic `SavedStateConfiguration`; lifecycle support moves to `lifecycle-viewmodel-navigation3`.
+- **Scope**: All current and future mobile product navigation graphs, route contracts, back behavior, tab stacks, and navigation-effect handlers.
+- **Date**: 2026-07-22
+- **Status**: active
+
+### AD-030
+- **Decision**: Data-backed mobile features use compile-enforced `presentation -> domain <- data` boundaries; the existing public `:features:access` and `:features:groups` modules remain their presentation boundaries, feature-owned `:domain` and `:data` child modules own contracts and implementations respectively, and a framework-free `:core:domain` owns only shared result/error and genuinely cross-feature domain primitives.
+- **Reason**: The current monoliths allow DTO, Ktor, serialization, and transport errors to reach presentation, while retaining the public feature coordinates conforms to AD-029 and avoids destabilizing the navigation and umbrella-framework contracts.
+- **Trade-off**: Presentation module names do not carry a `:presentation` suffix, the mobile Gradle graph gains five modules, and composition/root gates must be updated as each feature migrates.
+- **Scope**: Mobile Access and Groups migrations and the default layering of future data-backed mobile features; no feature-to-feature dependency is permitted, and app-level composition owns cross-feature translation.
+- **Date**: 2026-07-22
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: mobile-solid-refactor-wave-2 — `.specs/features/mobile-solid-refactor-wave-2/`
-- **Phase / Task**: Execute — Worker 1 complete (T01–T08, commits `e8a6144`..`f8d0d15`); Worker 2 ready (T09–T14).
-- **Next step**: Dispatch Worker 2 (Phase 2 + Phase 3), then W3, W4, final Verifier.
-- **Previous feature**: group-management complete through T67 (verified at `b68c02d`); mobile-solid-refactor wave 1 verified PASS 2026-07-21. Do not reopen either without a new requirement or regression.
+- **Feature**: mobile-navigation-architecture — `.specs/features/mobile-navigation-architecture/`
+- **Phase / Task**: Design approved 2026-07-22; one Navigation Compose 3 `NavDisplay` + `NavigationSession`, four retained tab stacks, delegated domain entries, entry-scoped ViewModels, and conditional iOS cold-relaunch persistence fallback. Tasks phase in progress.
+- **Next step**: Create and approve `tasks.md` with focused changed-module gates per implementation task and `rtk scripts/check-all` only in the final integration task. Execute starts only after `mobile-solid-refactor-wave-2` is verified complete.
+- **Previous feature**: mobile-solid-refactor-wave-2 in progress (Worker 1 complete T01–T08; Worker 2 ready T09–T14). Do not start this feature's Execute until wave-2 is verified PASS.
 - **Branch**: main

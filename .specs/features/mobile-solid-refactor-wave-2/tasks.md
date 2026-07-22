@@ -404,7 +404,7 @@ T27 → T28 → T29 → T30
 
 ### T13: Extrair multipart builder e logger injetável do NetworkClient
 
-**Status**: completed (pending commit)
+**Status**: completed (078264f)
 
 **What**: Mover `BoundedMultipartContent` para arquivo/classe próprios (`MultipartBodyBuilder`) e extrair logging/duração para `NetworkCallLogger` injetável por construtor (default preserva comportamento atual).
 **Where**: `mobile/core/network/src/commonMain/kotlin/br/com/saqz/network/NetworkClient.kt:341-390` (multipart), `:212-214,289-303` (logging); novos arquivos no mesmo pacote
@@ -453,6 +453,8 @@ T27 → T28 → T29 → T30
 
 ### T15: Pesquisar e pinar Koin no version catalog
 
+**Status**: completed (ce7b38a)
+
 **What**: Verificar compatibilidade Koin 4.x com o Kotlin/Compose/AGP atuais do workspace (docs oficiais Koin + `gradle/libs.versions.toml` + `build-logic`), pinar `koin-core` e `koin-test` no catalog e aplicar aos módulos necessários (`:compose-app` e targets de teste).
 **Where**: `mobile/gradle/libs.versions.toml`, `mobile/compose-app/build.gradle.kts`, convenções em `mobile/build-logic/` se aplicável
 **Depends on**: None
@@ -475,6 +477,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T16: networkModule + draftsModule com verificação de grafo
+
+**Status**: completed (d39b80f)
 
 **What**: Criar módulos Koin `networkModule` (NetworkConfig, NetworkClient/HttpTransport, `AuthenticatedNetworkClient` single, `SessionInvalidator` real) e `draftsModule` (bindings das ports de draft por plataforma); adicionar teste de verificação do grafo (koin-test `verify()` ou teste de resolução).
 **Where**: `mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/di/` (novo pacote); testes em `src/commonTest` (fallback `androidUnitTest` se `verify()` não cobrir todos os targets — ver Risks no design)
