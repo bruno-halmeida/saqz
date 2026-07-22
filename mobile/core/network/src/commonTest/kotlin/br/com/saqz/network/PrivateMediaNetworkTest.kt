@@ -9,6 +9,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
+import io.ktor.util.network.UnresolvedAddressException
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteChannel
 import kotlinx.coroutines.CancellationException
@@ -23,6 +24,18 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class PrivateMediaNetworkTest {
+    @Test fun `media unresolved address maps only to connectivity`() = runTest {
+        val result = client(MockEngine { throw UnresolvedAddressException() }).readBinary("photo")
+
+        assertEquals(NetworkError.Connectivity, failure(result))
+    }
+
+    @Test fun `media unrelated exception maps to unknown`() = runTest {
+        val result = client(MockEngine { throw IllegalStateException("unexpected") }).readBinary("photo")
+
+        assertEquals(NetworkError.Unknown, failure(result))
+    }
+
     @Test fun `oversized upload is rejected before opening source or sending request`() = runTest {
         var opens = 0
         var requests = 0

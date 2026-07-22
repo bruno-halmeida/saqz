@@ -54,7 +54,11 @@ sealed interface NetworkError {
 
     data object Timeout : NetworkError
 
+    data object Connectivity : NetworkError
+
     data object Unavailable : NetworkError
+
+    data object Unknown : NetworkError
 
     data object InvalidResponse : NetworkError
 

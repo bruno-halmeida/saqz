@@ -147,3 +147,4 @@ All 26 requirements are assigned to a downstream design or task category. Task i
 | ID | Date | Root cause | Invariant decision |
 |---|---|---|---|
 | B1 | 2026-07-22 | A common value class used `@JvmInline` without importing `kotlin.jvm.JvmInline`, so the iOS compilation gate failed before tests. | No new §V invariant: MDB-002/MDB-003 and T01's Android+iOS compilation gate already detect this purely mechanical error. |
+| B2 | 2026-07-22 | Expanding the sealed network failure vocabulary left `NetworkCallLogger`'s safe formatter with a non-exhaustive `when`, so the iOS compile gate failed. | No new §V invariant: T02's multiplatform compile/test gate and its explicit logging-preservation criterion already detect an omitted sealed-type consumer. |

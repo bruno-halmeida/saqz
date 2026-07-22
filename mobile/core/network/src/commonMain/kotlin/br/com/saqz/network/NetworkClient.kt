@@ -26,6 +26,7 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import io.ktor.utils.io.readRemaining
+import io.ktor.util.network.UnresolvedAddressException
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
@@ -158,6 +159,9 @@ class NetworkClient(
         } catch (_: SocketTimeoutException) {
             logMediaResponse(logger, method, safePath, null, started)
             NetworkResult.Failure(NetworkError.Timeout)
+        } catch (_: UnresolvedAddressException) {
+            logMediaResponse(logger, method, safePath, null, started)
+            NetworkResult.Failure(NetworkError.Connectivity)
         } catch (failure: CancellationException) {
             throw failure
         } catch (_: MediaLimitException) {
@@ -165,7 +169,7 @@ class NetworkClient(
             NetworkResult.Failure(NetworkError.PayloadTooLarge)
         } catch (_: Throwable) {
             logMediaResponse(logger, method, safePath, null, started)
-            NetworkResult.Failure(NetworkError.Unavailable)
+            NetworkResult.Failure(NetworkError.Unknown)
         }
     }
 
@@ -252,13 +256,15 @@ class NetworkClient(
             failure(requestDescription, started, NetworkError.Timeout)
         } catch (_: SocketTimeoutException) {
             failure(requestDescription, started, NetworkError.Timeout)
+        } catch (_: UnresolvedAddressException) {
+            failure(requestDescription, started, NetworkError.Connectivity)
         } catch (failure: CancellationException) {
             throw failure
         } catch (failure: Throwable) {
             failure(
                 requestDescription,
                 started,
-                NetworkError.Unavailable,
+                NetworkError.Unknown,
                 cause = failure::class.simpleName,
             )
         }

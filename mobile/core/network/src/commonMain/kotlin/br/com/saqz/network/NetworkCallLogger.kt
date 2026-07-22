@@ -57,5 +57,7 @@ private fun NetworkError.logDescription(): String = when (this) {
     NetworkError.InvalidResponse -> "invalid-response"
     NetworkError.PayloadTooLarge -> "payload-too-large"
     NetworkError.Timeout -> "timeout"
+    NetworkError.Connectivity -> "connectivity"
     NetworkError.Unavailable -> "unavailable"
+    NetworkError.Unknown -> "unknown"
 }

@@ -7,6 +7,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -19,6 +20,31 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class NetworkClientTest {
+    @Test
+    fun `unresolved address maps only to connectivity`() = runTest {
+        val result = client(MockEngine { throw UnresolvedAddressException() })
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(NetworkError.Connectivity, assertFailure(result))
+    }
+
+    @Test
+    fun `unrelated exception maps to unknown without retaining sensitive cause`() = runTest {
+        val secret = "private-exception-message"
+        val messages = mutableListOf<String>()
+        val client = NetworkClient(
+            MockEngine { throw IllegalStateException(secret) },
+            NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"),
+            NetworkLogger(messages::add),
+        )
+
+        val result = client.execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(NetworkError.Unknown, assertFailure(result))
+        assertFalse(result.toString().contains(secret))
+        assertFalse(messages.any { it.contains(secret) })
+    }
+
     @Test
     fun `environment selects its injected base URL`() = runTest {
         val engine = MockEngine { request ->
