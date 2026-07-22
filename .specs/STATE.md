@@ -210,12 +210,26 @@
 - **Date**: 2026-07-19
 - **Status**: active
 
+### AD-027
+- **Decision**: Remotion media production lives in an independent `remotion/` Node workspace that may reuse Saqz source assets but is not a browser product and is never a runtime dependency of backend, mobile, or landing-page workspaces.
+- **Reason**: Educational and promotional videos need deterministic, code-driven rendering without adding a web application surface or coupling product builds to a media toolchain.
+- **Trade-off**: Remotion has its own npm dependencies and verification commands, and rendered media remains an ignored local artifact rather than part of product build gates.
+- **Scope**: Remotion compositions, media assets, render scripts, repository documentation, and future code-driven Saqz video work.
+- **Date**: 2026-07-20
+- **Status**: active
+
+### AD-028
+- **Decision**: Mobile dependency injection uses Koin with per-feature modules replacing the `SaqzAppDependencies` aggregate and manual wiring inside composables.
+- **Reason**: The authenticated navigation hub accumulated network construction, gateway wiring, and cross-feature orchestration inside composables (including two parallel network graphs); Koin is KMP-mature, requires no KSP/compiler plugin, and keeps wiring testable without a compile-time graph.
+- **Trade-off**: Wiring errors surface at runtime instead of compile time (mitigated by module verification tests), and the mobile workspace gains a new runtime dependency.
+- **Scope**: All mobile KMP modules, composition roots, and the Android/iOS entry points.
+- **Date**: 2026-07-21
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: group-management — `.specs/features/group-management/`
-- **Phase / Task**: Execute complete — Phase 10 / T67 verified.
-- **Completed**: T01 `49a4730`, T02 `024d689`, T03 `dfd35d8`, T08 `463dc86`, T09 `94ab9e8`, T13 `85d841b`, T14 `124250c`, T15 `d85ccb0`, T16 `e5fd6d3`, T17 `0946523`, T18, T19 `224136b`, T20 `edaa6c1`, T21 `7f5103f`, T22 `4ae41b7`, T23 `c132762`, T24 `45ea845`, T25 `3ed6ddc`, T26 `0566f97`, T27 `9d37f52`, T28 `bfbb4d2`, T29 `f2318dd`, T30 `c686a61`, T31 `7c20675`, T32 `0dc87d4`, T33, T34 series boundaries, and T35–T66. T66 added 16 cross-platform native journeys and passed Android 53, iOS Dev 118, iOS Release 105, shared mobile, and safety gates without failures/skips. The user-approved task amendment merged the former T03–T07 and T09–T12 incompatible dependency sequences.
-- **In-progress** (file:line): None — `group-management` is complete through T67.
-- **Next step**: Continue the separately scoped attendance-sharing feature; do not reopen `group-management` without a new requirement or regression.
-- **Blockers**: None for `group-management`. Independent verification at `b68c02d` passed `scripts/check-all`, including 55 Android instrumented and 106 iOS Prod tests, with 3/3 mutations killed.
+- **Feature**: mobile-solid-refactor-wave-2 — `.specs/features/mobile-solid-refactor-wave-2/`
+- **Phase / Task**: Execute — Worker 1 complete (T01–T08, commits `e8a6144`..`f8d0d15`); Worker 2 ready (T09–T14).
+- **Next step**: Dispatch Worker 2 (Phase 2 + Phase 3), then W3, W4, final Verifier.
+- **Previous feature**: group-management complete through T67 (verified at `b68c02d`); mobile-solid-refactor wave 1 verified PASS 2026-07-21. Do not reopen either without a new requirement or regression.
 - **Branch**: main
