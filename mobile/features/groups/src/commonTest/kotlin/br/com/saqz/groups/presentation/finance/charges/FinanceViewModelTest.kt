@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.finance.charges
 
 import br.com.saqz.groups.data.*
 import br.com.saqz.groups.data.finance.*
+import br.com.saqz.groups.presentation.finance.FinanceCapability
 import br.com.saqz.network.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,7 +34,7 @@ class FinanceViewModelTest {
     @Test fun `draft write failure is typed without changing stable draft`()=runTest{val f=fixture(this);runCurrent();f.store.failWrites=true;f.vm.onIntent(update());assertEquals(FinanceError.DRAFT_UNAVAILABLE,f.vm.state.value.error);assertEquals(KEY,f.vm.state.value.monthlyDraft!!.commandKey)}
     @Test fun `state copy always identifies manual tracking and avoids settlement claim`()=runTest{val f=fixture(this,role=GroupRoleDto.ATHLETE);runCurrent();val copy=f.vm.state.value.manualTrackingNotice;assertEquals("Controle manual: o app apenas registra cobranças e seus status.",copy);assertFalse(copy.contains("liquidado",true));assertFalse(copy.contains("saldo",true))}
 
-    private fun fixture(scope:kotlinx.coroutines.CoroutineScope,role:GroupRoleDto=GroupRoleDto.OWNER,restored:MonthlyChargeDraft?=null):Fixture{val athlete=FakeAthlete();val organizer=FakeOrganizer();val members=FakeMemberships();val store=FakeStore(restored);val vm=FinanceViewModel(GROUP,role,athlete,organizer,members,store,FinanceCommandKeyFactory{KEY},scope);return Fixture(vm,athlete,organizer,members,store)}
+    private fun fixture(scope:kotlinx.coroutines.CoroutineScope,role:GroupRoleDto=GroupRoleDto.OWNER,restored:MonthlyChargeDraft?=null):Fixture{val athlete=FakeAthlete();val organizer=FakeOrganizer();val members=FakeMemberships();val store=FakeStore(restored);val capability=if(role==GroupRoleDto.ATHLETE)FinanceCapability.Athlete else FinanceCapability.Organizer(organizer);val vm=FinanceViewModel(GROUP,role,athlete,capability,members,store,FinanceCommandKeyFactory{KEY},scope);return Fixture(vm,athlete,organizer,members,store)}
     private fun update(amount:String="70,00")=FinanceIntent.UpdateMonthly("2026-08",amount,"2026-08-10",setOf(MEMBER,MEMBER2))
     private fun draft(reviewed:Boolean=false)=MonthlyChargeDraft(groupId=GROUP,commandKey=KEY,month="2026-08",amountBrl="70,00",dueDate="2026-08-10",selectedMemberIds=setOf(MEMBER,MEMBER2),reviewed=reviewed)
     private fun review(f:Fixture){f.vm.onIntent(update());f.vm.onIntent(FinanceIntent.ReviewMonthly)}

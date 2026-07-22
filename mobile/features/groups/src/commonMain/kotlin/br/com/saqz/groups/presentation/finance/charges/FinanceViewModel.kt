@@ -15,6 +15,9 @@ import br.com.saqz.groups.data.finance.MonthlyChargeCommandDto
 import br.com.saqz.groups.data.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.data.finance.toFinanceGatewayFailure
 import br.com.saqz.network.NetworkResult
+import br.com.saqz.groups.presentation.finance.DraftMutationSupport
+import br.com.saqz.groups.presentation.finance.FinanceCapability
+import br.com.saqz.groups.presentation.finance.FinanceMutationResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +31,7 @@ class FinanceViewModel(
     private val groupId: String,
     private val role: GroupRoleDto,
     private val athlete: AthleteFinanceGateway,
-    private val organizer: OrganizerFinanceGateway?,
+    private val capability: FinanceCapability,
     private val memberships: RolesInvitesGateway?,
     private val drafts: MonthlyChargeDraftStorePort,
     private val keys: FinanceCommandKeyFactory,
@@ -39,7 +42,32 @@ class FinanceViewModel(
     val state: StateFlow<FinanceState> = mutable.asStateFlow()
     private val channel = Channel<FinanceEffect>(Channel.BUFFERED)
     val effects: Flow<FinanceEffect> = channel.receiveAsFlow()
-    private var retry: FinanceOperation? = null
+    private val mutations = DraftMutationSupport<FinanceState, MonthlyChargeDraft, FinanceOperation, FinanceError>(
+        capability = capability,
+        scope = scope,
+        state = { mutable.value },
+        setState = { mutable.value = it },
+        canMutate = { it.organizer && !it.isMutating },
+        mutatingState = {
+            it.copy(
+                isMutating = true,
+                error = null,
+                retryAvailable = false,
+                fieldErrors = emptyMap(),
+            )
+        },
+        failedState = { current, failure, error ->
+            current.copy(
+                isLoading = false,
+                isMutating = false,
+                error = error,
+                fieldErrors = (failure as? FinanceGatewayFailure.Validation)?.fields.orEmpty(),
+                reloadAvailable = error == FinanceError.CONFLICT,
+                retryAvailable = error == FinanceError.CONFLICT || error == FinanceError.UNAVAILABLE,
+            )
+        },
+        mapFailure = ::mapError,
+    )
 
     init {
         restore()
@@ -53,26 +81,24 @@ class FinanceViewModel(
             FinanceIntent.ReviewMonthly -> review()
             FinanceIntent.GenerateMonthly -> generate()
             is FinanceIntent.UpdateStatus -> status(intent)
-            FinanceIntent.Retry -> retry?.let(::execute)
+            FinanceIntent.Retry -> mutations.retry(::execute)
         }
     }
 
     private fun restore() {
-        if (!mutable.value.organizer) return
-        drafts.read(groupId) { result ->
-            when (result) {
-                is MonthlyDraftReadResult.Success -> result.draft
-                    ?.takeIf {
-                        it.schemaVersion == MonthlyChargeDraft.CURRENT_SCHEMA &&
-                            it.groupId == groupId
+        mutations.restore(
+            read = { success, failure ->
+                drafts.read(groupId) { result ->
+                    when (result) {
+                        is MonthlyDraftReadResult.Success -> success(result.draft)
+                        MonthlyDraftReadResult.Failure -> failure()
                     }
-                    ?.let { mutable.value = mutable.value.copy(monthlyDraft = it) }
-
-                MonthlyDraftReadResult.Failure -> {
-                    mutable.value = mutable.value.copy(error = FinanceError.DRAFT_UNAVAILABLE)
                 }
-            }
-        }
+            },
+            valid = { it.schemaVersion == MonthlyChargeDraft.CURRENT_SCHEMA && it.groupId == groupId },
+            restored = { mutable.value = mutable.value.copy(monthlyDraft = it) },
+            unavailable = { it.copy(error = FinanceError.DRAFT_UNAVAILABLE) },
+        )
     }
 
     private fun load() {
@@ -104,19 +130,19 @@ class FinanceViewModel(
                 )
             }
 
-            is NetworkResult.Failure -> failed(result.error.toFinanceGatewayFailure())
+            is NetworkResult.Failure -> mutations.fail(result.error.toFinanceGatewayFailure())
         }
     }
 
     private suspend fun loadOrganizer() {
-        val gateway = organizer ?: return failed(FinanceGatewayFailure.Forbidden)
-        val roles = memberships ?: return failed(FinanceGatewayFailure.Forbidden)
+        val gateway = mutations.organizer ?: return mutations.fail(FinanceGatewayFailure.Forbidden)
+        val roles = memberships ?: return mutations.fail(FinanceGatewayFailure.Forbidden)
 
         when (val chargeResult = gateway.charges(groupId)) {
-            is NetworkResult.Failure -> failed(chargeResult.error.toFinanceGatewayFailure())
+            is NetworkResult.Failure -> mutations.fail(chargeResult.error.toFinanceGatewayFailure())
 
             is NetworkResult.Success -> when (val memberResult = roles.listMemberships(groupId)) {
-                is NetworkResult.Failure -> failed(FinanceGatewayFailure.Temporary)
+                is NetworkResult.Failure -> mutations.fail(FinanceGatewayFailure.Temporary)
 
                 is NetworkResult.Success -> {
                     val value = chargeResult.value
@@ -199,52 +225,32 @@ class FinanceViewModel(
     }
 
     private fun execute(operation: FinanceOperation) {
-        val gateway = organizer ?: return
         val current = mutable.value
         if (!current.organizer || current.isMutating) return
 
-        retry = operation
-        mutable.value = current.copy(
-            isMutating = true,
-            error = null,
-            retryAvailable = false,
-            fieldErrors = emptyMap(),
-        )
-
-        scope.launch {
-            when (operation) {
+        mutations.execute(
+            operation = operation,
+            perform = { gateway -> when (operation) {
                 is FinanceOperation.Monthly -> {
                     val draft = operation.draft
-                    when (
-                        val result = gateway.generateMonthly(
-                            groupId,
-                            MonthlyChargeCommandDto(
-                                draft.commandKey,
-                                draft.month,
-                                requireNotNull(parseBrlToCents(draft.amountBrl)),
-                                draft.dueDate,
-                                draft.selectedMemberIds,
-                            ),
-                        )
-                    ) {
-                        is NetworkResult.Success -> monthlyApplied(gateway, draft, result.value)
-                        is NetworkResult.Failure -> failed(result.error.toFinanceGatewayFailure())
+                    when (val result = gateway.generateMonthly(groupId, MonthlyChargeCommandDto(draft.commandKey, draft.month, requireNotNull(parseBrlToCents(draft.amountBrl)), draft.dueDate, draft.selectedMemberIds))) {
+                        is NetworkResult.Success -> FinanceMutationResult.Success(result.value)
+                        is NetworkResult.Failure -> FinanceMutationResult.Failure(result.error.toFinanceGatewayFailure())
                     }
                 }
 
-                is FinanceOperation.Status -> when (
-                    val result = gateway.updateChargeStatus(
-                        groupId,
-                        operation.chargeId,
-                        operation.etag,
-                        operation.command,
-                    )
-                ) {
-                    is NetworkResult.Success -> statusApplied(result.value.charge)
-                    is NetworkResult.Failure -> failed(result.error.toFinanceGatewayFailure())
+                is FinanceOperation.Status -> when (val result = gateway.updateChargeStatus(groupId, operation.chargeId, operation.etag, operation.command)) {
+                    is NetworkResult.Success -> FinanceMutationResult.Success(result.value.charge)
+                    is NetworkResult.Failure -> FinanceMutationResult.Failure(result.error.toFinanceGatewayFailure())
                 }
-            }
-        }
+            } },
+            succeeded = { gateway, value ->
+                when (operation) {
+                    is FinanceOperation.Monthly -> monthlyApplied(gateway, operation.draft, value as ChargeListDto)
+                    is FinanceOperation.Status -> statusApplied(value as ChargeDto)
+                }
+            },
+        )
     }
 
     private suspend fun monthlyApplied(
@@ -252,7 +258,6 @@ class FinanceViewModel(
         draft: MonthlyChargeDraft,
         generated: ChargeListDto,
     ) {
-        retry = null
         drafts.clear(groupId, draft.commandKey) {}
 
         val refreshed = when (val result = gateway.charges(groupId)) {
@@ -274,7 +279,6 @@ class FinanceViewModel(
     }
 
     private fun statusApplied(charge: ChargeDto) {
-        retry = null
         mutable.value = mutable.value.copy(
             charges = mutable.value.charges.map { if (it.id == charge.id) charge else it },
             isMutating = false,
@@ -287,15 +291,14 @@ class FinanceViewModel(
     }
 
     private fun persist(draft: MonthlyChargeDraft) {
-        drafts.write(draft) {
-            if (it == MonthlyDraftWriteResult.Failure) {
-                mutable.value = mutable.value.copy(error = FinanceError.DRAFT_UNAVAILABLE)
-            }
-        }
+        mutations.persist(
+            draft = draft,
+            write = { value, failure -> drafts.write(value) { if (it == MonthlyDraftWriteResult.Failure) failure() } },
+            unavailable = { it.copy(error = FinanceError.DRAFT_UNAVAILABLE) },
+        )
     }
 
-    private fun failed(failure: FinanceGatewayFailure) {
-        val error = when (failure) {
+    private fun mapError(failure: FinanceGatewayFailure) = when (failure) {
             is FinanceGatewayFailure.Validation -> FinanceError.VALIDATION
             FinanceGatewayFailure.Conflict -> FinanceError.CONFLICT
             FinanceGatewayFailure.HiddenResource -> FinanceError.HIDDEN
@@ -303,13 +306,4 @@ class FinanceViewModel(
             FinanceGatewayFailure.InvalidLifecycle -> FinanceError.INVALID_LIFECYCLE
             else -> FinanceError.UNAVAILABLE
         }
-        mutable.value = mutable.value.copy(
-            isLoading = false,
-            isMutating = false,
-            error = error,
-            fieldErrors = (failure as? FinanceGatewayFailure.Validation)?.fields.orEmpty(),
-            reloadAvailable = error == FinanceError.CONFLICT,
-            retryAvailable = error == FinanceError.CONFLICT || error == FinanceError.UNAVAILABLE,
-        )
-    }
 }
