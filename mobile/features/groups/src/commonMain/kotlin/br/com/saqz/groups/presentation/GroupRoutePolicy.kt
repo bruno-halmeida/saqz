@@ -1,7 +1,7 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.GroupProfileStatusDto
-import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.domain.group.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupRole
 
 enum class GroupFinanceVisibility { ORGANIZER, OWN_CHARGES }
 
@@ -17,9 +17,9 @@ data class GroupRouteAccess(
 )
 
 object GroupRoutePolicy {
-    fun evaluate(role: GroupRoleDto, profileStatus: GroupProfileStatusDto): GroupRouteAccess {
-        val organizer = role == GroupRoleDto.OWNER || role == GroupRoleDto.ADMIN
-        val complete = profileStatus == GroupProfileStatusDto.COMPLETE
+    fun evaluate(role: GroupRole, profileStatus: GroupProfileStatus): GroupRouteAccess {
+        val organizer = role == GroupRole.OWNER || role == GroupRole.ADMIN
+        val complete = profileStatus == GroupProfileStatus.COMPLETE
         return GroupRouteAccess(
             peopleVisible = organizer,
             gamesVisible = true,

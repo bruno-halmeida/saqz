@@ -58,15 +58,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupProfileDto
-import br.com.saqz.groups.data.GroupProfileStatusDto
-import br.com.saqz.groups.data.GroupRegularSlotDto
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.GroupVenueDto
-import br.com.saqz.groups.data.GroupWeekdayDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.group.GroupTimeZone
+import br.com.saqz.groups.domain.group.GroupProfile
+import br.com.saqz.groups.domain.group.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.data.MembershipDto
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
@@ -398,7 +400,7 @@ private fun CreateGroupCard(onOpenCreateGroup: () -> Unit) {
 
 @Composable
 fun GroupDetailScreen(
-    group: GroupDto,
+    group: Group,
     administration: GroupAdministrationState,
     navigation: GroupsNavigationState,
     groupPhotoState: GroupPhotoState,
@@ -427,7 +429,7 @@ fun GroupDetailScreen(
             onOpenSettings = onOpenSettings,
         )
         NoticesCard(
-            incomplete = group.profileStatus == GroupProfileStatusDto.INCOMPLETE,
+            incomplete = group.profileStatus == GroupProfileStatus.INCOMPLETE,
             canCompleteProfile = navigation.access.canCompleteProfile,
             onCompleteProfile = { onNavigationIntent(GroupsNavigationIntent.OpenProfileCompletion) },
         )
@@ -490,7 +492,7 @@ fun GroupLoadError(onRetry: () -> Unit) {
 
 @Composable
 private fun GroupSummary(
-    group: GroupDto,
+    group: Group,
     memberships: List<MembershipDto>,
     photoState: GroupPhotoState,
     photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
@@ -553,7 +555,7 @@ private fun GroupSummary(
 
 @Composable
 private fun GroupSummaryPhoto(
-    group: GroupDto,
+    group: Group,
     state: GroupPhotoState,
     preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
 ) {
@@ -563,7 +565,7 @@ private fun GroupSummaryPhoto(
             .clip(shape)
             .testTag(GroupsNavigationTags.SummaryPhoto),
     ) {
-        val belongsToGroup = state.groupId == group.id
+        val belongsToGroup = state.groupId == group.id.value
         val existing = state.existing
         when {
             !belongsToGroup || state.stage == GroupPhotoStage.LOADING -> GroupPhotoSkeleton(Modifier.fillMaxSize())
@@ -1039,16 +1041,16 @@ private fun MaterialIcon(
 }
 
 @Composable
-private fun groupRoleLabel(role: GroupRoleDto): String = when (role) {
-    GroupRoleDto.OWNER -> stringResource(Res.string.groups_role_owner)
-    GroupRoleDto.ADMIN -> stringResource(Res.string.groups_role_admin)
-    GroupRoleDto.ATHLETE -> stringResource(Res.string.groups_role_athlete)
+private fun groupRoleLabel(role: GroupRole): String = when (role) {
+    GroupRole.OWNER -> stringResource(Res.string.groups_role_owner)
+    GroupRole.ADMIN -> stringResource(Res.string.groups_role_admin)
+    GroupRole.ATHLETE -> stringResource(Res.string.groups_role_athlete)
 }
 
 @Composable
 private fun sessionRoleLabel(role: String): String = when (role.uppercase()) {
-    GroupRoleDto.OWNER.name -> stringResource(Res.string.groups_role_owner)
-    GroupRoleDto.ADMIN.name -> stringResource(Res.string.groups_role_admin)
+    GroupRole.OWNER.name -> stringResource(Res.string.groups_role_owner)
+    GroupRole.ADMIN.name -> stringResource(Res.string.groups_role_admin)
     else -> stringResource(Res.string.groups_role_athlete)
 }
 
@@ -1060,39 +1062,49 @@ private fun initials(name: String): String = name.trim()
     .joinToString("")
     .ifBlank { "G" }
 
-private val previewGroup = GroupDto(
-    id = "preview-group",
+private val previewGroup = Group(
+    id = GroupId("preview-group"),
     name = "Futebol de terça",
-    timeZone = "America/Sao_Paulo",
+    timeZone = GroupTimeZone("America/Sao_Paulo"),
     version = 1,
-    role = GroupRoleDto.OWNER,
-    profile = GroupProfileDto(
-        defaultVenue = GroupVenueDto(id = "venue-1", name = "Quadra do Parque", address = "Rua das Flores, 10"),
+    role = GroupRole.OWNER,
+    profile = GroupProfile(
+        modality = null,
+        composition = null,
+        description = null,
+        city = null,
+        level = null,
+        customLevel = null,
+        playStyle = null,
+        customPlayStyle = null,
+        defaultVenue = GroupVenue(id = "venue-1", name = "Quadra do Parque", address = "Rua das Flores, 10"),
         regularSlots = listOf(
-            GroupRegularSlotDto(
+            GroupRegularSlot(
                 id = "slot-1",
-                weekday = GroupWeekdayDto.TUESDAY,
+                weekday = GroupWeekday.TUESDAY,
                 startTime = "19:30",
                 durationMinutes = 90,
             ),
         ),
+        defaultCapacity = null,
+        defaultConfirmationLeadMinutes = null,
     ),
 )
 
 private val previewMemberships = listOf(
-    MembershipDto(userId = "user-1", displayName = "Ana Lima", role = GroupRoleDto.ATHLETE),
-    MembershipDto(userId = "user-2", displayName = "Bruno Reis", role = GroupRoleDto.ADMIN),
+    MembershipDto(userId = "user-1", displayName = "Ana Lima", role = br.com.saqz.groups.data.GroupRoleDto.ATHLETE),
+    MembershipDto(userId = "user-2", displayName = "Bruno Reis", role = br.com.saqz.groups.data.GroupRoleDto.ADMIN),
 )
 
 private val previewAdministration = GroupAdministrationState(
-    group = VersionedGroupDto(previewGroup, "preview-etag"),
+    group = VersionedGroup(previewGroup, "preview-etag"),
     memberships = previewMemberships,
     actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
 )
 
 private val previewNavigation = GroupsNavigationState(
     destination = GroupsDestination.HOME,
-    groupId = previewGroup.id,
+    groupId = previewGroup.id.value,
     access = GroupsNavigationAccess(
         showPeople = true,
         showGames = true,
@@ -1101,7 +1113,7 @@ private val previewNavigation = GroupsNavigationState(
         financeDestination = GroupsDestination.FINANCE,
     ),
     memberships = listOf(
-        GroupSelectionMembership(previewGroup.id, previewGroup.name, GroupRoleDto.OWNER.name),
+        GroupSelectionMembership(previewGroup.id.value, previewGroup.name, GroupRole.OWNER.name),
     ),
 )
 

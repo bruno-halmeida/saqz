@@ -16,14 +16,14 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.core.common.formatting.formatBrlPlain
 import br.com.saqz.core.common.formatting.parseBrlToCents
 import br.com.saqz.core.common.formatting.sanitizeBrlInput
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
-import br.com.saqz.groups.model.GroupRegularSlotForm
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupVenueForm
-import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.port.GroupPhotoSelection
 import br.com.saqz.groups.port.GroupPhotoSourceHandle
@@ -34,6 +34,7 @@ import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.setup.GroupSetupValidationMessage
 import br.com.saqz.groups.presentation.setup.newGroupDefaults
 import br.com.saqz.groups.ui.photo.GroupPhotoTags
 import kotlin.test.Test
@@ -44,6 +45,17 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class GroupSetupScreenTest {
+    @Test
+    fun `generic validation fallback is localized`() = runComposeUiTest {
+        setup(
+            state = state().copy(
+                validationMessages = listOf(GroupSetupValidationMessage.Generic),
+            ),
+        )
+
+        onNodeWithText("Revise os dados do grupo.").assertExists()
+    }
+
     @Test fun `registration presents four equal width sections in one flow`() = runComposeUiTest {
         setup()
         val tags = listOf(GroupSetupTags.Profile, GroupSetupTags.Sports, GroupSetupTags.GameDefaults, GroupSetupTags.FinanceDefaults)
@@ -153,11 +165,11 @@ class GroupSetupScreenTest {
         var intent: GroupSetupIntent? = null
         setup(onIntent = { intent = it })
         onNodeWithTag(GroupSetupTags.AddVenue).performScrollTo().performClick()
-        assertEquals(GroupSetupIntent.UpdateVenue(GroupVenueForm(name = "", address = "")), intent)
+        assertEquals(GroupSetupIntent.UpdateVenue(GroupVenue(name = "", address = "")), intent)
     }
 
     @Test fun `configured venue is summarized and can be edited`() = runComposeUiTest {
-        setup(state = state(form = requiredForm().copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "Rua 1"))))
+        setup(state = state(form = requiredForm().copy(defaultVenue = GroupVenue(name = "Quadra do Parque", address = "Rua 1"))))
         onNodeWithText("Quadra do Parque").performScrollTo().assertExists()
         onNodeWithText("Nome do local").assertDoesNotExist()
         onNodeWithText("Editar").performClick()
@@ -168,7 +180,7 @@ class GroupSetupScreenTest {
 
     @Test fun `venue name remains a controlled intent`() = runComposeUiTest {
         var intent: GroupSetupIntent? = null
-        setup(state = state(form = requiredForm().copy(defaultVenue = GroupVenueForm(name = "", address = "Rua 1")))) { intent = it }
+        setup(state = state(form = requiredForm().copy(defaultVenue = GroupVenue(name = "", address = "Rua 1")))) { intent = it }
         onNodeWithContentDescription("Nome do local", useUnmergedTree = true).performTextInput("Arena")
         assertEquals("Arena", assertIs<GroupSetupIntent.UpdateVenue>(intent).value?.name)
     }
@@ -447,7 +459,7 @@ class GroupSetupScreenTest {
     }
 
     private companion object {
-        val slot = GroupRegularSlotForm(weekday = GroupWeekday.WEDNESDAY, startTime = "19:30", durationMinutes = 90)
+        val slot = GroupRegularSlot(weekday = GroupWeekday.WEDNESDAY, startTime = "19:30", durationMinutes = 90)
 
         fun requiredForm(modality: GroupModality = GroupModality.COURT_VOLLEYBALL) = newGroupDefaults().copy(
             name = "Vôlei de terça",

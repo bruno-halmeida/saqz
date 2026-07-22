@@ -1,36 +1,38 @@
 package br.com.saqz.groups.presentation.setup
 
-import br.com.saqz.groups.data.GroupCompositionDto
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupFinanceDefaultsDto
-import br.com.saqz.groups.data.GroupModalityDto
-import br.com.saqz.groups.data.GroupProfileDto
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.VersionedGroupDto
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupCreateCommand
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupFinanceDefaults
+import br.com.saqz.groups.domain.group.GroupProfile
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupDraftResource
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
-import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupTimeZone
-import br.com.saqz.groups.model.GroupUpdateCommand
-import br.com.saqz.groups.model.GroupVenueForm
-import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.model.GroupTimeZone as SystemGroupTimeZone
+import br.com.saqz.groups.domain.group.GroupTimeZone
+import br.com.saqz.groups.domain.group.GroupVersionToken
+import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
+import br.com.saqz.groups.domain.group.VersionedGroup
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.port.GroupDraftFailure
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
-import br.com.saqz.network.ApiProblem
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
@@ -76,7 +78,7 @@ class GroupSetupViewModelTest {
             groupVersion = 4,
             etag = "\"4\"",
             commandKey = "restored-command",
-            form = validForm().copy(name = "Restored Group"),
+            form = validForm().copy(name = "Restored Group").toDraftForm(),
         )
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft))
 
@@ -155,8 +157,8 @@ class GroupSetupViewModelTest {
     @Test
     fun `invalid nested defaults expose exact paths and submit no request`() = runTest {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm().copy(
-            defaultVenue = GroupVenueForm(name = "", address = "x"),
-            regularSlots = listOf(GroupRegularSlotForm(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 10)),
+            defaultVenue = GroupVenue(name = "", address = "x"),
+            regularSlots = listOf(GroupRegularSlot(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 10)),
             defaultCapacity = 1,
             monthlyFeeCents = 7000,
             monthlyDueDay = null,
@@ -191,7 +193,7 @@ class GroupSetupViewModelTest {
 
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
-        fixture.gateway.createResult = NetworkResult.Success(group())
+        fixture.gateway.createResult = SaqzResult.Success(group())
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
@@ -276,8 +278,8 @@ class GroupSetupViewModelTest {
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
-        assertEquals(GROUP_ID, fixture.gateway.updates.single().groupId)
-        assertEquals("\"7\"", fixture.gateway.updates.single().etag)
+        assertEquals(GROUP_ID, fixture.gateway.updates.single().groupId.value)
+        assertEquals("\"7\"", fixture.gateway.updates.single().versionToken.value)
         assertEquals(GroupSetupEffect.OpenGroup(GROUP_ID), fixture.viewModel.effects.first())
         assertTrue(fixture.drafts.clears.single().first.resource == GroupDraftResource.UPDATE_GROUP)
     }
@@ -300,7 +302,7 @@ class GroupSetupViewModelTest {
     @Test
     fun `conflict reload replaces form and ETag with authoritative response`() = runTest {
         val fixture = fixture(existing = versioned())
-        fixture.gateway.readResult = NetworkResult.Success(versioned(name = "Reloaded Group", version = 9, etag = "\"9\""))
+        fixture.gateway.readResult = SaqzResult.Success(versioned(name = "Reloaded Group", version = 9, etag = "\"9\""))
 
         fixture.viewModel.onIntent(GroupSetupIntent.ReloadConflict)
         runCurrent()
@@ -314,16 +316,60 @@ class GroupSetupViewModelTest {
     @Test
     fun `server validation preserves exact field paths and local draft`() = runTest {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
-        fixture.gateway.createResult = NetworkResult.Failure(
-            NetworkError.ApiProblemError(ApiProblem(400, "VALIDATION_FAILED", "corr", mapOf("defaultVenue.address" to listOf("invalid")))),
+        fixture.gateway.createResult = SaqzResult.Failure(
+            GroupProfileError.Validation(
+                ValidationDetails(
+                    globalMessages = emptyList(),
+                    fieldMessages = mapOf("defaultVenue.address" to listOf("invalid")),
+                ),
+            ),
         )
 
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
         assertEquals(listOf("invalid"), fixture.viewModel.state.value.fieldErrors["defaultVenue.address"])
-        assertEquals(validForm(), fixture.drafts.writes.last().form)
+        assertEquals(validForm().toDraftForm(), fixture.drafts.writes.last().form)
         assertNull(fixture.viewModel.state.value.error)
+    }
+
+    @Test
+    fun `server validation without global message uses generic presentation fallback`() = runTest {
+        val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
+        fixture.gateway.createResult = SaqzResult.Failure(
+            GroupProfileError.Validation(
+                ValidationDetails(globalMessages = emptyList(), fieldMessages = emptyMap()),
+            ),
+        )
+
+        fixture.viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(
+            listOf(GroupSetupValidationMessage.Generic),
+            fixture.viewModel.state.value.validationMessages,
+        )
+    }
+
+    @Test
+    fun `server validation preserves safe global messages`() = runTest {
+        val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
+        fixture.gateway.createResult = SaqzResult.Failure(
+            GroupProfileError.Validation(
+                ValidationDetails(
+                    globalMessages = listOf("Confira os dados do grupo"),
+                    fieldMessages = emptyMap(),
+                ),
+            ),
+        )
+
+        fixture.viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(
+            listOf(GroupSetupValidationMessage.Safe("Confira os dados do grupo")),
+            fixture.viewModel.state.value.validationMessages,
+        )
     }
 
     @Test
@@ -353,7 +399,7 @@ class GroupSetupViewModelTest {
     }
 
     private fun TestScope.fixture(
-        existing: VersionedGroupDto? = null,
+        existing: VersionedGroup? = null,
         draftResult: GroupDraftReadResult = GroupDraftReadResult.Success(null),
         timeZoneResult: GroupSystemTimeZoneResult = GroupSystemTimeZoneResult.Available(zone()),
     ): Fixture {
@@ -371,17 +417,17 @@ class GroupSetupViewModelTest {
     }
 
     private class FakeGateway : GroupProfileGateway {
-        val creates = mutableListOf<GroupCreateCommand>()
-        val updates = mutableListOf<GroupUpdateCommand>()
-        var createResult: NetworkResult<GroupDto> = NetworkResult.Success(group())
-        var updateResult: NetworkResult<VersionedGroupDto> = NetworkResult.Success(versioned(version = 8, etag = "\"8\""))
-        var readResult: NetworkResult<VersionedGroupDto> = NetworkResult.Success(versioned())
-        override suspend fun createProfile(command: GroupCreateCommand): NetworkResult<GroupDto> {
+        val creates = mutableListOf<CreateGroupProfileCommand>()
+        val updates = mutableListOf<UpdateGroupProfileCommand>()
+        var createResult: SaqzResult<Group, GroupProfileError> = SaqzResult.Success(group())
+        var updateResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(versioned(version = 8, etag = "\"8\""))
+        var readResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(versioned())
+        override suspend fun createProfile(command: CreateGroupProfileCommand): SaqzResult<Group, GroupProfileError> {
             creates += command
             return createResult
         }
-        override suspend fun readProfile(groupId: String) = readResult
-        override suspend fun updateProfile(command: GroupUpdateCommand): NetworkResult<VersionedGroupDto> {
+        override suspend fun readProfile(groupId: GroupId) = readResult
+        override suspend fun updateProfile(command: UpdateGroupProfileCommand): SaqzResult<VersionedGroup, GroupProfileError> {
             updates += command
             return updateResult
         }
@@ -405,7 +451,7 @@ class GroupSetupViewModelTest {
 
     private companion object {
         const val GROUP_ID = "group-1"
-        fun zone() = assertIs<GroupTimeZone.ParseResult.Valid>(GroupTimeZone.parse("America/Sao_Paulo")).value
+        fun zone() = assertIs<SystemGroupTimeZone.ParseResult.Valid>(SystemGroupTimeZone.parse("America/Sao_Paulo")).value
         fun validForm() = GroupSetupForm("Training Club", GroupModality.COURT_VOLLEYBALL, GroupComposition.MIXED)
         fun draft(form: GroupSetupForm) = GroupSetupDraft(
             resource = GroupDraftResource.CREATE_GROUP,
@@ -413,24 +459,46 @@ class GroupSetupViewModelTest {
             groupVersion = null,
             etag = null,
             commandKey = "restored-command",
-            form = form,
+            form = form.toDraftForm(),
         )
-        fun group(name: String = "Training Club", version: Long = 1) = GroupDto(
+        fun group(name: String = "Training Club", version: Long = 1) = Group(
             GROUP_ID,
             name,
             "America/Sao_Paulo",
             version,
-            GroupRoleDto.OWNER,
+            GroupRole.OWNER,
         )
-        fun versioned(name: String = "Existing Group", version: Long = 7, etag: String = "\"7\"") = VersionedGroupDto(
+        fun versioned(name: String = "Existing Group", version: Long = 7, etag: String = "\"7\"") = VersionedGroup(
             group(name, version).copy(
-                profile = GroupProfileDto(GroupModalityDto.BEACH_VOLLEYBALL, GroupCompositionDto.MIXED),
-                financeDefaults = GroupFinanceDefaultsDto(defaultGameFeeCents = 1500),
+                profile = GroupProfile(
+                    modality = GroupModality.BEACH_VOLLEYBALL,
+                    composition = GroupComposition.MIXED,
+                    description = null,
+                    city = null,
+                    level = null,
+                    customLevel = null,
+                    playStyle = null,
+                    customPlayStyle = null,
+                    defaultVenue = null,
+                    regularSlots = emptyList(),
+                    defaultCapacity = null,
+                    defaultConfirmationLeadMinutes = null,
+                ),
+                financeDefaults = GroupFinanceDefaults(
+                    defaultGameFeeCents = 1500,
+                    monthlyFeeCents = null,
+                    monthlyDueDay = null,
+                ),
             ),
             etag,
         )
-        fun failure(status: Int, code: String): NetworkResult.Failure = NetworkResult.Failure(
-            NetworkError.ApiProblemError(ApiProblem(status, code, "corr-$status")),
+        fun failure(status: Int, code: String): SaqzResult.Failure<GroupProfileError> = SaqzResult.Failure(
+            when {
+                status == 409 -> GroupProfileError.Conflict()
+                status == 403 -> GroupProfileError.DataFailure(DataError.Forbidden)
+                status == 404 -> GroupProfileError.DataFailure(DataError.NotFound)
+                else -> GroupProfileError.DataFailure(DataError.Server)
+            },
         )
     }
 }

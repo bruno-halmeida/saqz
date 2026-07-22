@@ -1,7 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.VersionedGroup
 
 data class GroupSetupInput(
-    val existing: VersionedGroupDto? = null,
+    val existing: VersionedGroup? = null,
 )

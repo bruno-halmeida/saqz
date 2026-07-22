@@ -9,9 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.resources.Res
@@ -120,7 +120,7 @@ fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit) {
 }
 
 private val previewGroupState = GroupAdministrationState(
-    group = VersionedGroupDto(GroupDto("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRoleDto.OWNER), "preview-etag"),
+    group = VersionedGroup(Group("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRole.OWNER), "preview-etag"),
     actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
 )
 

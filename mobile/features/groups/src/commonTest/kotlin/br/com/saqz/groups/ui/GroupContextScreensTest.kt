@@ -8,7 +8,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.groups.data.*
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -24,7 +26,7 @@ class GroupContextScreensTest {
 
     private fun androidx.compose.ui.test.ComposeUiTest.settings(state: GroupAdministrationState=owner,onIntent:(GroupSettingsIntent)->Unit={}) = setContent { SaqzTheme { GroupSettingsScreen(GroupSettingsUiState(state,"",""),onIntent) } }
     private companion object {
-        val group=VersionedGroupDto(GroupDto("id","Current Group","America/Sao_Paulo",1,GroupRoleDto.OWNER),"etag")
+        val group=VersionedGroup(Group("id","Current Group","America/Sao_Paulo",1,GroupRole.OWNER),"etag")
         val owner=GroupAdministrationState(group=group,actions=GroupActions(true,true,true))
     }
 }

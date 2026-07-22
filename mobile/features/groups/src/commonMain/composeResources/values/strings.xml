@@ -266,6 +266,7 @@
     <string name="attendance_withdraw_charge_warning">Sua cobrança registrada continuará pendente. Nenhum estorno, reembolso ou pagamento é automático.</string>
     <string name="attendance_retry">Tentar resposta novamente</string>
     <string name="attendance_validation">Revise os dados da presença.</string>
+    <string name="group_setup_validation">Revise os dados do grupo.</string>
     <string name="attendance_organizer_title">Ajustes do organizador</string>
     <string name="attendance_member_id">Identificador do membro</string>
     <string name="attendance_override_reason">Motivo do ajuste</string>

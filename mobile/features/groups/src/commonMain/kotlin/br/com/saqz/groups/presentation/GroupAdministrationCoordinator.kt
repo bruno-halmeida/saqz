@@ -1,12 +1,20 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.AdministrationFailure
-import br.com.saqz.groups.data.GroupGateway
-import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.group.CreateGroupCommand
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTimeZone
+import br.com.saqz.groups.domain.group.GroupVersionToken
+import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.data.MembershipDto
+import br.com.saqz.groups.data.AdministrationFailure
 import br.com.saqz.groups.data.PersistedRoleDto
 import br.com.saqz.groups.data.RolesInvitesGateway
-import br.com.saqz.groups.data.VersionedGroupDto
 import br.com.saqz.groups.data.toAdministrationFailure
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
@@ -29,7 +37,7 @@ enum class GroupAdministrationError {
 }
 
 data class GroupAdministrationState(
-    val group: VersionedGroupDto? = null,
+    val group: VersionedGroup? = null,
     val memberships: List<MembershipDto> = emptyList(),
     val actions: GroupActions = GroupActions(false, false, false),
     val isLoading: Boolean = false,
@@ -39,7 +47,7 @@ data class GroupAdministrationState(
 )
 
 sealed interface GroupAdministrationIntent {
-    data class SetGroup(val group: VersionedGroupDto) : GroupAdministrationIntent
+    data class SetGroup(val group: VersionedGroup) : GroupAdministrationIntent
 
     data class CreateGroup(
         val requestId: String,
@@ -73,7 +81,7 @@ class GroupAdministrationStateMachine(
         }
     }
 
-    private fun setGroup(group: VersionedGroupDto) {
+    private fun setGroup(group: VersionedGroup) {
         mutableState.value = GroupAdministrationState(
             group = group,
             actions = actionsFor(group.group.role),
@@ -83,12 +91,13 @@ class GroupAdministrationStateMachine(
     private fun createGroup(requestId: String, name: String, timeZone: String) {
         if (!begin()) return
         scope.launch {
-            when (val result = groups.create(requestId, name, timeZone)) {
-                is NetworkResult.Success -> {
+            val command = CreateGroupCommand(requestId, name, GroupTimeZone(timeZone))
+            when (val result = groups.create(command)) {
+                is SaqzResult.Success -> {
                     finish()
-                    selectCreatedGroup(result.value.id)
+                    selectCreatedGroup(result.value.id.value)
                 }
-                is NetworkResult.Failure -> fail(result.error)
+                is SaqzResult.Failure -> failGroup(result.error)
             }
         }
     }
@@ -98,11 +107,17 @@ class GroupAdministrationStateMachine(
         val group = current.group ?: return
         if (!current.actions.canEditSettings || !begin()) return
         scope.launch {
-            when (val result = groups.update(group.group.id, group.etag, name, timeZone)) {
-                is NetworkResult.Success -> setUpdatedGroup(result.value)
-                is NetworkResult.Failure -> {
-                    if (result.error.toAdministrationFailure() == AdministrationFailure.Conflict) reloadAfterConflict(group.group.id)
-                    else fail(result.error)
+            val command = UpdateGroupSettingsCommand(
+                group.group.id,
+                group.versionToken,
+                name,
+                GroupTimeZone(timeZone),
+            )
+            when (val result = groups.update(command)) {
+                is SaqzResult.Success -> setUpdatedGroup(result.value)
+                is SaqzResult.Failure -> {
+                    if (result.error is GroupProfileError.Conflict) reloadAfterConflict(group.group.id)
+                    else failGroup(result.error)
                 }
             }
         }
@@ -113,7 +128,7 @@ class GroupAdministrationStateMachine(
         val groupId = current.group?.group?.id ?: return
         if (!current.actions.canManageRoles || !begin()) return
         scope.launch {
-            when (val result = roles.listMemberships(groupId)) {
+            when (val result = roles.listMemberships(groupId.value)) {
                 is NetworkResult.Success -> mutableState.value = mutableState.value.copy(
                     memberships = result.value,
                     isLoading = false,
@@ -128,7 +143,7 @@ class GroupAdministrationStateMachine(
         val groupId = current.group?.group?.id ?: return
         if (!current.actions.canManageRoles || !begin()) return
         scope.launch {
-            when (val result = roles.changeRole(groupId, userId, role)) {
+            when (val result = roles.changeRole(groupId.value, userId, role)) {
                 is NetworkResult.Success -> {
                     val updated = mutableState.value.memberships.map { member ->
                         if (member.userId == result.value.userId) result.value else member
@@ -140,19 +155,19 @@ class GroupAdministrationStateMachine(
         }
     }
 
-    private suspend fun reloadAfterConflict(groupId: String) {
+    private suspend fun reloadAfterConflict(groupId: GroupId) {
         when (val fresh = groups.read(groupId)) {
-            is NetworkResult.Success -> mutableState.value = mutableState.value.copy(
+            is SaqzResult.Success -> mutableState.value = mutableState.value.copy(
                 group = fresh.value,
                 actions = actionsFor(fresh.value.group.role),
                 isLoading = false,
                 versionConflict = true,
             )
-            is NetworkResult.Failure -> fail(fresh.error)
+            is SaqzResult.Failure -> failGroup(fresh.error)
         }
     }
 
-    private fun setUpdatedGroup(group: VersionedGroupDto) {
+    private fun setUpdatedGroup(group: VersionedGroup) {
         mutableState.value = mutableState.value.copy(
             group = group,
             actions = actionsFor(group.group.role),
@@ -196,10 +211,32 @@ class GroupAdministrationStateMachine(
             )
         }
     }
+
+    private fun failGroup(error: GroupProfileError) {
+        when (error) {
+            is GroupProfileError.Validation -> mutableState.value = mutableState.value.copy(
+                isLoading = false,
+                fieldErrors = error.details.fieldMessages,
+                error = null,
+            )
+            is GroupProfileError.Conflict -> mutableState.value = mutableState.value.copy(
+                isLoading = false,
+                versionConflict = true,
+            )
+            is GroupProfileError.DataFailure -> mutableState.value = mutableState.value.copy(
+                isLoading = false,
+                error = when (error.error) {
+                    DataError.Forbidden -> GroupAdministrationError.FORBIDDEN
+                    DataError.NotFound -> GroupAdministrationError.NOT_FOUND
+                    else -> GroupAdministrationError.UNAVAILABLE
+                },
+            )
+        }
+    }
 }
 
-private fun actionsFor(role: GroupRoleDto): GroupActions = when (role) {
-    GroupRoleDto.OWNER -> GroupActions(true, true, true)
-    GroupRoleDto.ADMIN -> GroupActions(true, false, true)
-    GroupRoleDto.ATHLETE -> GroupActions(false, false, false)
+private fun actionsFor(role: GroupRole): GroupActions = when (role) {
+    GroupRole.OWNER -> GroupActions(true, true, true)
+    GroupRole.ADMIN -> GroupActions(true, false, true)
+    GroupRole.ATHLETE -> GroupActions(false, false, false)
 }

@@ -1,13 +1,14 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.GroupGateway
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,7 @@ sealed interface GroupSelectionState {
 
     data class Loading(val groupId: String) : GroupSelectionState
 
-    data class Selected(val group: VersionedGroupDto) : GroupSelectionState
+    data class Selected(val group: VersionedGroup) : GroupSelectionState
 
     data class LoadError(val groupId: String) : GroupSelectionState
 }
@@ -106,11 +107,11 @@ class GroupSelectionStateMachine(
         mutableState.value = GroupSelectionState.Loading(groupId)
         writeSelection(groupId)
         scope.launch {
-            val result = groups.read(groupId)
+            val result = groups.read(GroupId(groupId))
             if (generation != operationGeneration) return@launch
             mutableState.value = when (result) {
-                is NetworkResult.Success -> GroupSelectionState.Selected(result.value)
-                is NetworkResult.Failure -> GroupSelectionState.LoadError(groupId)
+                is SaqzResult.Success -> GroupSelectionState.Selected(result.value)
+                is SaqzResult.Failure -> GroupSelectionState.LoadError(groupId)
             }
         }
     }

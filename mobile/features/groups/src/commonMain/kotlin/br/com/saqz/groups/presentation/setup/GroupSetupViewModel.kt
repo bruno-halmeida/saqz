@@ -2,26 +2,27 @@ package br.com.saqz.groups.presentation.setup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.SetupFailure
-import br.com.saqz.groups.data.toSetupFailure
-import br.com.saqz.groups.model.GroupCreateCommand
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupVersionToken
+import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupDraftResource
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupTimeZone
-import br.com.saqz.groups.model.GroupUpdateCommand
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -44,17 +45,17 @@ class GroupSetupViewModel(
     private val existing = input.existing
     private val draftKey = GroupDraftKey(
         if (existing == null) GroupDraftResource.CREATE_GROUP else GroupDraftResource.UPDATE_GROUP,
-        existing?.group?.id,
+        existing?.group?.id?.value,
     )
     private val mutableState = MutableStateFlow(
         GroupSetupState(
             mode = if (existing == null) GroupSetupMode.CREATE else GroupSetupMode.EDIT,
             form = existing?.group?.toForm() ?: newGroupDefaults(),
             commandKey = commandKeys.create(),
-            groupId = existing?.group?.id,
+            groupId = existing?.group?.id?.value,
             groupVersion = existing?.group?.version,
-            etag = existing?.etag,
-            timeZone = existing?.group?.timeZone?.toGroupTimeZone(),
+            etag = existing?.versionToken?.value,
+            timeZone = existing?.group?.timeZone,
         ),
     )
     val state: StateFlow<GroupSetupState> = mutableState.asStateFlow()
@@ -124,7 +125,7 @@ class GroupSetupViewModel(
             mutableState.update { current ->
                 when (result) {
                     is GroupSystemTimeZoneResult.Available -> current.copy(
-                        timeZone = result.value,
+                        timeZone = GroupTimeZone(result.value.id),
                         timezoneSelectionRequired = false,
                     )
                     GroupSystemTimeZoneResult.Unavailable -> current.copy(timezoneSelectionRequired = true)
@@ -134,11 +135,13 @@ class GroupSetupViewModel(
     }
 
     private fun selectFallbackTimeZone(identifier: String) {
-        when (val parsed = GroupTimeZone.parse(identifier)) {
-            is GroupTimeZone.ParseResult.Valid -> mutableState.update {
-                it.copy(timeZone = parsed.value, timezoneSelectionRequired = false, fieldErrors = it.fieldErrors - "timeZone")
+        val parsed = identifier.toGroupTimeZone()
+        if (parsed != null) {
+            mutableState.update {
+                it.copy(timeZone = parsed, timezoneSelectionRequired = false, fieldErrors = it.fieldErrors - "timeZone")
             }
-            GroupTimeZone.ParseResult.Invalid -> mutableState.update {
+        } else {
+            mutableState.update {
                 it.copy(fieldErrors = it.fieldErrors + ("timeZone" to listOf("must be a valid timezone")))
             }
         }
@@ -153,7 +156,7 @@ class GroupSetupViewModel(
                     ) {
                         mutableState.update {
                             it.copy(
-                                form = draft.form,
+                                form = draft.form.toDomainForm(),
                                 commandKey = draft.commandKey,
                                 groupVersion = draft.groupVersion,
                                 etag = draft.etag,
@@ -167,7 +170,14 @@ class GroupSetupViewModel(
     }
 
     private fun updateForm(transform: GroupSetupForm.() -> GroupSetupForm) {
-        mutableState.update { it.copy(form = it.form.transform(), fieldErrors = emptyMap(), error = null) }
+        mutableState.update {
+            it.copy(
+                form = it.form.transform(),
+                fieldErrors = emptyMap(),
+                validationMessages = emptyList(),
+                error = null,
+            )
+        }
         persistDraft()
     }
 
@@ -189,24 +199,42 @@ class GroupSetupViewModel(
             return
         }
         persistDraft()
-        mutableState.update { it.copy(isLoading = true, validationAttempted = true, fieldErrors = emptyMap(), error = null) }
+        mutableState.update {
+            it.copy(
+                isLoading = true,
+                validationAttempted = true,
+                fieldErrors = emptyMap(),
+                validationMessages = emptyList(),
+                error = null,
+            )
+        }
         scope.launch {
             if (current.mode == GroupSetupMode.CREATE) create(current) else update(current)
         }
     }
 
     private suspend fun create(snapshot: GroupSetupState) {
-        when (val result = gateway.createProfile(GroupCreateCommand(snapshot.commandKey, requireNotNull(snapshot.timeZone), snapshot.form))) {
-            is NetworkResult.Success -> confirmedSuccess(result.value.id, result.value.version, null)
-            is NetworkResult.Failure -> fail(result.error)
+        val command = CreateGroupProfileCommand(snapshot.commandKey, requireNotNull(snapshot.timeZone), snapshot.form)
+        when (val result = gateway.createProfile(command)) {
+            is SaqzResult.Success -> confirmedSuccess(result.value.id.value, result.value.version, null)
+            is SaqzResult.Failure -> fail(result.error)
         }
     }
 
     private suspend fun update(snapshot: GroupSetupState) {
-        when (val result = gateway.updateProfile(GroupUpdateCommand(requireNotNull(snapshot.groupId), requireNotNull(snapshot.etag), snapshot.form))) {
-            is NetworkResult.Success -> confirmedSuccess(result.value.group.id, result.value.group.version, result.value.etag)
-            is NetworkResult.Failure -> {
-                if (result.error.toSetupFailure() == SetupFailure.Conflict) {
+        val command = UpdateGroupProfileCommand(
+            GroupId(requireNotNull(snapshot.groupId)),
+            GroupVersionToken(requireNotNull(snapshot.etag)),
+            snapshot.form,
+        )
+        when (val result = gateway.updateProfile(command)) {
+            is SaqzResult.Success -> confirmedSuccess(
+                result.value.group.id.value,
+                result.value.group.version,
+                result.value.versionToken.value,
+            )
+            is SaqzResult.Failure -> {
+                if (result.error is GroupProfileError.Conflict) {
                     mutableState.update { it.copy(isLoading = false, conflict = true) }
                 } else fail(result.error)
             }
@@ -246,13 +274,13 @@ class GroupSetupViewModel(
         if (mutableState.value.isLoading) return
         mutableState.update { it.copy(isLoading = true, error = null) }
         scope.launch {
-            when (val result = gateway.readProfile(groupId)) {
-                is NetworkResult.Success -> {
+            when (val result = gateway.readProfile(GroupId(groupId))) {
+                is SaqzResult.Success -> {
                     mutableState.update {
                         it.copy(
                             form = result.value.group.toForm(),
                             groupVersion = result.value.group.version,
-                            etag = result.value.etag,
+                            etag = result.value.versionToken.value,
                             isLoading = false,
                             conflict = false,
                             fieldErrors = emptyMap(),
@@ -260,7 +288,7 @@ class GroupSetupViewModel(
                     }
                     persistDraft()
                 }
-                is NetworkResult.Failure -> fail(result.error)
+                is SaqzResult.Failure -> fail(result.error)
             }
         }
     }
@@ -272,25 +300,29 @@ class GroupSetupViewModel(
         effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId, groupEtag))
     }
 
-    private fun fail(error: NetworkError) {
-        when (val failure = error.toSetupFailure()) {
-            is SetupFailure.Validation -> mutableState.update {
+    private fun fail(error: GroupProfileError) {
+        when (error) {
+            is GroupProfileError.Validation -> mutableState.update {
                 it.copy(
                     isLoading = false,
-                    fieldErrors = failure.fieldErrors,
+                    fieldErrors = error.details.fieldMessages,
+                    validationMessages = error.details.globalMessages
+                        .map(GroupSetupValidationMessage::Safe)
+                        .ifEmpty { listOf(GroupSetupValidationMessage.Generic) },
                     error = null,
                 )
             }
-            else -> mutableState.update {
+            is GroupProfileError.Conflict -> mutableState.update {
+                it.copy(isLoading = false, conflict = true)
+            }
+            is GroupProfileError.DataFailure -> mutableState.update {
                 it.copy(
                     isLoading = false,
                     fieldErrors = emptyMap(),
-                    error = when (failure) {
-                        SetupFailure.Conflict -> GroupSetupError.UNAVAILABLE
-                        SetupFailure.Forbidden -> GroupSetupError.FORBIDDEN
-                        SetupFailure.NotFound -> GroupSetupError.NOT_FOUND
-                        SetupFailure.Unavailable -> GroupSetupError.UNAVAILABLE
-                        is SetupFailure.Validation -> error("exhaustive")
+                    error = when (error.error) {
+                        DataError.Forbidden -> GroupSetupError.FORBIDDEN
+                        DataError.NotFound -> GroupSetupError.NOT_FOUND
+                        else -> GroupSetupError.UNAVAILABLE
                     },
                 )
             }

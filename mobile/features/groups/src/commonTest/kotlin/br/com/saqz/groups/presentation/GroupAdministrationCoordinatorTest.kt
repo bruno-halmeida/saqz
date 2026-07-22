@@ -1,6 +1,19 @@
 package br.com.saqz.groups.presentation
 
 import br.com.saqz.groups.data.*
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.domain.group.CreateGroupCommand
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTimeZone
+import br.com.saqz.groups.domain.group.GroupVersionToken
+import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.network.ApiProblem
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
@@ -58,7 +71,7 @@ class GroupAdministrationStateMachineTest {
         runCurrent()
         fixture.machine.onIntent(GroupAdministrationIntent.CreateGroup(REQUEST_ID, "New Group", "UTC"))
         assertEquals(1, fixture.groups.creates.size)
-        fixture.groups.pendingCreate!!.complete(NetworkResult.Success(group(GroupRoleDto.OWNER)))
+        fixture.groups.pendingCreate!!.complete(SaqzResult.Success(group(GroupRole.OWNER)))
         runCurrent()
     }
 
@@ -71,11 +84,11 @@ class GroupAdministrationStateMachineTest {
 
     @Test fun `successful settings replace group and etag`() = runTest {
         val fixture = fixture(this).withGroup(GroupRoleDto.ADMIN)
-        fixture.groups.updateResult = NetworkResult.Success(versioned(GroupRoleDto.ADMIN, 8))
+        fixture.groups.updateResult = SaqzResult.Success(versioned(GroupRole.ADMIN, 8))
         fixture.machine.onIntent(GroupAdministrationIntent.UpdateSettings("Renamed", "UTC"))
         runCurrent()
         assertEquals(8, fixture.machine.state.value.group!!.group.version)
-        assertEquals("\"8\"", fixture.machine.state.value.group!!.etag)
+        assertEquals("\"8\"", fixture.machine.state.value.group!!.versionToken.value)
     }
 
     @Test fun `athlete settings intent never reaches API`() = runTest {
@@ -87,8 +100,8 @@ class GroupAdministrationStateMachineTest {
 
     @Test fun `version conflict reloads authoritative settings`() = runTest {
         val fixture = fixture(this).withGroup(GroupRoleDto.OWNER)
-        fixture.groups.updateResult = problem(409, "VERSION_CONFLICT")
-        fixture.groups.readResult = NetworkResult.Success(versioned(GroupRoleDto.OWNER, 9))
+        fixture.groups.updateResult = conflict()
+        fixture.groups.readResult = SaqzResult.Success(versioned(GroupRole.OWNER, 9))
         fixture.machine.onIntent(GroupAdministrationIntent.UpdateSettings("Stale", "UTC"))
         runCurrent()
         assertEquals(listOf(GROUP_ID), fixture.groups.reads)
@@ -97,7 +110,7 @@ class GroupAdministrationStateMachineTest {
 
     @Test fun `version conflict feedback remains after successful reload`() = runTest {
         val fixture = fixture(this).withGroup(GroupRoleDto.OWNER)
-        fixture.groups.updateResult = problem(409, "VERSION_CONFLICT")
+        fixture.groups.updateResult = conflict()
         fixture.machine.onIntent(GroupAdministrationIntent.UpdateSettings("Stale", "UTC"))
         runCurrent()
         assertTrue(fixture.machine.state.value.versionConflict)
@@ -145,7 +158,7 @@ class GroupAdministrationStateMachineTest {
 
     @Test fun `role refresh immediately governs available actions`() = runTest {
         val fixture = fixture(this).withGroup(GroupRoleDto.OWNER)
-        fixture.machine.onIntent(GroupAdministrationIntent.SetGroup(versioned(GroupRoleDto.ATHLETE)))
+        fixture.machine.onIntent(GroupAdministrationIntent.SetGroup(versioned(GroupRole.ATHLETE)))
         assertEquals(GroupActions(false, false, false), fixture.machine.state.value.actions)
     }
 
@@ -167,21 +180,26 @@ class GroupAdministrationStateMachineTest {
     }
 
     private fun Fixture.withGroup(role: GroupRoleDto) = apply {
-        machine.onIntent(GroupAdministrationIntent.SetGroup(versioned(role)))
+        machine.onIntent(GroupAdministrationIntent.SetGroup(versioned(GroupRole.valueOf(role.name))))
     }
 
     private class FakeGroups : GroupGateway {
         val creates = mutableListOf<CreateCall>(); val updates = mutableListOf<UpdateCall>(); val reads = mutableListOf<String>()
-        var createResult: NetworkResult<GroupDto> = NetworkResult.Success(group(GroupRoleDto.OWNER))
-        var updateResult: NetworkResult<VersionedGroupDto> = NetworkResult.Success(versioned(GroupRoleDto.OWNER, 8))
-        var readResult: NetworkResult<VersionedGroupDto> = NetworkResult.Success(versioned(GroupRoleDto.OWNER, 9))
-        var pendingCreate: CompletableDeferred<NetworkResult<GroupDto>>? = null
-        override suspend fun create(requestId: String, name: String, timeZone: String): NetworkResult<GroupDto> {
-            creates += CreateCall(requestId, name, timeZone); return pendingCreate?.await() ?: createResult
+        var createResult: SaqzResult<Group, GroupProfileError> = SaqzResult.Success(group(GroupRole.OWNER))
+        var updateResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(versioned(GroupRole.OWNER, 8))
+        var readResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(versioned(GroupRole.OWNER, 9))
+        var pendingCreate: CompletableDeferred<SaqzResult<Group, GroupProfileError>>? = null
+        override suspend fun create(command: CreateGroupCommand): SaqzResult<Group, GroupProfileError> {
+            creates += CreateCall(command.commandKey, command.name, command.timeZone.id)
+            return pendingCreate?.await() ?: createResult
         }
-        override suspend fun read(groupId: String): NetworkResult<VersionedGroupDto> { reads += groupId; return readResult }
-        override suspend fun update(groupId: String, etag: String, name: String, timeZone: String): NetworkResult<VersionedGroupDto> {
-            updates += UpdateCall(groupId, etag, name, timeZone); return updateResult
+        override suspend fun read(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> {
+            reads += groupId.value
+            return readResult
+        }
+        override suspend fun update(command: UpdateGroupSettingsCommand): SaqzResult<VersionedGroup, GroupProfileError> {
+            updates += UpdateCall(command.groupId.value, command.versionToken.value, command.name, command.timeZone.id)
+            return updateResult
         }
     }
 
@@ -204,10 +222,17 @@ class GroupAdministrationStateMachineTest {
 
     private companion object {
         const val GROUP_ID = "group-id"; const val USER_ID = "user-id"; const val OTHER_ADMIN = "other-admin"; const val REQUEST_ID = "request-id"
-        fun group(role: GroupRoleDto, version: Long = 7) = GroupDto(GROUP_ID, "Group", "UTC", version, role)
-        fun versioned(role: GroupRoleDto, version: Long = 7) = VersionedGroupDto(group(role, version), "\"$version\"")
+        fun group(role: GroupRole, version: Long = 7) = Group(GROUP_ID, "Group", "UTC", version, role)
+        fun versioned(role: GroupRole, version: Long = 7) = VersionedGroup(group(role, version), "\"$version\"")
         fun member(id: String, role: GroupRoleDto) = MembershipDto(id, id, role)
-        fun problem(status: Int, code: String) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(status, code, "corr-$status")))
-        fun validation(vararg fields: String) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(400, "VALIDATION_FAILED", "corr-400", fields.associateWith { listOf("invalid") })))
+        fun conflict(): SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Failure(GroupProfileError.Conflict())
+        fun validation(vararg fields: String): SaqzResult.Failure<GroupProfileError> = SaqzResult.Failure(
+            GroupProfileError.Validation(
+                ValidationDetails(
+                    globalMessages = emptyList(),
+                    fieldMessages = fields.associateWith { listOf("invalid") },
+                ),
+            ),
+        )
     }
 }

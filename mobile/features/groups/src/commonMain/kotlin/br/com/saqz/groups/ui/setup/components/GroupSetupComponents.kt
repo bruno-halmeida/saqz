@@ -59,14 +59,14 @@ import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.model.GroupRegularSlotForm
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupVenueForm
-import br.com.saqz.groups.model.GroupWeekday
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
@@ -295,7 +295,7 @@ internal fun SummaryRow(summary: String, enabled: Boolean, onEdit: () -> Unit) {
 
 @Composable
 internal fun VenueEditor(
-    venue: GroupVenueForm,
+    venue: GroupVenue,
     editable: Boolean,
     state: GroupSetupState,
     onIntent: (GroupSetupIntent) -> Unit,
@@ -320,7 +320,7 @@ internal fun VenueEditor(
 
 @Composable
 internal fun SlotEditors(
-    slots: List<GroupRegularSlotForm>,
+    slots: List<GroupRegularSlot>,
     editable: Boolean,
     state: GroupSetupState,
     onIntent: (GroupSetupIntent) -> Unit,
@@ -471,7 +471,8 @@ internal fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, er
 
 @Composable
 internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: GroupSetupState, defaultMonthlyDueDay: Int, onIntent: (GroupSetupIntent) -> Unit, onDueDay: () -> Unit) {
-    val active = form.monthlyFeeCents != null
+    val monthlyFeeCents = form.monthlyFeeCents
+    val active = monthlyFeeCents != null
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(stringResource(Res.string.group_setup_monthly_question), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)
@@ -486,7 +487,7 @@ internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: Group
         )
     }
     if (active) {
-        MoneyInput(form.monthlyFeeCents, Res.string.group_setup_monthly_fee, editable, error(state, "monthlyFeeCents")) {
+        MoneyInput(monthlyFeeCents, Res.string.group_setup_monthly_fee, editable, error(state, "monthlyFeeCents")) {
             onIntent(GroupSetupIntent.UpdateMonthlyFee(it ?: 0, form.monthlyDueDay ?: defaultMonthlyDueDay))
         }
         SelectorField(

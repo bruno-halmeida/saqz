@@ -21,14 +21,14 @@ enum class GroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY
 @JvmInline value class GroupTimeZone(val id: String)
 
 data class GroupVenue(
-    val id: String?,
+    val id: String? = null,
     val name: String,
     val address: String,
-    val court: String?,
+    val court: String? = null,
 )
 
 data class GroupRegularSlot(
-    val id: String?,
+    val id: String? = null,
     val weekday: GroupWeekday,
     val startTime: String,
     val durationMinutes: Int,
@@ -61,14 +61,24 @@ data class Group(
     val timeZone: GroupTimeZone,
     val version: Long,
     val role: GroupRole,
-    val profileStatus: GroupProfileStatus,
-    val privacy: GroupPrivacy,
-    val currency: GroupCurrency,
-    val profile: GroupProfile?,
-    val financeDefaults: GroupFinanceDefaults?,
-)
+    val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
+    val privacy: GroupPrivacy = GroupPrivacy.PRIVATE,
+    val currency: GroupCurrency = GroupCurrency.BRL,
+    val profile: GroupProfile? = null,
+    val financeDefaults: GroupFinanceDefaults? = null,
+) {
+    constructor(
+        id: String,
+        name: String,
+        timeZone: String,
+        version: Long,
+        role: GroupRole,
+    ) : this(GroupId(id), name, GroupTimeZone(timeZone), version, role)
+}
 
-data class VersionedGroup(val group: Group, val versionToken: GroupVersionToken)
+data class VersionedGroup(val group: Group, val versionToken: GroupVersionToken) {
+    constructor(group: Group, versionToken: String) : this(group, GroupVersionToken(versionToken))
+}
 
 data class GroupSetupForm(
     val name: String = "",

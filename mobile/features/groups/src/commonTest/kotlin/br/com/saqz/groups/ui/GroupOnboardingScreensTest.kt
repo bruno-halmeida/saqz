@@ -11,7 +11,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
-import br.com.saqz.groups.data.*
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.GroupSelectionMembership
@@ -127,6 +129,6 @@ class GroupOnboardingScreensTest {
         val selector = GroupSelectionState.Selector(
             listOf(GroupSelectionMembership("group-1", "First Group", "OWNER"), GroupSelectionMembership("group-2", "Second Group", "ATHLETE")),
         )
-        val versioned = VersionedGroupDto(GroupDto("group-2", "Current Group", "America/Sao_Paulo", 1, GroupRoleDto.OWNER), "etag")
+        val versioned = VersionedGroup(Group("group-2", "Current Group", "America/Sao_Paulo", 1, GroupRole.OWNER), "etag")
     }
 }

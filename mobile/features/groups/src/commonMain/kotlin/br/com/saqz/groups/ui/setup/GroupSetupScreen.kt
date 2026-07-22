@@ -61,14 +61,14 @@ import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.model.GroupRegularSlotForm
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupVenueForm
-import br.com.saqz.groups.model.GroupWeekday
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
@@ -76,6 +76,7 @@ import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.setup.GroupSetupValidationMessage
 import br.com.saqz.groups.presentation.setup.newGroupDefaults
 import br.com.saqz.groups.resources.*
 import br.com.saqz.groups.ui.photo.GroupPhotoEditor
@@ -247,7 +248,8 @@ fun GroupSetupScreen(
                 Res.string.group_setup_game_defaults_description,
                 GroupSetupTags.GameDefaults,
             ) {
-                if (form.defaultVenue == null) {
+                val defaultVenue = form.defaultVenue
+                if (defaultVenue == null) {
                     RoutineAction(
                         Res.drawable.material_location_on,
                         Res.string.group_setup_add_venue,
@@ -255,13 +257,13 @@ fun GroupSetupScreen(
                         editable,
                     ) {
                         venueEditing = true
-                        onIntent(GroupSetupIntent.UpdateVenue(GroupVenueForm(name = "", address = "")))
+                        onIntent(GroupSetupIntent.UpdateVenue(GroupVenue(name = "", address = "")))
                     }
-                } else if (!venueEditing && form.defaultVenue.name.isNotBlank()) {
-                    SummaryRow(form.defaultVenue.name, editable) { venueEditing = true }
+                } else if (!venueEditing && defaultVenue.name.isNotBlank()) {
+                    SummaryRow(defaultVenue.name, editable) { venueEditing = true }
                 }
-                if (form.defaultVenue != null && venueEditing) {
-                    VenueEditor(form.defaultVenue, editable, state, onIntent) { venueEditing = false }
+                if (defaultVenue != null && venueEditing) {
+                    VenueEditor(defaultVenue, editable, state, onIntent) { venueEditing = false }
                 }
 
                 if (form.regularSlots.isEmpty()) {
@@ -296,9 +298,10 @@ fun GroupSetupScreen(
                     enabled = editable,
                     tag = GroupSetupTags.ConfirmationSelector,
                 ) { sheet = SetupSheet.Confirmation }
-                if (form.defaultConfirmationLeadMinutes != null && form.defaultConfirmationLeadMinutes !in confirmationPresets) {
+                val confirmationLeadMinutes = form.defaultConfirmationLeadMinutes
+                if (confirmationLeadMinutes != null && confirmationLeadMinutes !in confirmationPresets) {
                     SetupInput(
-                        value = formatHours(form.defaultConfirmationLeadMinutes),
+                        value = formatHours(confirmationLeadMinutes),
                         label = Res.string.group_setup_confirmation_custom_hours,
                         enabled = editable,
                         error = error(state, "defaultConfirmationLeadMinutes"),
@@ -325,6 +328,14 @@ fun GroupSetupScreen(
             }
 
             state.error?.let { Notice(stringResource(errorLabel(it))) }
+            state.validationMessages.forEach { message ->
+                Notice(
+                    when (message) {
+                        GroupSetupValidationMessage.Generic -> stringResource(Res.string.group_setup_validation)
+                        is GroupSetupValidationMessage.Safe -> message.value
+                    },
+                )
+            }
             if (state.conflict) {
                 Notice(stringResource(Res.string.group_setup_conflict))
                 SetupButton(
@@ -420,8 +431,8 @@ private fun confirmationLabel(minutes: Int?): String = when (minutes) {
 }
 
 private val confirmationPresets = setOf(60, 180, 360, 720, 1440)
-internal fun newSlot() = GroupRegularSlotForm(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 60)
-private fun slotSummary(slots: List<GroupRegularSlotForm>): String = slots.joinToString(" • ") { "${it.startTime.ifBlank { "--:--" }}" }
+internal fun newSlot() = GroupRegularSlot(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 60)
+private fun slotSummary(slots: List<GroupRegularSlot>): String = slots.joinToString(" • ") { "${it.startTime.ifBlank { "--:--" }}" }
 internal fun <T> List<T>.replace(index: Int, value: T): List<T> = mapIndexed { current, item -> if (current == index) value else item }
 internal fun error(state: GroupSetupState, key: String): String? = state.fieldErrors[key]?.firstOrNull()?.let { "Revise este campo." }
 private fun errorLabel(error: GroupSetupError): StringResource = when (error) {

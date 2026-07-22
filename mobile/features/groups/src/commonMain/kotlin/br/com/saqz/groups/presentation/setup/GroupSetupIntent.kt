@@ -1,11 +1,11 @@
 package br.com.saqz.groups.presentation.setup
 
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
-import br.com.saqz.groups.model.GroupRegularSlotForm
-import br.com.saqz.groups.model.GroupVenueForm
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupVenue
 
 sealed interface GroupSetupIntent {
     data class UpdateName(val value: String) : GroupSetupIntent
@@ -17,8 +17,8 @@ sealed interface GroupSetupIntent {
     data class UpdateCustomLevel(val value: String) : GroupSetupIntent
     data class UpdatePlayStyle(val value: GroupPlayStyle?) : GroupSetupIntent
     data class UpdateCustomPlayStyle(val value: String) : GroupSetupIntent
-    data class UpdateVenue(val value: GroupVenueForm?) : GroupSetupIntent
-    data class UpdateSlots(val value: List<GroupRegularSlotForm>) : GroupSetupIntent
+    data class UpdateVenue(val value: GroupVenue?) : GroupSetupIntent
+    data class UpdateSlots(val value: List<GroupRegularSlot>) : GroupSetupIntent
     data class UpdateDefaultCapacity(val value: Int?) : GroupSetupIntent
     data class UpdateConfirmationLeadMinutes(val value: Int?) : GroupSetupIntent
     data class UpdateDefaultGameFeeCents(val value: Long?) : GroupSetupIntent

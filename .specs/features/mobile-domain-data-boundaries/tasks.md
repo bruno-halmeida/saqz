@@ -497,6 +497,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T13: Switch Groups profile/setup/selection presentation to domain contracts
 
+**Status:** Complete — focused Groups presentation gate passed.
+
 **What:** Convert group setup, selection, administration, route policy and profile UI consumers to Groups domain models/gateways/errors without changing state, effects, copy, drafts or retry behavior.
 
 **Where:** `features/groups/src/commonMain/**/{setup,GroupSelection*,GroupAdministration*,GroupRoutePolicy*,ui/GroupContext*,ui/GroupsRoute*}` and corresponding tests.

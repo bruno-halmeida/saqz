@@ -1,17 +1,20 @@
 package br.com.saqz.groups.presentation.setup
 
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.model.GroupComposition
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.model.GroupDraftKey
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
-import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupTimeZone
-import br.com.saqz.groups.model.GroupVenueForm
-import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupTimeZone
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
+import br.com.saqz.groups.model.GroupSetupForm as DraftGroupSetupForm
+import br.com.saqz.groups.model.GroupVenueForm as DraftGroupVenue
+import br.com.saqz.groups.model.GroupRegularSlotForm as DraftGroupRegularSlot
 
 internal object GroupSetupRules {
     val capacityRange = 2..100
@@ -45,8 +48,12 @@ internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String
     if (form.defaultConfirmationLeadMinutes != null && form.defaultConfirmationLeadMinutes !in 0..10080) {
         put("defaultConfirmationLeadMinutes", listOf("must be between 0 and 10080"))
     }
-    if (form.defaultGameFeeCents != null && form.defaultGameFeeCents !in 1..99999999) put("defaultGameFeeCents", listOf("invalid"))
-    if (form.monthlyFeeCents != null && form.monthlyFeeCents !in 1..99999999) put("monthlyFeeCents", listOf("invalid"))
+    if (form.defaultGameFeeCents != null && form.defaultGameFeeCents !in 1L..99999999L) {
+        put("defaultGameFeeCents", listOf("invalid"))
+    }
+    if (form.monthlyFeeCents != null && form.monthlyFeeCents !in 1L..99999999L) {
+        put("monthlyFeeCents", listOf("invalid"))
+    }
     if (form.monthlyFeeCents != null && form.monthlyDueDay !in 1..28) put("monthlyDueDay", listOf("is required"))
     if (state.mode == GroupSetupMode.CREATE && state.timeZone == null) put("timeZone", listOf("is required"))
 }
@@ -59,22 +66,23 @@ internal fun newGroupDefaults() = GroupSetupForm(
     defaultConfirmationLeadMinutes = 360,
 )
 
-internal fun String.toGroupTimeZone(): GroupTimeZone? =
-    (GroupTimeZone.parse(this) as? GroupTimeZone.ParseResult.Valid)?.value
+internal fun String.toGroupTimeZone(): GroupTimeZone? = runCatching { kotlinx.datetime.TimeZone.of(this) }
+    .getOrNull()
+    ?.let { GroupTimeZone(it.id) }
 
-internal fun GroupDto.toForm() = GroupSetupForm(
+internal fun Group.toForm() = GroupSetupForm(
     name = name,
-    modality = profile?.modality?.name?.let(GroupModality::valueOf),
-    composition = profile?.composition?.name?.let(GroupComposition::valueOf),
+    modality = profile?.modality,
+    composition = profile?.composition,
     description = profile?.description,
     city = profile?.city,
-    level = profile?.level?.name?.let(GroupLevel::valueOf),
+    level = profile?.level,
     customLevel = profile?.customLevel,
-    playStyle = profile?.playStyle?.name?.let(GroupPlayStyle::valueOf),
+    playStyle = profile?.playStyle,
     customPlayStyle = profile?.customPlayStyle,
-    defaultVenue = profile?.defaultVenue?.let { GroupVenueForm(it.id, it.name, it.address, it.court) },
+    defaultVenue = profile?.defaultVenue?.let { GroupVenue(it.id, it.name, it.address, it.court) },
     regularSlots = profile?.regularSlots.orEmpty().map {
-        GroupRegularSlotForm(it.id, GroupWeekday.valueOf(it.weekday.name), it.startTime, it.durationMinutes)
+        GroupRegularSlot(it.id, it.weekday, it.startTime, it.durationMinutes)
     },
     defaultCapacity = profile?.defaultCapacity,
     defaultConfirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes,
@@ -89,7 +97,54 @@ internal fun GroupSetupState.toDraft(draftKey: GroupDraftKey) = GroupSetupDraft(
     groupVersion = groupVersion,
     etag = etag,
     commandKey = commandKey,
-    form = form,
+    form = form.toDraftForm(),
+)
+
+internal fun DraftGroupSetupForm.toDomainForm() = GroupSetupForm(
+    name = name,
+    modality = modality?.name?.let(GroupModality::valueOf),
+    composition = composition?.name?.let(GroupComposition::valueOf),
+    description = description,
+    city = city,
+    level = level?.name?.let(GroupLevel::valueOf),
+    customLevel = customLevel,
+    playStyle = playStyle?.name?.let(GroupPlayStyle::valueOf),
+    customPlayStyle = customPlayStyle,
+    defaultVenue = defaultVenue?.let { GroupVenue(it.id, it.name, it.address, it.court) },
+    regularSlots = regularSlots.map {
+        GroupRegularSlot(it.id, GroupWeekday.valueOf(it.weekday.name), it.startTime, it.durationMinutes)
+    },
+    defaultCapacity = defaultCapacity,
+    defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
+    defaultGameFeeCents = defaultGameFeeCents,
+    monthlyFeeCents = monthlyFeeCents,
+    monthlyDueDay = monthlyDueDay,
+)
+
+internal fun GroupSetupForm.toDraftForm() = DraftGroupSetupForm(
+    name = name,
+    modality = modality?.name?.let(br.com.saqz.groups.model.GroupModality::valueOf),
+    composition = composition?.name?.let(br.com.saqz.groups.model.GroupComposition::valueOf),
+    description = description,
+    city = city,
+    level = level?.name?.let(br.com.saqz.groups.model.GroupLevel::valueOf),
+    customLevel = customLevel,
+    playStyle = playStyle?.name?.let(br.com.saqz.groups.model.GroupPlayStyle::valueOf),
+    customPlayStyle = customPlayStyle,
+    defaultVenue = defaultVenue?.let { DraftGroupVenue(it.id, it.name, it.address, it.court) },
+    regularSlots = regularSlots.map {
+        DraftGroupRegularSlot(
+            it.id,
+            br.com.saqz.groups.model.GroupWeekday.valueOf(it.weekday.name),
+            it.startTime,
+            it.durationMinutes,
+        )
+    },
+    defaultCapacity = defaultCapacity,
+    defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
+    defaultGameFeeCents = defaultGameFeeCents,
+    monthlyFeeCents = monthlyFeeCents,
+    monthlyDueDay = monthlyDueDay,
 )
 
 private fun String?.hasLength(min: Int, max: Int): Boolean {

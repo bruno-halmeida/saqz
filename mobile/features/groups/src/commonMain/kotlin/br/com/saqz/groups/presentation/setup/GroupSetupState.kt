@@ -1,11 +1,16 @@
 package br.com.saqz.groups.presentation.setup
 
 import androidx.compose.runtime.Immutable
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
-import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.model.GroupTimeZone
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupTimeZone
+
+sealed interface GroupSetupValidationMessage {
+    data object Generic : GroupSetupValidationMessage
+    data class Safe(val value: String) : GroupSetupValidationMessage
+}
 
 @Immutable
 data class GroupSetupState(
@@ -19,6 +24,7 @@ data class GroupSetupState(
     val timezoneSelectionRequired: Boolean = false,
     val validationAttempted: Boolean = false,
     val fieldErrors: Map<String, List<String>> = emptyMap(),
+    val validationMessages: List<GroupSetupValidationMessage> = emptyList(),
     val isLoading: Boolean = false,
     val conflict: Boolean = false,
     val successGroupId: String? = null,

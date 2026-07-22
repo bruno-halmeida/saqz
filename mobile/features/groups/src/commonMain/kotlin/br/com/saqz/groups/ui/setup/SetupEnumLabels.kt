@@ -1,10 +1,10 @@
 package br.com.saqz.groups.ui.setup
 
 import androidx.compose.runtime.Composable
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupLevel
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupPlayStyle
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_setup_composition_men
 import br.com.saqz.groups.resources.group_setup_composition_mixed
