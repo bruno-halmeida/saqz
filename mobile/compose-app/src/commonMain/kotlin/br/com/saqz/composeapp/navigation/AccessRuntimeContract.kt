@@ -10,8 +10,12 @@ import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestinatio
 import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 internal interface AccessRuntimeContract {
+    val state: StateFlow<AccessOrchestratorState> get() = error("Only AccessOrchestrator exposes combined state")
+    val effects: Flow<AccessOrchestratorEffect> get() = emptyFlow()
     val authObservedState: StateFlow<Boolean>
     val authenticationState: StateFlow<AuthenticationState>
     val sessionState: StateFlow<SessionAccessState>

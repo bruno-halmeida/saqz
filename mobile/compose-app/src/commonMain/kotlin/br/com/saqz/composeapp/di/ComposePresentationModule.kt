@@ -1,6 +1,6 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.composeapp.navigation.AccessRuntime
+import br.com.saqz.composeapp.navigation.AccessOrchestrator
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.composeapp.navigation.RequestIdGenerator
@@ -40,7 +40,7 @@ internal val composePresentationModule = module {
         )
     }
     factory { parameters ->
-        AccessRuntime(
+        AccessOrchestrator(
             auth = get(),
             localAccessState = get(),
             groupProfileGateway = get(),
@@ -60,7 +60,7 @@ internal val composePresentationModule = module {
     }
     viewModel {
         AccessViewModel { scope ->
-            get<AccessRuntime> { parametersOf(scope) }
+            get<AccessOrchestrator> { parametersOf(scope) }
         }
     }
     viewModelOf(::GroupsNavigationViewModel)

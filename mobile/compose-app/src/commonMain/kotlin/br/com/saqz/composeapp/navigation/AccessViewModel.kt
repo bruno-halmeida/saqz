@@ -91,9 +91,19 @@ internal class AccessViewModel private constructor(
     )
 
     init {
-        runtime.sessionState.onEach(::reconcileSession).launchIn(scope)
-        runtime.selectionState.onEach(::reconcileSelection).launchIn(scope)
-        runtime.attendanceDestinationState.onEach(::reconcileAttendanceDestination).launchIn(scope)
+        runtime.sessionState.onEach { session ->
+            if (session == SessionAccessState.SignedOut) {
+                updateRoute { copy(page = AccessPage.CONTEXT, showLogoutConfirmation = false) }
+            }
+        }.launchIn(scope)
+        runtime.selectionState.onEach { selection ->
+            if (selection is GroupSelectionState.Selected) updateRoute { copy(page = AccessPage.CONTEXT) }
+        }.launchIn(scope)
+        runtime.effects.onEach { effect ->
+            if (effect is AccessOrchestratorEffect.OpenAttendanceGame) {
+                effectChannel.trySend(AccessUiEffect.OpenAttendanceGame(effect.gameId))
+            }
+        }.launchIn(scope)
         runtime.onIntent(AccessRuntimeIntent.Start)
     }
 
@@ -153,39 +163,6 @@ internal class AccessViewModel private constructor(
         administration = runtime.administrationState.value,
         invite = runtime.inviteToolState.value,
     )
-
-    private fun reconcileSession(session: SessionAccessState) {
-        runtime.onIntent(AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.SetSessionReady(session is SessionAccessState.Ready)))
-        runtime.onIntent(AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.SetSessionReady(session is SessionAccessState.Ready)))
-        when (session) {
-            is SessionAccessState.Ready -> runtime.onIntent(
-                AccessRuntimeIntent.Selection(GroupSelectionIntent.Reconcile(session.session)),
-            )
-            SessionAccessState.SignedOut -> updateRoute {
-                copy(page = AccessPage.CONTEXT, showLogoutConfirmation = false)
-            }
-            else -> Unit
-        }
-    }
-
-    private fun reconcileSelection(selection: GroupSelectionState) {
-        val selected = selection as? GroupSelectionState.Selected ?: return
-        runtime.onIntent(
-            AccessRuntimeIntent.Administration(GroupAdministrationIntent.SetGroup(selected.group)),
-        )
-        reconcileAttendanceDestination(runtime.attendanceDestinationState.value)
-        updateRoute { copy(page = AccessPage.CONTEXT) }
-    }
-
-    private fun reconcileAttendanceDestination(destination: AttendanceLinkDestination?) {
-        val selected = runtime.selectionState.value as? GroupSelectionState.Selected ?: return
-        destination
-            ?.takeIf { it.groupId == selected.group.group.id }
-            ?.let {
-                effectChannel.trySend(AccessUiEffect.OpenAttendanceGame(it.gameId))
-                runtime.onIntent(AccessRuntimeIntent.ConsumeAttendanceDestination)
-            }
-    }
 
     private fun openCreateGroup() {
         updateRoute {
