@@ -32,6 +32,10 @@ observable behavior.
    `GameDetailViewModel`; its lifecycle and attendance actions, error, command
    key factory, state, MVI contracts, and attendance operation SHALL live in
    focused files in the same package.
+8. **SOLID-08** - `GroupSetupViewModel.kt` SHALL declare only
+   `GroupSetupViewModel`; its mode, input, error, state, MVI contracts, command
+   key factory, and pure setup helpers SHALL live in focused files in the same
+   package without changing photo, timezone, or draft behavior.
 
 ## Out of Scope
 

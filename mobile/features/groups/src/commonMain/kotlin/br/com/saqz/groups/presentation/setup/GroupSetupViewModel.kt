@@ -1,25 +1,18 @@
 package br.com.saqz.groups.presentation.setup
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.VersionedGroupDto
-import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupCreateCommand
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupDraftResource
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
-import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupUpdateCommand
-import br.com.saqz.groups.model.GroupVenueForm
-import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
@@ -36,71 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-enum class GroupSetupMode { CREATE, EDIT }
-
-data class GroupSetupInput(
-    val existing: VersionedGroupDto? = null,
-)
-
-enum class GroupSetupError { UNAVAILABLE, NOT_FOUND, FORBIDDEN, DRAFT_UNAVAILABLE }
-
-@Immutable
-data class GroupSetupState(
-    val mode: GroupSetupMode,
-    val form: GroupSetupForm,
-    val commandKey: String,
-    val groupId: String? = null,
-    val groupVersion: Long? = null,
-    val etag: String? = null,
-    val timeZone: GroupTimeZone? = null,
-    val timezoneSelectionRequired: Boolean = false,
-    val validationAttempted: Boolean = false,
-    val fieldErrors: Map<String, List<String>> = emptyMap(),
-    val isLoading: Boolean = false,
-    val conflict: Boolean = false,
-    val successGroupId: String? = null,
-    val photoPending: Boolean = false,
-    val photoRetryAvailable: Boolean = false,
-    val error: GroupSetupError? = null,
-) {
-    val showPlayStyle: Boolean get() = form.modality == GroupModality.COURT_VOLLEYBALL
-    val showCustomLevel: Boolean get() = form.level == GroupLevel.CUSTOM
-    val showCustomPlayStyle: Boolean get() = showPlayStyle && form.playStyle == GroupPlayStyle.CUSTOM
-}
-
-sealed interface GroupSetupIntent {
-    data class UpdateName(val value: String) : GroupSetupIntent
-    data class UpdateModality(val value: GroupModality) : GroupSetupIntent
-    data class UpdateComposition(val value: GroupComposition) : GroupSetupIntent
-    data class UpdateDescription(val value: String) : GroupSetupIntent
-    data class UpdateCity(val value: String) : GroupSetupIntent
-    data class UpdateLevel(val value: GroupLevel?) : GroupSetupIntent
-    data class UpdateCustomLevel(val value: String) : GroupSetupIntent
-    data class UpdatePlayStyle(val value: GroupPlayStyle?) : GroupSetupIntent
-    data class UpdateCustomPlayStyle(val value: String) : GroupSetupIntent
-    data class UpdateVenue(val value: GroupVenueForm?) : GroupSetupIntent
-    data class UpdateSlots(val value: List<GroupRegularSlotForm>) : GroupSetupIntent
-    data class UpdateDefaultCapacity(val value: Int?) : GroupSetupIntent
-    data class UpdateConfirmationLeadMinutes(val value: Int?) : GroupSetupIntent
-    data class UpdateDefaultGameFeeCents(val value: Long?) : GroupSetupIntent
-    data class UpdateMonthlyFee(val cents: Long?, val dueDay: Int?) : GroupSetupIntent
-    data class SelectFallbackTimeZone(val identifier: String) : GroupSetupIntent
-    data class SetPhotoPending(val value: Boolean) : GroupSetupIntent
-    data object Submit : GroupSetupIntent
-    data object ReloadConflict : GroupSetupIntent
-    data object RetryPhotoUpload : GroupSetupIntent
-    data object PhotoUploadFailed : GroupSetupIntent
-    data object PhotoUploadSucceeded : GroupSetupIntent
-}
-
-sealed interface GroupSetupEffect {
-    data class SelectGroup(val groupId: String) : GroupSetupEffect
-    data class OpenGroup(val groupId: String) : GroupSetupEffect
-    data class UploadPhoto(val groupId: String, val groupEtag: String) : GroupSetupEffect
-}
-
-fun interface GroupCommandKeyFactory { fun create(): String }
 
 class GroupSetupViewModel(
     input: GroupSetupInput,
@@ -243,7 +171,7 @@ class GroupSetupViewModel(
 
     private fun persistDraft() {
         val current = mutableState.value
-        drafts.write(current.toDraft()) { result ->
+        drafts.write(current.toDraft(draftKey)) { result ->
             if (result is GroupDraftWriteResult.Failure) {
                 mutableState.update { it.copy(error = GroupSetupError.DRAFT_UNAVAILABLE) }
             }
@@ -253,7 +181,7 @@ class GroupSetupViewModel(
     private fun submit() {
         val current = mutableState.value
         if (current.isLoading) return
-        val errors = validate(current)
+        val errors = validateGroupSetup(current)
         if (errors.isNotEmpty()) {
             mutableState.update { it.copy(validationAttempted = true, fieldErrors = errors) }
             return
@@ -358,79 +286,4 @@ class GroupSetupViewModel(
         }
     }
 
-    private fun validate(state: GroupSetupState): Map<String, List<String>> = buildMap {
-        val form = state.form
-        if (!form.name.trim().hasLength(2, 80)) put("name", listOf("must be between 2 and 80 characters"))
-        if (form.modality == null) put("modality", listOf("is required"))
-        if (form.composition == null) put("composition", listOf("is required"))
-        if (form.level == GroupLevel.CUSTOM && !form.customLevel.hasLength(2, 40)) put("customLevel", listOf("is required"))
-        if (form.playStyle == GroupPlayStyle.CUSTOM && !form.customPlayStyle.hasLength(2, 40)) {
-            put("customPlayStyle", listOf("is required"))
-        }
-        form.defaultVenue?.let { venue ->
-            if (!venue.name.trim().hasLength(2, 120)) put("defaultVenue.name", listOf("is required"))
-            if (!venue.address.trim().hasLength(5, 300)) put("defaultVenue.address", listOf("is required"))
-        }
-        form.regularSlots.forEachIndexed { index, slot ->
-            if (slot.startTime.isBlank()) put("regularSlots[$index].startTime", listOf("is required"))
-            if (slot.durationMinutes !in 15..480) put("regularSlots[$index].durationMinutes", listOf("must be between 15 and 480"))
-        }
-        if (form.defaultCapacity != null && form.defaultCapacity !in 2..100) put("defaultCapacity", listOf("must be between 2 and 100"))
-        if (form.defaultConfirmationLeadMinutes != null && form.defaultConfirmationLeadMinutes !in 0..10080) {
-            put("defaultConfirmationLeadMinutes", listOf("must be between 0 and 10080"))
-        }
-        if (form.defaultGameFeeCents != null && form.defaultGameFeeCents !in 1..99999999) put("defaultGameFeeCents", listOf("invalid"))
-        if (form.monthlyFeeCents != null && form.monthlyFeeCents !in 1..99999999) put("monthlyFeeCents", listOf("invalid"))
-        if (form.monthlyFeeCents != null && form.monthlyDueDay !in 1..28) put("monthlyDueDay", listOf("is required"))
-        if (state.mode == GroupSetupMode.CREATE && state.timeZone == null) put("timeZone", listOf("is required"))
-    }
-
-    private fun GroupSetupState.toDraft() = GroupSetupDraft(
-        resource = draftKey.resource,
-        groupId = groupId,
-        groupVersion = groupVersion,
-        etag = etag,
-        commandKey = commandKey,
-        form = form,
-    )
 }
-
-private fun String?.hasLength(min: Int, max: Int): Boolean {
-    val value = this?.trim() ?: return false
-    return value.length in min..max && value.none(Char::isISOControl)
-}
-
-internal fun newGroupDefaults() = GroupSetupForm(
-    modality = GroupModality.COURT_VOLLEYBALL,
-    composition = GroupComposition.MIXED,
-    level = GroupLevel.MIXED_LEVELS,
-    defaultCapacity = 12,
-    defaultConfirmationLeadMinutes = 360,
-)
-
-private fun String.toGroupTimeZone(): GroupTimeZone? =
-    (GroupTimeZone.parse(this) as? GroupTimeZone.ParseResult.Valid)?.value
-
-private fun GroupDto.toForm() = GroupSetupForm(
-    name = name,
-    modality = profile?.modality?.name?.let(GroupModality::valueOf),
-    composition = profile?.composition?.name?.let(GroupComposition::valueOf),
-    description = profile?.description,
-    city = profile?.city,
-    level = profile?.level?.name?.let(GroupLevel::valueOf),
-    customLevel = profile?.customLevel,
-    playStyle = profile?.playStyle?.name?.let(GroupPlayStyle::valueOf),
-    customPlayStyle = profile?.customPlayStyle,
-    defaultVenue = profile?.defaultVenue?.let { GroupVenueForm(it.id, it.name, it.address, it.court) },
-    regularSlots = profile?.regularSlots.orEmpty().map {
-        GroupRegularSlotForm(it.id, GroupWeekday.valueOf(it.weekday.name), it.startTime, it.durationMinutes)
-    },
-    defaultCapacity = profile?.defaultCapacity,
-    defaultConfirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes,
-    defaultGameFeeCents = financeDefaults?.defaultGameFeeCents,
-    monthlyFeeCents = financeDefaults?.monthlyFeeCents,
-    monthlyDueDay = financeDefaults?.monthlyDueDay,
-)
-
-private fun NetworkError.isProblem(status: Int, code: String): Boolean =
-    this is NetworkError.ApiProblemError && problem.status == status && problem.code == code
