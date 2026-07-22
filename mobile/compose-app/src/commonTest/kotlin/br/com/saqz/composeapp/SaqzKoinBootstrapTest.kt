@@ -26,7 +26,7 @@ class SaqzKoinBootstrapTest {
         stopSaqzKoin()
         val runtimeScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         try {
-            startSaqzKoin(testSaqzAppDependencies())
+            startSaqzKoin(testSaqzPlatformDependencies())
 
             val koin = KoinPlatformTools.defaultContext().get()
             assertNotNull(koin.get<AuthenticatedNetworkClient>())
@@ -45,11 +45,11 @@ class SaqzKoinBootstrapTest {
     fun reloadingPlatformBindingsRecreatesTheNetworkSingleton() {
         stopSaqzKoin()
         try {
-            startSaqzKoin(testSaqzAppDependencies())
+            startSaqzKoin(testSaqzPlatformDependencies())
             val koin = KoinPlatformTools.defaultContext().get()
             val first = koin.get<AuthenticatedNetworkClient>()
 
-            loadSaqzPlatformDependencies(testSaqzAppDependencies())
+            loadSaqzPlatformDependencies(testSaqzPlatformDependencies())
 
             assertNotSame(first, koin.get<AuthenticatedNetworkClient>())
         } finally {

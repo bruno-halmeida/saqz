@@ -7,7 +7,7 @@ import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.composeapp.di.startSaqzKoin
-import br.com.saqz.composeapp.testSaqzAppDependencies
+import br.com.saqz.composeapp.testSaqzPlatformDependencies
 import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupGateway
 import br.com.saqz.groups.data.GroupRoleDto
@@ -37,7 +37,7 @@ class AccessOrchestratorTest {
         stopSaqzKoin()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         try {
-            startSaqzKoin(testSaqzAppDependencies())
+            startSaqzKoin(testSaqzPlatformDependencies())
             loadKoinModules(module {
                 single<SessionGateway> { ReadySessionGateway }
                 single<GroupGateway> { SelectedGroupGateway }
@@ -67,7 +67,7 @@ class AccessOrchestratorTest {
         stopSaqzKoin()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         try {
-            startSaqzKoin(testSaqzAppDependencies())
+            startSaqzKoin(testSaqzPlatformDependencies())
             loadKoinModules(module {
                 single<SessionGateway> { ReadySessionGateway }
                 single<GroupGateway> { SelectedGroupGateway }
@@ -96,7 +96,7 @@ class AccessOrchestratorTest {
         stopSaqzKoin()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         try {
-            startSaqzKoin(testSaqzAppDependencies())
+            startSaqzKoin(testSaqzPlatformDependencies())
             val orchestrator = KoinPlatformTools.defaultContext().get()
                 .get<AccessOrchestrator> { parametersOf(scope) }
 

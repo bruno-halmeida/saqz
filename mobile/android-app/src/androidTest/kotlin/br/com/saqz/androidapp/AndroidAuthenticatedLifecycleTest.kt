@@ -34,7 +34,7 @@ import br.com.saqz.access.port.TokenResult
 import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
-import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -294,7 +294,7 @@ private class LifecycleCompositionFactory(
         activity: () -> Activity,
     ): AndroidAppComposition {
         fixture.compositions++
-        val dependencies = SaqzAppDependencies(
+        val dependencies = SaqzPlatformDependencies(
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             auth = fixture.auth,

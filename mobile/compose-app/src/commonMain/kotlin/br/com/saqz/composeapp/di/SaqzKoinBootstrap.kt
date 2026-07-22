@@ -6,7 +6,7 @@ import br.com.saqz.access.port.LocalAccessStatePort
 import br.com.saqz.access.port.NativeAuthPort
 import br.com.saqz.access.port.NativeLinkPort
 import br.com.saqz.access.port.NativeSharePort
-import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.groups.port.GroupAttendanceSharePort
 import br.com.saqz.groups.port.GroupPhotoEncoderPort
 import br.com.saqz.groups.port.GroupPhotoPreviewPort
@@ -57,13 +57,13 @@ fun installSaqzKoinModules() {
     loadKoinModules(commonModules)
 }
 
-internal fun startSaqzKoin(dependencies: SaqzAppDependencies) {
+internal fun startSaqzKoin(dependencies: SaqzPlatformDependencies) {
     startSaqzKoin()
     loadSaqzPlatformDependencies(dependencies)
 }
 
 @HiddenFromObjC
-fun loadSaqzPlatformDependencies(dependencies: SaqzAppDependencies) {
+fun loadSaqzPlatformDependencies(dependencies: SaqzPlatformDependencies) {
     checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before loading platform dependencies" }
     platformModule?.let { previous ->
         unloadKoinModules(commonModules + previous)
@@ -77,8 +77,7 @@ internal fun stopSaqzKoin() {
     stopKoin()
 }
 
-private fun platformBindingsModule(dependencies: SaqzAppDependencies) = module {
-    single { dependencies }
+private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = module {
     single {
         NetworkConfig(
             environment = dependencies.environment.toNetworkEnvironment(),

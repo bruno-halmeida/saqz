@@ -26,7 +26,7 @@ struct IOSAppComposition {
     let attendanceShare: IOSAttendanceShareAdapter
     let photos: IOSGroupPhotoAdapters
     let drafts: IOSGroupDraftAdapters
-    let dependencies: SaqzAppDependencies
+    let dependencies: SaqzPlatformDependencies
 
     static func makeLive(configuration: IOSAppConfiguration = .bundled()) -> IOSAppComposition {
         let auth = IOSAuthComposition.makeLive()
@@ -53,7 +53,7 @@ struct IOSAppComposition {
         drafts: IOSGroupDraftAdapters
     ) -> IOSAppComposition {
         links.onColdStart(url: nil)
-        let dependencies = SaqzAppDependencies(
+        let dependencies = SaqzPlatformDependencies(
             environment: configuration.environment,
             apiBaseUrl: configuration.apiBaseURL,
             auth: auth,
@@ -233,7 +233,7 @@ enum IOSPresentationRoot {
 }
 
 struct ComposeRootView: UIViewControllerRepresentable {
-    let dependencies: SaqzAppDependencies
+    let dependencies: SaqzPlatformDependencies
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     // Only the Compose controller: the app's accessibility tree comes entirely from Compose

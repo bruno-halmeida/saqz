@@ -55,8 +55,8 @@ import br.com.saqz.groups.presentation.games.editor.GameDraftWriteResult
 import br.com.saqz.groups.presentation.games.editor.GameEditorDraft
 
 internal fun startTestSaqzKoin(
-    dependencies: SaqzAppDependencies = testSaqzAppDependencies(),
-): SaqzAppDependencies {
+    dependencies: SaqzPlatformDependencies = testSaqzPlatformDependencies(),
+): SaqzPlatformDependencies {
     stopSaqzKoin()
     startSaqzKoin(dependencies)
     return dependencies
@@ -64,7 +64,7 @@ internal fun startTestSaqzKoin(
 
 internal fun stopTestSaqzKoin() = stopSaqzKoin()
 
-internal fun testSaqzAppDependencies() = SaqzAppDependencies(
+internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
     environment = "test",
     apiBaseUrl = "https://api.invalid",
     auth = TestAuthPort,

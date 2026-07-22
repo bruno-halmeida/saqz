@@ -21,7 +21,7 @@ class GroupPhotoRuntimeDependencies(
     val previews: GroupPhotoPreviewPort,
 )
 
-class SaqzAppDependencies(
+class SaqzPlatformDependencies(
     val environment: String,
     val apiBaseUrl: String,
     val auth: NativeAuthPort,

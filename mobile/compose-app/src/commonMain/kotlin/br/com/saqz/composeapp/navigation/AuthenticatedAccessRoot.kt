@@ -98,7 +98,7 @@ import br.com.saqz.access.ui.RegistrationScreen
 import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
-import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.composeapp.di.AttendanceDestinationStore
 import br.com.saqz.composeapp.di.GameDetailViewModelParameters
 import br.com.saqz.composeapp.di.GroupSetupViewModelParameters
@@ -150,7 +150,7 @@ internal class AccessDestinationStack(initial: AccessDestination) {
 
 @Composable
 internal fun AuthenticatedAccessRoute(
-    dependencies: SaqzAppDependencies,
+    dependencies: SaqzPlatformDependencies,
     accessViewModelOverride: AccessViewModel? = null,
     groupSetupViewModelOverride: GroupSetupViewModel? = null,
     groupPhotos: GroupPhotoRuntimeDependencies = dependencies.groupPhotos,

@@ -7,7 +7,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 
 @Composable
 fun SaqzApp(
-    dependencies: SaqzAppDependencies,
+    dependencies: SaqzPlatformDependencies,
     reduceMotion: Boolean = false,
     reduceTransparency: Boolean = false,
 ) {
@@ -22,7 +22,7 @@ fun SaqzApp(
 }
 
 // Retained as a package-local initialization fixture while native launchers migrate to
-// SaqzAppDependencies. Product entry points use the authenticated root above.
+// SaqzPlatformDependencies. Product entry points use the authenticated root above.
 @Composable
 internal fun SaqzApp(environment: SaqzAppEnvironment) {
     SaqzAppShell(environment = environment)

@@ -19,7 +19,6 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
-import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.composeapp.startTestSaqzKoin
 import br.com.saqz.composeapp.stopTestSaqzKoin
 import br.com.saqz.designsystem.component.SaqzTopBarTitleTag

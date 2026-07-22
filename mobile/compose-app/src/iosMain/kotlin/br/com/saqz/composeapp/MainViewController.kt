@@ -18,7 +18,7 @@ import platform.UIKit.UIViewController
 
 fun MainViewController(
     accessibilityController: SaqzAccessibilityController,
-    dependencies: SaqzAppDependencies,
+    dependencies: SaqzPlatformDependencies,
 ): UIViewController {
     startSaqzKoin(dependencies)
     return ComposeUIViewController {

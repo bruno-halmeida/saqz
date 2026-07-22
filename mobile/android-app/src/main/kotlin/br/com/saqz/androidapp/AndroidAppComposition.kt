@@ -19,11 +19,11 @@ import br.com.saqz.androidapp.groups.attendance.share.AndroidAttendanceShareAdap
 import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
-import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.SaqzPlatformDependencies
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AndroidAppComposition(
-    val dependencies: SaqzAppDependencies,
+    val dependencies: SaqzPlatformDependencies,
     val links: AndroidIntentLinkPort,
     val photos: AndroidGroupPhotoAdapters? = null,
 )
@@ -61,7 +61,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val attendanceShare = AndroidAttendanceShareAdapter(context.applicationContext)
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
-        val dependencies = SaqzAppDependencies(
+        val dependencies = SaqzPlatformDependencies(
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 auth = auth,
