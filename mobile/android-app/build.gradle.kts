@@ -3,6 +3,7 @@ import groovy.json.JsonSlurper
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     id("saqz.android-application")
     id("saqz.detekt")
 }

@@ -2,12 +2,12 @@ package br.com.saqz.groups.presentation.games.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.game.GameGateway
-import br.com.saqz.groups.data.game.GameGatewayFailure
-import br.com.saqz.groups.data.game.VersionedGameDto
-import br.com.saqz.groups.data.game.VersionedSeriesDto
-import br.com.saqz.groups.data.game.toGameGatewayFailure
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.game.GameError
+import br.com.saqz.groups.domain.game.GameGateway
+import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.game.VersionedSeries
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -64,6 +64,7 @@ class GameEditorViewModel(
         mutableState.value = mutableState.value.copy(
             draft = mutableState.value.draft.change(),
             fieldErrors = emptyMap(),
+            globalValidationMessages = emptyList(),
             error = null,
             reloadAvailable = false,
         )
@@ -88,64 +89,98 @@ class GameEditorViewModel(
             return
         }
         persist()
-        mutableState.value = current.copy(isLoading = true, error = null, fieldErrors = emptyMap())
+        mutableState.value = current.copy(
+            isLoading = true,
+            error = null,
+            fieldErrors = emptyMap(),
+            globalValidationMessages = emptyList(),
+        )
         scope.launch { execute(current.draft) }
     }
 
     private suspend fun execute(draft: GameEditorDraft) {
-        val result = when {
+        when {
             input.existing == null && draft.mode == GameEditorMode.ONE_TIME -> {
-                gateway.create(input.groupId, draft.form.toGameWriteCommand(draft.commandKey))
+                handleGameResult(
+                    gateway.create(GroupId(input.groupId), draft.form.toGameWriteCommand(draft.commandKey)),
+                    draft,
+                )
             }
-            input.existing == null -> gateway.createSeries(input.groupId, draft.toSeriesWriteCommand())
-            draft.mode == GameEditorMode.ONE_TIME -> gateway.edit(
-                input.groupId,
-                input.existing.game.id,
-                requireNotNull(draft.etag),
-                draft.form.toGameWriteCommand(),
+            input.existing == null -> handleSeriesResult(
+                gateway.createSeries(GroupId(input.groupId), draft.toSeriesWriteCommand()),
+                draft,
+            )
+            draft.mode == GameEditorMode.ONE_TIME -> handleGameResult(
+                gateway.edit(
+                    GroupId(input.groupId),
+                    input.existing.game.id,
+                    requireNotNull(draft.version),
+                    draft.form.toGameWriteCommand(),
+                ),
+                draft,
             )
             else -> {
                 val series = requireNotNull(input.series)
-                gateway.boundary(
-                    input.groupId,
-                    series.series.id,
-                    requireNotNull(draft.etag),
-                    draft.toBoundaryCommand(series),
+                handleSeriesResult(
+                    gateway.boundary(
+                        GroupId(input.groupId),
+                        series.series.id,
+                        requireNotNull(draft.version),
+                        draft.toBoundaryCommand(series),
+                    ),
+                    draft,
                 )
             }
         }
+    }
+
+    private fun handleGameResult(
+        result: SaqzResult<VersionedGame, GameError>,
+        draft: GameEditorDraft,
+    ) {
         when (result) {
-            is NetworkResult.Success<*> -> {
-                val id = when (val value = result.value) {
-                    is VersionedGameDto -> value.game.id
-                    is VersionedSeriesDto -> value.series.id
-                    else -> error("unexpected result")
-                }
-                store.clear(input.groupId, input.existing?.game?.id, draft.commandKey) {}
-                mutableState.value = mutableState.value.copy(isLoading = false, successId = id)
-                effectChannel.trySend(GameEditorEffect.Saved(id))
-            }
-            is NetworkResult.Failure -> failure(result.error.toGameGatewayFailure())
+            is SaqzResult.Success -> success(result.value.game.id, draft)
+            is SaqzResult.Failure -> failure(result.error)
         }
     }
 
-    private fun failure(failure: GameGatewayFailure) {
+    private fun handleSeriesResult(
+        result: SaqzResult<VersionedSeries, GameError>,
+        draft: GameEditorDraft,
+    ) {
+        when (result) {
+            is SaqzResult.Success -> success(result.value.series.id, draft)
+            is SaqzResult.Failure -> failure(result.error)
+        }
+    }
+
+    private fun success(id: String, draft: GameEditorDraft) {
+        store.clear(input.groupId, input.existing?.game?.id, draft.commandKey) {}
+        mutableState.value = mutableState.value.copy(isLoading = false, successId = id)
+        effectChannel.trySend(GameEditorEffect.Saved(id))
+    }
+
+    private fun failure(failure: GameError) {
         mutableState.value = when (failure) {
-            is GameGatewayFailure.Validation -> mutableState.value.copy(
+            is GameError.Validation -> mutableState.value.copy(
                 isLoading = false,
-                fieldErrors = failure.fields,
+                fieldErrors = failure.error.details.fieldMessages,
+                globalValidationMessages = failure.error.details.globalMessages,
+                error = GameEditorError.VALIDATION.takeIf {
+                    failure.error.details.globalMessages.isEmpty()
+                },
             )
-            GameGatewayFailure.Conflict -> mutableState.value.copy(
+            GameError.Conflict -> mutableState.value.copy(
                 isLoading = false,
                 error = GameEditorError.CONFLICT,
                 reloadAvailable = true,
             )
-            GameGatewayFailure.HiddenResource -> mutableState.value.copy(
+            GameError.HiddenResource -> mutableState.value.copy(
                 isLoading = false,
                 error = GameEditorError.HIDDEN,
                 reloadAvailable = true,
             )
-            GameGatewayFailure.InvalidLifecycle -> mutableState.value.copy(
+            GameError.InvalidLifecycle -> mutableState.value.copy(
                 isLoading = false,
                 error = GameEditorError.INVALID_LIFECYCLE,
                 reloadAvailable = true,

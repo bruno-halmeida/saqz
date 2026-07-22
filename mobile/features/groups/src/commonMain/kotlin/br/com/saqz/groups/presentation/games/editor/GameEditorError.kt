@@ -6,4 +6,5 @@ enum class GameEditorError {
     CONFLICT,
     HIDDEN,
     INVALID_LIFECYCLE,
+    VALIDATION,
 }

@@ -21,10 +21,11 @@ import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzCard
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.data.game.GameVenueDto
-import br.com.saqz.groups.data.game.SeriesBoundaryScopeDto
-import br.com.saqz.groups.data.game.WeekdayDto
-import br.com.saqz.groups.data.game.WeeklySlotDto
+import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.game.SeriesBoundaryScope
+import br.com.saqz.groups.domain.game.Weekday
+import br.com.saqz.groups.domain.game.WeeklySlot
+import br.com.saqz.groups.presentation.games.editor.GameEditorError
 import br.com.saqz.groups.presentation.games.editor.GameEditorForm
 import br.com.saqz.groups.presentation.games.editor.GameEditorIntent
 import br.com.saqz.groups.presentation.games.editor.GameEditorMode
@@ -44,7 +45,7 @@ object GameEditorTags {
     fun field(name: String) = "game-editor-field-$name"
     fun slot(index: Int) = "game-editor-slot-$index"
     fun removeSlot(index: Int) = "game-editor-remove-slot-$index"
-    fun weekday(index: Int, weekday: WeekdayDto) = "game-editor-weekday-$index-${weekday.name}"
+    fun weekday(index: Int, weekday: Weekday) = "game-editor-weekday-$index-${weekday.name}"
 }
 
 @Composable
@@ -82,6 +83,12 @@ fun GameEditorScreen(state: GameEditorState, onIntent: (GameEditorIntent) -> Uni
         if (draft.mode == GameEditorMode.ONE_TIME) EditorInput(form.confirmationDeadline, Res.string.game_editor_deadline, state.errorFor("confirmationDeadline"), GameEditorTags.field("deadline")) { onIntent(GameEditorIntent.UpdateForm(form.copy(confirmationDeadline = it))) }
         EditorInput(form.gameFeeBrl, Res.string.game_editor_fee, state.errorFor("gameFeeBrl"), GameEditorTags.field("fee")) { onIntent(GameEditorIntent.UpdateForm(form.copy(gameFeeBrl = it))) }
         EditorInput(form.notes, Res.string.game_editor_notes, state.errorFor("notes"), GameEditorTags.field("notes")) { onIntent(GameEditorIntent.UpdateForm(form.copy(notes = it))) }
+        for (message in state.globalValidationMessages) {
+            ErrorText(message)
+        }
+        if (state.error == GameEditorError.VALIDATION) {
+            ErrorText(stringResource(Res.string.game_editor_validation_error))
+        }
         if (draft.mode == GameEditorMode.WEEKLY) WeeklySlots(form, state, onIntent)
         if (draft.gameId != null && draft.mode == GameEditorMode.WEEKLY) ScopeChoice(state, onIntent)
         if (state.reloadAvailable) SaqzButton(stringResource(Res.string.game_editor_reload), { onIntent(GameEditorIntent.Reload) }, Modifier.fillMaxWidth().testTag(GameEditorTags.Reload))
@@ -97,7 +104,7 @@ private fun WeeklySlots(form: GameEditorForm, state: GameEditorState, onIntent: 
         SaqzCard(Modifier.fillMaxWidth().testTag(GameEditorTags.slot(index))) {
             Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
                 Text(stringResource(Res.string.game_editor_slot, index + 1), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
-                WeekdayDto.entries.forEach { weekday -> ModeButton(weekday.label(), GameEditorTags.weekday(index, weekday), slot.weekday == weekday, Modifier.fillMaxWidth()) { form.updateSlot(index, slot.copy(weekday = weekday), onIntent) } }
+                Weekday.entries.forEach { weekday -> ModeButton(weekday.label(), GameEditorTags.weekday(index, weekday), slot.weekday == weekday, Modifier.fillMaxWidth()) { form.updateSlot(index, slot.copy(weekday = weekday), onIntent) } }
                 SlotInput(index, "title", slot.title, Res.string.game_editor_title, state, form, slot, onIntent) { value -> slot.copy(title = value) }
                 SlotInput(index, "localTime", slot.localTime, Res.string.game_editor_start_time, state, form, slot, onIntent) { value -> slot.copy(localTime = value) }
                 SlotInput(index, "durationMinutes", slot.durationMinutes.toString(), Res.string.game_editor_duration, state, form, slot, onIntent) { value -> slot.copy(durationMinutes = value.toIntOrNull() ?: 0) }
@@ -116,17 +123,25 @@ private fun WeeklySlots(form: GameEditorForm, state: GameEditorState, onIntent: 
 private fun ScopeChoice(state: GameEditorState, onIntent: (GameEditorIntent) -> Unit) {
     Text(stringResource(Res.string.game_editor_scope_title), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
     state.errorFor("scope")?.let { ErrorText(it) }
-    ModeButton(Res.string.game_editor_only_this, GameEditorTags.ScopeOnly, state.draft.scope == SeriesBoundaryScopeDto.ONLY_THIS, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScopeDto.ONLY_THIS)) }
-    ModeButton(Res.string.game_editor_this_future, GameEditorTags.ScopeFuture, state.draft.scope == SeriesBoundaryScopeDto.THIS_AND_FUTURE, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScopeDto.THIS_AND_FUTURE)) }
+    ModeButton(Res.string.game_editor_only_this, GameEditorTags.ScopeOnly, state.draft.scope == SeriesBoundaryScope.OnlyThis, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis)) }
+    ModeButton(Res.string.game_editor_this_future, GameEditorTags.ScopeFuture, state.draft.scope == SeriesBoundaryScope.ThisAndFuture, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.ThisAndFuture)) }
 }
 
 @Composable private fun ModeButton(label: org.jetbrains.compose.resources.StringResource, tag: String, selected: Boolean, modifier: Modifier, click: () -> Unit) = ModeButton(stringResource(label), tag, selected, modifier, click)
 @Composable private fun ModeButton(label: String, tag: String, selected: Boolean, modifier: Modifier, click: () -> Unit) = SaqzButton(label, click, modifier.testTag(tag), if (selected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary)
 @Composable private fun EditorInput(value: String, label: org.jetbrains.compose.resources.StringResource, error: String?, tag: String, change: (String) -> Unit) = SaqzInput(TextFieldValue(value), { change(it.text) }, stringResource(label), Modifier.testTag(tag), errorText = error)
 @Composable private fun ErrorText(value: String) = Text(value, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
-@Composable private fun SlotInput(index: Int, name: String, value: String, label: org.jetbrains.compose.resources.StringResource, state: GameEditorState, form: GameEditorForm, slot: WeeklySlotDto, onIntent: (GameEditorIntent) -> Unit, update: (String) -> WeeklySlotDto) = EditorInput(value, label, state.errorFor("slots[$index].$name"), GameEditorTags.field("slot-$index-$name")) { form.updateSlot(index, update(it), onIntent) }
+@Composable private fun SlotInput(index: Int, name: String, value: String, label: org.jetbrains.compose.resources.StringResource, state: GameEditorState, form: GameEditorForm, slot: WeeklySlot, onIntent: (GameEditorIntent) -> Unit, update: (String) -> WeeklySlot) = EditorInput(value, label, state.errorFor("slots[$index].$name"), GameEditorTags.field("slot-$index-$name")) { form.updateSlot(index, update(it), onIntent) }
 private fun GameEditorState.errorFor(name: String) = fieldErrors[name]?.firstOrNull()
-private fun GameVenueDto?.withName(value: String) = (this ?: GameVenueDto(null, "", "")).copy(name = value)
-private fun GameVenueDto?.withAddress(value: String) = (this ?: GameVenueDto(null, "", "")).copy(address = value)
-private fun GameEditorForm.updateSlot(index: Int, slot: WeeklySlotDto, onIntent: (GameEditorIntent) -> Unit) = onIntent(GameEditorIntent.UpdateForm(copy(slots = slots.mapIndexed { i, old -> if (i == index) slot else old })))
-private fun WeekdayDto.label() = when (this) { WeekdayDto.MONDAY -> "Segunda-feira"; WeekdayDto.TUESDAY -> "Terça-feira"; WeekdayDto.WEDNESDAY -> "Quarta-feira"; WeekdayDto.THURSDAY -> "Quinta-feira"; WeekdayDto.FRIDAY -> "Sexta-feira"; WeekdayDto.SATURDAY -> "Sábado"; WeekdayDto.SUNDAY -> "Domingo" }
+private fun GameVenue?.withName(value: String) = (this ?: GameVenue(null, "", "")).copy(name = value)
+private fun GameVenue?.withAddress(value: String) = (this ?: GameVenue(null, "", "")).copy(address = value)
+private fun GameEditorForm.updateSlot(index: Int, slot: WeeklySlot, onIntent: (GameEditorIntent) -> Unit) = onIntent(GameEditorIntent.UpdateForm(copy(slots = slots.mapIndexed { i, old -> if (i == index) slot else old })))
+private fun Weekday.label() = when (this) {
+    Weekday.Monday -> "Segunda-feira"
+    Weekday.Tuesday -> "Terça-feira"
+    Weekday.Wednesday -> "Quarta-feira"
+    Weekday.Thursday -> "Quinta-feira"
+    Weekday.Friday -> "Sexta-feira"
+    Weekday.Saturday -> "Sábado"
+    Weekday.Sunday -> "Domingo"
+}

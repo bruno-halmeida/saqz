@@ -231,7 +231,8 @@
     <string name="game_editor_scope_title">Aplicar alteração ou cancelamento a</string>
     <string name="game_editor_only_this">Somente este jogo</string>
     <string name="game_editor_this_future">Este e os próximos</string>
-    <string name="game_editor_submit">Salvar jogo</string>
+<string name="game_editor_submit">Salvar jogo</string>
+<string name="game_editor_validation_error">Revise os dados informados e tente novamente.</string>
     <string name="game_editor_reload">Recarregar jogo</string>
     <string name="game_detail_title">Detalhes do jogo</string>
     <string name="game_detail_edit">Editar jogo</string>

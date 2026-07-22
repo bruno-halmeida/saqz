@@ -1,15 +1,15 @@
 package br.com.saqz.groups.presentation.games.editor
 
 import br.com.saqz.core.common.formatting.parseBrlToCents
-import br.com.saqz.groups.data.game.GameVenueDto
-import br.com.saqz.groups.data.game.GameWriteCommand
-import br.com.saqz.groups.data.game.SeriesBoundaryCommand
-import br.com.saqz.groups.data.game.SeriesBoundaryScopeDto
-import br.com.saqz.groups.data.game.SeriesBoundaryActionDto
-import br.com.saqz.groups.data.game.VersionedSeriesDto
-import br.com.saqz.groups.data.game.WeekdayDto
-import br.com.saqz.groups.data.game.WeeklySeriesWriteCommand
-import br.com.saqz.groups.data.game.WeeklySlotDto
+import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.game.GameWriteCommand
+import br.com.saqz.groups.domain.game.SeriesBoundaryAction
+import br.com.saqz.groups.domain.game.SeriesBoundaryCommand
+import br.com.saqz.groups.domain.game.SeriesBoundaryScope
+import br.com.saqz.groups.domain.game.VersionedSeries
+import br.com.saqz.groups.domain.game.Weekday
+import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
+import br.com.saqz.groups.domain.game.WeeklySlot
 
 internal fun GameEditorForm.toGameWriteCommand(commandKey: String? = null): GameWriteCommand = GameWriteCommand(
     commandKey,
@@ -27,12 +27,12 @@ internal fun GameEditorForm.toGameWriteCommand(commandKey: String? = null): Game
     notes.trim().ifBlank { null },
 )
 
-internal fun GameEditorForm.newWeeklySlot(commandKey: String): WeeklySlotDto = WeeklySlotDto(
+internal fun GameEditorForm.newWeeklySlot(commandKey: String): WeeklySlot = WeeklySlot(
     slotKey = commandKey,
-    weekday = WeekdayDto.MONDAY,
+    weekday = Weekday.Monday,
     localTime = "19:00:00",
     durationMinutes = durationMinutes.toIntOrNull() ?: 90,
-    venue = venue ?: GameVenueDto(null, "", ""),
+    venue = venue ?: GameVenue(null, "", ""),
     capacity = capacity.toIntOrNull() ?: 12,
     confirmationLeadMinutes = 180,
     gameFeeCents = parseBrlToCents(gameFeeBrl),
@@ -48,23 +48,22 @@ internal fun GameEditorDraft.toSeriesWriteCommand(): WeeklySeriesWriteCommand = 
     form.slots,
 )
 
-internal fun GameEditorDraft.toBoundaryCommand(series: VersionedSeriesDto): SeriesBoundaryCommand =
+internal fun GameEditorDraft.toBoundaryCommand(series: VersionedSeries): SeriesBoundaryCommand =
     SeriesBoundaryCommand(
         requestId = commandKey,
         scope = requireNotNull(scope),
-        action = SeriesBoundaryActionDto.EDIT,
+        action = SeriesBoundaryAction.Edit,
         gameId = gameId,
         boundary = form.localDate,
         currentRevisionId = series.series.revisionId,
-        successor = if (scope == SeriesBoundaryScopeDto.THIS_AND_FUTURE) {
+        successor = if (scope == SeriesBoundaryScope.ThisAndFuture) {
             toSeriesWriteCommand()
         } else {
             null
         },
-        replacement = if (scope == SeriesBoundaryScopeDto.ONLY_THIS) {
+        replacement = if (scope == SeriesBoundaryScope.OnlyThis) {
             form.toGameWriteCommand()
         } else {
             null
         },
     )
-

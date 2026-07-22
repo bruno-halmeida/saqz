@@ -33,7 +33,7 @@ internal fun GameEditorInput.toGameEditorDraft(commandKey: String): GameEditorDr
         gameId = game?.id,
         seriesId = series?.series?.id,
         commandKey = commandKey,
-        etag = existing?.etag ?: series?.etag,
+        version = existing?.version ?: series?.version,
         mode = if (series == null) GameEditorMode.ONE_TIME else GameEditorMode.WEEKLY,
         form = form,
     )

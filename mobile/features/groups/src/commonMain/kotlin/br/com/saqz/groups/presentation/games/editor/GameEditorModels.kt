@@ -1,22 +1,20 @@
 package br.com.saqz.groups.presentation.games.editor
 
-import br.com.saqz.groups.data.game.GameVenueDto
-import br.com.saqz.groups.data.game.SeriesBoundaryScopeDto
-import br.com.saqz.groups.data.game.VersionedGameDto
-import br.com.saqz.groups.data.game.VersionedSeriesDto
-import br.com.saqz.groups.data.game.WeeklySlotDto
-import kotlinx.serialization.Serializable
+import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.game.GameVersionToken
+import br.com.saqz.groups.domain.game.SeriesBoundaryScope
+import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.game.VersionedSeries
+import br.com.saqz.groups.domain.game.WeeklySlot
 
-@Serializable
 enum class GameEditorMode {
     ONE_TIME,
     WEEKLY,
 }
 
-@Serializable
 data class GameEditorForm(
     val title: String = "",
-    val venue: GameVenueDto? = null,
+    val venue: GameVenue? = null,
     val localDate: String = "",
     val localTime: String = "",
     val zoneId: String = "",
@@ -27,20 +25,19 @@ data class GameEditorForm(
     val gameFeeBrl: String = "",
     val notes: String = "",
     val localEndDate: String = "",
-    val slots: List<WeeklySlotDto> = emptyList(),
+    val slots: List<WeeklySlot> = emptyList(),
 )
 
-@Serializable
 data class GameEditorDraft(
     val schemaVersion: Int = CURRENT_SCHEMA,
     val groupId: String,
     val gameId: String?,
     val seriesId: String?,
     val commandKey: String,
-    val etag: String?,
+    val version: GameVersionToken?,
     val mode: GameEditorMode,
     val form: GameEditorForm,
-    val scope: SeriesBoundaryScopeDto? = null,
+    val scope: SeriesBoundaryScope? = null,
 ) {
     companion object {
         const val CURRENT_SCHEMA = 1
@@ -49,7 +46,7 @@ data class GameEditorDraft(
 
 data class GameEditorDefaults(
     val title: String,
-    val venue: GameVenueDto?,
+    val venue: GameVenue?,
     val zoneId: String,
     val durationMinutes: Int?,
     val capacity: Int?,
@@ -60,6 +57,6 @@ data class GameEditorDefaults(
 data class GameEditorInput(
     val groupId: String,
     val defaults: GameEditorDefaults,
-    val existing: VersionedGameDto? = null,
-    val series: VersionedSeriesDto? = null,
+    val existing: VersionedGame? = null,
+    val series: VersionedSeries? = null,
 )
