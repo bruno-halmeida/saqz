@@ -232,7 +232,7 @@ T27 → T28 → T29 → T30
 
 ### T06: Estender SaqzDateTimeFormatter com data local e mês pt-BR
 
-**Status**: in_progress
+**Status**: completed (2f80249)
 
 **What**: Adicionar `formatLocalDatePtBr(iso: String): String` e `formatMonthPtBr(...)` a `core/common`, cobrindo os usos hoje duplicados nas telas de finanças.
 **Where**: `mobile/core/common/src/commonMain/kotlin/br/com/saqz/core/common/formatting/SaqzDateTimeFormatter.kt`
@@ -243,10 +243,10 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] Saídas idênticas às implementações atuais para os casos exercitados hoje
-- [ ] Testes novos cobrem: datas válidas, mês por extenso/abreviado conforme uso atual, entradas inválidas
-- [ ] Gate quick passa: `rtk ./gradlew :core:common:allTests --console=plain`
-- [ ] Contagem de testes do módulo não diminui (+N novos)
+- [x] Saídas idênticas às implementações atuais para os casos exercitados hoje
+- [x] Testes novos cobrem: datas válidas, mês por extenso/abreviado conforme uso atual, entradas inválidas
+- [x] Gate quick passa: `rtk ./gradlew :core:common:allTests --console=plain`
+- [x] Contagem de testes do módulo não diminui (+N novos)
 
 **Tests**: unit
 **Gate**: quick
@@ -255,6 +255,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T07: Mapeadores HTTP→domínio na data layer de groups + isProblem único
+
+**Status**: completed (b0345e0)
 
 **What**: Criar em `features/groups/data` os mapeadores `NetworkError.toSetupFailure()`, `toAdministrationFailure()`, `toPhotoFailure()`, `toDeferredLinkFailure()` (conforme falhas consumidas hoje), promovendo `isProblem` a extensão pública única em `core/network`.
 **Where**: novos arquivos em `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/data/`; `isProblem` em `mobile/core/network/src/commonMain/kotlin/br/com/saqz/network/`
@@ -265,11 +267,11 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] Cada mapeador cobre os status/códigos que seu consumidor trata hoje (403/404/400, `VERSION_CONFLICT`, `retryAfterSeconds`)
-- [ ] `isProblem` existe uma única vez (core/network) e as duas cópias apontam para ela
-- [ ] Testes novos por mapeador: cada status/código mapeado + caso desconhecido
-- [ ] Gate quick passa: `rtk ./gradlew :core:network:allTests :features:groups:allTests --console=plain`
-- [ ] Contagem de testes não diminui (+N novos)
+- [x] Cada mapeador cobre os status/códigos que seu consumidor trata hoje (403/404/400, `VERSION_CONFLICT`, `retryAfterSeconds`)
+- [x] `isProblem` existe uma única vez (core/network) e as duas cópias apontam para ela
+- [x] Testes novos por mapeador: cada status/código mapeado + caso desconhecido
+- [x] Gate quick passa: `rtk ./gradlew :core:network:allTests :features:groups:allTests --console=plain`
+- [x] Contagem de testes não diminui (+N novos)
 
 **Tests**: unit
 **Gate**: quick
@@ -279,13 +281,13 @@ T27 → T28 → T29 → T30
 
 ### T08: Presentation de groups consome os mapeadores da data layer
 
+**Status**: in_progress
+
 **What**: Migrar `GroupSetupViewModel`, `GroupAdministrationCoordinator`, `GroupPhotoCoordinator` e os dois state machines de links diferidos para usar os mapeadores de T07, removendo inspeção direta de `ApiProblemError`/status em presentation.
 **Where**: `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/**` (`setup/GroupSetupViewModel.kt:273-287,207`, `GroupAdministrationCoordinator.kt:177-189,102`, `photo/GroupPhotoCoordinator.kt:138-141,189-190`, `DeferredInviteCoordinator.kt:152-171`, `attendance/share/DeferredAttendanceLinkCoordinator.kt:153-172`)
 **Depends on**: T07
 **Reuses**: mapeadores de T07
 **Requirement**: SHR-02
-
-**Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
 - [ ] `rg "ApiProblemError" mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation` sem ocorrências de inspeção por status (exceto tipos importados pelos mapeadores)
