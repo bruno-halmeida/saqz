@@ -6,17 +6,54 @@ import br.com.saqz.access.port.AuthState
 import br.com.saqz.access.port.AuthStateListener
 import br.com.saqz.access.port.Cancelable
 import br.com.saqz.access.port.InviteCodeListener
+import br.com.saqz.access.port.LocalAccessStatePort
 import br.com.saqz.access.port.NativeAuthPort
 import br.com.saqz.access.port.NativeFailureCode
+import br.com.saqz.access.port.NativeLinkPort
+import br.com.saqz.access.port.NativeSharePort
 import br.com.saqz.access.port.OperationResult
 import br.com.saqz.access.port.ResultCallback
 import br.com.saqz.access.port.TokenCallback
 import br.com.saqz.access.port.TokenResult
+import br.com.saqz.access.port.ValueCallback
+import br.com.saqz.access.port.ValueResult
+import br.com.saqz.access.presentation.AuthenticationStateMachine
+import br.com.saqz.access.presentation.SessionAccessStateMachine
+import br.com.saqz.groups.data.GroupApi
+import br.com.saqz.groups.data.GroupGateway
+import br.com.saqz.groups.data.GroupPhotoGateway
+import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.data.RolesInvitesApi
+import br.com.saqz.groups.data.RolesInvitesGateway
+import br.com.saqz.groups.data.attendance.AttendanceGateway
+import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
+import br.com.saqz.groups.data.game.GameGateway
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
+import br.com.saqz.groups.port.GroupAttendanceSharePort
+import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
+import br.com.saqz.groups.port.GroupLinkEventListener
+import br.com.saqz.groups.port.GroupOperationResult
+import br.com.saqz.groups.port.GroupPhotoCrop
+import br.com.saqz.groups.port.GroupPhotoEncoderPort
+import br.com.saqz.groups.port.GroupPhotoEncodingResult
+import br.com.saqz.groups.port.GroupPhotoPreviewPort
+import br.com.saqz.groups.port.GroupPhotoSelectionPort
+import br.com.saqz.groups.port.GroupPhotoSelectionResult
+import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.port.GroupResultCallback
+import br.com.saqz.groups.port.GroupValueCallback
+import br.com.saqz.groups.port.GroupValueResult
+import br.com.saqz.groups.port.LocalGroupStatePort
+import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.presentation.DeferredInviteStateMachine
+import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
+import br.com.saqz.groups.presentation.GroupSelectionStateMachine
+import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
+import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkStateMachine
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult
@@ -43,9 +80,8 @@ import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
 class SaqzKoinModulesTest {
-    private val fixturesModule = module {
+    private val configFixturesModule = module {
         single { NetworkConfig(environment = NetworkEnvironment.Test, baseUrl = "https://api.invalid") }
-        single<NativeAuthPort> { FakeAuthPort }
         single {
             SaqzDraftStores(
                 groupDrafts = FakeGroupDraftStore,
@@ -55,11 +91,30 @@ class SaqzKoinModulesTest {
             )
         }
     }
+    private val authFixtureModule = module {
+        single<NativeAuthPort> { FakeAuthPort }
+    }
+    private val nativePortsFixtureModule = module {
+        single {
+            SaqzNativePorts(
+                auth = FakeAuthPort,
+                links = FakeLinkPort,
+                localAccessState = FakeLocalAccessStatePort,
+                share = FakeSharePort,
+                attendanceShare = FakeAttendanceSharePort,
+                groupPhotoSelection = FakeGroupPhotoSelectionPort,
+                groupPhotoEncoder = FakeGroupPhotoEncoderPort,
+                groupPhotoPreviews = GroupPhotoPreviewPort { null },
+                groupLinks = FakeGroupLinkPort,
+                localGroupState = FakeLocalGroupStatePort,
+            )
+        }
+    }
 
     @Test
     fun networkGraphResolvesWithSingletonClient() {
         val app = koinApplication {
-            modules(fixturesModule, networkModule, draftsModule)
+            modules(configFixturesModule, authFixtureModule, networkModule, draftsModule)
         }
         val koin = app.koin
 
@@ -74,7 +129,7 @@ class SaqzKoinModulesTest {
     @Test
     fun draftsModuleResolvesPlatformStores() {
         val app = koinApplication {
-            modules(fixturesModule, networkModule, draftsModule)
+            modules(configFixturesModule, authFixtureModule, networkModule, draftsModule)
         }
         val koin = app.koin
 
@@ -82,6 +137,71 @@ class SaqzKoinModulesTest {
         assertSame(FakeGameDraftStore, koin.get<GameDraftStorePort>())
         assertSame(FakeMonthlyChargeDraftStore, koin.get<MonthlyChargeDraftStorePort>())
         assertSame(FakeExpenseDraftStore, koin.get<ExpenseDraftStorePort>())
+
+        app.close()
+    }
+
+    @Test
+    fun accessModuleResolvesMachinesAndWiresSessionInvalidator() {
+        val app = koinApplication {
+            modules(
+                configFixturesModule,
+                nativePortsFixtureModule,
+                networkModule,
+                draftsModule,
+                accessModule,
+                groupsModule,
+            )
+        }
+        val koin = app.koin
+
+        val sessionMachine = koin.get<SessionAccessStateMachine>()
+        assertSame(sessionMachine, koin.get<SessionAccessStateMachine>())
+        assertSame(sessionMachine, koin.get<DelegatingSessionInvalidator>().delegate)
+        assertSame(koin.get<AuthenticationStateMachine>(), koin.get<AuthenticationStateMachine>())
+
+        assertSame(FakeAuthPort, koin.get<NativeAuthPort>())
+        assertSame(FakeLinkPort, koin.get<NativeLinkPort>())
+        assertSame(FakeLocalAccessStatePort, koin.get<LocalAccessStatePort>())
+        assertSame(FakeSharePort, koin.get<NativeSharePort>())
+
+        app.close()
+    }
+
+    @Test
+    fun groupsModuleResolvesGatewaysAndMachines() {
+        val app = koinApplication {
+            modules(
+                configFixturesModule,
+                nativePortsFixtureModule,
+                networkModule,
+                draftsModule,
+                accessModule,
+                groupsModule,
+            )
+        }
+        val koin = app.koin
+
+        val groupApi = koin.get<GroupApi>()
+        assertSame(groupApi, koin.get<GroupGateway>())
+        assertSame(groupApi, koin.get<GroupProfileGateway>())
+        assertSame(koin.get<RolesInvitesApi>(), koin.get<RolesInvitesGateway>())
+        koin.get<GroupPhotoGateway>()
+        koin.get<AttendanceShareGateway>()
+        koin.get<GameGateway>()
+        koin.get<AttendanceGateway>()
+
+        koin.get<GroupSelectionStateMachine>()
+        koin.get<GroupAdministrationStateMachine>()
+        koin.get<DeferredInviteStateMachine>()
+        koin.get<DeferredAttendanceLinkStateMachine>()
+        koin.get<AttendanceDestinationStore>()
+
+        assertSame(FakeAttendanceSharePort, koin.get<GroupAttendanceSharePort>())
+        assertSame(FakeGroupPhotoSelectionPort, koin.get<GroupPhotoSelectionPort>())
+        assertSame(FakeGroupPhotoEncoderPort, koin.get<GroupPhotoEncoderPort>())
+        assertSame(FakeGroupLinkPort, koin.get<NativeGroupLinkPort>())
+        assertSame(FakeLocalGroupStatePort, koin.get<LocalGroupStatePort>())
 
         app.close()
     }
@@ -120,6 +240,58 @@ private object FakeAuthPort : NativeAuthPort {
         done.complete(TokenResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
 
     override fun signOut(done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object FakeLinkPort : NativeLinkPort {
+    override fun start(listener: InviteCodeListener): Cancelable = object : Cancelable {
+        override fun cancel() = Unit
+    }
+}
+
+private object FakeLocalAccessStatePort : LocalAccessStatePort {
+    override fun readSelectedGroupId(done: ValueCallback) = done.complete(ValueResult.Success(null))
+    override fun writeSelectedGroupId(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
+    override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(null))
+    override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object FakeSharePort : NativeSharePort {
+    override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object FakeAttendanceSharePort : GroupAttendanceSharePort {
+    override fun shareLink(url: String, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+    override fun shareImage(image: AttendanceShareImageModel, done: GroupResultCallback) =
+        done.complete(GroupOperationResult.Success)
+}
+
+private object FakeGroupPhotoSelectionPort : GroupPhotoSelectionPort {
+    override suspend fun chooseCamera() = GroupPhotoSelectionResult.Failed
+    override suspend fun chooseLibrary() = GroupPhotoSelectionResult.Failed
+    override fun cleanup(source: GroupPhotoSourceHandle) = Unit
+}
+
+private object FakeGroupPhotoEncoderPort : GroupPhotoEncoderPort {
+    override suspend fun encode(source: GroupPhotoSourceHandle, crop: GroupPhotoCrop) = GroupPhotoEncodingResult.Failed
+    override fun cancel(source: GroupPhotoSourceHandle) = Unit
+}
+
+private object FakeGroupLinkPort : NativeGroupLinkPort {
+    override fun start(listener: GroupLinkEventListener): GroupCancelable = object : GroupCancelable {
+        override fun cancel() = Unit
+    }
+}
+
+private object FakeLocalGroupStatePort : LocalGroupStatePort {
+    override fun readSelectedGroupId(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
+    override fun writeSelectedGroupId(value: String?, done: GroupResultCallback) =
+        done.complete(GroupOperationResult.Success)
+    override fun readPendingInvite(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
+    override fun writePendingInvite(value: String?, done: GroupResultCallback) =
+        done.complete(GroupOperationResult.Success)
+    override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
+    override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) =
+        done.complete(GroupOperationResult.Success)
 }
 
 private object FakeGroupDraftStore : GroupDraftStorePort {
