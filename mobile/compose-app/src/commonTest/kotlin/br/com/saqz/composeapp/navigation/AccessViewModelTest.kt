@@ -26,10 +26,12 @@ import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.network.SessionUserDto
 import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -95,20 +97,12 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `ready session enables invite and reconciles exact memberships`() = runTest {
+    fun `ready session remains visible to the route`() = runTest {
         val (viewModel, runtime) = fixture()
 
         runtime.session.value = SessionAccessState.Ready(session)
         runCurrent()
 
-        assertEquals(
-            listOf(
-                AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.SetSessionReady(true)),
-                AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.SetSessionReady(true)),
-                AccessRuntimeIntent.Selection(GroupSelectionIntent.Reconcile(session)),
-            ),
-            runtime.intents,
-        )
         assertIs<SessionAccessState.Ready>(viewModel.state.value.session)
     }
 
@@ -126,13 +120,6 @@ class AccessViewModelTest {
 
         assertEquals(AccessPage.CONTEXT, viewModel.state.value.page)
         assertFalse(viewModel.state.value.showLogoutConfirmation)
-        assertEquals(
-            listOf<AccessRuntimeIntent>(
-                AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.SetSessionReady(false)),
-                AccessRuntimeIntent.DeferredAttendance(DeferredAttendanceLinkIntent.SetSessionReady(false)),
-            ),
-            runtime.intents,
-        )
     }
 
     @Test
@@ -144,24 +131,16 @@ class AccessViewModelTest {
         runCurrent()
 
         assertEquals(AccessPage.CONTEXT, viewModel.state.value.page)
-        assertEquals(
-            listOf<AccessRuntimeIntent>(
-                AccessRuntimeIntent.Administration(GroupAdministrationIntent.SetGroup(group)),
-            ),
-            runtime.intents,
-        )
     }
 
     @Test
     fun `attendance destination opens exact game once selected group matches`() = runTest {
         val (viewModel, runtime) = fixture()
 
-        runtime.selection.value = GroupSelectionState.Selected(group)
-        runtime.attendanceDestination.value = AttendanceLinkDestination(GROUP_ID, "game-42")
+        runtime.emit(AccessOrchestratorEffect.OpenAttendanceGame("game-42"))
         runCurrent()
 
         assertEquals(AccessUiEffect.OpenAttendanceGame("game-42"), viewModel.effects.first())
-        assertTrue(runtime.intents.contains(AccessRuntimeIntent.ConsumeAttendanceDestination))
     }
 
     @Test
@@ -369,6 +348,7 @@ class AccessViewModelTest {
         val administration = MutableStateFlow(GroupAdministrationState())
         val invite = MutableStateFlow(InviteToolState())
         val attendanceDestination = MutableStateFlow<AttendanceLinkDestination?>(null)
+        private val effectChannel = Channel<AccessOrchestratorEffect>(Channel.BUFFERED)
         val intents = mutableListOf<AccessRuntimeIntent>()
         var invalidatorCalls = 0
         private var requestCounter = 0
@@ -380,6 +360,7 @@ class AccessViewModelTest {
         override val administrationState = administration
         override val inviteToolState = invite
         override val attendanceDestinationState = attendanceDestination
+        override val effects = effectChannel.receiveAsFlow()
         override val groupProfileGateway: GroupProfileGateway get() = error("not used by AccessViewModel tests")
         override val groupPhotoGateway: GroupPhotoGateway get() = error("not used by AccessViewModel tests")
         override val sessionInvalidator: SessionInvalidator = this
@@ -403,6 +384,10 @@ class AccessViewModelTest {
         }
 
         override fun newRequestId(): String = "request-${++requestCounter}"
+
+        fun emit(effect: AccessOrchestratorEffect) {
+            effectChannel.trySend(effect)
+        }
     }
 
     private companion object {

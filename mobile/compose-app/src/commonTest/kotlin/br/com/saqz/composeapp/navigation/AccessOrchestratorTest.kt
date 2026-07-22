@@ -1,9 +1,23 @@
 package br.com.saqz.composeapp.navigation
 
+import br.com.saqz.access.port.NativeUser
+import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthScreen
+import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.testSaqzAppDependencies
+import br.com.saqz.groups.data.GroupDto
+import br.com.saqz.groups.data.GroupGateway
+import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.network.NetworkResult
+import br.com.saqz.network.SessionDto
+import br.com.saqz.network.SessionGateway
+import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.network.SessionUserDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -12,10 +26,71 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import org.koin.core.context.loadKoinModules
 import org.koin.core.parameter.parametersOf
+import org.koin.dsl.module
 import org.koin.mp.KoinPlatformTools
 
 class AccessOrchestratorTest {
+    @Test
+    fun `ready session reconciles the selected group into administration`() {
+        stopSaqzKoin()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            startSaqzKoin(testSaqzAppDependencies())
+            loadKoinModules(module {
+                single<SessionGateway> { ReadySessionGateway }
+                single<GroupGateway> { SelectedGroupGateway }
+            })
+            val orchestrator = KoinPlatformTools.defaultContext().get()
+                .get<AccessOrchestrator> { parametersOf(scope) }
+
+            orchestrator.onIntent(
+                AccessRuntimeIntent.Session(
+                    SessionIntent.Accept(
+                        AuthTransition.Authenticated(NativeUser("user-id", "person@example.test", true, "Person")),
+                    ),
+                ),
+            )
+
+            assertEquals(SessionAccessState.Ready(readySession), orchestrator.state.value.session)
+            assertEquals(GroupSelectionState.Selected(selectedGroup), orchestrator.state.value.selection)
+            assertEquals(selectedGroup, orchestrator.state.value.administration.group)
+        } finally {
+            scope.cancel()
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
+    fun `signed out session follows a ready session through orchestration`() {
+        stopSaqzKoin()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            startSaqzKoin(testSaqzAppDependencies())
+            loadKoinModules(module {
+                single<SessionGateway> { ReadySessionGateway }
+                single<GroupGateway> { SelectedGroupGateway }
+            })
+            val orchestrator = KoinPlatformTools.defaultContext().get()
+                .get<AccessOrchestrator> { parametersOf(scope) }
+
+            orchestrator.onIntent(
+                AccessRuntimeIntent.Session(
+                    SessionIntent.Accept(
+                        AuthTransition.Authenticated(NativeUser("user-id", "person@example.test", true, "Person")),
+                    ),
+                ),
+            )
+            orchestrator.onIntent(AccessRuntimeIntent.Session(SessionIntent.Logout))
+
+            assertEquals(SessionAccessState.SignedOut, orchestrator.state.value.session)
+        } finally {
+            scope.cancel()
+            stopSaqzKoin()
+        }
+    }
+
     @Test
     fun `start observes auth and reconciles signed out state into login`() {
         stopSaqzKoin()
@@ -35,5 +110,30 @@ class AccessOrchestratorTest {
             scope.cancel()
             stopSaqzKoin()
         }
+    }
+
+    private object ReadySessionGateway : SessionGateway {
+        override suspend fun bootstrap() = NetworkResult.Success(readySession)
+    }
+
+    private object SelectedGroupGateway : GroupGateway {
+        override suspend fun create(requestId: String, name: String, timeZone: String) =
+            error("not used by this test")
+
+        override suspend fun read(groupId: String) = NetworkResult.Success(selectedGroup)
+
+        override suspend fun update(groupId: String, etag: String, name: String, timeZone: String) =
+            error("not used by this test")
+    }
+
+    private companion object {
+        val readySession = SessionDto(
+            user = SessionUserDto("user-id", "person@example.test", "Person"),
+            memberships = listOf(SessionMembershipDto("group-id", "Group", "OWNER")),
+        )
+        val selectedGroup = VersionedGroupDto(
+            group = GroupDto("group-id", "Group", "UTC", 7, GroupRoleDto.OWNER),
+            etag = "\"7\"",
+        )
     }
 }
