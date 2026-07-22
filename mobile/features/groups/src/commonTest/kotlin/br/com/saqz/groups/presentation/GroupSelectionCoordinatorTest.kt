@@ -4,9 +4,6 @@ import br.com.saqz.groups.data.*
 import br.com.saqz.groups.port.*
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionMembershipDto
-import br.com.saqz.network.SessionUserDto
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -246,10 +243,9 @@ class GroupSelectionStateMachineTest {
     private companion object {
         const val GROUP_A = "group-a"
         const val GROUP_B = "group-b"
-        val memberA = SessionMembershipDto(GROUP_A, "Group A", "OWNER")
-        val memberB = SessionMembershipDto(GROUP_B, "Group B", "ATHLETE")
-        fun session(vararg memberships: SessionMembershipDto) =
-            SessionDto(SessionUserDto("user", null, "Person"), memberships.toList())
+        val memberA = GroupSelectionMembership(GROUP_A, "Group A", "OWNER")
+        val memberB = GroupSelectionMembership(GROUP_B, "Group B", "ATHLETE")
+        fun session(vararg memberships: GroupSelectionMembership) = memberships.toList()
         fun success(groupId: String, role: GroupRoleDto) = NetworkResult.Success(
             VersionedGroupDto(GroupDto(groupId, "Group $groupId", "UTC", 1, role), "\"1\""),
         )

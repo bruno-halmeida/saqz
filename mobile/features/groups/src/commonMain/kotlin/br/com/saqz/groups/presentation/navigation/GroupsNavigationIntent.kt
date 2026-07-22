@@ -1,12 +1,12 @@
 package br.com.saqz.groups.presentation.navigation
 
 import br.com.saqz.groups.presentation.GroupSelectionState
-import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 
 sealed interface GroupsNavigationIntent {
     data class Reconcile(
         val selection: GroupSelectionState,
-        val memberships: List<SessionMembershipDto>,
+        val memberships: List<GroupSelectionMembership>,
     ) : GroupsNavigationIntent
 
     data class OpenGroup(val groupId: String) : GroupsNavigationIntent

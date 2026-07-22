@@ -2,11 +2,11 @@ package br.com.saqz.composeapp.navigation
 
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
-import br.com.saqz.network.SessionDto
 
 internal sealed interface AccessRuntimeIntent {
     data object Start : AccessRuntimeIntent
@@ -27,7 +27,7 @@ internal sealed interface AccessRuntimeIntent {
 
     data object ConsumeAttendanceDestination : AccessRuntimeIntent
 
-    data class ShowGroupSelector(val session: SessionDto) : AccessRuntimeIntent
+    data class ShowGroupSelector(val session: AccessSession) : AccessRuntimeIntent
 
     data object RotateInvite : AccessRuntimeIntent
 

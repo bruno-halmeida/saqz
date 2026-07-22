@@ -10,7 +10,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationEffect
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
-import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -133,7 +133,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 GroupSelectionState.Loading("next"),
-                listOf(SessionMembershipDto("next", "Next", "ADMIN")),
+                listOf(GroupSelectionMembership("next", "Next", "ADMIN")),
             ),
         )
         assertUnscoped(viewModel, GroupsDestination.LOADING)
@@ -145,7 +145,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 GroupSelectionState.LoadError("removed"),
-                listOf(SessionMembershipDto("removed", "Removed", "OWNER")),
+                listOf(GroupSelectionMembership("removed", "Removed", "OWNER")),
             ),
         )
         assertUnscoped(viewModel, GroupsDestination.LOAD_ERROR)
@@ -270,7 +270,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 selectedState(admin.copy(id = "next")),
-                listOf(SessionMembershipDto("next", "Next", "ADMIN")),
+                listOf(GroupSelectionMembership("next", "Next", "ADMIN")),
             ),
         )
         assertEquals("next", viewModel.state.value.groupId)
@@ -311,7 +311,7 @@ class GroupsNavigationViewModelTest {
 
     private fun selectedState(group: GroupDto) = GroupSelectionState.Selected(VersionedGroupDto(group, "etag"))
 
-    private fun membership(group: GroupDto) = SessionMembershipDto(group.id, group.name, group.role.name)
+    private fun membership(group: GroupDto) = GroupSelectionMembership(group.id, group.name, group.role.name)
 
     private fun assertUnscoped(viewModel: GroupsNavigationViewModel, destination: GroupsDestination) {
         assertEquals(destination, viewModel.state.value.destination)
@@ -329,8 +329,8 @@ class GroupsNavigationViewModelTest {
         val admin = group(GroupRoleDto.ADMIN)
         val athlete = group(GroupRoleDto.ATHLETE)
         val memberships = listOf(
-            SessionMembershipDto(GROUP_ID, "Private Group", "OWNER"),
-            SessionMembershipDto("next", "Next", "ADMIN"),
+            GroupSelectionMembership(GROUP_ID, "Private Group", "OWNER"),
+            GroupSelectionMembership("next", "Next", "ADMIN"),
         )
 
         fun group(role: GroupRoleDto) = GroupDto(

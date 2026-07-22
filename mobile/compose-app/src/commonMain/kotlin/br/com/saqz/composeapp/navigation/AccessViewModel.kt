@@ -14,7 +14,7 @@ import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.groups.ui.CreateGroupUiState
-import br.com.saqz.network.SessionInvalidator
+import br.com.saqz.access.domain.session.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow

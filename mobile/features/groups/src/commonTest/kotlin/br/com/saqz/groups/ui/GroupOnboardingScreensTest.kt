@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.Density
 import br.com.saqz.groups.data.*
 import br.com.saqz.groups.presentation.*
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -125,7 +125,7 @@ class GroupOnboardingScreensTest {
 
     private companion object {
         val selector = GroupSelectionState.Selector(
-            listOf(SessionMembershipDto("group-1", "First Group", "OWNER"), SessionMembershipDto("group-2", "Second Group", "ATHLETE")),
+            listOf(GroupSelectionMembership("group-1", "First Group", "OWNER"), GroupSelectionMembership("group-2", "Second Group", "ATHLETE")),
         )
         val versioned = VersionedGroupDto(GroupDto("group-2", "Current Group", "America/Sao_Paulo", 1, GroupRoleDto.OWNER), "etag")
     }

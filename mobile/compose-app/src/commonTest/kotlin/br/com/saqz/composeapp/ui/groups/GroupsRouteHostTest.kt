@@ -52,7 +52,7 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -595,8 +595,8 @@ class GroupsRouteHostTest {
         val owner = group(GroupRoleDto.OWNER)
         val athlete = group(GroupRoleDto.ATHLETE)
         val sessionGroups = listOf(
-            SessionMembershipDto("group-1", "Private Group", "OWNER"),
-            SessionMembershipDto("next", "Next", "ADMIN"),
+            GroupSelectionMembership("group-1", "Private Group", "OWNER"),
+            GroupSelectionMembership("next", "Next", "ADMIN"),
         )
         val ownerWithRoutine = owner.copy(
             profile = GroupProfileDto(

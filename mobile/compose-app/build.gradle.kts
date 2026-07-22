@@ -31,7 +31,9 @@ kotlin {
         commonMain.dependencies {
             api(project(":features:access"))
             api(project(":features:groups"))
+            implementation(project(":features:access:data"))
             implementation(project(":core:common"))
+            implementation(project(":core:domain"))
             implementation(project(":core:design-system"))
             implementation(project(":core:network"))
             implementation(libs.coil.compose.core)

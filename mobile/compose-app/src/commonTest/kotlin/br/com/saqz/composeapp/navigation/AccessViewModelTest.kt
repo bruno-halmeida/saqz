@@ -21,10 +21,12 @@ import br.com.saqz.groups.presentation.InviteUiError
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.presentation.InviteToolState
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionMembershipDto
-import br.com.saqz.network.SessionUserDto
-import br.com.saqz.network.SessionInvalidator
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessMembership
+import br.com.saqz.access.domain.session.AccessMembershipRole
+import br.com.saqz.domain.GroupId
+import br.com.saqz.access.domain.session.AccessUser
+import br.com.saqz.access.domain.session.SessionInvalidator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.cancel
@@ -393,9 +395,9 @@ class AccessViewModelTest {
     private companion object {
         const val GROUP_ID = "group-id"
         const val USER_ID = "user-id"
-        val session = SessionDto(
-            user = SessionUserDto(USER_ID, "person@example.test", "Person"),
-            memberships = listOf(SessionMembershipDto(GROUP_ID, "Group", "OWNER")),
+        val session = AccessSession(
+            user = AccessUser(USER_ID, "person@example.test", "Person"),
+            memberships = listOf(AccessMembership(GroupId(GROUP_ID), "Group", AccessMembershipRole("OWNER"))),
         )
         val group = VersionedGroupDto(
             group = GroupDto(GROUP_ID, "Group", "UTC", 7, GroupRoleDto.OWNER),

@@ -7,6 +7,9 @@ import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessMembership
+import br.com.saqz.access.domain.session.SessionInvalidator
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.AuthenticationStateMachine
@@ -22,6 +25,7 @@ import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
 import br.com.saqz.groups.presentation.GroupSelectionIntent
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupSelectionStateMachine
 import br.com.saqz.groups.presentation.InviteToolState
@@ -30,8 +34,6 @@ import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestinatio
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkStateMachine
 import br.com.saqz.composeapp.di.AttendanceDestinationStore
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -140,7 +142,7 @@ internal class AccessOrchestrator(
         invites.onIntent(DeferredInviteIntent.SetSessionReady(current is SessionAccessState.Ready))
         attendanceLinks.onIntent(DeferredAttendanceLinkIntent.SetSessionReady(current is SessionAccessState.Ready))
         if (current is SessionAccessState.Ready) {
-            selection.onIntent(GroupSelectionIntent.Reconcile(current.session))
+            selection.onIntent(GroupSelectionIntent.Reconcile(current.session.toGroupSelectionMemberships()))
         }
     }
 
@@ -186,11 +188,22 @@ internal class AccessOrchestrator(
         attendanceLinks.onIntent(DeferredAttendanceLinkIntent.Stop)
     }
 
-    private fun showGroupSelector(session: SessionDto) {
+    private fun showGroupSelector(session: AccessSession) {
         localAccessState.writeSelectedGroupId(null, object : ResultCallback {
             override fun complete(result: OperationResult) {
-                selection.onIntent(GroupSelectionIntent.Reconcile(session))
+                selection.onIntent(GroupSelectionIntent.Reconcile(session.toGroupSelectionMemberships()))
             }
         })
     }
+}
+
+internal fun AccessSession.toGroupSelectionMemberships(): List<GroupSelectionMembership> =
+    memberships.toGroupSelectionMemberships()
+
+internal fun List<AccessMembership>.toGroupSelectionMemberships(): List<GroupSelectionMembership> = map { membership ->
+    GroupSelectionMembership(
+        groupId = membership.groupId.value,
+        groupName = membership.groupName,
+        role = membership.role.value,
+    )
 }

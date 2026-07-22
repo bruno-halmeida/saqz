@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
-import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.resources.*
@@ -161,7 +161,7 @@ internal fun ScrollColumn(content: @Composable () -> Unit) {
 @Preview
 @Composable
 private fun GroupOnboardingScreenPreview() = SaqzTheme {
-    GroupOnboardingScreen(GroupSelectionState.Selector(listOf(SessionMembershipDto("preview-group", "Futebol de terça", "OWNER"))), {})
+    GroupOnboardingScreen(GroupSelectionState.Selector(listOf(GroupSelectionMembership("preview-group", "Futebol de terça", "OWNER"))), {})
 }
 
 @Preview

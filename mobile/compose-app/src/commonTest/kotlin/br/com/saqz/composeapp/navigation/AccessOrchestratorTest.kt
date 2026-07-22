@@ -14,10 +14,13 @@ import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.VersionedGroupDto
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionGateway
-import br.com.saqz.network.SessionMembershipDto
-import br.com.saqz.network.SessionUserDto
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.SessionGateway
+import br.com.saqz.access.domain.session.AccessMembership
+import br.com.saqz.access.domain.session.AccessMembershipRole
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.access.domain.session.AccessUser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -113,7 +116,7 @@ class AccessOrchestratorTest {
     }
 
     private object ReadySessionGateway : SessionGateway {
-        override suspend fun bootstrap() = NetworkResult.Success(readySession)
+        override suspend fun bootstrap() = SaqzResult.Success(readySession)
     }
 
     private object SelectedGroupGateway : GroupGateway {
@@ -127,9 +130,9 @@ class AccessOrchestratorTest {
     }
 
     private companion object {
-        val readySession = SessionDto(
-            user = SessionUserDto("user-id", "person@example.test", "Person"),
-            memberships = listOf(SessionMembershipDto("group-id", "Group", "OWNER")),
+        val readySession = AccessSession(
+            user = AccessUser("user-id", "person@example.test", "Person"),
+            memberships = listOf(AccessMembership(GroupId("group-id"), "Group", AccessMembershipRole("OWNER"))),
         )
         val selectedGroup = VersionedGroupDto(
             group = GroupDto("group-id", "Group", "UTC", 7, GroupRoleDto.OWNER),

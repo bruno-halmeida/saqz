@@ -140,14 +140,14 @@ import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzTopBar
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.network.SessionMembershipDto
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun GroupsListScreen(
-    memberships: List<SessionMembershipDto>,
+    memberships: List<GroupSelectionMembership>,
     onSelectGroup: (String) -> Unit,
     onOpenCreateGroup: () -> Unit,
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
@@ -200,7 +200,7 @@ fun GroupsListScreen(
 
 @Composable
 private fun GroupListCard(
-    membership: SessionMembershipDto,
+    membership: GroupSelectionMembership,
     onSelectGroup: (String) -> Unit,
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)?,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
@@ -1101,7 +1101,7 @@ private val previewNavigation = GroupsNavigationState(
         financeDestination = GroupsDestination.FINANCE,
     ),
     memberships = listOf(
-        SessionMembershipDto(previewGroup.id, previewGroup.name, GroupRoleDto.OWNER.name),
+        GroupSelectionMembership(previewGroup.id, previewGroup.name, GroupRoleDto.OWNER.name),
     ),
 )
 
@@ -1110,8 +1110,8 @@ private val previewNavigation = GroupsNavigationState(
 private fun GroupsListScreenPreview() = SaqzTheme {
     GroupsListScreen(
         memberships = listOf(
-            SessionMembershipDto("alpha", "Alpha", "OWNER"),
-            SessionMembershipDto("beta", "Beta", "ATHLETE"),
+            GroupSelectionMembership("alpha", "Alpha", "OWNER"),
+            GroupSelectionMembership("beta", "Beta", "ATHLETE"),
         ),
         onSelectGroup = {},
         onOpenCreateGroup = {},

@@ -5,6 +5,7 @@ import br.com.saqz.groups.data.GroupDto
 import br.com.saqz.groups.data.GroupProfileStatusDto
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.presentation.GroupSelectionMembership
 import br.com.saqz.groups.presentation.GroupFinanceVisibility
 import br.com.saqz.groups.presentation.GroupRoutePolicy
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
@@ -13,7 +14,6 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationEffect
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.isGroupScoped
-import br.com.saqz.network.SessionMembershipDto
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +45,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
 
     private fun reconcile(
         selection: GroupSelectionState,
-        memberships: List<SessionMembershipDto>,
+        memberships: List<GroupSelectionMembership>,
     ) {
         when (memberships.size) {
             0 -> replaceUnscoped(GroupsDestination.SETUP)
@@ -56,7 +56,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
 
     private fun reconcileSingle(
         selection: GroupSelectionState,
-        membership: SessionMembershipDto,
+        membership: GroupSelectionMembership,
     ) {
         val memberships = listOf(membership)
         when (selection) {
@@ -95,7 +95,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
 
     private fun reconcileMultiple(
         selection: GroupSelectionState,
-        memberships: List<SessionMembershipDto>,
+        memberships: List<GroupSelectionMembership>,
     ) {
         when (selection) {
             GroupSelectionState.NoGroup,
@@ -118,7 +118,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
     private fun reconcilePending(
         destination: GroupsDestination,
         groupId: String,
-        memberships: List<SessionMembershipDto>,
+        memberships: List<GroupSelectionMembership>,
     ) {
         val requestedGroupId = mutableState.value.requestedGroupId
         if (memberships.size > 1 && requestedGroupId != groupId) {
@@ -128,7 +128,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
         replaceUnscoped(destination, memberships, requestedGroupId)
     }
 
-    private fun reconcileSelected(group: GroupDto, memberships: List<SessionMembershipDto>) {
+    private fun reconcileSelected(group: GroupDto, memberships: List<GroupSelectionMembership>) {
         if (memberships.none { it.groupId == group.id }) {
             showGroups(memberships)
             return
@@ -143,7 +143,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
         select(group, memberships)
     }
 
-    private fun select(group: GroupDto, memberships: List<SessionMembershipDto>) {
+    private fun select(group: GroupDto, memberships: List<GroupSelectionMembership>) {
         val current = mutableState.value
         if (current.groupId == group.id) {
             mutableState.value = current.copy(
@@ -166,7 +166,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
 
     private fun replaceUnscoped(
         destination: GroupsDestination,
-        memberships: List<SessionMembershipDto> = emptyList(),
+        memberships: List<GroupSelectionMembership> = emptyList(),
         requestedGroupId: String? = null,
     ) {
         val state = GroupsNavigationState(
@@ -178,7 +178,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
         mutableState.value = state
     }
 
-    private fun showGroups(memberships: List<SessionMembershipDto>) {
+    private fun showGroups(memberships: List<GroupSelectionMembership>) {
         replaceUnscoped(GroupsDestination.SELECTOR, memberships)
     }
 

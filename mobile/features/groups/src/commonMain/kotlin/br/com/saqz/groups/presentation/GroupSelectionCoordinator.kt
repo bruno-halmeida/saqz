@@ -8,8 +8,6 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionMembershipDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +17,7 @@ import kotlinx.coroutines.launch
 sealed interface GroupSelectionState {
     data object NoGroup : GroupSelectionState
 
-    data class Selector(val memberships: List<SessionMembershipDto>) : GroupSelectionState
+    data class Selector(val memberships: List<GroupSelectionMembership>) : GroupSelectionState
 
     data class Loading(val groupId: String) : GroupSelectionState
 
@@ -29,12 +27,18 @@ sealed interface GroupSelectionState {
 }
 
 sealed interface GroupSelectionIntent {
-    data class Reconcile(val session: SessionDto) : GroupSelectionIntent
+    data class Reconcile(val memberships: List<GroupSelectionMembership>) : GroupSelectionIntent
 
     data class Select(val groupId: String) : GroupSelectionIntent
 
     data object Retry : GroupSelectionIntent
 }
+
+data class GroupSelectionMembership(
+    val groupId: String,
+    val groupName: String,
+    val role: String,
+)
 
 class GroupSelectionStateMachine(
     private val localState: LocalGroupStatePort,
@@ -43,20 +47,20 @@ class GroupSelectionStateMachine(
 ) {
     private val mutableState = MutableStateFlow<GroupSelectionState>(GroupSelectionState.NoGroup)
     val state: StateFlow<GroupSelectionState> = mutableState.asStateFlow()
-    private var memberships: List<SessionMembershipDto> = emptyList()
+    private var memberships: List<GroupSelectionMembership> = emptyList()
     private var operationGeneration = 0L
 
     fun onIntent(intent: GroupSelectionIntent) {
         when (intent) {
-            is GroupSelectionIntent.Reconcile -> reconcile(intent.session)
+            is GroupSelectionIntent.Reconcile -> reconcile(intent.memberships)
             is GroupSelectionIntent.Select -> select(intent.groupId)
             GroupSelectionIntent.Retry -> retry()
         }
     }
 
-    private fun reconcile(session: SessionDto) {
+    private fun reconcile(newMemberships: List<GroupSelectionMembership>) {
         val generation = nextGeneration()
-        memberships = session.memberships
+        memberships = newMemberships
         when (memberships.size) {
             0 -> reconcileEmpty(generation)
             1 -> selectInternal(memberships.single().groupId, generation)

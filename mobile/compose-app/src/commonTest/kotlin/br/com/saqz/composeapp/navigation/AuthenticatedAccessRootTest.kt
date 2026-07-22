@@ -83,11 +83,13 @@ import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.designsystem.component.SaqzTopBarTag
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionMembershipDto
-import br.com.saqz.network.SessionUserDto
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessMembership
+import br.com.saqz.access.domain.session.AccessMembershipRole
+import br.com.saqz.domain.GroupId
+import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionInvalidator
+import br.com.saqz.access.domain.session.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -292,9 +294,9 @@ class AuthenticatedAccessRootTest {
         val dependencies = startTestSaqzKoin()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val photos = RecordingPhotoGateway()
-        val selectedSession = SessionDto(
+        val selectedSession = AccessSession(
             user = session.user,
-            memberships = listOf(SessionMembershipDto("current", "Current Group", "OWNER")),
+            memberships = listOf(AccessMembership(GroupId("current"), "Current Group", AccessMembershipRole("OWNER"))),
         )
         val runtime = PhotoRouteRuntime(
             groupProfileGateway = RecordingProfileGateway(),
@@ -347,7 +349,7 @@ class AuthenticatedAccessRootTest {
             state = ready(selector),
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.SELECTOR,
-                memberships = session.memberships,
+                memberships = session.memberships.toGroupSelectionMemberships(),
             ),
             onGroupsIntent = groupsIntents::add,
             initiallyShowAppHome = true,
@@ -429,7 +431,7 @@ class AuthenticatedAccessRootTest {
             onIntent = accessIntents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.SELECTOR,
-                memberships = session.memberships,
+                memberships = session.memberships.toGroupSelectionMemberships(),
             ),
             onGroupsIntent = groupsIntents::add,
         )
@@ -454,7 +456,7 @@ class AuthenticatedAccessRootTest {
             onIntent = intents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.SELECTOR,
-                memberships = session.memberships,
+                memberships = session.memberships.toGroupSelectionMemberships(),
             ),
         )
 
@@ -471,7 +473,7 @@ class AuthenticatedAccessRootTest {
             onIntent = intents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.LOAD_ERROR,
-                memberships = session.memberships,
+                memberships = session.memberships.toGroupSelectionMemberships(),
                 requestedGroupId = "beta",
             ),
         )
@@ -500,7 +502,7 @@ class AuthenticatedAccessRootTest {
                     canMutateOperations = true,
                     financeDestination = GroupsDestination.FINANCE,
                 ),
-                memberships = session.memberships,
+                memberships = session.memberships.toGroupSelectionMemberships(),
             ),
         )
 
@@ -799,14 +801,14 @@ class AuthenticatedAccessRootTest {
     )
 
     private companion object {
-        val session = SessionDto(
-            user = SessionUserDto("user", "user@example.test", "User"),
+        val session = AccessSession(
+            user = AccessUser("user", "user@example.test", "User"),
             memberships = listOf(
-                SessionMembershipDto("alpha", "Alpha", "OWNER"),
-                SessionMembershipDto("beta", "Beta", "ATHLETE"),
+                AccessMembership(GroupId("alpha"), "Alpha", AccessMembershipRole("OWNER")),
+                AccessMembership(GroupId("beta"), "Beta", AccessMembershipRole("ATHLETE")),
             ),
         )
-        val selector = GroupSelectionState.Selector(session.memberships)
+        val selector = GroupSelectionState.Selector(session.memberships.toGroupSelectionMemberships())
         val group = VersionedGroupDto(
             GroupDto("current", "Current Group", "America/Sao_Paulo", 1, GroupRoleDto.OWNER),
             "\"1\"",

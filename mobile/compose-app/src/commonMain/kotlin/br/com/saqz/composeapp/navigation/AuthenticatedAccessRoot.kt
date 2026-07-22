@@ -104,7 +104,7 @@ import br.com.saqz.composeapp.di.GameDetailViewModelParameters
 import br.com.saqz.composeapp.di.GroupSetupViewModelParameters
 import br.com.saqz.composeapp.home.AuthenticatedHomeScreen
 import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
-import br.com.saqz.network.SessionInvalidator
+import br.com.saqz.access.domain.session.SessionInvalidator
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.CoroutineScope
@@ -264,7 +264,7 @@ internal fun AuthenticatedAccessRoute(
         val selectedGroupId = (state.selection as? GroupSelectionState.Selected)?.group?.group?.id
         if (
             selectedGroupId != loadedGroupId &&
-            sessionMemberships.none { it.groupId == loadedGroupId }
+            sessionMemberships.none { it.groupId.value == loadedGroupId }
         ) {
             photoCoordinator.onIntent(GroupPhotoIntent.MembershipLost)
         }
@@ -273,7 +273,7 @@ internal fun AuthenticatedAccessRoute(
         groupsViewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 selection = state.selection,
-                memberships = sessionMemberships,
+                memberships = sessionMemberships.toGroupSelectionMemberships(),
             ),
         )
     }

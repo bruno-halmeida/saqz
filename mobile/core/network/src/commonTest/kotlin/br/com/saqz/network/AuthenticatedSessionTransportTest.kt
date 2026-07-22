@@ -8,57 +8,56 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.http.HttpMethod
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class AuthenticatedSessionTransportTest {
+class AuthenticatedNetworkClientTest {
     @Test
-    fun `session API loads current token without forced refresh`() = runTest {
-        val fixture = fixture { sessionResponse() }
+    fun `authenticated client loads current token without forced refresh`() = runTest {
+        val fixture = fixture { resourceResponse() }
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(listOf(false), fixture.tokens.forceRefreshCalls)
     }
 
     @Test
-    fun `session API sends PUT to the exact session route without body`() = runTest {
+    fun `authenticated client sends PUT to the configured route without body`() = runTest {
         val fixture = fixture { request ->
             assertEquals("PUT", request.method.value)
-            assertEquals("/api/session", request.url.encodedPath)
+            assertEquals("/api/resource", request.url.encodedPath)
             assertEquals(0, request.body.contentLength ?: 0)
-            sessionResponse()
+            resourceResponse()
         }
 
-        fixture.api.bootstrap()
+        fixture.execute()
     }
 
     @Test
-    fun `session API decodes user and memberships`() = runTest {
+    fun `authenticated client decodes the requested payload`() = runTest {
         val fixture = fixture {
-            sessionResponse(
-                """{"user":{"id":"user-1","email":"person@example.test","displayName":"Person"},"memberships":[{"groupId":"group-1","groupName":"Group","role":"ADMIN"}]}""",
-            )
+            resourceResponse("""{"value":"decoded"}""")
         }
 
-        val session = assertIs<NetworkResult.Success<SessionDto>>(fixture.api.bootstrap()).value
+        val payload = assertIs<NetworkResult.Success<TransportPayload>>(fixture.execute()).value
 
-        assertEquals("user-1", session.user.id)
-        assertEquals("ADMIN", session.memberships.single().role)
+        assertEquals("decoded", payload.value)
     }
 
     @Test
     fun `first 401 requests one forced token refresh`() = runTest {
         val fixture = refreshingFixture()
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(listOf(false, true), fixture.tokens.forceRefreshCalls)
     }
@@ -68,7 +67,7 @@ class AuthenticatedSessionTransportTest {
         val seen = mutableListOf<String?>()
         val fixture = refreshingFixture { request -> seen += request.headers[HttpHeaders.Authorization] }
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(listOf<String?>("Bearer old-token", "Bearer fresh-token"), seen)
     }
@@ -81,7 +80,7 @@ class AuthenticatedSessionTransportTest {
             unauthorized()
         })
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(2, requests)
     }
@@ -90,7 +89,7 @@ class AuthenticatedSessionTransportTest {
     fun `second 401 invalidates the local session`() = runTest {
         val fixture = fixture(response = { unauthorized() })
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(1, fixture.invalidator.calls)
     }
@@ -99,7 +98,7 @@ class AuthenticatedSessionTransportTest {
     fun `second 401 remains an unauthorized problem`() = runTest {
         val fixture = fixture(response = { unauthorized() })
 
-        val error = assertIs<NetworkResult.Failure>(fixture.api.bootstrap()).error
+        val error = assertIs<NetworkResult.Failure>(fixture.execute()).error
 
         assertEquals(401, assertIs<NetworkError.ApiProblemError>(error).problem.status)
     }
@@ -108,7 +107,7 @@ class AuthenticatedSessionTransportTest {
     fun `concurrent 401 burst performs one forced refresh`() = runTest {
         val fixture = refreshingFixture(beforeResponse = { delay(1) })
 
-        List(8) { async { fixture.api.bootstrap() } }.awaitAll()
+        List(8) { async { fixture.execute() } }.awaitAll()
 
         assertEquals(1, fixture.tokens.forceRefreshCalls.count { it })
     }
@@ -117,31 +116,31 @@ class AuthenticatedSessionTransportTest {
     fun `concurrent 401 burst returns success to every caller`() = runTest {
         val fixture = refreshingFixture(beforeResponse = { delay(1) })
 
-        val results = List(8) { async { fixture.api.bootstrap() } }.awaitAll()
+        val results = List(8) { async { fixture.execute() } }.awaitAll()
 
         assertTrue(results.all { it is NetworkResult.Success<*> })
         assertEquals(0, fixture.invalidator.calls)
     }
 
     @Test
-    fun `server 500 neither refreshes nor invalidates session`() = runTest {
+    fun `server 500 neither refreshes nor invalidates`() = runTest {
         val fixture = fixture { serverError() }
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(listOf(false), fixture.tokens.forceRefreshCalls)
         assertEquals(0, fixture.invalidator.calls)
     }
 
     @Test
-    fun `request timeout neither refreshes nor invalidates session`() = runTest {
+    fun `request timeout neither refreshes nor invalidates`() = runTest {
         val engine = MockEngine {
             delay(100)
-            sessionResponse()
+            resourceResponse()
         }
         val fixture = fixture(engine = engine, timeoutMillis = 10)
 
-        val result = fixture.api.bootstrap()
+        val result = fixture.execute()
 
         assertEquals(NetworkError.Timeout, assertIs<NetworkResult.Failure>(result).error)
         assertEquals(0, fixture.invalidator.calls)
@@ -154,11 +153,11 @@ class AuthenticatedSessionTransportTest {
             tokens = RecordingTokenProvider(current = TokenResult.Unavailable),
             response = {
                 requests += 1
-                sessionResponse()
+                resourceResponse()
             },
         )
 
-        val result = fixture.api.bootstrap()
+        val result = fixture.execute()
 
         assertEquals(NetworkError.Unavailable, assertIs<NetworkResult.Failure>(result).error)
         assertEquals(0, requests)
@@ -169,17 +168,17 @@ class AuthenticatedSessionTransportTest {
         val tokens = RecordingTokenProvider(refresh = TokenResult.Unavailable)
         val fixture = fixture(tokens = tokens, response = { unauthorized() })
 
-        val result = fixture.api.bootstrap()
+        val result = fixture.execute()
 
         assertEquals(NetworkError.Unavailable, assertIs<NetworkResult.Failure>(result).error)
         assertEquals(0, fixture.invalidator.calls)
     }
 
     @Test
-    fun `403 problem neither refreshes nor invalidates session`() = runTest {
+    fun `403 problem neither refreshes nor invalidates`() = runTest {
         val fixture = fixture { forbidden() }
 
-        fixture.api.bootstrap()
+        fixture.execute()
 
         assertEquals(listOf(false), fixture.tokens.forceRefreshCalls)
         assertEquals(0, fixture.invalidator.calls)
@@ -191,7 +190,7 @@ class AuthenticatedSessionTransportTest {
     ): Fixture = fixture { request ->
         beforeResponse()
         observe(request)
-        if (request.headers[HttpHeaders.Authorization] == "Bearer old-token") unauthorized() else sessionResponse()
+        if (request.headers[HttpHeaders.Authorization] == "Bearer old-token") unauthorized() else resourceResponse()
     }
 
     private fun fixture(
@@ -208,10 +207,10 @@ class AuthenticatedSessionTransportTest {
         val invalidator = RecordingInvalidator()
         val network = NetworkClient(engine, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/", timeoutMillis))
         val authenticated = AuthenticatedNetworkClient(network, tokens, invalidator)
-        return Fixture(SessionApi(authenticated), tokens, invalidator)
+        return Fixture(authenticated, tokens, invalidator)
     }
 
-    private fun MockRequestHandleScope.sessionResponse(body: String = emptySessionJson()) =
+    private fun MockRequestHandleScope.resourceResponse(body: String = resourceJson()) =
         respond(body, HttpStatusCode.OK, jsonHeaders())
 
     private fun MockRequestHandleScope.unauthorized() = respond(
@@ -234,8 +233,7 @@ class AuthenticatedSessionTransportTest {
 
     private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, "application/json")
 
-    private fun emptySessionJson() =
-        """{"user":{"id":"user-1","email":null,"displayName":"Person"},"memberships":[]}"""
+    private fun resourceJson() = """{"value":"ok"}"""
 
     private class RecordingTokenProvider(
         private val current: TokenResult = TokenResult.Available("old-token"),
@@ -258,8 +256,17 @@ class AuthenticatedSessionTransportTest {
     }
 
     private data class Fixture(
-        val api: SessionApi,
+        val client: AuthenticatedNetworkClient,
         val tokens: RecordingTokenProvider,
         val invalidator: RecordingInvalidator,
-    )
+    ) {
+        suspend fun execute(): NetworkResult<TransportPayload> = client.execute(
+            method = HttpMethod.Put,
+            path = "api/resource",
+            responseSerializer = TransportPayload.serializer(),
+        )
+    }
+
+    @Serializable
+    private data class TransportPayload(val value: String)
 }

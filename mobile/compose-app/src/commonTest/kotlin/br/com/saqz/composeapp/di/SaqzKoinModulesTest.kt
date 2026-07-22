@@ -1,23 +1,26 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.access.port.AuthCallback
-import br.com.saqz.access.port.AuthResult
-import br.com.saqz.access.port.AuthState
-import br.com.saqz.access.port.AuthStateListener
-import br.com.saqz.access.port.Cancelable
-import br.com.saqz.access.port.InviteCodeListener
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.NativeAuthPort
-import br.com.saqz.access.port.NativeFailureCode
-import br.com.saqz.access.port.NativeLinkPort
-import br.com.saqz.access.port.NativeSharePort
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.TokenCallback
-import br.com.saqz.access.port.TokenResult
-import br.com.saqz.access.port.ValueCallback
-import br.com.saqz.access.port.ValueResult
+import br.com.saqz.access.domain.port.AuthCallback
+import br.com.saqz.access.domain.port.AuthResult
+import br.com.saqz.access.domain.port.AuthState
+import br.com.saqz.access.domain.port.AuthStateListener
+import br.com.saqz.access.domain.port.Cancelable
+import br.com.saqz.access.domain.port.InviteCodeListener
+import br.com.saqz.access.domain.port.LocalAccessStatePort
+import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.NativeLinkPort
+import br.com.saqz.access.domain.port.NativeSharePort
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ResultCallback
+import br.com.saqz.access.domain.port.TokenCallback
+import br.com.saqz.access.domain.port.TokenResult
+import br.com.saqz.access.domain.port.ValueCallback
+import br.com.saqz.access.domain.port.ValueResult
 import br.com.saqz.access.presentation.AuthenticationStateMachine
+import br.com.saqz.access.data.session.KtorSessionGateway
+import br.com.saqz.access.domain.session.SessionGateway
+import br.com.saqz.access.domain.session.SessionInvalidator as AccessSessionInvalidator
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.groups.data.GroupApi
 import br.com.saqz.groups.data.GroupGateway
@@ -72,9 +75,7 @@ import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
-import br.com.saqz.network.SessionApi
-import br.com.saqz.network.SessionGateway
-import br.com.saqz.network.SessionInvalidator
+import br.com.saqz.network.SessionInvalidator as NetworkSessionInvalidator
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertSame
@@ -138,8 +139,9 @@ class SaqzKoinModulesTest {
 
         assertSame(koin.get<NetworkClient>(), koin.get<NetworkClient>())
         assertSame(koin.get<AuthenticatedNetworkClient>(), koin.get<AuthenticatedNetworkClient>())
-        assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<SessionInvalidator>())
-        assertIs<SessionApi>(koin.get<SessionGateway>())
+        assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<AccessSessionInvalidator>())
+        assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<NetworkSessionInvalidator>())
+        assertIs<KtorSessionGateway>(koin.get<SessionGateway>())
 
         app.close()
     }
