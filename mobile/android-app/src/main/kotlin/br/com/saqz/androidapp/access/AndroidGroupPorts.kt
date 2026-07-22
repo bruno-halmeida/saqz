@@ -1,6 +1,6 @@
 package br.com.saqz.androidapp.access
 
-import br.com.saqz.access.port.NativeLinkPort
+import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -13,7 +13,7 @@ import br.com.saqz.groups.port.NativeGroupLinkPort
 
 internal class AndroidGroupLinkAdapter(private val delegate: NativeLinkPort) : NativeGroupLinkPort {
     override fun start(listener: GroupLinkEventListener): GroupCancelable {
-        val cancelable = delegate.start(object : br.com.saqz.access.port.InviteCodeListener {
+        val cancelable = delegate.start(object : br.com.saqz.access.domain.port.InviteCodeListener {
             override fun onInviteCode(code: String) = listener.onEvent(GroupLinkEvent.Invite(code))
         })
         return object : GroupCancelable { override fun cancel() = cancelable.cancel() }

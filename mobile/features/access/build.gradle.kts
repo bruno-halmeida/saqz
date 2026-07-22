@@ -20,6 +20,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(project(":features:access:domain"))
             implementation(project(":core:common"))
             implementation(project(":core:design-system"))
             implementation(project(":core:network"))

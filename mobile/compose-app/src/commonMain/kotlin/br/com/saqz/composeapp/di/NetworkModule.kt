@@ -1,8 +1,8 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.access.port.NativeAuthPort
-import br.com.saqz.access.port.TokenCallback
-import br.com.saqz.access.port.TokenResult as NativeTokenResult
+import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.TokenCallback
+import br.com.saqz.access.domain.port.TokenResult as NativeTokenResult
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.SessionApi

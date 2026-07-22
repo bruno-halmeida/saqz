@@ -143,6 +143,7 @@ android {
 dependencies {
     implementation(project(":compose-app"))
     implementation(project(":core:network"))
+    implementation(project(":features:access:domain"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.credentials)

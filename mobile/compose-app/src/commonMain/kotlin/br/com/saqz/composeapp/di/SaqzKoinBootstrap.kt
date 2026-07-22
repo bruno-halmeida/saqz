@@ -2,10 +2,10 @@
 
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.NativeAuthPort
-import br.com.saqz.access.port.NativeLinkPort
-import br.com.saqz.access.port.NativeSharePort
+import br.com.saqz.access.domain.port.LocalAccessStatePort
+import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.NativeLinkPort
+import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.groups.port.GroupAttendanceSharePort
 import br.com.saqz.groups.port.GroupPhotoEncoderPort

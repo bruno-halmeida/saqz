@@ -1,12 +1,12 @@
 package br.com.saqz.composeapp.navigation
 
-import br.com.saqz.access.port.AuthState
-import br.com.saqz.access.port.AuthStateListener
-import br.com.saqz.access.port.Cancelable
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.NativeAuthPort
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
+import br.com.saqz.access.domain.port.AuthState
+import br.com.saqz.access.domain.port.AuthStateListener
+import br.com.saqz.access.domain.port.Cancelable
+import br.com.saqz.access.domain.port.LocalAccessStatePort
+import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.AuthenticationStateMachine

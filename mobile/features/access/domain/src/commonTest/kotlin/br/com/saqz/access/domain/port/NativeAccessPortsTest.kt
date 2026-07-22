@@ -1,4 +1,4 @@
-package br.com.saqz.access.port
+package br.com.saqz.access.domain.port
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -7,132 +7,110 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class NativeAccessPortsTest {
-    @Test
-    fun `cancelable delegates cancellation without provider type`() {
+    @Test fun `cancelable delegates cancellation without provider type`() {
         var cancellations = 0
-        val cancelable = object : Cancelable {
-            override fun cancel() { cancellations += 1 }
-        }
-
+        val cancelable = object : Cancelable { override fun cancel() { cancellations += 1 } }
         cancelable.cancel()
-
         assertEquals(1, cancellations)
     }
 
-    @Test
-    fun `auth observer receives provider neutral user`() {
+    @Test fun `auth observer receives provider neutral user`() {
         var received: AuthState? = null
-        val listener = object : AuthStateListener {
-            override fun onStateChanged(state: AuthState) { received = state }
-        }
+        val listener = object : AuthStateListener { override fun onStateChanged(state: AuthState) { received = state } }
         val user = NativeUser("subject", "person@example.test", true, "Person Name")
-
         listener.onStateChanged(AuthState.SignedIn(user))
-
         assertEquals(user, assertIs<AuthState.SignedIn>(received).user)
     }
 
-    @Test
-    fun `account callback receives successful neutral auth result`() {
+    @Test fun `account callback receives successful neutral auth result`() {
         var received: AuthResult? = null
-        val callback = object : AuthCallback {
-            override fun complete(result: AuthResult) { received = result }
-        }
+        val callback = object : AuthCallback { override fun complete(result: AuthResult) { received = result } }
         val user = NativeUser("subject", null, false, "Person Name")
-
         callback.complete(AuthResult.Success(user))
-
         assertEquals(user, assertIs<AuthResult.Success>(received).user)
     }
 
-    @Test
-    fun `google cancellation is a distinct non failure result`() {
+    @Test fun `google cancellation is a distinct non failure result`() {
         var received: AuthResult? = null
-        val callback = object : AuthCallback {
-            override fun complete(result: AuthResult) { received = result }
-        }
-
+        val callback = object : AuthCallback { override fun complete(result: AuthResult) { received = result } }
         callback.complete(AuthResult.Cancelled)
-
         assertSame(AuthResult.Cancelled, received)
     }
 
-    @Test
-    fun `token callback carries token only on success`() {
+    @Test fun `auth failure callback preserves neutral failure code`() {
+        var received: AuthResult? = null
+        val callback = object : AuthCallback { override fun complete(result: AuthResult) { received = result } }
+        callback.complete(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS))
+        assertEquals(NativeFailureCode.INVALID_CREDENTIALS, assertIs<AuthResult.Failure>(received).code)
+    }
+
+    @Test fun `operation failure callback preserves neutral failure code`() {
+        var received: OperationResult? = null
+        val callback = object : ResultCallback { override fun complete(result: OperationResult) { received = result } }
+        callback.complete(OperationResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
+        assertEquals(NativeFailureCode.NETWORK_UNAVAILABLE, assertIs<OperationResult.Failure>(received).code)
+    }
+
+    @Test fun `token callback carries token only on success`() {
         var received: TokenResult? = null
-        val callback = object : TokenCallback {
-            override fun complete(result: TokenResult) { received = result }
-        }
-
+        val callback = object : TokenCallback { override fun complete(result: TokenResult) { received = result } }
         callback.complete(TokenResult.Success("fixture-token"))
-
         assertEquals("fixture-token", assertIs<TokenResult.Success>(received).token)
     }
 
-    @Test
-    fun `native link listener receives opaque code and supports cancellation`() {
+    @Test fun `token failure callback preserves neutral failure code`() {
+        var received: TokenResult? = null
+        val callback = object : TokenCallback { override fun complete(result: TokenResult) { received = result } }
+        callback.complete(TokenResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
+        assertEquals(NativeFailureCode.PROVIDER_UNAVAILABLE, assertIs<TokenResult.Failure>(received).code)
+    }
+
+    @Test fun `value failure callback preserves neutral failure code`() {
+        var received: ValueResult? = null
+        val callback = object : ValueCallback { override fun complete(result: ValueResult) { received = result } }
+        callback.complete(ValueResult.Failure(NativeFailureCode.UNKNOWN))
+        assertEquals(NativeFailureCode.UNKNOWN, assertIs<ValueResult.Failure>(received).code)
+    }
+
+    @Test fun `native link listener receives opaque code and supports cancellation`() {
         val adapter = RecordingLinkAdapter()
         var received: String? = null
-
-        val cancelable = adapter.start(object : InviteCodeListener {
-            override fun onInviteCode(code: String) { received = code }
-        })
+        val cancelable = adapter.start(object : InviteCodeListener { override fun onInviteCode(code: String) { received = code } })
         adapter.emit("opaque-code")
         cancelable.cancel()
-
         assertEquals("opaque-code", received)
         assertTrue(adapter.cancelled)
     }
 
-    @Test
-    fun `local state callbacks preserve nullable selected and pending values`() {
+    @Test fun `local state callbacks preserve nullable selected and pending values`() {
         val adapter = InMemoryLocalStateAdapter()
         var selected: ValueResult? = null
         var pending: ValueResult? = null
-
         adapter.writeSelectedGroupId("group-id", ignoringResult())
         adapter.writePendingInvite(null, ignoringResult())
         adapter.readSelectedGroupId(valueCallback { selected = it })
         adapter.readPendingInvite(valueCallback { pending = it })
-
         assertEquals("group-id", assertIs<ValueResult.Success>(selected).value)
         assertEquals(null, assertIs<ValueResult.Success>(pending).value)
     }
 
-    @Test
-    fun `external adapters implement all exported ports without native SDK types`() {
+    @Test fun `external adapters implement every exported port without native SDK types`() {
         val adapters = ExternalAdapters()
         var shared: OperationResult? = null
-
-        adapters.share("invite", object : ResultCallback {
-            override fun complete(result: OperationResult) { shared = result }
-        })
-
+        adapters.share("invite", object : ResultCallback { override fun complete(result: OperationResult) { shared = result } })
         assertSame(OperationResult.Success, shared)
     }
 
-    private fun ignoringResult() = object : ResultCallback {
-        override fun complete(result: OperationResult) = Unit
-    }
-
-    private fun valueCallback(block: (ValueResult) -> Unit) = object : ValueCallback {
-        override fun complete(result: ValueResult) = block(result)
-    }
+    private fun ignoringResult() = object : ResultCallback { override fun complete(result: OperationResult) = Unit }
+    private fun valueCallback(block: (ValueResult) -> Unit) = object : ValueCallback { override fun complete(result: ValueResult) = block(result) }
 
     private class RecordingLinkAdapter : NativeLinkPort {
         private var listener: InviteCodeListener? = null
         var cancelled = false
-
         override fun start(listener: InviteCodeListener): Cancelable {
             this.listener = listener
-            return object : Cancelable {
-                override fun cancel() {
-                    cancelled = true
-                    this@RecordingLinkAdapter.listener = null
-                }
-            }
+            return object : Cancelable { override fun cancel() { cancelled = true; this@RecordingLinkAdapter.listener = null } }
         }
-
         fun emit(code: String) = listener?.onInviteCode(code)
     }
 
@@ -140,15 +118,9 @@ class NativeAccessPortsTest {
         private var selected: String? = null
         private var pending: String? = null
         override fun readSelectedGroupId(done: ValueCallback) = done.complete(ValueResult.Success(selected))
-        override fun writeSelectedGroupId(value: String?, done: ResultCallback) {
-            selected = value
-            done.complete(OperationResult.Success)
-        }
+        override fun writeSelectedGroupId(value: String?, done: ResultCallback) { selected = value; done.complete(OperationResult.Success) }
         override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(pending))
-        override fun writePendingInvite(value: String?, done: ResultCallback) {
-            pending = value
-            done.complete(OperationResult.Success)
-        }
+        override fun writePendingInvite(value: String?, done: ResultCallback) { pending = value; done.complete(OperationResult.Success) }
     }
 
     private class ExternalAdapters : NativeAuthPort, NativeLinkPort, LocalAccessStatePort, NativeSharePort {
@@ -168,9 +140,6 @@ class NativeAccessPortsTest {
         override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(null))
         override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
         override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
-
-        private fun noOpCancelable() = object : Cancelable {
-            override fun cancel() = Unit
-        }
+        private fun noOpCancelable() = object : Cancelable { override fun cancel() = Unit }
     }
 }

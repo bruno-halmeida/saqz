@@ -29,7 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.access.port.NativeUser
+import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.messageRes
 import br.com.saqz.access.presentation.AuthenticationIntent

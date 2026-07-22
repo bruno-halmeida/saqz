@@ -1,10 +1,10 @@
 package br.com.saqz.androidapp.access
 
-import br.com.saqz.access.port.NativeFailureCode
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.ValueCallback
-import br.com.saqz.access.port.ValueResult
+import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ResultCallback
+import br.com.saqz.access.domain.port.ValueCallback
+import br.com.saqz.access.domain.port.ValueResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame

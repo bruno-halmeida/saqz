@@ -2,9 +2,9 @@ package br.com.saqz.androidapp.access
 
 import android.app.Activity
 import android.net.Uri
-import br.com.saqz.access.port.Cancelable
-import br.com.saqz.access.port.InviteCodeListener
-import br.com.saqz.access.port.NativeLinkPort
+import br.com.saqz.access.domain.port.Cancelable
+import br.com.saqz.access.domain.port.InviteCodeListener
+import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener

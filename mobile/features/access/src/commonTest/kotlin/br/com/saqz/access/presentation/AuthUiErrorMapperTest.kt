@@ -1,6 +1,6 @@
 package br.com.saqz.access.presentation
 
-import br.com.saqz.access.port.NativeFailureCode
+import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_email_in_use
 import br.com.saqz.access.resources.auth_error_invalid_credentials

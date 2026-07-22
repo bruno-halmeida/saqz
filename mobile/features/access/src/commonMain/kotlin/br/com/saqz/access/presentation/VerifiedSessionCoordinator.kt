@@ -1,15 +1,15 @@
 package br.com.saqz.access.presentation
 
-import br.com.saqz.access.port.AuthCallback
-import br.com.saqz.access.port.AuthResult
-import br.com.saqz.access.port.LocalAccessStatePort
-import br.com.saqz.access.port.NativeAuthPort
-import br.com.saqz.access.port.NativeFailureCode
-import br.com.saqz.access.port.NativeUser
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.TokenCallback
-import br.com.saqz.access.port.TokenResult
+import br.com.saqz.access.domain.port.AuthCallback
+import br.com.saqz.access.domain.port.AuthResult
+import br.com.saqz.access.domain.port.LocalAccessStatePort
+import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.NativeUser
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ResultCallback
+import br.com.saqz.access.domain.port.TokenCallback
+import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionDto

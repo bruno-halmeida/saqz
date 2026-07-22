@@ -1,15 +1,15 @@
 package br.com.saqz.androidapp.access
 
-import br.com.saqz.access.port.AuthResult
-import br.com.saqz.access.port.AuthState
-import br.com.saqz.access.port.AuthStateListener
-import br.com.saqz.access.port.NativeFailureCode
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.TokenResult
-import br.com.saqz.access.port.NativeUser
-import br.com.saqz.access.port.AuthCallback
-import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.TokenCallback
+import br.com.saqz.access.domain.port.AuthResult
+import br.com.saqz.access.domain.port.AuthState
+import br.com.saqz.access.domain.port.AuthStateListener
+import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.TokenResult
+import br.com.saqz.access.domain.port.NativeUser
+import br.com.saqz.access.domain.port.AuthCallback
+import br.com.saqz.access.domain.port.ResultCallback
+import br.com.saqz.access.domain.port.TokenCallback
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -259,9 +259,9 @@ class AndroidAuthAdapterTest {
         private var operationDone: ((AndroidProviderResult<Unit>) -> Unit)? = null
         private var tokenDone: ((AndroidProviderResult<String>) -> Unit)? = null
 
-        override fun observe(listener: (AndroidProviderUser?) -> Unit): br.com.saqz.access.port.Cancelable {
+        override fun observe(listener: (AndroidProviderUser?) -> Unit): br.com.saqz.access.domain.port.Cancelable {
             this.listener = listener
-            return object : br.com.saqz.access.port.Cancelable {
+            return object : br.com.saqz.access.domain.port.Cancelable {
                 override fun cancel() {
                     observationCancelled = true
                     this@FakeFirebaseAuthClient.listener = null

@@ -78,9 +78,9 @@ import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.ui.photo.GroupPhotoTags
 import br.com.saqz.access.presentation.SessionAccessState
-import br.com.saqz.access.port.NativeSharePort
-import br.com.saqz.access.port.OperationResult
-import br.com.saqz.access.port.ResultCallback
+import br.com.saqz.access.domain.port.NativeSharePort
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.designsystem.component.SaqzTopBarTag
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionDto

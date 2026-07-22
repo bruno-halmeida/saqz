@@ -1,6 +1,6 @@
 package br.com.saqz.composeapp.navigation
 
-import br.com.saqz.access.port.NativeUser
+import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.SessionAccessState

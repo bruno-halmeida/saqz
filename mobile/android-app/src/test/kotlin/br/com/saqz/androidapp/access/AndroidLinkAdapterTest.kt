@@ -1,6 +1,6 @@
 package br.com.saqz.androidapp.access
 
-import br.com.saqz.access.port.InviteCodeListener
+import br.com.saqz.access.domain.port.InviteCodeListener
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
