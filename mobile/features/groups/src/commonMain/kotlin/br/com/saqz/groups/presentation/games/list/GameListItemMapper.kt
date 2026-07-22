@@ -1,8 +1,8 @@
 package br.com.saqz.groups.presentation.games.list
 
-import br.com.saqz.groups.data.game.GameDto
+import br.com.saqz.groups.domain.game.Game
 
-internal fun GameDto.toGameListItem(): GameListItem = GameListItem(
+internal fun Game.toGameListItem(): GameListItem = GameListItem(
     id = id,
     title = title,
     dateText = localDate.toPtBrDate(),

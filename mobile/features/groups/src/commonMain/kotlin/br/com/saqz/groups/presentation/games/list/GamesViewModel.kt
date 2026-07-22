@@ -2,8 +2,9 @@ package br.com.saqz.groups.presentation.games.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.game.GameGateway
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.game.GameGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -60,8 +61,8 @@ class GamesViewModel(
 
     private fun load(groupId: String, operation: Long, refresh: Boolean) {
         scope.launch {
-            when (val result = gateway.list(groupId)) {
-                is NetworkResult.Success -> {
+            when (val result = gateway.list(GroupId(groupId))) {
+                is SaqzResult.Success -> {
                     if (operation != generation) return@launch
 
                     val items = result.value
@@ -75,7 +76,7 @@ class GamesViewModel(
                         error = null,
                     )
                 }
-                is NetworkResult.Failure -> {
+                is SaqzResult.Failure -> {
                     if (operation != generation) return@launch
 
                     mutableState.value = mutableState.value.copy(
