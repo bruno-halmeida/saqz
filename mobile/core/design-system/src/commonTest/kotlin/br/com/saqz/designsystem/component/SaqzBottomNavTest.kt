@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
-import br.com.saqz.designsystem.theme.SaqzAccessibilityPreferences
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,17 +66,10 @@ class SaqzBottomNavTest {
     @Test
     fun selectedStateIsAnnounced() = runComposeUiTest {
         setContent { SaqzTheme { SaqzBottomNav(items = items(startSelected = true)) } }
+        // Selected semantics are the non-color selection signal now that the bar
+        // shows selection through primary-colored icon and label alone.
         onNodeWithTag(saqzBottomNavItemTag(0)).assertIsSelected()
         onNodeWithTag(saqzBottomNavItemTag(1)).assertIsNotSelected()
-    }
-
-    @Test
-    fun selectionHasNonColorSignal() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzBottomNav(items = items(startSelected = true)) } }
-        // The indicator bar is a shape present only for the selected item — not colour alone.
-        // It lives under the item's merged clickable node, so read the unmerged tree.
-        onNodeWithTag(saqzBottomNavIndicatorTag(0), useUnmergedTree = true).assertExists()
-        onNodeWithTag(saqzBottomNavIndicatorTag(1), useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
@@ -109,27 +101,5 @@ class SaqzBottomNavTest {
         onNodeWithTag(saqzBottomNavItemTag(0)).performClick()
         waitForIdle()
         assertEquals(1, clicks)
-    }
-
-    @Test
-    fun hairlineSurvivesBothChromes() {
-        // Translucent chrome.
-        runComposeUiTest {
-            setContent {
-                SaqzTheme(preferences = SaqzAccessibilityPreferences(reduceTransparency = false)) {
-                    SaqzBottomNav(items = items())
-                }
-            }
-            assertNear(1.dp, onNodeWithTag(SaqzBottomNavHairlineTag).getUnclippedBoundsInRoot().height)
-        }
-        // Opaque chrome.
-        runComposeUiTest {
-            setContent {
-                SaqzTheme(preferences = SaqzAccessibilityPreferences(reduceTransparency = true)) {
-                    SaqzBottomNav(items = items())
-                }
-            }
-            assertNear(1.dp, onNodeWithTag(SaqzBottomNavHairlineTag).getUnclippedBoundsInRoot().height)
-        }
     }
 }

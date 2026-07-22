@@ -14,12 +14,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -31,11 +32,8 @@ import br.com.saqz.designsystem.theme.LocalSaqzChrome
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 internal const val SaqzBottomNavBarTag = "saqz-bottom-nav-bar"
-internal const val SaqzBottomNavHairlineTag = "saqz-bottom-nav-hairline"
 
 internal fun saqzBottomNavItemTag(index: Int) = "saqz-bottom-nav-item-$index"
-
-internal fun saqzBottomNavIndicatorTag(index: Int) = "saqz-bottom-nav-indicator-$index"
 
 // A generic nav item. This chrome never knows about SaqzDestination — the app maps its
 // own routes to items. `icon` is a caller-supplied composable so no icon dependency leaks.
@@ -60,29 +58,25 @@ fun SaqzBottomNav(
         contentWindowInsets.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
     }
 
-    Column(modifier = modifier) {
-        // Continuous 1dp hairline; it survives both translucent and opaque chrome because
-        // it is a separate line drawn above the bar, never the sole selection signal.
-        Box(
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(
+                RoundedCornerShape(
+                    topStart = metrics.bottomNavRadius,
+                    topEnd = metrics.bottomNavRadius,
+                ),
+            )
+            .background(chrome.surface)
+            .testTag(SaqzBottomNavBarTag),
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(chrome.hairlineThickness)
-                .background(chrome.hairlineColor)
-                .testTag(SaqzBottomNavHairlineTag),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(chrome.surface)
-                .testTag(SaqzBottomNavBarTag),
+                .height(metrics.bottomNavHeight),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(metrics.bottomNavHeight),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items.forEachIndexed { index, item ->
+            items.forEachIndexed { index, item ->
                 val interaction = remember { MutableInteractionSource() }
                 Column(
                     modifier = Modifier
@@ -103,16 +97,6 @@ fun SaqzBottomNav(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    // Non-color selected signal: an indicator bar present only when selected.
-                    if (item.selected) {
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(3.dp)
-                                .background(colors.primary)
-                                .testTag(saqzBottomNavIndicatorTag(index)),
-                        )
-                    }
                     item.icon()
                     Text(
                         text = item.label,
@@ -121,10 +105,9 @@ fun SaqzBottomNav(
                     )
                 }
             }
-            }
-            if (bottomInset > 0.dp) {
-                Box(modifier = Modifier.fillMaxWidth().height(bottomInset))
-            }
+        }
+        if (bottomInset > 0.dp) {
+            Box(modifier = Modifier.fillMaxWidth().height(bottomInset))
         }
     }
 }

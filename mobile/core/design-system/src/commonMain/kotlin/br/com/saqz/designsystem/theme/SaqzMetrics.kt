@@ -15,6 +15,7 @@ data class SaqzMetrics(
     val compactControlRadius: Dp,
     val cardRadius: Dp,
     val bottomNavHeight: Dp,
+    val bottomNavRadius: Dp,
     val minimumTouchTarget: Dp,
 ) {
     companion object {
@@ -28,6 +29,7 @@ data class SaqzMetrics(
             compactControlRadius = 8.dp,
             cardRadius = 16.dp,
             bottomNavHeight = 56.dp,
+            bottomNavRadius = 24.dp,
             minimumTouchTarget = 48.dp,
         )
     }
