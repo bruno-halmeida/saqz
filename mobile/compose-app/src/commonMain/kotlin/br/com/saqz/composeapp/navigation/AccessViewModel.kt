@@ -1,18 +1,13 @@
 package br.com.saqz.composeapp.navigation
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.PersistedRoleDto
 import br.com.saqz.groups.data.GroupProfileGateway
 import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
-import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.access.presentation.SessionAccessState
@@ -20,7 +15,6 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.ui.CreateGroupUiState
 import br.com.saqz.composeapp.SaqzAppDependencies
-import br.com.saqz.network.SessionDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -33,140 +27,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-
-sealed interface AccessIntent {
-    data class Authentication(val intent: AuthenticationIntent) : AccessIntent
-
-    data class Session(val intent: SessionIntent) : AccessIntent
-
-    data class Selection(val intent: GroupSelectionIntent) : AccessIntent
-
-    data class Administration(val intent: GroupAdministrationIntent) : AccessIntent
-
-    data class DeferredInvite(val intent: DeferredInviteIntent) : AccessIntent
-
-    data class DeferredAttendance(val intent: DeferredAttendanceLinkIntent) : AccessIntent
-
-    data object OpenCreateGroup : AccessIntent
-
-    data class UpdateCreateName(val value: String) : AccessIntent
-
-    data class UpdateCreateTimeZone(val value: String) : AccessIntent
-
-    data object SubmitCreateGroup : AccessIntent
-
-    data object ClosePage : AccessIntent
-
-    data object SwitchGroup : AccessIntent
-
-    data object OpenSettings : AccessIntent
-
-    data object OpenMemberships : AccessIntent
-
-    data object OpenInvite : AccessIntent
-
-    data object RequestLogout : AccessIntent
-
-    data object ConfirmLogout : AccessIntent
-
-    data object CancelLogout : AccessIntent
-
-    data class UpdateSettingsName(val value: String) : AccessIntent
-
-    data class UpdateSettingsTimeZone(val value: String) : AccessIntent
-
-    data object SaveSettings : AccessIntent
-
-    data object ReloadSettings : AccessIntent
-
-    data object GenerateInvite : AccessIntent
-
-    data class ShareInvite(val url: String) : AccessIntent
-
-    data class ShareFinished(val successful: Boolean) : AccessIntent
-
-    data object RequestExpireInvite : AccessIntent
-
-    data object ConfirmExpireInvite : AccessIntent
-
-    data object CancelExpireInvite : AccessIntent
-
-    data object RetryInvite : AccessIntent
-
-    data class ChangeRole(val userId: String, val role: PersistedRoleDto) : AccessIntent
-}
-
-sealed interface AccessUiEffect {
-    data class RequestShare(val text: String) : AccessUiEffect
-
-    data class OpenAttendanceGame(val gameId: String) : AccessUiEffect
-}
-
-@Immutable
-internal data class AccessUiState(
-    val authObserved: Boolean = false,
-    val authentication: AuthenticationState = AuthenticationState(),
-    val session: SessionAccessState = SessionAccessState.SignedOut,
-    val selection: GroupSelectionState = GroupSelectionState.NoGroup,
-    val administration: GroupAdministrationState = GroupAdministrationState(),
-    val page: AccessPage = AccessPage.CONTEXT,
-    val createName: String = "",
-    val createTimeZone: String = "",
-    val createValidationAttempted: Boolean = false,
-    val createFlowKey: String = "",
-    val settingsName: String = "",
-    val settingsTimeZone: String = "",
-    val invite: InviteToolState = InviteToolState(),
-    val showLogoutConfirmation: Boolean = false,
-    val showExpireConfirmation: Boolean = false,
-)
-
-internal typealias AccessRootSnapshot = AccessUiState
-
-internal sealed interface AccessRuntimeIntent {
-    data object Start : AccessRuntimeIntent
-
-    data object Close : AccessRuntimeIntent
-
-    data class Authentication(val intent: AuthenticationIntent) : AccessRuntimeIntent
-
-    data class Session(val intent: SessionIntent) : AccessRuntimeIntent
-
-    data class Selection(val intent: GroupSelectionIntent) : AccessRuntimeIntent
-
-    data class Administration(val intent: GroupAdministrationIntent) : AccessRuntimeIntent
-
-    data class DeferredInvite(val intent: DeferredInviteIntent) : AccessRuntimeIntent
-
-    data class DeferredAttendance(val intent: DeferredAttendanceLinkIntent) : AccessRuntimeIntent
-
-    data object ConsumeAttendanceDestination : AccessRuntimeIntent
-
-    data class ShowGroupSelector(val session: SessionDto) : AccessRuntimeIntent
-
-    data object RotateInvite : AccessRuntimeIntent
-
-    data object ExpireInvite : AccessRuntimeIntent
-
-    data class ShareFinished(val successful: Boolean) : AccessRuntimeIntent
-
-}
-
-internal interface AccessRuntimeContract {
-    val authObservedState: StateFlow<Boolean>
-    val authenticationState: StateFlow<AuthenticationState>
-    val sessionState: StateFlow<SessionAccessState>
-    val selectionState: StateFlow<GroupSelectionState>
-    val administrationState: StateFlow<GroupAdministrationState>
-    val inviteToolState: StateFlow<InviteToolState>
-    val attendanceDestinationState: StateFlow<AttendanceLinkDestination?>
-    val groupProfileGateway: GroupProfileGateway
-    val groupPhotoGateway: GroupPhotoGateway
-
-    fun onIntent(intent: AccessRuntimeIntent)
-
-    fun newRequestId(): String
-}
 
 internal class AccessViewModel private constructor(
     runtimeFactory: (CoroutineScope) -> AccessRuntimeContract,
@@ -184,7 +44,7 @@ internal class AccessViewModel private constructor(
 
     private val scope = testScope ?: viewModelScope
     private val runtime = runtimeFactory(scope)
-    private val routeState = MutableStateFlow(RouteState(createRequestId = runtime.newRequestId()))
+    private val routeState = MutableStateFlow(AccessRouteState(createRequestId = runtime.newRequestId()))
     private val effectChannel = Channel<AccessUiEffect>(Channel.BUFFERED)
     val effects: Flow<AccessUiEffect> = effectChannel.receiveAsFlow()
     internal val groupProfileGateway: GroupProfileGateway get() = runtime.groupProfileGateway
@@ -198,7 +58,7 @@ internal class AccessViewModel private constructor(
         runtime.selectionState,
         runtime.administrationState,
     ) { authObserved, authentication, session, selection, administration ->
-        CoreState(authObserved, authentication, session, selection, administration)
+        AccessCoreState(authObserved, authentication, session, selection, administration)
     }
 
     val state: StateFlow<AccessUiState> = combine(
@@ -419,27 +279,7 @@ internal class AccessViewModel private constructor(
         runtime.onIntent(AccessRuntimeIntent.Close)
     }
 
-    private fun updateRoute(transform: RouteState.() -> RouteState) {
+    private fun updateRoute(transform: AccessRouteState.() -> AccessRouteState) {
         routeState.update(transform)
     }
-
-    private data class CoreState(
-        val authObserved: Boolean,
-        val authentication: AuthenticationState,
-        val session: SessionAccessState,
-        val selection: GroupSelectionState,
-        val administration: GroupAdministrationState,
-    )
-
-    private data class RouteState(
-        val page: AccessPage = AccessPage.CONTEXT,
-        val createName: String = "",
-        val createTimeZone: String = "",
-        val createValidationAttempted: Boolean = false,
-        val createRequestId: String,
-        val settingsName: String = "",
-        val settingsTimeZone: String = "",
-        val showLogoutConfirmation: Boolean = false,
-        val showExpireConfirmation: Boolean = false,
-    )
 }
