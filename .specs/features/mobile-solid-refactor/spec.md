@@ -39,6 +39,9 @@ observable behavior.
 9. **SOLID-09** - `FinanceViewModel.kt` SHALL declare only
    `FinanceViewModel`; `FinanceOperation` SHALL live in a focused file in the
    same package without changing charge behavior or API.
+10. **SOLID-10** - `ExpenseViewModel.kt` SHALL declare only
+    `ExpenseViewModel`; `ExpenseOperation` SHALL live in a focused file in the
+    same package without changing expense behavior or public API.
 
 ## Out of Scope
 
