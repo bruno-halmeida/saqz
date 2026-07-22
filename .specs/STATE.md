@@ -244,8 +244,12 @@
 
 ## Handoff
 
-- **Feature**: mobile-navigation-architecture — `.specs/features/mobile-navigation-architecture/`
-- **Phase / Task**: Design approved 2026-07-22; one Navigation Compose 3 `NavDisplay` + `NavigationSession`, four retained tab stacks, delegated domain entries, entry-scoped ViewModels, and conditional iOS cold-relaunch persistence fallback. Tasks phase in progress.
-- **Next step**: Create and approve `tasks.md` with focused changed-module gates per implementation task and `rtk scripts/check-all` only in the final integration task. Execute starts only after `mobile-solid-refactor-wave-2` is verified complete.
-- **Previous feature**: mobile-solid-refactor-wave-2 in progress (Worker 1 complete T01–T08; Worker 2 ready T09–T14). Do not start this feature's Execute until wave-2 is verified PASS.
+- **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/`
+- **Phase / Task**: Execute — approved plan of 37 sequential tasks across seven phases, packed into six phase-aligned worker batches.
+- **Completed**: Specify, Discuss and Design; task authoring T01–T37.
+- **In-progress**: Batch 1 (T01–T05) ready to start with one worker; no parallel execution.
+- **Next step**: Execute T01–T05 atomically. Run only focused gates through T36 and `rtk scripts/check-all` once in T37.
+- **Blockers**: none.
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/mobile-domain-data-boundaries/spec.md`, `design.md`, `tasks.md`.
+- **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending; mobile-solid-refactor-wave-2 remains incomplete and must not be silently overwritten or mixed into this feature's commits.
 - **Branch**: main

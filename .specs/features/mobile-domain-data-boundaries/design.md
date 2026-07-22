@@ -2,7 +2,8 @@
 
 **Spec:** `.specs/features/mobile-domain-data-boundaries/spec.md`  
 **Context:** `.specs/features/mobile-domain-data-boundaries/context.md`  
-**Status:** Draft
+**Status:** Approved  
+**Approved:** 2026-07-22
 
 ## Architecture Overview
 
@@ -277,11 +278,11 @@ data class TransportRetryPolicy(
 
 1. **Foundation and gate:** add `:core:domain`, shared contract tests, refine transport connectivity/unknown classification, add the bounded retry helper/tests, declare child modules, and add a failing-on-drift architecture gate.
 2. **Access characterization:** freeze current bootstrap, identity, validation, authorization, connectivity and retry outcomes before moving contracts.
-3. **Access boundary migration:** move session/native contracts and models to Access domain; move session transport from core network to Access data; update presentation and composition; remove Access adapters; pass Access and aggregate gates.
+3. **Access boundary migration:** move session/native contracts and models to Access domain; move session transport from core network to Access data; update presentation and composition; remove Access adapters; pass only the focused Access/domain/data/compose-app gates.
 4. **Groups characterization:** freeze current outcomes and exact transport semantics per capability.
 5. **Groups capability slices:** migrate profile/membership/invite/photo, games/attendance/sharing, and finance contracts/models/data in dependency order. Each slice maps DTOs and failures before presentation changes.
-6. **Groups cleanup:** remove all presentation-to-data/network imports and compatibility adapters; pass Groups and aggregate gates.
-7. **Integration verification:** prove zero forbidden dependencies/imports, run Android/KMP and iOS aggregates, then run the repository gate and independent verifier.
+6. **Groups cleanup:** remove all presentation-to-data/network imports and compatibility adapters; pass only the focused Groups domain/data/presentation gates.
+7. **Integration verification:** prove zero forbidden dependencies/imports, then run `rtk scripts/check-all` once as the only full Android/KMP/iOS/repository aggregate before the independent verifier.
 
 For each slice: characterize -> create/move domain contract -> implement data mapping -> switch presentation fakes/consumers -> update composition -> delete the temporary seam -> run its narrow gate -> commit atomically.
 
@@ -293,7 +294,7 @@ For each slice: characterize -> create/move domain contract -> implement data ma
 - **Presentation modules:** existing state/effect tests rewritten against domain fakes; asserted loading/success/empty/error/retry outcomes remain unchanged.
 - **Composition:** Koin verification plus Access-to-Groups translation tests that prove no feature dependency.
 - **Architecture:** positive allowlist checks and negative scratch mutations for every forbidden edge/import class.
-- **Aggregates:** focused module gates while iterating; `rtk scripts/check-gradle` after each completed feature; `rtk scripts/check-all` and independent spec-anchored verification after the final task.
+- **Aggregates:** focused module/layer gates only while iterating; do not run `scripts/check-gradle` or `scripts/check-ios` separately; run `rtk scripts/check-all` once after the final implementation task, followed by independent spec-anchored verification.
 
 ## Requirement Traceability
 
