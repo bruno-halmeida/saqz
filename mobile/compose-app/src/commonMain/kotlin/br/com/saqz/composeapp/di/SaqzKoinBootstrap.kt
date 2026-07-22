@@ -24,6 +24,17 @@ import org.koin.mp.KoinPlatformTools
 private var platformModule: Module? = null
 private object SaqzKoinMarker
 private val markerModule = module { single { SaqzKoinMarker } }
+private val commonModules = listOf(
+    markerModule,
+    coreNetworkModule,
+    platformDraftsModule,
+    accessDataModule,
+    accessInvalidationModule,
+    accessPresentationModule,
+    groupsDataModule,
+    groupsPresentationModule,
+    composePresentationModule,
+)
 
 fun startSaqzKoin() {
     KoinPlatformTools.defaultContext().getOrNull()?.let { existing ->
@@ -32,18 +43,14 @@ fun startSaqzKoin() {
     }
 
     startKoin {
-        modules(
-            markerModule,
-            coreNetworkModule,
-            platformDraftsModule,
-            accessDataModule,
-            accessInvalidationModule,
-            accessPresentationModule,
-            groupsDataModule,
-            groupsPresentationModule,
-            composePresentationModule,
-        )
+        modules(commonModules)
     }
+}
+
+fun installSaqzKoinModules() {
+    val koin = checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before installing Saqz modules" }
+    if (koin.getOrNull<SaqzKoinMarker>() != null) return
+    loadKoinModules(commonModules)
 }
 
 fun startSaqzKoin(dependencies: SaqzAppDependencies) {
