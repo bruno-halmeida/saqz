@@ -165,6 +165,7 @@ All 26 requirements are assigned to a downstream design or task category. Task i
 | B17 | 2026-07-22 | `VersionedGroup` declared a `String` convenience constructor beside a `GroupVersionToken` value-class constructor; both erase to the same JVM signature although the iOS-only gate accepted them. | No new §V invariant: T19's focused Android adapter gate already detects JVM signature clashes; call sites must construct the opaque domain token explicitly. |
 | B18 | 2026-07-22 | The Android square-crop production helper migrated to the domain crop model while its focused unit test retained the legacy port import. | No new §V invariant: T19 explicitly retains the Android photo adapter tests and its focused Android gate detects residual platform fixture imports. |
 | B19 | 2026-07-22 | Moving attendance-share serializable DTOs to Groups data left the original presentation-module DTO/API source in place, so both Android libraries emitted the same generated serializer and D8 rejected the application dex merge. | V1: module-boundary migrations of serializable classes must remove the legacy production declaration and pass an Android application assembly gate, because per-module `allTests` does not detect duplicate runtime classes. |
+| B20 | 2026-07-22 | The first games-domain compilation used the feature package for the shared `GroupId` and omitted the explicit `JvmInline` import. | No new §V invariant: this is a mechanical namespace/import error already detected by T23's multiplatform compilation gate. |
 
 ## §V — Backpropagated Invariants
 
