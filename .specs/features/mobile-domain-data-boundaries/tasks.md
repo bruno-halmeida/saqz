@@ -529,6 +529,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T14: Define membership, role and invite domain contracts
 
+**Status:** Complete — 14 domain cases passed.
+
 **What:** Add Groups domain models, commands, gateway capabilities and typed errors for memberships, role changes, invite rotation/expiry/redemption and safe attempt limits.
 
 **Where:** `features/groups/domain/src/commonMain/**/membership/**`; co-located tests.
