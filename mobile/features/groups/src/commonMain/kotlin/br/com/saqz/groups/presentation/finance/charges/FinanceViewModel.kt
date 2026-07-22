@@ -122,7 +122,7 @@ class FinanceViewModel(
                     mutable.value = mutable.value.copy(
                         charges = value.charges,
                         members = memberResult.value,
-                        totals = value.totals(),
+                        totals = value.toChargeTotalsState(),
                         isLoading = false,
                         error = null,
                     )
@@ -261,7 +261,7 @@ class FinanceViewModel(
 
         mutable.value = mutable.value.copy(
             charges = refreshed.charges,
-            totals = refreshed.totals() ?: mutable.value.totals,
+            totals = refreshed.toChargeTotalsState() ?: mutable.value.totals,
             isMutating = false,
             monthlyDraft = null,
             error = null,

@@ -49,6 +49,9 @@ observable behavior.
 12. **SOLID-12** - `GroupsNavigationContract.kt` SHALL not aggregate destination,
     access, state, intent, effect, tags, and destination policy in one file;
     each concern SHALL live in a focused file in the same package.
+13. **SOLID-13** - `FinanceChargeSupport.kt` SHALL not aggregate finance draft,
+    port, factory, error, state, intent, effect, totals, and rules in one
+    file; each concern SHALL live in focused files in the same package.
 
 ## Out of Scope
 
