@@ -38,3 +38,7 @@ sealed interface AccessError : SaqzError {
 fun interface SessionGateway {
     suspend fun bootstrap(): SaqzResult<AccessSession, AccessError>
 }
+
+interface SessionInvalidator {
+    fun invalidate()
+}

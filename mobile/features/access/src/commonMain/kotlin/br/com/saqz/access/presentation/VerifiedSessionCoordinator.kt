@@ -10,11 +10,11 @@ import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionGateway
-import br.com.saqz.network.SessionInvalidator
+import br.com.saqz.access.domain.session.AccessError
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.SessionGateway
+import br.com.saqz.access.domain.session.SessionInvalidator
+import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +43,7 @@ sealed interface SessionAccessState {
 
     data object BootstrapError : SessionAccessState
 
-    data class Ready(val session: SessionDto) : SessionAccessState
+    data class Ready(val session: AccessSession) : SessionAccessState
 }
 
 sealed interface SessionIntent {
@@ -206,14 +206,18 @@ class SessionAccessStateMachine(
         mutableState.value = SessionAccessState.Bootstrapping
         scope.launch {
             mutableState.value = when (val result = session.bootstrap()) {
-                is NetworkResult.Success -> SessionAccessState.Ready(result.value)
-                is NetworkResult.Failure -> when {
-                    result.error.isEmailNotVerified() -> {
+                is SaqzResult.Success -> SessionAccessState.Ready(result.value)
+                is SaqzResult.Failure -> when (result.error) {
+                    AccessError.EmailNotVerified -> {
                         val unverified = user.copy(emailVerified = false)
                         currentUser = unverified
                         SessionAccessState.AwaitingVerification(unverified)
                     }
-                    else -> SessionAccessState.BootstrapError
+                    AccessError.Unauthenticated,
+                    AccessError.Forbidden,
+                    is AccessError.Validation,
+                    is AccessError.DataFailure,
+                    -> SessionAccessState.BootstrapError
                 }
             }
         }
@@ -227,8 +231,4 @@ class SessionAccessStateMachine(
         override fun complete(result: OperationResult) = block(result)
     }
 }
-
-private fun NetworkError.isEmailNotVerified(): Boolean =
-    this is NetworkError.ApiProblemError && problem.status == 403 && problem.code == "EMAIL_NOT_VERIFIED"
-
 

@@ -13,12 +13,13 @@ import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
-import br.com.saqz.network.ApiProblem
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
-import br.com.saqz.network.SessionDto
-import br.com.saqz.network.SessionGateway
-import br.com.saqz.network.SessionUserDto
+import br.com.saqz.access.domain.session.AccessError
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessUser
+import br.com.saqz.access.domain.session.SessionGateway
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -167,7 +168,7 @@ class SessionAccessStateMachineTest {
 
     @Test
     fun `backend failure exposes retry without protected session`() = runTest {
-        val fixture = fixture(this, NetworkResult.Failure(NetworkError.HttpStatus(500)))
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Server)))
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
@@ -178,10 +179,10 @@ class SessionAccessStateMachineTest {
 
     @Test
     fun `bootstrap retry preserves firebase session and can recover`() = runTest {
-        val fixture = fixture(this, NetworkResult.Failure(NetworkError.Unavailable))
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
-        fixture.session.result = NetworkResult.Success(session)
+        fixture.session.result = SaqzResult.Success(session)
 
         fixture.machine.onIntent(SessionIntent.RetryBootstrap)
         runCurrent()
@@ -193,15 +194,37 @@ class SessionAccessStateMachineTest {
 
     @Test
     fun `backend email not verified response returns to verification`() = runTest {
-        val failure = NetworkResult.Failure(
-            NetworkError.ApiProblemError(ApiProblem(403, "EMAIL_NOT_VERIFIED", "corr-403")),
-        )
+        val failure = SaqzResult.Failure(AccessError.EmailNotVerified)
         val fixture = fixture(this, failure)
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
         assertIs<SessionAccessState.AwaitingVerification>(fixture.machine.state.value)
+    }
+
+    @Test
+    fun `unauthenticated bootstrap remains a retryable bootstrap error`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.Unauthenticated))
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+        assertEquals(0, fixture.auth.signOutCalls)
+    }
+
+    @Test
+    fun `validation without global message uses generic bootstrap error state`() = runTest {
+        val error = AccessError.Validation(
+            ValidationDetails(globalMessages = emptyList(), fieldMessages = mapOf("email" to listOf("invalid"))),
+        )
+        val fixture = fixture(this, SaqzResult.Failure(error))
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
     }
 
     @Test
@@ -245,7 +268,7 @@ class SessionAccessStateMachineTest {
 
     private fun fixture(
         scope: kotlinx.coroutines.CoroutineScope,
-        result: NetworkResult<SessionDto> = NetworkResult.Success(session),
+        result: SaqzResult<AccessSession, AccessError> = SaqzResult.Success(session),
     ): Fixture {
         val auth = FakeAuthPort()
         val local = FakeLocalState()
@@ -253,9 +276,9 @@ class SessionAccessStateMachineTest {
         return Fixture(SessionAccessStateMachine(auth, local, gateway, scope), auth, local, gateway)
     }
 
-    private class FakeSessionGateway(var result: NetworkResult<SessionDto>) : SessionGateway {
+    private class FakeSessionGateway(var result: SaqzResult<AccessSession, AccessError>) : SessionGateway {
         var calls = 0
-        override suspend fun bootstrap(): NetworkResult<SessionDto> {
+        override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             calls += 1
             return result
         }
@@ -304,6 +327,6 @@ class SessionAccessStateMachineTest {
     private companion object {
         val unverified = NativeUser("subject", "person@example.test", false, "Person Name")
         val verified = unverified.copy(emailVerified = true)
-        val session = SessionDto(SessionUserDto("user-id", "person@example.test", "Person Name"), emptyList())
+        val session = AccessSession(AccessUser("user-id", "person@example.test", "Person Name"), emptyList())
     }
 }
