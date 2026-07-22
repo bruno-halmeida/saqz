@@ -33,8 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.messageRes
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.presentation.isValidDisplayName
 import br.com.saqz.access.presentation.isValidEmail
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.access_brand
@@ -90,7 +92,7 @@ fun RegistrationScreen(
     state: AuthenticationState,
     onIntent: (AuthenticationIntent) -> Unit,
 ) {
-    val validName = state.name.isNotBlank()
+    val validName = isValidDisplayName(state.name)
     val validEmail = state.email.isValidEmail()
     val colors = SaqzTheme.colors
 
@@ -255,11 +257,8 @@ private fun RegistrationDivider(label: String) {
 }
 
 private fun AuthenticationState.registrationGlobalError() = when (error) {
-    AuthUiError.AUTH_METHOD_CONFLICT -> Res.string.auth_error_method_conflict
-    AuthUiError.NETWORK_UNAVAILABLE -> Res.string.auth_error_network
-    AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
-    AuthUiError.UNKNOWN, AuthUiError.INVALID_CREDENTIALS -> Res.string.auth_error_unknown
     AuthUiError.EMAIL_IN_USE, AuthUiError.WEAK_PASSWORD, null -> null
+    else -> error.messageRes()
 }
 
 @Preview

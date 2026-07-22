@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.messageRes
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.resources.Res
@@ -193,7 +194,7 @@ fun LoginScreen(
             }
             state.error?.let { error ->
                 Text(
-                    text = stringResource(error.resource()),
+                    text = stringResource(error.messageRes()),
                     style = SaqzTheme.typography.caption,
                     color = colors.errorForeground,
                     textAlign = TextAlign.Center,
@@ -397,16 +398,6 @@ private fun GoogleIcon(modifier: Modifier = Modifier) {
         contentDescription = null,
         modifier = modifier.size(20.dp).clearAndSetSemantics {},
     )
-}
-
-private fun AuthUiError.resource(): StringResource = when (this) {
-    AuthUiError.INVALID_CREDENTIALS -> Res.string.auth_error_invalid_credentials
-    AuthUiError.EMAIL_IN_USE -> Res.string.auth_error_email_in_use
-    AuthUiError.WEAK_PASSWORD -> Res.string.auth_error_weak_password
-    AuthUiError.AUTH_METHOD_CONFLICT -> Res.string.auth_error_method_conflict
-    AuthUiError.NETWORK_UNAVAILABLE -> Res.string.auth_error_network
-    AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
-    AuthUiError.UNKNOWN -> Res.string.auth_error_unknown
 }
 
 @Preview(

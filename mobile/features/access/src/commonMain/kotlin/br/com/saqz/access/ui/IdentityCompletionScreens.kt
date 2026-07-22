@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
+import br.com.saqz.access.presentation.messageRes
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
@@ -92,7 +93,7 @@ fun VerificationScreen(
         Text(stringResource(Res.string.verification_sent), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.accent)
     }
     state.error?.let {
-        Text(stringResource(it.identityError()), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(stringResource(it.messageRes()), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.verification_confirm),
@@ -124,7 +125,7 @@ fun NameCompletionScreen(
         enabled = !state.isLoading,
     )
     state.error?.let {
-        Text(stringResource(it.identityError()), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(stringResource(it.messageRes()), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.name_submit),
@@ -265,13 +266,6 @@ private fun IdentityColumn(content: @Composable () -> Unit) {
 @Composable
 private fun IdentityHeading(text: String) {
     Text(text, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
-}
-
-private fun AuthUiError.identityError(): StringResource = when (this) {
-    AuthUiError.NETWORK_UNAVAILABLE -> Res.string.auth_error_network
-    AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
-    AuthUiError.AUTH_METHOD_CONFLICT -> Res.string.auth_error_method_conflict
-    else -> Res.string.auth_error_unknown
 }
 
 private val previewIdentityUser = NativeUser("preview-user", "ana@exemplo.com", false, "Ana")

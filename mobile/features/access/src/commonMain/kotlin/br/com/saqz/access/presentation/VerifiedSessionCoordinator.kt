@@ -111,7 +111,7 @@ class SessionAccessStateMachine(
         auth.sendVerification(resultCallback { result ->
             mutableState.value = when (result) {
                 OperationResult.Success -> current.copy(verificationSent = true)
-                is OperationResult.Failure -> current.copy(error = result.code.toAuthUiError())
+                is OperationResult.Failure -> current.copy(error = result.code.toUiError())
             }
         })
     }
@@ -124,7 +124,7 @@ class SessionAccessStateMachine(
     private fun completeName() {
         val current = mutableState.value as? SessionAccessState.CompletingName ?: return
         if (current.isLoading) return
-        val name = validName(current.name)
+        val name = normalizedDisplayName(current.name)
         if (name == null) {
             mutableState.value = current.copy(invalidName = true)
             return
@@ -133,7 +133,7 @@ class SessionAccessStateMachine(
         auth.updateDisplayName(name, authCallback { result ->
             when (result) {
                 AuthResult.Cancelled -> mutableState.value = current.copy(name = name)
-                is AuthResult.Failure -> mutableState.value = current.copy(name = name, error = result.code.toAuthUiError())
+                is AuthResult.Failure -> mutableState.value = current.copy(name = name, error = result.code.toUiError())
                 is AuthResult.Success -> forceRefreshAndBootstrap(result.user)
             }
         })
@@ -165,7 +165,7 @@ class SessionAccessStateMachine(
         currentUser = user
         when {
             !user.emailVerified -> awaitVerification(user)
-            validName(user.displayName.orEmpty()) == null -> {
+            normalizedDisplayName(user.displayName.orEmpty()) == null -> {
                 mutableState.value = SessionAccessState.CompletingName(user)
             }
             else -> bootstrap(user)
@@ -178,7 +178,7 @@ class SessionAccessStateMachine(
     }
 
     private fun verificationFailure(user: NativeUser, code: NativeFailureCode) {
-        mutableState.value = SessionAccessState.AwaitingVerification(user, error = code.toAuthUiError())
+        mutableState.value = SessionAccessState.AwaitingVerification(user, error = code.toUiError())
     }
 
     private fun forceRefreshAndBootstrap(user: NativeUser) {
@@ -194,10 +194,10 @@ class SessionAccessStateMachine(
     }
 
     private fun identityFailure(user: NativeUser, code: NativeFailureCode) {
-        mutableState.value = if (validName(user.displayName.orEmpty()) == null) {
-            SessionAccessState.CompletingName(user, error = code.toAuthUiError())
+        mutableState.value = if (normalizedDisplayName(user.displayName.orEmpty()) == null) {
+            SessionAccessState.CompletingName(user, error = code.toUiError())
         } else {
-            SessionAccessState.AwaitingVerification(user, error = code.toAuthUiError())
+            SessionAccessState.AwaitingVerification(user, error = code.toUiError())
         }
     }
 
@@ -228,20 +228,7 @@ class SessionAccessStateMachine(
     }
 }
 
-private fun validName(raw: String): String? {
-    val value = raw.trim()
-    return value.takeIf { it.length in 2..80 && it.none(Char::isISOControl) }
-}
-
 private fun NetworkError.isEmailNotVerified(): Boolean =
     this is NetworkError.ApiProblemError && problem.status == 403 && problem.code == "EMAIL_NOT_VERIFIED"
 
-private fun NativeFailureCode.toAuthUiError(): AuthUiError = when (this) {
-    NativeFailureCode.INVALID_CREDENTIALS -> AuthUiError.INVALID_CREDENTIALS
-    NativeFailureCode.EMAIL_IN_USE -> AuthUiError.EMAIL_IN_USE
-    NativeFailureCode.WEAK_PASSWORD -> AuthUiError.WEAK_PASSWORD
-    NativeFailureCode.AUTH_METHOD_CONFLICT -> AuthUiError.AUTH_METHOD_CONFLICT
-    NativeFailureCode.NETWORK_UNAVAILABLE -> AuthUiError.NETWORK_UNAVAILABLE
-    NativeFailureCode.PROVIDER_UNAVAILABLE -> AuthUiError.PROVIDER_UNAVAILABLE
-    NativeFailureCode.UNKNOWN -> AuthUiError.UNKNOWN
-}
+

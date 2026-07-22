@@ -91,7 +91,7 @@ class AuthenticationStateMachine(
     private fun submitRegistration() {
         mutableState.value = mutableState.value.copy(validationAttempted = true)
         val form = mutableState.value
-        if (form.name.isBlank() || !form.email.isValidEmail()) return
+        if (!isValidDisplayName(form.name) || !form.email.isValidEmail()) return
         val current = beginSensitiveSubmit() ?: return
         auth.createAccount(current.name, current.email, current.password, authCallback { result ->
             when (result) {
@@ -195,17 +195,4 @@ class AuthenticationStateMachine(
     }
 }
 
-internal fun String.isValidEmail(): Boolean {
-    val at = indexOf('@')
-    return at > 0 && at < lastIndex && substring(at + 1).contains('.')
-}
 
-private fun NativeFailureCode.toUiError(): AuthUiError = when (this) {
-    NativeFailureCode.INVALID_CREDENTIALS -> AuthUiError.INVALID_CREDENTIALS
-    NativeFailureCode.EMAIL_IN_USE -> AuthUiError.EMAIL_IN_USE
-    NativeFailureCode.WEAK_PASSWORD -> AuthUiError.WEAK_PASSWORD
-    NativeFailureCode.AUTH_METHOD_CONFLICT -> AuthUiError.AUTH_METHOD_CONFLICT
-    NativeFailureCode.NETWORK_UNAVAILABLE -> AuthUiError.NETWORK_UNAVAILABLE
-    NativeFailureCode.PROVIDER_UNAVAILABLE -> AuthUiError.PROVIDER_UNAVAILABLE
-    NativeFailureCode.UNKNOWN -> AuthUiError.UNKNOWN
-}
