@@ -24,4 +24,8 @@ sealed interface GroupsNavigationIntent {
     data class OpenGameDetail(val gameId: String) : GroupsNavigationIntent
 
     data object OpenFinance : GroupsNavigationIntent
+
+    data object OpenNotices : GroupsNavigationIntent
+
+    data object OpenMore : GroupsNavigationIntent
 }

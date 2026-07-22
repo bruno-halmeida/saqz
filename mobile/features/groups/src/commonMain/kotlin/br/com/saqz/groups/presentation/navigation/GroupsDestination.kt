@@ -12,4 +12,6 @@ enum class GroupsDestination {
     GAME_DETAIL,
     FINANCE,
     OWN_CHARGES,
+    NOTICES,
+    MORE,
 }

@@ -8,6 +8,8 @@ fun GroupsDestination.showsGroupChrome(): Boolean = when (this) {
     GroupsDestination.GAME_DETAIL,
     GroupsDestination.FINANCE,
     GroupsDestination.OWN_CHARGES,
+    GroupsDestination.NOTICES,
+    GroupsDestination.MORE,
     -> true
 
     GroupsDestination.SETUP,
@@ -30,6 +32,8 @@ fun GroupsDestination.isGroupScoped(): Boolean = when (this) {
     GroupsDestination.GAME_DETAIL,
     GroupsDestination.FINANCE,
     GroupsDestination.OWN_CHARGES,
+    GroupsDestination.NOTICES,
+    GroupsDestination.MORE,
     -> true
 
     GroupsDestination.SETUP,

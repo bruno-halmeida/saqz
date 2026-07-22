@@ -38,6 +38,8 @@ internal class GroupsNavigationViewModel : ViewModel() {
             GroupsNavigationIntent.OpenGames -> navigate(GroupsDestination.GAMES)
             is GroupsNavigationIntent.OpenGameDetail -> openGameDetail(intent.gameId)
             GroupsNavigationIntent.OpenFinance -> openFinance()
+            GroupsNavigationIntent.OpenNotices -> navigate(GroupsDestination.NOTICES)
+            GroupsNavigationIntent.OpenMore -> navigate(GroupsDestination.MORE)
         }
     }
 
@@ -193,7 +195,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
 
     private fun openGroups() {
         val memberships = mutableState.value.memberships
-        if (memberships.size < 2) return
+        if (memberships.isEmpty()) return
         showGroups(memberships)
     }
 
@@ -261,6 +263,9 @@ internal class GroupsNavigationViewModel : ViewModel() {
         -> access.showGames
         GroupsDestination.FINANCE -> access.financeDestination == GroupsDestination.FINANCE
         GroupsDestination.OWN_CHARGES -> access.financeDestination == GroupsDestination.OWN_CHARGES
+        GroupsDestination.NOTICES,
+        GroupsDestination.MORE,
+        -> true
         GroupsDestination.SETUP,
         GroupsDestination.SELECTOR,
         GroupsDestination.LOADING,

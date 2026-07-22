@@ -193,6 +193,28 @@ class GroupsNavigationViewModelTest {
     }
 
     @Test
+    fun `any role can open notices`() {
+        val viewModel = selected(athlete)
+        viewModel.onIntent(GroupsNavigationIntent.OpenNotices)
+        assertEquals(GroupsDestination.NOTICES, viewModel.state.value.destination)
+    }
+
+    @Test
+    fun `any role can open more`() {
+        val viewModel = selected(athlete)
+        viewModel.onIntent(GroupsNavigationIntent.OpenMore)
+        assertEquals(GroupsDestination.MORE, viewModel.state.value.destination)
+    }
+
+    @Test
+    fun `single membership still opens the selector from groups tab`() {
+        val viewModel = selected(owner)
+        viewModel.onIntent(GroupsNavigationIntent.OpenGroups)
+        assertUnscoped(viewModel, GroupsDestination.SELECTOR)
+        assertEquals(listOf(GROUP_ID), viewModel.state.value.memberships.map { it.groupId })
+    }
+
+    @Test
     fun `incomplete owner is routed to profile completion readably`() {
         val state = selected(owner.copy(profileStatus = GroupProfileStatusDto.INCOMPLETE)).state.value
         assertEquals(GroupsDestination.PROFILE_COMPLETION, state.destination)
