@@ -3,6 +3,8 @@ package br.com.saqz.composeapp.di
 import br.com.saqz.composeapp.navigation.AccessRuntime
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
+import br.com.saqz.composeapp.navigation.RequestIdGenerator
+import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.InviteToolStateMachine
@@ -29,6 +31,7 @@ internal data class GameDetailViewModelParameters(
 )
 
 internal val composePresentationModule = module {
+    single<RequestIdGenerator> { UuidV4RequestIdGenerator() }
     factory { parameters ->
         InviteToolStateMachine(
             roles = get(),
@@ -51,6 +54,7 @@ internal val composePresentationModule = module {
             invites = get(),
             attendanceLinks = get(),
             attendanceDestinations = get(),
+            requestIds = get(),
             scope = parameters.get<CoroutineScope>(),
         )
     }

@@ -112,7 +112,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.random.Random
 
 internal const val AccessRootTag = "authenticated-access-destination"
 
@@ -494,6 +493,7 @@ internal class AccessRuntime(
     private val invites: DeferredInviteStateMachine,
     private val attendanceLinks: DeferredAttendanceLinkStateMachine,
     private val attendanceDestinations: AttendanceDestinationStore,
+    private val requestIds: RequestIdGenerator,
     private val scope: CoroutineScope,
 ) : AccessRuntimeContract {
     override val attendanceDestinationState = attendanceDestinations.destination
@@ -562,13 +562,7 @@ internal class AccessRuntime(
 
     private fun shareFinished(successful: Boolean) = inviteTools.shareFinished(successful)
 
-    override fun newRequestId(): String {
-        val bytes = Random.nextBytes(16)
-        bytes[6] = ((bytes[6].toInt() and 0x0f) or 0x40).toByte()
-        bytes[8] = ((bytes[8].toInt() and 0x3f) or 0x80).toByte()
-        val hex = bytes.joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
-        return "${hex.take(8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.drop(20)}"
-    }
+    override fun newRequestId(): String = requestIds.next()
 
     private fun resultCallback(block: (OperationResult) -> Unit) = object : ResultCallback {
         override fun complete(result: OperationResult) = block(result)
