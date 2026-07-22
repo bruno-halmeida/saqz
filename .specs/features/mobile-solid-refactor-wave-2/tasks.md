@@ -281,7 +281,7 @@ T27 → T28 → T29 → T30
 
 ### T08: Presentation de groups consome os mapeadores da data layer
 
-**Status**: in_progress
+**Status**: completed (f8d0d15)
 
 **What**: Migrar `GroupSetupViewModel`, `GroupAdministrationCoordinator`, `GroupPhotoCoordinator` e os dois state machines de links diferidos para usar os mapeadores de T07, removendo inspeção direta de `ApiProblemError`/status em presentation.
 **Where**: `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/**` (`setup/GroupSetupViewModel.kt:273-287,207`, `GroupAdministrationCoordinator.kt:177-189,102`, `photo/GroupPhotoCoordinator.kt:138-141,189-190`, `DeferredInviteCoordinator.kt:152-171`, `attendance/share/DeferredAttendanceLinkCoordinator.kt:153-172`)
@@ -290,10 +290,10 @@ T27 → T28 → T29 → T30
 **Requirement**: SHR-02
 
 **Done when**:
-- [ ] `rg "ApiProblemError" mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation` sem ocorrências de inspeção por status (exceto tipos importados pelos mapeadores)
-- [ ] Comportamento preservado: suites `GroupSetupViewModelTest`, `GroupAdministrationCoordinatorTest` (se existir), `GroupPhotoCoordinatorTest` e deferred-link tests passam sem alteração de expectativas
-- [ ] Gate full passa
-- [ ] Contagem de testes não diminui
+- [x] `rg "ApiProblemError" mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation` sem ocorrências de inspeção por status (exceto tipos importados pelos mapeadores)
+- [x] Comportamento preservado: suites `GroupSetupViewModelTest`, `GroupAdministrationCoordinatorTest` (se existir), `GroupPhotoCoordinatorTest` e deferred-link tests passam sem alteração de expectativas
+- [x] Gate full passa
+- [x] Contagem de testes não diminui
 
 **Tests**: unit (suites existentes como contrato)
 **Gate**: full
