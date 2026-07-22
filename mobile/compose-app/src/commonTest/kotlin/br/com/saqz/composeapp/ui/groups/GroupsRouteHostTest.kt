@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
@@ -14,6 +18,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -77,6 +82,41 @@ class GroupsRouteHostTest {
     }
 
     @Test
+    fun `every group scoped destination omits bottom menu`() = runComposeUiTest {
+        val destination = mutableStateOf(GroupsDestination.HOME)
+        setContent {
+            SaqzTheme {
+                GroupsRouteHost(
+                    navigation = access(GroupRoleDto.OWNER).copy(destination = destination.value),
+                    administration = administration(owner),
+                    onNavigationIntent = {},
+                    onOpenSettings = {},
+                    onSelectGroup = {},
+                    onOpenCreateGroup = {},
+                    onRetryGroup = {},
+                    onOpenInvite = {},
+                    onRequestLogout = {},
+                )
+            }
+        }
+
+        listOf(
+            GroupsDestination.HOME,
+            GroupsDestination.PROFILE_COMPLETION,
+            GroupsDestination.PEOPLE,
+            GroupsDestination.GAMES,
+            GroupsDestination.GAME_DETAIL,
+            GroupsDestination.FINANCE,
+            GroupsDestination.OWN_CHARGES,
+            GroupsDestination.NOTICES,
+            GroupsDestination.MORE,
+        ).forEach { route ->
+            runOnIdle { destination.value = route }
+            onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
+        }
+    }
+
+    @Test
     fun `bottom menu emits each fixed tab intent once`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(
@@ -92,12 +132,10 @@ class GroupsRouteHostTest {
         onNodeWithTag("saqz-bottom-nav-item-1").performClick()
         onNodeWithTag("saqz-bottom-nav-item-2").performClick()
         onNodeWithTag("saqz-bottom-nav-item-3").performClick()
-        onNodeWithTag("saqz-bottom-nav-item-4").performClick()
 
         assertEquals(
             listOf(
                 GroupsNavigationIntent.OpenHome,
-                GroupsNavigationIntent.OpenGames,
                 GroupsNavigationIntent.OpenGroups,
                 GroupsNavigationIntent.OpenNotices,
                 GroupsNavigationIntent.OpenMore,
@@ -107,7 +145,7 @@ class GroupsRouteHostTest {
     }
 
     @Test
-    fun `group list bottom menu renders five fixed tabs`() = runComposeUiTest {
+    fun `group list bottom menu renders four fixed tabs`() = runComposeUiTest {
         host(
             athlete,
             GroupsNavigationState(
@@ -117,10 +155,9 @@ class GroupsRouteHostTest {
         )
 
         onNodeWithTag("saqz-bottom-nav-item-0").assertTextEquals("Início")
-        onNodeWithTag("saqz-bottom-nav-item-1").assertTextEquals("Jogos")
-        onNodeWithTag("saqz-bottom-nav-item-2").assertTextEquals("Grupos")
-        onNodeWithTag("saqz-bottom-nav-item-3").assertTextEquals("Avisos")
-        onNodeWithTag("saqz-bottom-nav-item-4").assertTextEquals("Mais")
+        onNodeWithTag("saqz-bottom-nav-item-1").assertTextEquals("Grupos")
+        onNodeWithTag("saqz-bottom-nav-item-2").assertTextEquals("Avisos")
+        onNodeWithTag("saqz-bottom-nav-item-3").assertTextEquals("Mais")
     }
 
     @Test
@@ -172,7 +209,16 @@ class GroupsRouteHostTest {
         onNodeWithTag(SaqzTopBarBackTag).assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
         onNodeWithTag("saqz-bottom-nav-item-0").assertIsNotSelected()
-        onNodeWithTag("saqz-bottom-nav-item-2").assertIsSelected()
+        onNodeWithTag("saqz-bottom-nav-item-1").assertIsSelected()
+        assertEquals(
+            4,
+            onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
+                .fetchSemanticsNodes().size,
+        )
+        assertEquals(
+            onNodeWithTag(GroupsNavigationTags.List).getUnclippedBoundsInRoot().bottom,
+            onNodeWithTag(GroupsNavigationTags.BottomMenu).getUnclippedBoundsInRoot().top,
+        )
     }
 
     @Test

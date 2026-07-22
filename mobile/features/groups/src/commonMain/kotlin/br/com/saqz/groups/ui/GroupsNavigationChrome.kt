@@ -136,12 +136,6 @@ private fun GroupBottomMenu(
             icon = { MaterialIcon(Res.drawable.material_home, tint(GroupsDestination.HOME), 20.dp) },
         ),
         SaqzBottomNavItem(
-            label = stringResource(Res.string.groups_games),
-            selected = selected == GroupsDestination.GAMES,
-            onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGames) },
-            icon = { MaterialIcon(Res.drawable.material_calendar, tint(GroupsDestination.GAMES), 20.dp) },
-        ),
-        SaqzBottomNavItem(
             label = stringResource(Res.string.nav_groups),
             selected = selected == GroupsDestination.SELECTOR,
             onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGroups) },

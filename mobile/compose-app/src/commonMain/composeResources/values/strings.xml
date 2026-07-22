@@ -1,6 +1,7 @@
 <resources>
     <string name="home_title">Saqz</string>
     <string name="home_explore_components">Explorar componentes</string>
+    <string name="authenticated_home_title">Home screen</string>
     <string name="nav_home">Início</string>
     <string name="nav_components">Componentes</string>
 </resources>

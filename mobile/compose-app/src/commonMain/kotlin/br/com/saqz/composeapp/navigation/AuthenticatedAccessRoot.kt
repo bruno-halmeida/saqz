@@ -14,6 +14,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -96,6 +97,7 @@ import br.com.saqz.groups.ui.GroupOnboardingIntent
 import br.com.saqz.groups.ui.GroupSettingsScreen
 import br.com.saqz.groups.ui.GroupSettingsIntent
 import br.com.saqz.groups.ui.GroupSettingsUiState
+import br.com.saqz.groups.ui.GroupsSelectorChrome
 import br.com.saqz.groups.ui.InviteManagementScreen
 import br.com.saqz.groups.ui.InviteManagementIntent
 import br.com.saqz.groups.ui.InviteManagementUiState
@@ -113,6 +115,7 @@ import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.home.AuthenticatedHomeScreen
 import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
@@ -384,6 +387,7 @@ internal fun AuthenticatedAccessRoute(
         onIntent = onAccessIntent,
         groupsNavigation = groupsNavigation,
         onGroupsIntent = groupsViewModel::onIntent,
+        initiallyShowAppHome = true,
         groupSetupState = groupSetupState,
         onGroupSetupIntent = groupSetupViewModel?.let { viewModel -> viewModel::onIntent } ?: {},
         groupPhotoState = groupPhotoState,
@@ -429,6 +433,7 @@ internal fun AuthenticatedAccessRoot(
     state: AccessRootSnapshot,
     groupsNavigation: GroupsNavigationState? = null,
     onGroupsIntent: (GroupsNavigationIntent) -> Unit = {},
+    initiallyShowAppHome: Boolean = false,
     groupSetupState: GroupSetupState? = null,
     onGroupSetupIntent: (GroupSetupIntent) -> Unit = {},
     groupPhotoState: GroupPhotoState = GroupPhotoState(),
@@ -443,6 +448,27 @@ internal fun AuthenticatedAccessRoot(
     val desired = state.destination()
     val stack = AccessDestinationStack(desired).also { it.replace(desired) }
     val destination = stack.entries.single()
+    var showAppHome by rememberSaveable { mutableStateOf(initiallyShowAppHome) }
+    val handleGroupsIntent: (GroupsNavigationIntent) -> Unit = { intent ->
+        when {
+            showAppHome && intent == GroupsNavigationIntent.OpenHome -> Unit
+            !showAppHome &&
+                groupsNavigation?.destination == GroupsDestination.SELECTOR &&
+                intent == GroupsNavigationIntent.OpenHome -> showAppHome = true
+            else -> {
+                showAppHome = false
+                onGroupsIntent(intent)
+            }
+        }
+    }
+    LaunchedEffect(destination) {
+        if (destination == AccessDestination.LOGIN) showAppHome = initiallyShowAppHome
+    }
+    LaunchedEffect(groupsNavigation?.destination, groupsNavigation?.gameId) {
+        if (groupsNavigation?.destination == GroupsDestination.GAME_DETAIL) {
+            showAppHome = false
+        }
+    }
     val systemBackIntent = destination.systemBackIntent()
     BackHandler(enabled = systemBackIntent != null) {
         systemBackIntent?.let(onIntent)
@@ -459,7 +485,8 @@ internal fun AuthenticatedAccessRoot(
                 state,
                 onIntent,
                 groupsNavigation,
-                onGroupsIntent,
+                handleGroupsIntent,
+                showAppHome,
                 groupSetupState,
                 onGroupSetupIntent,
                 groupPhotoState,
@@ -713,6 +740,7 @@ private fun DestinationContent(
     onIntent: (AccessIntent) -> Unit,
     groupsNavigation: GroupsNavigationState?,
     onGroupsIntent: (GroupsNavigationIntent) -> Unit,
+    showAppHome: Boolean,
     groupSetupState: GroupSetupState?,
     onGroupSetupIntent: (GroupSetupIntent) -> Unit,
     groupPhotoState: GroupPhotoState,
@@ -723,6 +751,19 @@ private fun DestinationContent(
     gameDetailState: GameDetailState?,
     onGameDetailIntent: (GameDetailIntent) -> Unit,
 ) {
+    if (
+        showAppHome &&
+        groupsNavigation != null &&
+        destination in setOf(AccessDestination.GROUP_ONBOARDING, AccessDestination.GROUP_CONTEXT)
+    ) {
+        GroupsSelectorChrome(
+            navigation = groupsNavigation.copy(destination = GroupsDestination.HOME),
+            onNavigationIntent = onGroupsIntent,
+        ) {
+            AuthenticatedHomeScreen()
+        }
+        return
+    }
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
         AccessDestination.LOGIN -> LoginScreen(state.authentication) { intent ->

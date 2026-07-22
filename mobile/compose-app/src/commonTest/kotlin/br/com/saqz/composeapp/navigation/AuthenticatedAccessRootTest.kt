@@ -2,10 +2,13 @@ package br.com.saqz.composeapp.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +20,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.designsystem.component.SaqzTopBarTitleTag
 import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.GroupPhotoReadResult
 import br.com.saqz.groups.data.GroupPhotoReceipt
@@ -332,6 +336,86 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
+    fun `authenticated product starts on home and switches to the group selector`() = runComposeUiTest {
+        val groupsIntents = mutableListOf<GroupsNavigationIntent>()
+        root(
+            state = ready(selector),
+            groupsNavigation = GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = session.memberships,
+            ),
+            onGroupsIntent = groupsIntents::add,
+            initiallyShowAppHome = true,
+        )
+
+        onNodeWithText("Home screen").assertIsDisplayed()
+        onNodeWithTag("saqz-bottom-nav-item-0").assertIsSelected()
+        onNodeWithText("Alpha").assertDoesNotExist()
+
+        onNodeWithTag("saqz-bottom-nav-item-1").performClick()
+
+        assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenGroups), groupsIntents)
+        onNodeWithText("Home screen").assertDoesNotExist()
+        onNodeWithText("Alpha").assertExists()
+        onNodeWithTag("saqz-bottom-nav-item-1").assertIsSelected()
+
+        onNodeWithTag("saqz-bottom-nav-item-0").performClick()
+
+        onNodeWithText("Home screen").assertIsDisplayed()
+        assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenGroups), groupsIntents)
+    }
+
+    @Test
+    fun `groups from authenticated home preserves no membership onboarding`() = runComposeUiTest {
+        root(
+            state = snapshot(
+                session = SessionAccessState.Ready(session.copy(memberships = emptyList())),
+            ),
+            groupsNavigation = GroupsNavigationState(destination = GroupsDestination.SETUP),
+            initiallyShowAppHome = true,
+        )
+
+        onNodeWithText("Home screen").assertIsDisplayed()
+
+        onNodeWithTag("saqz-bottom-nav-item-1").performClick()
+
+        onNodeWithText("Home screen").assertDoesNotExist()
+        onNodeWithText("Criar grupo").assertExists()
+    }
+
+    @Test
+    fun `deferred game detail replaces authenticated home`() = runComposeUiTest {
+        val navigation = mutableStateOf(
+            GroupsNavigationState(
+                destination = GroupsDestination.HOME,
+                groupId = group.group.id,
+            ),
+        )
+        setContent {
+            SaqzTheme {
+                AuthenticatedAccessRoot(
+                    state = active(ownerAdministration),
+                    groupsNavigation = navigation.value,
+                    initiallyShowAppHome = true,
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Home screen").assertIsDisplayed()
+
+        runOnIdle {
+            navigation.value = navigation.value.copy(
+                destination = GroupsDestination.GAME_DETAIL,
+                gameId = "game-1",
+            )
+        }
+
+        onNodeWithText("Home screen").assertDoesNotExist()
+        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Detalhes do jogo")
+    }
+
+    @Test
     fun `groups list selection routes the exact group through navigation and access`() = runComposeUiTest {
         val accessIntents = mutableListOf<AccessIntent>()
         val groupsIntents = mutableListOf<GroupsNavigationIntent>()
@@ -489,12 +573,14 @@ class AuthenticatedAccessRootTest {
         onIntent: (AccessIntent) -> Unit = {},
         groupsNavigation: GroupsNavigationState? = null,
         onGroupsIntent: (GroupsNavigationIntent) -> Unit = {},
+        initiallyShowAppHome: Boolean = false,
     ) = setContent {
         SaqzTheme {
             AuthenticatedAccessRoot(
                 state,
                 groupsNavigation = groupsNavigation,
                 onGroupsIntent = onGroupsIntent,
+                initiallyShowAppHome = initiallyShowAppHome,
                 onIntent = onIntent,
             )
         }
