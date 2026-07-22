@@ -8,12 +8,13 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.testSaqzPlatformDependencies
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupGateway
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.CreateGroupCommand
+import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.GroupSelectionState
-import br.com.saqz.network.NetworkResult
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.domain.session.AccessMembership
@@ -120,12 +121,12 @@ class AccessOrchestratorTest {
     }
 
     private object SelectedGroupGateway : GroupGateway {
-        override suspend fun create(requestId: String, name: String, timeZone: String) =
+        override suspend fun create(command: CreateGroupCommand) =
             error("not used by this test")
 
-        override suspend fun read(groupId: String) = NetworkResult.Success(selectedGroup)
+        override suspend fun read(groupId: GroupId) = SaqzResult.Success(selectedGroup)
 
-        override suspend fun update(groupId: String, etag: String, name: String, timeZone: String) =
+        override suspend fun update(command: UpdateGroupSettingsCommand) =
             error("not used by this test")
     }
 
@@ -134,9 +135,9 @@ class AccessOrchestratorTest {
             user = AccessUser("user-id", "person@example.test", "Person"),
             memberships = listOf(AccessMembership(GroupId("group-id"), "Group", AccessMembershipRole("OWNER"))),
         )
-        val selectedGroup = VersionedGroupDto(
-            group = GroupDto("group-id", "Group", "UTC", 7, GroupRoleDto.OWNER),
-            etag = "\"7\"",
+        val selectedGroup = VersionedGroup(
+            group = Group("group-id", "Group", "UTC", 7, GroupRole.OWNER),
+            versionToken = "\"7\"",
         )
     }
 }

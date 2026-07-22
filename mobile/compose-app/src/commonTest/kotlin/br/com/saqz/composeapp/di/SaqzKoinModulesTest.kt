@@ -11,6 +11,7 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeSharePort
+import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
@@ -22,10 +23,13 @@ import br.com.saqz.access.data.session.KtorSessionGateway
 import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.domain.session.SessionInvalidator as AccessSessionInvalidator
 import br.com.saqz.access.presentation.SessionAccessStateMachine
-import br.com.saqz.groups.data.GroupApi
-import br.com.saqz.groups.data.GroupGateway
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.access.presentation.AuthTransition
+import br.com.saqz.groups.data.group.KtorGroupGateway
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.attendance.AttendanceGateway
@@ -42,13 +46,13 @@ import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
 import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.GroupOperationResult
-import br.com.saqz.groups.port.GroupPhotoCrop
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoEncodingResult
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
-import br.com.saqz.groups.port.GroupPhotoSelectionPort
-import br.com.saqz.groups.port.GroupPhotoSelectionResult
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
@@ -76,7 +80,14 @@ import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.SessionInvalidator as NetworkSessionInvalidator
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import org.koin.dsl.koinApplication
@@ -200,6 +211,57 @@ class SaqzKoinModulesTest {
     }
 
     @Test
+    fun gameDetailUnauthorizedResponseInvalidatesResolvedSession() = runTest {
+        val auth = RefreshingAuthPort()
+        val unauthorizedNetwork = module {
+            single<NativeAuthPort> { auth }
+            single {
+                NetworkClient(
+                    MockEngine {
+                        respond(
+                            content = """{"status":401,"code":"AUTHENTICATION_REQUIRED"}""",
+                            status = HttpStatusCode.Unauthorized,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+                    },
+                    get(),
+                )
+            }
+        }
+        val app = koinApplication {
+            allowOverride(true)
+            modules(
+                configFixturesModule,
+                nativePortsFixtureModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+                accessPresentationModule,
+                groupsDataModule,
+                unauthorizedNetwork,
+            )
+        }
+        val koin = app.koin
+        val session = koin.get<SessionAccessStateMachine>()
+        session.onIntent(
+            SessionIntent.Accept(
+                AuthTransition.VerificationRequired(
+                    NativeUser(subject = "user-1", email = "person@example.com", displayName = "Person", emailVerified = false),
+                ),
+            ),
+        )
+        assertIs<SessionAccessState.AwaitingVerification>(session.state.value)
+
+        koin.get<GameGateway>().read("group-1", "game-1")
+
+        assertEquals(SessionAccessState.SignedOut, session.state.value)
+        assertEquals(1, auth.signOutCalls)
+        assertEquals(listOf(false, true), auth.forceRefreshCalls)
+        app.close()
+    }
+
+    @Test
     fun groupsModuleResolvesGatewaysAndMachines() {
         val app = koinApplication {
             modules(
@@ -217,7 +279,7 @@ class SaqzKoinModulesTest {
         }
         val koin = app.koin
 
-        val groupApi = koin.get<GroupApi>()
+        val groupApi = koin.get<KtorGroupGateway>()
         assertSame(groupApi, koin.get<GroupGateway>())
         assertSame(groupApi, koin.get<GroupProfileGateway>())
         assertSame(koin.get<RolesInvitesApi>(), koin.get<RolesInvitesGateway>())
@@ -241,6 +303,21 @@ class SaqzKoinModulesTest {
         assertSame(FakeLocalGroupStatePort, koin.get<LocalGroupStatePort>())
 
         app.close()
+    }
+}
+
+private class RefreshingAuthPort : NativeAuthPort by FakeAuthPort {
+    var signOutCalls = 0
+    val forceRefreshCalls = mutableListOf<Boolean>()
+
+    override fun idToken(forceRefresh: Boolean, done: TokenCallback) {
+        forceRefreshCalls += forceRefresh
+        done.complete(TokenResult.Success(if (forceRefresh) "new-token" else "old-token"))
+    }
+
+    override fun signOut(done: ResultCallback) {
+        signOutCalls += 1
+        done.complete(OperationResult.Success)
     }
 }
 

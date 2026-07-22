@@ -1,9 +1,9 @@
 package br.com.saqz.composeapp.navigation
 
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupProfileStatusDto
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
@@ -11,6 +11,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationEffect
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.GroupSelectionMembership
+import br.com.saqz.domain.GroupId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -94,7 +95,7 @@ class GroupsNavigationViewModelTest {
 
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
-                selection = selectedState(admin.copy(id = "next")),
+                selection = selectedState(admin.copy(id = GroupId("next"))),
                 memberships = memberships,
             ),
         )
@@ -116,7 +117,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(GroupsNavigationIntent.OpenGroup("next"))
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
-                selection = selectedState(admin.copy(id = "next")),
+                selection = selectedState(admin.copy(id = GroupId("next"))),
                 memberships = memberships,
             ),
         )
@@ -216,7 +217,7 @@ class GroupsNavigationViewModelTest {
 
     @Test
     fun `incomplete owner is routed to profile completion readably`() {
-        val state = selected(owner.copy(profileStatus = GroupProfileStatusDto.INCOMPLETE)).state.value
+        val state = selected(owner.copy(profileStatus = GroupProfileStatus.INCOMPLETE)).state.value
         assertEquals(GroupsDestination.PROFILE_COMPLETION, state.destination)
         assertTrue(state.access.canCompleteProfile)
         assertFalse(state.access.canMutateOperations)
@@ -225,7 +226,7 @@ class GroupsNavigationViewModelTest {
 
     @Test
     fun `incomplete admin is routed to profile completion with mutations blocked`() {
-        val state = selected(admin.copy(profileStatus = GroupProfileStatusDto.INCOMPLETE)).state.value
+        val state = selected(admin.copy(profileStatus = GroupProfileStatus.INCOMPLETE)).state.value
         assertEquals(GroupsDestination.PROFILE_COMPLETION, state.destination)
         assertTrue(state.access.canCompleteProfile)
         assertFalse(state.access.canMutateOperations)
@@ -233,7 +234,7 @@ class GroupsNavigationViewModelTest {
 
     @Test
     fun `incomplete athlete stays readable without completion edit`() {
-        val state = selected(athlete.copy(profileStatus = GroupProfileStatusDto.INCOMPLETE)).state.value
+        val state = selected(athlete.copy(profileStatus = GroupProfileStatus.INCOMPLETE)).state.value
         assertEquals(GroupsDestination.HOME, state.destination)
         assertFalse(state.access.canCompleteProfile)
         assertFalse(state.access.canMutateOperations)
@@ -269,7 +270,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(GroupsNavigationIntent.OpenGameDetail("old-game"))
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
-                selectedState(admin.copy(id = "next")),
+                selectedState(admin.copy(id = GroupId("next"))),
                 listOf(GroupSelectionMembership("next", "Next", "ADMIN")),
             ),
         )
@@ -305,13 +306,13 @@ class GroupsNavigationViewModelTest {
         assertEquals(GroupsDestination.GAMES, viewModel.state.value.destination)
     }
 
-    private fun selected(group: GroupDto): GroupsNavigationViewModel = GroupsNavigationViewModel().also {
+    private fun selected(group: Group): GroupsNavigationViewModel = GroupsNavigationViewModel().also {
         it.onIntent(GroupsNavigationIntent.Reconcile(selectedState(group), listOf(membership(group))))
     }
 
-    private fun selectedState(group: GroupDto) = GroupSelectionState.Selected(VersionedGroupDto(group, "etag"))
+    private fun selectedState(group: Group) = GroupSelectionState.Selected(VersionedGroup(group, "etag"))
 
-    private fun membership(group: GroupDto) = GroupSelectionMembership(group.id, group.name, group.role.name)
+    private fun membership(group: Group) = GroupSelectionMembership(group.id.value, group.name, group.role.name)
 
     private fun assertUnscoped(viewModel: GroupsNavigationViewModel, destination: GroupsDestination) {
         assertEquals(destination, viewModel.state.value.destination)
@@ -325,15 +326,15 @@ class GroupsNavigationViewModelTest {
 
     private companion object {
         const val GROUP_ID = "group-1"
-        val owner = group(GroupRoleDto.OWNER)
-        val admin = group(GroupRoleDto.ADMIN)
-        val athlete = group(GroupRoleDto.ATHLETE)
+        val owner = group(GroupRole.OWNER)
+        val admin = group(GroupRole.ADMIN)
+        val athlete = group(GroupRole.ATHLETE)
         val memberships = listOf(
             GroupSelectionMembership(GROUP_ID, "Private Group", "OWNER"),
             GroupSelectionMembership("next", "Next", "ADMIN"),
         )
 
-        fun group(role: GroupRoleDto) = GroupDto(
+        fun group(role: GroupRole) = Group(
             id = GROUP_ID,
             name = "Private Group",
             timeZone = "America/Sao_Paulo",

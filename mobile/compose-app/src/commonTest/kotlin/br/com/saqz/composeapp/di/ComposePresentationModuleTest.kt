@@ -1,7 +1,10 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
+import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.data.attendance.AttendanceDetailDto
 import br.com.saqz.groups.data.attendance.AttendanceGateway
 import br.com.saqz.groups.data.attendance.CapacityCommand
@@ -22,10 +25,8 @@ import br.com.saqz.groups.data.game.SeriesBoundaryCommand
 import br.com.saqz.groups.data.game.VersionedGameDto
 import br.com.saqz.groups.data.game.VersionedSeriesDto
 import br.com.saqz.groups.data.game.WeeklySeriesWriteCommand
-import br.com.saqz.groups.model.GroupCreateCommand
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.model.GroupUpdateCommand
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
@@ -103,7 +104,7 @@ class ComposePresentationModuleTest {
                     GameDetailViewModelParameters(
                         groupId = "group",
                         gameId = "game",
-                        role = GroupRoleDto.OWNER,
+                        role = GroupRole.OWNER,
                         testScope = this,
                     ),
                 )
@@ -123,9 +124,9 @@ class ComposePresentationModuleTest {
 }
 
 private object UnusedGroupProfileGateway : GroupProfileGateway {
-    override suspend fun createProfile(command: GroupCreateCommand) = error("unused")
-    override suspend fun readProfile(groupId: String) = error("unused")
-    override suspend fun updateProfile(command: GroupUpdateCommand) = error("unused")
+    override suspend fun createProfile(command: CreateGroupProfileCommand) = error("unused")
+    override suspend fun readProfile(groupId: GroupId) = error("unused")
+    override suspend fun updateProfile(command: UpdateGroupProfileCommand) = error("unused")
 }
 
 private class RecordingDraftStore : GroupDraftStorePort {

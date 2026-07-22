@@ -22,14 +22,15 @@ import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.startTestSaqzKoin
 import br.com.saqz.composeapp.stopTestSaqzKoin
 import br.com.saqz.designsystem.component.SaqzTopBarTitleTag
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupPhotoReadResult
-import br.com.saqz.groups.data.GroupPhotoReceipt
-import br.com.saqz.groups.data.GroupPhotoUploadCommand
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoReadResult
+import br.com.saqz.groups.domain.photo.GroupPhotoReceipt
+import br.com.saqz.groups.domain.photo.GroupPhotoUploadCommand
+import br.com.saqz.groups.domain.photo.GroupPhotoVersionToken
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
@@ -44,15 +45,20 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
 import br.com.saqz.groups.presentation.InviteToolState
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupCreateCommand
+import br.com.saqz.groups.domain.group.GroupComposition as DomainGroupComposition
+import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupDraftResource
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.domain.group.GroupModality as DomainGroupModality
+import br.com.saqz.groups.domain.group.GroupSetupForm
+import br.com.saqz.groups.model.GroupSetupForm as DraftGroupSetupForm
 import br.com.saqz.groups.model.GroupSetupDraft
+import br.com.saqz.groups.domain.group.GroupTimeZone as DomainGroupTimeZone
+import br.com.saqz.groups.model.GroupComposition
+import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupTimeZone
-import br.com.saqz.groups.model.GroupUpdateCommand
+import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
+import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
 import br.com.saqz.groups.presentation.setup.GroupSetupInput
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
@@ -60,20 +66,20 @@ import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
-import br.com.saqz.groups.port.EncodedGroupPhoto
+import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
-import br.com.saqz.groups.port.GroupPhotoCrop
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoEncodingResult
-import br.com.saqz.groups.port.GroupPhotoMediaType
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
-import br.com.saqz.groups.port.GroupPhotoSelection
-import br.com.saqz.groups.port.GroupPhotoSelectionPort
-import br.com.saqz.groups.port.GroupPhotoSelectionResult
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
+import br.com.saqz.groups.domain.photo.GroupPhotoMediaType
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelection
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.ui.photo.GroupPhotoTags
@@ -88,7 +94,7 @@ import br.com.saqz.access.domain.session.AccessMembership
 import br.com.saqz.access.domain.session.AccessMembershipRole
 import br.com.saqz.domain.GroupId
 import br.com.saqz.access.domain.session.AccessUser
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.domain.SaqzResult
 import br.com.saqz.access.domain.session.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -234,9 +240,7 @@ class AuthenticatedAccessRootTest {
                 mode = GroupSetupMode.CREATE,
                 form = GroupSetupForm(),
                 commandKey = "create-command",
-                timeZone = GroupTimeZone.parse("America/Sao_Paulo").let {
-                    (it as GroupTimeZone.ParseResult.Valid).value
-                },
+                timeZone = DomainGroupTimeZone("America/Sao_Paulo"),
             ),
         )
 
@@ -279,8 +283,8 @@ class AuthenticatedAccessRootTest {
             waitUntil(timeoutMillis = 5_000) { fixture.photos.uploads.isNotEmpty() }
 
             val upload = fixture.photos.uploads.single()
-            assertEquals("created-group", upload.groupId)
-            assertEquals("\"1\"", upload.groupEtag)
+            assertEquals(GroupId("created-group"), upload.groupId)
+            assertEquals(GroupPhotoVersionToken("\"1\""), upload.groupVersion)
             assertEquals(listOf<Byte>(1, 2, 3), upload.photo.source.read().toList())
             assertEquals(emptyList(), fixture.photos.reads)
         } finally {
@@ -318,7 +322,10 @@ class AuthenticatedAccessRootTest {
 
             waitUntil(timeoutMillis = 5_000) { photos.reads.isNotEmpty() }
 
-            assertEquals(listOf(Pair<String, String?>("current", null)), photos.reads)
+            assertEquals(
+                listOf(Pair<GroupId, GroupPhotoVersionToken?>(GroupId("current"), null)),
+                photos.reads,
+            )
         } finally {
             scope.cancel()
             stopTestSaqzKoin()
@@ -395,7 +402,7 @@ class AuthenticatedAccessRootTest {
         val navigation = mutableStateOf(
             GroupsNavigationState(
                 destination = GroupsDestination.HOME,
-                groupId = group.group.id,
+                groupId = group.group.id.value,
             ),
         )
         setContent {
@@ -494,7 +501,7 @@ class AuthenticatedAccessRootTest {
             onIntent = intents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.HOME,
-                groupId = group.group.id,
+                groupId = group.group.id.value,
                 access = GroupsNavigationAccess(
                     showPeople = true,
                     showGames = true,
@@ -694,38 +701,48 @@ class AuthenticatedAccessRootTest {
 
     private class RecordingPhotoGateway : GroupPhotoGateway {
         val uploads = mutableListOf<GroupPhotoUploadCommand>()
-        val reads = mutableListOf<Pair<String, String?>>()
+        val reads = mutableListOf<Pair<GroupId, GroupPhotoVersionToken?>>()
 
-        override suspend fun upload(command: GroupPhotoUploadCommand): NetworkResult<GroupPhotoReceipt> {
+        override suspend fun upload(command: GroupPhotoUploadCommand): SaqzResult<GroupPhotoReceipt, br.com.saqz.groups.domain.photo.GroupPhotoError> {
             uploads += command
-            return NetworkResult.Success(GroupPhotoReceipt("\"2\""))
+            return SaqzResult.Success(GroupPhotoReceipt(GroupPhotoVersionToken("\"2\"")))
         }
 
-        override suspend fun read(groupId: String, etag: String?): NetworkResult<GroupPhotoReadResult> {
-            reads += groupId to etag
-            return NetworkResult.Success(GroupPhotoReadResult.NotModified)
+        override suspend fun read(
+            groupId: GroupId,
+            version: GroupPhotoVersionToken?,
+        ): SaqzResult<GroupPhotoReadResult, br.com.saqz.groups.domain.photo.GroupPhotoError> {
+            reads += groupId to version
+            return SaqzResult.Success(GroupPhotoReadResult.NotModified)
         }
 
-        override suspend fun remove(groupId: String, groupEtag: String): NetworkResult<GroupPhotoReceipt> =
-            NetworkResult.Success(GroupPhotoReceipt("\"2\""))
+        override suspend fun remove(
+            groupId: GroupId,
+            groupVersion: GroupPhotoVersionToken,
+        ): SaqzResult<GroupPhotoReceipt, br.com.saqz.groups.domain.photo.GroupPhotoError> =
+            SaqzResult.Success(GroupPhotoReceipt(GroupPhotoVersionToken("\"2\"")))
     }
 
     private class RecordingProfileGateway : GroupProfileGateway {
-        override suspend fun createProfile(command: GroupCreateCommand): NetworkResult<GroupDto> =
-            NetworkResult.Success(
-                GroupDto(
+        override suspend fun createProfile(
+            command: CreateGroupProfileCommand,
+        ): SaqzResult<Group, GroupProfileError> =
+            SaqzResult.Success(
+                Group(
                     id = "created-group",
                     name = command.form.name,
                     timeZone = command.timeZone.id,
                     version = 1,
-                    role = GroupRoleDto.OWNER,
+                    role = GroupRole.OWNER,
                 ),
             )
 
-        override suspend fun readProfile(groupId: String): NetworkResult<VersionedGroupDto> =
+        override suspend fun readProfile(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> =
             error("not used")
 
-        override suspend fun updateProfile(command: GroupUpdateCommand): NetworkResult<VersionedGroupDto> =
+        override suspend fun updateProfile(
+            command: UpdateGroupProfileCommand,
+        ): SaqzResult<VersionedGroup, GroupProfileError> =
             error("not used")
     }
 
@@ -769,7 +786,7 @@ class AuthenticatedAccessRootTest {
         groupVersion = null,
         etag = null,
         commandKey = "create-command",
-        form = GroupSetupForm(
+        form = DraftGroupSetupForm(
             name = "Training Club",
             modality = GroupModality.COURT_VOLLEYBALL,
             composition = GroupComposition.MIXED,
@@ -809,8 +826,8 @@ class AuthenticatedAccessRootTest {
             ),
         )
         val selector = GroupSelectionState.Selector(session.memberships.toGroupSelectionMemberships())
-        val group = VersionedGroupDto(
-            GroupDto("current", "Current Group", "America/Sao_Paulo", 1, GroupRoleDto.OWNER),
+        val group = VersionedGroup(
+            Group("current", "Current Group", "America/Sao_Paulo", 1, GroupRole.OWNER),
             "\"1\"",
         )
         val ownerAdministration = GroupAdministrationState(

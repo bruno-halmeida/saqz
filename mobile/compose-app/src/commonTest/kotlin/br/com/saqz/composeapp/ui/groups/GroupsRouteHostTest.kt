@@ -31,15 +31,15 @@ import br.com.saqz.designsystem.component.SaqzTopBarBackTag
 import br.com.saqz.designsystem.component.SaqzTopBarTag
 import br.com.saqz.designsystem.component.SaqzTopBarTitleTag
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupProfileDto
-import br.com.saqz.groups.data.GroupProfileStatusDto
-import br.com.saqz.groups.data.GroupRegularSlotDto
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.GroupVenueDto
-import br.com.saqz.groups.data.GroupWeekdayDto
-import br.com.saqz.groups.data.MembershipDto
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupProfile
+import br.com.saqz.groups.domain.group.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.group.GroupWeekday
+import br.com.saqz.groups.domain.membership.GroupMembership
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
@@ -51,7 +51,7 @@ import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.GroupSelectionMembership
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -60,7 +60,7 @@ import kotlin.test.assertEquals
 class GroupsRouteHostTest {
     @Test
     fun `selected group home renders its top bar without bottom menu`() = runComposeUiTest {
-        host(owner, access(GroupRoleDto.OWNER))
+        host(owner, access(GroupRole.OWNER))
 
         onNodeWithTag(SaqzTopBarTag).assertIsDisplayed()
         onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Private Group")
@@ -71,7 +71,7 @@ class GroupsRouteHostTest {
     fun `game detail shows its exact title without bottom menu`() = runComposeUiTest {
         host(
             owner,
-            access(GroupRoleDto.OWNER).copy(
+            access(GroupRole.OWNER).copy(
                 destination = GroupsDestination.GAME_DETAIL,
                 gameId = "game-1",
             ),
@@ -87,7 +87,7 @@ class GroupsRouteHostTest {
         setContent {
             SaqzTheme {
                 GroupsRouteHost(
-                    navigation = access(GroupRoleDto.OWNER).copy(destination = destination.value),
+                    navigation = access(GroupRole.OWNER).copy(destination = destination.value),
                     administration = administration(owner),
                     onNavigationIntent = {},
                     onOpenSettings = {},
@@ -162,7 +162,7 @@ class GroupsRouteHostTest {
 
     @Test
     fun `notices destination shows the placeholder without bottom menu`() = runComposeUiTest {
-        host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.NOTICES))
+        host(owner, access(GroupRole.OWNER).copy(destination = GroupsDestination.NOTICES))
 
         onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Avisos")
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
@@ -173,7 +173,7 @@ class GroupsRouteHostTest {
     @Test
     fun `more destination lists owner shortcuts and emits typed intents`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
-        host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.MORE), intents)
+        host(owner, access(GroupRole.OWNER).copy(destination = GroupsDestination.MORE), intents)
 
         onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.MorePeople).performClick()
@@ -187,7 +187,7 @@ class GroupsRouteHostTest {
 
     @Test
     fun `more destination hides people and labels own charges for athletes`() = runComposeUiTest {
-        host(athlete, access(GroupRoleDto.ATHLETE).copy(destination = GroupsDestination.MORE))
+        host(athlete, access(GroupRole.ATHLETE).copy(destination = GroupsDestination.MORE))
 
         onNodeWithTag(GroupsNavigationTags.MorePeople).assertDoesNotExist()
         onNodeWithText("Minhas cobranças").assertExists()
@@ -226,7 +226,7 @@ class GroupsRouteHostTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(
             owner,
-            access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.GAMES),
+            access(GroupRole.OWNER).copy(destination = GroupsDestination.GAMES),
             intents,
         )
 
@@ -315,8 +315,8 @@ class GroupsRouteHostTest {
     fun `group detail follows the reference hierarchy with truthful empty states`() = runComposeUiTest {
         host(
             group = ownerWithRoutine,
-            navigation = access(GroupRoleDto.OWNER),
-            groupMembers = listOf(MembershipDto("person-1", "Ana Lima", GroupRoleDto.ATHLETE)),
+            navigation = access(GroupRole.OWNER),
+            groupMembers = listOf(GroupMembership("person-1", "Ana Lima", GroupRole.ATHLETE)),
         )
 
         onNodeWithTag(GroupsNavigationTags.Summary).assertExists()
@@ -340,8 +340,8 @@ class GroupsRouteHostTest {
     fun `unloaded private data renders truthful fallback states`() = runComposeUiTest {
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER),
-            photoState = GroupPhotoState(groupId = owner.id),
+            navigation = access(GroupRole.OWNER),
+            photoState = GroupPhotoState(groupId = owner.id.value),
         )
 
         onNodeWithText("Local ainda não definido").assertExists()
@@ -355,8 +355,8 @@ class GroupsRouteHostTest {
     fun `matching group loading renders a stable 104 dp skeleton`() = runComposeUiTest {
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER),
-            photoState = GroupPhotoState(groupId = owner.id, stage = GroupPhotoStage.LOADING),
+            navigation = access(GroupRole.OWNER),
+            photoState = GroupPhotoState(groupId = owner.id.value, stage = GroupPhotoStage.LOADING),
         )
 
         onNodeWithTag(GroupsNavigationTags.SummaryPhoto)
@@ -370,8 +370,8 @@ class GroupsRouteHostTest {
     fun `valid photo occupies the stable crop slot`() = runComposeUiTest {
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER),
-            photoState = photoState(owner.id),
+            navigation = access(GroupRole.OWNER),
+            photoState = photoState(owner.id.value),
             photoPreview = { _, modifier ->
                 Box(modifier)
                 GroupPhotoRenderState.SUCCESS
@@ -390,8 +390,8 @@ class GroupsRouteHostTest {
     fun `decode failure falls back to initials without visible error`() = runComposeUiTest {
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER),
-            photoState = photoState(owner.id),
+            navigation = access(GroupRole.OWNER),
+            photoState = photoState(owner.id.value),
             photoPreview = { _, _ -> GroupPhotoRenderState.FAILURE },
         )
 
@@ -405,7 +405,7 @@ class GroupsRouteHostTest {
         val rendered = mutableListOf<GroupPhotoPreviewHandle>()
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER),
+            navigation = access(GroupRole.OWNER),
             photoState = photoState("previous-group"),
             photoPreview = { handle, _ ->
                 rendered += handle
@@ -423,7 +423,7 @@ class GroupsRouteHostTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER).copy(memberships = sessionGroups),
+            navigation = access(GroupRole.OWNER).copy(memberships = sessionGroups),
             intents = intents,
         )
 
@@ -436,7 +436,7 @@ class GroupsRouteHostTest {
     fun `single group detail has no return to list action`() = runComposeUiTest {
         host(
             group = owner,
-            navigation = access(GroupRoleDto.OWNER).copy(memberships = sessionGroups.take(1)),
+            navigation = access(GroupRole.OWNER).copy(memberships = sessionGroups.take(1)),
         )
 
         onNodeWithTag(SaqzTopBarBackTag).assertDoesNotExist()
@@ -449,7 +449,7 @@ class GroupsRouteHostTest {
                 Box(Modifier.size(320.dp, 420.dp)) {
                     SaqzTheme {
                         GroupsRouteHost(
-                            navigation = access(GroupRoleDto.OWNER),
+                            navigation = access(GroupRole.OWNER),
                             administration = administration(owner),
                             onNavigationIntent = {},
                             onOpenSettings = {},
@@ -474,7 +474,7 @@ class GroupsRouteHostTest {
 
     @Test
     fun `owner home exposes people games and organizer finance`() = runComposeUiTest {
-        host(owner, access(GroupRoleDto.OWNER))
+        host(owner, access(GroupRole.OWNER))
         onNodeWithContentDescription("Pessoas").assertExists()
         onNodeWithTag(GroupsNavigationTags.ShortcutGames).assertExists()
         onNodeWithContentDescription("Financeiro").assertExists()
@@ -483,7 +483,7 @@ class GroupsRouteHostTest {
 
     @Test
     fun `athlete home hides people and exposes own charges label`() = runComposeUiTest {
-        host(athlete, access(GroupRoleDto.ATHLETE))
+        host(athlete, access(GroupRole.ATHLETE))
         onNodeWithContentDescription("Pessoas").assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.ShortcutGames).assertExists()
         onNodeWithContentDescription("Minhas cobranças").assertExists()
@@ -494,8 +494,8 @@ class GroupsRouteHostTest {
 
     @Test
     fun `incomplete organizer receives readable warning and completion action`() = runComposeUiTest {
-        val group = owner.copy(profileStatus = GroupProfileStatusDto.INCOMPLETE)
-        host(group, access(GroupRoleDto.OWNER, complete = false).copy(destination = GroupsDestination.HOME))
+        val group = owner.copy(profileStatus = GroupProfileStatus.INCOMPLETE)
+        host(group, access(GroupRole.OWNER, complete = false).copy(destination = GroupsDestination.HOME))
         onNodeWithText("precisa ser concluído", substring = true).assertExists()
         onNodeWithText("Concluir perfil").assertExists()
     }
@@ -503,7 +503,7 @@ class GroupsRouteHostTest {
     @Test
     fun `games action emits one typed navigation intent`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
-        host(owner, access(GroupRoleDto.OWNER), intents)
+        host(owner, access(GroupRole.OWNER), intents)
         onNodeWithTag(GroupsNavigationTags.ShortcutGames).performClick()
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenGames), intents)
     }
@@ -511,7 +511,7 @@ class GroupsRouteHostTest {
     @Test
     fun `athlete finance action emits role neutral intent for policy resolution`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
-        host(athlete, access(GroupRoleDto.ATHLETE), intents)
+        host(athlete, access(GroupRole.ATHLETE), intents)
         onNodeWithTag(GroupsNavigationTags.ShortcutFinance).performClick()
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenFinance), intents)
     }
@@ -519,18 +519,18 @@ class GroupsRouteHostTest {
     @Test
     fun `route page returns to exact selected group home`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
-        host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.GAMES), intents)
+        host(owner, access(GroupRole.OWNER).copy(destination = GroupsDestination.GAMES), intents)
         onNodeWithTag(GroupsNavigationTags.Games).assertExists()
         onNodeWithText("Voltar ao grupo").performClick()
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenHome), intents)
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.host(
-        group: GroupDto,
+        group: Group,
         navigation: GroupsNavigationState,
         intents: MutableList<GroupsNavigationIntent> = mutableListOf(),
         selectedGroups: MutableList<String> = mutableListOf(),
-        groupMembers: List<MembershipDto> = emptyList(),
+        groupMembers: List<GroupMembership> = emptyList(),
         photoState: GroupPhotoState = GroupPhotoState(),
         photoPreview: (@Composable (
             GroupPhotoPreviewHandle,
@@ -554,31 +554,31 @@ class GroupsRouteHostTest {
         }
     }
 
-    private fun administration(group: GroupDto, members: List<MembershipDto> = emptyList()) =
+    private fun administration(group: Group, members: List<GroupMembership> = emptyList()) =
         GroupAdministrationState(
-            group = VersionedGroupDto(group, "etag"),
+            group = VersionedGroup(group, "etag"),
             memberships = members,
             actions = GroupActions(
-                canEditSettings = group.role != GroupRoleDto.ATHLETE,
-                canManageRoles = group.role != GroupRoleDto.ATHLETE,
-                canManageInvite = group.role != GroupRoleDto.ATHLETE,
+                canEditSettings = group.role != GroupRole.ATHLETE,
+                canManageRoles = group.role != GroupRole.ATHLETE,
+                canManageInvite = group.role != GroupRole.ATHLETE,
             ),
         )
 
-    private fun access(role: GroupRoleDto, complete: Boolean = true) = GroupsNavigationState(
-        destination = if (!complete && role != GroupRoleDto.ATHLETE) {
+    private fun access(role: GroupRole, complete: Boolean = true) = GroupsNavigationState(
+        destination = if (!complete && role != GroupRole.ATHLETE) {
             GroupsDestination.PROFILE_COMPLETION
         } else {
             GroupsDestination.HOME
         },
         groupId = "group-1",
         access = GroupsNavigationAccess(
-            showPeople = role != GroupRoleDto.ATHLETE,
+            showPeople = role != GroupRole.ATHLETE,
             showGames = true,
             showFinance = true,
-            canCompleteProfile = !complete && role != GroupRoleDto.ATHLETE,
-            canMutateOperations = complete && role != GroupRoleDto.ATHLETE,
-            financeDestination = if (role == GroupRoleDto.ATHLETE) {
+            canCompleteProfile = !complete && role != GroupRole.ATHLETE,
+            canMutateOperations = complete && role != GroupRole.ATHLETE,
+            financeDestination = if (role == GroupRole.ATHLETE) {
                 GroupsDestination.OWN_CHARGES
             } else {
                 GroupsDestination.FINANCE
@@ -592,31 +592,41 @@ class GroupsRouteHostTest {
             existing = ExistingGroupPhoto(GroupPhotoPreviewHandle("preview"), "photo-etag"),
         )
 
-        val owner = group(GroupRoleDto.OWNER)
-        val athlete = group(GroupRoleDto.ATHLETE)
+        val owner = group(GroupRole.OWNER)
+        val athlete = group(GroupRole.ATHLETE)
         val sessionGroups = listOf(
             GroupSelectionMembership("group-1", "Private Group", "OWNER"),
             GroupSelectionMembership("next", "Next", "ADMIN"),
         )
         val ownerWithRoutine = owner.copy(
-            profile = GroupProfileDto(
-                defaultVenue = GroupVenueDto(
+            profile = GroupProfile(
+                modality = null,
+                composition = null,
+                description = null,
+                city = null,
+                level = null,
+                customLevel = null,
+                playStyle = null,
+                customPlayStyle = null,
+                defaultVenue = GroupVenue(
                     id = "venue-1",
                     name = "Quadra do Parque",
                     address = "Rua das Flores, 10",
                 ),
                 regularSlots = listOf(
-                    GroupRegularSlotDto(
+                    GroupRegularSlot(
                         id = "slot-1",
-                        weekday = GroupWeekdayDto.TUESDAY,
+                        weekday = GroupWeekday.TUESDAY,
                         startTime = "19:30",
                         durationMinutes = 90,
                     ),
                 ),
+                defaultCapacity = null,
+                defaultConfirmationLeadMinutes = null,
             ),
         )
 
-        fun group(role: GroupRoleDto) = GroupDto(
+        fun group(role: GroupRole) = Group(
             id = "group-1",
             name = "Private Group",
             timeZone = "America/Sao_Paulo",

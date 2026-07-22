@@ -6,8 +6,8 @@ import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.composeapp.di.loadSaqzPlatformDependencies
 import br.com.saqz.composeapp.navigation.AccessOrchestrator
 import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.network.AuthenticatedNetworkClient
 import kotlin.test.Test
 import kotlin.test.assertNotNull

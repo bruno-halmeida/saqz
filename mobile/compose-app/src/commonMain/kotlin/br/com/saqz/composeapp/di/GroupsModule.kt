@@ -1,10 +1,12 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.groups.data.GroupApi
-import br.com.saqz.groups.data.GroupGateway
-import br.com.saqz.groups.data.GroupPhotoApi
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.data.photo.KtorGroupPhotoGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.data.group.KtorGroupGateway
+import br.com.saqz.groups.data.membership.KtorGroupMembershipGateway
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.attendance.AttendanceApi
@@ -42,11 +44,13 @@ internal class AttendanceDestinationStore {
 }
 
 internal val groupsDataModule = module {
-    singleOf(::GroupApi) {
-        bind<GroupGateway>()
-        bind<GroupProfileGateway>()
-    }
-    singleOf(::GroupPhotoApi) { bind<GroupPhotoGateway>() }
+    single { KtorGroupGateway(get()) }
+    single<GroupGateway> { get<KtorGroupGateway>() }
+    single<GroupProfileGateway> { get<KtorGroupGateway>() }
+    single { KtorGroupMembershipGateway(get()) }
+    single<GroupMembershipGateway> { get<KtorGroupMembershipGateway>() }
+    single { KtorGroupPhotoGateway(get()) }
+    single<GroupPhotoGateway> { get<KtorGroupPhotoGateway>() }
     singleOf(::RolesInvitesApi) { bind<RolesInvitesGateway>() }
     singleOf(::AttendanceShareApi) { bind<AttendanceShareGateway>() }
     singleOf(::GameApi) { bind<GameGateway>() }
