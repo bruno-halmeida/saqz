@@ -123,7 +123,7 @@ final class IOSPhotoPreviewAdapter: GroupPhotoPreviewPort {
     }
 }
 
-final class IOSPhotoEncoderAdapter: @preconcurrency GroupPhotoEncoderPort {
+final class IOSPhotoEncoderAdapter: GroupPhotoEncoderPort {
     private let files: IOSPhotoFiles
     init(files: IOSPhotoFiles) { self.files = files }
     func cancel(source: GroupPhotoSourceHandle) {}

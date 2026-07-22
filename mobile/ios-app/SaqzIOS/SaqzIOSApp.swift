@@ -77,7 +77,7 @@ struct IOSAppComposition {
     }
 }
 
-private final class IOSNoOpAccessLinkPort: @preconcurrency NativeLinkPort {
+private final class IOSNoOpAccessLinkPort: NativeLinkPort {
     func start(listener: InviteCodeListener) -> Cancelable { IOSNoOpAccessLinkCancellation() }
 }
 

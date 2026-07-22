@@ -221,7 +221,7 @@ struct IOSGroupDraftAdapters {
     }
 }
 
-final class IOSSetupDraftAdapter: @preconcurrency GroupDraftStorePort {
+final class IOSSetupDraftAdapter: GroupDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
     func read(key: GroupDraftKey, done: @escaping (any GroupDraftReadResult) -> Void) {
@@ -236,7 +236,7 @@ final class IOSSetupDraftAdapter: @preconcurrency GroupDraftStorePort {
     func clear(key: GroupDraftKey, commandKey: String, done: @escaping (any GroupDraftWriteResult) -> Void) { done(store.clearSetup(key, commandKey: commandKey) ? GroupDraftWriteResultSuccess.shared : GroupDraftWriteResultFailure(reason: .unavailable)) }
 }
 
-final class IOSGameDraftAdapter: @preconcurrency GameDraftStorePort {
+final class IOSGameDraftAdapter: GameDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
     func read(groupId: String, resourceId: String?, done: @escaping (any GameDraftReadResult) -> Void) {
@@ -246,7 +246,7 @@ final class IOSGameDraftAdapter: @preconcurrency GameDraftStorePort {
     func clear(groupId: String, resourceId: String?, commandKey: String, done: @escaping (any GameDraftWriteResult) -> Void) { done(store.clearGame(groupID: groupId, resourceID: resourceId, commandKey: commandKey) ? GameDraftWriteResultSuccess.shared : GameDraftWriteResultFailure.shared) }
 }
 
-final class IOSMonthlyDraftAdapter: @preconcurrency MonthlyChargeDraftStorePort {
+final class IOSMonthlyDraftAdapter: MonthlyChargeDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
     func read(groupId: String, done: @escaping (any MonthlyDraftReadResult) -> Void) { switch store.readMonthly(groupID: groupId) { case .success(let value): done(MonthlyDraftReadResultSuccess(draft: value)); case .missing: done(MonthlyDraftReadResultSuccess(draft: nil)); default: done(MonthlyDraftReadResultFailure.shared) } }
@@ -254,10 +254,10 @@ final class IOSMonthlyDraftAdapter: @preconcurrency MonthlyChargeDraftStorePort 
     func clear(groupId: String, commandKey: String, done: @escaping (any MonthlyDraftWriteResult) -> Void) { done(store.clearMonthly(groupID: groupId, commandKey: commandKey) ? MonthlyDraftWriteResultSuccess.shared : MonthlyDraftWriteResultFailure.shared) }
 }
 
-final class IOSExpenseDraftAdapter: @preconcurrency ExpenseDraftStorePort {
+final class IOSExpenseDraftAdapter: ExpenseDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
-    func read(groupId: String, expenseId: String?, done_: @escaping (any ExpenseDraftReadResult) -> Void) { switch store.readExpense(groupID: groupId, resourceID: expenseId) { case .success(let value): done_(ExpenseDraftReadResultSuccess(draft: value)); case .missing: done_(ExpenseDraftReadResultSuccess(draft: nil)); default: done_(ExpenseDraftReadResultFailure.shared) } }
+    func read(groupId: String, expenseId: String?, done: @escaping (any ExpenseDraftReadResult) -> Void) { switch store.readExpense(groupID: groupId, resourceID: expenseId) { case .success(let value): done(ExpenseDraftReadResultSuccess(draft: value)); case .missing: done(ExpenseDraftReadResultSuccess(draft: nil)); default: done(ExpenseDraftReadResultFailure.shared) } }
     func write(draft: ExpenseDraft, done__: @escaping (any ExpenseDraftWriteResult) -> Void) { done__(store.writeExpense(draft) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
     func clear(groupId: String, expenseId: String?, commandKey: String, done: @escaping (any ExpenseDraftWriteResult) -> Void) { done(store.clearExpense(groupID: groupId, resourceID: expenseId, commandKey: commandKey) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
 }
