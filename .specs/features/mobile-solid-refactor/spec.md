@@ -52,6 +52,9 @@ observable behavior.
 13. **SOLID-13** - `FinanceChargeSupport.kt` SHALL not aggregate finance draft,
     port, factory, error, state, intent, effect, totals, and rules in one
     file; each concern SHALL live in focused files in the same package.
+14. **SOLID-14** - `ExpenseSupport.kt` SHALL not aggregate expense draft, port,
+    factory, error, state, intent, effect, and rules in one file; each concern
+    SHALL live in focused files in the same package.
 
 ## Out of Scope
 

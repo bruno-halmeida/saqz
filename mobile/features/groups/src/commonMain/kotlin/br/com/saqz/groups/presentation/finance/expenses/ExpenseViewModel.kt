@@ -130,7 +130,7 @@ class ExpenseViewModel(
             expenseId = id,
             etag = "\"${expense.version}\"",
             commandKey = keys.create(),
-            form = expense.form(),
+            form = expense.toExpenseForm(),
         )
         mutable.value = current.copy(draft = draft, fieldErrors = emptyMap(), error = null)
         persist(draft)
@@ -202,7 +202,7 @@ class ExpenseViewModel(
             when (operation) {
                 is ExpenseOperation.Save -> {
                     val draft = operation.draft
-                    val command = draft.form.command(
+                    val command = draft.form.toExpenseWriteCommand(
                         if (draft.expenseId == null) draft.commandKey else null,
                     )
                     val result = if (draft.expenseId == null) {
