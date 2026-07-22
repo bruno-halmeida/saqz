@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.finance.expenses
 
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.finance.*
+import br.com.saqz.groups.presentation.finance.FinanceCapability
 import br.com.saqz.network.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,7 +32,7 @@ class ExpenseViewModelTest {
     @Test fun `server validation fields remain attached to draft`()=runTest{val f=fixture(this);runCurrent();openValid(f);f.api.createResult=NetworkResult.Failure(problem("VALIDATION_FAILED",400,mapOf("amountCents" to listOf("is invalid"))));f.vm.onIntent(ExpenseIntent.Submit);runCurrent();assertEquals(mapOf("amountCents" to listOf("is invalid")),f.vm.state.value.fieldErrors);assertNotNull(f.vm.state.value.draft)}
     @Test fun `draft write failure is typed without losing form or key`()=runTest{val f=fixture(this);runCurrent();f.store.failWrites=true;f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.UpdateForm(valid()));assertEquals(ExpenseError.DRAFT_UNAVAILABLE,f.vm.state.value.error);assertEquals(KEY,f.vm.state.value.draft!!.commandKey);assertEquals("Água do jogo",f.vm.state.value.draft!!.form.description)}
 
-    private fun fixture(scope:kotlinx.coroutines.CoroutineScope,role:GroupRoleDto=GroupRoleDto.OWNER,restored:ExpenseDraft?=null):Fixture{val api=FakeApi();val store=FakeStore(restored);val vm=ExpenseViewModel(GROUP,role,api,store,ExpenseCommandKeyFactory{KEY},scope);return Fixture(vm,api,store)}
+    private fun fixture(scope:kotlinx.coroutines.CoroutineScope,role:GroupRoleDto=GroupRoleDto.OWNER,restored:ExpenseDraft?=null):Fixture{val api=FakeApi();val store=FakeStore(restored);val capability=if(role==GroupRoleDto.ATHLETE)FinanceCapability.Athlete else FinanceCapability.Organizer(api);val vm=ExpenseViewModel(GROUP,role,capability,store,ExpenseCommandKeyFactory{KEY},scope);return Fixture(vm,api,store)}
     private fun openValid(f:Fixture){f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.UpdateForm(valid()))}
     private fun valid()=ExpenseForm("Água do jogo","123,45","2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual")
     private fun draft(expenseId:String?=null,etag:String?=null)=ExpenseDraft(groupId=GROUP,expenseId=expenseId,etag=etag,commandKey=KEY,form=valid())

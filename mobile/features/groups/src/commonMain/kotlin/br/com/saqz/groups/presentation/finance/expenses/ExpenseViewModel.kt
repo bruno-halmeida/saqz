@@ -14,6 +14,9 @@ import br.com.saqz.groups.data.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.data.finance.ExpenseWriteCommandDto
 import br.com.saqz.groups.data.finance.ChargeStatusCommandDto
 import br.com.saqz.network.NetworkResult
+import br.com.saqz.groups.presentation.finance.DraftMutationSupport
+import br.com.saqz.groups.presentation.finance.FinanceCapability
+import br.com.saqz.groups.presentation.finance.FinanceMutationResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -26,7 +29,7 @@ import kotlinx.coroutines.launch
 class ExpenseViewModel(
     private val groupId: String,
     private val role: GroupRoleDto,
-    private val gateway: OrganizerFinanceGateway?,
+    private val capability: FinanceCapability,
     private val drafts: ExpenseDraftStorePort,
     private val keys: ExpenseCommandKeyFactory,
     testScope: CoroutineScope? = null,
@@ -42,7 +45,32 @@ class ExpenseViewModel(
     val state: StateFlow<ExpenseState> = mutable.asStateFlow()
     private val channel = Channel<ExpenseEffect>(Channel.BUFFERED)
     val effects: Flow<ExpenseEffect> = channel.receiveAsFlow()
-    private var retry: ExpenseOperation? = null
+    private val mutations = DraftMutationSupport<ExpenseState, ExpenseDraft, ExpenseOperation, ExpenseError>(
+        capability = capability,
+        scope = scope,
+        state = { mutable.value },
+        setState = { mutable.value = it },
+        canMutate = { it.organizer && !it.isMutating },
+        mutatingState = {
+            it.copy(
+                isMutating = true,
+                error = null,
+                retryAvailable = false,
+                fieldErrors = emptyMap(),
+            )
+        },
+        failedState = { current, failure, error ->
+            current.copy(
+                isLoading = false,
+                isMutating = false,
+                error = error,
+                fieldErrors = (failure as? FinanceGatewayFailure.Validation)?.fields.orEmpty(),
+                reloadAvailable = error == ExpenseError.CONFLICT,
+                retryAvailable = error == ExpenseError.CONFLICT || error == ExpenseError.UNAVAILABLE,
+            )
+        },
+        mapFailure = ::mapError,
+    )
 
     init {
         if (mutable.value.organizer) {
@@ -63,39 +91,38 @@ class ExpenseViewModel(
                 mutable.value = mutable.value.copy(pendingVoid = null)
             }
             ExpenseIntent.ConfirmVoid -> confirmVoid()
-            ExpenseIntent.Retry -> retry?.let(::execute)
+            ExpenseIntent.Retry -> mutations.retry(::execute)
         }
     }
 
     private fun restore() {
-        drafts.read(groupId, null) { result ->
-            when (result) {
-                is ExpenseDraftReadResult.Success -> result.draft
-                    ?.takeIf {
-                        it.schemaVersion == ExpenseDraft.CURRENT_SCHEMA &&
-                            it.groupId == groupId
+        mutations.restore(
+            read = { success, failure ->
+                drafts.read(groupId, null) { result ->
+                    when (result) {
+                        is ExpenseDraftReadResult.Success -> success(result.draft)
+                        ExpenseDraftReadResult.Failure -> failure()
                     }
-                    ?.let { mutable.value = mutable.value.copy(draft = it) }
-
-                ExpenseDraftReadResult.Failure -> {
-                    mutable.value = mutable.value.copy(error = ExpenseError.DRAFT_UNAVAILABLE)
                 }
-            }
-        }
+            },
+            valid = { it.schemaVersion == ExpenseDraft.CURRENT_SCHEMA && it.groupId == groupId },
+            restored = { mutable.value = mutable.value.copy(draft = it) },
+            unavailable = { it.copy(error = ExpenseError.DRAFT_UNAVAILABLE) },
+        )
     }
 
     private fun load() {
         val current = mutable.value
         if (!current.organizer || current.isMutating) return
-        val api = gateway ?: return fail(FinanceGatewayFailure.Forbidden)
+        val api = mutations.organizer ?: return mutations.fail(FinanceGatewayFailure.Forbidden)
 
         mutable.value = current.copy(isLoading = true, error = null, reloadAvailable = false)
         scope.launch {
             when (val listed = api.expenses(groupId)) {
-                is NetworkResult.Failure -> fail(listed.error.toFinanceGatewayFailure())
+                is NetworkResult.Failure -> mutations.fail(listed.error.toFinanceGatewayFailure())
 
                 is NetworkResult.Success -> when (val totals = api.totals(groupId)) {
-                    is NetworkResult.Failure -> fail(totals.error.toFinanceGatewayFailure())
+                    is NetworkResult.Failure -> mutations.fail(totals.error.toFinanceGatewayFailure())
                     is NetworkResult.Success -> mutable.value = mutable.value.copy(
                         expenses = listed.value.expenses,
                         totals = totals.value,
@@ -186,20 +213,12 @@ class ExpenseViewModel(
     }
 
     private fun execute(operation: ExpenseOperation) {
-        val api = gateway ?: return
         val current = mutable.value
         if (!current.organizer || current.isMutating) return
 
-        retry = operation
-        mutable.value = current.copy(
-            isMutating = true,
-            error = null,
-            retryAvailable = false,
-            fieldErrors = emptyMap(),
-        )
-
-        scope.launch {
-            when (operation) {
+        mutations.execute(
+            operation = operation,
+            perform = { api -> when (operation) {
                 is ExpenseOperation.Save -> {
                     val draft = operation.draft
                     val command = draft.form.toExpenseWriteCommand(
@@ -212,19 +231,23 @@ class ExpenseViewModel(
                     }
 
                     when (result) {
-                        is NetworkResult.Success -> saved(api, draft, result.value.expense)
-                        is NetworkResult.Failure -> fail(result.error.toFinanceGatewayFailure())
+                        is NetworkResult.Success -> FinanceMutationResult.Success(result.value.expense)
+                        is NetworkResult.Failure -> FinanceMutationResult.Failure(result.error.toFinanceGatewayFailure())
                     }
                 }
 
-                is ExpenseOperation.Void -> when (
-                    val result = api.voidExpense(groupId, operation.expenseId, operation.etag)
-                ) {
-                    is NetworkResult.Success -> voided(api, result.value.expense)
-                    is NetworkResult.Failure -> fail(result.error.toFinanceGatewayFailure())
+                is ExpenseOperation.Void -> when (val result = api.voidExpense(groupId, operation.expenseId, operation.etag)) {
+                    is NetworkResult.Success -> FinanceMutationResult.Success(result.value.expense)
+                    is NetworkResult.Failure -> FinanceMutationResult.Failure(result.error.toFinanceGatewayFailure())
                 }
-            }
-        }
+            } },
+            succeeded = { api, expense ->
+                when (operation) {
+                    is ExpenseOperation.Save -> saved(api, operation.draft, expense)
+                    is ExpenseOperation.Void -> voided(api, expense)
+                }
+            },
+        )
     }
 
     private suspend fun saved(
@@ -232,7 +255,6 @@ class ExpenseViewModel(
         draft: ExpenseDraft,
         expense: ExpenseDto,
     ) {
-        retry = null
         drafts.clear(groupId, draft.expenseId, draft.commandKey) {}
         refreshAfter(api)
         mutable.value = mutable.value.copy(
@@ -247,7 +269,6 @@ class ExpenseViewModel(
     }
 
     private suspend fun voided(api: OrganizerFinanceGateway, expense: ExpenseDto) {
-        retry = null
         refreshAfter(api)
         mutable.value = mutable.value.copy(
             pendingVoid = null,
@@ -272,15 +293,14 @@ class ExpenseViewModel(
     }
 
     private fun persist(draft: ExpenseDraft) {
-        drafts.write(draft) {
-            if (it == ExpenseDraftWriteResult.Failure) {
-                mutable.value = mutable.value.copy(error = ExpenseError.DRAFT_UNAVAILABLE)
-            }
-        }
+        mutations.persist(
+            draft = draft,
+            write = { value, failure -> drafts.write(value) { if (it == ExpenseDraftWriteResult.Failure) failure() } },
+            unavailable = { it.copy(error = ExpenseError.DRAFT_UNAVAILABLE) },
+        )
     }
 
-    private fun fail(failure: FinanceGatewayFailure) {
-        val error = when (failure) {
+    private fun mapError(failure: FinanceGatewayFailure) = when (failure) {
             is FinanceGatewayFailure.Validation -> ExpenseError.VALIDATION
             FinanceGatewayFailure.Conflict -> ExpenseError.CONFLICT
             FinanceGatewayFailure.HiddenResource -> ExpenseError.HIDDEN
@@ -288,13 +308,4 @@ class ExpenseViewModel(
             FinanceGatewayFailure.InvalidLifecycle -> ExpenseError.INVALID_LIFECYCLE
             else -> ExpenseError.UNAVAILABLE
         }
-        mutable.value = mutable.value.copy(
-            isLoading = false,
-            isMutating = false,
-            error = error,
-            fieldErrors = (failure as? FinanceGatewayFailure.Validation)?.fields.orEmpty(),
-            reloadAvailable = error == ExpenseError.CONFLICT,
-            retryAvailable = error == ExpenseError.CONFLICT || error == ExpenseError.UNAVAILABLE,
-        )
-    }
 }
