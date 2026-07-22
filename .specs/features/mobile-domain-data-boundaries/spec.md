@@ -171,6 +171,7 @@ All 26 requirements are assigned to a downstream design or task category. Task i
 | B23 | 2026-07-22 | The game-editor UI fixture migration left one weekday assertion on the removed transport enum after production had moved to the domain enum. | No new §V invariant: T26's focused common-test compilation and zero-data-import criterion already detect residual transport fixtures. |
 | B24 | 2026-07-22 | Moving game-draft serialization into an Android-app-private persistence DTO required the serialization compiler plugin in the adapter-owning module; the JSON runtime dependency alone cannot generate serializers. | No new §V invariant: T26's Android adapter compilation gate already detects a persistence module missing its serializer generator. |
 | B25 | 2026-07-22 | The game-detail lifecycle test imported `ExperimentalCoroutinesApi` from `kotlinx.coroutines.test`, where it is unavailable to the iOS test source set, instead of the shared `kotlinx.coroutines` package. | No new §V invariant: T27's focused multiplatform test gate already detects this mechanical source-set import error. |
+| B26 | 2026-07-22 | An attendance capacity contract test compared a heterogeneous numeric list, so Kotlin/Native reported visually identical values as unequal because the expected version was `Int` and the model version was `Long`. | No new §V invariant: T28's focused multiplatform unit gate already detects fixture type mismatches; assert numeric fields independently with their declared types. |
 
 ## §V — Backpropagated Invariants
 
