@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -95,7 +97,6 @@ import br.com.saqz.groups.resources.groups_logout
 import br.com.saqz.groups.resources.groups_members
 import br.com.saqz.groups.resources.groups_members_count
 import br.com.saqz.groups.resources.groups_members_empty
-import br.com.saqz.groups.resources.groups_more_options
 import br.com.saqz.groups.resources.groups_new_group
 import br.com.saqz.groups.resources.groups_next_game
 import br.com.saqz.groups.resources.groups_next_game_empty
@@ -136,6 +137,7 @@ import br.com.saqz.designsystem.component.SaqzBadge
 import br.com.saqz.designsystem.component.SaqzBadgeVariant
 import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
+import br.com.saqz.designsystem.component.SaqzTopBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.SessionMembershipDto
 import org.jetbrains.compose.resources.DrawableResource
@@ -151,49 +153,47 @@ fun GroupsListScreen(
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
 ) {
     Column(
-        Modifier.fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(
-                horizontal = SaqzTheme.metrics.horizontalPadding,
-                vertical = SaqzTheme.metrics.grid,
-            )
-            .testTag(GroupsNavigationTags.List),
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        Modifier.fillMaxSize().testTag(GroupsNavigationTags.List),
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        SaqzTopBar(title = stringResource(Res.string.groups_list_title))
+        Column(
+            Modifier.weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    horizontal = SaqzTheme.metrics.horizontalPadding,
+                    vertical = SaqzTheme.metrics.grid,
+                ),
+            verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    stringResource(Res.string.groups_list_title),
-                    style = SaqzTheme.typography.displayMedium,
-                    color = SaqzTheme.colors.textPrimary,
-                )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     stringResource(Res.string.groups_list_subtitle),
+                    modifier = Modifier.weight(1f),
                     style = SaqzTheme.typography.caption,
                     color = SaqzTheme.colors.textSecondary,
                 )
+                SaqzButton(
+                    label = stringResource(Res.string.groups_new_group),
+                    onClick = onOpenCreateGroup,
+                    leadingContent = { tint ->
+                        MaterialIcon(Res.drawable.material_add, tint, 18.dp)
+                    },
+                )
             }
-            SaqzButton(
-                label = stringResource(Res.string.groups_new_group),
-                onClick = onOpenCreateGroup,
-                leadingContent = { tint ->
-                    MaterialIcon(Res.drawable.material_add, tint, 18.dp)
-                },
-            )
+            memberships.forEach { membership ->
+                GroupListCard(
+                    membership = membership,
+                    onSelectGroup = onSelectGroup,
+                    loadListPhoto = loadListPhoto,
+                    groupPhotoPreview = groupPhotoPreview,
+                )
+            }
+            CreateGroupCard(onOpenCreateGroup)
         }
-        memberships.forEach { membership ->
-            GroupListCard(
-                membership = membership,
-                onSelectGroup = onSelectGroup,
-                loadListPhoto = loadListPhoto,
-                groupPhotoPreview = groupPhotoPreview,
-            )
-        }
-        CreateGroupCard(onOpenCreateGroup)
     }
 }
 
@@ -207,40 +207,99 @@ private fun GroupListCard(
     HomeCard(
         modifier = Modifier.fillMaxWidth()
             .testTag("${GroupsNavigationTags.ListItemPrefix}${membership.groupId}"),
-        contentPadding = 12.dp,
+        contentPadding = 10.dp,
     ) {
-        Row(
+        Column(
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(SaqzTheme.metrics.compactControlRadius))
                 .clickable(
                     onClickLabel = membership.groupName,
                     onClick = { onSelectGroup(membership.groupId) },
                 ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            GroupListPhoto(
-                groupId = membership.groupId,
-                groupName = membership.groupName,
-                loadListPhoto = loadListPhoto,
-                groupPhotoPreview = groupPhotoPreview,
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    membership.groupName,
-                    style = SaqzTheme.typography.bodyStrong.copy(fontSize = 18.sp),
-                    color = SaqzTheme.colors.textPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                GroupListPhoto(
+                    groupId = membership.groupId,
+                    groupName = membership.groupName,
+                    loadListPhoto = loadListPhoto,
+                    groupPhotoPreview = groupPhotoPreview,
                 )
-                SaqzBadge(sessionRoleLabel(membership.role), SaqzBadgeVariant.Info)
+                BoxWithConstraints(Modifier.weight(1f)) {
+                    val fontScale = LocalDensity.current.fontScale
+                    val inlineRole = maxWidth >= 200.dp && fontScale <= 1f
+                    val textLines = when {
+                        fontScale >= 1.5f -> 3
+                        fontScale > 1f -> 2
+                        else -> 1
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                membership.groupName,
+                                modifier = Modifier.weight(1f),
+                                style = SaqzTheme.typography.bodyStrong,
+                                color = SaqzTheme.colors.textPrimary,
+                                maxLines = textLines,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (inlineRole) {
+                                SaqzBadge(sessionRoleLabel(membership.role), SaqzBadgeVariant.Info)
+                            }
+                            MaterialIcon(
+                                Res.drawable.material_more_horiz,
+                                SaqzTheme.colors.textSecondary,
+                                20.dp,
+                            )
+                        }
+                        if (!inlineRole) {
+                            SaqzBadge(sessionRoleLabel(membership.role), SaqzBadgeVariant.Info)
+                        }
+                        MetaLine(
+                            Res.drawable.material_group_add,
+                            stringResource(Res.string.groups_private),
+                            textLines,
+                        )
+                        MetaLine(
+                            Res.drawable.material_location_on,
+                            stringResource(Res.string.groups_location_empty),
+                            textLines,
+                        )
+                        MetaLine(
+                            Res.drawable.material_calendar,
+                            stringResource(Res.string.groups_schedule_empty),
+                            textLines,
+                        )
+                    }
+                }
             }
-            MaterialIcon(
-                Res.drawable.material_more_horiz,
-                SaqzTheme.colors.textSecondary,
-                24.dp,
-                stringResource(Res.string.groups_more_options),
-            )
+            Row(
+                Modifier.fillMaxWidth()
+                    .heightIn(min = 34.dp)
+                    .clip(RoundedCornerShape(SaqzTheme.metrics.compactControlRadius))
+                    .background(SaqzTheme.colors.infoSurface)
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MaterialIcon(Res.drawable.material_calendar, SaqzTheme.colors.primary, 16.dp)
+                Text(
+                    stringResource(Res.string.groups_next_game),
+                    modifier = Modifier.weight(1f),
+                    style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+                    color = SaqzTheme.colors.primary,
+                    maxLines = 1,
+                )
+                MaterialIcon(Res.drawable.material_arrow_forward, SaqzTheme.colors.primary, 16.dp)
+            }
         }
     }
 }
@@ -264,10 +323,11 @@ private fun GroupListPhoto(
         existing = loadListPhoto(groupId)
         loading = false
     }
-    val shape = RoundedCornerShape(14.dp)
+    val photoSize = 88.dp
+    val shape = RoundedCornerShape(12.dp)
     val photo = existing
     Box(
-        Modifier.size(92.dp)
+        Modifier.size(photoSize)
             .clip(shape)
             .testTag(GroupsNavigationTags.ListPhoto),
     ) {
@@ -275,7 +335,7 @@ private fun GroupListPhoto(
             loading -> GroupPhotoSkeleton(Modifier.fillMaxSize())
             photo == null || groupPhotoPreview == null -> InitialsAvatar(
                 groupName,
-                92.dp,
+                photoSize,
                 Modifier.testTag(GroupsNavigationTags.ListPhotoFallback),
             )
             else -> {
@@ -287,7 +347,7 @@ private fun GroupListPhoto(
                     GroupPhotoRenderState.LOADING -> GroupPhotoSkeleton(Modifier.fillMaxSize())
                     GroupPhotoRenderState.FAILURE -> InitialsAvatar(
                         groupName,
-                        92.dp,
+                        photoSize,
                         Modifier.testTag(GroupsNavigationTags.ListPhotoFallback),
                     )
                     GroupPhotoRenderState.SUCCESS -> Unit
@@ -946,7 +1006,7 @@ private fun CountAvatar(remaining: Int) {
 }
 
 @Composable
-private fun MetaLine(icon: DrawableResource, text: String) {
+private fun MetaLine(icon: DrawableResource, text: String, maxLines: Int = 1) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -956,7 +1016,7 @@ private fun MetaLine(icon: DrawableResource, text: String) {
             text,
             style = SaqzTheme.typography.caption,
             color = SaqzTheme.colors.textSecondary,
-            maxLines = 1,
+            maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
         )
     }
@@ -1102,4 +1162,3 @@ private fun RoutePagePreview() = SaqzTheme {
 private fun GroupLoadErrorPreview() = SaqzTheme {
     GroupLoadError(onRetry = {})
 }
-

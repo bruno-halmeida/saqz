@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
 import br.com.saqz.groups.presentation.games.detail.GameDetailState
+import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.showsGroupChrome
@@ -14,6 +15,7 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.ui.GroupsDestinationContent
 import br.com.saqz.groups.ui.GroupsRouteChrome
+import br.com.saqz.groups.ui.GroupsSelectorChrome
 
 @Composable
 internal fun GroupsRouteHost(
@@ -50,15 +52,19 @@ internal fun GroupsRouteHost(
             loadListPhoto = loadListPhoto,
         )
     }
-    if (navigation.groupId != null && navigation.destination.showsGroupChrome()) {
-        GroupsRouteChrome(
+    when {
+        navigation.destination == GroupsDestination.SELECTOR -> GroupsSelectorChrome(
+            navigation = navigation,
+            onNavigationIntent = onNavigationIntent,
+            content = content,
+        )
+        navigation.groupId != null && navigation.destination.showsGroupChrome() -> GroupsRouteChrome(
             navigation = navigation,
             administration = administration,
             onNavigationIntent = onNavigationIntent,
             onOpenSettings = onOpenSettings,
             content = content,
         )
-    } else {
-        content()
+        else -> content()
     }
 }

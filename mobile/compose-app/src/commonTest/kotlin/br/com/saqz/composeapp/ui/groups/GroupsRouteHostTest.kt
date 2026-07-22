@@ -54,18 +54,16 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GroupsRouteHostTest {
     @Test
-    fun `selected group home renders one shared top bar and bottom menu`() = runComposeUiTest {
+    fun `selected group home renders its top bar without bottom menu`() = runComposeUiTest {
         host(owner, access(GroupRoleDto.OWNER))
 
         onNodeWithTag(SaqzTopBarTag).assertIsDisplayed()
         onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Private Group")
-        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
-        onNodeWithTag("saqz-bottom-nav-item-0").assertIsSelected()
-        onNodeWithTag("saqz-bottom-nav-item-1").assertIsNotSelected()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
     }
 
     @Test
-    fun `game detail keeps games selected and shows its exact title`() = runComposeUiTest {
+    fun `game detail shows its exact title without bottom menu`() = runComposeUiTest {
         host(
             owner,
             access(GroupRoleDto.OWNER).copy(
@@ -75,14 +73,20 @@ class GroupsRouteHostTest {
         )
 
         onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Detalhes do jogo")
-        onNodeWithTag("saqz-bottom-nav-item-0").assertIsNotSelected()
-        onNodeWithTag("saqz-bottom-nav-item-1").assertIsSelected()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
     }
 
     @Test
     fun `bottom menu emits each fixed tab intent once`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
-        host(owner, access(GroupRoleDto.OWNER), intents)
+        host(
+            owner,
+            GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = sessionGroups,
+            ),
+            intents,
+        )
 
         onNodeWithTag("saqz-bottom-nav-item-0").performClick()
         onNodeWithTag("saqz-bottom-nav-item-1").performClick()
@@ -103,8 +107,14 @@ class GroupsRouteHostTest {
     }
 
     @Test
-    fun `bottom menu renders five fixed tabs for every role`() = runComposeUiTest {
-        host(athlete, access(GroupRoleDto.ATHLETE))
+    fun `group list bottom menu renders five fixed tabs`() = runComposeUiTest {
+        host(
+            athlete,
+            GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = sessionGroups,
+            ),
+        )
 
         onNodeWithTag("saqz-bottom-nav-item-0").assertTextEquals("Início")
         onNodeWithTag("saqz-bottom-nav-item-1").assertTextEquals("Jogos")
@@ -114,11 +124,11 @@ class GroupsRouteHostTest {
     }
 
     @Test
-    fun `notices destination selects its tab and shows the placeholder`() = runComposeUiTest {
+    fun `notices destination shows the placeholder without bottom menu`() = runComposeUiTest {
         host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.NOTICES))
 
         onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Avisos")
-        onNodeWithTag("saqz-bottom-nav-item-3").assertIsSelected()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.NoticesScreen).assertExists()
         onNodeWithText("Os avisos do grupo aparecerão nesta área em breve.").assertExists()
     }
@@ -128,7 +138,7 @@ class GroupsRouteHostTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.MORE), intents)
 
-        onNodeWithTag("saqz-bottom-nav-item-4").assertIsSelected()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.MorePeople).performClick()
         onNodeWithTag(GroupsNavigationTags.MoreFinance).performClick()
 
@@ -148,7 +158,7 @@ class GroupsRouteHostTest {
     }
 
     @Test
-    fun `unselected group route has no shared product chrome`() = runComposeUiTest {
+    fun `group list renders its top bar and selected groups menu`() = runComposeUiTest {
         host(
             owner,
             GroupsNavigationState(
@@ -157,8 +167,12 @@ class GroupsRouteHostTest {
             ),
         )
 
-        onNodeWithTag(SaqzTopBarTag).assertDoesNotExist()
-        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
+        onNodeWithTag(SaqzTopBarTag).assertIsDisplayed()
+        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Meus grupos")
+        onNodeWithTag(SaqzTopBarBackTag).assertDoesNotExist()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
+        onNodeWithTag("saqz-bottom-nav-item-0").assertIsNotSelected()
+        onNodeWithTag("saqz-bottom-nav-item-2").assertIsSelected()
     }
 
     @Test
@@ -194,6 +208,61 @@ class GroupsRouteHostTest {
         onNodeWithTag("${GroupsNavigationTags.ListItemPrefix}next").assertHeightIsAtLeast(48.dp)
         onNodeWithText("Next").performClick()
         assertEquals(listOf("next"), selectedGroups)
+    }
+
+    @Test
+    fun `group list card follows the reference hierarchy`() = runComposeUiTest {
+        host(
+            group = owner,
+            navigation = GroupsNavigationState(
+                destination = GroupsDestination.SELECTOR,
+                memberships = listOf(sessionGroups.first()),
+            ),
+        )
+
+        onNodeWithTag("${GroupsNavigationTags.ListItemPrefix}group-1")
+            .assertHeightIsAtLeast(140.dp)
+        onNodeWithTag(GroupsNavigationTags.ListPhoto, useUnmergedTree = true)
+            .assertWidthIsEqualTo(88.dp)
+            .assertHeightIsEqualTo(88.dp)
+        onNodeWithText("Private Group").assertExists()
+        onNodeWithText("Organizador").assertExists()
+        onNodeWithText("Grupo privado").assertExists()
+        onNodeWithText("Local ainda não definido").assertExists()
+        onNodeWithText("Horário ainda não definido").assertExists()
+        onNodeWithText("Próximo jogo").assertExists()
+    }
+
+    @Test
+    fun `compact large text keeps group card content visible`() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                Box(Modifier.size(320.dp, 420.dp)) {
+                    SaqzTheme {
+                        GroupsRouteHost(
+                            navigation = GroupsNavigationState(
+                                destination = GroupsDestination.SELECTOR,
+                                memberships = listOf(sessionGroups.first()),
+                            ),
+                            administration = administration(owner),
+                            onNavigationIntent = {},
+                            onOpenSettings = {},
+                            onSelectGroup = {},
+                            onOpenCreateGroup = {},
+                            onRetryGroup = {},
+                            onOpenInvite = {},
+                            onRequestLogout = {},
+                        )
+                    }
+                }
+            }
+        }
+
+        onNodeWithTag("${GroupsNavigationTags.ListItemPrefix}group-1").performScrollTo()
+        onNodeWithText("Private Group").assertIsDisplayed()
+        onNodeWithText("Organizador").assertIsDisplayed()
+        onNodeWithText("Próximo jogo").assertIsDisplayed()
+        onNodeWithContentDescription("Mais opções").assertDoesNotExist()
     }
 
     @Test
@@ -354,7 +423,7 @@ class GroupsRouteHostTest {
             .assertIsDisplayed()
             .assertHeightIsAtLeast(48.dp)
         onNodeWithTag(SaqzTopBarTag).assertIsDisplayed()
-        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertIsDisplayed()
+        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
     }
 
     @Test
@@ -389,7 +458,7 @@ class GroupsRouteHostTest {
     fun `games action emits one typed navigation intent`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(owner, access(GroupRoleDto.OWNER), intents)
-        onNodeWithText("Jogos").performClick()
+        onNodeWithTag(GroupsNavigationTags.ShortcutGames).performClick()
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenGames), intents)
     }
 

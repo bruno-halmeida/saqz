@@ -28,15 +28,15 @@ internal class AndroidGroupDraftStore(private val preferences:AndroidDraftPrefer
     fun writeSetup(value:GroupSetupDraft)=write(setupRef(value),GroupSetupDraft.serializer(),value)
     fun readSetup(key:GroupDraftKey)=read(setupRef(key),GroupSetupDraft.serializer(),GroupSetupDraft.CURRENT_SCHEMA_VERSION){it.schemaVersion}
     fun writeGame(value:GameEditorDraft)=write(gameRef(value),GameEditorDraft.serializer(),value)
-    fun readGame(groupId:String,resourceId:String?)=read(AndroidDraftRef(AndroidDraftType.GAME,groupId,resourceId),GameEditorDraft.serializer(),GameEditorDraft.CURRENT_SCHEMA){it.schemaVersion}
+    fun readGame(groupId:String,resourceId:String?=null)=read(AndroidDraftRef(AndroidDraftType.GAME,groupId,resourceId),GameEditorDraft.serializer(),GameEditorDraft.CURRENT_SCHEMA){it.schemaVersion}
     fun writeMonthly(value:MonthlyChargeDraft)=write(AndroidDraftRef(AndroidDraftType.MONTHLY,value.groupId),MonthlyChargeDraft.serializer(),value)
     fun readMonthly(groupId:String)=read(AndroidDraftRef(AndroidDraftType.MONTHLY,groupId),MonthlyChargeDraft.serializer(),MonthlyChargeDraft.CURRENT_SCHEMA){it.schemaVersion}
     fun writeExpense(value:ExpenseDraft)=write(AndroidDraftRef(AndroidDraftType.EXPENSE,value.groupId,value.expenseId),ExpenseDraft.serializer(),value)
-    fun readExpense(groupId:String,resourceId:String?)=read(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),ExpenseDraft.serializer(),ExpenseDraft.CURRENT_SCHEMA){it.schemaVersion}
+    fun readExpense(groupId:String,resourceId:String?=null)=read(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),ExpenseDraft.serializer(),ExpenseDraft.CURRENT_SCHEMA){it.schemaVersion}
     fun clearSetup(key:GroupDraftKey,commandKey:String)=clear(setupRef(key),GroupSetupDraft.serializer(),commandKey){it.commandKey}
-    fun clearGame(groupId:String,resourceId:String?,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.GAME,groupId,resourceId),GameEditorDraft.serializer(),commandKey){it.commandKey}
+    fun clearGame(groupId:String,resourceId:String?=null,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.GAME,groupId,resourceId),GameEditorDraft.serializer(),commandKey){it.commandKey}
     fun clearMonthly(groupId:String,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.MONTHLY,groupId),MonthlyChargeDraft.serializer(),commandKey){it.commandKey}
-    fun clearExpense(groupId:String,resourceId:String?,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),ExpenseDraft.serializer(),commandKey){it.commandKey}
+    fun clearExpense(groupId:String,resourceId:String?=null,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),ExpenseDraft.serializer(),commandKey){it.commandKey}
     fun clearGroup(groupId:String):Boolean=preferences.entries().keys.filter{key->parseKey(key)?.groupId==groupId}.all(preferences::remove)
     fun clearAll():Boolean=preferences.entries().keys.filter{it.startsWith(PREFIX)}.all(preferences::remove)
 

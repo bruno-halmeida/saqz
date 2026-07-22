@@ -82,6 +82,17 @@ fun GroupsRouteChrome(
             },
         )
         Box(Modifier.weight(1f)) { content() }
+    }
+}
+
+@Composable
+fun GroupsSelectorChrome(
+    navigation: GroupsNavigationState,
+    onNavigationIntent: (GroupsNavigationIntent) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { content() }
         GroupBottomMenu(navigation, onNavigationIntent)
     }
 }
@@ -132,9 +143,9 @@ private fun GroupBottomMenu(
         ),
         SaqzBottomNavItem(
             label = stringResource(Res.string.nav_groups),
-            selected = false,
+            selected = selected == GroupsDestination.SELECTOR,
             onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGroups) },
-            icon = { MaterialIcon(Res.drawable.material_group, colors.textSecondary, 20.dp) },
+            icon = { MaterialIcon(Res.drawable.material_group, tint(GroupsDestination.SELECTOR), 20.dp) },
         ),
         SaqzBottomNavItem(
             label = stringResource(Res.string.groups_notices),
