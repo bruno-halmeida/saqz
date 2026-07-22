@@ -267,6 +267,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T06: Define Access session domain contracts and models
 
+**Status:** Complete — `99b9a28`; focused gate passed.
+
 **What:** Create framework-free Access session/user/membership models, bootstrap capability, access errors, and selected-group values in Access domain.
 
 **Where:** `features/access/domain/src/commonMain/**/session/**`; co-located domain tests.
@@ -299,7 +301,7 @@ T34 -> T35 -> T36 -> T37
 
 **What:** Move feature-specific session DTO/API behavior out of `:core:network` into Access data, implement the domain `SessionGateway`, and apply eligible read/idempotent retry semantics.
 
-**Where:** `features/access/data/src/commonMain/**/session/**`; `features/access/data/src/commonTest/**`; remove feature-specific declarations from `core/network/.../SessionApi.kt` only after consumers are supplied.
+**Where:** `features/access/data/src/commonMain/**/session/**`; `features/access/data/src/commonTest/**`; keep the existing `core/network/.../SessionApi.kt` compatibility surface unchanged until its remaining consumers migrate in T09–T10.
 
 **Depends on:** T06  
 **Reuses:** Existing endpoint `PUT api/session`, `AuthenticatedNetworkClient`, DTO field semantics, transport tests, retry helper.  
@@ -313,10 +315,11 @@ T34 -> T35 -> T36 -> T37
 - Map DTO to a complete `AccessSession`; malformed required fields return `InvalidResponse`.
 - Map safe email-not-verified semantics in data; do not expose API code/status/correlation ID.
 - Rethrow cancellation from request, retry delay, decode and mapping.
+- Treat the still-consumed core session surface as a time-boxed compatibility seam: do not add behavior to it, and remove it in T10 after presentation and app composition use the new domain/data path.
 
 **Done when:**
 
-- [ ] Core network contains no Access DTO, Access gateway, or session endpoint.
+- [ ] Access data owns the new session DTO/API implementation and mapping; the legacy core surface remains behaviorally unchanged only for consumers scheduled to migrate in T09–T10.
 - [ ] Domain consumer receives only `AccessSession` or typed `AccessError`.
 - [ ] Exact PUT path/token and payload-less request are asserted.
 - [ ] Minimum 18 data cases cover success, nullable email, empty/multiple memberships, malformed required fields, 401, email-not-verified 403, other 403, validation, 404, 5xx, timeout, connectivity, unknown, retry eligible/ineligible behavior, final exhaustion, and cancellation.
@@ -407,12 +410,14 @@ T34 -> T35 -> T36 -> T37
 - Preserve one `AuthenticatedNetworkClient`, token provider, invalidator and session state-machine instance semantics.
 - Keep `:compose-app` umbrella exports stable; Access data must not be exported to iOS.
 - Delete only Access adapters/import aliases made obsolete by T06–T09.
+- Remove the legacy core-network `SessionDto`, `SessionGateway`, `SessionApi` and endpoint implementation after all Access presentation and app consumers have migrated; leave no compatibility alias behind.
 
 **Done when:**
 
 - [ ] Koin resolves one Access data implementation as the domain `SessionGateway`.
 - [ ] Access presentation has no data/network dependency and Access data has no presentation dependency.
 - [ ] App state/orchestrators contain no `SessionDto`, `NetworkResult`, `NetworkError` or Access data type.
+- [ ] Core network contains no Access DTO, Access gateway, or session endpoint.
 - [ ] Minimum 8 composition cases cover singleton transport, gateway binding, invalidator binding, machine resolution, bootstrap graph, reload graph, domain session injection and absence of implementation in state.
 - [ ] Access domain/data/presentation and compose-app focused gates exit 0; no global gate runs.
 

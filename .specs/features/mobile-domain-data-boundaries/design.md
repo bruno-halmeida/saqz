@@ -278,7 +278,7 @@ data class TransportRetryPolicy(
 
 1. **Foundation and gate:** add `:core:domain`, shared contract tests, refine transport connectivity/unknown classification, add the bounded retry helper/tests, declare child modules, and add a failing-on-drift architecture gate.
 2. **Access characterization:** freeze current bootstrap, identity, validation, authorization, connectivity and retry outcomes before moving contracts.
-3. **Access boundary migration:** move session/native contracts and models to Access domain; move session transport from core network to Access data; update presentation and composition; remove Access adapters; pass only the focused Access/domain/data/compose-app gates.
+3. **Access boundary migration:** move session/native contracts and models to Access domain; introduce the Access-data transport while retaining the existing core session surface unchanged as a time-boxed seam; update presentation and composition; remove the legacy core surface and Access adapters in the closing Access task; pass only the focused Access/domain/data/compose-app gates.
 4. **Groups characterization:** freeze current outcomes and exact transport semantics per capability.
 5. **Groups capability slices:** migrate profile/membership/invite/photo, games/attendance/sharing, and finance contracts/models/data in dependency order. Each slice maps DTOs and failures before presentation changes.
 6. **Groups cleanup:** remove all presentation-to-data/network imports and compatibility adapters; pass only the focused Groups domain/data/presentation gates.
