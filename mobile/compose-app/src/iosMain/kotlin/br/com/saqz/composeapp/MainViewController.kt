@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.ComposeUIViewController
+import br.com.saqz.composeapp.di.startSaqzKoin
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSProcessInfo
@@ -18,13 +19,16 @@ import platform.UIKit.UIViewController
 fun MainViewController(
     accessibilityController: SaqzAccessibilityController,
     dependencies: SaqzAppDependencies,
-): UIViewController = ComposeUIViewController {
+): UIViewController {
+    startSaqzKoin(dependencies)
+    return ComposeUIViewController {
     // ponytail: launch-arg-gated preflight — lets XCUITest prove the umbrella
     // framework's compose resources resolve on-device. Absent -> app unchanged.
     if (NSProcessInfo.processInfo.arguments.contains("-saqzResourcePreflight")) {
         ResourcePreflightScreen()
     } else {
         accessibilityController.Content(dependencies)
+    }
     }
 }
 

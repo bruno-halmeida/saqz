@@ -16,11 +16,18 @@ import kotlin.test.assertTrue
 class SaqzAppEnvironmentTest {
 
     @Test
-    fun defaultShowsContent() = runComposeUiTest {
-        setContent { SaqzApp() }
-        // Default startup is Content(Unit): the Home content slot renders, not a state view.
-        onNodeWithText("Organize seu grupo.", substring = true).assertExists()
-        onNodeWithContentDescription("Carregando").assertDoesNotExist()
+    fun defaultShowsContent() {
+        val dependencies = startTestSaqzKoin()
+        try {
+            runComposeUiTest {
+                setContent { SaqzApp(dependencies) }
+                // Default startup is Content(Unit): the Home content slot renders, not a state view.
+                onNodeWithText("Organize seu grupo.", substring = true).assertExists()
+                onNodeWithContentDescription("Carregando").assertDoesNotExist()
+            }
+        } finally {
+            stopTestSaqzKoin()
+        }
     }
 
     @Test

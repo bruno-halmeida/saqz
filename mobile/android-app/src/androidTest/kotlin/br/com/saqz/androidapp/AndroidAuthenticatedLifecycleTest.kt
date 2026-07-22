@@ -34,7 +34,6 @@ import br.com.saqz.access.port.TokenResult
 import br.com.saqz.access.port.ValueCallback
 import br.com.saqz.access.port.ValueResult
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
-import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
@@ -45,6 +44,8 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.network.NetworkEnvironment
+import br.com.saqz.network.toNetworkEnvironment
 import java.io.FileInputStream
 import kotlinx.coroutines.CoroutineScope
 import org.junit.After
@@ -300,11 +301,16 @@ private class LifecycleCompositionFactory(
             links = fixture.links,
             localState = fixture.local,
             share = fixture.share,
-            groupPhotos = GroupPhotoRuntimeDependencies.Unconfigured,
+            attendanceShare = LifecycleAttendanceSharePort,
+            groupPhotos = lifecycleGroupPhotos,
             groupLinks = fixture.links,
             groupState = fixture.local,
+            groupDrafts = LifecycleGroupDraftStore,
+            gameDrafts = LifecycleGameDraftStore,
+            monthlyChargeDrafts = LifecycleMonthlyChargeDraftStore,
+            expenseDrafts = LifecycleExpenseDraftStore,
         )
-        fixture.lastEnvironment = dependencies.environment
+        fixture.lastEnvironment = dependencies.environment.toNetworkEnvironment()
         return AndroidAppComposition(dependencies, fixture.links)
     }
 }

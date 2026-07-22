@@ -109,12 +109,28 @@ class SaqzKoinModulesTest {
                 localGroupState = FakeLocalGroupStatePort,
             )
         }
+        single<NativeAuthPort> { get<SaqzNativePorts>().auth }
+        single<NativeLinkPort> { get<SaqzNativePorts>().links }
+        single<LocalAccessStatePort> { get<SaqzNativePorts>().localAccessState }
+        single<NativeSharePort> { get<SaqzNativePorts>().share }
+        single<GroupAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
+        single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
+        single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
+        single<NativeGroupLinkPort> { get<SaqzNativePorts>().groupLinks }
+        single<LocalGroupStatePort> { get<SaqzNativePorts>().localGroupState }
     }
 
     @Test
     fun networkGraphResolvesWithSingletonClient() {
         val app = koinApplication {
-            modules(configFixturesModule, authFixtureModule, networkModule, draftsModule)
+            modules(
+                configFixturesModule,
+                authFixtureModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+            )
         }
         val koin = app.koin
 
@@ -129,7 +145,14 @@ class SaqzKoinModulesTest {
     @Test
     fun draftsModuleResolvesPlatformStores() {
         val app = koinApplication {
-            modules(configFixturesModule, authFixtureModule, networkModule, draftsModule)
+            modules(
+                configFixturesModule,
+                authFixtureModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+            )
         }
         val koin = app.koin
 
@@ -147,10 +170,14 @@ class SaqzKoinModulesTest {
             modules(
                 configFixturesModule,
                 nativePortsFixtureModule,
-                networkModule,
-                draftsModule,
-                accessModule,
-                groupsModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+                accessPresentationModule,
+                groupsDataModule,
+                groupsPresentationModule,
+                composePresentationModule,
             )
         }
         val koin = app.koin
@@ -174,10 +201,14 @@ class SaqzKoinModulesTest {
             modules(
                 configFixturesModule,
                 nativePortsFixtureModule,
-                networkModule,
-                draftsModule,
-                accessModule,
-                groupsModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+                accessPresentationModule,
+                groupsDataModule,
+                groupsPresentationModule,
+                composePresentationModule,
             )
         }
         val koin = app.koin

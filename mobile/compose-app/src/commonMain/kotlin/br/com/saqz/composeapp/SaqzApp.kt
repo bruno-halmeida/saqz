@@ -7,16 +7,6 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 
 @Composable
 fun SaqzApp(
-    reduceMotion: Boolean = false,
-    reduceTransparency: Boolean = false,
-) = SaqzApp(
-    dependencies = SaqzAppDependencies.Unconfigured,
-    reduceMotion = reduceMotion,
-    reduceTransparency = reduceTransparency,
-)
-
-@Composable
-fun SaqzApp(
     dependencies: SaqzAppDependencies,
     reduceMotion: Boolean = false,
     reduceTransparency: Boolean = false,

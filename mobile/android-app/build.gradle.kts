@@ -151,6 +151,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.google.id)
+    implementation(libs.koin.android)
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)

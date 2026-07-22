@@ -13,7 +13,7 @@ class SaqzDraftStores(
     val expenseDrafts: ExpenseDraftStorePort,
 )
 
-internal val draftsModule = module {
+internal val platformDraftsModule = module {
     single<GroupDraftStorePort> { get<SaqzDraftStores>().groupDrafts }
     single<GameDraftStorePort> { get<SaqzDraftStores>().gameDrafts }
     single<MonthlyChargeDraftStorePort> { get<SaqzDraftStores>().monthlyChargeDrafts }

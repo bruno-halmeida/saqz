@@ -13,12 +13,8 @@ import br.com.saqz.groups.data.attendance.share.AttendanceShareApi
 import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
 import br.com.saqz.groups.data.game.GameApi
 import br.com.saqz.groups.data.game.GameGateway
-import br.com.saqz.groups.port.GroupAttendanceSharePort
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
-import br.com.saqz.groups.port.GroupPhotoSelectionPort
-import br.com.saqz.groups.port.LocalGroupStatePort
-import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.presentation.DeferredInviteStateMachine
 import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
 import br.com.saqz.groups.presentation.GroupSelectionIntent
@@ -29,6 +25,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.dsl.module
+import org.koin.core.module.dsl.bind
+import org.koin.core.module.dsl.singleOf
 
 internal class AttendanceDestinationStore {
     private val mutableDestination = MutableStateFlow<AttendanceLinkDestination?>(null)
@@ -43,25 +41,21 @@ internal class AttendanceDestinationStore {
     }
 }
 
-internal val groupsModule = module {
-    single<GroupAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
-    single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
-    single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
-    single<GroupPhotoPreviewPort> { get<SaqzNativePorts>().groupPhotoPreviews }
-    single<NativeGroupLinkPort> { get<SaqzNativePorts>().groupLinks }
-    single<LocalGroupStatePort> { get<SaqzNativePorts>().localGroupState }
+internal val groupsDataModule = module {
+    singleOf(::GroupApi) {
+        bind<GroupGateway>()
+        bind<GroupProfileGateway>()
+    }
+    singleOf(::GroupPhotoApi) { bind<GroupPhotoGateway>() }
+    singleOf(::RolesInvitesApi) { bind<RolesInvitesGateway>() }
+    singleOf(::AttendanceShareApi) { bind<AttendanceShareGateway>() }
+    singleOf(::GameApi) { bind<GameGateway>() }
+    singleOf(::AttendanceApi) { bind<AttendanceGateway>() }
+    singleOf(::DefaultGroupSystemTimeZonePort) { bind<GroupSystemTimeZonePort>() }
+}
 
-    single { GroupApi(get()) }
-    single<GroupGateway> { get<GroupApi>() }
-    single<GroupProfileGateway> { get<GroupApi>() }
-    single<GroupPhotoGateway> { GroupPhotoApi(get()) }
-    single { RolesInvitesApi(get()) }
-    single<RolesInvitesGateway> { get<RolesInvitesApi>() }
-    single<AttendanceShareGateway> { AttendanceShareApi(get()) }
-    single<GameGateway> { GameApi(get()) }
-    single<AttendanceGateway> { AttendanceApi(get()) }
-
-    single { GroupSelectionStateMachine(get(), get(), get()) }
+internal val groupsPresentationModule = module {
+    singleOf(::GroupSelectionStateMachine)
     single {
         GroupAdministrationStateMachine(get(), get(), get()) { groupId ->
             get<GroupSelectionStateMachine>().onIntent(GroupSelectionIntent.Select(groupId))

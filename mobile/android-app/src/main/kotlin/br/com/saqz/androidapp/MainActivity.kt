@@ -8,22 +8,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.composeapp.SaqzApp
+import br.com.saqz.composeapp.di.loadSaqzPlatformDependencies
 import java.lang.ref.WeakReference
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
-    private lateinit var model: MainActivityModel
+    private val model: MainActivityModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        model = ViewModelProvider(
-            this,
-            MainActivityModel.factory(applicationContext, MainActivityComposition.factory()),
-        )[MainActivityModel::class.java]
         model.attach(this)
         setContent { SaqzApp(model.dependencies) }
     }
@@ -40,12 +37,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-internal class MainActivityModel private constructor(
+internal class MainActivityModel(
     context: android.content.Context,
     factory: AndroidAppCompositionFactory,
 ) : ViewModel() {
     private val activity = CurrentActivity()
     private val composition = factory.create(context, viewModelScope, activity::require)
+    init {
+        loadSaqzPlatformDependencies(composition.dependencies)
+    }
     val dependencies = composition.dependencies
     private var coldStarted = false
 
@@ -64,18 +64,6 @@ internal class MainActivityModel private constructor(
         composition.links.onWarmIntent(url)
     }
 
-    companion object {
-        fun factory(
-            context: android.content.Context,
-            compositionFactory: AndroidAppCompositionFactory,
-        ) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                require(modelClass == MainActivityModel::class.java)
-                return MainActivityModel(context.applicationContext, compositionFactory) as T
-            }
-        }
-    }
 }
 
 private class CurrentActivity {

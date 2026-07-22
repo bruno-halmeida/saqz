@@ -44,3 +44,47 @@ Verifier: self (author performed explicit fresh-eyes pass after cooling down).
 
 ## Conclusion
 T07 and T08 acceptance criteria are met; the presentation layer no longer inspects `ApiProblemError` status codes directly, and all targeted mobile tests pass.
+
+---
+
+## T15-T18 Koin validation
+
+Date: 2026-07-22  
+Verifier: independent general-purpose agent (source review) plus targeted Android/KMP/iOS gates.
+
+### Commits
+- `ce7b38a` — `build(mobile): add koin for per-feature dependency modules`
+- `d39b80f` — `feat(compose-app): add koin network and drafts modules`
+- `0d0824f` — `feat(compose-app): add koin access and groups modules`
+
+### Acceptance criteria evidence
+- [x] Koin 4.2.2 is pinned in the version catalog; Koin dependencies remain `implementation` and do not leak through the iOS public API.
+- [x] Modules are separated by logical layer: core network, platform drafts, access data/presentation, groups data/presentation, and compose presentation.
+- [x] Constructor-reference DSL (`singleOf`, `viewModelOf`) is used where constructor injection is sufficient; callback/factory/post-construction bindings use lambdas.
+- [x] Android starts the common Koin container from `SaqzApplication`; Activity-scoped platform adapters are constructed with `MainActivityModel.viewModelScope` before their bindings are loaded.
+- [x] iOS starts Koin and loads native bindings in `MainViewController` before Compose content is created.
+- [x] Root ViewModels use `koinViewModel()` with assisted parameters where runtime navigation/state is required.
+- [x] Production `Unconfigured` dependency defaults were removed; fakes live in test source sets.
+- [x] Cross-platform graph tests resolve network, drafts, access, groups, and compose-presentation definitions; bootstrap resolution and singleton behavior are covered.
+
+### Gates
+```text
+rtk ./gradlew :compose-app:allTests --console=plain -q
+PASS (existing Compose test deprecation warnings only)
+
+rtk ./gradlew :android-app:testDevDebugUnitTest :android-app:compileDevDebugAndroidTestKotlin --console=plain -q
+PASS
+
+rtk ./gradlew :compose-app:linkDebugFrameworkIosArm64 :compose-app:linkDebugFrameworkIosSimulatorArm64 -q
+PASS
+
+rtk git diff --check
+PASS
+```
+
+### Independent verification
+- PASS with no blocking/high findings after lifecycle fixes.
+- Residual medium items are explicitly assigned to later wave-2 tasks: T21 removes the temporary delegating invalidator ordering seam; T22 removes the two legacy manually-created network graphs.
+
+### Conclusion
+T15-T18 are complete: Koin is installed, its layered graph is verified, platform roots bootstrap it safely, root ViewModels resolve through Koin, and production fallback stubs are removed without changing the current authenticated runtime behavior.

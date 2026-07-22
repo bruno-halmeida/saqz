@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.startTestSaqzKoin
+import br.com.saqz.composeapp.stopTestSaqzKoin
 import br.com.saqz.designsystem.component.SaqzTopBarTitleTag
 import br.com.saqz.groups.data.GroupPhotoGateway
 import br.com.saqz.groups.data.GroupPhotoReadResult
@@ -247,12 +249,13 @@ class AuthenticatedAccessRootTest {
 
     @Test
     fun `production create route reaches both photo sources and consumes upload effect`() = runComposeUiTest {
+        val dependencies = startTestSaqzKoin()
         val fixture = productionPhotoRouteFixture()
         try {
             setContent {
                 SaqzTheme {
                     AuthenticatedAccessRoute(
-                        dependencies = SaqzAppDependencies.Unconfigured,
+                        dependencies = dependencies,
                         accessViewModelOverride = fixture.access,
                         groupSetupViewModelOverride = fixture.setup,
                         groupPhotos = fixture.dependencies,
@@ -281,11 +284,13 @@ class AuthenticatedAccessRootTest {
             assertEquals(emptyList(), fixture.photos.reads)
         } finally {
             fixture.scope.cancel()
+            stopTestSaqzKoin()
         }
     }
 
     @Test
     fun `production route reads photo only after selected group context is reconciled`() = runComposeUiTest {
+        val dependencies = startTestSaqzKoin()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val photos = RecordingPhotoGateway()
         val selectedSession = SessionDto(
@@ -304,7 +309,7 @@ class AuthenticatedAccessRootTest {
             setContent {
                 SaqzTheme {
                     AuthenticatedAccessRoute(
-                        dependencies = SaqzAppDependencies.Unconfigured,
+                        dependencies = dependencies,
                         accessViewModelOverride = access,
                     )
                 }
@@ -315,6 +320,7 @@ class AuthenticatedAccessRootTest {
             assertEquals(listOf(Pair<String, String?>("current", null)), photos.reads)
         } finally {
             scope.cancel()
+            stopTestSaqzKoin()
         }
     }
 

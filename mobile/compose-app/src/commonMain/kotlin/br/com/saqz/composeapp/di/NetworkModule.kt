@@ -12,12 +12,16 @@ import br.com.saqz.network.TokenResult
 import br.com.saqz.network.createPlatformNetworkClient
 import org.koin.core.module.dsl.onClose
 import org.koin.core.module.dsl.onOptions
+import org.koin.core.module.dsl.bind
+import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 internal class DelegatingSessionInvalidator : SessionInvalidator {
-    lateinit var delegate: SessionInvalidator
+    var delegate: SessionInvalidator? = null
 
-    override fun invalidate() = delegate.invalidate()
+    override fun invalidate() {
+        delegate?.invalidate()
+    }
 }
 
 internal class NativeTokenProvider(private val auth: NativeAuthPort) : IdTokenProvider {
@@ -35,11 +39,17 @@ internal class NativeTokenProvider(private val auth: NativeAuthPort) : IdTokenPr
     }
 }
 
-internal val networkModule = module {
+internal val coreNetworkModule = module {
     single { createPlatformNetworkClient(get()) }.onOptions { onClose { client -> client?.close() } }
+    singleOf(::AuthenticatedNetworkClient)
+    singleOf(::SessionApi) { bind<SessionGateway>() }
+}
+
+internal val accessDataModule = module {
+    singleOf(::NativeTokenProvider) { bind<IdTokenProvider>() }
+}
+
+internal val accessInvalidationModule = module {
     single { DelegatingSessionInvalidator() }
     single<SessionInvalidator> { get<DelegatingSessionInvalidator>() }
-    single<IdTokenProvider> { NativeTokenProvider(get()) }
-    single { AuthenticatedNetworkClient(get(), get(), get()) }
-    single<SessionGateway> { SessionApi(get()) }
 }

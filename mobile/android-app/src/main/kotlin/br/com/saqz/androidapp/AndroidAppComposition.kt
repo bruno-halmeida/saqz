@@ -43,7 +43,7 @@ internal object MainActivityComposition {
     fun factory(): AndroidAppCompositionFactory = factoryOverride ?: ProductionAndroidAppCompositionFactory
 }
 
-private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFactory {
+internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFactory {
     override fun create(
         context: Context,
         scope: CoroutineScope,
@@ -61,8 +61,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
         val attendanceShare = AndroidAttendanceShareAdapter(context.applicationContext)
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
-        return AndroidAppComposition(
-            dependencies = SaqzAppDependencies(
+        val dependencies = SaqzAppDependencies(
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 auth = auth,
@@ -81,7 +80,9 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
                 gameDrafts = drafts.game,
                 monthlyChargeDrafts = drafts.monthly,
                 expenseDrafts = drafts.expense,
-            ),
+            )
+        return AndroidAppComposition(
+            dependencies = dependencies,
             links = links,
             photos = photos,
         )

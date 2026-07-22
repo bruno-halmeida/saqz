@@ -20,7 +20,6 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
-import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.saqz.groups.data.GroupApi
 import br.com.saqz.groups.data.GroupProfileGateway
 import br.com.saqz.groups.data.GroupPhotoApi
@@ -75,8 +74,8 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
@@ -114,6 +113,8 @@ import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
 import br.com.saqz.composeapp.di.DelegatingSessionInvalidator
+import br.com.saqz.composeapp.di.GameDetailViewModelParameters
+import br.com.saqz.composeapp.di.GroupSetupViewModelParameters
 import br.com.saqz.composeapp.di.NativeTokenProvider
 import br.com.saqz.composeapp.home.AuthenticatedHomeScreen
 import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
@@ -130,6 +131,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 import kotlin.random.Random
 
 internal const val AccessRootTag = "authenticated-access-destination"
@@ -174,12 +177,11 @@ internal fun AuthenticatedAccessRoute(
     groupSetupViewModelOverride: GroupSetupViewModel? = null,
     groupPhotos: GroupPhotoRuntimeDependencies = dependencies.groupPhotos,
 ) {
-    val accessViewModel = accessViewModelOverride ?: viewModel<AccessViewModel>(key = "authenticated-access") {
-        AccessViewModel(dependencies)
-    }
-    val groupsViewModel = viewModel<GroupsNavigationViewModel>(key = "groups-navigation") {
-        GroupsNavigationViewModel()
-    }
+    val accessViewModel = accessViewModelOverride ?: koinViewModel<AccessViewModel>(
+        key = "authenticated-access",
+        parameters = { parametersOf(dependencies) },
+    )
+    val groupsViewModel = koinViewModel<GroupsNavigationViewModel>(key = "groups-navigation")
     val state by accessViewModel.state.collectAsState()
     val groupsNavigation by groupsViewModel.state.collectAsState()
     val sessionMemberships = (state.session as? SessionAccessState.Ready)?.session?.memberships.orEmpty()
@@ -234,31 +236,41 @@ internal fun AuthenticatedAccessRoute(
         }
     }
     val groupSetupViewModel = if (state.page == AccessPage.CREATE_GROUP) {
-        groupSetupViewModelOverride ?: viewModel<GroupSetupViewModel>(key = "group-setup-${state.createFlowKey}") {
-            GroupSetupViewModel(
-                input = GroupSetupInput(),
-                gateway = accessViewModel.groupProfileGateway,
-                timeZones = DefaultGroupSystemTimeZonePort(),
-                drafts = dependencies.groupDrafts,
-                commandKeys = GroupCommandKeyFactory { accessViewModel.newCommandKey() },
-            )
-        }
+        groupSetupViewModelOverride ?: koinViewModel<GroupSetupViewModel>(
+            key = "group-setup-${state.createFlowKey}",
+            parameters = {
+                parametersOf(
+                    GroupSetupViewModelParameters(
+                        input = GroupSetupInput(),
+                        gateway = accessViewModel.groupProfileGateway,
+                        timeZones = DefaultGroupSystemTimeZonePort(),
+                        drafts = dependencies.groupDrafts,
+                        commandKeys = GroupCommandKeyFactory { accessViewModel.newCommandKey() },
+                    ),
+                )
+            },
+        )
     } else null
     val groupSetupState = groupSetupViewModel?.state?.collectAsState()?.value
     val gameDetailViewModel = groupsNavigation.takeIf {
         it.destination == GroupsDestination.GAME_DETAIL && it.groupId != null && it.gameId != null
     }?.let { navigation ->
-        viewModel<GameDetailViewModel>(key = "game-detail-${navigation.groupId}-${navigation.gameId}") {
-            GameDetailViewModel(
-                gateway = gameGateway,
-                groupId = navigation.groupId!!,
-                gameId = navigation.gameId!!,
-                role = state.administration.group?.group?.role
+        koinViewModel<GameDetailViewModel>(
+            key = "game-detail-${navigation.groupId}-${navigation.gameId}",
+            parameters = {
+                parametersOf(
+                    GameDetailViewModelParameters(
+                        gateway = gameGateway,
+                        groupId = navigation.groupId!!,
+                        gameId = navigation.gameId!!,
+                        role = state.administration.group?.group?.role
                     ?: (state.selection as? GroupSelectionState.Selected)?.group?.group?.role
-                    ?: br.com.saqz.groups.data.GroupRoleDto.ATHLETE,
-                attendanceGateway = attendanceGateway,
-            )
-        }
+                            ?: br.com.saqz.groups.data.GroupRoleDto.ATHLETE,
+                        attendanceGateway = attendanceGateway,
+                    ),
+                )
+            },
+        )
     }
     val gameDetailState = gameDetailViewModel?.state?.collectAsState()?.value
     var setupPhotoUploadPending by remember(groupSetupViewModel) { mutableStateOf(false) }
