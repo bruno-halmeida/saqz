@@ -182,7 +182,7 @@ T27 → T28 → T29 → T30
 
 ### T04: FIX-04 — 401 no grafo de rede do game-detail invalida a sessão
 
-**Status**: in_progress
+**Status**: completed (4f134c5)
 
 **What**: O `SessionInvalidator` usado pelo grafo de rede criado no composable (`AuthenticatedAccessRoot.kt:215`, hoje `override fun invalidate() = Unit`) passa a delegar ao invalidator real da sessão.
 **Where**: `mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/AuthenticatedAccessRoot.kt:203-219`
@@ -193,11 +193,11 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] 401 em requisição do grafo do composable chama `invalidate()` do invalidator real
-- [ ] Novo teste em `compose-app` commonTest: 401 no client secundário → invalidator real acionado (falha sem o fix)
-- [ ] Comentário/código não deixa invalidator no-op em produção
-- [ ] Gate quick passa: `rtk ./gradlew :compose-app:allTests --console=plain`
-- [ ] Contagem de testes do módulo não diminui (+1 novo)
+- [x] 401 em requisição do grafo do composable chama `invalidate()` do invalidator real
+- [x] Novo teste em `compose-app` commonTest: 401 no client secundário → invalidator real acionado (falha sem o fix)
+- [x] Comentário/código não deixa invalidator no-op em produção
+- [x] Gate quick passa: `rtk ./gradlew :compose-app:allTests --console=plain`
+- [x] Contagem de testes do módulo não diminui (+1 novo)
 
 **Tests**: unit
 **Gate**: quick
@@ -206,6 +206,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T05: Estender SaqzCurrencyFormatter com parse/sanitize e formato canônico
+
+**Status**: in_progress
 
 **What**: Adicionar a `core/common` as funções centrais de BRL: `formatBrl(cents)` no formato canônico `R$ 1.234,56`, `parseBrlToCents(input)` e `sanitizeBrlInput(input)`.
 **Where**: `mobile/core/common/src/commonMain/kotlin/br/com/saqz/core/common/formatting/SaqzCurrencyFormatter.kt`
