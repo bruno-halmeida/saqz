@@ -1,0 +1,28 @@
+package br.com.saqz.groups.presentation.navigation
+
+object GroupsNavigationTags {
+    const val List = "groups-list"
+    const val ListItemPrefix = "groups-list-item-"
+    const val Home = "groups-home"
+    const val Summary = "groups-summary"
+    const val SummaryPhoto = "groups-summary-photo"
+    const val SummaryPhotoSkeleton = "groups-summary-photo-skeleton"
+    const val SummaryPhotoImage = "groups-summary-photo-image"
+    const val SummaryPhotoFallback = "groups-summary-photo-fallback"
+    const val NextGame = "groups-next-game"
+    const val Shortcuts = "groups-shortcuts"
+    const val ShortcutGames = "groups-shortcut-games"
+    const val ShortcutPeople = "groups-shortcut-people"
+    const val ShortcutFinance = "groups-shortcut-finance"
+    const val ShortcutSettings = "groups-shortcut-settings"
+    const val Notices = "groups-notices"
+    const val Members = "groups-members"
+    const val Invite = "groups-invite"
+    const val ProfileCompletion = "groups-profile-completion"
+    const val People = "groups-people"
+    const val Games = "groups-games"
+    const val GameDetail = "groups-game-detail"
+    const val Finance = "groups-finance"
+    const val OwnCharges = "groups-own-charges"
+    const val BottomMenu = "groups-bottom-menu"
+}

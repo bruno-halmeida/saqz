@@ -32,20 +32,23 @@ observable behavior.
    its intents, UI state, UI effects, runtime contract, runtime intents, and
    route/core helper state types SHALL live in focused files in the same
    package.
-7. **SOLID-07** - `GameDetailViewModel.kt` SHALL declare only
+8. **SOLID-08** - `GameDetailViewModel.kt` SHALL declare only
    `GameDetailViewModel`; its lifecycle and attendance actions, error, command
    key factory, state, MVI contracts, and attendance operation SHALL live in
    focused files in the same package.
-8. **SOLID-08** - `GroupSetupViewModel.kt` SHALL declare only
+9. **SOLID-09** - `GroupSetupViewModel.kt` SHALL declare only
    `GroupSetupViewModel`; its mode, input, error, state, MVI contracts, command
    key factory, and pure setup helpers SHALL live in focused files in the same
    package without changing photo, timezone, or draft behavior.
-9. **SOLID-09** - `FinanceViewModel.kt` SHALL declare only
+10. **SOLID-10** - `FinanceViewModel.kt` SHALL declare only
    `FinanceViewModel`; `FinanceOperation` SHALL live in a focused file in the
    same package without changing charge behavior or API.
-10. **SOLID-10** - `ExpenseViewModel.kt` SHALL declare only
+11. **SOLID-11** - `ExpenseViewModel.kt` SHALL declare only
     `ExpenseViewModel`; `ExpenseOperation` SHALL live in a focused file in the
     same package without changing expense behavior or public API.
+12. **SOLID-12** - `GroupsNavigationContract.kt` SHALL not aggregate destination,
+    access, state, intent, effect, tags, and destination policy in one file;
+    each concern SHALL live in a focused file in the same package.
 
 ## Out of Scope
 
