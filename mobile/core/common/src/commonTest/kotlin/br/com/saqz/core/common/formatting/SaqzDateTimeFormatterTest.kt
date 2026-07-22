@@ -70,4 +70,24 @@ class SaqzDateTimeFormatterTest {
         assertEquals(first, second)
         assertEquals("15/05/2025 20:00", first)
     }
+
+    @Test
+    fun localDateFromIsoFormatsAsDdMmYyyy() {
+        assertEquals("12/08/2026", formatter.formatLocalDatePtBr("2026-08-12"))
+    }
+
+    @Test
+    fun monthFromIsoFormatsAsMmYyyy() {
+        assertEquals("08/2026", formatter.formatMonthPtBr("2026-08"))
+    }
+
+    @Test
+    fun invalidLocalDateReturnsInputUnchanged() {
+        assertEquals("not-a-date", formatter.formatLocalDatePtBr("not-a-date"))
+    }
+
+    @Test
+    fun invalidMonthReturnsInputUnchanged() {
+        assertEquals("not-a-month", formatter.formatMonthPtBr("not-a-month"))
+    }
 }

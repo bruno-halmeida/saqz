@@ -207,7 +207,7 @@ T27 → T28 → T29 → T30
 
 ### T05: Estender SaqzCurrencyFormatter com parse/sanitize e formato canônico
 
-**Status**: in_progress
+**Status**: completed (472ebba)
 
 **What**: Adicionar a `core/common` as funções centrais de BRL: `formatBrl(cents)` no formato canônico `R$ 1.234,56`, `parseBrlToCents(input)` e `sanitizeBrlInput(input)`.
 **Where**: `mobile/core/common/src/commonMain/kotlin/br/com/saqz/core/common/formatting/SaqzCurrencyFormatter.kt`
@@ -218,11 +218,11 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] `formatBrl(123456) == "R$ 1.234,56"` (canônico único)
-- [ ] Parse aceita os formatos de teclado atuais do setup (`"70,00"` → 7000) e rejeita entradas inválidas retornando `null`
-- [ ] Testes novos cobrem: vazio, só separador, separador duplo, milhares, valores grandes, negativos/zero
-- [ ] Gate quick passa: `rtk ./gradlew :core:common:allTests --console=plain`
-- [ ] Contagem de testes do módulo não diminui (+N novos)
+- [x] `formatBrl(123456) == "R$ 1.234,56"` (canônico único)
+- [x] Parse aceita os formatos de teclado atuais do setup (`"70,00"` → 7000) e rejeita entradas inválidas retornando `null`
+- [x] Testes novos cobrem: vazio, só separador, separador duplo, milhares, valores grandes, negativos/zero
+- [x] Gate quick passa: `rtk ./gradlew :core:common:allTests --console=plain`
+- [x] Contagem de testes do módulo não diminui (+N novos)
 
 **Tests**: unit
 **Gate**: quick
@@ -231,6 +231,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T06: Estender SaqzDateTimeFormatter com data local e mês pt-BR
+
+**Status**: in_progress
 
 **What**: Adicionar `formatLocalDatePtBr(iso: String): String` e `formatMonthPtBr(...)` a `core/common`, cobrindo os usos hoje duplicados nas telas de finanças.
 **Where**: `mobile/core/common/src/commonMain/kotlin/br/com/saqz/core/common/formatting/SaqzDateTimeFormatter.kt`

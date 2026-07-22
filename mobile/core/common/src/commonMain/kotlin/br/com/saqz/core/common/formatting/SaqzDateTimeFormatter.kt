@@ -19,6 +19,25 @@ class SaqzDateTimeFormatter(
     fun formatDateTime(instant: Instant): String =
         "${formatDate(instant)} ${formatTime(instant)}"
 
+    fun formatLocalDatePtBr(iso: String): String {
+        val parts = iso.split('-')
+        if (parts.size != 3) return iso
+        val (year, month, day) = parts
+        if (year.length != 4 || !year.all(Char::isDigit)) return iso
+        if (month.length != 2 || !month.all(Char::isDigit)) return iso
+        if (day.length != 2 || !day.all(Char::isDigit)) return iso
+        return "$day/$month/$year"
+    }
+
+    fun formatMonthPtBr(iso: String): String {
+        val parts = iso.split('-')
+        if (parts.size != 2) return iso
+        val (year, month) = parts
+        if (year.length != 4 || !year.all(Char::isDigit)) return iso
+        if (month.length != 2 || !month.all(Char::isDigit)) return iso
+        return "$month/$year"
+    }
+
     private fun pad2(value: Int): String =
         if (value < 10) "0$value" else value.toString()
 }
