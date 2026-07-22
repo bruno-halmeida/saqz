@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.attendance.share
 
 import br.com.saqz.groups.presentation.DeferredLinkStateMachine
+import br.com.saqz.groups.presentation.DeferredResolution
 import br.com.saqz.groups.data.DeferredLinkFailure
 import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
 import br.com.saqz.groups.data.toDeferredLinkFailure
@@ -58,7 +59,12 @@ class DeferredAttendanceLinkStateMachine(
 ) {
     private val delegate = DeferredLinkStateMachine(
         links, { (it as? GroupLinkEvent.Attendance)?.code }, localState::readPendingAttendanceLink,
-        localState::writePendingAttendanceLink, gateway::resolveLink, { DeferredAttendanceLinkState() },
+        localState::writePendingAttendanceLink, { code ->
+            when (val result = gateway.resolveLink(code)) {
+                is NetworkResult.Success -> DeferredResolution.Success(result.value)
+                is NetworkResult.Failure -> DeferredResolution.Failure(result.error)
+            }
+        }, { DeferredAttendanceLinkState() },
         { result -> onResolved(AttendanceLinkDestination(result.groupId, result.gameId)) }, ::DeferredAttendanceLinkState,
         { DeferredAttendanceLinkState(hasPending = true) }, { it.copy(hasPending = true, error = null, retryAfterSeconds = null) },
         DeferredAttendanceLinkState::isResolving, DeferredAttendanceLinkState::retryAfterSeconds,

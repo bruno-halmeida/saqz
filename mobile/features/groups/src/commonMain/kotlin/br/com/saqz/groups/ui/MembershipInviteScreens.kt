@@ -14,9 +14,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.MembershipDto
-import br.com.saqz.groups.data.PersistedRoleDto
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.AssignableGroupRole
+import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.InviteUiError
@@ -44,7 +44,7 @@ internal object MembershipInviteTags {
 }
 
 sealed interface MembershipAdministrationIntent {
-    data class ChangeRole(val userId: String, val role: PersistedRoleDto) : MembershipAdministrationIntent
+    data class ChangeRole(val userId: String, val role: AssignableGroupRole) : MembershipAdministrationIntent
     data object Back : MembershipAdministrationIntent
 }
 
@@ -84,23 +84,23 @@ fun MembershipAdministrationScreen(
                 headline = member.displayName,
                 supportingContent = { SaqzBadge(member.role.name, SaqzBadgeVariant.Neutral) },
                 trailingContent = when (member.role) {
-                    GroupRoleDto.OWNER -> null
-                    GroupRoleDto.ADMIN -> ({
+                    GroupRole.OWNER -> null
+                    GroupRole.ADMIN -> ({
                         RoleButton(
                             stringResource(Res.string.membership_make_athlete),
                             member.userId,
                             state.isLoading,
                         ) {
-                            onIntent(MembershipAdministrationIntent.ChangeRole(member.userId, PersistedRoleDto.ATHLETE))
+                            onIntent(MembershipAdministrationIntent.ChangeRole(member.userId, AssignableGroupRole.ATHLETE))
                         }
                     })
-                    GroupRoleDto.ATHLETE -> ({
+                    GroupRole.ATHLETE -> ({
                         RoleButton(
                             stringResource(Res.string.membership_make_admin),
                             member.userId,
                             state.isLoading,
                         ) {
-                            onIntent(MembershipAdministrationIntent.ChangeRole(member.userId, PersistedRoleDto.ADMIN))
+                            onIntent(MembershipAdministrationIntent.ChangeRole(member.userId, AssignableGroupRole.ADMIN))
                         }
                     })
                 },
@@ -252,7 +252,10 @@ private val previewInviteActions = GroupActions(true, true, true)
 @Composable
 private fun MembershipAdministrationScreenPreview() = SaqzTheme {
     MembershipAdministrationScreen(
-        GroupAdministrationState(actions = previewInviteActions, memberships = listOf(MembershipDto("preview-athlete", "Bruno", GroupRoleDto.ATHLETE))),
+        GroupAdministrationState(
+            actions = previewInviteActions,
+            memberships = listOf(GroupMembership("preview-athlete", "Bruno", GroupRole.ATHLETE)),
+        ),
         {},
     )
 }

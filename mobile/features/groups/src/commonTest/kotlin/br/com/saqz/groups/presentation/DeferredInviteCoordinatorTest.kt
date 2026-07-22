@@ -1,10 +1,17 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.*
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
+import br.com.saqz.groups.domain.membership.GroupInviteUrl
+import br.com.saqz.groups.domain.membership.GroupMembership
+import br.com.saqz.groups.domain.membership.GroupMembershipError
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.InviteCode
+import br.com.saqz.groups.domain.membership.RedeemedMembership
 import br.com.saqz.groups.port.*
-import br.com.saqz.network.ApiProblem
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -80,10 +87,10 @@ class DeferredInviteStateMachineTest {
 
     @Test fun `successful redeem preserves authoritative admin role`() = runTest {
         val fixture = fixture(this, stored = CODE_A)
-        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ADMIN))
+        fixture.roles.result = SaqzResult.Success(redeemed(GroupRole.ADMIN))
         fixture.machine.onIntent(DeferredInviteIntent.Restore)
         fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true)); runCurrent()
-        assertEquals(GroupRoleDto.ADMIN, fixture.machine.state.value.redeemedRole)
+        assertEquals(GroupRole.ADMIN, fixture.machine.state.value.redeemedRole)
     }
 
     @Test fun `duplicate events during redeem produce one request`() = runTest {
@@ -91,7 +98,7 @@ class DeferredInviteStateMachineTest {
         fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true)); fixture.machine.onIntent(DeferredInviteIntent.Start)
         fixture.links.emit(CODE_A); runCurrent(); fixture.links.emit(CODE_A)
         assertEquals(listOf(CODE_A), fixture.roles.redeems)
-        fixture.roles.pending!!.complete(NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))); runCurrent()
+        fixture.roles.pending!!.complete(SaqzResult.Success(redeemed(GroupRole.ATHLETE))); runCurrent()
     }
 
     @Test fun `invalid invite clears pending capability`() = runTest {
@@ -175,7 +182,7 @@ class DeferredInviteStateMachineTest {
 
     @Test fun `temporary server error keeps pending for retry`() = runTest {
         val fixture = fixture(this)
-        fixture.roles.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.roles.result = unavailable()
         fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
         fixture.machine.onIntent(DeferredInviteIntent.Start)
         fixture.links.emit(CODE_A); runCurrent()
@@ -186,11 +193,11 @@ class DeferredInviteStateMachineTest {
 
     @Test fun `temporary server error retry redeems same code exactly once more`() = runTest {
         val fixture = fixture(this)
-        fixture.roles.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.roles.result = unavailable()
         fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
         fixture.machine.onIntent(DeferredInviteIntent.Start)
         fixture.links.emit(CODE_A); runCurrent()
-        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        fixture.roles.result = SaqzResult.Success(redeemed(GroupRole.ATHLETE))
         fixture.machine.onIntent(DeferredInviteIntent.Retry); runCurrent()
         assertEquals(listOf(CODE_A, CODE_A), fixture.roles.redeems)
         assertEquals(listOf(GROUP_ID), fixture.selected)
@@ -199,11 +206,11 @@ class DeferredInviteStateMachineTest {
 
     @Test fun `new link replaces retryable pending invite and redeems latest only`() = runTest {
         val fixture = fixture(this)
-        fixture.roles.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.roles.result = unavailable()
         fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true))
         fixture.machine.onIntent(DeferredInviteIntent.Start)
         fixture.links.emit(CODE_A); runCurrent()
-        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        fixture.roles.result = SaqzResult.Success(redeemed(GroupRole.ATHLETE))
         fixture.links.emit(CODE_B); runCurrent()
         assertEquals(listOf(CODE_A, CODE_B), fixture.roles.redeems)
         assertEquals(listOf<String?>(CODE_A, CODE_B, null), fixture.local.writes)
@@ -215,7 +222,7 @@ class DeferredInviteStateMachineTest {
         fixture.roles.result = problem(404, "INVITE_INVALID_OR_EXPIRED")
         fixture.machine.onIntent(DeferredInviteIntent.Restore)
         fixture.machine.onIntent(DeferredInviteIntent.SetSessionReady(true)); runCurrent()
-        fixture.roles.result = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
+        fixture.roles.result = SaqzResult.Success(redeemed(GroupRole.ATHLETE))
         fixture.machine.onIntent(DeferredInviteIntent.Retry); runCurrent()
         assertEquals(listOf(CODE_A), fixture.roles.redeems)
         assertTrue(fixture.selected.isEmpty())
@@ -242,15 +249,18 @@ class DeferredInviteStateMachineTest {
         override fun writeSelectedGroupId(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
     }
 
-    private class FakeRoles : RolesInvitesGateway {
+    private class FakeRoles : GroupMembershipGateway {
         val redeems = mutableListOf<String>()
-        var result: NetworkResult<RedeemedInviteDto> = NetworkResult.Success(RedeemedInviteDto(GROUP_ID, GroupRoleDto.ATHLETE))
-        var pending: CompletableDeferred<NetworkResult<RedeemedInviteDto>>? = null
-        override suspend fun redeem(code: String): NetworkResult<RedeemedInviteDto> { redeems += code; return pending?.await() ?: result }
-        override suspend fun listMemberships(groupId: String): NetworkResult<List<MembershipDto>> = error("unused")
-        override suspend fun changeRole(groupId: String, userId: String, role: PersistedRoleDto): NetworkResult<MembershipDto> = error("unused")
-        override suspend fun rotateInvite(groupId: String): NetworkResult<InviteUrlDto> = error("unused")
-        override suspend fun expireInvite(groupId: String): NetworkResult<Unit> = error("unused")
+        var result: SaqzResult<RedeemedMembership, GroupMembershipError> = SaqzResult.Success(redeemed(GroupRole.ATHLETE))
+        var pending: CompletableDeferred<SaqzResult<RedeemedMembership, GroupMembershipError>>? = null
+        override suspend fun redeem(code: InviteCode): SaqzResult<RedeemedMembership, GroupMembershipError> {
+            redeems += code.value
+            return pending?.await() ?: result
+        }
+        override suspend fun listMemberships(groupId: GroupId): SaqzResult<List<GroupMembership>, GroupMembershipError> = error("unused")
+        override suspend fun changeRole(command: ChangeMembershipRoleCommand): SaqzResult<GroupMembership, GroupMembershipError> = error("unused")
+        override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> = error("unused")
+        override suspend fun expireInvite(groupId: GroupId): SaqzResult<Unit, GroupMembershipError> = error("unused")
     }
 
     private data class Fixture(val machine: DeferredInviteStateMachine, val links: FakeLinks, val local: FakeLocal, val roles: FakeRoles, val selected: MutableList<String>)
@@ -259,7 +269,17 @@ class DeferredInviteStateMachineTest {
         const val CODE_A = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         const val CODE_B = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
         const val GROUP_ID = "group-id"
-        fun problem(status: Int, code: String) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(status, code, "corr-$status")))
-        fun limited(seconds: Int) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(429, "INVITE_ATTEMPT_LIMIT", "corr-429", retryAfterSeconds = seconds)))
+        fun redeemed(role: GroupRole) = RedeemedMembership(GroupId(GROUP_ID), role)
+        fun problem(status: Int, code: String): SaqzResult.Failure<GroupMembershipError> = SaqzResult.Failure(
+            if (code == "INVITE_INVALID_OR_EXPIRED") {
+                GroupMembershipError.InvalidOrExpired
+            } else {
+                GroupMembershipError.DataFailure(if (status == 404) DataError.NotFound else DataError.Unknown)
+            },
+        )
+        fun limited(seconds: Int): SaqzResult.Failure<GroupMembershipError> =
+            SaqzResult.Failure(GroupMembershipError.AttemptLimit(seconds))
+        fun unavailable(): SaqzResult.Failure<GroupMembershipError> =
+            SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Server))
     }
 }

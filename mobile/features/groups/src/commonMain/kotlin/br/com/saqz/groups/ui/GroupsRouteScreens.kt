@@ -67,7 +67,7 @@ import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupVenue
 import br.com.saqz.groups.domain.group.GroupWeekday
-import br.com.saqz.groups.data.MembershipDto
+import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
@@ -493,7 +493,7 @@ fun GroupLoadError(onRetry: () -> Unit) {
 @Composable
 private fun GroupSummary(
     group: Group,
-    memberships: List<MembershipDto>,
+    memberships: List<GroupMembership>,
     photoState: GroupPhotoState,
     photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
 ) {
@@ -807,7 +807,7 @@ private fun NoticesCard(
 
 @Composable
 private fun MembersCard(
-    memberships: List<MembershipDto>,
+    memberships: List<GroupMembership>,
     canOpenPeople: Boolean,
     onOpenPeople: () -> Unit,
 ) {
@@ -1092,8 +1092,8 @@ private val previewGroup = Group(
 )
 
 private val previewMemberships = listOf(
-    MembershipDto(userId = "user-1", displayName = "Ana Lima", role = br.com.saqz.groups.data.GroupRoleDto.ATHLETE),
-    MembershipDto(userId = "user-2", displayName = "Bruno Reis", role = br.com.saqz.groups.data.GroupRoleDto.ADMIN),
+    GroupMembership(userId = "user-1", displayName = "Ana Lima", role = GroupRole.ATHLETE),
+    GroupMembership(userId = "user-2", displayName = "Bruno Reis", role = GroupRole.ADMIN),
 )
 
 private val previewAdministration = GroupAdministrationState(

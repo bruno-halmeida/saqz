@@ -1,7 +1,9 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.RolesInvitesGateway
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.GroupMembershipError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +18,7 @@ data class InviteToolState(
 )
 
 class InviteToolStateMachine(
-    private val roles: RolesInvitesGateway,
+    private val roles: GroupMembershipGateway,
     private val groupId: () -> String?,
     private val scope: CoroutineScope,
 ) {
@@ -26,9 +28,9 @@ class InviteToolStateMachine(
     fun rotate() {
         val currentGroupId = begin() ?: return
         scope.launch {
-            mutableState.value = when (val result = roles.rotateInvite(currentGroupId)) {
-                is NetworkResult.Success -> InviteToolState(inviteUrl = result.value.inviteUrl)
-                is NetworkResult.Failure -> failed()
+            mutableState.value = when (val result = roles.rotateInvite(GroupId(currentGroupId))) {
+                is SaqzResult.Success -> InviteToolState(inviteUrl = result.value.value)
+                is SaqzResult.Failure -> failed(result.error)
             }
         }
     }
@@ -36,9 +38,9 @@ class InviteToolStateMachine(
     fun expire() {
         val currentGroupId = begin() ?: return
         scope.launch {
-            mutableState.value = when (val result = roles.expireInvite(currentGroupId)) {
-                is NetworkResult.Success -> InviteToolState()
-                is NetworkResult.Failure -> failed()
+            mutableState.value = when (val result = roles.expireInvite(GroupId(currentGroupId))) {
+                is SaqzResult.Success -> InviteToolState()
+                is SaqzResult.Failure -> failed(result.error)
             }
         }
     }
@@ -54,8 +56,15 @@ class InviteToolStateMachine(
         return currentGroupId
     }
 
-    private fun failed() = mutableState.value.copy(
+    private fun failed(error: GroupMembershipError) = mutableState.value.copy(
         isLoading = false,
-        error = InviteUiError.UNAVAILABLE,
+        error = when (error) {
+            GroupMembershipError.InvalidOrExpired -> InviteUiError.INVALID_OR_EXPIRED
+            is GroupMembershipError.AttemptLimit -> InviteUiError.ATTEMPT_LIMIT
+            is GroupMembershipError.Validation,
+            is GroupMembershipError.DataFailure,
+            -> InviteUiError.UNAVAILABLE
+        },
+        retryAfterSeconds = (error as? GroupMembershipError.AttemptLimit)?.retryAfterSeconds,
     )
 }

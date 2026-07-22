@@ -1,12 +1,16 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.InviteUrlDto
-import br.com.saqz.groups.data.MembershipDto
-import br.com.saqz.groups.data.PersistedRoleDto
-import br.com.saqz.groups.data.RedeemedInviteDto
-import br.com.saqz.groups.data.RolesInvitesGateway
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
+import br.com.saqz.groups.domain.membership.GroupInviteUrl
+import br.com.saqz.groups.domain.membership.GroupMembership
+import br.com.saqz.groups.domain.membership.GroupMembershipError
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.InviteCode
+import br.com.saqz.groups.domain.membership.RedeemedMembership
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -36,7 +40,7 @@ class InviteToolStateMachineTest {
         val fixture = fixture(this)
         fixture.machine.rotate()
         advanceUntilIdle()
-        fixture.roles.rotateResult = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.roles.rotateResult = unavailable()
 
         fixture.machine.rotate()
         advanceUntilIdle()
@@ -60,12 +64,39 @@ class InviteToolStateMachineTest {
         val fixture = fixture(this)
         fixture.machine.rotate()
         advanceUntilIdle()
-        fixture.roles.expireResult = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.roles.expireResult = unavailable()
 
         fixture.machine.expire()
         advanceUntilIdle()
 
         assertEquals(INVITE_URL, fixture.machine.state.value.inviteUrl)
+        assertEquals(InviteUiError.UNAVAILABLE, fixture.machine.state.value.error)
+    }
+
+    @Test
+    fun `attempt limit preserves exact retry delay`() = runTest {
+        val fixture = fixture(this)
+        fixture.roles.rotateResult = SaqzResult.Failure(GroupMembershipError.AttemptLimit(42))
+
+        fixture.machine.rotate()
+        advanceUntilIdle()
+
+        assertEquals(InviteUiError.ATTEMPT_LIMIT, fixture.machine.state.value.error)
+        assertEquals(42, fixture.machine.state.value.retryAfterSeconds)
+    }
+
+    @Test
+    fun `validation without global message uses localized unavailable state`() = runTest {
+        val fixture = fixture(this)
+        fixture.roles.rotateResult = SaqzResult.Failure(
+            GroupMembershipError.Validation(
+                ValidationDetails(globalMessages = emptyList(), fieldMessages = emptyMap()),
+            ),
+        )
+
+        fixture.machine.rotate()
+        advanceUntilIdle()
+
         assertEquals(InviteUiError.UNAVAILABLE, fixture.machine.state.value.error)
     }
 
@@ -79,7 +110,7 @@ class InviteToolStateMachineTest {
 
     @Test fun `loading invite ignores concurrent command`() = runTest {
         val fixture = fixture(this)
-        val pendingRotation = CompletableDeferred<NetworkResult<InviteUrlDto>>()
+        val pendingRotation = CompletableDeferred<SaqzResult<GroupInviteUrl, GroupMembershipError>>()
         fixture.roles.pendingRotation = pendingRotation
 
         fixture.machine.rotate()
@@ -114,26 +145,35 @@ class InviteToolStateMachineTest {
         return Fixture(machine, roles)
     }
 
-    private class FakeRoles : RolesInvitesGateway {
+    private class FakeRoles : GroupMembershipGateway {
         val rotations = mutableListOf<String>()
         val expirations = mutableListOf<String>()
-        var rotateResult: NetworkResult<InviteUrlDto> = NetworkResult.Success(InviteUrlDto(INVITE_URL))
-        var expireResult: NetworkResult<Unit> = NetworkResult.Success(Unit)
-        var pendingRotation: CompletableDeferred<NetworkResult<InviteUrlDto>>? = null
+        var rotateResult: SaqzResult<GroupInviteUrl, GroupMembershipError> =
+            SaqzResult.Success(GroupInviteUrl(INVITE_URL))
+        var expireResult: SaqzResult<Unit, GroupMembershipError> = SaqzResult.Success(Unit)
+        var pendingRotation: CompletableDeferred<SaqzResult<GroupInviteUrl, GroupMembershipError>>? = null
 
-        override suspend fun rotateInvite(groupId: String): NetworkResult<InviteUrlDto> {
-            rotations += groupId
+        override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> {
+            rotations += groupId.value
             return pendingRotation?.await() ?: rotateResult
         }
 
-        override suspend fun expireInvite(groupId: String): NetworkResult<Unit> {
-            expirations += groupId
+        override suspend fun expireInvite(groupId: GroupId): SaqzResult<Unit, GroupMembershipError> {
+            expirations += groupId.value
             return expireResult
         }
 
-        override suspend fun listMemberships(groupId: String): NetworkResult<List<MembershipDto>> = error("unused")
-        override suspend fun changeRole(groupId: String, userId: String, role: PersistedRoleDto): NetworkResult<MembershipDto> = error("unused")
-        override suspend fun redeem(code: String): NetworkResult<RedeemedInviteDto> = error("unused")
+        override suspend fun listMemberships(
+            groupId: GroupId,
+        ): SaqzResult<List<GroupMembership>, GroupMembershipError> = error("unused")
+
+        override suspend fun changeRole(
+            command: ChangeMembershipRoleCommand,
+        ): SaqzResult<GroupMembership, GroupMembershipError> = error("unused")
+
+        override suspend fun redeem(
+            code: InviteCode,
+        ): SaqzResult<RedeemedMembership, GroupMembershipError> = error("unused")
     }
 
     private data class Fixture(val machine: InviteToolStateMachine, val roles: FakeRoles)
@@ -141,5 +181,7 @@ class InviteToolStateMachineTest {
     private companion object {
         const val GROUP_ID = "group-id"
         const val INVITE_URL = "https://saqz.app/i/code"
+        fun unavailable(): SaqzResult.Failure<GroupMembershipError> =
+            SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Server))
     }
 }

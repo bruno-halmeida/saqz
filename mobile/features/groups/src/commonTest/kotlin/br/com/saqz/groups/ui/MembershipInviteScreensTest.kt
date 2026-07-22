@@ -10,7 +10,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.groups.data.*
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.AssignableGroupRole
+import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.presentation.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -51,7 +53,12 @@ class MembershipInviteScreensTest {
 
         onNodeWithTag(MembershipInviteTags.role("athlete-id")).performClick()
 
-        assertEquals(listOf<MembershipAdministrationIntent>(MembershipAdministrationIntent.ChangeRole("athlete-id", PersistedRoleDto.ADMIN)), intents)
+        assertEquals(
+            listOf<MembershipAdministrationIntent>(
+                MembershipAdministrationIntent.ChangeRole("athlete-id", AssignableGroupRole.ADMIN),
+            ),
+            intents,
+        )
     }
 
     @Test
@@ -61,20 +68,30 @@ class MembershipInviteScreensTest {
 
         onNodeWithTag(MembershipInviteTags.role("admin-id")).performClick()
 
-        assertEquals(listOf<MembershipAdministrationIntent>(MembershipAdministrationIntent.ChangeRole("admin-id", PersistedRoleDto.ATHLETE)), intents)
+        assertEquals(
+            listOf<MembershipAdministrationIntent>(
+                MembershipAdministrationIntent.ChangeRole("admin-id", AssignableGroupRole.ATHLETE),
+            ),
+            intents,
+        )
     }
 
     @Test
     fun `changing one of several admins leaves the other targeted independently`() = runComposeUiTest {
         val intents = mutableListOf<MembershipAdministrationIntent>()
         memberships(
-            state.copy(memberships = state.memberships + MembershipDto("admin-two", "Admin Two", GroupRoleDto.ADMIN)),
+            state.copy(memberships = state.memberships + GroupMembership("admin-two", "Admin Two", GroupRole.ADMIN)),
             onIntent = intents::add,
         )
 
         onNodeWithTag(MembershipInviteTags.role("admin-two")).performClick()
 
-        assertEquals(listOf<MembershipAdministrationIntent>(MembershipAdministrationIntent.ChangeRole("admin-two", PersistedRoleDto.ATHLETE)), intents)
+        assertEquals(
+            listOf<MembershipAdministrationIntent>(
+                MembershipAdministrationIntent.ChangeRole("admin-two", AssignableGroupRole.ATHLETE),
+            ),
+            intents,
+        )
         onNodeWithTag(MembershipInviteTags.role("admin-id")).assertExists()
     }
 
@@ -197,6 +214,13 @@ class MembershipInviteScreensTest {
         onNodeWithTag(MembershipInviteTags.Retry).assertIsNotEnabled()
     }
 
+    @Test
+    fun `generic validation fallback is localized`() = runComposeUiTest {
+        invite(InviteToolState(error = InviteUiError.UNAVAILABLE))
+
+        onNodeWithText("Nao foi possivel atualizar o convite").assertExists()
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.memberships(
         membershipState: GroupAdministrationState = state,
         onIntent: (MembershipAdministrationIntent) -> Unit = {},
@@ -224,9 +248,9 @@ class MembershipInviteScreensTest {
         val state = GroupAdministrationState(
             actions = ownerActions,
             memberships = listOf(
-                MembershipDto("owner-id", "Owner One", GroupRoleDto.OWNER),
-                MembershipDto("admin-id", "Admin One", GroupRoleDto.ADMIN),
-                MembershipDto("athlete-id", "Athlete One", GroupRoleDto.ATHLETE),
+                GroupMembership("owner-id", "Owner One", GroupRole.OWNER),
+                GroupMembership("admin-id", "Admin One", GroupRole.ADMIN),
+                GroupMembership("athlete-id", "Athlete One", GroupRole.ATHLETE),
             ),
         )
     }

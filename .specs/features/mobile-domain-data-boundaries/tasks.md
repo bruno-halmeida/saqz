@@ -591,6 +591,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T16: Switch membership, role and invite presentation to domain contracts
 
+**Status:** Complete — focused Groups presentation gate passed.
+
 **What:** Convert deferred invite, invite tool, group administration membership flows and membership UI to domain models/results/errors while preserving rate-limit and retry UX.
 
 **Where:** `features/groups/src/commonMain/**/{DeferredInvite*,InviteTool*,GroupAdministration*,ui/MembershipInvite*}` and tests.

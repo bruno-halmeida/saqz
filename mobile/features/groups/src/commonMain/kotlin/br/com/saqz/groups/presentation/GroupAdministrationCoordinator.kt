@@ -11,13 +11,11 @@ import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.group.VersionedGroup
-import br.com.saqz.groups.data.MembershipDto
-import br.com.saqz.groups.data.AdministrationFailure
-import br.com.saqz.groups.data.PersistedRoleDto
-import br.com.saqz.groups.data.RolesInvitesGateway
-import br.com.saqz.groups.data.toAdministrationFailure
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.groups.domain.membership.AssignableGroupRole
+import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
+import br.com.saqz.groups.domain.membership.GroupMembership
+import br.com.saqz.groups.domain.membership.GroupMembershipError
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +36,7 @@ enum class GroupAdministrationError {
 
 data class GroupAdministrationState(
     val group: VersionedGroup? = null,
-    val memberships: List<MembershipDto> = emptyList(),
+    val memberships: List<GroupMembership> = emptyList(),
     val actions: GroupActions = GroupActions(false, false, false),
     val isLoading: Boolean = false,
     val fieldErrors: Map<String, List<String>> = emptyMap(),
@@ -59,12 +57,12 @@ sealed interface GroupAdministrationIntent {
 
     data object LoadMemberships : GroupAdministrationIntent
 
-    data class ChangeRole(val userId: String, val role: PersistedRoleDto) : GroupAdministrationIntent
+    data class ChangeRole(val userId: String, val role: AssignableGroupRole) : GroupAdministrationIntent
 }
 
 class GroupAdministrationStateMachine(
     private val groups: GroupGateway,
-    private val roles: RolesInvitesGateway,
+    private val roles: GroupMembershipGateway,
     private val scope: CoroutineScope,
     private val selectCreatedGroup: (String) -> Unit,
 ) {
@@ -128,29 +126,29 @@ class GroupAdministrationStateMachine(
         val groupId = current.group?.group?.id ?: return
         if (!current.actions.canManageRoles || !begin()) return
         scope.launch {
-            when (val result = roles.listMemberships(groupId.value)) {
-                is NetworkResult.Success -> mutableState.value = mutableState.value.copy(
+            when (val result = roles.listMemberships(groupId)) {
+                is SaqzResult.Success -> mutableState.value = mutableState.value.copy(
                     memberships = result.value,
                     isLoading = false,
                 )
-                is NetworkResult.Failure -> fail(result.error)
+                is SaqzResult.Failure -> failMembership(result.error)
             }
         }
     }
 
-    private fun changeRole(userId: String, role: PersistedRoleDto) {
+    private fun changeRole(userId: String, role: AssignableGroupRole) {
         val current = mutableState.value
         val groupId = current.group?.group?.id ?: return
         if (!current.actions.canManageRoles || !begin()) return
         scope.launch {
-            when (val result = roles.changeRole(groupId.value, userId, role)) {
-                is NetworkResult.Success -> {
+            when (val result = roles.changeRole(ChangeMembershipRoleCommand(groupId, userId, role))) {
+                is SaqzResult.Success -> {
                     val updated = mutableState.value.memberships.map { member ->
                         if (member.userId == result.value.userId) result.value else member
                     }
                     mutableState.value = mutableState.value.copy(memberships = updated, isLoading = false)
                 }
-                is NetworkResult.Failure -> fail(result.error)
+                is SaqzResult.Failure -> failMembership(result.error)
             }
         }
     }
@@ -191,22 +189,27 @@ class GroupAdministrationStateMachine(
         mutableState.value = mutableState.value.copy(isLoading = false)
     }
 
-    private fun fail(error: NetworkError) {
-        when (val failure = error.toAdministrationFailure()) {
-            is AdministrationFailure.Validation -> mutableState.value = mutableState.value.copy(
+    private fun failMembership(error: GroupMembershipError) {
+        when (error) {
+            is GroupMembershipError.Validation -> mutableState.value = mutableState.value.copy(
                 isLoading = false,
-                fieldErrors = failure.fieldErrors,
+                fieldErrors = error.details.fieldMessages,
                 error = null,
             )
-            else -> mutableState.value = mutableState.value.copy(
+            GroupMembershipError.InvalidOrExpired,
+            is GroupMembershipError.AttemptLimit,
+            -> mutableState.value = mutableState.value.copy(
                 isLoading = false,
                 fieldErrors = emptyMap(),
-                error = when (failure) {
-                    AdministrationFailure.Conflict -> GroupAdministrationError.UNAVAILABLE
-                    AdministrationFailure.Forbidden -> GroupAdministrationError.FORBIDDEN
-                    AdministrationFailure.NotFound -> GroupAdministrationError.NOT_FOUND
-                    AdministrationFailure.Unavailable -> GroupAdministrationError.UNAVAILABLE
-                    is AdministrationFailure.Validation -> error("exhaustive")
+                error = GroupAdministrationError.UNAVAILABLE,
+            )
+            is GroupMembershipError.DataFailure -> mutableState.value = mutableState.value.copy(
+                isLoading = false,
+                fieldErrors = emptyMap(),
+                error = when (error.error) {
+                    DataError.Forbidden -> GroupAdministrationError.FORBIDDEN
+                    DataError.NotFound -> GroupAdministrationError.NOT_FOUND
+                    else -> GroupAdministrationError.UNAVAILABLE
                 },
             )
         }

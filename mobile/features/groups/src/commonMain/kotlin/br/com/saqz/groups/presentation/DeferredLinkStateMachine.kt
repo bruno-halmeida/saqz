@@ -8,20 +8,23 @@ import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-internal class DeferredLinkStateMachine<S, T>(
+internal sealed interface DeferredResolution<out T, out E> {
+    data class Success<T>(val value: T) : DeferredResolution<T, Nothing>
+    data class Failure<E>(val error: E) : DeferredResolution<Nothing, E>
+}
+
+internal class DeferredLinkStateMachine<S, T, E>(
     private val links: NativeGroupLinkPort,
     private val eventFilter: (GroupLinkEvent) -> String?,
     private val readPending: (GroupValueCallback) -> Unit,
     private val writePending: (String?, GroupResultCallback) -> Unit,
-    private val resolve: suspend (String) -> NetworkResult<T>,
+    private val resolve: suspend (String) -> DeferredResolution<T, E>,
     private val resolvedState: (T) -> S,
     private val onResolved: (T) -> Unit,
     private val initialState: () -> S,
@@ -31,7 +34,7 @@ internal class DeferredLinkStateMachine<S, T>(
     private val retryAfter: (S) -> Int?,
     private val processingState: (S, Boolean) -> S,
     private val clearedState: (S) -> S,
-    private val failureState: (S, NetworkError) -> Pair<S, Boolean>,
+    private val failureState: (S, E) -> Pair<S, Boolean>,
     private val scope: CoroutineScope,
 ) {
     private val mutableState = MutableStateFlow(initialState())
@@ -78,18 +81,34 @@ internal class DeferredLinkStateMachine<S, T>(
         mutableState.value = processingState(mutableState.value, true)
         scope.launch {
             when (val result = resolve(code)) {
-                is NetworkResult.Success -> if (pendingCode == code) { clearPending(); mutableState.value = resolvedState(result.value); onResolved(result.value) } else retryLatest()
-                is NetworkResult.Failure -> if (pendingCode == code) handleFailure(result.error) else retryLatest()
+                is DeferredResolution.Success -> if (pendingCode == code) {
+                    clearPending()
+                    mutableState.value = resolvedState(result.value)
+                    onResolved(result.value)
+                } else {
+                    retryLatest()
+                }
+                is DeferredResolution.Failure -> if (pendingCode == code) handleFailure(result.error) else retryLatest()
             }
         }
     }
 
     private fun retryLatest() { mutableState.value = processingState(mutableState.value, false); attempt() }
-    private fun handleFailure(error: NetworkError) {
+    private fun handleFailure(error: E) {
         val (next, clear) = failureState(mutableState.value, error)
         mutableState.value = next
         if (clear) clearPending()
     }
-    private fun clearPending() { pendingCode = null; persist(null); mutableState.value = clearedState(mutableState.value) }
-    private fun persist(value: String?) = writePending(value, object : GroupResultCallback { override fun complete(result: GroupOperationResult) = Unit })
+    private fun clearPending() {
+        pendingCode = null
+        persist(null)
+        mutableState.value = clearedState(mutableState.value)
+    }
+
+    private fun persist(value: String?) = writePending(
+        value,
+        object : GroupResultCallback {
+            override fun complete(result: GroupOperationResult) = Unit
+        },
+    )
 }
