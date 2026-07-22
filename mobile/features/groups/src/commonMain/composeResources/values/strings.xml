@@ -48,6 +48,9 @@
     <string name="groups_retry">Tentar novamente</string>
     <string name="groups_back_home">Voltar ao grupo</string>
     <string name="nav_home">Início</string>
+    <string name="nav_groups">Grupos</string>
+    <string name="nav_more">Mais</string>
+    <string name="groups_notices_placeholder">Os avisos do grupo aparecerão nesta área em breve.</string>
     <string name="group_create_title">Novo grupo</string>
     <string name="group_name">Nome do grupo</string>
     <string name="group_timezone">Timezone</string>
