@@ -299,6 +299,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T07: Move session transport into Access data and map it to domain
 
+**Status:** Complete — `0cab9d0`; focused gate passed.
+
 **What:** Move feature-specific session DTO/API behavior out of `:core:network` into Access data, implement the domain `SessionGateway`, and apply eligible read/idempotent retry semantics.
 
 **Where:** `features/access/data/src/commonMain/**/session/**`; `features/access/data/src/commonTest/**`; keep the existing `core/network/.../SessionApi.kt` compatibility surface unchanged until its remaining consumers migrate in T09–T10.
@@ -332,6 +334,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T08: Move native Access port contracts into Access domain
 
+**Status:** Complete — `f20afe4`; focused gate passed (`5f11e9a` records B4).
+
 **What:** Relocate provider-neutral native auth/link/share/local-state contracts and result types from the presentation module into Access domain, updating Android adapters without changing callbacks or platform behavior.
 
 **Where:** `features/access/domain/src/commonMain/**/port/**`; remove old presentation-owned port file; `android-app/src/main/**/access/**`; focused Android tests; composition imports needed to compile.
@@ -362,6 +366,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(access-domain): own native access ports`
 
 ### T09: Switch Access presentation to domain-only session and error contracts
+
+**Status:** Complete — `3819db9`; focused gate passed.
 
 **What:** Replace `NetworkResult`, `NetworkError`, session DTO/API-problem inspection and old port imports in Access presentation with Access domain models/results/errors while preserving every state and screen outcome.
 
@@ -394,6 +400,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(access): consume domain-only contracts`
 
 ### T10: Rebind Access data in compose-app and close the Access boundary
+
+**Status:** Complete — `065d2f3`; focused gate and boundary scans passed (`46fe41d` records B5–B8).
 
 **What:** Bind the Access data implementation to the Access domain contract in the existing Koin composition root, update Access app consumers to domain models, and remove all completed Access compatibility seams.
 
