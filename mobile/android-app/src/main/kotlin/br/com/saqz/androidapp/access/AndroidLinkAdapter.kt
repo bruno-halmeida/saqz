@@ -157,10 +157,13 @@ internal class BranchSdkSessionClient(
 
     private fun branchCallback(callback: (Map<String, String?>) -> Unit) =
         Branch.BranchReferralInitListener { parameters: JSONObject?, error: BranchError? ->
-            if (error != null || parameters == null || !parameters.has(INVITE_PARAMETER)) {
+            if (error != null || parameters == null) {
                 callback(emptyMap())
             } else {
-                callback(mapOf(INVITE_PARAMETER to (parameters.opt(INVITE_PARAMETER) as? String)))
+                val result = mutableMapOf<String, String?>()
+                if (parameters.has(INVITE_PARAMETER)) result[INVITE_PARAMETER] = parameters.opt(INVITE_PARAMETER) as? String
+                if (parameters.has(ATTENDANCE_PARAMETER)) result[ATTENDANCE_PARAMETER] = parameters.opt(ATTENDANCE_PARAMETER) as? String
+                callback(result)
             }
         }
 

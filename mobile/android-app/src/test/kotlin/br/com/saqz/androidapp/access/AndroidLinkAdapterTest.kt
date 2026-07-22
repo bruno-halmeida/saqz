@@ -151,6 +151,34 @@ class AndroidLinkAdapterTest {
         assertEquals(1, fixture.branch.calls.size)
     }
 
+    @Test
+    fun deferredBranchAttendanceResultDeliversAttendanceEvent() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+
+        fixture.adapter.onColdStart(null)
+        fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
+
+        assertEquals(listOf(br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A)), events)
+    }
+
+    @Test
+    fun branchParametersWithBothInviteAndAttendanceAreRejected() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+
+        fixture.adapter.onColdStart(null)
+        fixture.branch.complete(mapOf("saqz_invite" to CODE_A, "saqz_attendance" to CODE_B))
+
+        assertTrue(events.isEmpty())
+    }
+
     private class Fixture {
         val branch = FakeBranchSessionClient()
         val adapter = AndroidLinkAdapter(branch)

@@ -132,7 +132,7 @@ T27 → T28 → T29 → T30
 
 ### T02: FIX-02 — Persistência real de attendance link no adapter de estado de grupos
 
-**Status**: in_progress
+**Status**: completed (ce07d76)
 
 **What**: Eliminar o adapter fake `AndroidGroupStateAdapter` (read retorna `Success(null)`, write no-op) garantindo que a composição use o adapter real (`AndroidLocalGroupStateAdapter`); se o fake tiver algum consumidor, redirecioná-lo para o real.
 **Where**: `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/access/AndroidGroupPorts.kt:33-34`; composição em `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/AndroidAppComposition.kt:79`
@@ -143,11 +143,11 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] Nenhum caminho de produção usa um adapter no-op para attendance link (fake removido ou delegando ao store real)
-- [ ] Novo teste: `writePendingAttendanceLink(value)` seguido de `readPendingAttendanceLink()` retorna `value` (falha sem o fix)
-- [ ] Nenhuma referência residual ao adapter removido (`rg` confirma)
-- [ ] Gate quick passa: `rtk ./gradlew :android-app:testDevDebugUnitTest --console=plain`
-- [ ] Contagem de testes do módulo não diminui (+1 novo)
+- [x] Nenhum caminho de produção usa um adapter no-op para attendance link (fake removido ou delegando ao store real)
+- [x] Novo teste: `writePendingAttendanceLink(value)` seguido de `readPendingAttendanceLink()` retorna `value` (falha sem o fix)
+- [x] Nenhuma referência residual ao adapter removido (`rg` confirma)
+- [x] Gate quick passa: `rtk ./gradlew :android-app:testDevDebugUnitTest --console=plain`
+- [x] Contagem de testes do módulo não diminui (+1 novo)
 
 **Tests**: unit
 **Gate**: quick
@@ -156,6 +156,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T03: FIX-03 — Branch callback extrai parâmetro de attendance
+
+**Status**: in_progress
 
 **What**: `BranchSdkSessionClient.branchCallback` passa a extrair `saqz_attendance` dos parâmetros do Branch e emitir o mesmo `GroupLinkEvent` de attendance que o parser de URL direta emite.
 **Where**: `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/access/AndroidLinkAdapter.kt:158-165` (constante `ATTENDANCE_PARAMETER` em `:169`)
