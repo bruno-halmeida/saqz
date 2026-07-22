@@ -1,9 +1,9 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.lifecycle.ViewModel
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupProfileStatusDto
-import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.GroupSelectionMembership
 import br.com.saqz.groups.presentation.GroupFinanceVisibility
@@ -81,7 +81,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
                 memberships = memberships,
                 requestedGroupId = membership.groupId,
             )
-            is GroupSelectionState.Selected -> if (selection.group.group.id == membership.groupId) {
+            is GroupSelectionState.Selected -> if (selection.group.group.id.value == membership.groupId) {
                 select(selection.group.group, memberships)
             } else {
                 replaceUnscoped(
@@ -128,14 +128,14 @@ internal class GroupsNavigationViewModel : ViewModel() {
         replaceUnscoped(destination, memberships, requestedGroupId)
     }
 
-    private fun reconcileSelected(group: GroupDto, memberships: List<GroupSelectionMembership>) {
-        if (memberships.none { it.groupId == group.id }) {
+    private fun reconcileSelected(group: Group, memberships: List<GroupSelectionMembership>) {
+        if (memberships.none { it.groupId == group.id.value }) {
             showGroups(memberships)
             return
         }
         val current = mutableState.value
-        val detailAlreadyOpen = current.groupId == group.id && current.destination.isGroupScoped()
-        val requestedGroupLoaded = current.requestedGroupId == group.id
+        val detailAlreadyOpen = current.groupId == group.id.value && current.destination.isGroupScoped()
+        val requestedGroupLoaded = current.requestedGroupId == group.id.value
         if (memberships.size > 1 && !detailAlreadyOpen && !requestedGroupLoaded) {
             showGroups(memberships)
             return
@@ -143,9 +143,9 @@ internal class GroupsNavigationViewModel : ViewModel() {
         select(group, memberships)
     }
 
-    private fun select(group: GroupDto, memberships: List<GroupSelectionMembership>) {
+    private fun select(group: Group, memberships: List<GroupSelectionMembership>) {
         val current = mutableState.value
-        if (current.groupId == group.id) {
+        if (current.groupId == group.id.value) {
             mutableState.value = current.copy(
                 access = accessFor(group),
                 memberships = memberships,
@@ -157,11 +157,11 @@ internal class GroupsNavigationViewModel : ViewModel() {
         val destination = initialDestination(group)
         mutableState.value = GroupsNavigationState(
             destination = destination,
-            groupId = group.id,
+            groupId = group.id.value,
             access = accessFor(group),
             memberships = memberships,
         )
-        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id))
+        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id.value))
     }
 
     private fun replaceUnscoped(
@@ -223,22 +223,22 @@ internal class GroupsNavigationViewModel : ViewModel() {
         navigate(destination)
     }
 
-    private fun enforceAllowedDestination(group: GroupDto) {
+    private fun enforceAllowedDestination(group: Group) {
         val state = mutableState.value
         if (isAllowed(state.destination, state.access)) return
         val destination = initialDestination(group)
         mutableState.value = state.copy(destination = destination, gameId = null)
-        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id))
+        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id.value))
     }
 
-    private fun initialDestination(group: GroupDto): GroupsDestination = when {
-        group.profileStatus == GroupProfileStatusDto.INCOMPLETE && group.role != GroupRoleDto.ATHLETE -> {
+    private fun initialDestination(group: Group): GroupsDestination = when {
+        group.profileStatus == GroupProfileStatus.INCOMPLETE && group.role != GroupRole.ATHLETE -> {
             GroupsDestination.PROFILE_COMPLETION
         }
         else -> GroupsDestination.HOME
     }
 
-    private fun accessFor(group: GroupDto): GroupsNavigationAccess {
+    private fun accessFor(group: Group): GroupsNavigationAccess {
         val policy = GroupRoutePolicy.evaluate(group.role, group.profileStatus)
         return GroupsNavigationAccess(
             showPeople = policy.peopleVisible,

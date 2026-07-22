@@ -5,6 +5,7 @@ import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.composeapp.navigation.RequestIdGenerator
 import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.InviteToolStateMachine
@@ -26,7 +27,7 @@ internal data class GroupSetupViewModelParameters(
 internal data class GameDetailViewModelParameters(
     val groupId: String,
     val gameId: String,
-    val role: GroupRoleDto,
+    val role: GroupRole,
     val testScope: CoroutineScope? = null,
 )
 
@@ -35,7 +36,10 @@ internal val composePresentationModule = module {
     factory { parameters ->
         InviteToolStateMachine(
             roles = get(),
-            groupId = { get<br.com.saqz.groups.presentation.GroupAdministrationStateMachine>().state.value.group?.group?.id },
+            groupId = {
+                get<br.com.saqz.groups.presentation.GroupAdministrationStateMachine>()
+                    .state.value.group?.group?.id?.value
+            },
             scope = parameters.get<CoroutineScope>(),
         )
     }
@@ -81,10 +85,16 @@ internal val composePresentationModule = module {
             gateway = get(),
             groupId = input.groupId,
             gameId = input.gameId,
-            role = input.role,
+            role = input.role.toLegacyGameRole(),
             testScope = input.testScope,
             attendanceGateway = get(),
             attendanceShareGateway = get(),
         )
     }
+}
+
+private fun GroupRole.toLegacyGameRole(): GroupRoleDto = when (this) {
+    GroupRole.OWNER -> GroupRoleDto.OWNER
+    GroupRole.ADMIN -> GroupRoleDto.ADMIN
+    GroupRole.ATHLETE -> GroupRoleDto.ATHLETE
 }

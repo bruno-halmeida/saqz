@@ -25,7 +25,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
 import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.groups_complete_profile
 import br.com.saqz.groups.resources.groups_finance

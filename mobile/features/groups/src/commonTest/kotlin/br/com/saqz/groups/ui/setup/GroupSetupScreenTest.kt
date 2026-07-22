@@ -24,9 +24,9 @@ import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.domain.group.GroupSetupForm
 import br.com.saqz.groups.domain.group.GroupVenue
 import br.com.saqz.groups.domain.group.GroupWeekday
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoSelection
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoSelection
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState

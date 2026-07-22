@@ -137,7 +137,7 @@ class AccessOrchestratorTest {
         )
         val selectedGroup = VersionedGroup(
             group = Group("group-id", "Group", "UTC", 7, GroupRole.OWNER),
-            versionToken = "\"7\"",
+            versionToken = br.com.saqz.groups.domain.group.GroupVersionToken("\"7\""),
         )
     }
 }

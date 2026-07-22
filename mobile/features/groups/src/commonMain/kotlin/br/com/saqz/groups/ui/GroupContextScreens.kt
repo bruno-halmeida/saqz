@@ -120,7 +120,10 @@ fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit) {
 }
 
 private val previewGroupState = GroupAdministrationState(
-    group = VersionedGroup(Group("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRole.OWNER), "preview-etag"),
+    group = VersionedGroup(
+        Group("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRole.OWNER),
+        br.com.saqz.groups.domain.group.GroupVersionToken("preview-etag"),
+    ),
     actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
 )
 

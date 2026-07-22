@@ -69,7 +69,7 @@ import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupPlayStyle
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.presentation.setup.GroupSetupError

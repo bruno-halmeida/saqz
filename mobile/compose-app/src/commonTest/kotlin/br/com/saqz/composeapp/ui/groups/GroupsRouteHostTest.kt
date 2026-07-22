@@ -556,7 +556,7 @@ class GroupsRouteHostTest {
 
     private fun administration(group: Group, members: List<GroupMembership> = emptyList()) =
         GroupAdministrationState(
-            group = VersionedGroup(group, "etag"),
+            group = VersionedGroup(group, br.com.saqz.groups.domain.group.GroupVersionToken("etag")),
             memberships = members,
             actions = GroupActions(
                 canEditSettings = group.role != GroupRole.ATHLETE,

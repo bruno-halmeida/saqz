@@ -1,11 +1,11 @@
 package br.com.saqz.composeapp.navigation
 
-import br.com.saqz.groups.data.GroupDto
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.PersistedRoleDto
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.VersionedGroupDto
+import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.AssignableGroupRole
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
@@ -218,7 +218,7 @@ class AccessViewModelTest {
         val (viewModel, runtime) = fixture()
 
         viewModel.onIntent(AccessIntent.OpenMemberships)
-        viewModel.onIntent(AccessIntent.ChangeRole(USER_ID, PersistedRoleDto.ADMIN))
+        viewModel.onIntent(AccessIntent.ChangeRole(USER_ID, AssignableGroupRole.ADMIN))
         runCurrent()
 
         assertEquals(AccessPage.MEMBERSHIPS, viewModel.state.value.page)
@@ -226,7 +226,7 @@ class AccessViewModelTest {
             listOf<AccessRuntimeIntent>(
                 AccessRuntimeIntent.Administration(GroupAdministrationIntent.LoadMemberships),
                 AccessRuntimeIntent.Administration(
-                    GroupAdministrationIntent.ChangeRole(USER_ID, PersistedRoleDto.ADMIN),
+                    GroupAdministrationIntent.ChangeRole(USER_ID, AssignableGroupRole.ADMIN),
                 ),
             ),
             runtime.intents,
@@ -399,9 +399,9 @@ class AccessViewModelTest {
             user = AccessUser(USER_ID, "person@example.test", "Person"),
             memberships = listOf(AccessMembership(GroupId(GROUP_ID), "Group", AccessMembershipRole("OWNER"))),
         )
-        val group = VersionedGroupDto(
-            group = GroupDto(GROUP_ID, "Group", "UTC", 7, GroupRoleDto.OWNER),
-            etag = "\"7\"",
+        val group = VersionedGroup(
+            group = Group(GROUP_ID, "Group", "UTC", 7, GroupRole.OWNER),
+            versionToken = br.com.saqz.groups.domain.group.GroupVersionToken("\"7\""),
         )
         val ownerAdministration = GroupAdministrationState(
             group = group,

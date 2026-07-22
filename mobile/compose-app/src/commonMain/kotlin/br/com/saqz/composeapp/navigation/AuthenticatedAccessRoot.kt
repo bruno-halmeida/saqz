@@ -20,8 +20,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
@@ -63,7 +64,7 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
@@ -219,7 +220,7 @@ internal fun AuthenticatedAccessRoute(
                         gameId = navigation.gameId!!,
                         role = state.administration.group?.group?.role
                     ?: (state.selection as? GroupSelectionState.Selected)?.group?.group?.role
-                            ?: br.com.saqz.groups.data.GroupRoleDto.ATHLETE,
+                            ?: GroupRole.ATHLETE,
                     ),
                 )
             },
@@ -245,23 +246,26 @@ internal fun AuthenticatedAccessRoute(
         groupsNavigation.destination,
         groupsNavigation.groupId,
         versionedGroup?.group?.id,
-        versionedGroup?.etag,
+        versionedGroup?.versionToken,
     ) {
         val selectedGroup = versionedGroup ?: return@LaunchedEffect
         if (
             state.page == AccessPage.CONTEXT &&
             groupsNavigation.destination == GroupsDestination.HOME &&
-            groupsNavigation.groupId == selectedGroup.group.id
+            groupsNavigation.groupId == selectedGroup.group.id.value
         ) {
             photoCoordinator.onIntent(
-                GroupPhotoIntent.Load(selectedGroup.group.id, selectedGroup.etag),
+                GroupPhotoIntent.Load(
+                    selectedGroup.group.id.value,
+                    selectedGroup.versionToken.value,
+                ),
             )
         }
     }
     LaunchedEffect(sessionMemberships, groupPhotoState.groupId, state.page, state.selection) {
         if (state.page == AccessPage.CREATE_GROUP) return@LaunchedEffect
         val loadedGroupId = groupPhotoState.groupId ?: return@LaunchedEffect
-        val selectedGroupId = (state.selection as? GroupSelectionState.Selected)?.group?.group?.id
+        val selectedGroupId = (state.selection as? GroupSelectionState.Selected)?.group?.group?.id?.value
         if (
             selectedGroupId != loadedGroupId &&
             sessionMemberships.none { it.groupId.value == loadedGroupId }

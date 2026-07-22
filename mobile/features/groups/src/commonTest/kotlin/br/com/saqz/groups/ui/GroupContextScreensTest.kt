@@ -26,7 +26,10 @@ class GroupContextScreensTest {
 
     private fun androidx.compose.ui.test.ComposeUiTest.settings(state: GroupAdministrationState=owner,onIntent:(GroupSettingsIntent)->Unit={}) = setContent { SaqzTheme { GroupSettingsScreen(GroupSettingsUiState(state,"",""),onIntent) } }
     private companion object {
-        val group=VersionedGroup(Group("id","Current Group","America/Sao_Paulo",1,GroupRole.OWNER),"etag")
+        val group = VersionedGroup(
+            Group("id", "Current Group", "America/Sao_Paulo", 1, GroupRole.OWNER),
+            br.com.saqz.groups.domain.group.GroupVersionToken("etag"),
+        )
         val owner=GroupAdministrationState(group=group,actions=GroupActions(true,true,true))
     }
 }

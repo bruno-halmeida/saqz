@@ -238,7 +238,10 @@ class GroupAdministrationStateMachineTest {
     private companion object {
         const val GROUP_ID = "group-id"; const val USER_ID = "user-id"; const val OTHER_ADMIN = "other-admin"; const val REQUEST_ID = "request-id"
         fun group(role: GroupRole, version: Long = 7) = Group(GROUP_ID, "Group", "UTC", version, role)
-        fun versioned(role: GroupRole, version: Long = 7) = VersionedGroup(group(role, version), "\"$version\"")
+        fun versioned(role: GroupRole, version: Long = 7) = VersionedGroup(
+            group(role, version),
+            GroupVersionToken("\"$version\""),
+        )
         fun member(id: String, role: GroupRole) = GroupMembership(id, id, role)
         fun conflict(): SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Failure(GroupProfileError.Conflict())
         fun validation(vararg fields: String): SaqzResult.Failure<GroupProfileError> = SaqzResult.Failure(

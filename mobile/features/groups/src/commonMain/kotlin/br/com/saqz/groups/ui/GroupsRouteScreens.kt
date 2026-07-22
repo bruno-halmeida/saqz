@@ -80,7 +80,7 @@ import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.ui.setup.weekdayLabel
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.groups_back_home
@@ -1097,7 +1097,10 @@ private val previewMemberships = listOf(
 )
 
 private val previewAdministration = GroupAdministrationState(
-    group = VersionedGroup(previewGroup, "preview-etag"),
+    group = VersionedGroup(
+        previewGroup,
+        br.com.saqz.groups.domain.group.GroupVersionToken("preview-etag"),
+    ),
     memberships = previewMemberships,
     actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
 )

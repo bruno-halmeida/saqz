@@ -490,7 +490,7 @@ class GroupSetupViewModelTest {
                     monthlyDueDay = null,
                 ),
             ),
-            etag,
+            GroupVersionToken(etag),
         )
         fun failure(status: Int, code: String): SaqzResult.Failure<GroupProfileError> = SaqzResult.Failure(
             when {

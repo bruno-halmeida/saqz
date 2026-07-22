@@ -20,9 +20,9 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoSelection
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoSelection
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoError
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent

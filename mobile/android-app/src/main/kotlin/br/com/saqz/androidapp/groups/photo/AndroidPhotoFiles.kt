@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.core.content.FileProvider
-import br.com.saqz.groups.port.EncodedGroupPhoto
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream

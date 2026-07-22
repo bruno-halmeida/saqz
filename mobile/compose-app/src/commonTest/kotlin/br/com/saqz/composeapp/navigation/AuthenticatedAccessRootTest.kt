@@ -828,7 +828,7 @@ class AuthenticatedAccessRootTest {
         val selector = GroupSelectionState.Selector(session.memberships.toGroupSelectionMemberships())
         val group = VersionedGroup(
             Group("current", "Current Group", "America/Sao_Paulo", 1, GroupRole.OWNER),
-            "\"1\"",
+            br.com.saqz.groups.domain.group.GroupVersionToken("\"1\""),
         )
         val ownerAdministration = GroupAdministrationState(
             group = group,

@@ -12,7 +12,7 @@ import br.com.saqz.groups.presentation.navigation.showsGroupChrome
 import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.ui.GroupsDestinationContent
 import br.com.saqz.groups.ui.GroupsRouteChrome
 import br.com.saqz.groups.ui.GroupsSelectorChrome

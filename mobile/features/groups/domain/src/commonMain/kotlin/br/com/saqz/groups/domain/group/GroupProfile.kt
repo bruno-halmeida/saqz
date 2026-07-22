@@ -76,9 +76,7 @@ data class Group(
     ) : this(GroupId(id), name, GroupTimeZone(timeZone), version, role)
 }
 
-data class VersionedGroup(val group: Group, val versionToken: GroupVersionToken) {
-    constructor(group: Group, versionToken: String) : this(group, GroupVersionToken(versionToken))
-}
+data class VersionedGroup(val group: Group, val versionToken: GroupVersionToken)
 
 data class GroupSetupForm(
     val name: String = "",

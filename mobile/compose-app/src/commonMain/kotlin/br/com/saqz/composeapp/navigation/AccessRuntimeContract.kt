@@ -3,8 +3,8 @@ package br.com.saqz.composeapp.navigation
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.domain.session.SessionInvalidator
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination

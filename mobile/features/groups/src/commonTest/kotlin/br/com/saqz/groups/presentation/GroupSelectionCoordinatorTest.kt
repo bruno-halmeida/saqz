@@ -255,7 +255,7 @@ class GroupSelectionStateMachineTest {
         val memberB = GroupSelectionMembership(GROUP_B, "Group B", "ATHLETE")
         fun session(vararg memberships: GroupSelectionMembership) = memberships.toList()
         fun success(groupId: String, role: GroupRole) = SaqzResult.Success(
-            VersionedGroup(Group(groupId, "Group $groupId", "UTC", 1, role), "\"1\""),
+            VersionedGroup(Group(groupId, "Group $groupId", "UTC", 1, role), GroupVersionToken("\"1\"")),
         )
     }
 }

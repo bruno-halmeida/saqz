@@ -1,10 +1,12 @@
 package br.com.saqz.composeapp.navigation
 
-import br.com.saqz.groups.port.CachedGroupPhoto
-import br.com.saqz.groups.port.EncodedGroupPhoto
-import br.com.saqz.groups.port.GroupPhotoCachePort
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.photo.CachedGroupPhoto
+import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
+import br.com.saqz.groups.domain.photo.GroupPhotoCachePort
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoVersionToken
 import coil3.disk.DiskCache
 import okio.FileSystem
 import okio.Path
@@ -21,9 +23,8 @@ internal class CoilGroupPhotoCache(
         clearAll()
     }
 
-    override fun read(groupId: String): CachedGroupPhoto? {
-        if (groupId.isBlank()) return null
-        val key = groupKey(groupId)
+    override fun read(groupId: GroupId): CachedGroupPhoto? {
+        val key = groupKey(groupId.value)
         val snapshot = diskCache.openSnapshot(key) ?: return null
         return snapshot.use {
             val metadata = readBounded(snapshot.metadata, MAX_METADATA_BYTES) ?: return@use null
@@ -31,24 +32,24 @@ internal class CoilGroupPhotoCache(
             if (separator <= 0 || separator == metadata.lastIndex) return@use null
             val storedGroupId = metadata.copyOfRange(0, separator).decodeToString()
             val photoEtag = metadata.copyOfRange(separator + 1, metadata.size).decodeToString()
-            if (storedGroupId != groupId || photoEtag.isBlank()) return@use null
+            if (storedGroupId != groupId.value || photoEtag.isBlank()) return@use null
             if (!hasBoundedPhoto(snapshot.data)) return@use null
-            CachedGroupPhoto(previewHandle(key, photoEtag), photoEtag)
+            CachedGroupPhoto(previewHandle(key, photoEtag), GroupPhotoVersionToken(photoEtag))
         }
     }
 
-    override fun write(groupId: String, bytes: ByteArray, photoEtag: String): CachedGroupPhoto? {
-        if (groupId.isBlank() || photoEtag.isBlank()) return null
+    override fun write(groupId: GroupId, bytes: ByteArray, version: GroupPhotoVersionToken): CachedGroupPhoto? {
+        val photoEtag = version.value
         if (bytes.size.toLong() !in 1..EncodedGroupPhoto.MAX_GROUP_PHOTO_BYTES) return null
-        val metadata = groupId.encodeToByteArray() + byteArrayOf(0) + photoEtag.encodeToByteArray()
+        val metadata = groupId.value.encodeToByteArray() + byteArrayOf(0) + photoEtag.encodeToByteArray()
         if (metadata.size > MAX_METADATA_BYTES) return null
-        val key = groupKey(groupId)
+        val key = groupKey(groupId.value)
         val editor = diskCache.openEditor(key) ?: return null
         return try {
             diskCache.fileSystem.write(editor.data) { write(bytes) }
             diskCache.fileSystem.write(editor.metadata) { write(metadata) }
             editor.commit()
-            CachedGroupPhoto(previewHandle(key, photoEtag), photoEtag)
+            CachedGroupPhoto(previewHandle(key, photoEtag), version)
         } catch (_: Throwable) {
             runCatching { editor.abort() }
             null
@@ -70,8 +71,8 @@ internal class CoilGroupPhotoCache(
         }
     }
 
-    override fun evict(groupId: String) {
-        if (groupId.isNotBlank()) diskCache.remove(groupKey(groupId))
+    override fun evict(groupId: GroupId) {
+        diskCache.remove(groupKey(groupId.value))
     }
 
     override fun clearAll() {

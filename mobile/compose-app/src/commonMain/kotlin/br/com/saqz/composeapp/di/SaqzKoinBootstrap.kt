@@ -8,9 +8,9 @@ import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.groups.port.GroupAttendanceSharePort
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
-import br.com.saqz.groups.port.GroupPhotoSelectionPort
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.network.NetworkConfig

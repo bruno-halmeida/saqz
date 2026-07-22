@@ -1,21 +1,22 @@
 package br.com.saqz.groups.presentation.photo
 
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupPhotoReceipt
-import br.com.saqz.groups.data.GroupPhotoUploadCommand
-import br.com.saqz.groups.data.GroupPhotoReadResult
-import br.com.saqz.groups.data.PhotoFailure
-import br.com.saqz.groups.data.toPhotoFailure
-import br.com.saqz.groups.port.CachedGroupPhoto
-import br.com.saqz.groups.port.GroupPhotoCachePort
-import br.com.saqz.groups.port.GroupPhotoCrop
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoEncodingResult
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoSelection
-import br.com.saqz.groups.port.GroupPhotoSelectionPort
-import br.com.saqz.groups.port.GroupPhotoSelectionResult
-import br.com.saqz.network.NetworkResult
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.photo.CachedGroupPhoto
+import br.com.saqz.groups.domain.photo.GroupPhotoCachePort
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
+import br.com.saqz.groups.domain.photo.GroupPhotoError as DomainPhotoError
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoReadResult
+import br.com.saqz.groups.domain.photo.GroupPhotoReceipt
+import br.com.saqz.groups.domain.photo.GroupPhotoSelection
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
+import br.com.saqz.groups.domain.photo.GroupPhotoUploadCommand
+import br.com.saqz.groups.domain.photo.GroupPhotoVersionToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,50 +102,50 @@ class GroupPhotoCoordinator(
         operation = null
         loadGeneration += 1
         val generation = loadGeneration
-        val cached = runCatching { cache.read(groupId) }.getOrNull()
+        val domainGroupId = GroupId(groupId)
+        val cached = runCatching { cache.read(domainGroupId) }.getOrNull()
         mutableState.value = GroupPhotoState(
             groupId = groupId,
             groupEtag = groupEtag,
             stage = GroupPhotoStage.LOADING,
         )
         operation = scope.launch {
-            val result = gateway.read(groupId, cached?.photoEtag)
+            val result = gateway.read(domainGroupId, cached?.version)
             if (!isCurrentLoad(groupId, generation)) return@launch
             when (result) {
-                is NetworkResult.Failure -> finishReadFailure(groupId, result.error)
-                is NetworkResult.Success -> finishReadSuccess(groupId, cached, result.value)
+                is SaqzResult.Failure -> finishReadFailure(domainGroupId, result.error)
+                is SaqzResult.Success -> finishReadSuccess(domainGroupId, cached, result.value)
             }
         }
     }
 
     private fun finishReadSuccess(
-        groupId: String,
+        groupId: GroupId,
         cached: CachedGroupPhoto?,
         result: GroupPhotoReadResult,
     ) {
         val photo = when (result) {
             GroupPhotoReadResult.NotModified -> cached
             is GroupPhotoReadResult.Available -> runCatching {
-                cache.write(groupId, result.bytes, result.etag)
+                cache.write(groupId, result.bytes, result.version)
             }.getOrNull()
         }
         mutableState.update {
             it.copy(
-                existing = photo?.let { value -> ExistingGroupPhoto(value.preview, value.photoEtag) },
+                existing = photo?.let { value -> ExistingGroupPhoto(value.preview, value.version.value) },
                 stage = GroupPhotoStage.IDLE,
                 error = if (photo == null) GroupPhotoError.READ_FAILED else null,
             )
         }
     }
 
-    private fun finishReadFailure(groupId: String, error: br.com.saqz.network.NetworkError) {
-        val failure = error.toPhotoFailure()
-        if (failure == PhotoFailure.NotFound) cache.evict(groupId)
+    private fun finishReadFailure(groupId: GroupId, error: DomainPhotoError) {
+        if (error == DomainPhotoError.NotFound) cache.evict(groupId)
         mutableState.update {
             it.copy(
                 existing = null,
                 stage = GroupPhotoStage.IDLE,
-                error = if (failure == PhotoFailure.NotFound) null else GroupPhotoError.READ_FAILED,
+                error = if (error == DomainPhotoError.NotFound) null else GroupPhotoError.READ_FAILED,
             )
         }
     }
@@ -185,16 +186,21 @@ class GroupPhotoCoordinator(
                 }
                 is GroupPhotoEncodingResult.Encoded -> {
                     mutableState.update { it.copy(stage = GroupPhotoStage.UPLOADING) }
-                    when (val result = gateway.upload(GroupPhotoUploadCommand(groupId, groupEtag, encoded.value))) {
-                        is NetworkResult.Failure -> mutableState.update {
-                            val failure = result.error.toPhotoFailure()
+                    val command = GroupPhotoUploadCommand(
+                        GroupId(groupId),
+                        GroupPhotoVersionToken(groupEtag),
+                        encoded.value,
+                    )
+                    when (val result = gateway.upload(command)) {
+                        is SaqzResult.Failure -> mutableState.update {
+                            val stale = result.error == DomainPhotoError.StaleVersion
                             it.copy(
                                 stage = GroupPhotoStage.CROPPING,
-                                retryUpload = failure != PhotoFailure.StaleVersion,
-                                error = if (failure == PhotoFailure.StaleVersion) GroupPhotoError.STALE_VERSION else GroupPhotoError.UPLOAD_FAILED,
+                                retryUpload = !stale,
+                                error = if (stale) GroupPhotoError.STALE_VERSION else GroupPhotoError.UPLOAD_FAILED,
                             )
                         }
-                        is NetworkResult.Success -> uploadSucceeded(groupId, selection, result.value)
+                        is SaqzResult.Success -> uploadSucceeded(groupId, selection, result.value)
                     }
                 }
             }
@@ -203,12 +209,12 @@ class GroupPhotoCoordinator(
 
     private fun uploadSucceeded(groupId: String, selection: GroupPhotoSelection, receipt: GroupPhotoReceipt) {
         selections.cleanup(selection.source)
-        cache.evict(groupId)
+        cache.evict(GroupId(groupId))
         mutableState.update {
             it.copy(
                 existing = ExistingGroupPhoto(selection.preview),
                 selection = null,
-                groupEtag = receipt.etag,
+                groupEtag = receipt.version.value,
                 stage = GroupPhotoStage.IDLE,
                 retryUpload = false,
                 error = null,
@@ -223,16 +229,16 @@ class GroupPhotoCoordinator(
         if (snapshot.stage != GroupPhotoStage.IDLE || snapshot.existing == null) return
         mutableState.update { it.copy(stage = GroupPhotoStage.REMOVING, error = null) }
         operation = scope.launch {
-            when (val result = gateway.remove(groupId, groupEtag)) {
-                is NetworkResult.Failure -> mutableState.update {
+            when (val result = gateway.remove(GroupId(groupId), GroupPhotoVersionToken(groupEtag))) {
+                is SaqzResult.Failure -> mutableState.update {
                     it.copy(stage = GroupPhotoStage.IDLE, error = GroupPhotoError.REMOVE_FAILED)
                 }
-                is NetworkResult.Success -> {
-                    cache.evict(groupId)
+                is SaqzResult.Success -> {
+                    cache.evict(GroupId(groupId))
                     mutableState.update {
                         it.copy(
                             existing = null,
-                            groupEtag = result.value.etag,
+                            groupEtag = result.value.version.value,
                             stage = GroupPhotoStage.IDLE,
                             error = null,
                         )
@@ -259,7 +265,7 @@ class GroupPhotoCoordinator(
         loadGeneration += 1
         val groupId = mutableState.value.groupId
         cleanupSelection()
-        if (clearAll) cache.clearAll() else groupId?.let(cache::evict)
+        if (clearAll) cache.clearAll() else groupId?.let { cache.evict(GroupId(it)) }
         mutableState.value = GroupPhotoState()
     }
 

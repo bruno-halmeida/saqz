@@ -2,8 +2,8 @@ package br.com.saqz.composeapp.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.GroupProfileGateway
-import br.com.saqz.groups.data.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
 import br.com.saqz.groups.presentation.DeferredInviteIntent
@@ -210,7 +210,7 @@ internal class AccessViewModel private constructor(
             copy(
                 page = AccessPage.SETTINGS,
                 settingsName = group.name,
-                settingsTimeZone = group.timeZone,
+                settingsTimeZone = group.timeZone.id,
             )
         }
     }
@@ -238,7 +238,7 @@ internal class AccessViewModel private constructor(
 
     private fun loadSettingsFromGroup() {
         val group = runtime.administrationState.value.group?.group ?: return
-        updateRoute { copy(settingsName = group.name, settingsTimeZone = group.timeZone) }
+        updateRoute { copy(settingsName = group.name, settingsTimeZone = group.timeZone.id) }
     }
 
     private fun rotateInvite() {

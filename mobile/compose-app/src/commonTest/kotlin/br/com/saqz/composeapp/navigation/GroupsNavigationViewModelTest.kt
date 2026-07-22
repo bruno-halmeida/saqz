@@ -310,7 +310,9 @@ class GroupsNavigationViewModelTest {
         it.onIntent(GroupsNavigationIntent.Reconcile(selectedState(group), listOf(membership(group))))
     }
 
-    private fun selectedState(group: Group) = GroupSelectionState.Selected(VersionedGroup(group, "etag"))
+    private fun selectedState(group: Group) = GroupSelectionState.Selected(
+        VersionedGroup(group, br.com.saqz.groups.domain.group.GroupVersionToken("etag")),
+    )
 
     private fun membership(group: Group) = GroupSelectionMembership(group.id.value, group.name, group.role.name)
 

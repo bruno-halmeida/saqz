@@ -2,10 +2,10 @@ package br.com.saqz.androidapp.groups.photo
 
 import android.content.Context
 import androidx.activity.ComponentActivity
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
-import br.com.saqz.groups.port.EncodedGroupPhoto
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AndroidGroupPhotoAdapters(

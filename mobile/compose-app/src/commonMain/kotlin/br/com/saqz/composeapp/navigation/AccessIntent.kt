@@ -2,7 +2,7 @@ package br.com.saqz.composeapp.navigation
 
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.groups.data.PersistedRoleDto
+import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupSelectionIntent
@@ -67,5 +67,5 @@ sealed interface AccessIntent {
 
     data object RetryInvite : AccessIntent
 
-    data class ChangeRole(val userId: String, val role: PersistedRoleDto) : AccessIntent
+    data class ChangeRole(val userId: String, val role: AssignableGroupRole) : AccessIntent
 }

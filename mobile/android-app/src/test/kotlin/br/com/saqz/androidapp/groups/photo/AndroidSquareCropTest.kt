@@ -1,6 +1,6 @@
 package br.com.saqz.androidapp.groups.photo
 
-import br.com.saqz.groups.port.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

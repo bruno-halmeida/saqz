@@ -2,13 +2,13 @@ package br.com.saqz.androidapp.groups.photo
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import br.com.saqz.groups.port.EncodedGroupPhoto
-import br.com.saqz.groups.port.GroupPhotoByteSource
-import br.com.saqz.groups.port.GroupPhotoCrop
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoEncodingResult
-import br.com.saqz.groups.port.GroupPhotoMediaType
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
+import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
+import br.com.saqz.groups.domain.photo.GroupPhotoByteSource
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
+import br.com.saqz.groups.domain.photo.GroupPhotoMediaType
+import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream

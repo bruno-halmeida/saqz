@@ -17,8 +17,8 @@ import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.groups.data.GroupPhotoGateway
-import br.com.saqz.groups.data.GroupProfileGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.DeferredInviteStateMachine
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
@@ -155,7 +155,7 @@ internal class AccessOrchestrator(
     private fun reconcileAttendanceDestination(destination: AttendanceLinkDestination?) {
         val selected = selectionState.value as? GroupSelectionState.Selected ?: return
         destination
-            ?.takeIf { it.groupId == selected.group.group.id }
+            ?.takeIf { it.groupId == selected.group.group.id.value }
             ?.let {
                 effectChannel.trySend(AccessOrchestratorEffect.OpenAttendanceGame(it.gameId))
                 attendanceDestinations.consume()
