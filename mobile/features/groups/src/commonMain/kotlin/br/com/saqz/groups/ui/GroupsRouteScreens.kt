@@ -79,6 +79,7 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.ui.setup.weekdayLabel
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.groups_back_home
 import br.com.saqz.groups.resources.groups_complete_profile
@@ -540,7 +541,7 @@ private fun GroupSummary(
                     } else {
                         stringResource(
                             Res.string.groups_schedule_pattern,
-                            weekdayLabel(slot.weekday),
+                            weekdayLabel(slot.weekday.name, compact = true),
                             slot.startTime.take(5),
                         )
                     },
@@ -1050,19 +1051,6 @@ private fun sessionRoleLabel(role: String): String = when (role.uppercase()) {
     GroupRoleDto.ADMIN.name -> stringResource(Res.string.groups_role_admin)
     else -> stringResource(Res.string.groups_role_athlete)
 }
-
-@Composable
-private fun weekdayLabel(weekday: GroupWeekdayDto): String = stringResource(
-    when (weekday) {
-        GroupWeekdayDto.MONDAY -> Res.string.groups_weekday_monday
-        GroupWeekdayDto.TUESDAY -> Res.string.groups_weekday_tuesday
-        GroupWeekdayDto.WEDNESDAY -> Res.string.groups_weekday_wednesday
-        GroupWeekdayDto.THURSDAY -> Res.string.groups_weekday_thursday
-        GroupWeekdayDto.FRIDAY -> Res.string.groups_weekday_friday
-        GroupWeekdayDto.SATURDAY -> Res.string.groups_weekday_saturday
-        GroupWeekdayDto.SUNDAY -> Res.string.groups_weekday_sunday
-    },
-)
 
 private fun initials(name: String): String = name.trim()
     .split(' ')

@@ -59,14 +59,14 @@ import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.model.GroupComposition
-import br.com.saqz.groups.model.GroupLevel
-import br.com.saqz.groups.model.GroupModality
-import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.GroupComposition
+import br.com.saqz.groups.model.GroupLevel
+import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
@@ -81,7 +81,6 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
 
 enum class GroupSetupAccess { ORGANIZER, ATHLETE }
 
@@ -643,7 +642,7 @@ private fun SlotEditors(
                 Text(stringResource(Res.string.group_setup_slot_number, index + 1), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)
                 InlineChoice(
                     label = Res.string.group_setup_weekday,
-                    options = GroupWeekday.entries.map { it to weekdayLabel(it) },
+                    options = GroupWeekday.entries.map { it to weekdayLabel(it.name) },
                     selected = slot.weekday,
                     enabled = editable,
                 ) { onIntent(GroupSetupIntent.UpdateSlots(slots.replace(index, slot.copy(weekday = it)))) }
@@ -908,43 +907,6 @@ private fun MaterialIcon(resource: DrawableResource, tint: Color, size: androidx
     Image(painterResource(resource), null, colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(size))
 }
 
-@Composable private fun modalityLabel(value: GroupModality): String = stringResource(when (value) {
-    GroupModality.COURT_VOLLEYBALL -> Res.string.group_setup_modality_court
-    GroupModality.BEACH_VOLLEYBALL -> Res.string.group_setup_modality_beach
-    GroupModality.FOOTVOLLEY -> Res.string.group_setup_modality_footvolley
-})
-
-@Composable private fun compositionLabel(value: GroupComposition): String = stringResource(when (value) {
-    GroupComposition.WOMEN -> Res.string.group_setup_composition_women
-    GroupComposition.MEN -> Res.string.group_setup_composition_men
-    GroupComposition.MIXED -> Res.string.group_setup_composition_mixed
-})
-
-@Composable private fun levelLabel(value: GroupLevel): String = stringResource(when (value) {
-    GroupLevel.BEGINNER -> Res.string.group_setup_level_beginner
-    GroupLevel.INTERMEDIATE -> Res.string.group_setup_level_intermediate
-    GroupLevel.ADVANCED -> Res.string.group_setup_level_advanced
-    GroupLevel.MIXED_LEVELS -> Res.string.group_setup_level_mixed
-    GroupLevel.CUSTOM -> Res.string.group_setup_custom
-})
-
-@Composable private fun playStyleLabel(value: GroupPlayStyle): String = stringResource(when (value) {
-    GroupPlayStyle.SIX_ZERO -> Res.string.group_setup_style_six_zero
-    GroupPlayStyle.FOUR_TWO -> Res.string.group_setup_style_four_two
-    GroupPlayStyle.FIVE_ONE -> Res.string.group_setup_style_five_one
-    GroupPlayStyle.CUSTOM -> Res.string.group_setup_custom
-})
-
-@Composable private fun weekdayLabel(value: GroupWeekday): String = stringResource(when (value) {
-    GroupWeekday.MONDAY -> Res.string.group_setup_monday
-    GroupWeekday.TUESDAY -> Res.string.group_setup_tuesday
-    GroupWeekday.WEDNESDAY -> Res.string.group_setup_wednesday
-    GroupWeekday.THURSDAY -> Res.string.group_setup_thursday
-    GroupWeekday.FRIDAY -> Res.string.group_setup_friday
-    GroupWeekday.SATURDAY -> Res.string.group_setup_saturday
-    GroupWeekday.SUNDAY -> Res.string.group_setup_sunday
-})
-
 @Composable
 private fun confirmationOptions(): List<Pair<Int?, String>> = listOf(
     60 to stringResource(Res.string.group_setup_confirmation_1h),
@@ -967,8 +929,6 @@ private fun confirmationLabel(minutes: Int?): String = when (minutes) {
 }
 
 private val confirmationPresets = setOf(60, 180, 360, 720, 1440)
-private fun formatHours(minutes: Int): String = if (minutes % 60 == 0) (minutes / 60).toString() else (minutes / 60.0).toString().replace('.', ',')
-private fun parseHours(value: String): Int? = value.replace(',', '.').toDoubleOrNull()?.let { (it * 60).roundToInt() }
 private fun newSlot() = GroupRegularSlotForm(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 60)
 private fun slotSummary(slots: List<GroupRegularSlotForm>): String = slots.joinToString(" • ") { "${it.startTime.ifBlank { "--:--" }}" }
 private fun <T> List<T>.replace(index: Int, value: T): List<T> = mapIndexed { current, item -> if (current == index) value else item }
