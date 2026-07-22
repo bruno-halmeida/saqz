@@ -10,6 +10,7 @@ import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -78,15 +79,19 @@ class InviteToolStateMachineTest {
 
     @Test fun `loading invite ignores concurrent command`() = runTest {
         val fixture = fixture(this)
-        fixture.roles.pendingRotation = CompletableDeferred()
+        val pendingRotation = CompletableDeferred<NetworkResult<InviteUrlDto>>()
+        fixture.roles.pendingRotation = pendingRotation
 
         fixture.machine.rotate()
-        advanceUntilIdle()
+        runCurrent()
         fixture.machine.expire()
 
         assertTrue(fixture.machine.state.value.isLoading)
         assertEquals(listOf(GROUP_ID), fixture.roles.rotations)
         assertTrue(fixture.roles.expirations.isEmpty())
+
+        pendingRotation.complete(fixture.roles.rotateResult)
+        runCurrent()
     }
 
     @Test fun `missing group does not issue invite request`() = runTest {
