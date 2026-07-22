@@ -17,12 +17,14 @@ import org.koin.dsl.module
 internal data class GroupSetupViewModelParameters(
     val input: GroupSetupInput,
     val commandKeys: GroupCommandKeyFactory,
+    val testScope: CoroutineScope? = null,
 )
 
 internal data class GameDetailViewModelParameters(
     val groupId: String,
     val gameId: String,
     val role: GroupRoleDto,
+    val testScope: CoroutineScope? = null,
 )
 
 internal val composePresentationModule = module {
@@ -58,6 +60,7 @@ internal val composePresentationModule = module {
             timeZones = get(),
             drafts = get(),
             commandKeys = input.commandKeys,
+            testScope = input.testScope,
         )
     }
     viewModel { parameters ->
@@ -67,6 +70,7 @@ internal val composePresentationModule = module {
             groupId = input.groupId,
             gameId = input.gameId,
             role = input.role,
+            testScope = input.testScope,
             attendanceGateway = get(),
             attendanceShareGateway = get(),
         )

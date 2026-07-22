@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package br.com.saqz.composeapp.di
 
 import br.com.saqz.access.port.LocalAccessStatePort
@@ -20,6 +22,7 @@ import org.koin.core.context.unloadKoinModules
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatformTools
+import kotlin.native.HiddenFromObjC
 
 private var platformModule: Module? = null
 private object SaqzKoinMarker
@@ -36,7 +39,7 @@ private val commonModules = listOf(
     composePresentationModule,
 )
 
-fun startSaqzKoin() {
+internal fun startSaqzKoin() {
     KoinPlatformTools.defaultContext().getOrNull()?.let { existing ->
         check(existing.getOrNull<SaqzKoinMarker>() != null) { "A different Koin application is already running" }
         return
@@ -47,17 +50,19 @@ fun startSaqzKoin() {
     }
 }
 
+@HiddenFromObjC
 fun installSaqzKoinModules() {
     val koin = checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before installing Saqz modules" }
     if (koin.getOrNull<SaqzKoinMarker>() != null) return
     loadKoinModules(commonModules)
 }
 
-fun startSaqzKoin(dependencies: SaqzAppDependencies) {
+internal fun startSaqzKoin(dependencies: SaqzAppDependencies) {
     startSaqzKoin()
     loadSaqzPlatformDependencies(dependencies)
 }
 
+@HiddenFromObjC
 fun loadSaqzPlatformDependencies(dependencies: SaqzAppDependencies) {
     checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before loading platform dependencies" }
     platformModule?.let { previous ->
@@ -67,7 +72,7 @@ fun loadSaqzPlatformDependencies(dependencies: SaqzAppDependencies) {
     platformModule = platformBindingsModule(dependencies).also(::loadKoinModules)
 }
 
-fun stopSaqzKoin() {
+internal fun stopSaqzKoin() {
     platformModule = null
     stopKoin()
 }
