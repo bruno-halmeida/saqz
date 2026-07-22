@@ -1,5 +1,7 @@
 package br.com.saqz.composeapp.di
 
+import br.com.saqz.domain.GroupId
+
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.AuthState
@@ -32,11 +34,11 @@ import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.RolesInvitesGateway
-import br.com.saqz.groups.data.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
-import br.com.saqz.groups.data.attendance.AttendanceApi
-import br.com.saqz.groups.data.game.GameGateway
-import br.com.saqz.groups.data.game.GameApi
+import br.com.saqz.groups.data.attendance.KtorAttendanceGateway
+import br.com.saqz.groups.domain.game.GameGateway
+import br.com.saqz.groups.data.game.KtorGameGateway
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.port.GroupCancelable
@@ -251,7 +253,7 @@ class SaqzKoinModulesTest {
         )
         assertIs<SessionAccessState.AwaitingVerification>(session.state.value)
 
-        koin.get<GameGateway>().read("group-1", "game-1")
+        koin.get<GameGateway>().read(GroupId("group-1"), "game-1")
 
         assertEquals(SessionAccessState.SignedOut, session.state.value)
         assertEquals(1, auth.signOutCalls)
@@ -283,9 +285,9 @@ class SaqzKoinModulesTest {
         assertSame(koin.get<RolesInvitesApi>(), koin.get<RolesInvitesGateway>())
         koin.get<GroupPhotoGateway>()
         koin.get<AttendanceSharingGateway>()
-        val gameApi = koin.get<GameApi>()
+        val gameApi = koin.get<KtorGameGateway>()
         assertSame(gameApi, koin.get<GameGateway>())
-        val attendanceApi = koin.get<AttendanceApi>()
+        val attendanceApi = koin.get<KtorAttendanceGateway>()
         assertSame(attendanceApi, koin.get<AttendanceGateway>())
 
         koin.get<GroupSelectionStateMachine>()

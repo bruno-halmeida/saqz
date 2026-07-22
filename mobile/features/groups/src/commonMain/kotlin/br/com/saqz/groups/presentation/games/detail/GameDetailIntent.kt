@@ -1,6 +1,6 @@
 package br.com.saqz.groups.presentation.games.detail
 
-import br.com.saqz.groups.data.attendance.AttendanceIntentDto
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 
 sealed interface GameDetailIntent {
     data object Refresh:GameDetailIntent
@@ -13,7 +13,7 @@ sealed interface GameDetailIntent {
     data class RequestAttendance(val action:AttendanceAction):GameDetailIntent
     data object DismissAttendance:GameDetailIntent
     data object ConfirmAttendance:GameDetailIntent
-    data class OverrideAttendance(val memberId:String,val intent:AttendanceIntentDto,val reason:String):GameDetailIntent
+    data class OverrideAttendance(val memberId:String,val intent:AttendanceIntent,val reason:String):GameDetailIntent
     data class ChangeCapacity(val capacity:Int):GameDetailIntent
     data object RetryAttendance:GameDetailIntent
     data object RequestAttendanceLinkShare:GameDetailIntent

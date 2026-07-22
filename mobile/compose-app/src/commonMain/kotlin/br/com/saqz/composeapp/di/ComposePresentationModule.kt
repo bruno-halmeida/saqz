@@ -6,7 +6,6 @@ import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.composeapp.navigation.RequestIdGenerator
 import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
 import br.com.saqz.groups.domain.group.GroupRole
-import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.InviteToolStateMachine
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
@@ -85,16 +84,10 @@ internal val composePresentationModule = module {
             gateway = get(),
             groupId = input.groupId,
             gameId = input.gameId,
-            role = input.role.toLegacyGameRole(),
+            role = input.role,
             testScope = input.testScope,
             attendanceGateway = get(),
             attendanceShareGateway = get(),
         )
     }
-}
-
-private fun GroupRole.toLegacyGameRole(): GroupRoleDto = when (this) {
-    GroupRole.OWNER -> GroupRoleDto.OWNER
-    GroupRole.ADMIN -> GroupRoleDto.ADMIN
-    GroupRole.ATHLETE -> GroupRoleDto.ATHLETE
 }

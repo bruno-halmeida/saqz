@@ -32,8 +32,8 @@ import br.com.saqz.designsystem.component.SaqzDialog
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.data.attendance.AttendanceIntentDto
-import br.com.saqz.groups.data.attendance.AttendanceStatusDto
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.presentation.games.detail.AttendanceAction
@@ -77,14 +77,14 @@ object GameDetailTags {
         Text(stringResource(Res.string.attendance_counts,state.confirmedCount,state.availableSpots),color=SaqzTheme.colors.textPrimary)
         if(state.waitlistCount>0)Text(stringResource(Res.string.attendance_waitlist_count,state.waitlistCount),color=SaqzTheme.colors.textSecondary)
         when(state.ownAttendance?.status){
-            AttendanceStatusDto.CONFIRMED->SaqzBadge(stringResource(Res.string.attendance_status_confirmed),SaqzBadgeVariant.Neutral)
-            AttendanceStatusDto.DECLINED->SaqzBadge(stringResource(Res.string.attendance_status_declined),SaqzBadgeVariant.Neutral)
-            AttendanceStatusDto.WAITLISTED->Text(stringResource(Res.string.attendance_status_waitlisted,state.waitlistPosition?:0),color=SaqzTheme.colors.textSecondary)
+            AttendanceStatus.Confirmed->SaqzBadge(stringResource(Res.string.attendance_status_confirmed),SaqzBadgeVariant.Neutral)
+            AttendanceStatus.Declined->SaqzBadge(stringResource(Res.string.attendance_status_declined),SaqzBadgeVariant.Neutral)
+            AttendanceStatus.Waitlisted->Text(stringResource(Res.string.attendance_status_waitlisted,state.waitlistPosition?:0),color=SaqzTheme.colors.textSecondary)
             null->Unit
         }
         when{state.terminal->Text(stringResource(Res.string.attendance_frozen),color=SaqzTheme.colors.textSecondary);game.status==GameStatus.Published&&!state.attendanceOpen->Text(stringResource(Res.string.attendance_deadline_closed),color=SaqzTheme.colors.textSecondary);else->Text(stringResource(Res.string.attendance_deadline,game.confirmationDeadline),color=SaqzTheme.colors.textSecondary)}
         state.attendanceActions.sortedBy{it.ordinal}.forEach{action->SaqzButton(action.attendanceLabel(),{onIntent(GameDetailIntent.RequestAttendance(action))},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(action.attendanceTag()),if(action==AttendanceAction.WITHDRAW)SaqzButtonVariant.Destructive else if(action==AttendanceAction.DECLINE)SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,loading=state.isAttendanceMutating)}
-        state.attendanceError?.let{Text(it.attendanceErrorLabel(),color=SaqzTheme.colors.errorForeground)}
+        state.attendanceError?.let{Text(state.attendanceErrorMessage?:it.attendanceErrorLabel(),color=SaqzTheme.colors.errorForeground)}
         if(state.retryAttendanceAvailable)SaqzButton(stringResource(Res.string.attendance_retry),{onIntent(GameDetailIntent.RetryAttendance)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.AttendRetry),SaqzButtonVariant.Secondary)
         if(state.organizer)OrganizerAttendance(state,onIntent)
         if(state.organizer){
@@ -108,8 +108,8 @@ object GameDetailTags {
     SaqzInput(member,{member=it.copy(text=it.text.take(64))},stringResource(Res.string.attendance_member_id),Modifier.testTag(GameDetailTags.OverrideMember))
     SaqzInput(reason,{reason=it.copy(text=it.text.take(500))},stringResource(Res.string.attendance_override_reason),Modifier.testTag(GameDetailTags.OverrideReason),helperText=stringResource(Res.string.attendance_reason_helper))
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){
-        SaqzButton(stringResource(Res.string.attendance_override_confirm),{onIntent(GameDetailIntent.OverrideAttendance(member.text.trim(),AttendanceIntentDto.CONFIRM,reason.text))},Modifier.weight(1f).heightIn(min=48.dp).testTag(GameDetailTags.OverrideConfirm),enabled=validOverride)
-        SaqzButton(stringResource(Res.string.attendance_override_decline),{onIntent(GameDetailIntent.OverrideAttendance(member.text.trim(),AttendanceIntentDto.DECLINE,reason.text))},Modifier.weight(1f).heightIn(min=48.dp).testTag(GameDetailTags.OverrideDecline),SaqzButtonVariant.Secondary,enabled=validOverride)
+        SaqzButton(stringResource(Res.string.attendance_override_confirm),{onIntent(GameDetailIntent.OverrideAttendance(member.text.trim(),AttendanceIntent.Confirm,reason.text))},Modifier.weight(1f).heightIn(min=48.dp).testTag(GameDetailTags.OverrideConfirm),enabled=validOverride)
+        SaqzButton(stringResource(Res.string.attendance_override_decline),{onIntent(GameDetailIntent.OverrideAttendance(member.text.trim(),AttendanceIntent.Decline,reason.text))},Modifier.weight(1f).heightIn(min=48.dp).testTag(GameDetailTags.OverrideDecline),SaqzButtonVariant.Secondary,enabled=validOverride)
     }
     SaqzInput(capacity,{capacity=it.copy(text=it.text.filter(Char::isDigit).take(3))},stringResource(Res.string.attendance_capacity),Modifier.testTag(GameDetailTags.Capacity))
     if(belowConfirmed)Text(stringResource(Res.string.attendance_capacity_warning,state.confirmedCount),color=SaqzTheme.colors.errorForeground,modifier=Modifier.testTag(GameDetailTags.CapacityWarning))

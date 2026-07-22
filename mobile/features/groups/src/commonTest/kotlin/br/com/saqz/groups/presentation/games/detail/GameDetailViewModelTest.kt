@@ -2,7 +2,7 @@ package br.com.saqz.groups.presentation.games.detail
 
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -64,7 +64,7 @@ class GameDetailViewModelTest {
 
     @Test
     fun `athlete sees snapshot without organizer actions`() = runTest {
-        val fixture = fixture(this, role = GroupRoleDto.ATHLETE)
+        val fixture = fixture(this, role = GroupRole.ATHLETE)
 
         runCurrent()
 
@@ -233,7 +233,7 @@ class GameDetailViewModelTest {
 
     private fun fixture(
         scope: CoroutineScope,
-        role: GroupRoleDto = GroupRoleDto.OWNER,
+        role: GroupRole = GroupRole.OWNER,
         initial: VersionedGame = versioned(),
         readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(initial),
         lifecycleResult: SaqzResult<VersionedGame, GameError> =

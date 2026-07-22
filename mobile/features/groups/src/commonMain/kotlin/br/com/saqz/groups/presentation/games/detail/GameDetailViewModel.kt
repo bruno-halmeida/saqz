@@ -2,10 +2,9 @@ package br.com.saqz.groups.presentation.games.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.attendance.*
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
 import br.com.saqz.groups.domain.game.Game
@@ -13,10 +12,9 @@ import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVersionToken
-import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImage
 import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -29,7 +27,7 @@ class GameDetailViewModel(
     private val gateway:GameGateway,
     groupId:String,
     gameId:String,
-    role:GroupRoleDto,
+    role:GroupRole,
     testScope:CoroutineScope?=null,
     private val attendanceGateway:AttendanceGateway?=null,
     private val attendanceShareGateway:AttendanceSharingGateway?=null,
@@ -78,9 +76,9 @@ class GameDetailViewModel(
     private suspend fun loadAttendance(groupId:String,gameId:String){
         val attendance=attendanceGateway
         if(attendance==null){mutable.value=mutable.value.copy(isLoading=false);return}
-        when(val result=attendance.read(groupId,gameId)){
-            is NetworkResult.Success->mutable.value=mutable.value.copy(attendance=result.value,isLoading=false,attendanceError=null)
-            is NetworkResult.Failure->mutable.value=mutable.value.copy(isLoading=false,attendanceError=result.error.toAttendanceGatewayFailure().error())
+        when(val result=attendance.read(GroupId(groupId),gameId)){
+            is SaqzResult.Success->mutable.value=mutable.value.copy(attendance=result.value,isLoading=false,attendanceError=null,attendanceErrorMessage=null)
+            is SaqzResult.Failure->{val failure=result.error.toPresentation();mutable.value=mutable.value.copy(isLoading=false,attendanceError=failure.error,attendanceErrorMessage=failure.message)}
         }
     }
 
@@ -96,34 +94,34 @@ class GameDetailViewModel(
         mutable.value=current.copy(pendingAttendanceAction=action,attendanceCommandKey=key,attendanceError=null)
     }
     private fun confirmAttendance(){val current=mutable.value;val action=current.pendingAttendanceAction?:return;val key=current.attendanceCommandKey?:return;execute(AttendanceOperation.Self(action,key))}
-    private fun override(intent:GameDetailIntent.OverrideAttendance){val current=mutable.value;if(!current.organizer||current.isAttendanceMutating)return;if(intent.memberId.isBlank()||intent.reason.trim().length<2){mutable.value=current.copy(attendanceError=GameDetailError.VALIDATION);return};execute(AttendanceOperation.Override(intent.memberId,intent.intent,intent.reason.trim(),keys.create()))}
-    private fun capacity(value:Int){val current=mutable.value;val version=current.version?:return;if(!current.organizer||current.isAttendanceMutating)return;if(value !in 2..100){mutable.value=current.copy(attendanceError=GameDetailError.VALIDATION);return};execute(AttendanceOperation.Capacity(value,version.value,keys.create()))}
+    private fun override(intent:GameDetailIntent.OverrideAttendance){val current=mutable.value;if(!current.organizer||current.isAttendanceMutating)return;if(intent.memberId.isBlank()||intent.reason.trim().length<2){mutable.value=current.copy(attendanceError=GameDetailError.VALIDATION,attendanceErrorMessage=null);return};execute(AttendanceOperation.Override(intent.memberId,intent.intent,intent.reason.trim(),keys.create()))}
+    private fun capacity(value:Int){val current=mutable.value;val version=current.version?:return;if(!current.organizer||current.isAttendanceMutating)return;if(value !in 2..100){mutable.value=current.copy(attendanceError=GameDetailError.VALIDATION,attendanceErrorMessage=null);return};execute(AttendanceOperation.Capacity(value,AttendanceVersionToken(version.value),keys.create()))}
 
     private fun execute(operation:AttendanceOperation){
         val attendance=attendanceGateway?:return
         val current=mutable.value
         if(current.isAttendanceMutating)return
         retryOperation=operation
-        mutable.value=current.copy(isAttendanceMutating=true,attendanceError=null,retryAttendanceAvailable=false)
+        mutable.value=current.copy(isAttendanceMutating=true,attendanceError=null,attendanceErrorMessage=null,retryAttendanceAvailable=false)
         scope.launch{when(operation){
-            is AttendanceOperation.Self->when(val result=attendance.respond(current.groupId,current.gameId,SelfAttendanceCommand(operation.key,operation.action.intent()))){is NetworkResult.Success->applied(result.value.value,result.value.etag,true);is NetworkResult.Failure->attendanceFailed(result.error.toAttendanceGatewayFailure())}
-            is AttendanceOperation.Override->when(val result=attendance.override(current.groupId,current.gameId,OverrideAttendanceCommand(operation.key,operation.memberId,operation.intent,operation.reason))){is NetworkResult.Success->applied(result.value.value,result.value.etag,false);is NetworkResult.Failure->attendanceFailed(result.error.toAttendanceGatewayFailure())}
-            is AttendanceOperation.Capacity->when(val result=attendance.capacity(current.groupId,current.gameId,operation.etag,CapacityCommand(operation.key,operation.capacity))){is NetworkResult.Success->capacityApplied(result.value);is NetworkResult.Failure->attendanceFailed(result.error.toAttendanceGatewayFailure())}
+            is AttendanceOperation.Self->when(val result=attendance.respond(GroupId(current.groupId),current.gameId,SelfAttendanceCommand(operation.key,operation.action.intent()))){is SaqzResult.Success->applied(result.value.value,result.value.version,true);is SaqzResult.Failure->attendanceFailed(result.error)}
+            is AttendanceOperation.Override->when(val result=attendance.override(GroupId(current.groupId),current.gameId,OverrideAttendanceCommand(operation.key,operation.memberId,operation.intent,operation.reason))){is SaqzResult.Success->applied(result.value.value,result.value.version,false);is SaqzResult.Failure->attendanceFailed(result.error)}
+            is AttendanceOperation.Capacity->when(val result=attendance.capacity(GroupId(current.groupId),current.gameId,operation.version,AttendanceCapacityCommand(operation.key,operation.capacity))){is SaqzResult.Success->capacityApplied(result.value);is SaqzResult.Failure->attendanceFailed(result.error)}
         }}
     }
 
-    private fun applied(result:AttendanceMutationDto,etag:String,updateOwn:Boolean){
+    private fun applied(result:AttendanceMutation,version:AttendanceVersionToken,updateOwn:Boolean){
         retryOperation=null
         val detail=if(updateOwn)result.detail.copy(ownAttendance=result.attendance) else result.detail
-        mutable.value=mutable.value.copy(attendance=detail,attendanceEtag=etag,isAttendanceMutating=false,pendingAttendanceAction=null,attendanceCommandKey=null,attendanceError=null,retryAttendanceAvailable=false).syncGame(detail)
+        mutable.value=mutable.value.copy(attendance=detail,attendanceVersion=version,isAttendanceMutating=false,pendingAttendanceAction=null,attendanceCommandKey=null,attendanceError=null,attendanceErrorMessage=null,retryAttendanceAvailable=false).syncGame(detail)
         channel.trySend(GameDetailEffect.AttendanceApplied(result.attendance.status,result.promotedCount,true))
     }
-    private fun capacityApplied(result:VersionedCapacityDto){
+    private fun capacityApplied(result:VersionedAttendanceCapacity){
         retryOperation=null
-        mutable.value=mutable.value.copy(attendance=result.value.detail,version=GameVersionToken(result.etag),isAttendanceMutating=false,attendanceError=null,retryAttendanceAvailable=false).syncGame(result.value.detail)
+        mutable.value=mutable.value.copy(attendance=result.value.detail,version=GameVersionToken(result.version.value),isAttendanceMutating=false,attendanceError=null,attendanceErrorMessage=null,retryAttendanceAvailable=false).syncGame(result.value.detail)
         channel.trySend(GameDetailEffect.CapacityApplied(result.value.capacity,result.value.promotedCount))
     }
-    private fun attendanceFailed(failure:AttendanceGatewayFailure){val error=failure.error();mutable.value=mutable.value.copy(isAttendanceMutating=false,attendanceError=error,retryAttendanceAvailable=error in setOf(GameDetailError.CONFLICT,GameDetailError.UNAVAILABLE),reloadAvailable=error==GameDetailError.CONFLICT)}
+    private fun attendanceFailed(failure:AttendanceError){val mapped=failure.toPresentation();mutable.value=mutable.value.copy(isAttendanceMutating=false,attendanceError=mapped.error,attendanceErrorMessage=mapped.message,retryAttendanceAvailable=mapped.error in setOf(GameDetailError.CONFLICT,GameDetailError.UNAVAILABLE),reloadAvailable=mapped.error==GameDetailError.CONFLICT)}
     private fun fail(failure:GameError){val error=when(failure){GameError.Conflict->GameDetailError.CONFLICT;GameError.HiddenResource->GameDetailError.HIDDEN;GameError.InvalidLifecycle->GameDetailError.INVALID_LIFECYCLE;else->GameDetailError.UNAVAILABLE};mutable.value=mutable.value.copy(isMutating=false,pendingAction=null,error=error,reloadAvailable=error==GameDetailError.CONFLICT||error==GameDetailError.INVALID_LIFECYCLE)}
     private fun shareAttendanceLink(retry:Boolean){
         val current=mutable.value
@@ -152,7 +150,9 @@ class GameDetailViewModel(
     private fun reportAttendanceShareResult(successful:Boolean){if(!successful&&mutable.value.attendanceShareSnapshot!=null)mutable.value=mutable.value.copy(attendanceShareError=GameDetailError.UNAVAILABLE)}
 
     private fun Game.attendanceOpen()=status==GameStatus.Published&&runCatching{now()<=Instant.parse(confirmationDeadline)}.getOrDefault(false)
-    private fun AttendanceAction.intent()=if(this==AttendanceAction.CONFIRM)AttendanceIntentDto.CONFIRM else AttendanceIntentDto.DECLINE
-    private fun AttendanceGatewayFailure.error()=when(this){AttendanceGatewayFailure.HiddenResource->GameDetailError.HIDDEN;AttendanceGatewayFailure.DeadlinePassed->GameDetailError.DEADLINE;AttendanceGatewayFailure.Frozen->GameDetailError.FROZEN;AttendanceGatewayFailure.Conflict->GameDetailError.CONFLICT;is AttendanceGatewayFailure.Validation->GameDetailError.VALIDATION;else->GameDetailError.UNAVAILABLE}
-    private fun GameDetailState.syncGame(detail:AttendanceDetailDto)=copy(game=game?.copy(capacity=detail.capacity,confirmedCount=detail.confirmedCount,availableSpots=detail.availableSpots,waitlistCount=detail.waitlistCount))
+    private fun AttendanceAction.intent()=if(this==AttendanceAction.CONFIRM)AttendanceIntent.Confirm else AttendanceIntent.Decline
+    private fun AttendanceError.toPresentation()=when(this){AttendanceError.HiddenResource->AttendanceFailure(GameDetailError.HIDDEN);AttendanceError.DeadlinePassed->AttendanceFailure(GameDetailError.DEADLINE);AttendanceError.Frozen->AttendanceFailure(GameDetailError.FROZEN);AttendanceError.Conflict->AttendanceFailure(GameDetailError.CONFLICT);is AttendanceError.Validation->AttendanceFailure(GameDetailError.VALIDATION,error.details.globalMessages.firstOrNull(String::isNotBlank));else->AttendanceFailure(GameDetailError.UNAVAILABLE)}
+    private fun GameDetailState.syncGame(detail:AttendanceDetail)=copy(game=game?.copy(capacity=detail.capacity,confirmedCount=detail.confirmedCount,availableSpots=detail.availableSpots,waitlistCount=detail.waitlistCount))
+
+    private data class AttendanceFailure(val error:GameDetailError,val message:String?=null)
 }

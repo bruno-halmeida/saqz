@@ -5,27 +5,32 @@ import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
 import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.domain.group.GroupRole
-import br.com.saqz.groups.data.attendance.AttendanceDetailDto
-import br.com.saqz.groups.data.attendance.AttendanceGateway
-import br.com.saqz.groups.data.attendance.CapacityCommand
-import br.com.saqz.groups.data.attendance.OverrideAttendanceCommand
-import br.com.saqz.groups.data.attendance.SelfAttendanceCommand
-import br.com.saqz.groups.data.attendance.VersionedAttendanceMutationDto
-import br.com.saqz.groups.data.attendance.VersionedCapacityDto
+import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceError
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
+import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
 import br.com.saqz.groups.domain.attendance.share.AttendanceShareSnapshot
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingError
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.groups.data.game.GameDto
-import br.com.saqz.groups.data.game.GameGateway
-import br.com.saqz.groups.data.game.GameStatusDto
-import br.com.saqz.groups.data.game.GameVenueDto
-import br.com.saqz.groups.data.game.GameWriteCommand
-import br.com.saqz.groups.data.game.SeriesBoundaryCommand
-import br.com.saqz.groups.data.game.VersionedGameDto
-import br.com.saqz.groups.data.game.VersionedSeriesDto
-import br.com.saqz.groups.data.game.WeeklySeriesWriteCommand
+import br.com.saqz.groups.domain.game.Game
+import br.com.saqz.groups.domain.game.GameError
+import br.com.saqz.groups.domain.game.GameGateway
+import br.com.saqz.groups.domain.game.GameLifecycleAction
+import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.game.GameVersionToken
+import br.com.saqz.groups.domain.game.GameWriteCommand
+import br.com.saqz.groups.domain.game.SeriesBoundaryCommand
+import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.game.VersionedSeries
+import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.port.GroupDraftReadResult
@@ -39,7 +44,6 @@ import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
 import br.com.saqz.groups.presentation.setup.GroupSetupInput
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -155,23 +159,23 @@ private class RecordingTimeZonePort : GroupSystemTimeZonePort {
 }
 
 private object PublishedGameGateway : GameGateway {
-    override suspend fun read(groupId: String, gameId: String) = NetworkResult.Success(PUBLISHED_GAME)
-    override suspend fun list(groupId: String) = error("unused")
-    override suspend fun create(groupId: String, command: GameWriteCommand) = error("unused")
-    override suspend fun edit(groupId: String, gameId: String, etag: String, command: GameWriteCommand) = error("unused")
-    override suspend fun lifecycle(groupId: String, gameId: String, etag: String, mutation: String) = error("unused")
-    override suspend fun createSeries(groupId: String, command: WeeklySeriesWriteCommand): NetworkResult<VersionedSeriesDto> = error("unused")
-    override suspend fun readSeries(groupId: String, seriesId: String): NetworkResult<VersionedSeriesDto> = error("unused")
-    override suspend fun boundary(groupId: String, seriesId: String, etag: String, command: SeriesBoundaryCommand): NetworkResult<VersionedSeriesDto> = error("unused")
+    override suspend fun read(groupId: GroupId, gameId: String) = SaqzResult.Success(PUBLISHED_GAME)
+    override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = error("unused")
+    override suspend fun create(groupId: GroupId, command: GameWriteCommand): SaqzResult<VersionedGame, GameError> = error("unused")
+    override suspend fun edit(groupId: GroupId, gameId: String, version: GameVersionToken, command: GameWriteCommand): SaqzResult<VersionedGame, GameError> = error("unused")
+    override suspend fun lifecycle(groupId: GroupId, gameId: String, version: GameVersionToken, action: GameLifecycleAction): SaqzResult<VersionedGame, GameError> = error("unused")
+    override suspend fun createSeries(groupId: GroupId, command: WeeklySeriesWriteCommand): SaqzResult<VersionedSeries, GameError> = error("unused")
+    override suspend fun readSeries(groupId: GroupId, seriesId: String): SaqzResult<VersionedSeries, GameError> = error("unused")
+    override suspend fun boundary(groupId: GroupId, seriesId: String, version: GameVersionToken, command: SeriesBoundaryCommand): SaqzResult<VersionedSeries, GameError> = error("unused")
 }
 
 private object EmptyAttendanceGateway : AttendanceGateway {
-    override suspend fun read(groupId: String, gameId: String) = NetworkResult.Success(
-        AttendanceDetailDto(null, confirmedCount = 2, availableSpots = 1, waitlistCount = 0, capacity = 3),
+    override suspend fun read(groupId: GroupId, gameId: String) = SaqzResult.Success(
+        AttendanceDetail(null, confirmedCount = 2, availableSpots = 1, waitlistCount = 0, capacity = 3),
     )
-    override suspend fun respond(groupId: String, gameId: String, command: SelfAttendanceCommand): NetworkResult<VersionedAttendanceMutationDto> = error("unused")
-    override suspend fun override(groupId: String, gameId: String, command: OverrideAttendanceCommand): NetworkResult<VersionedAttendanceMutationDto> = error("unused")
-    override suspend fun capacity(groupId: String, gameId: String, etag: String, command: CapacityCommand): NetworkResult<VersionedCapacityDto> = error("unused")
+    override suspend fun respond(groupId: GroupId, gameId: String, command: SelfAttendanceCommand): SaqzResult<VersionedAttendanceMutation, AttendanceError> = error("unused")
+    override suspend fun override(groupId: GroupId, gameId: String, command: OverrideAttendanceCommand): SaqzResult<VersionedAttendanceMutation, AttendanceError> = error("unused")
+    override suspend fun capacity(groupId: GroupId, gameId: String, version: AttendanceVersionToken, command: AttendanceCapacityCommand): SaqzResult<VersionedAttendanceCapacity, AttendanceError> = error("unused")
 }
 
 private class RecordingAttendanceShareGateway : AttendanceSharingGateway {
@@ -186,12 +190,12 @@ private class RecordingAttendanceShareGateway : AttendanceSharingGateway {
     override suspend fun readSnapshot(groupId: GroupId, gameId: String): SaqzResult<AttendanceShareSnapshot, AttendanceSharingError> = error("unused")
 }
 
-private val PUBLISHED_GAME = VersionedGameDto(
-    GameDto(
+private val PUBLISHED_GAME = VersionedGame(
+    Game(
         id = "game",
-        groupId = "group",
+        groupId = GroupId("group"),
         title = "Treino",
-        venue = GameVenueDto(null, "Arena", "Rua 1"),
+        venue = GameVenue(null, "Arena", "Rua 1"),
         localDate = "2026-08-12",
         localTime = "19:30:00",
         zoneId = "America/Sao_Paulo",
@@ -201,14 +205,14 @@ private val PUBLISHED_GAME = VersionedGameDto(
         confirmationDeadline = "2026-08-12T19:00:00Z",
         gameFeeCents = 2500,
         notes = "Notas",
-        status = GameStatusDto.PUBLISHED,
+        status = GameStatus.Published,
         version = 7,
         confirmedCount = 2,
         availableSpots = 1,
         waitlistCount = 0,
         financeReviewRequired = false,
     ),
-    etag = "\"7\"",
+    version = GameVersionToken("\"7\""),
 )
 
 private const val LINK_URL = "https://join.example.test/?saqz_attendance=abc"
