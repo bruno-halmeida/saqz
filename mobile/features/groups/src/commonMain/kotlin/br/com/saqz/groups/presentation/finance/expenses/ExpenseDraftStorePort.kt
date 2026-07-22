@@ -13,7 +13,7 @@ sealed interface ExpenseDraftWriteResult {
 }
 
 interface ExpenseDraftStorePort {
-    fun read(groupId: String, done: (ExpenseDraftReadResult) -> Unit)
+    fun read(groupId: String, expenseId: String?, done: (ExpenseDraftReadResult) -> Unit)
 
     fun write(draft: ExpenseDraft, done: (ExpenseDraftWriteResult) -> Unit)
 

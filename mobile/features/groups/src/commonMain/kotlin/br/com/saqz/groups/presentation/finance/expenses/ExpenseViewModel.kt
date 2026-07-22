@@ -68,7 +68,7 @@ class ExpenseViewModel(
     }
 
     private fun restore() {
-        drafts.read(groupId) { result ->
+        drafts.read(groupId, null) { result ->
             when (result) {
                 is ExpenseDraftReadResult.Success -> result.draft
                     ?.takeIf {

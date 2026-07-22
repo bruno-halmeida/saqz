@@ -179,7 +179,7 @@ private object UnconfiguredMonthlyDraftStore : MonthlyChargeDraftStorePort {
     override fun clear(groupId:String,commandKey:String,done:(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult.Success)
 }
 private object UnconfiguredExpenseDraftStore : ExpenseDraftStorePort {
-    override fun read(groupId:String,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult.Success(null))
+    override fun read(groupId:String,expenseId:String?,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult.Success(null))
     override fun write(draft:br.com.saqz.groups.presentation.finance.expenses.ExpenseDraft,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult.Success)
     override fun clear(groupId:String,expenseId:String?,commandKey:String,done:(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult)->Unit)=done(br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult.Success)
 }

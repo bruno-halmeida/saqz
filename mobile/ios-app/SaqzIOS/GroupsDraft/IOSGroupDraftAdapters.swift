@@ -103,17 +103,17 @@ final class IOSGroupDraftStore {
     }
 
     func writeExpense(_ value: ExpenseDraft) -> Bool {
-        write(ref: IOSDraftRef(type: .expense, groupID: value.groupId, resourceID: nil), schema: value.schemaVersion, payload: codec.encodeExpense(value: value))
+        write(ref: IOSDraftRef(type: .expense, groupID: value.groupId, resourceID: value.expenseId), schema: value.schemaVersion, payload: codec.encodeExpense(value: value))
     }
 
-    func readExpense(groupID: String) -> IOSDraftRead<ExpenseDraft> {
-        decode(read(ref: IOSDraftRef(type: .expense, groupID: groupID, resourceID: nil)), schema: ExpenseDraft.companion.CURRENT_SCHEMA, version: { $0.schemaVersion }) { try codec.decodeExpense(value: $0) }
+    func readExpense(groupID: String, resourceID: String?) -> IOSDraftRead<ExpenseDraft> {
+        decode(read(ref: IOSDraftRef(type: .expense, groupID: groupID, resourceID: resourceID)), schema: ExpenseDraft.companion.CURRENT_SCHEMA, version: { $0.schemaVersion }) { try codec.decodeExpense(value: $0) }
     }
 
     func clearSetup(_ key: GroupDraftKey, commandKey: String) -> Bool { clear(ref: setupRef(key), commandKey: commandKey) }
     func clearGame(groupID: String, resourceID: String?, commandKey: String) -> Bool { clear(ref: IOSDraftRef(type: .game, groupID: groupID, resourceID: resourceID), commandKey: commandKey) }
     func clearMonthly(groupID: String, commandKey: String) -> Bool { clear(ref: IOSDraftRef(type: .monthly, groupID: groupID, resourceID: nil), commandKey: commandKey) }
-    func clearExpense(groupID: String, commandKey: String) -> Bool { clear(ref: IOSDraftRef(type: .expense, groupID: groupID, resourceID: nil), commandKey: commandKey) }
+    func clearExpense(groupID: String, resourceID: String?, commandKey: String) -> Bool { clear(ref: IOSDraftRef(type: .expense, groupID: groupID, resourceID: resourceID), commandKey: commandKey) }
 
     func clearGroup(_ groupID: String) -> Bool { clearKeys { IOSDraftRef.from(storageKey: $0)?.groupID == groupID } }
     func clearAll() -> Bool { clearKeys { IOSDraftRef.from(storageKey: $0) != nil } }
@@ -257,9 +257,9 @@ final class IOSMonthlyDraftAdapter: @preconcurrency MonthlyChargeDraftStorePort 
 final class IOSExpenseDraftAdapter: @preconcurrency ExpenseDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
-    func read(groupId: String, done_: @escaping (any ExpenseDraftReadResult) -> Void) { switch store.readExpense(groupID: groupId) { case .success(let value): done_(ExpenseDraftReadResultSuccess(draft: value)); case .missing: done_(ExpenseDraftReadResultSuccess(draft: nil)); default: done_(ExpenseDraftReadResultFailure.shared) } }
+    func read(groupId: String, expenseId: String?, done_: @escaping (any ExpenseDraftReadResult) -> Void) { switch store.readExpense(groupID: groupId, resourceID: expenseId) { case .success(let value): done_(ExpenseDraftReadResultSuccess(draft: value)); case .missing: done_(ExpenseDraftReadResultSuccess(draft: nil)); default: done_(ExpenseDraftReadResultFailure.shared) } }
     func write(draft: ExpenseDraft, done__: @escaping (any ExpenseDraftWriteResult) -> Void) { done__(store.writeExpense(draft) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
-    func clear(groupId: String, expenseId: String?, commandKey: String, done: @escaping (any ExpenseDraftWriteResult) -> Void) { done(store.clearExpense(groupID: groupId, commandKey: commandKey) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
+    func clear(groupId: String, expenseId: String?, commandKey: String, done: @escaping (any ExpenseDraftWriteResult) -> Void) { done(store.clearExpense(groupID: groupId, resourceID: expenseId, commandKey: commandKey) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
 }
 
 private extension Optional where Wrapped == String {
