@@ -40,8 +40,6 @@ import br.com.saqz.access.port.NativeFailureCode
 import br.com.saqz.access.port.NativeSharePort
 import br.com.saqz.access.port.OperationResult
 import br.com.saqz.access.port.ResultCallback
-import br.com.saqz.access.port.TokenCallback
-import br.com.saqz.access.port.TokenResult as NativeTokenResult
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationIntent
@@ -115,16 +113,16 @@ import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.composeapp.di.DelegatingSessionInvalidator
+import br.com.saqz.composeapp.di.NativeTokenProvider
 import br.com.saqz.composeapp.home.AuthenticatedHomeScreen
 import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
 import br.com.saqz.network.AuthenticatedNetworkClient
-import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.toNetworkEnvironment
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionApi
 import br.com.saqz.network.SessionInvalidator
-import br.com.saqz.network.TokenResult
 import br.com.saqz.network.createPlatformNetworkClient
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -223,7 +221,7 @@ internal fun AuthenticatedAccessRoute(
     val gameDetailAuthenticatedNetwork = remember(gameDetailNetwork, dependencies, accessViewModel) {
         AuthenticatedNetworkClient(
             gameDetailNetwork,
-            NativeTokenProvider(dependencies),
+            NativeTokenProvider(dependencies.auth),
             accessViewModel.sessionInvalidator,
         )
     }
@@ -526,7 +524,7 @@ internal class AccessRuntime(
     private val invalidator = DelegatingSessionInvalidator()
     private val authenticatedNetwork = AuthenticatedNetworkClient(
         network,
-        NativeTokenProvider(dependencies),
+        NativeTokenProvider(dependencies.auth),
         invalidator,
     )
     private val groups = GroupApi(authenticatedNetwork)
@@ -666,27 +664,6 @@ internal class AccessRuntime(
     private fun resultCallback(block: (OperationResult) -> Unit) = object : ResultCallback {
         override fun complete(result: OperationResult) = block(result)
     }
-}
-
-private class NativeTokenProvider(private val dependencies: SaqzAppDependencies) : IdTokenProvider {
-    override fun token(forceRefresh: Boolean, completion: (TokenResult) -> Unit) {
-        dependencies.auth.idToken(forceRefresh, object : TokenCallback {
-            override fun complete(result: NativeTokenResult) {
-                completion(
-                    when (result) {
-                        is NativeTokenResult.Success -> TokenResult.Available(result.token)
-                        is NativeTokenResult.Failure -> TokenResult.Unavailable
-                    },
-                )
-            }
-        })
-    }
-}
-
-private class DelegatingSessionInvalidator : SessionInvalidator {
-    lateinit var delegate: SessionInvalidator
-
-    override fun invalidate() = delegate.invalidate()
 }
 
 private fun AccessRootSnapshot.destination(): AccessDestination {
