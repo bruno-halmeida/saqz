@@ -14,7 +14,7 @@ import kotlin.test.*
 
 @OptIn(ExperimentalTestApi::class)
 class GameDetailScreenTest {
-    @Test fun `member sees localized authoritative snapshot`()=runComposeUiTest{screen(state());onNodeWithText("Treino").assertExists();onNodeWithText("12/08/2026 às 19:30").assertExists();onNodeWithText("Arena").assertExists();onNodeWithText("21 vagas").assertExists();onNodeWithText("Valor: R$ 25,00").assertExists()}
+    @Test fun `member sees localized authoritative snapshot`()=runComposeUiTest{screen(state());onNodeWithText("Treino").assertExists();onNodeWithText("12/08/2026 às 19:30").assertExists();onNodeWithText("Arena").assertExists();onNodeWithText("21 vagas").assertExists();onNodeWithText("Valor: R$ 25,00").assertExists()}
     @Test fun `athlete never sees organizer actions`()=runComposeUiTest{screen(state(role=GroupRoleDto.ATHLETE));onNodeWithTag(GameDetailTags.Edit).assertDoesNotExist();onNodeWithTag(GameDetailTags.Publish).assertDoesNotExist()}
     @Test fun `draft organizer sees edit and publish only`()=runComposeUiTest{screen(state());onNodeWithTag(GameDetailTags.Edit).assertExists();onNodeWithTag(GameDetailTags.Publish).assertExists();onNodeWithTag(GameDetailTags.Cancel).assertDoesNotExist();onNodeWithTag(GameDetailTags.Complete).assertDoesNotExist()}
     @Test fun `published organizer sees edit cancel and complete`()=runComposeUiTest{screen(state(status=GameStatusDto.PUBLISHED));onNodeWithTag(GameDetailTags.Edit).assertExists();onNodeWithTag(GameDetailTags.Cancel).assertExists();onNodeWithTag(GameDetailTags.Complete).assertExists();onNodeWithTag(GameDetailTags.Publish).assertDoesNotExist()}

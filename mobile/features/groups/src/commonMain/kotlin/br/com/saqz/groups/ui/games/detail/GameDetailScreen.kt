@@ -21,6 +21,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import br.com.saqz.core.common.formatting.formatBrl
+import br.com.saqz.core.common.formatting.formatLocalDatePtBrString
 import br.com.saqz.designsystem.component.SaqzBadge
 import br.com.saqz.designsystem.component.SaqzBadgeVariant
 import br.com.saqz.designsystem.component.SaqzButton
@@ -53,7 +55,7 @@ object GameDetailTags {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding)){
         Text(stringResource(Res.string.game_detail_title),style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()})
         when{state.isLoading->SaqzLoadingState();state.game==null->ErrorPanel(state,onIntent);else->{val game=state.game
-            SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(game.title,style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary);Text("${game.localDate.ptBr()} às ${game.localTime.take(5)}",color=SaqzTheme.colors.textSecondary);Text(game.venue.name,color=SaqzTheme.colors.textPrimary);Text(game.venue.address,color=SaqzTheme.colors.textSecondary);Row(horizontalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){SaqzBadge(game.status.label(),SaqzBadgeVariant.Neutral);Text(game.availability(),color=SaqzTheme.colors.textPrimary)};Text("Duração: ${game.durationMinutes} min",color=SaqzTheme.colors.textSecondary);game.gameFeeCents?.let{Text("Valor: ${it.brl()}",color=SaqzTheme.colors.textSecondary)};game.notes?.let{Text(it,color=SaqzTheme.colors.textSecondary)}}}
+            SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(game.title,style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary);Text("${formatLocalDatePtBrString(game.localDate)} às ${game.localTime.take(5)}",color=SaqzTheme.colors.textSecondary);Text(game.venue.name,color=SaqzTheme.colors.textPrimary);Text(game.venue.address,color=SaqzTheme.colors.textSecondary);Row(horizontalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){SaqzBadge(game.status.label(),SaqzBadgeVariant.Neutral);Text(game.availability(),color=SaqzTheme.colors.textPrimary)};Text("Duração: ${game.durationMinutes} min",color=SaqzTheme.colors.textSecondary);game.gameFeeCents?.let{Text("Valor: ${formatBrl(it)}",color=SaqzTheme.colors.textSecondary)};game.notes?.let{Text(it,color=SaqzTheme.colors.textSecondary)}}}
             if(state.terminal)Text(stringResource(Res.string.game_detail_terminal),color=SaqzTheme.colors.textSecondary)
             if(game.status==GameStatusDto.CANCELLED||game.financeReviewRequired)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary)
             AttendancePanel(state,onIntent)
@@ -134,5 +136,4 @@ private fun AttendanceAction.attendanceTag()=when(this){AttendanceAction.CONFIRM
 @Composable private fun GameDetailError.attendanceErrorLabel()=stringResource(when(this){GameDetailError.DEADLINE->Res.string.attendance_deadline_closed;GameDetailError.FROZEN->Res.string.attendance_frozen;GameDetailError.CONFLICT->Res.string.game_detail_conflict;GameDetailError.VALIDATION->Res.string.attendance_validation;else->Res.string.game_detail_error})
 private fun GameStatusDto.label()=when(this){GameStatusDto.DRAFT->"Rascunho";GameStatusDto.PUBLISHED->"Publicado";GameStatusDto.CANCELLED->"Cancelado";GameStatusDto.COMPLETED->"Concluído"}
 private fun br.com.saqz.groups.data.game.GameDto.availability()=when{availableSpots>0->"$availableSpots vagas";waitlistCount>0->"Lista de espera: $waitlistCount";else->"Sem vagas"}
-private fun String.ptBr()=split('-').let{"${it[2]}/${it[1]}/${it[0]}"}
-private fun Long.brl()="R$ ${this/100},${(this%100).toString().padStart(2,'0')}"
+

@@ -303,6 +303,10 @@ T27 → T28 → T29 → T30
 
 ### T09: AuthUiErrorMapper único e migração das três telas de access
 
+**Status**: completed (2d4a2c7)
+
+**Status**: in_progress
+
 **What**: Criar `AuthUiError.messageRes()` (`when` exaustivo, sem `else`) e `NativeFailureCode.toUiError()` em `features/access/presentation`; migrar `LoginScreen`, `RegistrationScreen`, `IdentityCompletionScreens` e os dois coordinators para as fontes únicas.
 **Where**: `mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/presentation/`; consumidores em `ui/LoginScreen.kt:402-410`, `ui/RegistrationScreen.kt:257-263`, `ui/IdentityCompletionScreens.kt:270-275`, `presentation/AuthenticationCoordinator.kt:203-211`, `presentation/VerifiedSessionCoordinator.kt:239-247`
 **Depends on**: None
@@ -327,6 +331,8 @@ T27 → T28 → T29 → T30
 
 ### T10: AccessValidators centrais (email + nome) e migração dos fluxos
 
+**Status**: completed (2d4a2c7)
+
 **What**: Criar `AccessValidators` em `features/access/presentation` com `isValidEmail` e `isValidDisplayName` (2..80 chars, sem ISO control — regra restrita uniforme, confirmada); migrar coordinators e telas (incluindo registro, que hoje aceita `isNotBlank()`).
 **Where**: `mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/presentation/`; consumidores em `AuthenticationCoordinator.kt:198-201`, `VerifiedSessionCoordinator.kt:231-234`, `ui/RegistrationScreen.kt:93-94`, `ui/IdentityCompletionScreens.kt:199`
 **Depends on**: None
@@ -349,6 +355,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T11: Features/groups consome os formatters centrais de BRL e data
+
+**Status**: completed (pending commit)
 
 **What**: Substituir as 5 implementações locais de BRL e os helpers de data duplicados pelos formatters de `core/common` (T05/T06), removendo o código local.
 **Where**: `mobile/features/groups/.../ui/setup/GroupSetupScreen.kt:980-1009`, `presentation/finance/expenses/ExpenseRules.kt:58-68`, `presentation/finance/charges/FinanceChargeRules.kt:42-50`, `ui/finance/charges/FinanceScreen.kt:80-82`, `ui/finance/expenses/ExpenseScreen.kt:72-73`

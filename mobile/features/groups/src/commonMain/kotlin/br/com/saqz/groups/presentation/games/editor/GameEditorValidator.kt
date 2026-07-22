@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.games.editor
 
+import br.com.saqz.core.common.formatting.parseBrlToCents
+
 internal fun validateGameEditor(draft: GameEditorDraft): Map<String, List<String>> = buildMap {
     fun required(name: String, value: String) {
         if (value.isBlank()) put(name, listOf("is required"))
@@ -19,7 +21,7 @@ internal fun validateGameEditor(draft: GameEditorDraft): Map<String, List<String
     if (form.capacity.toIntOrNull() !in 2..100) {
         put("capacity", listOf("must be between 2 and 100"))
     }
-    if (form.gameFeeBrl.isNotBlank() && form.gameFeeBrl.toCents() == null) {
+    if (form.gameFeeBrl.isNotBlank() && parseBrlToCents(form.gameFeeBrl) == null) {
         put("gameFeeBrl", listOf("must be a valid BRL amount"))
     }
     if (form.notes.trim().let { it.isNotEmpty() && it.length !in 2..500 }) {

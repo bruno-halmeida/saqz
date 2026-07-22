@@ -13,6 +13,9 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.formatting.sanitizeBrlInput
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
@@ -407,8 +410,8 @@ class GroupSetupScreenTest {
     }
 
     @Test fun `invalid BRL input does not manufacture cents`() {
-        assertNull(parseBrlCents("12,345"))
-        assertNull(parseBrlCents("valor"))
+        assertNull(parseBrlToCents("12,345"))
+        assertNull(parseBrlToCents("valor"))
     }
 
     @Test fun `BRL input accepts only numeric decimal content`() {
@@ -419,8 +422,7 @@ class GroupSetupScreenTest {
     }
 
     @Test fun `BRL formatter uses reais and two decimal places`() {
-        assertEquals("1.234,05", formatBrlInput(123405))
-        assertEquals("", formatBrlInput(null))
+        assertEquals("1.234,05", formatBrlPlain(123405))
     }
 
     private fun ComposeUiTest.setup(

@@ -13,6 +13,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import br.com.saqz.core.common.formatting.formatBrl
+import br.com.saqz.core.common.formatting.formatLocalDatePtBrString
+import br.com.saqz.core.common.formatting.formatMonthPtBrString
 import br.com.saqz.designsystem.component.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.data.finance.*
@@ -40,7 +43,8 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
     }
 }
 
-@Composable private fun Totals(value:ChargeTotalsState){SaqzCard(Modifier.fillMaxWidth().testTag(FinanceTags.Totals)){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(stringResource(Res.string.finance_totals),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()});Text(stringResource(Res.string.finance_pending,value.pendingCents.brl()),color=SaqzTheme.colors.textPrimary);Text(stringResource(Res.string.finance_paid,value.paidCents.brl()),color=SaqzTheme.colors.textSecondary);Text(stringResource(Res.string.finance_waived,value.waivedCents.brl()),color=SaqzTheme.colors.textSecondary);Text(stringResource(Res.string.finance_cancelled,value.cancelledCents.brl()),color=SaqzTheme.colors.textSecondary)}}}
+@Composable private fun Totals(value:ChargeTotalsState){SaqzCard(Modifier.fillMaxWidth().testTag(FinanceTags.Totals)){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(stringResource(Res.string.finance_totals),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary,modifier=Modifier.semantics{heading()});Text(stringResource(Res.string.finance_pending,formatBrl(value.pendingCents)),color=SaqzTheme.colors.textPrimary);Text(stringResource(Res.string.finance_paid,formatBrl(value.paidCents)),color=SaqzTheme.colors.textSecondary);Text(stringResource(Res.string.finance_waived,formatBrl(value.waivedCents)),color=SaqzTheme.colors.textSecondary);Text(stringResource(Res.string.finance_cancelled,formatBrl(value.cancelledCents)),color=SaqzTheme.colors.textSecondary)}}
+}
 
 @Composable private fun MonthlyPanel(state:FinanceState,onIntent:(FinanceIntent)->Unit){
     val initial=state.monthlyDraft
@@ -66,8 +70,8 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
     SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){
         Text(charge.subject(),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary)
         if(organizer)Text(stringResource(Res.string.finance_member_value,charge.memberId),color=SaqzTheme.colors.textSecondary)
-        Text(stringResource(Res.string.finance_charge_amount,charge.amountCents.brl()),color=SaqzTheme.colors.textPrimary)
-        Text(stringResource(Res.string.finance_charge_due,charge.dueDate.localDate()),color=SaqzTheme.colors.textSecondary)
+        Text(stringResource(Res.string.finance_charge_amount,formatBrl(charge.amountCents)),color=SaqzTheme.colors.textPrimary)
+        Text(stringResource(Res.string.finance_charge_due,formatLocalDatePtBrString(charge.dueDate)),color=SaqzTheme.colors.textSecondary)
         SaqzBadge(charge.status.label(),SaqzBadgeVariant.Neutral)
         if(charge.reviewRequired)Text(stringResource(Res.string.finance_review_required),color=SaqzTheme.colors.textSecondary)
         charge.events.lastOrNull()?.let{Text(stringResource(Res.string.finance_audit,it.newStatus.label(),it.occurredAt),color=SaqzTheme.colors.textSecondary)}
@@ -75,9 +79,6 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
     }}
 }
 
-@Composable private fun ChargeDto.subject()=when(kind){ChargeKindDto.GAME->stringResource(Res.string.finance_kind_game,gameId.orEmpty());ChargeKindDto.MONTHLY->stringResource(Res.string.finance_kind_month,month?.monthPtBr().orEmpty())}
+@Composable private fun ChargeDto.subject()=when(kind){ChargeKindDto.GAME->stringResource(Res.string.finance_kind_game,gameId.orEmpty());ChargeKindDto.MONTHLY->stringResource(Res.string.finance_kind_month,month?.let(::formatMonthPtBrString).orEmpty())}
 @Composable private fun ChargeStatusDto.label()=stringResource(when(this){ChargeStatusDto.PENDING->Res.string.finance_status_pending;ChargeStatusDto.PAID->Res.string.finance_status_paid;ChargeStatusDto.WAIVED->Res.string.finance_status_waived;ChargeStatusDto.CANCELLED->Res.string.finance_status_cancelled})
-private fun String.monthPtBr()=split('-').let{"${it[1]}/${it[0]}"}
-private fun String.localDate()=split('-').let{"${it[2]}/${it[1]}/${it[0]}"}
-private fun Long.brl()="R$ ${this/100},${(this%100).toString().padStart(2,'0')}"
 private fun Modifier.financeAction(order:Int)=fillMaxWidth().heightIn(min=48.dp).semantics{financeMinimumTouchTarget=true;financeActionOrder=order}

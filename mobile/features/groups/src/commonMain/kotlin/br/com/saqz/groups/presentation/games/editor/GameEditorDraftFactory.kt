@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.games.editor
 
+import br.com.saqz.core.common.formatting.formatBrlPlain
+
 internal fun GameEditorInput.toGameEditorDraft(commandKey: String): GameEditorDraft {
     val game = existing?.game
     val form = if (game == null) {
@@ -9,7 +11,7 @@ internal fun GameEditorInput.toGameEditorDraft(commandKey: String): GameEditorDr
             zoneId = defaults.zoneId,
             durationMinutes = defaults.durationMinutes?.toString().orEmpty(),
             capacity = defaults.capacity?.toString().orEmpty(),
-            gameFeeBrl = defaults.gameFeeCents?.toBrl().orEmpty(),
+            gameFeeBrl = defaults.gameFeeCents?.let(::formatBrlPlain).orEmpty(),
         )
     } else {
         GameEditorForm(
@@ -22,7 +24,7 @@ internal fun GameEditorInput.toGameEditorDraft(commandKey: String): GameEditorDr
             durationMinutes = game.durationMinutes.toString(),
             capacity = game.capacity.toString(),
             confirmationDeadline = game.confirmationDeadline,
-            gameFeeBrl = game.gameFeeCents?.toBrl().orEmpty(),
+            gameFeeBrl = game.gameFeeCents?.let(::formatBrlPlain).orEmpty(),
             notes = game.notes.orEmpty(),
         )
     }
@@ -36,5 +38,3 @@ internal fun GameEditorInput.toGameEditorDraft(commandKey: String): GameEditorDr
         form = form,
     )
 }
-
-internal fun Long.toBrl(): String = "${this / 100},${(this % 100).toString().padStart(2, '0')}"

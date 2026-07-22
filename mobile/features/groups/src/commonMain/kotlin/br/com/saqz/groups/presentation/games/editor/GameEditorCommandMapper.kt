@@ -1,10 +1,11 @@
 package br.com.saqz.groups.presentation.games.editor
 
+import br.com.saqz.core.common.formatting.parseBrlToCents
 import br.com.saqz.groups.data.game.GameVenueDto
 import br.com.saqz.groups.data.game.GameWriteCommand
-import br.com.saqz.groups.data.game.SeriesBoundaryActionDto
 import br.com.saqz.groups.data.game.SeriesBoundaryCommand
 import br.com.saqz.groups.data.game.SeriesBoundaryScopeDto
+import br.com.saqz.groups.data.game.SeriesBoundaryActionDto
 import br.com.saqz.groups.data.game.VersionedSeriesDto
 import br.com.saqz.groups.data.game.WeekdayDto
 import br.com.saqz.groups.data.game.WeeklySeriesWriteCommand
@@ -21,7 +22,7 @@ internal fun GameEditorForm.toGameWriteCommand(commandKey: String? = null): Game
     durationMinutes.toIntOrNull(),
     capacity.toIntOrNull(),
     confirmationDeadline,
-    gameFeeBrl.toCents(),
+    parseBrlToCents(gameFeeBrl),
     false,
     notes.trim().ifBlank { null },
 )
@@ -34,7 +35,7 @@ internal fun GameEditorForm.newWeeklySlot(commandKey: String): WeeklySlotDto = W
     venue = venue ?: GameVenueDto(null, "", ""),
     capacity = capacity.toIntOrNull() ?: 12,
     confirmationLeadMinutes = 180,
-    gameFeeCents = gameFeeBrl.toCents(),
+    gameFeeCents = parseBrlToCents(gameFeeBrl),
     title = title,
 )
 
@@ -67,12 +68,3 @@ internal fun GameEditorDraft.toBoundaryCommand(series: VersionedSeriesDto): Seri
         },
     )
 
-internal fun String.toCents(): Long? {
-    val clean = trim().replace("R$", "").trim()
-    if (!clean.matches(Regex("[0-9]+([,.][0-9]{1,2})?"))) return null
-
-    val parts = clean.replace('.', ',').split(',')
-    return parts[0].toLongOrNull()
-        ?.times(100)
-        ?.plus(parts.getOrNull(1)?.padEnd(2, '0')?.toLongOrNull() ?: 0)
-}

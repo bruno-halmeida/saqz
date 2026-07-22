@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.finance.charges
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.formatting.parseBrlToCents
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.finance.AthleteFinanceGateway
@@ -220,7 +221,7 @@ class FinanceViewModel(
                             MonthlyChargeCommandDto(
                                 draft.commandKey,
                                 draft.month,
-                                requireNotNull(draft.amountBrl.brlToCents()),
+                                requireNotNull(parseBrlToCents(draft.amountBrl)),
                                 draft.dueDate,
                                 draft.selectedMemberIds,
                             ),

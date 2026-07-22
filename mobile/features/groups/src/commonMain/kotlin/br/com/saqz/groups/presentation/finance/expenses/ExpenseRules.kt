@@ -1,12 +1,14 @@
 package br.com.saqz.groups.presentation.finance.expenses
 
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
 import br.com.saqz.groups.data.finance.ExpenseCategoryDto
 import br.com.saqz.groups.data.finance.ExpenseDto
 import br.com.saqz.groups.data.finance.ExpenseWriteCommandDto
 
 internal fun ExpenseDto.toExpenseForm() = ExpenseForm(
     description = description,
-    amountBrl = amountCents.toBrl(),
+    amountBrl = amountCents.let(::formatBrlPlain),
     expenseDate = expenseDate,
     category = category,
     customCategory = customCategory.orEmpty(),
@@ -16,7 +18,7 @@ internal fun ExpenseDto.toExpenseForm() = ExpenseForm(
 internal fun ExpenseForm.toExpenseWriteCommand(key: String?) = ExpenseWriteCommandDto(
     key,
     description.trim(),
-    requireNotNull(amountBrl.brlToCents()),
+    requireNotNull(parseBrlToCents(amountBrl)),
     expenseDate,
     requireNotNull(category),
     customCategory.trim().ifBlank { null },
@@ -29,7 +31,7 @@ internal fun ExpenseForm.validate() = buildMap<String, List<String>> {
         put("description", listOf("is invalid"))
     }
 
-    val amount = amountBrl.brlToCents()
+    val amount = parseBrlToCents(amountBrl)
     if (amount == null || amount !in 1..99_999_999) {
         put("amountBrl", listOf("is invalid"))
     }
@@ -53,16 +55,4 @@ internal fun ExpenseForm.validate() = buildMap<String, List<String>> {
         }) {
         put("notes", listOf("is invalid"))
     }
-}
-
-internal fun Long.toBrl() = "${this / 100},${(this % 100).toString().padStart(2, '0')}"
-
-internal fun String.brlToCents(): Long? {
-    val clean = trim().replace("R$", "").trim()
-    if (!clean.matches(Regex("[0-9]+([,.][0-9]{1,2})?"))) return null
-
-    val parts = clean.replace('.', ',').split(',')
-    return parts[0].toLongOrNull()
-        ?.times(100)
-        ?.plus(parts.getOrNull(1)?.padEnd(2, '0')?.toLongOrNull() ?: 0)
 }

@@ -51,6 +51,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.formatting.sanitizeBrlInput
 import br.com.saqz.designsystem.component.SaqzBottomSheet
 import br.com.saqz.designsystem.component.SaqzButton
 import br.com.saqz.designsystem.component.SaqzButtonVariant
@@ -743,10 +746,10 @@ private fun FeeEditor(cents: Long?, label: StringResource, enabled: Boolean, err
 
 @Composable
 private fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, error: String?, onChange: (Long?) -> Unit) {
-    var fieldValue by remember { mutableStateOf(TextFieldValue(if (cents == 0L) "" else formatBrlInput(cents))) }
-    val external = if (cents == 0L) "" else formatBrlInput(cents)
+    var fieldValue by remember { mutableStateOf(TextFieldValue(if (cents == 0L) "" else formatBrlPlain(cents))) }
+    val external = if (cents == 0L) "" else formatBrlPlain(cents)
     LaunchedEffect(cents) {
-        if ((parseBrlCents(fieldValue.text) ?: 0L) != cents) {
+        if ((parseBrlToCents(fieldValue.text) ?: 0L) != cents) {
             fieldValue = TextFieldValue(external, TextRange(external.length))
         }
     }
@@ -764,7 +767,7 @@ private fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, err
                     ),
                     composition = null,
                 )
-                onChange(parseBrlCents(sanitized) ?: 0)
+                onChange(parseBrlToCents(sanitized) ?: 0)
             },
             label = stringResource(label),
             placeholder = "0,00",
@@ -977,36 +980,6 @@ private fun errorLabel(error: GroupSetupError): StringResource = when (error) {
     GroupSetupError.DRAFT_UNAVAILABLE -> Res.string.group_setup_draft_unavailable
 }
 
-internal fun parseBrlCents(value: String): Long? {
-    val normalized = value.trim().replace(".", "")
-    if (!Regex("\\d{1,8}([,.]\\d{0,2})?").matches(normalized)) return null
-    val parts = normalized.replace(',', '.').split('.')
-    val reais = parts[0].toLongOrNull() ?: return null
-    val decimals = parts.getOrNull(1).orEmpty().padEnd(2, '0').take(2).toLongOrNull() ?: 0L
-    return reais * 100 + decimals
-}
-
-internal fun sanitizeBrlInput(value: String): String {
-    val normalized = when {
-        ',' in value -> value.replace(".", "")
-        value.count { it == '.' } == 1 && value.substringAfter('.').count(Char::isDigit) <= 2 -> value.replace('.', ',')
-        else -> value.replace(".", "")
-    }
-    val separator = normalized.indexOf(',')
-    val reaisSource = if (separator >= 0) normalized.substring(0, separator) else normalized
-    val reais = reaisSource.filter(Char::isDigit).take(8)
-    if (separator < 0) return reais
-    val decimals = normalized.substring(separator + 1).filter(Char::isDigit).take(2)
-    return "$reais,$decimals"
-}
-
-internal fun formatBrlInput(cents: Long?): String {
-    if (cents == null) return ""
-    val reais = cents / 100
-    val decimals = (cents % 100).toString().padStart(2, '0')
-    val grouped = reais.toString().reversed().chunked(3).joinToString(".").reversed()
-    return "$grouped,$decimals"
-}
 
 @Preview()
 @Composable

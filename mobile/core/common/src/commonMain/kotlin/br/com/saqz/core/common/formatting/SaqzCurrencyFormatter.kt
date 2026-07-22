@@ -16,8 +16,16 @@ fun formatBrl(cents: Long): String {
     return "${sign}R$$NBSP${groupThousands(reais)},$centsText"
 }
 
+fun formatBrlPlain(cents: Long): String =
+    formatBrl(cents).removePrefix("R$").trimStart(NBSP, ' ')
+
 fun parseBrlToCents(input: String): Long? {
-    val normalized = input.trim().replace(".", "")
+    val normalized = input
+        .trim()
+        .replace("R$", "", ignoreCase = true)
+        .replace(NBSP.toString(), "")
+        .trim()
+        .replace(".", "")
     if (!Regex("""\d{1,8}([,.]\d{0,2})?""").matches(normalized)) return null
     val parts = normalized.replace(',', '.').split('.')
     val reais = parts[0].toLongOrNull() ?: return null
