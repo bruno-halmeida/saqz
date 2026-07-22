@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -20,6 +21,41 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class NetworkClientTest {
+    @Test
+    fun `injected json controls response decoding`() = runTest {
+        val strictJson = Json { ignoreUnknownKeys = false }
+        val client = NetworkClient(
+            responding("""{"value":"stable","unexpected":true}"""),
+            NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"),
+            json = strictJson,
+        )
+
+        val result = client.execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(NetworkError.InvalidResponse, assertFailure(result))
+    }
+
+    @Test
+    fun `one injected error mapper handles json and media responses`() = runTest {
+        val statuses = mutableListOf<Int>()
+        val mapper = NetworkErrorMapper { status, _ ->
+            statuses += status
+            NetworkError.Unavailable
+        }
+        val client = NetworkClient(
+            responding("unavailable", HttpStatusCode.ServiceUnavailable),
+            NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"),
+            errorMapper = mapper,
+        )
+
+        val jsonResult = client.execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+        val mediaResult = client.readBinary("photo")
+
+        assertEquals(NetworkError.Unavailable, assertFailure(jsonResult))
+        assertEquals(NetworkError.Unavailable, assertFailure(mediaResult))
+        assertEquals(listOf(503, 503), statuses)
+    }
+
     @Test
     fun `unresolved address maps only to connectivity`() = runTest {
         val result = client(MockEngine { throw UnresolvedAddressException() })
