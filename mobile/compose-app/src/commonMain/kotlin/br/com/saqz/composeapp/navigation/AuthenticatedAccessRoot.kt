@@ -208,11 +208,11 @@ internal fun AuthenticatedAccessRoute(
     DisposableEffect(gameDetailNetwork) {
         onDispose { gameDetailNetwork.close() }
     }
-    val gameDetailAuthenticatedNetwork = remember(gameDetailNetwork, dependencies) {
+    val gameDetailAuthenticatedNetwork = remember(gameDetailNetwork, dependencies, accessViewModel) {
         AuthenticatedNetworkClient(
             gameDetailNetwork,
             NativeTokenProvider(dependencies),
-            object : SessionInvalidator { override fun invalidate() = Unit },
+            accessViewModel.sessionInvalidator,
         )
     }
     val gameGateway = remember(gameDetailAuthenticatedNetwork) { GameApi(gameDetailAuthenticatedNetwork) }
@@ -493,6 +493,7 @@ internal class AccessRuntime(
     private val groups = GroupApi(authenticatedNetwork)
     override val groupProfileGateway: GroupProfileGateway = groups
     override val groupPhotoGateway: GroupPhotoGateway = GroupPhotoApi(authenticatedNetwork)
+    override val sessionInvalidator: SessionInvalidator = invalidator
     private val roles = RolesInvitesApi(authenticatedNetwork)
     private val attendanceSharing = AttendanceShareApi(authenticatedNetwork)
     private val session = SessionAccessStateMachine(dependencies.auth, dependencies.localState, SessionApi(authenticatedNetwork), scope)

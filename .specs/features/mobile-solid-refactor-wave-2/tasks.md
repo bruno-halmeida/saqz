@@ -157,7 +157,7 @@ T27 → T28 → T29 → T30
 
 ### T03: FIX-03 — Branch callback extrai parâmetro de attendance
 
-**Status**: in_progress
+**Status**: completed (5a27066)
 
 **What**: `BranchSdkSessionClient.branchCallback` passa a extrair `saqz_attendance` dos parâmetros do Branch e emitir o mesmo `GroupLinkEvent` de attendance que o parser de URL direta emite.
 **Where**: `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/access/AndroidLinkAdapter.kt:158-165` (constante `ATTENDANCE_PARAMETER` em `:169`)
@@ -168,11 +168,11 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] Params Branch contendo `saqz_attendance` emitem o attendance event equivalente ao da URL direta
-- [ ] Params contendo ambos (invite + attendance) respeitam a mesma regra de exclusividade do parser direto
-- [ ] Novo teste em `AndroidLinkAdapterTest`: params com attendance → evento emitido (falha sem o fix)
-- [ ] Gate quick passa: `rtk ./gradlew :android-app:testDevDebugUnitTest --console=plain`
-- [ ] Contagem de testes do módulo não diminui (+1 novo)
+- [x] Params Branch contendo `saqz_attendance` emitem o attendance event equivalente ao da URL direta
+- [x] Params contendo ambos (invite + attendance) respeitam a mesma regra de exclusividade do parser direto
+- [x] Novo teste em `AndroidLinkAdapterTest`: params com attendance → evento emitido (falha sem o fix)
+- [x] Gate quick passa: `rtk ./gradlew :android-app:testDevDebugUnitTest --console=plain`
+- [x] Contagem de testes do módulo não diminui (+1 novo)
 
 **Tests**: unit
 **Gate**: quick
@@ -181,6 +181,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T04: FIX-04 — 401 no grafo de rede do game-detail invalida a sessão
+
+**Status**: in_progress
 
 **What**: O `SessionInvalidator` usado pelo grafo de rede criado no composable (`AuthenticatedAccessRoot.kt:215`, hoje `override fun invalidate() = Unit`) passa a delegar ao invalidator real da sessão.
 **Where**: `mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/AuthenticatedAccessRoot.kt:203-219`

@@ -15,6 +15,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.groups.ui.CreateGroupUiState
 import br.com.saqz.composeapp.SaqzAppDependencies
+import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -49,6 +50,7 @@ internal class AccessViewModel private constructor(
     val effects: Flow<AccessUiEffect> = effectChannel.receiveAsFlow()
     internal val groupProfileGateway: GroupProfileGateway get() = runtime.groupProfileGateway
     internal val groupPhotoGateway: GroupPhotoGateway get() = runtime.groupPhotoGateway
+    internal val sessionInvalidator: SessionInvalidator get() = runtime.sessionInvalidator
     private var closed = false
 
     private val coreState = combine(

@@ -8,6 +8,7 @@ import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
 import br.com.saqz.groups.ui.InviteToolState
+import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.flow.StateFlow
 
 internal interface AccessRuntimeContract {
@@ -20,6 +21,7 @@ internal interface AccessRuntimeContract {
     val attendanceDestinationState: StateFlow<AttendanceLinkDestination?>
     val groupProfileGateway: GroupProfileGateway
     val groupPhotoGateway: GroupPhotoGateway
+    val sessionInvalidator: SessionInvalidator
 
     fun onIntent(intent: AccessRuntimeIntent)
 

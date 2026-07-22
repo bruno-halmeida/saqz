@@ -24,6 +24,7 @@ import br.com.saqz.groups.ui.InviteToolState
 import br.com.saqz.network.SessionDto
 import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.network.SessionUserDto
+import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -340,6 +341,16 @@ class AccessViewModelTest {
         assertEquals(1, runtime.intents.count { it == AccessRuntimeIntent.Close })
     }
 
+    @Test
+    fun `session invalidator exposed to route delegates to runtime invalidator`() = runTest {
+        val runtime = FakeRuntime()
+        val viewModel = AccessViewModel(runtime, backgroundScope)
+
+        viewModel.sessionInvalidator.invalidate()
+
+        assertEquals(1, runtime.invalidatorCalls)
+    }
+
     private suspend fun kotlinx.coroutines.test.TestScope.fixture(): Fixture {
         val runtime = FakeRuntime()
         val viewModel = AccessViewModel(runtime, backgroundScope)
@@ -350,7 +361,7 @@ class AccessViewModelTest {
 
     private data class Fixture(val viewModel: AccessViewModel, val runtime: FakeRuntime)
 
-    private class FakeRuntime : AccessRuntimeContract {
+    private class FakeRuntime : AccessRuntimeContract, SessionInvalidator {
         val authObserved = MutableStateFlow(false)
         val authentication = MutableStateFlow(AuthenticationState())
         val session = MutableStateFlow<SessionAccessState>(SessionAccessState.SignedOut)
@@ -359,6 +370,7 @@ class AccessViewModelTest {
         val invite = MutableStateFlow(InviteToolState())
         val attendanceDestination = MutableStateFlow<AttendanceLinkDestination?>(null)
         val intents = mutableListOf<AccessRuntimeIntent>()
+        var invalidatorCalls = 0
         private var requestCounter = 0
 
         override val authObservedState = authObserved
@@ -370,6 +382,9 @@ class AccessViewModelTest {
         override val attendanceDestinationState = attendanceDestination
         override val groupProfileGateway: GroupProfileGateway get() = error("not used by AccessViewModel tests")
         override val groupPhotoGateway: GroupPhotoGateway get() = error("not used by AccessViewModel tests")
+        override val sessionInvalidator: SessionInvalidator = this
+
+        override fun invalidate() { invalidatorCalls += 1 }
 
         override fun onIntent(intent: AccessRuntimeIntent) {
             intents += intent

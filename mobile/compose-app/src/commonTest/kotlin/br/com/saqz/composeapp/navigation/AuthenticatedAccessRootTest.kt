@@ -82,6 +82,7 @@ import br.com.saqz.network.SessionDto
 import br.com.saqz.network.SessionMembershipDto
 import br.com.saqz.network.SessionUserDto
 import br.com.saqz.network.NetworkResult
+import br.com.saqz.network.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -663,6 +664,7 @@ class AuthenticatedAccessRootTest {
         override val administrationState = MutableStateFlow(initialAdministration)
         override val inviteToolState = MutableStateFlow(InviteToolState())
         override val attendanceDestinationState = MutableStateFlow<AttendanceLinkDestination?>(null)
+        override val sessionInvalidator: SessionInvalidator = object : SessionInvalidator { override fun invalidate() = Unit }
 
         override fun onIntent(intent: AccessRuntimeIntent) = Unit
         override fun newRequestId(): String = "route-request"
