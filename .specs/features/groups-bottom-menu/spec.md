@@ -87,15 +87,15 @@ bottom menu so that I can reach every primary area from any group route.
 
 | Requirement ID | Story | Status |
 | --- | --- | --- |
-| MENU-01 | P1 | Implementing |
-| MENU-02 | P1 | Implementing |
-| MENU-03 | P1 | Implementing |
-| MENU-04 | P1 | Implementing |
-| MENU-05 | P1 | Implementing |
-| MENU-06 | P1 | Implementing |
+| MENU-01 | P1 | Validated |
+| MENU-02 | P1 | Validated |
+| MENU-03 | P1 | Validated |
+| MENU-04 | P1 | Validated |
+| MENU-05 | P1 | Validated |
+| MENU-06 | P1 | Validated |
 
 ## Success Criteria
 
-- [ ] Focused Compose navigation and design-system tests pass with no skipped
+- [x] Focused Compose navigation and design-system tests pass with no skipped
       tests.
-- [ ] `rtk scripts/check-gradle` and repository safety gates pass.
+- [x] `rtk scripts/check-gradle` and repository safety gates pass.
