@@ -196,4 +196,4 @@ private fun actionsFor(role: GroupRoleDto): GroupActions = when (role) {
 }
 
 private fun NetworkError.isProblem(status: Int, code: String): Boolean =
-    this is NetworkError.ApiProblemError && problem.status == status && problem.code == code
+    br.com.saqz.network.isProblem(this, status, code)

@@ -47,6 +47,11 @@ sealed interface NetworkError {
     data object PayloadTooLarge : NetworkError
 }
 
+// Kept as a plain top-level function because the same extension was not visible
+// across KMP modules to consumers (unresolved reference in :features:groups).
+fun isProblem(error: NetworkError, status: Int, code: String): Boolean =
+    error is NetworkError.ApiProblemError && error.problem.status == status && error.problem.code == code
+
 sealed interface NetworkResult<out T> {
     data class Success<T>(
         val value: T,

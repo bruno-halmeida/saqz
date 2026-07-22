@@ -83,7 +83,7 @@ internal fun GroupSetupState.toDraft(draftKey: GroupDraftKey) = GroupSetupDraft(
 )
 
 internal fun NetworkError.isProblem(status: Int, code: String): Boolean =
-    this is NetworkError.ApiProblemError && problem.status == status && problem.code == code
+    br.com.saqz.network.isProblem(this, status, code)
 
 private fun String?.hasLength(min: Int, max: Int): Boolean {
     val value = this?.trim() ?: return false
