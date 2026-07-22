@@ -437,6 +437,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T11: Define Groups profile/setup domain models and capability contracts
 
+**Status:** Complete — `042e6db`; focused gate passed (`6e3748e` records B9–B10).
+
 **What:** Move group profile, setup, venue, schedule, finance-default, role, version and create/update command semantics into Groups domain without transport annotations.
 
 **Where:** `features/groups/domain/src/commonMain/**/group/**`; co-located domain tests; source candidates currently in `groups/model` and `groups/data/GroupApi.kt`.
@@ -467,6 +469,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T12: Implement Groups profile/setup DTO mapping and data gateways
 
+**Status:** Complete — `aeb6bec`; focused gate passed.
+
 **What:** Move group/profile request/response DTOs and Ktor operations into Groups data, implement domain gateways, and map transport metadata/errors/retries.
 
 **Where:** `features/groups/data/src/commonMain/**/group/**`; data tests migrated from `GroupApiTest`, `GroupProfileApiTest`, `NetworkErrorMappersTest` subsets.
@@ -496,6 +500,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups-data): map profile transport to domain`
 
 ### T13: Switch Groups profile/setup/selection presentation to domain contracts
+
+**Status:** Complete — `ff240b3`; focused gate passed.
 
 **Status:** Complete — focused Groups presentation gate passed.
 
@@ -529,6 +535,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T14: Define membership, role and invite domain contracts
 
+**Status:** Complete — `620af7e`; focused gate passed.
+
 **Status:** Complete — 14 domain cases passed.
 
 **What:** Add Groups domain models, commands, gateway capabilities and typed errors for memberships, role changes, invite rotation/expiry/redemption and safe attempt limits.
@@ -560,6 +568,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T15: Implement membership, role and invite data mapping
 
+**Status:** Complete — `53beafd`; focused gate passed.
+
 **Status:** Complete — 27 data and transport cases passed.
 
 **What:** Move roles/invites DTOs and API implementation into Groups data, implement domain contracts, and preserve safe structured failures and retry eligibility.
@@ -590,6 +600,8 @@ T34 -> T35 -> T36 -> T37
 **Commit:** `refactor(groups-data): map membership and invite transport`
 
 ### T16: Switch membership, role and invite presentation to domain contracts
+
+**Status:** Complete — `6ba9f9d`; focused gate passed.
 
 **Status:** Complete — focused Groups presentation gate passed.
 

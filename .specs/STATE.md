@@ -245,10 +245,10 @@
 ## Handoff
 
 - **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/`
-- **Phase / Task**: Execute — Batches 1–2 complete (T01–T10); Batch 3 covers Groups profile, membership, roles and invites (T11–T16).
+- **Phase / Task**: Execute — Batches 1–3 complete (T01–T16); Batch 4 covers Groups photos, deferred links and attendance sharing (T17–T22).
 - **Completed**: Specify, Discuss and Design; task authoring T01–T37.
-- **In-progress**: Batch 3 (T11–T16) ready to start with one worker; no parallel execution.
-- **Next step**: Execute T11–T16 atomically. Preserve unrelated dirty files and the concurrent unrelated `f90dc78` core-network commit; run only focused gates through T36 and `rtk scripts/check-all` once in T37.
+- **In-progress**: Batch 4 (T17–T22) ready to start with one worker; no parallel execution.
+- **Next step**: Execute T17–T22 atomically with reviewed Kotlin/Gradle indentation. Preserve unrelated dirty files and the concurrent unrelated `f90dc78` core-network commit; run only focused gates through T36 and `rtk scripts/check-all` once in T37.
 - **Blockers**: none.
 - **Uncommitted files**: `.specs/STATE.md`, `.specs/features/mobile-domain-data-boundaries/spec.md`, `design.md`, `tasks.md`.
 - **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending; mobile-solid-refactor-wave-2 remains incomplete and must not be silently overwritten or mixed into this feature's commits.
