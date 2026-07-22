@@ -20,7 +20,6 @@ import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzAppDependencies
-import br.com.saqz.network.toNetworkEnvironment
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AndroidAppComposition(
@@ -64,7 +63,7 @@ private object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFac
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
         return AndroidAppComposition(
             dependencies = SaqzAppDependencies(
-                environment = BuildConfig.ENVIRONMENT.toNetworkEnvironment(),
+                environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 auth = auth,
                 links = links,

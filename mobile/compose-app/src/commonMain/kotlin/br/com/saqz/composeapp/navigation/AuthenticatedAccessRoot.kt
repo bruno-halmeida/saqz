@@ -62,9 +62,11 @@ import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
 import br.com.saqz.groups.presentation.games.detail.GameDetailEffect
 import br.com.saqz.groups.presentation.games.detail.GameDetailState
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
+import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoCoordinator
 import br.com.saqz.groups.presentation.photo.GroupPhotoError
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.presentation.photo.GroupListPhotoLoader
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupCancelable
@@ -115,6 +117,7 @@ import br.com.saqz.composeapp.ui.groups.GroupsRouteHost
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkConfig
+import br.com.saqz.network.toNetworkEnvironment
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.SessionApi
 import br.com.saqz.network.SessionInvalidator
@@ -200,9 +203,15 @@ internal fun AuthenticatedAccessRoute(
             scope = photoScope,
         )
     }
+    val listPhotoLoader = remember(accessViewModel, photoCache) {
+        GroupListPhotoLoader(
+            gateway = accessViewModel.groupPhotoGateway,
+            cache = photoCache,
+        )
+    }
     val gameDetailNetwork = remember(dependencies.environment, dependencies.apiBaseUrl) {
         createPlatformNetworkClient(
-            NetworkConfig(environment = dependencies.environment, baseUrl = dependencies.apiBaseUrl),
+            NetworkConfig(environment = dependencies.environment.toNetworkEnvironment(), baseUrl = dependencies.apiBaseUrl),
         )
     }
     DisposableEffect(gameDetailNetwork) {
@@ -391,6 +400,7 @@ internal fun AuthenticatedAccessRoute(
         groupPhotoDetailPreview = { handle, modifier ->
             GroupPhotoPreview(handle, photoCache, photoImageLoader, modifier)
         },
+        loadListPhoto = listPhotoLoader::load,
         gameDetailState = gameDetailState,
         onGameDetailIntent = gameDetailViewModel?.let { viewModel -> viewModel::onIntent } ?: {},
     )
@@ -425,6 +435,7 @@ internal fun AuthenticatedAccessRoot(
     onGroupPhotoIntent: (GroupPhotoIntent) -> Unit = {},
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     groupPhotoDetailPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
+    loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
     gameDetailState: GameDetailState? = null,
     onGameDetailIntent: (GameDetailIntent) -> Unit = {},
     onIntent: (AccessIntent) -> Unit,
@@ -455,6 +466,7 @@ internal fun AuthenticatedAccessRoot(
                 onGroupPhotoIntent,
                 groupPhotoPreview,
                 groupPhotoDetailPreview,
+                loadListPhoto,
                 gameDetailState,
                 onGameDetailIntent,
             )
@@ -482,7 +494,7 @@ internal class AccessRuntime(
     private val scope: CoroutineScope,
 ) : AccessRuntimeContract {
     private val network = createPlatformNetworkClient(
-        NetworkConfig(environment = dependencies.environment, baseUrl = dependencies.apiBaseUrl),
+        NetworkConfig(environment = dependencies.environment.toNetworkEnvironment(), baseUrl = dependencies.apiBaseUrl),
     )
     private val invalidator = DelegatingSessionInvalidator()
     private val authenticatedNetwork = AuthenticatedNetworkClient(
@@ -707,6 +719,7 @@ private fun DestinationContent(
     onGroupPhotoIntent: (GroupPhotoIntent) -> Unit,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)?,
     groupPhotoDetailPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
+    loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)?,
     gameDetailState: GameDetailState?,
     onGameDetailIntent: (GameDetailIntent) -> Unit,
 ) {
@@ -750,6 +763,7 @@ private fun DestinationContent(
                     onGroupsIntent,
                     groupPhotoState,
                     groupPhotoDetailPreview,
+                    loadListPhoto,
                     gameDetailState,
                     onGameDetailIntent,
                 )
@@ -778,6 +792,7 @@ private fun DestinationContent(
                     onGroupsIntent,
                     groupPhotoState,
                     groupPhotoDetailPreview,
+                    loadListPhoto,
                     gameDetailState,
                     onGameDetailIntent,
                 )
@@ -868,6 +883,7 @@ private fun GroupsRouteContent(
     onGroupsIntent: (GroupsNavigationIntent) -> Unit,
     groupPhotoState: GroupPhotoState,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
+    loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)?,
     gameDetailState: GameDetailState?,
     onGameDetailIntent: (GameDetailIntent) -> Unit,
 ) {
@@ -876,6 +892,7 @@ private fun GroupsRouteContent(
         administration = state.administration,
         groupPhotoState = groupPhotoState,
         groupPhotoPreview = groupPhotoPreview,
+        loadListPhoto = loadListPhoto,
         gameDetailState = gameDetailState,
         onGameDetailIntent = onGameDetailIntent,
         onNavigationIntent = onGroupsIntent,

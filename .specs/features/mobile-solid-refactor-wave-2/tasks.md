@@ -379,7 +379,7 @@ T27 → T28 → T29 → T30
 
 ### T12: Environment tipado em NetworkConfig
 
-**Status**: completed (pending commit)
+**Status**: completed (pending final T12 fix commit)
 
 **What**: Substituir a decisão por string mágica `"prod"` por `enum class Environment { Dev, Prod }` em `NetworkConfig`; factories Android/iOS decidem logging pelo enum; quem constrói `NetworkConfig` passa o enum.
 **Where**: `mobile/core/network/src/commonMain/kotlin/br/com/saqz/network/NetworkClient.kt` (config), `mobile/core/network/src/androidMain/kotlin/br/com/saqz/network/PlatformNetworkClient.android.kt:10-14`, `mobile/core/network/src/iosMain/kotlin/br/com/saqz/network/PlatformNetworkClient.ios.kt:9-13`; produtores de `environment` (`SaqzAppEnvironment.kt`, composition)

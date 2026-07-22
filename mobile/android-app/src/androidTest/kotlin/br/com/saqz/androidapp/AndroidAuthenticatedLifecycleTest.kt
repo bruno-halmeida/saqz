@@ -45,7 +45,6 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import br.com.saqz.network.NetworkEnvironment
 import java.io.FileInputStream
 import kotlinx.coroutines.CoroutineScope
 import org.junit.After
@@ -82,7 +81,7 @@ class AndroidAuthenticatedLifecycleTest {
         compose.onNodeWithTag("login-submit").assertIsDisplayed()
         compose.onNodeWithText("Explorar componentes").assertDoesNotExist()
         assertEquals(1, state.compositions)
-        assertEquals("dev", state.lastEnvironment)
+        assertEquals(NetworkEnvironment.Dev, state.lastEnvironment)
     }
 
     @Test
@@ -295,7 +294,7 @@ private class LifecycleCompositionFactory(
     ): AndroidAppComposition {
         fixture.compositions++
         val dependencies = SaqzAppDependencies(
-            environment = NetworkEnvironment.Dev,
+            environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             auth = fixture.auth,
             links = fixture.links,
@@ -312,7 +311,7 @@ private class LifecycleCompositionFactory(
 
 private class LifecycleFixture {
     var compositions = 0
-    var lastEnvironment: String? = null
+    var lastEnvironment: NetworkEnvironment? = null
     val auth = LifecycleAuthPort()
     val links = LifecycleLinkPort()
     val local = LifecycleLocalState(RESTORED_INVITE)
