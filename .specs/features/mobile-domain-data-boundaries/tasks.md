@@ -560,6 +560,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T15: Implement membership, role and invite data mapping
 
+**Status:** Complete — 27 data and transport cases passed.
+
 **What:** Move roles/invites DTOs and API implementation into Groups data, implement domain contracts, and preserve safe structured failures and retry eligibility.
 
 **Where:** `features/groups/data/src/commonMain/**/membership/**`; corresponding data tests migrated from `RolesInvitesApiTest` and error-mapper tests.
