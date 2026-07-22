@@ -33,6 +33,7 @@ kotlin {
             api(project(":features:access"))
             api(project(":features:groups"))
             implementation(project(":features:access:data"))
+            implementation(project(":features:groups:data"))
             implementation(project(":core:common"))
             implementation(project(":core:domain"))
             implementation(project(":core:design-system"))
@@ -56,6 +57,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.ktor.client.mock)
             implementation(libs.kotlinx.coroutines.test)
             implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
             implementation(libs.koin.test)

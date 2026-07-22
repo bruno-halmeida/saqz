@@ -1,14 +1,10 @@
 package br.com.saqz.groups.presentation.attendance.share
 
-import br.com.saqz.groups.data.attendance.share.AttendanceLinkUrlDto
-import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotDto
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotPersonDto
-import br.com.saqz.groups.data.attendance.share.ResolvedAttendanceLinkDto
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.port.*
-import br.com.saqz.network.ApiProblem
-import br.com.saqz.network.NetworkError
-import br.com.saqz.network.NetworkResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -82,13 +78,13 @@ class DeferredAttendanceLinkStateMachineTest {
         runCurrent()
         fixture.links.emitAttendance(CODE_A)
         assertEquals(listOf(CODE_A), fixture.gateway.resolves)
-        fixture.gateway.pending!!.complete(NetworkResult.Success(ResolvedAttendanceLinkDto(GROUP_ID, GAME_ID)))
+        fixture.gateway.pending!!.complete(SaqzResult.Success(br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination(GroupId(GROUP_ID), GAME_ID)))
         runCurrent()
     }
 
     @Test fun `invalid attendance link clears pending`() = runTest {
         val fixture = fixture(this, storedAttendance = CODE_A)
-        fixture.gateway.result = problem(404, "ATTENDANCE_LINK_INVALID_OR_EXPIRED")
+        fixture.gateway.result = SaqzResult.Failure(AttendanceSharingError.InvalidOrExpired)
         fixture.machine.onIntent(DeferredAttendanceLinkIntent.Restore)
         fixture.machine.onIntent(DeferredAttendanceLinkIntent.SetSessionReady(true))
         runCurrent()
@@ -98,7 +94,7 @@ class DeferredAttendanceLinkStateMachineTest {
 
     @Test fun `rate limit preserves pending attendance link and retry seconds`() = runTest {
         val fixture = fixture(this, storedAttendance = CODE_A)
-        fixture.gateway.result = limited(37)
+        fixture.gateway.result = SaqzResult.Failure(AttendanceSharingError.AttemptLimit(37))
         fixture.machine.onIntent(DeferredAttendanceLinkIntent.Restore)
         fixture.machine.onIntent(DeferredAttendanceLinkIntent.SetSessionReady(true))
         runCurrent()
@@ -109,7 +105,7 @@ class DeferredAttendanceLinkStateMachineTest {
 
     @Test fun `temporary failure keeps pending for retry`() = runTest {
         val fixture = fixture(this)
-        fixture.gateway.result = NetworkResult.Failure(NetworkError.Unavailable)
+        fixture.gateway.result = SaqzResult.Failure(AttendanceSharingError.DataFailure(DataError.Unknown))
         fixture.machine.onIntent(DeferredAttendanceLinkIntent.SetSessionReady(true))
         fixture.machine.onIntent(DeferredAttendanceLinkIntent.Start)
         fixture.links.emitAttendance(CODE_A)
@@ -157,18 +153,16 @@ class DeferredAttendanceLinkStateMachineTest {
         override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(GroupOperationResult.Success)
     }
 
-    private class FakeGateway : AttendanceShareGateway {
+    private class FakeGateway : AttendanceSharingGateway {
         val resolves = mutableListOf<String>()
-        var result: NetworkResult<ResolvedAttendanceLinkDto> = NetworkResult.Success(ResolvedAttendanceLinkDto(GROUP_ID, GAME_ID))
-        var pending: CompletableDeferred<NetworkResult<ResolvedAttendanceLinkDto>>? = null
-        override suspend fun rotateLink(groupId: String, gameId: String): NetworkResult<AttendanceLinkUrlDto> = error("unused")
-        override suspend fun resolveLink(code: String): NetworkResult<ResolvedAttendanceLinkDto> {
-            resolves += code
+        var result: SaqzResult<br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination, AttendanceSharingError> = SaqzResult.Success(br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination(GroupId(GROUP_ID), GAME_ID))
+        var pending: CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination, AttendanceSharingError>>? = null
+        override suspend fun rotateLink(groupId: GroupId, gameId: String): SaqzResult<AttendanceLinkUrl, AttendanceSharingError> = error("unused")
+        override suspend fun resolveLink(code: AttendanceLinkCode): SaqzResult<br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination, AttendanceSharingError> {
+            resolves += code.value
             return pending?.await() ?: result
         }
-        override suspend fun readSnapshot(groupId: String, gameId: String): NetworkResult<AttendanceShareSnapshotDto> = NetworkResult.Success(
-            AttendanceShareSnapshotDto("title", "2026-08-12T22:30:00Z", "UTC", "Arena", 12, emptyList(), listOf(AttendanceShareSnapshotPersonDto("Bruno", 1)), emptyList()),
-        )
+        override suspend fun readSnapshot(groupId: GroupId, gameId: String): SaqzResult<AttendanceShareSnapshot, AttendanceSharingError> = error("unused")
     }
 
     private data class Fixture(
@@ -184,7 +178,5 @@ class DeferredAttendanceLinkStateMachineTest {
         const val CODE_B = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
         const val GROUP_ID = "group-id"
         const val GAME_ID = "game-id"
-        fun problem(status: Int, code: String) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(status, code, "corr-$status")))
-        fun limited(seconds: Int) = NetworkResult.Failure(NetworkError.ApiProblemError(ApiProblem(429, "ATTENDANCE_LINK_ATTEMPT_LIMIT", "corr-429", retryAfterSeconds = seconds)))
     }
 }

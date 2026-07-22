@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.groups.data.GroupRoleDto
 import br.com.saqz.groups.data.attendance.*
-import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotDto
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
+import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
 import br.com.saqz.groups.data.game.*
 import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImage
 import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
@@ -25,7 +27,7 @@ class GameDetailViewModel(
     role:GroupRoleDto,
     testScope:CoroutineScope?=null,
     private val attendanceGateway:AttendanceGateway?=null,
-    private val attendanceShareGateway:AttendanceShareGateway?=null,
+    private val attendanceShareGateway:AttendanceSharingGateway?=null,
     private val keys:AttendanceCommandKeyFactory=AttendanceCommandKeyFactory{"attendance-${Random.nextLong()}"},
     private val now:()->Instant={Clock.System.now()},
 ):ViewModel(){
@@ -121,13 +123,13 @@ class GameDetailViewModel(
     private fun shareAttendanceLink(retry:Boolean){
         val current=mutable.value
         val url=current.attendanceLinkUrl
-        if(retry&&url!=null){channel.trySend(GameDetailEffect.ShareAttendanceLink(url));return}
+        if(retry&&url!=null){channel.trySend(GameDetailEffect.ShareAttendanceLink(AttendanceLinkUrl(url)));return}
         if(current.isAttendanceLinkLoading||!current.organizer||current.game?.status!=GameStatusDto.PUBLISHED||!current.attendanceOpen)return
         val share=attendanceShareGateway?:return
         mutable.value=current.copy(isAttendanceLinkLoading=true,attendanceLinkError=null)
-        scope.launch{when(val result=share.rotateLink(current.groupId,current.gameId)){
-            is NetworkResult.Success->{mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkUrl=result.value.url,attendanceLinkError=null);channel.trySend(GameDetailEffect.ShareAttendanceLink(result.value.url))}
-            is NetworkResult.Failure->mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkError=GameDetailError.UNAVAILABLE)
+        scope.launch{when(val result=share.rotateLink(GroupId(current.groupId),current.gameId)){
+            is SaqzResult.Success->{mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkUrl=result.value.value,attendanceLinkError=null);channel.trySend(GameDetailEffect.ShareAttendanceLink(result.value))}
+            is SaqzResult.Failure->mutable.value=mutable.value.copy(isAttendanceLinkLoading=false,attendanceLinkError=GameDetailError.UNAVAILABLE)
         }}
     }
     private fun requestAttendanceImageShare(){
@@ -136,9 +138,9 @@ class GameDetailViewModel(
         if(current.attendanceShareSnapshot!=null){mutable.value=current.copy(showAttendanceSharePrivacy=true,attendanceShareError=null);return}
         val share=attendanceShareGateway?:return
         mutable.value=current.copy(isAttendanceShareSnapshotLoading=true,attendanceShareError=null)
-        scope.launch{when(val result=share.readSnapshot(current.groupId,current.gameId)){
-            is NetworkResult.Success->{val image=AttendanceShareImage.from(result.value);mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareSnapshot=image,attendanceShareError=null,showAttendanceSharePrivacy=true)}
-            is NetworkResult.Failure->mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareError=GameDetailError.UNAVAILABLE)
+        scope.launch{when(val result=share.readSnapshot(GroupId(current.groupId),current.gameId)){
+            is SaqzResult.Success->{val image=AttendanceShareImage.from(result.value);mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareSnapshot=image,attendanceShareError=null,showAttendanceSharePrivacy=true)}
+            is SaqzResult.Failure->mutable.value=mutable.value.copy(isAttendanceShareSnapshotLoading=false,attendanceShareError=GameDetailError.UNAVAILABLE)
         }}
     }
     private fun confirmAttendanceImageShare(){val image=mutable.value.attendanceShareSnapshot?:return;mutable.value=mutable.value.copy(showAttendanceSharePrivacy=false);channel.trySend(GameDetailEffect.ShareAttendanceImage(image))}

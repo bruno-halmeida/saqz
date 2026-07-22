@@ -33,13 +33,12 @@ import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.attendance.AttendanceGateway
-import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.data.attendance.AttendanceApi
 import br.com.saqz.groups.data.game.GameGateway
 import br.com.saqz.groups.data.game.GameApi
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.port.GroupAttendanceSharePort
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
@@ -61,7 +60,6 @@ import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.presentation.DeferredInviteStateMachine
 import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
 import br.com.saqz.groups.presentation.GroupSelectionStateMachine
-import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkStateMachine
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
@@ -127,7 +125,7 @@ class SaqzKoinModulesTest {
         single<NativeLinkPort> { get<SaqzNativePorts>().links }
         single<LocalAccessStatePort> { get<SaqzNativePorts>().localAccessState }
         single<NativeSharePort> { get<SaqzNativePorts>().share }
-        single<GroupAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
+        single<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
         single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
         single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
         single<NativeGroupLinkPort> { get<SaqzNativePorts>().groupLinks }
@@ -284,7 +282,7 @@ class SaqzKoinModulesTest {
         assertSame(groupApi, koin.get<GroupProfileGateway>())
         assertSame(koin.get<RolesInvitesApi>(), koin.get<RolesInvitesGateway>())
         koin.get<GroupPhotoGateway>()
-        koin.get<AttendanceShareGateway>()
+        koin.get<AttendanceSharingGateway>()
         val gameApi = koin.get<GameApi>()
         assertSame(gameApi, koin.get<GameGateway>())
         val attendanceApi = koin.get<AttendanceApi>()
@@ -296,7 +294,7 @@ class SaqzKoinModulesTest {
         koin.get<DeferredAttendanceLinkStateMachine>()
         koin.get<AttendanceDestinationStore>()
 
-        assertSame(FakeAttendanceSharePort, koin.get<GroupAttendanceSharePort>())
+        assertSame(FakeAttendanceSharePort, koin.get<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort>())
         assertSame(FakeGroupPhotoSelectionPort, koin.get<GroupPhotoSelectionPort>())
         assertSame(FakeGroupPhotoEncoderPort, koin.get<GroupPhotoEncoderPort>())
         assertSame(FakeGroupLinkPort, koin.get<NativeGroupLinkPort>())
@@ -373,10 +371,9 @@ private object FakeSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
 }
 
-private object FakeAttendanceSharePort : GroupAttendanceSharePort {
-    override fun shareLink(url: String, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
-    override fun shareImage(image: AttendanceShareImageModel, done: GroupResultCallback) =
-        done.complete(GroupOperationResult.Success)
+private object FakeAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {
+    override fun shareLink(url: br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
+    override fun shareImage(image: br.com.saqz.groups.domain.attendance.share.AttendanceShareImage, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
 }
 
 private object FakeGroupPhotoSelectionPort : GroupPhotoSelectionPort {

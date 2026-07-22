@@ -21,7 +21,6 @@ import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.port.GroupAttendanceSharePort
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
@@ -40,7 +39,6 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult
@@ -128,9 +126,9 @@ private object TestSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
 }
 
-private object TestAttendanceSharePort : GroupAttendanceSharePort {
-    override fun shareLink(url: String, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
-    override fun shareImage(image: AttendanceShareImageModel, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+private object TestAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {
+    override fun shareLink(url: br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
+    override fun shareImage(image: br.com.saqz.groups.domain.attendance.share.AttendanceShareImage, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
 }
 
 private object TestGroupPhotoSelectionPort : GroupPhotoSelectionPort {

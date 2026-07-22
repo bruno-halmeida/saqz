@@ -1,29 +1,17 @@
 package br.com.saqz.groups.presentation.attendance.share
 
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotDto
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotPersonDto
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareImage as DomainAttendanceShareImage
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareImageSection
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharePerson
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareSnapshot
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-data class AttendanceShareImageSection(
-    val title: String,
-    val countLabel: String,
-    val emptyLabel: String,
-    val entries: List<String>,
-)
-
-data class AttendanceShareImageModel(
-    val title: String,
-    val scheduleLine: String,
-    val venueLine: String,
-    val capacityLine: String,
-    val sections: List<AttendanceShareImageSection>,
-    val heightUnits: Int,
-)
+typealias AttendanceShareImageModel = DomainAttendanceShareImage
 
 object AttendanceShareImage {
-    fun from(snapshot: AttendanceShareSnapshotDto): AttendanceShareImageModel {
+    fun from(snapshot: AttendanceShareSnapshot): AttendanceShareImageModel {
         val localDateTime = Instant.parse(snapshot.startsAt)
             .toLocalDateTime(TimeZone.of(snapshot.timeZone))
         val sections = listOf(
@@ -53,7 +41,7 @@ object AttendanceShareImage {
 
     private fun section(
         title: String,
-        people: List<AttendanceShareSnapshotPersonDto>,
+        people: List<AttendanceSharePerson>,
         emptyLabel: String,
     ): AttendanceShareImageSection = AttendanceShareImageSection(
         title = title,
@@ -62,7 +50,7 @@ object AttendanceShareImage {
         entries = if (people.isEmpty()) emptyList() else people.map(::entryLabel),
     )
 
-    private fun entryLabel(person: AttendanceShareSnapshotPersonDto): String =
+    private fun entryLabel(person: AttendanceSharePerson): String =
         if (person.waitlistPosition == null) person.displayName else "${person.waitlistPosition}. ${person.displayName}"
 
     private fun sectionHeight(section: AttendanceShareImageSection): Int =

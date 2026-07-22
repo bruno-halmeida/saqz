@@ -7,35 +7,45 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.content.FileProvider
-import br.com.saqz.groups.port.GroupAttendanceSharePort
-import br.com.saqz.groups.port.GroupOperationResult
-import br.com.saqz.groups.port.GroupResultCallback
-import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
+import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareImage
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 
+internal data class AndroidAttendanceShareLayout(val width: Int, val height: Int)
+
+internal object AndroidAttendanceShareLayoutCalculator {
+    const val WIDTH = 1080
+    const val ROW_HEIGHT = 56
+
+    fun calculate(image: AttendanceShareImage): AndroidAttendanceShareLayout =
+        AndroidAttendanceShareLayout(WIDTH, image.heightUnits * ROW_HEIGHT)
+}
+
 internal class AndroidAttendanceShareAdapter(
     private val context: Context,
-) : GroupAttendanceSharePort {
+) : NativeAttendanceSharePort {
     private val directory = File(context.cacheDir, "attendance-share")
 
-    override fun shareLink(url: String, done: GroupResultCallback) {
+    override fun shareLink(url: AttendanceLinkUrl, done: (NativeAttendanceShareResult) -> Unit) {
         runCatching {
             val send = Intent(Intent.ACTION_SEND)
                 .setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT, url)
+                .putExtra(Intent.EXTRA_TEXT, url.value)
             val chooser = Intent.createChooser(send, null)
             if (context !is android.app.Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooser)
         }.onSuccess {
-            done.complete(GroupOperationResult.Success)
+            done(NativeAttendanceShareResult.Success)
         }.onFailure {
-            done.complete(GroupOperationResult.Failure(br.com.saqz.groups.port.GroupNativeFailureCode.UNKNOWN))
+            done(NativeAttendanceShareResult.Failure)
         }
     }
 
-    override fun shareImage(image: AttendanceShareImageModel, done: GroupResultCallback) {
+    override fun shareImage(image: AttendanceShareImage, done: (NativeAttendanceShareResult) -> Unit) {
         runCatching {
             val file = render(image)
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.group-photo-files", file)
@@ -47,18 +57,16 @@ internal class AndroidAttendanceShareAdapter(
             if (context !is android.app.Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooser)
         }.onSuccess {
-            done.complete(GroupOperationResult.Success)
+            done(NativeAttendanceShareResult.Success)
         }.onFailure {
-            done.complete(GroupOperationResult.Failure(br.com.saqz.groups.port.GroupNativeFailureCode.UNKNOWN))
+            done(NativeAttendanceShareResult.Failure)
         }
     }
 
-    private fun render(image: AttendanceShareImageModel): File {
+    private fun render(image: AttendanceShareImage): File {
         directory.mkdirs()
-        val width = 1080
-        val rowHeight = 56
-        val height = image.heightUnits * rowHeight
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val layout = AndroidAttendanceShareLayoutCalculator.calculate(image)
+        val bitmap = Bitmap.createBitmap(layout.width, layout.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 48f }

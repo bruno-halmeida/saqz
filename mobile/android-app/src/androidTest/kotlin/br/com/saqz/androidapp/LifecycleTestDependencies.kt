@@ -3,11 +3,13 @@ package br.com.saqz.androidapp
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.port.GroupAttendanceSharePort
+import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareImage
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
-import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupPhotoCrop
 import br.com.saqz.groups.port.GroupPhotoEncoderPort
 import br.com.saqz.groups.port.GroupPhotoEncodingResult
@@ -15,8 +17,6 @@ import br.com.saqz.groups.port.GroupPhotoPreviewPort
 import br.com.saqz.groups.port.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.GroupPhotoSelectionResult
 import br.com.saqz.groups.port.GroupPhotoSourceHandle
-import br.com.saqz.groups.port.GroupResultCallback
-import br.com.saqz.groups.presentation.attendance.share.AttendanceShareImageModel
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult
@@ -43,9 +43,14 @@ internal val lifecycleGroupPhotos = GroupPhotoRuntimeDependencies(
     previews = GroupPhotoPreviewPort { null },
 )
 
-internal object LifecycleAttendanceSharePort : GroupAttendanceSharePort {
-    override fun shareLink(url: String, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
-    override fun shareImage(image: AttendanceShareImageModel, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+internal object LifecycleAttendanceSharePort : NativeAttendanceSharePort {
+    override fun shareLink(url: AttendanceLinkUrl, done: (NativeAttendanceShareResult) -> Unit) {
+        done(NativeAttendanceShareResult.Success)
+    }
+
+    override fun shareImage(image: AttendanceShareImage, done: (NativeAttendanceShareResult) -> Unit) {
+        done(NativeAttendanceShareResult.Success)
+    }
 }
 
 internal object LifecycleGroupDraftStore : GroupDraftStorePort {

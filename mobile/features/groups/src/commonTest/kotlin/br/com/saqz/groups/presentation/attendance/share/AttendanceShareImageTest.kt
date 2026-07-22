@@ -1,7 +1,7 @@
 package br.com.saqz.groups.presentation.attendance.share
 
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotDto
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotPersonDto
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareSnapshot
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharePerson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -39,8 +39,8 @@ class AttendanceShareImageTest {
         val model = AttendanceShareImage.from(
             snapshot(
                 confirmed = listOf(
-                    AttendanceShareSnapshotPersonDto("Áurea Fernanda de Albuquerque e Souza"),
-                    AttendanceShareSnapshotPersonDto("Áurea Fernanda de Albuquerque e Souza"),
+                    AttendanceSharePerson("Áurea Fernanda de Albuquerque e Souza"),
+                    AttendanceSharePerson("Áurea Fernanda de Albuquerque e Souza"),
                 ),
             ),
         )
@@ -50,10 +50,10 @@ class AttendanceShareImageTest {
     }
 
     private fun snapshot(
-        confirmed: List<AttendanceShareSnapshotPersonDto> = listOf(AttendanceShareSnapshotPersonDto("Ana")),
-        waitlisted: List<AttendanceShareSnapshotPersonDto> = listOf(AttendanceShareSnapshotPersonDto("Bruno", 1)),
-        declined: List<AttendanceShareSnapshotPersonDto> = listOf(AttendanceShareSnapshotPersonDto("Carla")),
-    ) = AttendanceShareSnapshotDto(
+        confirmed: List<AttendanceSharePerson> = listOf(AttendanceSharePerson("Ana")),
+        waitlisted: List<AttendanceSharePerson> = listOf(AttendanceSharePerson("Bruno", 1)),
+        declined: List<AttendanceSharePerson> = listOf(AttendanceSharePerson("Carla")),
+    ) = AttendanceShareSnapshot(
         title = "Treino de quinta",
         startsAt = "2026-08-12T22:30:00Z",
         timeZone = "America/Sao_Paulo",

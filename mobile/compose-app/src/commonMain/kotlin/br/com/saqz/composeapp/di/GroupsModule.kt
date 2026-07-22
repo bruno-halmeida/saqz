@@ -4,6 +4,8 @@ import br.com.saqz.groups.data.photo.KtorGroupPhotoGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.data.group.KtorGroupGateway
 import br.com.saqz.groups.data.membership.KtorGroupMembershipGateway
+import br.com.saqz.groups.data.attendance.share.KtorAttendanceSharingGateway
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
@@ -11,8 +13,6 @@ import br.com.saqz.groups.data.RolesInvitesApi
 import br.com.saqz.groups.data.RolesInvitesGateway
 import br.com.saqz.groups.data.attendance.AttendanceApi
 import br.com.saqz.groups.data.attendance.AttendanceGateway
-import br.com.saqz.groups.data.attendance.share.AttendanceShareApi
-import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
 import br.com.saqz.groups.data.game.GameApi
 import br.com.saqz.groups.data.game.GameGateway
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
@@ -49,10 +49,11 @@ internal val groupsDataModule = module {
     single<GroupProfileGateway> { get<KtorGroupGateway>() }
     single { KtorGroupMembershipGateway(get()) }
     single<GroupMembershipGateway> { get<KtorGroupMembershipGateway>() }
+    single { KtorAttendanceSharingGateway(get()) }
+    single<AttendanceSharingGateway> { get<KtorAttendanceSharingGateway>() }
     single { KtorGroupPhotoGateway(get()) }
     single<GroupPhotoGateway> { get<KtorGroupPhotoGateway>() }
     singleOf(::RolesInvitesApi) { bind<RolesInvitesGateway>() }
-    singleOf(::AttendanceShareApi) { bind<AttendanceShareGateway>() }
     singleOf(::GameApi) { bind<GameGateway>() }
     singleOf(::AttendanceApi) { bind<AttendanceGateway>() }
     singleOf(::DefaultGroupSystemTimeZonePort) { bind<GroupSystemTimeZonePort>() }

@@ -7,7 +7,7 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.composeapp.SaqzPlatformDependencies
-import br.com.saqz.groups.port.GroupAttendanceSharePort
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
@@ -102,7 +102,7 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<NativeLinkPort> { get<SaqzNativePorts>().links }
     single<LocalAccessStatePort> { get<SaqzNativePorts>().localAccessState }
     single<NativeSharePort> { get<SaqzNativePorts>().share }
-    single<GroupAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
+    single<NativeAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
     single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
     single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
     single<GroupPhotoPreviewPort> { get<SaqzNativePorts>().groupPhotoPreviews }

@@ -22,6 +22,7 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
@@ -62,8 +63,6 @@ import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupListPhotoLoader
 import br.com.saqz.groups.presentation.photo.GroupPhotoStage
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
-import br.com.saqz.groups.port.GroupOperationResult
-import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.SessionAccessState
@@ -290,16 +289,22 @@ internal fun AuthenticatedAccessRoute(
         LaunchedEffect(gameDetailViewModel, dependencies.attendanceShare) {
             gameDetailViewModel.effects.collect { effect ->
                 when (effect) {
-                    is GameDetailEffect.ShareAttendanceLink -> dependencies.attendanceShare.shareLink(effect.url, object : GroupResultCallback {
-                        override fun complete(result: GroupOperationResult) {
-                            gameDetailViewModel.onIntent(GameDetailIntent.ReportAttendanceShareResult(result is GroupOperationResult.Success))
+                    is GameDetailEffect.ShareAttendanceLink ->
+                        dependencies.attendanceShare.shareLink(effect.url) { result ->
+                            gameDetailViewModel.onIntent(
+                                GameDetailIntent.ReportAttendanceShareResult(
+                                    result is NativeAttendanceShareResult.Success,
+                                ),
+                            )
                         }
-                    })
-                    is GameDetailEffect.ShareAttendanceImage -> dependencies.attendanceShare.shareImage(effect.image, object : GroupResultCallback {
-                        override fun complete(result: GroupOperationResult) {
-                            gameDetailViewModel.onIntent(GameDetailIntent.ReportAttendanceShareResult(result is GroupOperationResult.Success))
+                    is GameDetailEffect.ShareAttendanceImage ->
+                        dependencies.attendanceShare.shareImage(effect.image) { result ->
+                            gameDetailViewModel.onIntent(
+                                GameDetailIntent.ReportAttendanceShareResult(
+                                    result is NativeAttendanceShareResult.Success,
+                                ),
+                            )
                         }
-                    })
                     else -> Unit
                 }
             }

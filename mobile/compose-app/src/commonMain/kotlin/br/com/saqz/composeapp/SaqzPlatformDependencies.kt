@@ -4,7 +4,7 @@ import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeSharePort
-import br.com.saqz.groups.port.GroupAttendanceSharePort
+import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
@@ -28,7 +28,7 @@ class SaqzPlatformDependencies(
     val links: NativeLinkPort,
     val localState: LocalAccessStatePort,
     val share: NativeSharePort,
-    val attendanceShare: GroupAttendanceSharePort,
+    val attendanceShare: NativeAttendanceSharePort,
     val groupPhotos: GroupPhotoRuntimeDependencies,
     val groupLinks: NativeGroupLinkPort,
     val groupState: LocalGroupStatePort,

@@ -12,10 +12,11 @@ import br.com.saqz.groups.data.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.data.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.data.attendance.VersionedAttendanceMutationDto
 import br.com.saqz.groups.data.attendance.VersionedCapacityDto
-import br.com.saqz.groups.data.attendance.share.AttendanceLinkUrlDto
-import br.com.saqz.groups.data.attendance.share.AttendanceShareGateway
-import br.com.saqz.groups.data.attendance.share.AttendanceShareSnapshotDto
-import br.com.saqz.groups.data.attendance.share.ResolvedAttendanceLinkDto
+import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
+import br.com.saqz.groups.domain.attendance.share.AttendanceShareSnapshot
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharingError
+import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
+import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.data.game.GameDto
 import br.com.saqz.groups.data.game.GameGateway
 import br.com.saqz.groups.data.game.GameStatusDto
@@ -93,7 +94,7 @@ class ComposePresentationModuleTest {
                 module {
                     single<GameGateway> { PublishedGameGateway }
                     single<AttendanceGateway> { EmptyAttendanceGateway }
-                    single<AttendanceShareGateway> { share }
+                    single<AttendanceSharingGateway> { share }
                 },
                 composePresentationModule,
             )
@@ -116,7 +117,7 @@ class ComposePresentationModuleTest {
             runCurrent()
 
             assertEquals(listOf("group" to "game"), share.rotations)
-            assertEquals(GameDetailEffect.ShareAttendanceLink(LINK_URL), effect.await())
+            assertEquals(GameDetailEffect.ShareAttendanceLink(AttendanceLinkUrl(LINK_URL)), effect.await())
         } finally {
             app.close()
         }
@@ -173,16 +174,16 @@ private object EmptyAttendanceGateway : AttendanceGateway {
     override suspend fun capacity(groupId: String, gameId: String, etag: String, command: CapacityCommand): NetworkResult<VersionedCapacityDto> = error("unused")
 }
 
-private class RecordingAttendanceShareGateway : AttendanceShareGateway {
+private class RecordingAttendanceShareGateway : AttendanceSharingGateway {
     val rotations = mutableListOf<Pair<String, String>>()
 
-    override suspend fun rotateLink(groupId: String, gameId: String): NetworkResult<AttendanceLinkUrlDto> {
-        rotations += groupId to gameId
-        return NetworkResult.Success(AttendanceLinkUrlDto(LINK_URL))
+    override suspend fun rotateLink(groupId: GroupId, gameId: String): SaqzResult<AttendanceLinkUrl, AttendanceSharingError> {
+        rotations += groupId.value to gameId
+        return SaqzResult.Success(AttendanceLinkUrl(LINK_URL))
     }
 
-    override suspend fun resolveLink(code: String): NetworkResult<ResolvedAttendanceLinkDto> = error("unused")
-    override suspend fun readSnapshot(groupId: String, gameId: String): NetworkResult<AttendanceShareSnapshotDto> = error("unused")
+    override suspend fun resolveLink(code: br.com.saqz.groups.domain.attendance.share.AttendanceLinkCode): SaqzResult<br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination, AttendanceSharingError> = error("unused")
+    override suspend fun readSnapshot(groupId: GroupId, gameId: String): SaqzResult<AttendanceShareSnapshot, AttendanceSharingError> = error("unused")
 }
 
 private val PUBLISHED_GAME = VersionedGameDto(

@@ -1,6 +1,5 @@
 package br.com.saqz.groups.presentation
 
-import br.com.saqz.groups.data.*
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.port.*
@@ -10,6 +9,7 @@ import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.group.VersionedGroup
 import kotlinx.coroutines.CompletableDeferred
