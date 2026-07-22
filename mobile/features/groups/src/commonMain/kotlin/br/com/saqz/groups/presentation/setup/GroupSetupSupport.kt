@@ -13,6 +13,15 @@ import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
 
+internal object GroupSetupRules {
+    val capacityRange = 2..100
+    const val defaultCapacity = 12
+    const val defaultMonthlyDueDay = 10
+
+    fun isEditable(isOrganizer: Boolean, successGroupId: String?): Boolean =
+        isOrganizer && successGroupId == null
+}
+
 internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String>> = buildMap {
     val form = state.form
     if (!form.name.trim().hasLength(2, 80)) put("name", listOf("must be between 2 and 80 characters"))
@@ -30,7 +39,9 @@ internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String
         if (slot.startTime.isBlank()) put("regularSlots[$index].startTime", listOf("is required"))
         if (slot.durationMinutes !in 15..480) put("regularSlots[$index].durationMinutes", listOf("must be between 15 and 480"))
     }
-    if (form.defaultCapacity != null && form.defaultCapacity !in 2..100) put("defaultCapacity", listOf("must be between 2 and 100"))
+    if (form.defaultCapacity != null && form.defaultCapacity !in GroupSetupRules.capacityRange) {
+        put("defaultCapacity", listOf("must be between 2 and 100"))
+    }
     if (form.defaultConfirmationLeadMinutes != null && form.defaultConfirmationLeadMinutes !in 0..10080) {
         put("defaultConfirmationLeadMinutes", listOf("must be between 0 and 10080"))
     }
@@ -44,7 +55,7 @@ internal fun newGroupDefaults() = GroupSetupForm(
     modality = GroupModality.COURT_VOLLEYBALL,
     composition = GroupComposition.MIXED,
     level = GroupLevel.MIXED_LEVELS,
-    defaultCapacity = 12,
+    defaultCapacity = GroupSetupRules.defaultCapacity,
     defaultConfirmationLeadMinutes = 360,
 )
 

@@ -25,7 +25,12 @@ data class GroupSetupState(
     val photoPending: Boolean = false,
     val photoRetryAvailable: Boolean = false,
     val error: GroupSetupError? = null,
+    val isOrganizer: Boolean = true,
 ) {
+    val canEdit: Boolean get() = GroupSetupRules.isEditable(isOrganizer, successGroupId)
+    val capacityRange: IntRange get() = GroupSetupRules.capacityRange
+    val defaultCapacity: Int get() = GroupSetupRules.defaultCapacity
+    val defaultMonthlyDueDay: Int get() = GroupSetupRules.defaultMonthlyDueDay
     val showPlayStyle: Boolean get() = form.modality == GroupModality.COURT_VOLLEYBALL
     val showCustomLevel: Boolean get() = form.level == GroupLevel.CUSTOM
     val showCustomPlayStyle: Boolean get() = showPlayStyle && form.playStyle == GroupPlayStyle.CUSTOM

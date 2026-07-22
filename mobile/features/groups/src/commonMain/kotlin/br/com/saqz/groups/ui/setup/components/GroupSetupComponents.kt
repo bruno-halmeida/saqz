@@ -385,7 +385,7 @@ internal fun <T> InlineChoice(label: StringResource, options: List<Pair<T, Strin
 }
 
 @Composable
-internal fun CapacityStepper(value: Int, enabled: Boolean, error: String?, onChange: (Int) -> Unit) {
+internal fun CapacityStepper(value: Int, minimum: Int, maximum: Int, enabled: Boolean, error: String?, onChange: (Int) -> Unit) {
     val capacityDescription = stringResource(Res.string.group_setup_capacity)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(Res.string.group_setup_capacity), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
@@ -394,7 +394,7 @@ internal fun CapacityStepper(value: Int, enabled: Boolean, error: String?, onCha
                 .border(1.dp, if (error == null) SaqzTheme.colors.primary else SaqzTheme.colors.errorForeground, RoundedCornerShape(10.dp)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StepperButton(Res.drawable.material_remove, capacityDescription, enabled && value > 2) { onChange(value - 1) }
+            StepperButton(Res.drawable.material_remove, capacityDescription, enabled && value > minimum) { onChange(value - 1) }
             BasicTextField(
                 value = value.toString(),
                 onValueChange = { raw -> raw.filter(Char::isDigit).toIntOrNull()?.let(onChange) },
@@ -403,7 +403,7 @@ internal fun CapacityStepper(value: Int, enabled: Boolean, error: String?, onCha
                 textStyle = SaqzTheme.typography.bodyStrong.copy(color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center, letterSpacing = 0.sp),
                 modifier = Modifier.weight(1f).semantics { contentDescription = capacityDescription }.testTag(GroupSetupTags.CapacityValue),
             )
-            StepperButton(Res.drawable.material_add, capacityDescription, enabled && value < 100) { onChange(value + 1) }
+            StepperButton(Res.drawable.material_add, capacityDescription, enabled && value < maximum) { onChange(value + 1) }
         }
         error?.let { Text(it, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground) }
     }
@@ -470,7 +470,7 @@ internal fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, er
 }
 
 @Composable
-internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, onDueDay: () -> Unit) {
+internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: GroupSetupState, defaultMonthlyDueDay: Int, onIntent: (GroupSetupIntent) -> Unit, onDueDay: () -> Unit) {
     val active = form.monthlyFeeCents != null
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -479,7 +479,7 @@ internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: Group
         }
         Switch(
             checked = active,
-            onCheckedChange = { checked -> onIntent(GroupSetupIntent.UpdateMonthlyFee(if (checked) 0 else null, if (checked) 10 else null)) },
+            onCheckedChange = { checked -> onIntent(GroupSetupIntent.UpdateMonthlyFee(if (checked) 0 else null, if (checked) defaultMonthlyDueDay else null)) },
             enabled = editable,
             colors = SwitchDefaults.colors(checkedThumbColor = SaqzTheme.colors.onPrimary, checkedTrackColor = SaqzTheme.colors.primary),
             modifier = Modifier.testTag(GroupSetupTags.MonthlySwitch),
@@ -487,11 +487,11 @@ internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: Group
     }
     if (active) {
         MoneyInput(form.monthlyFeeCents, Res.string.group_setup_monthly_fee, editable, error(state, "monthlyFeeCents")) {
-            onIntent(GroupSetupIntent.UpdateMonthlyFee(it ?: 0, form.monthlyDueDay ?: 10))
+            onIntent(GroupSetupIntent.UpdateMonthlyFee(it ?: 0, form.monthlyDueDay ?: defaultMonthlyDueDay))
         }
         SelectorField(
             label = Res.string.group_setup_due_day,
-            value = stringResource(Res.string.group_setup_due_day_value, form.monthlyDueDay ?: 10),
+            value = stringResource(Res.string.group_setup_due_day_value, form.monthlyDueDay ?: defaultMonthlyDueDay),
             enabled = editable,
             onClick = onDueDay,
         )
@@ -596,5 +596,3 @@ internal fun SetupButton(
 internal fun MaterialIcon(resource: DrawableResource, tint: Color, size: androidx.compose.ui.unit.Dp) {
     Image(painterResource(resource), null, colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(size))
 }
-
-

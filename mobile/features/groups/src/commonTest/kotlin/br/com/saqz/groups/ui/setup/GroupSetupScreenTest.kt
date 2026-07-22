@@ -326,7 +326,7 @@ class GroupSetupScreenTest {
     }
 
     @Test fun `athletes read game defaults without finance or edit actions`() = runComposeUiTest {
-        setup(access = GroupSetupAccess.ATHLETE)
+        setup(isOrganizer = false)
         onNodeWithTag(GroupSetupTags.GameDefaults).assertExists()
         onNodeWithTag(GroupSetupTags.FinanceDefaults).assertDoesNotExist()
         onNodeWithTag(GroupSetupTags.Submit).assertDoesNotExist()
@@ -427,7 +427,7 @@ class GroupSetupScreenTest {
 
     private fun ComposeUiTest.setup(
         state: GroupSetupState = state(),
-        access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
+        isOrganizer: Boolean = true,
         photoState: GroupPhotoState = GroupPhotoState(),
         onPhotoIntent: (GroupPhotoIntent) -> Unit = {},
         onBack: () -> Unit = {},
@@ -436,8 +436,7 @@ class GroupSetupScreenTest {
     ) = setContent {
         SaqzTheme {
             GroupSetupScreen(
-                state = state,
-                access = access,
+                state = state.copy(isOrganizer = isOrganizer),
                 photoState = photoState,
                 onPhotoIntent = onPhotoIntent,
                 onBack = onBack,

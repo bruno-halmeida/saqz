@@ -84,8 +84,6 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-enum class GroupSetupAccess { ORGANIZER, ATHLETE }
-
 internal object GroupSetupTags {
     const val Screen = "group-setup-screen"
     const val Profile = "group-setup-profile"
@@ -117,7 +115,6 @@ private sealed interface SetupSheet {
 @Composable
 fun GroupSetupScreen(
     state: GroupSetupState,
-    access: GroupSetupAccess = GroupSetupAccess.ORGANIZER,
     photoState: GroupPhotoState,
     onPhotoIntent: (GroupPhotoIntent) -> Unit,
     photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
@@ -125,7 +122,7 @@ fun GroupSetupScreen(
     onMoreOptions: () -> Unit = {},
     onIntent: (GroupSetupIntent) -> Unit,
 ) {
-    val editable = access == GroupSetupAccess.ORGANIZER && state.successGroupId == null
+    val editable = state.canEdit
     val form = state.form
     var sheet by remember { mutableStateOf<SetupSheet?>(null) }
     var venueEditing by remember(form.defaultVenue?.id) { mutableStateOf(form.defaultVenue?.name.isNullOrBlank()) }
@@ -284,7 +281,13 @@ fun GroupSetupScreen(
                     SlotEditors(form.regularSlots, editable, state, onIntent) { slotsEditing = false }
                 }
 
-                CapacityStepper(form.defaultCapacity ?: 12, editable, error(state, "defaultCapacity")) {
+                CapacityStepper(
+                    value = form.defaultCapacity ?: state.defaultCapacity,
+                    minimum = state.capacityRange.first,
+                    maximum = state.capacityRange.last,
+                    enabled = editable,
+                    error = error(state, "defaultCapacity"),
+                ) {
                     onIntent(GroupSetupIntent.UpdateDefaultCapacity(it))
                 }
                 SelectorField(
@@ -311,13 +314,13 @@ fun GroupSetupScreen(
                 )
             }
 
-            if (access == GroupSetupAccess.ORGANIZER) {
+            if (state.isOrganizer) {
                 SetupSection(
                     Res.string.group_setup_finance_defaults_section,
                     Res.string.group_setup_finance_defaults_description,
                     GroupSetupTags.FinanceDefaults,
                 ) {
-                    MonthlyToggle(form, editable, state, onIntent) { sheet = SetupSheet.DueDay }
+                    MonthlyToggle(form, editable, state, state.defaultMonthlyDueDay, onIntent) { sheet = SetupSheet.DueDay }
                 }
             }
 
