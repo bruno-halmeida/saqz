@@ -51,6 +51,7 @@ T07 and T08 acceptance criteria are met; the presentation layer no longer inspec
 
 Date: 2026-07-22  
 Verifier: independent general-purpose agent (source review) plus targeted Android/KMP/iOS gates.
+Diff: `23bde09..3dbebce`
 
 ### Commits
 - `ce7b38a` — `build(mobile): add koin for per-feature dependency modules`
@@ -103,8 +104,10 @@ Verifier: independent general-purpose agent (source review) plus targeted Androi
 - [x] `SaqzKoinBootstrapTest.kt:37` — `assertSame(koin.get<GroupPhotoGateway>(), runtime.groupPhotoGateway)` proves runtime photo operations use the Koin binding.
 - [x] `SaqzKoinModulesTest.kt:138` — `assertSame(koin.get<AuthenticatedNetworkClient>(), koin.get<AuthenticatedNetworkClient>())` proves authenticated networking is singleton-scoped.
 - [x] `SaqzKoinBootstrapTest.kt:54` — `assertNotSame(first, koin.get<AuthenticatedNetworkClient>())` proves replacing platform bindings disposes/recreates the common singleton graph.
-- [x] Group setup and game detail inject all service dependencies through Koin; assisted parameters contain only input, command-key factory, IDs, and role.
-- [x] Attendance sharing is injected into `GameDetailViewModel`, preserving link/image share behavior covered by `GameDetailAttendanceViewModelTest`.
+- [x] `ComposePresentationModuleTest.kt:80-81` — exact draft-read and time-zone detection assertions prove `GroupSetupViewModel` consumes Koin-resolved setup ports.
+- [x] `ComposePresentationModuleTest.kt:117-118` — exact gateway call and `ShareAttendanceLink` effect assertions prove `GameDetailViewModel` consumes the Koin-resolved attendance-share gateway.
+- [x] Assisted parameters contain only runtime input/navigation values plus an optional test scope; no service dependency is passed by the route.
+- [x] The regenerated iOS framework header contains no Koin bootstrap declarations; Android-required functions use `@HiddenFromObjC` and all other bootstrap functions are internal.
 
 ### Gates
 ```text
@@ -126,10 +129,16 @@ PASS
 
 ### Independent verification
 - First pass found the missing `AttendanceShareGateway` ViewModel binding; implementation was corrected.
-- Second pass: PASS with no blocker, high, or other concrete source findings.
+- A later evidence-or-zero pass requested direct presentation-module resolution tests and literal iOS API hiding; both gaps were corrected in `3dbebce`.
+- Final pass: PASS with no blocker/high findings.
+
+### Discrimination sensor
+- Scratch mutation removed common-module unload/reload from `loadSaqzPlatformDependencies`.
+- `reloadingPlatformBindingsRecreatesTheNetworkSingleton` failed against the mutant and passed against production code.
+- Result: 1/1 mutation killed; the real worktree was not mutated.
 
 ### Test adequacy
-All new assertions map directly to NAV-01/NAV-02 graph ownership and lifecycle criteria. They assert object identity/replacement rather than implementation call counts; no existing assertions were weakened or removed.
+All new assertions map directly to NAV-01/NAV-02 graph ownership, consumer wiring, and lifecycle criteria. They assert object identity/replacement or observable port calls and emitted effects; no existing assertions were weakened or removed.
 
 ### Conclusion
 The authenticated runtime, setup flow, game detail, attendance, and photo consumers now use the verified Koin graph. Manual client/API/state-machine construction was removed from the route/runtime while existing behavior and platform lifecycle boundaries were preserved.
