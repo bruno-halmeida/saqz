@@ -18,12 +18,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.appendPathSegments
 import io.ktor.http.contentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.content.OutgoingContent
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.cancel
-import io.ktor.utils.io.readAvailable
-import io.ktor.utils.io.writeFully
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.io.readByteArray
@@ -32,16 +28,11 @@ import kotlinx.serialization.json.Json
 import io.ktor.utils.io.readRemaining
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
-import kotlin.random.Random
-
-fun interface NetworkLogger {
-    fun log(message: String)
-}
 
 class NetworkClient(
     engine: HttpClientEngine,
     private val config: NetworkConfig,
-    private val logger: NetworkLogger = NetworkLogger {},
+    private val logger: NetworkCallLogger = NetworkCallLogger {},
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -159,21 +150,21 @@ class NetworkClient(
             } else {
                 response.toBoundedError()
             }
-            logMediaResponse(method, safePath, response.status.value, started)
+            logMediaResponse(logger, method, safePath, response.status.value, started)
             result
         } catch (_: HttpRequestTimeoutException) {
-            logMediaResponse(method, safePath, null, started)
+            logMediaResponse(logger, method, safePath, null, started)
             NetworkResult.Failure(NetworkError.Timeout)
         } catch (_: SocketTimeoutException) {
-            logMediaResponse(method, safePath, null, started)
+            logMediaResponse(logger, method, safePath, null, started)
             NetworkResult.Failure(NetworkError.Timeout)
         } catch (failure: CancellationException) {
             throw failure
         } catch (_: MediaLimitException) {
-            logMediaResponse(method, safePath, null, started)
+            logMediaResponse(logger, method, safePath, null, started)
             NetworkResult.Failure(NetworkError.PayloadTooLarge)
         } catch (_: Throwable) {
-            logMediaResponse(method, safePath, null, started)
+            logMediaResponse(logger, method, safePath, null, started)
             NetworkResult.Failure(NetworkError.Unavailable)
         }
     }
@@ -208,10 +199,6 @@ class NetworkClient(
     private fun HttpResponse.metadata() = NetworkResponseMetadata(
         headers.entries().associate { (name, values) -> name to values },
     )
-
-    private fun logMediaResponse(method: HttpMethod, path: String, status: Int?, started: TimeMark) {
-        log("response ${method.value} $path status=${status ?: "none"} durationMs=${started.elapsedNow().inWholeMilliseconds}")
-    }
 
     private suspend fun <T> executeResponse(
         method: HttpMethod,
@@ -259,7 +246,7 @@ class NetworkClient(
                 }
                 NetworkResult.Failure(error)
             }
-            logResponse(requestDescription, response.status.value, started, result)
+            logResponse(logger, requestDescription, response.status.value, started, result)
             result
         } catch (_: HttpRequestTimeoutException) {
             failure(requestDescription, started, NetworkError.Timeout)
@@ -283,27 +270,11 @@ class NetworkClient(
         error: NetworkError,
         cause: String? = null,
     ): NetworkResult<T> = NetworkResult.Failure(error).also {
-        logResponse(requestDescription, null, started, it, cause)
-    }
-
-    private fun logResponse(
-        requestDescription: String,
-        status: Int?,
-        started: TimeMark,
-        result: NetworkResult<*>,
-        cause: String? = null,
-    ) {
-        val statusDescription = status?.toString() ?: "none"
-        val causeDescription = cause?.let { " cause=$it" }.orEmpty()
-        log(
-            "response $requestDescription status=$statusDescription " +
-                "durationMs=${started.elapsedNow().inWholeMilliseconds} " +
-                "result=${result.logDescription()}$causeDescription",
-        )
+        logResponse(logger, requestDescription, null, started, it, cause)
     }
 
     private fun log(message: String) {
-        runCatching { logger.log(message) }
+        logger.safeLog(message)
     }
 
     fun close() {
@@ -316,75 +287,4 @@ class NetworkClient(
     }
 }
 
-private fun NetworkResult<*>.logDescription(): String = when (this) {
-    is NetworkResult.Success -> "success"
-    is NetworkResult.Failure -> error.logDescription()
-}
-
-private fun NetworkError.logDescription(): String = when (this) {
-    is NetworkError.ApiProblemError -> buildString {
-        append("api-error")
-        append(" code=${problem.code ?: "none"}")
-        append(" correlationId=${problem.correlationId}")
-    }
-    is NetworkError.HttpStatus -> "http-error status=$status"
-    NetworkError.InvalidResponse -> "invalid-response"
-    NetworkError.PayloadTooLarge -> "payload-too-large"
-    NetworkError.Timeout -> "timeout"
-    NetworkError.Unavailable -> "unavailable"
-}
-
 expect fun createPlatformNetworkClient(config: NetworkConfig): NetworkClient
-
-internal class MediaLimitException : IllegalStateException()
-
-internal class BoundedMultipartContent(
-    private val upload: NetworkMediaUpload,
-    private val maximumBytes: Long,
-) : OutgoingContent.WriteChannelContent() {
-    var limitExceeded: Boolean = false
-        private set
-    private val boundary = "saqz-${Random.nextLong().toString(16)}"
-    private val prefix = buildString {
-        append("--$boundary\r\n")
-        append("Content-Disposition: form-data; name=\"")
-        append(upload.fieldName)
-        append("\"; filename=\"")
-        append(upload.fileName)
-        append("\"\r\n")
-        append("Content-Type: ${upload.contentType}\r\n")
-        append("Content-Length: ${upload.contentLength}\r\n\r\n")
-    }.encodeToByteArray()
-    private val suffix = "\r\n--$boundary--\r\n".encodeToByteArray()
-
-    override val contentType: ContentType = ContentType.MultiPart.FormData.withParameter("boundary", boundary)
-    override val contentLength: Long = prefix.size + upload.contentLength + suffix.size
-
-    override suspend fun writeTo(channel: ByteWriteChannel) {
-        val source = upload.openChannel()
-        var transferred = 0L
-        val buffer = ByteArray(8 * 1024)
-        try {
-            channel.writeFully(prefix)
-            while (true) {
-                val read = source.readAvailable(buffer, 0, buffer.size)
-                if (read < 0) break
-                transferred += read
-                if (transferred > maximumBytes || transferred > upload.contentLength) failLimit()
-                channel.writeFully(buffer, 0, read)
-            }
-            if (transferred != upload.contentLength) failLimit()
-            channel.writeFully(suffix)
-        } catch (failure: Throwable) {
-            channel.cancel(failure)
-            throw failure
-        } finally {
-            source.cancel()
-        }
-    }
-
-    private fun failLimit(): Nothing {
-        limitExceeded = true
-        throw MediaLimitException()
-    }
-}

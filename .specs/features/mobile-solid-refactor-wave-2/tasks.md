@@ -379,7 +379,7 @@ T27 → T28 → T29 → T30
 
 ### T12: Environment tipado em NetworkConfig
 
-**Status**: completed (pending final T12 fix commit)
+**Status**: completed (760500e)
 
 **What**: Substituir a decisão por string mágica `"prod"` por `enum class Environment { Dev, Prod }` em `NetworkConfig`; factories Android/iOS decidem logging pelo enum; quem constrói `NetworkConfig` passa o enum.
 **Where**: `mobile/core/network/src/commonMain/kotlin/br/com/saqz/network/NetworkClient.kt` (config), `mobile/core/network/src/androidMain/kotlin/br/com/saqz/network/PlatformNetworkClient.android.kt:10-14`, `mobile/core/network/src/iosMain/kotlin/br/com/saqz/network/PlatformNetworkClient.ios.kt:9-13`; produtores de `environment` (`SaqzAppEnvironment.kt`, composition)
@@ -403,6 +403,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T13: Extrair multipart builder e logger injetável do NetworkClient
+
+**Status**: completed (pending commit)
 
 **What**: Mover `BoundedMultipartContent` para arquivo/classe próprios (`MultipartBodyBuilder`) e extrair logging/duração para `NetworkCallLogger` injetável por construtor (default preserva comportamento atual).
 **Where**: `mobile/core/network/src/commonMain/kotlin/br/com/saqz/network/NetworkClient.kt:341-390` (multipart), `:212-214,289-303` (logging); novos arquivos no mesmo pacote
