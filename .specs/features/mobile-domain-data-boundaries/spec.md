@@ -141,3 +141,9 @@ All 26 requirements are assigned to a downstream design or task category. Task i
 - Mapping and failure-path tests pass for every migrated repository.
 - Existing Android and iOS product behavior remains accepted by the relevant feature gates.
 - Final repository verification reports zero prohibited layer or cross-feature implementation dependencies.
+
+## §B — Backpropagation Log
+
+| ID | Date | Root cause | Invariant decision |
+|---|---|---|---|
+| B1 | 2026-07-22 | A common value class used `@JvmInline` without importing `kotlin.jvm.JvmInline`, so the iOS compilation gate failed before tests. | No new §V invariant: MDB-002/MDB-003 and T01's Android+iOS compilation gate already detect this purely mechanical error. |
