@@ -80,7 +80,7 @@ class GroupsRouteHostTest {
     }
 
     @Test
-    fun `bottom menu emits each existing typed navigation intent once`() = runComposeUiTest {
+    fun `bottom menu emits each fixed tab intent once`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(owner, access(GroupRoleDto.OWNER), intents)
 
@@ -88,29 +88,63 @@ class GroupsRouteHostTest {
         onNodeWithTag("saqz-bottom-nav-item-1").performClick()
         onNodeWithTag("saqz-bottom-nav-item-2").performClick()
         onNodeWithTag("saqz-bottom-nav-item-3").performClick()
+        onNodeWithTag("saqz-bottom-nav-item-4").performClick()
 
         assertEquals(
             listOf(
                 GroupsNavigationIntent.OpenHome,
                 GroupsNavigationIntent.OpenGames,
-                GroupsNavigationIntent.OpenPeople,
-                GroupsNavigationIntent.OpenFinance,
+                GroupsNavigationIntent.OpenGroups,
+                GroupsNavigationIntent.OpenNotices,
+                GroupsNavigationIntent.OpenMore,
             ),
             intents,
         )
     }
 
     @Test
-    fun `athlete bottom menu hides people and selects own charges`() = runComposeUiTest {
-        host(
-            athlete,
-            access(GroupRoleDto.ATHLETE).copy(destination = GroupsDestination.OWN_CHARGES),
-        )
+    fun `bottom menu renders five fixed tabs for every role`() = runComposeUiTest {
+        host(athlete, access(GroupRoleDto.ATHLETE))
 
-        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Minhas cobranças")
-        onNodeWithTag("saqz-bottom-nav-item-2").assertIsSelected()
-        onNodeWithTag("saqz-bottom-nav-item-3").assertDoesNotExist()
-        onNodeWithText("Pessoas").assertDoesNotExist()
+        onNodeWithTag("saqz-bottom-nav-item-0").assertTextEquals("Início")
+        onNodeWithTag("saqz-bottom-nav-item-1").assertTextEquals("Jogos")
+        onNodeWithTag("saqz-bottom-nav-item-2").assertTextEquals("Grupos")
+        onNodeWithTag("saqz-bottom-nav-item-3").assertTextEquals("Avisos")
+        onNodeWithTag("saqz-bottom-nav-item-4").assertTextEquals("Mais")
+    }
+
+    @Test
+    fun `notices destination selects its tab and shows the placeholder`() = runComposeUiTest {
+        host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.NOTICES))
+
+        onNodeWithTag(SaqzTopBarTitleTag).assertTextEquals("Avisos")
+        onNodeWithTag("saqz-bottom-nav-item-3").assertIsSelected()
+        onNodeWithTag(GroupsNavigationTags.NoticesScreen).assertExists()
+        onNodeWithText("Os avisos do grupo aparecerão nesta área em breve.").assertExists()
+    }
+
+    @Test
+    fun `more destination lists owner shortcuts and emits typed intents`() = runComposeUiTest {
+        val intents = mutableListOf<GroupsNavigationIntent>()
+        host(owner, access(GroupRoleDto.OWNER).copy(destination = GroupsDestination.MORE), intents)
+
+        onNodeWithTag("saqz-bottom-nav-item-4").assertIsSelected()
+        onNodeWithTag(GroupsNavigationTags.MorePeople).performClick()
+        onNodeWithTag(GroupsNavigationTags.MoreFinance).performClick()
+
+        assertEquals(
+            listOf(GroupsNavigationIntent.OpenPeople, GroupsNavigationIntent.OpenFinance),
+            intents,
+        )
+    }
+
+    @Test
+    fun `more destination hides people and labels own charges for athletes`() = runComposeUiTest {
+        host(athlete, access(GroupRoleDto.ATHLETE).copy(destination = GroupsDestination.MORE))
+
+        onNodeWithTag(GroupsNavigationTags.MorePeople).assertDoesNotExist()
+        onNodeWithText("Minhas cobranças").assertExists()
+        onNodeWithText("Financeiro").assertDoesNotExist()
     }
 
     @Test
@@ -153,7 +187,7 @@ class GroupsRouteHostTest {
             selectedGroups = selectedGroups,
         )
 
-        onNodeWithText("Grupos").assertExists()
+        onNodeWithText("Meus grupos").assertExists()
         onNodeWithText("Private Group").assertExists()
         onNodeWithText("Organizador").assertExists()
         onNodeWithText("PG").assertExists()
@@ -180,7 +214,7 @@ class GroupsRouteHostTest {
         onNodeWithTag(GroupsNavigationTags.ShortcutPeople).assertHeightIsAtLeast(56.dp)
         onNodeWithTag(GroupsNavigationTags.ShortcutFinance).assertHeightIsAtLeast(56.dp)
         onNodeWithTag(GroupsNavigationTags.ShortcutSettings).assertHeightIsAtLeast(56.dp)
-        onNodeWithText("Avisos").assertExists()
+        onNodeWithTag(GroupsNavigationTags.Notices).assertExists()
         onNodeWithText("Nenhum aviso recente").assertExists()
         onNodeWithText("Membros").assertExists()
         onNodeWithContentDescription("Ana Lima").assertExists()
@@ -326,19 +360,19 @@ class GroupsRouteHostTest {
     @Test
     fun `owner home exposes people games and organizer finance`() = runComposeUiTest {
         host(owner, access(GroupRoleDto.OWNER))
-        onNodeWithText("Pessoas").assertExists()
-        onNodeWithText("Jogos").assertExists()
-        onNodeWithText("Financeiro").assertExists()
-        onNodeWithText("Minhas cobranças").assertDoesNotExist()
+        onNodeWithContentDescription("Pessoas").assertExists()
+        onNodeWithTag(GroupsNavigationTags.ShortcutGames).assertExists()
+        onNodeWithContentDescription("Financeiro").assertExists()
+        onNodeWithContentDescription("Minhas cobranças").assertDoesNotExist()
     }
 
     @Test
     fun `athlete home hides people and exposes own charges label`() = runComposeUiTest {
         host(athlete, access(GroupRoleDto.ATHLETE))
-        onNodeWithText("Pessoas").assertDoesNotExist()
-        onNodeWithText("Jogos").assertExists()
-        onNodeWithText("Minhas cobranças").assertExists()
-        onNodeWithText("Financeiro").assertDoesNotExist()
+        onNodeWithContentDescription("Pessoas").assertDoesNotExist()
+        onNodeWithTag(GroupsNavigationTags.ShortcutGames).assertExists()
+        onNodeWithContentDescription("Minhas cobranças").assertExists()
+        onNodeWithContentDescription("Financeiro").assertDoesNotExist()
         onNodeWithTag("groups-settings").assertDoesNotExist()
         onNodeWithTag(GroupsNavigationTags.Invite).assertDoesNotExist()
     }
@@ -363,7 +397,7 @@ class GroupsRouteHostTest {
     fun `athlete finance action emits role neutral intent for policy resolution`() = runComposeUiTest {
         val intents = mutableListOf<GroupsNavigationIntent>()
         host(athlete, access(GroupRoleDto.ATHLETE), intents)
-        onNodeWithText("Minhas cobranças").performClick()
+        onNodeWithTag(GroupsNavigationTags.ShortcutFinance).performClick()
         assertEquals(listOf<GroupsNavigationIntent>(GroupsNavigationIntent.OpenFinance), intents)
     }
 
