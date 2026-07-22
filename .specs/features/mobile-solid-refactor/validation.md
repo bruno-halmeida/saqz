@@ -2,73 +2,69 @@
 
 **Date**: 2026-07-21  
 **Spec**: `.specs/features/mobile-solid-refactor/spec.md`  
-**Diff range**: `HEAD..worktree` (implementation is uncommitted; includes six untracked focused source files)  
+**Diff range**: `d6f70eb..HEAD` (`f626d5f` through `8d20f06`)  
 **Verifier**: independent verifier (not the implementation author)
 
 ## Verdict: PASS
 
-The working-tree change is a structural extraction. Direct comparison with the
-`HEAD` implementation found the same state-transition guards, authorization
-condition, navigation de-duplication, gateway call, ordering, and mapping
-operations; only declarations/helpers were moved and identifiers reformatted.
+All ten structural acceptance criteria pass. The six commits in scope only
+extract route contracts, helpers, and operation types into focused files; the
+changed range contains no test-file changes and `git diff --check d6f70eb..HEAD`
+passed. Existing behavior suites remain green at `HEAD`.
 
 ## Spec-Anchored Evidence
 
-| Requirement | Evidence | Existing assertions / result |
+| Requirement | Result | Evidence | Existing behavioral coverage |
+| --- | --- | --- | --- |
+| SOLID-01 | PASS | `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/games/list/GamesViewModel.kt:16` is the only declaration in the file; a dedicated declaration scan returned that line only. | Structural requirement; no runtime assertion is applicable. |
+| SOLID-02 | PASS | Focused same-package contracts are at `GamesState.kt:7`, `GamesIntent.kt:5`, `GamesEffect.kt:3`, `GameListItem.kt:7`, `GamesLoadError.kt:3`, and `GameListItemMapper.kt:5`. | `GamesViewModelTest.kt:16-27` covers loading, ordering, refresh/stale-response protection, authorization, and single navigation effects. |
+| SOLID-03 | PASS | Preserved state transition and mapping logic is at `GamesViewModel.kt:40-90`; authorization remains `GamesState.kt:16-17` and effects remain `GamesViewModel.kt:93-111`. | `GamesViewModelTest.kt:16-27` asserts the specified transitions, authorization, and rejected/one-shot effects. |
+| SOLID-04 | PASS | UI host is `mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/ui/groups/GroupsRouteHost.kt:18-61`; it composes destination content at `:34-48` and chrome at `:50-59`. | `GroupsRouteHostTest.kt:57-65`, `:83-101`, and `:117-128` retain chrome, typed-navigation, and selector-without-chrome coverage. |
+| SOLID-05 | PASS | `GroupsRouteChrome` owns only the column/top bar/content slot/bottom menu at `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/ui/GroupsNavigationChrome.kt:58-83`; destination rendering is the `when` in `GroupsDestinationContent.kt:44-114`, passed by `GroupsRouteHost.kt:34-57`. | `GroupsRouteHostTest.kt:57-65` and `:117-128` cover chrome selection and no-chrome selector behavior. |
+| SOLID-06 | PASS | `GameEditorViewModel.kt:20` is its sole declaration. Focused same-package contracts/helpers are `GameEditorModels.kt:10-65`, `GameEditorState.kt:6-13`, `GameEditorIntent.kt:5-17`, `GameEditorEffect.kt:3-7`, `GameEditorError.kt:3-9`, `GameDraftStorePort.kt:3-26`, `GameEditorValidator.kt:3-53`, and `GameEditorCommandMapper.kt:13-78`. | `GameEditorViewModelTest.kt:12-30` covers restored drafts, validation, command mapping, series boundary behavior, retry/reload, single-flight submission, and saved effect. |
+| SOLID-07 | PASS | `GameDetailViewModel.kt:21` is its sole declaration. Lifecycle/attendance actions, error, key factory, state, MVI contracts, and operation are in `GameLifecycleAction.kt:3`, `AttendanceAction.kt:3`, `GameDetailError.kt:3`, `AttendanceCommandKeyFactory.kt:3`, `GameDetailState.kt:12-50`, `GameDetailIntent.kt:5-25`, `GameDetailEffect.kt:6-13`, and `AttendanceOperation.kt:5-10`. | `GameDetailViewModelTest.kt:13-21` covers lifecycle state/effects; `GameDetailAttendanceViewModelTest.kt:19-41` covers attendance, command-key retry, capacity, authorization, and sharing. |
+| SOLID-08 | PASS | `GroupSetupViewModel.kt:33` is its sole declaration. Mode/input/error/state/contracts/key factory/pure helpers are in `GroupSetupMode.kt:3`, `GroupSetupInput.kt:5-7`, `GroupSetupError.kt:3`, `GroupSetupState.kt:11-32`, `GroupSetupIntent.kt:10-33`, `GroupSetupEffect.kt:3-7`, `GroupCommandKeyFactory.kt:3`, and `GroupSetupSupport.kt:17-90`. | `GroupSetupViewModelTest.kt:49-68` covers timezone behavior; `:72-95` draft restoration/failure; `:203-258` photo flow; and `:286-353` conflict, draft, and form persistence. |
+| SOLID-09 | PASS | `FinanceViewModel.kt:26` is its sole declaration; `FinanceOperation` is focused at `FinanceOperation.kt:5-12` in the same package. Its only use remains as retry/dispatch input at `FinanceViewModel.kt:41`, `:183`, `:192`, and `:200-245`. | `FinanceViewModelTest.kt:15-34` covers roles, monthly charge validation/generation/retry, status ETag/retry, drafts, and effects. |
+| SOLID-10 | PASS | `ExpenseViewModel.kt:26` is its sole declaration; `ExpenseOperation` is focused at `ExpenseOperation.kt:3-6` in the same package. Its only use remains as retry/dispatch input at `ExpenseViewModel.kt:45`, `:170`, `:185`, and `:188-227`. | `ExpenseViewModelTest.kt:15-32` covers roles, create/edit/void, stable keys and ETags, retry, drafts, totals refresh, and effects. |
+
+## Read-Only Structural Sensor
+
+**Command**:
+
+```text
+rtk rg -n '^\s*(?:internal\s+)?(?:sealed\s+)?(?:data\s+)?(?:class|interface|object|enum class|fun interface)\b' \
+  mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/games/detail/GameDetailViewModel.kt \
+  mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/setup/GroupSetupViewModel.kt \
+  mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/finance/charges/FinanceViewModel.kt \
+  mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/finance/expenses/ExpenseViewModel.kt
+```
+
+**Result**: PASS. The only matches were `GameDetailViewModel.kt:21`,
+`GroupSetupViewModel.kt:33`, `FinanceViewModel.kt:26`, and
+`ExpenseViewModel.kt:26`, each declaring its ViewModel class. This fails if an
+auxiliary top-level contract is reintroduced into any of the four files.
+
+The counterpart declaration scan found `FinanceOperation` only at
+`finance/charges/FinanceOperation.kt:5-12` and `ExpenseOperation` only at
+`finance/expenses/ExpenseOperation.kt:3-6`; neither ViewModel declares an
+operation. This fails if either operation is moved back into its ViewModel.
+
+The prior navigation sensor was also rerun read-only:
+`rtk rg -n 'GroupsDestinationContent|GroupsRouteChrome' mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation` returned no matches. It fails if visual composition returns to navigation.
+
+## Gates
+
+| Task coverage | Command | Result |
 | --- | --- | --- |
-| SOLID-01 | `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/games/list/GamesViewModel.kt:16` is the sole top-level type declaration (`class GamesViewModel`). The static declaration scan found no state, intent, effect, item, error, or mapper declaration in this file. | PASS. This is a structural requirement, so no runtime test assertion is applicable. |
-| SOLID-02 | Focused declarations are in the same package: `GamesState.kt:7`, `GamesIntent.kt:5`, `GamesEffect.kt:3`, `GameListItem.kt:7`, `GamesLoadError.kt:3`, and `GameListItemMapper.kt:5`. | PASS. `GamesViewModelTest.kt:17-20` asserts the extracted state/item/error behavior, including `assertEquals` for partitioning and `GamesLoadError.UNAVAILABLE`; `GamesViewModelTest.kt:18` asserts mapped presentation values. |
-| SOLID-03 | The unchanged transition logic is at `GamesViewModel.kt:40-89`; authorization remains `GamesState.kt:16-17` and is enforced at `GamesViewModel.kt:104-110`; one-shot effects remain at `GamesViewModel.kt:93-101` and `104-111`. | PASS. Transitions are asserted by `GamesViewModelTest.kt:16-23`: group reset/loading, ordering/partition, success/failure, refresh retention/single-flight, and stale-response protection. Authorization and effects are asserted by `GamesViewModelTest.kt:24-27`: ADMIN gets exactly one create effect, ATHLETE gets none, valid game navigation emits once, and loading/unknown games emit none. |
-| SOLID-04 | `mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/ui/groups/GroupsRouteHost.kt:18-61` owns the visual host and composes `GroupsDestinationContent` at `:34-48` and `GroupsRouteChrome` at `:50-59`. `AuthenticatedAccessRoot.kt:114` imports it and `:873-890` delegates to it. The structural scan of every `*.kt` under `composeapp/navigation` found no `GroupsDestinationContent` or `GroupsRouteChrome` reference. | PASS. `GroupsRouteHostTest.kt:57-65` asserts the selected-group chrome, `:83-101` asserts the four typed navigation intents, and `:117-128` asserts selector content has neither shared top bar nor bottom menu. |
+| SOLID-01..03, SOLID-06..10 | `rtk ./gradlew :features:groups:allTests` from `mobile/` | PASS at `HEAD`; `BUILD SUCCESSFUL in 2s`, 58 actionable tasks (7 executed, 51 up-to-date). This is the groups gate for each groups task in scope. |
+| SOLID-04..05 | `mobile/gradlew :compose-app:allTests` | PASS previously approved before this independent verification, as recorded in the prior validation (`36s`). Not rerun here because the commits after `d6f70eb` do not change `compose-app` source or tests. |
+| Whole range | `rtk git diff --check d6f70eb..HEAD` | PASS; no whitespace errors. |
 
-### Existing-Test Coverage Assessment
-
-`GamesViewModelTest` is unchanged in this worktree and its 12 existing cases
-cover the behavioral criterion rather than merely instantiation: state
-transitions at `:16-23`, authorization at `:24-25`, and one-shot navigation
-effects and their rejection paths at `:24-27`. The assertions target concrete
-states/effects (`assertEquals`, `assertTrue`/`assertFalse`, and `assertNull`).
-No new behavior was specified or introduced, so no new behavior test was
-required for this extraction.
-
-## Discrimination Sensor
-
-**Type**: static, non-mutating structural sensors.
-
-The feature introduces no behavior to fault-inject: it moves existing contracts
-and mapper helpers out of the ViewModel. A runtime mutation would test preexisting
-behavior rather than this refactor's new risk. The sensor therefore scanned
-top-level declarations in `GamesViewModel.kt`; it returned only
-`GamesViewModel.kt:16:class GamesViewModel`. It would fail if any extracted
-top-level contract/type were retained or reintroduced. A direct `HEAD` versus
-worktree comparison also confirmed that the transition branches and effect calls
-listed under SOLID-03 are preserved, with mapper helper names moved to
-`GameListItemMapper.kt:5-22`.
-
-**Result**: PASS. The sensor discriminates the structural regression relevant to
-SOLID-01; the existing behavior suite covers the preserved behavior relevant to
-SOLID-03. No worktree files were modified for the sensor.
-
-For SOLID-04, the sensor searched every Kotlin file below
-`mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation` for
-`GroupsDestinationContent|GroupsRouteChrome` and returned no matches. It would
-fail if visual composition were reintroduced into the navigation package. The
-positive counterpart is at `ui/groups/GroupsRouteHost.kt:34-59`, and the host
-tests retain chrome, intent, and no-chrome coverage at
-`GroupsRouteHostTest.kt:57-65`, `:83-101`, and `:117-128`. This sensor was
-read-only and did not modify the worktree.
-
-## Gate Check
-
-- **Command**: `mobile/gradlew :compose-app:allTests`
-- **Result**: success, reported execution time 36s.
-- **Warnings**: deprecation warnings only; outside this feature's scope.
-- **Command**: `mobile/gradlew :features:groups:allTests`
-- **Result**: success, reported execution time 57s.
-- **Warnings**: deprecation warnings only; outside this feature's scope.
-- **Tests**: `GamesViewModelTest.kt:16-27` contains 12 unchanged existing test cases; no test-file diff was present.
-- **Independent recheck**: both commands completed successfully from `mobile/` with the local Gradle cache (`allTests UP-TO-DATE`); Gradle reported only the same out-of-scope deprecation warning.
+Gradle reported only the pre-existing Gradle 10 deprecation warning. No
+production or test file was modified by this verification.
 
 ## Gaps
 
-None found for SOLID-01 through SOLID-04.
+None found for SOLID-01 through SOLID-10. Residual limitation: the structural
+sensor is an explicit read-only verification command rather than an automated
+test, which is appropriate for this source-layout-only requirement.
