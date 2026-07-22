@@ -170,6 +170,7 @@ All 26 requirements are assigned to a downstream design or task category. Task i
 | B22 | 2026-07-22 | The game-editor validation UI passed a composable function reference to `forEach`, where Compose cannot provide the required composable invocation context. | No new §V invariant: this is a mechanical Compose call-site error already detected by T26's focused multiplatform compilation gate; invoke the composable from an explicit loop. |
 | B23 | 2026-07-22 | The game-editor UI fixture migration left one weekday assertion on the removed transport enum after production had moved to the domain enum. | No new §V invariant: T26's focused common-test compilation and zero-data-import criterion already detect residual transport fixtures. |
 | B24 | 2026-07-22 | Moving game-draft serialization into an Android-app-private persistence DTO required the serialization compiler plugin in the adapter-owning module; the JSON runtime dependency alone cannot generate serializers. | No new §V invariant: T26's Android adapter compilation gate already detects a persistence module missing its serializer generator. |
+| B25 | 2026-07-22 | The game-detail lifecycle test imported `ExperimentalCoroutinesApi` from `kotlinx.coroutines.test`, where it is unavailable to the iOS test source set, instead of the shared `kotlinx.coroutines` package. | No new §V invariant: T27's focused multiplatform test gate already detects this mechanical source-set import error. |
 
 ## §V — Backpropagated Invariants
 

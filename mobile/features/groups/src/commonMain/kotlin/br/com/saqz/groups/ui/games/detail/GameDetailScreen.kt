@@ -34,7 +34,8 @@ import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.data.attendance.AttendanceIntentDto
 import br.com.saqz.groups.data.attendance.AttendanceStatusDto
-import br.com.saqz.groups.data.game.GameStatusDto
+import br.com.saqz.groups.domain.game.Game
+import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.presentation.games.detail.AttendanceAction
 import br.com.saqz.groups.presentation.games.detail.GameDetailError
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
@@ -57,7 +58,7 @@ object GameDetailTags {
         when{state.isLoading->SaqzLoadingState();state.game==null->ErrorPanel(state,onIntent);else->{val game=state.game
             SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){Text(game.title,style=SaqzTheme.typography.lead,color=SaqzTheme.colors.textPrimary);Text("${formatLocalDatePtBrString(game.localDate)} às ${game.localTime.take(5)}",color=SaqzTheme.colors.textSecondary);Text(game.venue.name,color=SaqzTheme.colors.textPrimary);Text(game.venue.address,color=SaqzTheme.colors.textSecondary);Row(horizontalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){SaqzBadge(game.status.label(),SaqzBadgeVariant.Neutral);Text(game.availability(),color=SaqzTheme.colors.textPrimary)};Text("Duração: ${game.durationMinutes} min",color=SaqzTheme.colors.textSecondary);game.gameFeeCents?.let{Text("Valor: ${formatBrl(it)}",color=SaqzTheme.colors.textSecondary)};game.notes?.let{Text(it,color=SaqzTheme.colors.textSecondary)}}}
             if(state.terminal)Text(stringResource(Res.string.game_detail_terminal),color=SaqzTheme.colors.textSecondary)
-            if(game.status==GameStatusDto.CANCELLED||game.financeReviewRequired)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary)
+            if(game.status==GameStatus.Cancelled||game.financeReviewRequired)Text(stringResource(Res.string.game_detail_cancel_finance),color=SaqzTheme.colors.textSecondary)
             AttendancePanel(state,onIntent)
             if(state.canEdit)SaqzButton(stringResource(Res.string.game_detail_edit),{onIntent(GameDetailIntent.OpenEdit)},Modifier.fillMaxWidth().testTag(GameDetailTags.Edit),SaqzButtonVariant.Secondary)
             state.actions.forEach{action->SaqzButton(action.label(),{onIntent(GameDetailIntent.RequestLifecycle(action))},Modifier.fillMaxWidth().testTag(action.tag()),if(action==GameLifecycleAction.CANCEL)SaqzButtonVariant.Destructive else SaqzButtonVariant.Primary,loading=state.isMutating)}
@@ -81,13 +82,13 @@ object GameDetailTags {
             AttendanceStatusDto.WAITLISTED->Text(stringResource(Res.string.attendance_status_waitlisted,state.waitlistPosition?:0),color=SaqzTheme.colors.textSecondary)
             null->Unit
         }
-        when{state.terminal->Text(stringResource(Res.string.attendance_frozen),color=SaqzTheme.colors.textSecondary);game.status==GameStatusDto.PUBLISHED&&!state.attendanceOpen->Text(stringResource(Res.string.attendance_deadline_closed),color=SaqzTheme.colors.textSecondary);else->Text(stringResource(Res.string.attendance_deadline,game.confirmationDeadline),color=SaqzTheme.colors.textSecondary)}
+        when{state.terminal->Text(stringResource(Res.string.attendance_frozen),color=SaqzTheme.colors.textSecondary);game.status==GameStatus.Published&&!state.attendanceOpen->Text(stringResource(Res.string.attendance_deadline_closed),color=SaqzTheme.colors.textSecondary);else->Text(stringResource(Res.string.attendance_deadline,game.confirmationDeadline),color=SaqzTheme.colors.textSecondary)}
         state.attendanceActions.sortedBy{it.ordinal}.forEach{action->SaqzButton(action.attendanceLabel(),{onIntent(GameDetailIntent.RequestAttendance(action))},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(action.attendanceTag()),if(action==AttendanceAction.WITHDRAW)SaqzButtonVariant.Destructive else if(action==AttendanceAction.DECLINE)SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,loading=state.isAttendanceMutating)}
         state.attendanceError?.let{Text(it.attendanceErrorLabel(),color=SaqzTheme.colors.errorForeground)}
         if(state.retryAttendanceAvailable)SaqzButton(stringResource(Res.string.attendance_retry),{onIntent(GameDetailIntent.RetryAttendance)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.AttendRetry),SaqzButtonVariant.Secondary)
         if(state.organizer)OrganizerAttendance(state,onIntent)
         if(state.organizer){
-            if(state.game?.status==GameStatusDto.PUBLISHED&&state.attendanceOpen)SaqzButton(stringResource(Res.string.attendance_share_link),{onIntent(if(state.attendanceLinkUrl==null)GameDetailIntent.RequestAttendanceLinkShare else GameDetailIntent.RetryAttendanceLinkShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareLink),SaqzButtonVariant.Secondary,loading=state.isAttendanceLinkLoading)
+            if(state.game?.status==GameStatus.Published&&state.attendanceOpen)SaqzButton(stringResource(Res.string.attendance_share_link),{onIntent(if(state.attendanceLinkUrl==null)GameDetailIntent.RequestAttendanceLinkShare else GameDetailIntent.RetryAttendanceLinkShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareLink),SaqzButtonVariant.Secondary,loading=state.isAttendanceLinkLoading)
             SaqzButton(stringResource(Res.string.attendance_share_list),{onIntent(GameDetailIntent.RequestAttendanceImageShare)},Modifier.fillMaxWidth().heightIn(min=48.dp).testTag(GameDetailTags.ShareList),SaqzButtonVariant.Secondary,loading=state.isAttendanceShareSnapshotLoading)
             state.attendanceLinkError?.let{Text(stringResource(Res.string.attendance_share_unavailable),color=SaqzTheme.colors.errorForeground)}
             state.attendanceShareError?.let{Text(stringResource(Res.string.attendance_share_unavailable),color=SaqzTheme.colors.errorForeground)}
@@ -134,6 +135,5 @@ private fun GameLifecycleAction.tag()=when(this){GameLifecycleAction.PUBLISH->Ga
 @Composable private fun AttendanceAction.attendanceConfirmTitle()=stringResource(when(this){AttendanceAction.CONFIRM->Res.string.attendance_confirm_title;AttendanceAction.DECLINE->Res.string.attendance_decline_title;AttendanceAction.WITHDRAW->Res.string.attendance_withdraw_title})
 private fun AttendanceAction.attendanceTag()=when(this){AttendanceAction.CONFIRM->GameDetailTags.AttendConfirm;AttendanceAction.DECLINE->GameDetailTags.AttendDecline;AttendanceAction.WITHDRAW->GameDetailTags.AttendWithdraw}
 @Composable private fun GameDetailError.attendanceErrorLabel()=stringResource(when(this){GameDetailError.DEADLINE->Res.string.attendance_deadline_closed;GameDetailError.FROZEN->Res.string.attendance_frozen;GameDetailError.CONFLICT->Res.string.game_detail_conflict;GameDetailError.VALIDATION->Res.string.attendance_validation;else->Res.string.game_detail_error})
-private fun GameStatusDto.label()=when(this){GameStatusDto.DRAFT->"Rascunho";GameStatusDto.PUBLISHED->"Publicado";GameStatusDto.CANCELLED->"Cancelado";GameStatusDto.COMPLETED->"Concluído"}
-private fun br.com.saqz.groups.data.game.GameDto.availability()=when{availableSpots>0->"$availableSpots vagas";waitlistCount>0->"Lista de espera: $waitlistCount";else->"Sem vagas"}
-
+private fun GameStatus.label()=when(this){GameStatus.Draft->"Rascunho";GameStatus.Published->"Publicado";GameStatus.Cancelled->"Cancelado";GameStatus.Completed->"Concluído"}
+private fun Game.availability()=when{availableSpots>0->"$availableSpots vagas";waitlistCount>0->"Lista de espera: $waitlistCount";else->"Sem vagas"}
