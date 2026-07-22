@@ -247,8 +247,8 @@
 - **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/`
 - **Phase / Task**: Execute — Batch 1 complete (T01–T05); Batch 2 covers Access (T06–T10).
 - **Completed**: Specify, Discuss and Design; task authoring T01–T37.
-- **In-progress**: Batch 2 (T06–T10), with T06 complete and the T07–T10 transition clarified to keep every intermediate commit compilable; no parallel execution.
-- **Next step**: Introduce Access data in T07 without changing the consumed legacy core surface, migrate consumers in T09–T10, and remove that seam in T10. Run only focused gates through T36 and `rtk scripts/check-all` once in T37.
+- **In-progress**: Batch 2 T10; T06–T09 are complete. T10 also replaces Groups presentation's hidden core session DTO dependency with a minimal Groups-owned input translated in `compose-app`.
+- **Next step**: Close Access in T10, remove the legacy core session surface, and preserve unrelated dirty Koin-test changes via selective staging. Run only focused gates through T36 and `rtk scripts/check-all` once in T37.
 - **Blockers**: none.
 - **Uncommitted files**: `.specs/STATE.md`, `.specs/features/mobile-domain-data-boundaries/spec.md`, `design.md`, `tasks.md`.
 - **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending; mobile-solid-refactor-wave-2 remains incomplete and must not be silently overwritten or mixed into this feature's commits.

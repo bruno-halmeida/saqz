@@ -397,7 +397,7 @@ T34 -> T35 -> T36 -> T37
 
 **What:** Bind the Access data implementation to the Access domain contract in the existing Koin composition root, update Access app consumers to domain models, and remove all completed Access compatibility seams.
 
-**Where:** `compose-app/src/commonMain/**/di/NetworkModule.kt`, Access DI/composition files and Access consumers; `compose-app/src/commonTest/**`; Access module build files.
+**Where:** `compose-app/src/commonMain/**/di/NetworkModule.kt`, Access DI/composition files and Access consumers; `compose-app/src/commonTest/**`; Access module build files; the minimal Groups-owned session-selection input and its existing presentation consumers required to eliminate the shared core DTO.
 
 **Depends on:** T09  
 **Reuses:** Existing Koin modules and `SaqzKoinModulesTest`; do not relocate Koin modules.  
@@ -411,6 +411,7 @@ T34 -> T35 -> T36 -> T37
 - Keep `:compose-app` umbrella exports stable; Access data must not be exported to iOS.
 - Delete only Access adapters/import aliases made obsolete by T06–T09.
 - Remove the legacy core-network `SessionDto`, `SessionGateway`, `SessionApi` and endpoint implementation after all Access presentation and app consumers have migrated; leave no compatibility alias behind.
+- Replace Groups presentation's use of the core Access DTO with a minimal Groups-owned selection input (group ID/name/role only), and translate `AccessSession` to that input in `compose-app`; Groups must not depend on Access domain or data.
 
 **Done when:**
 
@@ -418,6 +419,7 @@ T34 -> T35 -> T36 -> T37
 - [ ] Access presentation has no data/network dependency and Access data has no presentation dependency.
 - [ ] App state/orchestrators contain no `SessionDto`, `NetworkResult`, `NetworkError` or Access data type.
 - [ ] Core network contains no Access DTO, Access gateway, or session endpoint.
+- [ ] Groups selection state/navigation/UI contains no Access/core session type, and the app-level translator is the only bridge from the Access session to the Groups-owned input.
 - [ ] Minimum 8 composition cases cover singleton transport, gateway binding, invalidator binding, machine resolution, bootstrap graph, reload graph, domain session injection and absence of implementation in state.
 - [ ] Access domain/data/presentation and compose-app focused gates exit 0; no global gate runs.
 
