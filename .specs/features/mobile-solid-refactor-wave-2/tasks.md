@@ -108,7 +108,7 @@ T27 → T28 → T29 → T30
 
 ### T01: FIX-01 — Propagar expenseId no clear de draft de despesa
 
-**Status**: in_progress
+**Status**: completed (e8a6144)
 
 **What**: `ExpenseAdapter.clear(groupId, expenseId, commandKey, done)` passa a incluir `expenseId` como `resourceId` na referência do draft (mesmo mecanismo já usado por GAME), em vez de descartá-lo.
 **Where**: `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/groups/draft/AndroidGroupDraftStore.kt` (adapter em `:63`; `store.clearExpense` em `:35`)
@@ -119,10 +119,10 @@ T27 → T28 → T29 → T30
 **Tools**: MCP: NONE — Skill: NONE
 
 **Done when**:
-- [ ] `clearExpense` valida/limpa apenas o envelope cuja ref contém o `expenseId` recebido
-- [ ] Novo teste de regressão em `AndroidGroupDraftStoreTest`: dois drafts de despesa no mesmo grupo; clear de um preserva o outro (falha sem o fix)
-- [ ] Gate quick passa: `rtk ./gradlew :android-app:testDevDebugUnitTest --console=plain`
-- [ ] Contagem de testes do módulo não diminui (+1 novo)
+- [x] `clearExpense` valida/limpa apenas o envelope cuja ref contém o `expenseId` recebido
+- [x] Novo teste de regressão em `AndroidGroupDraftStoreTest`: dois drafts de despesa no mesmo grupo; clear de um preserva o outro (falha sem o fix)
+- [x] Gate quick passa: `rtk ./gradlew :android-app:testDevDebugUnitTest --console=plain`
+- [x] Contagem de testes do módulo não diminui (+1 novo)
 
 **Tests**: unit
 **Gate**: quick
@@ -131,6 +131,8 @@ T27 → T28 → T29 → T30
 ---
 
 ### T02: FIX-02 — Persistência real de attendance link no adapter de estado de grupos
+
+**Status**: in_progress
 
 **What**: Eliminar o adapter fake `AndroidGroupStateAdapter` (read retorna `Success(null)`, write no-op) garantindo que a composição use o adapter real (`AndroidLocalGroupStateAdapter`); se o fake tiver algum consumidor, redirecioná-lo para o real.
 **Where**: `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/access/AndroidGroupPorts.kt:33-34`; composição em `mobile/android-app/src/main/kotlin/br/com/saqz/androidapp/AndroidAppComposition.kt:79`
