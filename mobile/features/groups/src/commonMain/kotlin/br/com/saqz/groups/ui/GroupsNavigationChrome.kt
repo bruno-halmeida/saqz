@@ -36,16 +36,19 @@ import br.com.saqz.groups.resources.groups_finance
 import br.com.saqz.groups.resources.groups_game_detail
 import br.com.saqz.groups.resources.groups_games
 import br.com.saqz.groups.resources.groups_more_options
+import br.com.saqz.groups.resources.groups_notices
 import br.com.saqz.groups.resources.groups_own_charges
 import br.com.saqz.groups.resources.groups_people
 import br.com.saqz.groups.resources.groups_title
 import br.com.saqz.groups.resources.material_arrow_back
 import br.com.saqz.groups.resources.material_calendar
-import br.com.saqz.groups.resources.material_group_add
+import br.com.saqz.groups.resources.material_group
 import br.com.saqz.groups.resources.material_home
 import br.com.saqz.groups.resources.material_more_horiz
-import br.com.saqz.groups.resources.material_payments
+import br.com.saqz.groups.resources.material_notifications
+import br.com.saqz.groups.resources.nav_groups
 import br.com.saqz.groups.resources.nav_home
+import br.com.saqz.groups.resources.nav_more
 import br.com.saqz.designsystem.component.SaqzBottomNav
 import br.com.saqz.designsystem.component.SaqzBottomNavItem
 import br.com.saqz.designsystem.component.SaqzTopBar
@@ -112,77 +115,40 @@ private fun GroupBottomMenu(
 ) {
     val selected = navigation.destination.bottomMenuDestination()
     val colors = SaqzTheme.colors
-    val items = buildList {
-        add(
-            SaqzBottomNavItem(
-                label = stringResource(Res.string.nav_home),
-                selected = selected == GroupsDestination.HOME,
-                onClick = { onNavigationIntent(GroupsNavigationIntent.OpenHome) },
-                icon = {
-                    MaterialIcon(
-                        Res.drawable.material_home,
-                        if (selected == GroupsDestination.HOME) colors.primary else colors.textSecondary,
-                        20.dp,
-                    )
-                },
-            ),
-        )
-        if (navigation.access.showGames) {
-            add(
-                SaqzBottomNavItem(
-                    label = stringResource(Res.string.groups_games),
-                    selected = selected == GroupsDestination.GAMES,
-                    onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGames) },
-                    icon = {
-                        MaterialIcon(
-                            Res.drawable.material_calendar,
-                            if (selected == GroupsDestination.GAMES) colors.primary else colors.textSecondary,
-                            20.dp,
-                        )
-                    },
-                ),
-            )
-        }
-        if (navigation.access.showPeople) {
-            add(
-                SaqzBottomNavItem(
-                    label = stringResource(Res.string.groups_people),
-                    selected = selected == GroupsDestination.PEOPLE,
-                    onClick = { onNavigationIntent(GroupsNavigationIntent.OpenPeople) },
-                    icon = {
-                        MaterialIcon(
-                            Res.drawable.material_group_add,
-                            if (selected == GroupsDestination.PEOPLE) colors.primary else colors.textSecondary,
-                            20.dp,
-                        )
-                    },
-                ),
-            )
-        }
-        if (navigation.access.showFinance) {
-            val financeDestination = navigation.access.financeDestination
-            add(
-                SaqzBottomNavItem(
-                    label = stringResource(
-                        if (financeDestination == GroupsDestination.OWN_CHARGES) {
-                            Res.string.groups_own_charges
-                        } else {
-                            Res.string.groups_finance
-                        },
-                    ),
-                    selected = selected == financeDestination,
-                    onClick = { onNavigationIntent(GroupsNavigationIntent.OpenFinance) },
-                    icon = {
-                        MaterialIcon(
-                            Res.drawable.material_payments,
-                            if (selected == financeDestination) colors.primary else colors.textSecondary,
-                            20.dp,
-                        )
-                    },
-                ),
-            )
-        }
-    }
+    fun tint(destination: GroupsDestination) =
+        if (selected == destination) colors.primary else colors.textSecondary
+    val items = listOf(
+        SaqzBottomNavItem(
+            label = stringResource(Res.string.nav_home),
+            selected = selected == GroupsDestination.HOME,
+            onClick = { onNavigationIntent(GroupsNavigationIntent.OpenHome) },
+            icon = { MaterialIcon(Res.drawable.material_home, tint(GroupsDestination.HOME), 20.dp) },
+        ),
+        SaqzBottomNavItem(
+            label = stringResource(Res.string.groups_games),
+            selected = selected == GroupsDestination.GAMES,
+            onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGames) },
+            icon = { MaterialIcon(Res.drawable.material_calendar, tint(GroupsDestination.GAMES), 20.dp) },
+        ),
+        SaqzBottomNavItem(
+            label = stringResource(Res.string.nav_groups),
+            selected = false,
+            onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGroups) },
+            icon = { MaterialIcon(Res.drawable.material_group, colors.textSecondary, 20.dp) },
+        ),
+        SaqzBottomNavItem(
+            label = stringResource(Res.string.groups_notices),
+            selected = selected == GroupsDestination.NOTICES,
+            onClick = { onNavigationIntent(GroupsNavigationIntent.OpenNotices) },
+            icon = { MaterialIcon(Res.drawable.material_notifications, tint(GroupsDestination.NOTICES), 20.dp) },
+        ),
+        SaqzBottomNavItem(
+            label = stringResource(Res.string.nav_more),
+            selected = selected == GroupsDestination.MORE,
+            onClick = { onNavigationIntent(GroupsNavigationIntent.OpenMore) },
+            icon = { MaterialIcon(Res.drawable.material_more_horiz, tint(GroupsDestination.MORE), 20.dp) },
+        ),
+    )
     SaqzBottomNav(
         items = items,
         modifier = Modifier.fillMaxWidth().testTag(GroupsNavigationTags.BottomMenu),
@@ -198,6 +164,8 @@ private fun groupRouteTitle(destination: GroupsDestination, groupName: String): 
     GroupsDestination.GAME_DETAIL -> stringResource(Res.string.groups_game_detail)
     GroupsDestination.FINANCE -> stringResource(Res.string.groups_finance)
     GroupsDestination.OWN_CHARGES -> stringResource(Res.string.groups_own_charges)
+    GroupsDestination.NOTICES -> stringResource(Res.string.groups_notices)
+    GroupsDestination.MORE -> stringResource(Res.string.nav_more)
     GroupsDestination.SETUP,
     GroupsDestination.SELECTOR,
     GroupsDestination.LOADING,

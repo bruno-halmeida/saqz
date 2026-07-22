@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.navigation
 object GroupsNavigationTags {
     const val List = "groups-list"
     const val ListItemPrefix = "groups-list-item-"
+    const val CreateCard = "groups-create-card"
     const val Home = "groups-home"
     const val Summary = "groups-summary"
     const val SummaryPhoto = "groups-summary-photo"
@@ -24,5 +25,9 @@ object GroupsNavigationTags {
     const val GameDetail = "groups-game-detail"
     const val Finance = "groups-finance"
     const val OwnCharges = "groups-own-charges"
+    const val NoticesScreen = "groups-notices-screen"
+    const val More = "groups-more"
+    const val MorePeople = "groups-more-people"
+    const val MoreFinance = "groups-more-finance"
     const val BottomMenu = "groups-bottom-menu"
 }

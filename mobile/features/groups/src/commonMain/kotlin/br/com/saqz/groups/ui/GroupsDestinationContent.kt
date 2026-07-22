@@ -1,11 +1,20 @@
 package br.com.saqz.groups.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import br.com.saqz.designsystem.component.SaqzButton
+import br.com.saqz.designsystem.component.SaqzButtonVariant
 import br.com.saqz.designsystem.component.SaqzLoadingState
+import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
 import br.com.saqz.groups.presentation.games.detail.GameDetailState
@@ -20,6 +29,8 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.groups_complete_profile
 import br.com.saqz.groups.resources.groups_finance
 import br.com.saqz.groups.resources.groups_games
+import br.com.saqz.groups.resources.groups_notices
+import br.com.saqz.groups.resources.groups_notices_placeholder
 import br.com.saqz.groups.resources.groups_own_charges
 import br.com.saqz.groups.resources.groups_people
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
@@ -111,5 +122,49 @@ fun GroupsDestinationContent(
             tag = GroupsNavigationTags.OwnCharges,
             onNavigationIntent = onNavigationIntent,
         )
+        GroupsDestination.NOTICES -> RoutePage(
+            title = stringResource(Res.string.groups_notices),
+            body = stringResource(Res.string.groups_notices_placeholder),
+            tag = GroupsNavigationTags.NoticesScreen,
+            onNavigationIntent = onNavigationIntent,
+        )
+        GroupsDestination.MORE -> GroupMoreScreen(navigation, onNavigationIntent)
+    }
+}
+
+@Composable
+private fun GroupMoreScreen(
+    navigation: GroupsNavigationState,
+    onNavigationIntent: (GroupsNavigationIntent) -> Unit,
+) {
+    Column(
+        Modifier.fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(SaqzTheme.metrics.horizontalPadding)
+            .testTag(GroupsNavigationTags.More),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+    ) {
+        if (navigation.access.showPeople) {
+            SaqzButton(
+                label = stringResource(Res.string.groups_people),
+                onClick = { onNavigationIntent(GroupsNavigationIntent.OpenPeople) },
+                modifier = Modifier.fillMaxWidth().testTag(GroupsNavigationTags.MorePeople),
+                variant = SaqzButtonVariant.Secondary,
+            )
+        }
+        if (navigation.access.showFinance) {
+            SaqzButton(
+                label = stringResource(
+                    if (navigation.access.financeDestination == GroupsDestination.OWN_CHARGES) {
+                        Res.string.groups_own_charges
+                    } else {
+                        Res.string.groups_finance
+                    },
+                ),
+                onClick = { onNavigationIntent(GroupsNavigationIntent.OpenFinance) },
+                modifier = Modifier.fillMaxWidth().testTag(GroupsNavigationTags.MoreFinance),
+                variant = SaqzButtonVariant.Secondary,
+            )
+        }
     }
 }
