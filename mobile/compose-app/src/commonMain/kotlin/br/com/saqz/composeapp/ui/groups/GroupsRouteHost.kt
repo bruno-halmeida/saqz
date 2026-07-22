@@ -8,6 +8,7 @@ import br.com.saqz.groups.presentation.games.detail.GameDetailState
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.showsGroupChrome
+import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
@@ -20,6 +21,7 @@ internal fun GroupsRouteHost(
     administration: GroupAdministrationState,
     groupPhotoState: GroupPhotoState = GroupPhotoState(),
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
+    loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
     gameDetailState: GameDetailState? = null,
     onGameDetailIntent: (GameDetailIntent) -> Unit = {},
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
@@ -45,6 +47,7 @@ internal fun GroupsRouteHost(
             onRetryGroup = onRetryGroup,
             onOpenInvite = onOpenInvite,
             onRequestLogout = onRequestLogout,
+            loadListPhoto = loadListPhoto,
         )
     }
     if (navigation.groupId != null && navigation.destination.showsGroupChrome()) {

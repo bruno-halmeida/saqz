@@ -7,7 +7,11 @@
     <string name="groups_title">Grupos</string>
     <string name="groups_back">Voltar</string>
     <string name="groups_more_options">Mais opções</string>
-    <string name="groups_choose">Escolha uma galera para abrir</string>
+    <string name="groups_list_title">Meus grupos</string>
+    <string name="groups_list_subtitle">Gerencie seus grupos e mantenha tudo organizado.</string>
+    <string name="groups_new_group">Novo grupo</string>
+    <string name="groups_create_card_title">Crie um novo grupo</string>
+    <string name="groups_create_card_hint">Convide seus amigos e organize os jogos de forma simples.</string>
     <string name="groups_private">Grupo privado</string>
     <string name="groups_role_owner">Organizador</string>
     <string name="groups_role_admin">Admin</string>

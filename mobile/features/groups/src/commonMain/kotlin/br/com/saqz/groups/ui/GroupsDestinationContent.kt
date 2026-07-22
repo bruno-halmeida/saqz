@@ -22,6 +22,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
+import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
 import br.com.saqz.groups.presentation.photo.GroupPhotoState
 import br.com.saqz.groups.port.GroupPhotoPreviewHandle
@@ -51,6 +52,7 @@ fun GroupsDestinationContent(
     onRetryGroup: () -> Unit,
     onOpenInvite: () -> Unit,
     onRequestLogout: () -> Unit,
+    loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
 ) {
     when (navigation.destination) {
         GroupsDestination.SETUP -> Unit
@@ -58,6 +60,8 @@ fun GroupsDestinationContent(
             memberships = navigation.memberships,
             onSelectGroup = onSelectGroup,
             onOpenCreateGroup = onOpenCreateGroup,
+            loadListPhoto = loadListPhoto,
+            groupPhotoPreview = groupPhotoPreview,
         )
         GroupsDestination.LOADING -> SaqzLoadingState(
             Modifier.fillMaxSize().testTag("group-loading"),

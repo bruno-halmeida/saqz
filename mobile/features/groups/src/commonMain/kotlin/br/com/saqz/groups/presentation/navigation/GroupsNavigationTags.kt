@@ -3,6 +3,9 @@ package br.com.saqz.groups.presentation.navigation
 object GroupsNavigationTags {
     const val List = "groups-list"
     const val ListItemPrefix = "groups-list-item-"
+    const val ListPhoto = "groups-list-photo"
+    const val ListPhotoImage = "groups-list-photo-image"
+    const val ListPhotoFallback = "groups-list-photo-fallback"
     const val CreateCard = "groups-create-card"
     const val Home = "groups-home"
     const val Summary = "groups-summary"
