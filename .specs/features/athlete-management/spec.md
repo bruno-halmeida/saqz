@@ -181,14 +181,14 @@ history.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| ATH-01 | P1: Mandatory phone in completion | Spec | Draft |
-| ATH-02 | P1: Invite entry as avulso + position onboarding | Spec | Draft |
-| ATH-03 | P1: Roster list, search, and filters | Spec | Draft |
-| ATH-04 | P1: Type switch, edit, active toggle, removal | Spec | Draft |
-| ATH-05 | P1: Name snapshot in attendance and charges | Spec | Draft |
-| ATH-06 | P2: Athlete profile and per-group history | Spec | Draft |
+| ATH-01 | P1: Mandatory phone in completion | Done | Delivered |
+| ATH-02 | P1: Invite entry as avulso + position onboarding | Done | Delivered |
+| ATH-03 | P1: Roster list, search, and filters | Done | Delivered |
+| ATH-04 | P1: Type switch, edit, active toggle, removal | Done | Delivered |
+| ATH-05 | P1: Name snapshot in attendance and charges | Done | Delivered |
+| ATH-06 | P2: Athlete profile and per-group history | Done | Delivered |
 
-**Coverage:** 6 total, 0 mapped to tasks (design/tasks pending).
+**Coverage:** 6 total, 6 delivered (see validation.md for gate evidence and open verification gaps).
 
 ---
 
