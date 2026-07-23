@@ -81,7 +81,8 @@ import br.com.saqz.groups.presentation.setup.newGroupDefaults
 import br.com.saqz.groups.resources.*
 import br.com.saqz.groups.ui.photo.GroupPhotoEditor
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.StringResource
+import br.com.saqz.designsystem.text.UiText
+import br.com.saqz.designsystem.text.asString
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -327,7 +328,7 @@ fun GroupSetupScreen(
                 }
             }
 
-            state.error?.let { Notice(stringResource(errorLabel(it))) }
+            state.error?.let { Notice(errorLabel(it).asString()) }
             state.validationMessages.forEach { message ->
                 Notice(
                     when (message) {
@@ -435,11 +436,11 @@ internal fun newSlot() = GroupRegularSlot(weekday = GroupWeekday.MONDAY, startTi
 private fun slotSummary(slots: List<GroupRegularSlot>): String = slots.joinToString(" • ") { "${it.startTime.ifBlank { "--:--" }}" }
 internal fun <T> List<T>.replace(index: Int, value: T): List<T> = mapIndexed { current, item -> if (current == index) value else item }
 internal fun error(state: GroupSetupState, key: String): String? = state.fieldErrors[key]?.firstOrNull()?.let { "Revise este campo." }
-private fun errorLabel(error: GroupSetupError): StringResource = when (error) {
-    GroupSetupError.UNAVAILABLE -> Res.string.group_setup_unavailable
-    GroupSetupError.NOT_FOUND -> Res.string.group_setup_not_found
-    GroupSetupError.FORBIDDEN -> Res.string.group_setup_forbidden
-    GroupSetupError.DRAFT_UNAVAILABLE -> Res.string.group_setup_draft_unavailable
+private fun errorLabel(error: GroupSetupError): UiText = when (error) {
+    GroupSetupError.UNAVAILABLE -> UiText.Res(Res.string.group_setup_unavailable)
+    GroupSetupError.NOT_FOUND -> UiText.Res(Res.string.group_setup_not_found)
+    GroupSetupError.FORBIDDEN -> UiText.Res(Res.string.group_setup_forbidden)
+    GroupSetupError.DRAFT_UNAVAILABLE -> UiText.Res(Res.string.group_setup_draft_unavailable)
 }
 
 

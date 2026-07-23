@@ -173,6 +173,28 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `restored invalid draft never auto-submits and awaits normal correction`() = runTest(mainDispatcher) {
+        val fixture = fixture(
+            draftResult = GroupDraftReadResult.Success(draft(GroupSetupForm().copy(name = "Rascunho"))),
+        )
+        runCurrent()
+
+        // Restored (PMVI-018) but never silently submitted (PMVI-019).
+        assertEquals("Rascunho", fixture.viewModel.state.value.form.name)
+        assertTrue(fixture.gateway.creates.isEmpty())
+        assertFalse(fixture.viewModel.state.value.validationAttempted)
+        assertTrue(fixture.viewModel.state.value.fieldErrors.isEmpty())
+
+        fixture.viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        // Normal corrective validation state, still no request.
+        assertTrue(fixture.gateway.creates.isEmpty())
+        assertEquals(setOf("modality", "composition"), fixture.viewModel.state.value.fieldErrors.keys)
+        assertTrue(fixture.viewModel.state.value.validationAttempted)
+    }
+
+    @Test
     fun `invalid nested defaults expose exact paths and submit no request`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm().copy(
             defaultVenue = GroupVenue(name = "", address = "x"),
