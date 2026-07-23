@@ -5,8 +5,12 @@ import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
-import br.com.saqz.groups.presentation.InviteToolState
 
+/**
+ * Core orchestrator projection (T24): auth/session/selection/administration only.
+ * Per-route screen state (settings form, invite tool, create-group form, dialogs)
+ * is owned by the route-adapter ViewModels behind each NavEntry.
+ */
 @Immutable
 internal data class AccessUiState(
     val authObserved: Boolean = false,
@@ -14,16 +18,6 @@ internal data class AccessUiState(
     val session: SessionAccessState = SessionAccessState.SignedOut,
     val selection: GroupSelectionState = GroupSelectionState.NoGroup,
     val administration: GroupAdministrationState = GroupAdministrationState(),
-    val page: AccessPage = AccessPage.CONTEXT,
-    val createName: String = "",
-    val createTimeZone: String = "",
-    val createValidationAttempted: Boolean = false,
-    val createFlowKey: String = "",
-    val settingsName: String = "",
-    val settingsTimeZone: String = "",
-    val invite: InviteToolState = InviteToolState(),
-    val showLogoutConfirmation: Boolean = false,
-    val showExpireConfirmation: Boolean = false,
 )
 
 internal typealias AccessRootSnapshot = AccessUiState

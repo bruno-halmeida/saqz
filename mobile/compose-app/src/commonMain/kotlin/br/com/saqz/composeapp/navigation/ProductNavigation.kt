@@ -252,19 +252,11 @@ internal fun ProductNavigation(
     LaunchedEffect(selectedGroupId) {
         if (selectedGroupId != null) session.clearGroupScope(selectedGroupId)
     }
-    // LIFE-04: orchestrator one-off effects -> session mutations / platform share.
+    // LIFE-04: orchestrator one-off effects -> session mutations.
     if (accessEffects != null) {
         ObserveAsEvents(accessEffects) { effect ->
             when (effect) {
                 is AccessUiEffect.OpenAttendanceGame -> handleOpenAttendanceGame(session, effect.gameId)
-                is AccessUiEffect.RequestShare -> share?.share(
-                    effect.text,
-                    object : ResultCallback {
-                        override fun complete(result: OperationResult) {
-                            onIntent(AccessIntent.ShareFinished(result is OperationResult.Success))
-                        }
-                    },
-                )
             }
         }
     }

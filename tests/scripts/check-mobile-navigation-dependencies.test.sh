@@ -85,9 +85,18 @@ fail_case compose-app-exports-navigation-types \
     ':navigation types are exported through the SaqzMobile framework API' \
     'printf "\n// export(project(\":navigation\"))\n" >mobile/compose-app/build.gradle.kts && sed -i.bak "s#// export(project(\":navigation\"))#export(project(\":navigation\"))#" mobile/compose-app/build.gradle.kts && rm -f mobile/compose-app/build.gradle.kts.bak'
 
-fail_case require-no-legacy-rejects-nav2-still-present \
+fail_case require-no-legacy-rejects-nav2-restored \
     'legacy navigation-compose:2.9.2 dependency is still present' \
-    ':' --require-no-legacy
+    'printf "\nnavigation-compose = { module = \"org.jetbrains.androidx.navigation:navigation-compose\", version = \"2.9.2\" }\n" >>mobile/gradle/libs.versions.toml' \
+    --require-no-legacy
+
+fail_case removed-access-page-reintroduced \
+    'a removed manual Access navigation artifact was reintroduced (T24)' \
+    'mkdir -p mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak && printf "package br.com.saqz.composeapp.leak\n\nenum class AccessPage { CONTEXT }\n" >mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak/AccessPageLeak.kt'
+
+fail_case removed-access-destination-stack-reintroduced \
+    'a removed manual Access navigation artifact was reintroduced (T24)' \
+    'mkdir -p mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak && printf "package br.com.saqz.composeapp.leak\n\nclass AccessDestinationStack\n" >mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak/StackLeak.kt'
 
 # Positive case for --require-no-legacy: remove every legacy navigation-compose
 # reference from the catalog/build files, then the flagged run must pass.

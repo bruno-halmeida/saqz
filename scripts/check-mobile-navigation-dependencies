@@ -92,6 +92,18 @@ if [ "$require_no_legacy" -eq 1 ]; then
     }
 fi
 
+# T24 structural guard: the manual Access navigation artifacts must never return.
+# Scans every production Kotlin file in compose-app and the feature modules;
+# test sources are the implicit allowlist (negative fixtures live there).
+mobile_prod_kt_files() {
+    tracked_mobile_files | grep -E '^mobile/(compose-app|features)/.*\.kt$' |
+        grep -Ev '/src/(commonTest|test|androidTest|iosTest)/'
+}
+mobile_prod_kt=$(mobile_prod_kt_files)
+reject_grep 'a removed manual Access navigation artifact was reintroduced (T24)' \
+    '\bAccessPage\b|\bAccessDestination\b|\bAccessDestinationStack\b|\bshowAppHome\b|\bhandleGroupsIntent\b' \
+    "$mobile_prod_kt"
+
 # ponytail: static declared-dependency scan across build files/catalog, not a
 # real `gradlew dependencies` graph resolution; swap for a live resolution
 # check if a transitive-only legacy Nav2 pull is ever suspected.

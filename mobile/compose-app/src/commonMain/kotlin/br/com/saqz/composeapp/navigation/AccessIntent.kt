@@ -2,12 +2,16 @@ package br.com.saqz.composeapp.navigation
 
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
 
+/**
+ * Orchestrator command surface (T24): domain pass-throughs plus the two cross-route
+ * events (SwitchGroup, ConfirmLogout) that Roots raise as effects. Per-route screen
+ * commands live on the route-adapter ViewModels.
+ */
 sealed interface AccessIntent {
     data class Authentication(val intent: AuthenticationIntent) : AccessIntent
 
@@ -21,51 +25,7 @@ sealed interface AccessIntent {
 
     data class DeferredAttendance(val intent: DeferredAttendanceLinkIntent) : AccessIntent
 
-    data object OpenCreateGroup : AccessIntent
-
-    data class UpdateCreateName(val value: String) : AccessIntent
-
-    data class UpdateCreateTimeZone(val value: String) : AccessIntent
-
-    data object SubmitCreateGroup : AccessIntent
-
-    data object ClosePage : AccessIntent
-
     data object SwitchGroup : AccessIntent
 
-    data object OpenSettings : AccessIntent
-
-    data object OpenMemberships : AccessIntent
-
-    data object OpenInvite : AccessIntent
-
-    data object RequestLogout : AccessIntent
-
     data object ConfirmLogout : AccessIntent
-
-    data object CancelLogout : AccessIntent
-
-    data class UpdateSettingsName(val value: String) : AccessIntent
-
-    data class UpdateSettingsTimeZone(val value: String) : AccessIntent
-
-    data object SaveSettings : AccessIntent
-
-    data object ReloadSettings : AccessIntent
-
-    data object GenerateInvite : AccessIntent
-
-    data class ShareInvite(val url: String) : AccessIntent
-
-    data class ShareFinished(val successful: Boolean) : AccessIntent
-
-    data object RequestExpireInvite : AccessIntent
-
-    data object ConfirmExpireInvite : AccessIntent
-
-    data object CancelExpireInvite : AccessIntent
-
-    data object RetryInvite : AccessIntent
-
-    data class ChangeRole(val userId: String, val role: AssignableGroupRole) : AccessIntent
 }
