@@ -21,9 +21,8 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.AuthScreen
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.presentation.registration.RegistrationIntent
+import br.com.saqz.access.presentation.registration.RegistrationState
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,37 +30,37 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class RegistrationScreenTest {
     @Test fun `name input emits controlled value`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: RegistrationIntent? = null; content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("Person Name")
-        assertEquals(AuthenticationIntent.UpdateName("Person Name"), intent)
+        assertEquals(RegistrationIntent.UpdateName("Person Name"), intent)
     }
 
     @Test fun `email input emits controlled value`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: RegistrationIntent? = null; content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("person@example.test")
-        assertEquals(AuthenticationIntent.UpdateEmail("person@example.test"), intent)
+        assertEquals(RegistrationIntent.UpdateEmail("person@example.test"), intent)
     }
 
     @Test fun `password input emits controlled value`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: RegistrationIntent? = null; content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[2].performTextInput("secret")
-        assertEquals(AuthenticationIntent.UpdatePassword("secret"), intent)
+        assertEquals(RegistrationIntent.UpdatePassword("secret"), intent)
     }
 
     @Test fun `valid form submits`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
-        content(AuthenticationState(name = "Person Name", email = "person@example.test"), onIntent = { intent = it })
+        var intent: RegistrationIntent? = null
+        content(RegistrationState(name = "Person Name", email = "person@example.test"), onIntent = { intent = it })
         onNodeWithTag(RegistrationTags.Submit).performClick()
-        assertEquals(AuthenticationIntent.SubmitRegistration, intent)
+        assertEquals(RegistrationIntent.SubmitRegistration, intent)
     }
 
     @Test fun `google action invokes the only social provider flow`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
+        var intent: RegistrationIntent? = null
         content(onIntent = { intent = it })
 
         onNodeWithTag(RegistrationTags.Google).performClick()
 
-        assertEquals(AuthenticationIntent.SubmitGoogleLogin, intent)
+        assertEquals(RegistrationIntent.SubmitGoogleLogin, intent)
         onNodeWithText("Telefone").assertDoesNotExist()
         onNodeWithText("Continuar com Apple").assertDoesNotExist()
         onNodeWithText("Continuar com Facebook").assertDoesNotExist()
@@ -89,33 +88,33 @@ class RegistrationScreenTest {
     }
 
     @Test fun `blank name validation state exposes field error`() = runComposeUiTest {
-        content(AuthenticationState(email = "person@example.test", validationAttempted = true))
+        content(RegistrationState(email = "person@example.test", validationAttempted = true))
         onNodeWithText("Informe seu nome").assertExists()
     }
 
     @Test fun `invalid email validation state exposes field error`() = runComposeUiTest {
-        content(AuthenticationState(name = "Person Name", email = "invalid", validationAttempted = true))
+        content(RegistrationState(name = "Person Name", email = "invalid", validationAttempted = true))
         onNodeWithText("Informe um e-mail valido").assertExists()
     }
 
     @Test fun `loading disables submit and back actions`() = runComposeUiTest {
-        content(AuthenticationState(isLoading = true))
+        content(RegistrationState(isLoading = true))
         onNodeWithTag(RegistrationTags.Submit).assertIsNotEnabled()
         onNodeWithTag(RegistrationTags.Google).assertIsNotEnabled()
         onNodeWithTag(RegistrationTags.Back).assertIsNotEnabled()
     }
 
     @Test fun `back action emits login intent`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
+        var intent: RegistrationIntent? = null
         content(onIntent = { intent = it })
 
         onNodeWithTag(RegistrationTags.Back).performClick()
 
-        assertEquals(AuthenticationIntent.ShowLogin, intent)
+        assertEquals(RegistrationIntent.ShowLogin, intent)
     }
 
     @Test fun `firebase password error is associated with password field`() = runComposeUiTest {
-        content(AuthenticationState(error = AuthUiError.WEAK_PASSWORD))
+        content(RegistrationState(error = AuthUiError.WEAK_PASSWORD))
         onNodeWithTag(RegistrationTags.Password).assertTextContains("Escolha uma senha mais forte")
     }
 
@@ -125,20 +124,12 @@ class RegistrationScreenTest {
         onNodeWithContentDescription("Mostrar senha").assertHasClickAction()
     }
 
-    @Test fun `restoration snapshot excludes password`() {
-        val saved = AuthenticationState(name = "Person Name", email = "person@example.test", password = "secret").registrationSavedState()
-        assertEquals(
-            AuthenticationState(screen = AuthScreen.REGISTRATION, name = "Person Name", email = "person@example.test"),
-            saved.restore(),
-        )
-    }
-
     @Test fun `compact viewport at maximum font scale keeps registration actions reachable`() = runComposeUiTest {
         setContent {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
                     Box(Modifier.size(280.dp, 320.dp)) {
-                        RegistrationScreen(AuthenticationState(), {})
+                        RegistrationScreen(RegistrationState(), {})
                     }
                 }
             }
@@ -149,8 +140,8 @@ class RegistrationScreenTest {
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.content(
-        state: AuthenticationState = AuthenticationState(),
-        onIntent: (AuthenticationIntent) -> Unit = {},
+        state: RegistrationState = RegistrationState(),
+        onIntent: (RegistrationIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
             RegistrationScreen(state, onIntent)

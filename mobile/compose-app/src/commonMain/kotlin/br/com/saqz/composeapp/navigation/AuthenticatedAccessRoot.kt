@@ -94,7 +94,7 @@ import br.com.saqz.groups.ui.MembershipAdministrationScreen
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionScreen
 import br.com.saqz.access.ui.PasswordResetScreen
-import br.com.saqz.access.ui.RegistrationScreen
+import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
@@ -566,9 +566,7 @@ private fun DestinationContent(
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
         AccessDestination.LOGIN -> LoginRoot()
-        AccessDestination.REGISTRATION -> RegistrationScreen(state.authentication) { intent ->
-            onIntent(AccessIntent.Authentication(intent))
-        }
+        AccessDestination.REGISTRATION -> RegistrationRoot()
         AccessDestination.PASSWORD_RESET -> PasswordResetScreen(state.authentication) { intent ->
             onIntent(AccessIntent.Authentication(intent))
         }

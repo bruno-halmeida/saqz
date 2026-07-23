@@ -142,19 +142,22 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
-    fun `registration back returns through one callback`() = runComposeUiTest {
-        val intents = mutableListOf<AccessIntent>()
-        root(
-            snapshot(authentication = AuthenticationState(screen = AuthScreen.REGISTRATION)),
-            intents::add,
-        )
+    fun `registration destination renders the dedicated registration route`() = runComposeUiTest {
+        startTestSaqzKoin()
+        try {
+            setContent {
+                SaqzTheme {
+                    AuthenticatedAccessRoot(
+                        snapshot(authentication = AuthenticationState(screen = AuthScreen.REGISTRATION)),
+                    ) {}
+                }
+            }
 
-        onNodeWithText("Voltar para entrar").performClick()
-
-        assertEquals(
-            listOf<AccessIntent>(AccessIntent.Authentication(AuthenticationIntent.ShowLogin)),
-            intents,
-        )
+            onNodeWithText("Preencha seus dados para criar sua conta.").assertExists()
+            onNodeWithText("Voltar para entrar").assertExists()
+        } finally {
+            stopTestSaqzKoin()
+        }
     }
 
     @Test

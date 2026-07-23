@@ -31,14 +31,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.message
 import br.com.saqz.designsystem.text.asString
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.isValidDisplayName
 import br.com.saqz.access.presentation.isValidEmail
+import br.com.saqz.access.presentation.registration.RegistrationIntent
+import br.com.saqz.access.presentation.registration.RegistrationState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.access_brand
 import br.com.saqz.access.resources.auth_error_email_in_use
@@ -82,16 +81,10 @@ internal object RegistrationTags {
     const val Back = "registration-back"
 }
 
-internal data class RegistrationSavedState(val name: String, val email: String) {
-    fun restore() = AuthenticationState(screen = AuthScreen.REGISTRATION, name = name, email = email)
-}
-
-internal fun AuthenticationState.registrationSavedState() = RegistrationSavedState(name = name, email = email)
-
 @Composable
 fun RegistrationScreen(
-    state: AuthenticationState,
-    onIntent: (AuthenticationIntent) -> Unit,
+    state: RegistrationState,
+    onIntent: (RegistrationIntent) -> Unit,
 ) {
     val validName = isValidDisplayName(state.name)
     val validEmail = state.email.isValidEmail()
@@ -143,7 +136,7 @@ fun RegistrationScreen(
             Spacer(Modifier.height(24.dp))
             SaqzInput(
                 value = TextFieldValue(state.name),
-                onValueChange = { onIntent(AuthenticationIntent.UpdateName(it.text)) },
+                onValueChange = { onIntent(RegistrationIntent.UpdateName(it.text)) },
                 label = stringResource(Res.string.registration_name),
                 inlineLabel = true,
                 leadingContent = { MaterialIcon(Res.drawable.material_person, colors.primary) },
@@ -156,7 +149,7 @@ fun RegistrationScreen(
             Spacer(Modifier.height(10.dp))
             SaqzInput(
                 value = TextFieldValue(state.email),
-                onValueChange = { onIntent(AuthenticationIntent.UpdateEmail(it.text)) },
+                onValueChange = { onIntent(RegistrationIntent.UpdateEmail(it.text)) },
                 label = stringResource(Res.string.registration_email),
                 kind = SaqzInputKind.Email,
                 inlineLabel = true,
@@ -172,7 +165,7 @@ fun RegistrationScreen(
             Spacer(Modifier.height(10.dp))
             SaqzInput(
                 value = TextFieldValue(state.password),
-                onValueChange = { onIntent(AuthenticationIntent.UpdatePassword(it.text)) },
+                onValueChange = { onIntent(RegistrationIntent.UpdatePassword(it.text)) },
                 label = stringResource(Res.string.registration_password),
                 kind = SaqzInputKind.Password,
                 inlineLabel = true,
@@ -195,7 +188,7 @@ fun RegistrationScreen(
             Spacer(Modifier.height(22.dp))
             SaqzButton(
                 label = stringResource(Res.string.registration_submit),
-                onClick = { onIntent(AuthenticationIntent.SubmitRegistration) },
+                onClick = { onIntent(RegistrationIntent.SubmitRegistration) },
                 loading = state.isLoading,
                 labelStyle = SaqzTheme.typography.navigation.copy(
                     fontSize = 13.sp,
@@ -209,7 +202,7 @@ fun RegistrationScreen(
             Spacer(Modifier.height(14.dp))
             SaqzButton(
                 label = stringResource(Res.string.registration_google),
-                onClick = { onIntent(AuthenticationIntent.SubmitGoogleLogin) },
+                onClick = { onIntent(RegistrationIntent.SubmitGoogleLogin) },
                 variant = SaqzButtonVariant.Secondary,
                 enabled = !state.isLoading,
                 labelStyle = SaqzTheme.typography.navigation.copy(
@@ -230,7 +223,7 @@ fun RegistrationScreen(
             Spacer(Modifier.height(10.dp))
             SaqzButton(
                 label = stringResource(Res.string.registration_back),
-                onClick = { onIntent(AuthenticationIntent.ShowLogin) },
+                onClick = { onIntent(RegistrationIntent.ShowLogin) },
                 variant = SaqzButtonVariant.Ghost,
                 enabled = !state.isLoading,
                 labelStyle = SaqzTheme.typography.navigation.copy(
@@ -257,7 +250,7 @@ private fun RegistrationDivider(label: String) {
     }
 }
 
-private fun AuthenticationState.registrationGlobalError() = when (error) {
+private fun RegistrationState.registrationGlobalError() = when (error) {
     AuthUiError.EMAIL_IN_USE, AuthUiError.WEAK_PASSWORD, null -> null
     else -> error.message()
 }
@@ -265,5 +258,5 @@ private fun AuthenticationState.registrationGlobalError() = when (error) {
 @Preview
 @Composable
 private fun RegistrationScreenPreview() = SaqzTheme {
-    RegistrationScreen(AuthenticationState(screen = AuthScreen.REGISTRATION, name = "Ana", email = "ana@exemplo.com"), {})
+    RegistrationScreen(RegistrationState(name = "Ana", email = "ana@exemplo.com"), {})
 }
