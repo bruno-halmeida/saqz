@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.finance.expenses
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -82,6 +83,24 @@ class ExpenseViewModelTest {
         val fixture = fixture(restored = restored)
         runCurrent()
         assertEquals(restored, fixture.vm.state.value.draft)
+    }
+
+    @Test
+    fun `edit reload key restores the in-progress edit draft after process death`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle()
+        val first = fixture(handle = handle)
+        runCurrent()
+        first.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
+        assertEquals(EXPENSE, first.vm.state.value.draft!!.expenseId)
+
+        // Simulate process death: persist and restore the SavedStateHandle.
+        val restoredHandle = SavedStateHandle.createHandle(handle.savedStateProvider().saveState(), null)
+        val editDraft = draft(expenseId = EXPENSE, etag = "\"3\"")
+        val second = fixture(handle = restoredHandle, restored = editDraft)
+        runCurrent()
+
+        assertEquals(EXPENSE, second.store.lastReadExpenseId)
+        assertEquals(editDraft, second.vm.state.value.draft)
     }
 
     @Test
@@ -266,6 +285,7 @@ class ExpenseViewModelTest {
     private fun fixture(
         role: GroupRole = GroupRole.OWNER,
         restored: ExpenseDraft? = null,
+        handle: SavedStateHandle = SavedStateHandle(),
     ): Fixture {
         val api = FakeApi()
         val store = FakeStore(restored)
@@ -274,7 +294,7 @@ class ExpenseViewModelTest {
         } else {
             ExpenseFinanceCapability.Organizer(api)
         }
-        val viewModel = ExpenseViewModel(GROUP, role, capability, store, ExpenseCommandKeyFactory { KEY })
+        val viewModel = ExpenseViewModel(GROUP, role, capability, store, ExpenseCommandKeyFactory { KEY }, handle)
         return Fixture(viewModel, api, store)
     }
 
@@ -407,12 +427,14 @@ class ExpenseViewModelTest {
 
     private class FakeStore(private val restored: ExpenseDraft?) : ExpenseDraftStorePort {
         var reads = 0
+        var lastReadExpenseId: String? = null
         var failWrites = false
         val writes = mutableListOf<ExpenseDraft>()
         val clears = mutableListOf<ClearCall>()
 
         override fun read(groupId: String, expenseId: String?, done: (ExpenseDraftReadResult) -> Unit) {
             reads++
+            lastReadExpenseId = expenseId
             done(ExpenseDraftReadResult.Success(restored))
         }
 

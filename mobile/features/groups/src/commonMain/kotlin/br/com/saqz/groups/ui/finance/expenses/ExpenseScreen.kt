@@ -32,6 +32,8 @@ import br.com.saqz.designsystem.component.SaqzCard
 import br.com.saqz.designsystem.component.SaqzDialog
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.component.SaqzLoadingState
+import br.com.saqz.designsystem.text.UiText
+import br.com.saqz.designsystem.text.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.Expense
 import br.com.saqz.groups.domain.finance.ExpenseAction
@@ -138,9 +140,7 @@ fun ExpenseScreen(state: ExpenseState, onIntent: (ExpenseIntent) -> Unit) {
             state.lastAuditOutcome?.let { Text(it, color = SaqzTheme.colors.textSecondary) }
             state.error?.let {
                 Text(
-                    stringResource(
-                        if (it == ExpenseError.CONFLICT) Res.string.expense_conflict else Res.string.expense_error,
-                    ),
+                    expenseErrorLabel(it).asString(),
                     color = SaqzTheme.colors.errorForeground,
                 )
             }
@@ -395,3 +395,7 @@ private fun Modifier.expenseAction(order: Int) =
             expenseMinimumTouchTarget = true
             expenseActionOrder = order
         }
+
+private fun expenseErrorLabel(error: ExpenseError): UiText = UiText.Res(
+    if (error == ExpenseError.CONFLICT) Res.string.expense_conflict else Res.string.expense_error,
+)

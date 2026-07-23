@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.serialization)
     id("saqz.kmp-compose-library")
     id("saqz.detekt")
 }
@@ -33,6 +34,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.lifecycle.viewmodel.savedstate)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

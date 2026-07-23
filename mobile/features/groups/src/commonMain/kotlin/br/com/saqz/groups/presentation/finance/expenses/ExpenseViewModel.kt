@@ -1,7 +1,10 @@
 package br.com.saqz.groups.presentation.finance.expenses
 
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.serialization.saved
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
+import kotlinx.serialization.Serializable
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.finance.Expense
@@ -24,10 +27,15 @@ class ExpenseViewModel(
     private val capability: ExpenseFinanceCapability,
     private val drafts: ExpenseDraftStorePort,
     private val keys: ExpenseCommandKeyFactory,
+    savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : MviViewModel<ExpenseState, ExpenseIntent, ExpenseEffect>(initialExpenseState(rawGroupId, role)) {
     private val groupId = GroupId(rawGroupId)
     private var retryOperation: ExpenseOperation? = null
     private val organizerGateway get() = (capability as? ExpenseFinanceCapability.Organizer)?.gateway
+
+    // Durable draft repo is the source of truth (PMVI-020); the snapshot only carries
+    // the identifier needed to reload the in-progress draft after process death (PMVI-018).
+    private var reloadKeys by savedStateHandle.saved { ExpenseReloadKeys() }
 
     init {
         if (state.value.organizer) {
@@ -54,7 +62,7 @@ class ExpenseViewModel(
 
     private fun restore() {
         if (organizerGateway == null) return
-        drafts.read(groupId.value, null) { result ->
+        drafts.read(groupId.value, reloadKeys.expenseId) { result ->
             when (result) {
                 is ExpenseDraftReadResult.Success -> result.draft
                     ?.takeIf { it.schemaVersion == ExpenseDraft.CURRENT_SCHEMA && it.groupId == groupId.value }
@@ -98,6 +106,7 @@ class ExpenseViewModel(
             commandKey = keys.create(),
             form = ExpenseForm(),
         )
+        reloadKeys = ExpenseReloadKeys(expenseId = null)
         update { it.copy(draft = draft, fieldErrors = emptyMap(), error = null) }
         persist(draft)
     }
@@ -114,6 +123,7 @@ class ExpenseViewModel(
             commandKey = keys.create(),
             form = expense.toExpenseForm(),
         )
+        reloadKeys = ExpenseReloadKeys(expenseId = id)
         update { it.copy(draft = draft, fieldErrors = emptyMap(), error = null) }
         persist(draft)
     }
@@ -222,6 +232,7 @@ class ExpenseViewModel(
         expense: Expense,
     ) {
         drafts.clear(groupId.value, draft.expenseId, draft.commandKey) {}
+        reloadKeys = ExpenseReloadKeys()
         refreshAfter(api)
         update {
             it.copy(
@@ -291,6 +302,9 @@ class ExpenseViewModel(
         }
     }
 }
+
+@Serializable
+private data class ExpenseReloadKeys(val expenseId: String? = null)
 
 private fun initialExpenseState(rawGroupId: String, role: GroupRole) = ExpenseState(
     GroupId(rawGroupId).value,
