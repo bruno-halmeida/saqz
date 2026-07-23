@@ -26,7 +26,6 @@ internal data class GameDetailViewModelParameters(
     val groupId: String,
     val gameId: String,
     val role: GroupRole,
-    val testScope: CoroutineScope? = null,
 )
 
 internal val composePresentationModule = module {
@@ -83,7 +82,6 @@ internal val composePresentationModule = module {
             groupId = input.groupId,
             gameId = input.gameId,
             role = input.role,
-            testScope = input.testScope,
             attendanceGateway = get(),
             attendanceShareGateway = get(),
         )

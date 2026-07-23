@@ -16,13 +16,18 @@ import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.game.VersionedSeries
 import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -31,9 +36,21 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameDetailViewModelTest {
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `initial load exposes authoritative snapshot and version`() = runTest {
-        val fixture = fixture(this)
+    fun `initial load exposes authoritative snapshot and version`() = runTest(mainDispatcher) {
+        val fixture = fixture()
 
         runCurrent()
 
@@ -43,8 +60,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `hidden initial load exposes hidden error`() = runTest {
-        val fixture = fixture(this, readResult = SaqzResult.Failure(GameError.HiddenResource))
+    fun `hidden initial load exposes hidden error`() = runTest(mainDispatcher) {
+        val fixture = fixture(readResult = SaqzResult.Failure(GameError.HiddenResource))
 
         runCurrent()
 
@@ -53,8 +70,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `data failure on initial load exposes unavailable error`() = runTest {
-        val fixture = fixture(this, readResult = SaqzResult.Failure(GameError.Authentication))
+    fun `data failure on initial load exposes unavailable error`() = runTest(mainDispatcher) {
+        val fixture = fixture(readResult = SaqzResult.Failure(GameError.Authentication))
 
         runCurrent()
 
@@ -63,8 +80,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `athlete sees snapshot without organizer actions`() = runTest {
-        val fixture = fixture(this, role = GroupRole.ATHLETE)
+    fun `athlete sees snapshot without organizer actions`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.ATHLETE)
 
         runCurrent()
 
@@ -73,8 +90,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `draft organizer can edit and publish only`() = runTest {
-        val fixture = fixture(this)
+    fun `draft organizer can edit and publish only`() = runTest(mainDispatcher) {
+        val fixture = fixture()
 
         runCurrent()
 
@@ -83,8 +100,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `published organizer can edit cancel and complete`() = runTest {
-        val fixture = fixture(this, initial = versioned(GameStatus.Published))
+    fun `published organizer can edit cancel and complete`() = runTest(mainDispatcher) {
+        val fixture = fixture(initial = versioned(GameStatus.Published))
 
         runCurrent()
 
@@ -96,8 +113,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `request lifecycle requires confirmation before gateway call`() = runTest {
-        val fixture = fixture(this)
+    fun `request lifecycle requires confirmation before gateway call`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
 
         fixture.viewModel.onIntent(GameDetailIntent.RequestLifecycle(GameLifecycleAction.PUBLISH))
@@ -107,8 +124,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `dismiss confirmation clears pending lifecycle action`() = runTest {
-        val fixture = fixture(this)
+    fun `dismiss confirmation clears pending lifecycle action`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.viewModel.onIntent(GameDetailIntent.RequestLifecycle(GameLifecycleAction.PUBLISH))
 
@@ -118,8 +135,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `confirmed lifecycle uses exact version updates snapshot and emits once`() = runTest {
-        val fixture = fixture(this)
+    fun `confirmed lifecycle uses exact version updates snapshot and emits once`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         val effect = async { fixture.viewModel.effects.first() }
 
@@ -137,8 +154,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `duplicate confirm is single flight`() = runTest {
-        val fixture = fixture(this)
+    fun `duplicate confirm is single flight`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.gateway.gate = CompletableDeferred()
 
@@ -153,9 +170,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `conflict preserves snapshot and offers authoritative reload`() = runTest {
+    fun `conflict preserves snapshot and offers authoritative reload`() = runTest(mainDispatcher) {
         val fixture = fixture(
-            scope = this,
             lifecycleResult = SaqzResult.Failure(GameError.Conflict),
         )
         runCurrent()
@@ -176,9 +192,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `invalid lifecycle preserves snapshot and offers reload`() = runTest {
+    fun `invalid lifecycle preserves snapshot and offers reload`() = runTest(mainDispatcher) {
         val fixture = fixture(
-            scope = this,
             lifecycleResult = SaqzResult.Failure(GameError.InvalidLifecycle),
         )
         runCurrent()
@@ -193,8 +208,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `cancelled snapshot is terminal and ignores edit`() = runTest {
-        val fixture = fixture(this, initial = versioned(GameStatus.Cancelled))
+    fun `cancelled snapshot is terminal and ignores edit`() = runTest(mainDispatcher) {
+        val fixture = fixture(initial = versioned(GameStatus.Cancelled))
         runCurrent()
         val effect = async { withTimeoutOrNull(1) { fixture.viewModel.effects.first() } }
 
@@ -206,8 +221,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `completed snapshot is terminal without lifecycle actions`() = runTest {
-        val fixture = fixture(this, initial = versioned(GameStatus.Completed))
+    fun `completed snapshot is terminal without lifecycle actions`() = runTest(mainDispatcher) {
+        val fixture = fixture(initial = versioned(GameStatus.Completed))
 
         runCurrent()
 
@@ -217,8 +232,8 @@ class GameDetailViewModelTest {
     }
 
     @Test
-    fun `refresh replaces snapshot with latest authoritative version`() = runTest {
-        val fixture = fixture(this)
+    fun `refresh replaces snapshot with latest authoritative version`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.gateway.readResult = SaqzResult.Success(
             versioned(GameStatus.Published, version = "\"8\""),
@@ -232,7 +247,6 @@ class GameDetailViewModelTest {
     }
 
     private fun fixture(
-        scope: CoroutineScope,
         role: GroupRole = GroupRole.OWNER,
         initial: VersionedGame = versioned(),
         readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(initial),
@@ -241,7 +255,7 @@ class GameDetailViewModelTest {
     ): Fixture {
         val gateway = FakeGateway(readResult, lifecycleResult)
         return Fixture(
-            viewModel = GameDetailViewModel(gateway, "group", "game", role, scope),
+            viewModel = GameDetailViewModel(gateway, "group", "game", role),
             gateway = gateway,
         )
     }

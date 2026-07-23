@@ -127,7 +127,6 @@ class ComposePresentationModuleTest {
                         groupId = "group",
                         gameId = "game",
                         role = GroupRole.OWNER,
-                        testScope = this,
                     ),
                 )
             }

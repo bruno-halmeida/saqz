@@ -37,13 +37,18 @@ import br.com.saqz.groups.domain.game.VersionedSeries
 import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
 import br.com.saqz.groups.domain.group.GroupRole
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.Instant
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -53,9 +58,21 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameDetailAttendanceViewModelTest {
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `no response exposes authoritative counts and legal actions`() = runTest {
-        val fixture = fixture(this)
+    fun `no response exposes authoritative counts and legal actions`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
 
         assertEquals(setOf(AttendanceAction.CONFIRM, AttendanceAction.DECLINE), fixture.vm.state.value.attendanceActions)
@@ -64,44 +81,44 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `confirmed response exposes withdrawal only`() = runTest {
-        val fixture = fixture(this, detail = detail(AttendanceStatus.Confirmed))
+    fun `confirmed response exposes withdrawal only`() = runTest(mainDispatcher) {
+        val fixture = fixture(detail = detail(AttendanceStatus.Confirmed))
         runCurrent()
         assertEquals(setOf(AttendanceAction.WITHDRAW), fixture.vm.state.value.attendanceActions)
     }
 
     @Test
-    fun `waitlisted response exposes position and withdrawal`() = runTest {
-        val fixture = fixture(this, detail = detail(AttendanceStatus.Waitlisted, 4))
+    fun `waitlisted response exposes position and withdrawal`() = runTest(mainDispatcher) {
+        val fixture = fixture(detail = detail(AttendanceStatus.Waitlisted, 4))
         runCurrent()
         assertEquals(4, fixture.vm.state.value.waitlistPosition)
         assertEquals(setOf(AttendanceAction.WITHDRAW), fixture.vm.state.value.attendanceActions)
     }
 
     @Test
-    fun `declined response may confirm again`() = runTest {
-        val fixture = fixture(this, detail = detail(AttendanceStatus.Declined))
+    fun `declined response may confirm again`() = runTest(mainDispatcher) {
+        val fixture = fixture(detail = detail(AttendanceStatus.Declined))
         runCurrent()
         assertEquals(setOf(AttendanceAction.CONFIRM), fixture.vm.state.value.attendanceActions)
     }
 
     @Test
-    fun `deadline closes athlete actions`() = runTest {
-        val fixture = fixture(this, game = versioned(deadline = "2026-07-31T10:00:00Z"))
+    fun `deadline closes athlete actions`() = runTest(mainDispatcher) {
+        val fixture = fixture(game = versioned(deadline = "2026-07-31T10:00:00Z"))
         runCurrent()
         assertTrue(fixture.vm.state.value.attendanceActions.isEmpty())
     }
 
     @Test
-    fun `cancelled game freezes athlete actions`() = runTest {
-        val fixture = fixture(this, game = versioned(status = GameStatus.Cancelled))
+    fun `cancelled game freezes athlete actions`() = runTest(mainDispatcher) {
+        val fixture = fixture(game = versioned(status = GameStatus.Cancelled))
         runCurrent()
         assertTrue(fixture.vm.state.value.attendanceActions.isEmpty())
     }
 
     @Test
-    fun `withdrawal confirmation marks pending charge`() = runTest {
-        val fixture = fixture(this, detail = detail(AttendanceStatus.Confirmed))
+    fun `withdrawal confirmation marks pending charge`() = runTest(mainDispatcher) {
+        val fixture = fixture(detail = detail(AttendanceStatus.Confirmed))
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.RequestAttendance(AttendanceAction.WITHDRAW))
         assertTrue(fixture.vm.state.value.withdrawalKeepsCharge)
@@ -109,8 +126,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `confirmed attendance sends stable command key and exact intent`() = runTest {
-        val fixture = fixture(this)
+    fun `confirmed attendance sends stable command key and exact intent`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.RequestAttendance(AttendanceAction.CONFIRM))
         fixture.vm.onIntent(GameDetailIntent.ConfirmAttendance)
@@ -119,8 +136,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `double confirm is one logical attendance command`() = runTest {
-        val fixture = fixture(this)
+    fun `double confirm is one logical attendance command`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.attendance.gate = CompletableDeferred()
         fixture.vm.onIntent(GameDetailIntent.RequestAttendance(AttendanceAction.CONFIRM))
@@ -133,8 +150,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `pending response never optimistically claims capacity`() = runTest {
-        val fixture = fixture(this)
+    fun `pending response never optimistically claims capacity`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.attendance.gate = CompletableDeferred()
         fixture.attendance.respondResult = successMutation(AttendanceStatus.Waitlisted, position = 3, available = 0)
@@ -150,8 +167,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `conflict retry preserves logical command key`() = runTest {
-        val fixture = fixture(this)
+    fun `conflict retry preserves logical command key`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.attendance.respondResult = SaqzResult.Failure(AttendanceError.Conflict)
         fixture.vm.onIntent(GameDetailIntent.RequestAttendance(AttendanceAction.CONFIRM))
@@ -164,8 +181,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `promotion refresh replaces waitlist with authoritative confirmation`() = runTest {
-        val fixture = fixture(this, detail = detail(AttendanceStatus.Waitlisted, 1))
+    fun `promotion refresh replaces waitlist with authoritative confirmation`() = runTest(mainDispatcher) {
+        val fixture = fixture(detail = detail(AttendanceStatus.Waitlisted, 1))
         runCurrent()
         fixture.attendance.readResult = SaqzResult.Success(detail(AttendanceStatus.Confirmed))
         fixture.vm.onIntent(GameDetailIntent.RefreshAttendance)
@@ -175,8 +192,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `attendance success emits charge refresh effect once`() = runTest {
-        val fixture = fixture(this)
+    fun `attendance success emits charge refresh effect once`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         val effect = async { fixture.vm.effects.first() }
         fixture.vm.onIntent(GameDetailIntent.RequestAttendance(AttendanceAction.CONFIRM))
@@ -186,8 +203,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `organizer override validates member and reason locally`() = runTest {
-        val fixture = fixture(this, role = GroupRole.OWNER)
+    fun `organizer override validates member and reason locally`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.OWNER)
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.OverrideAttendance("", AttendanceIntent.Confirm, "x"))
         assertEquals(GameDetailError.VALIDATION, fixture.vm.state.value.attendanceError)
@@ -195,8 +212,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `organizer override sends target reason and stable key`() = runTest {
-        val fixture = fixture(this, role = GroupRole.ADMIN)
+    fun `organizer override sends target reason and stable key`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.ADMIN)
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.OverrideAttendance("member-2", AttendanceIntent.Decline, "  Correção  "))
         runCurrent()
@@ -207,8 +224,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `athlete cannot send organizer override`() = runTest {
-        val fixture = fixture(this)
+    fun `athlete cannot send organizer override`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.OverrideAttendance("member-2", AttendanceIntent.Confirm, "Ajuste"))
         runCurrent()
@@ -216,8 +233,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `capacity conflict retry preserves value version and key`() = runTest {
-        val fixture = fixture(this, role = GroupRole.OWNER)
+    fun `capacity conflict retry preserves value version and key`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.OWNER)
         runCurrent()
         fixture.attendance.capacityResult = SaqzResult.Failure(AttendanceError.Conflict)
         fixture.vm.onIntent(GameDetailIntent.ChangeCapacity(30))
@@ -235,8 +252,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `capacity success updates version counts and emits promotion`() = runTest {
-        val fixture = fixture(this, role = GroupRole.OWNER)
+    fun `capacity success updates version counts and emits promotion`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.OWNER)
         runCurrent()
         fixture.attendance.capacityResult = successCapacity(30, promoted = 2)
         val effect = async { fixture.vm.effects.first() }
@@ -248,8 +265,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `safe validation global message is retained`() = runTest {
-        val fixture = fixture(this)
+    fun `safe validation global message is retained`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.attendance.respondResult = SaqzResult.Failure(
             AttendanceError.Validation(
@@ -263,8 +280,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `validation without global message keeps generic fallback`() = runTest {
-        val fixture = fixture(this)
+    fun `validation without global message keeps generic fallback`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.attendance.respondResult = SaqzResult.Failure(
             AttendanceError.Validation(
@@ -279,8 +296,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `organizer rotates attendance link and emits share effect`() = runTest {
-        val fixture = fixture(this, role = GroupRole.OWNER)
+    fun `organizer rotates attendance link and emits share effect`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.OWNER)
         runCurrent()
         val effect = async { fixture.vm.effects.first() }
         fixture.vm.onIntent(GameDetailIntent.RequestAttendanceLinkShare)
@@ -290,8 +307,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `attendance link retry reuses cached url`() = runTest {
-        val fixture = fixture(this, role = GroupRole.OWNER)
+    fun `attendance link retry reuses cached url`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.OWNER)
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.RequestAttendanceLinkShare)
         runCurrent()
@@ -304,8 +321,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `organizer snapshot requires privacy confirmation`() = runTest {
-        val fixture = fixture(this, role = GroupRole.OWNER)
+    fun `organizer snapshot requires privacy confirmation`() = runTest(mainDispatcher) {
+        val fixture = fixture(role = GroupRole.OWNER)
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.RequestAttendanceImageShare)
         runCurrent()
@@ -314,8 +331,8 @@ class GameDetailAttendanceViewModelTest {
     }
 
     @Test
-    fun `athlete never starts organizer share operations`() = runTest {
-        val fixture = fixture(this)
+    fun `athlete never starts organizer share operations`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(GameDetailIntent.RequestAttendanceLinkShare)
         fixture.vm.onIntent(GameDetailIntent.RequestAttendanceImageShare)
@@ -325,7 +342,6 @@ class GameDetailAttendanceViewModelTest {
     }
 
     private fun fixture(
-        scope: CoroutineScope,
         role: GroupRole = GroupRole.ATHLETE,
         detail: AttendanceDetail = detail(),
         game: VersionedGame = versioned(),
@@ -337,7 +353,6 @@ class GameDetailAttendanceViewModelTest {
             groupId = "group",
             gameId = "game",
             role = role,
-            testScope = scope,
             attendanceGateway = attendance,
             attendanceShareGateway = share,
             keys = AttendanceCommandKeyFactory { KEY },
