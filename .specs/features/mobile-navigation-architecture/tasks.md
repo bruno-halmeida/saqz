@@ -199,13 +199,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Route inventory is exhaustive and immutable.
-- [ ] Access depends only on the lightweight Nav3 key contract.
-- [ ] Inventory/equality tests pass under G2.
+- [x] Route inventory is exhaustive and immutable.
+- [x] Access depends only on the lightweight Nav3 key contract.
+- [x] Inventory/equality tests pass under G2.
 
 **Tests**: Common unit route inventory/equality.
 **Gate**: G2.
 **Commit**: `feat(access): define navigation route keys`
+
+#### T03 evidence — `mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/navigation/AccessRoute.kt`; tests `mobile/features/access/src/commonTest/kotlin/br/com/saqz/access/navigation/AccessRouteTest.kt` (5 new cases: inventory-size, NavKey-conformance, exhaustive-when, equality-matrix, serialization round-trip). G2 BUILD SUCCESSFUL; access test count 156 → 161 (+5, matches count rule). `api(libs.navigation3.runtime)` added to `features/access/build.gradle.kts`; no `navigation3-ui`/`:navigation` dependency added.
 
 ### T04: Define Groups route keys
 
