@@ -40,9 +40,18 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 - Corrections applied (per design/tasks fix): T12/T14/T16 reconcile with existing durable drafts, NO SavedStateHandle (draft key derives from restorable nav args). Only T13 (Expense edit-draft reload key) and T15 (GameDetail — no draft) use `SavedStateHandle.saved()`. Delegate import is `androidx.lifecycle.serialization.saved`; added `lifecycle-viewmodel-savedstate` + kotlin.serialization plugin to `:features:groups` at T13.
 - **Open follow-up → folded into T29:** GameDetail's Koin binding (`ComposePresentationModule.kt:81`) builds the VM manually and does NOT pass the real `SavedStateHandle` (Koin 4.2 `viewModel{}` doesn't auto-inject it), so on-device GameDetail restoration won't fire until the binding forwards `savedStateHandle`. VM-level restoration is correct + tested. T29 (GameDetailRoot extraction) must fix this binding.
 
-### Batch 3 — Phase 4 (T17-T25) — 🔄 in progress
-- T17 `529b2e0` refactor(access): login route with dedicated MVI ViewModel and Root — ✅ committed
-- First Batch-3 worker hit a session limit mid-T18; partial T18 (Registration) work preserved in `git stash@{0}` ("partial-T18-registration-from-failed-batch3") and a fresh worker is redoing T18–T25 clean. T18–T25 pending.
+### Batch 3 — Phase 4 (T17-T25)
+- T17 `529b2e0` login route — ✅
+- T18 `f2113ff` registration route with dedicated ViewModel and restoration — ✅
+- T19 `5639c52` password reset route — ✅
+- T20 `59dfd23` verification route — ✅
+- T21 `d18e418` name completion route with dedicated ViewModel — ✅ (VM test completed inline after worker session-limit)
+- **T22/T23/T24 — ⏸️ DEFERRED per AD-025** (Settings/Memberships/Invite are authenticated-context panels sharing route state + group-administration runtime; they get route VMs when AD-029/Nav3 promotes them to real entries). User-approved 2026-07-23.
+- T25 — redefined to a verification/dead-state cleanup (auth routes already extracted; admin panels retained per AD-025). Pending.
+- Session-limit note: first worker died mid-T18 (partial preserved in `git stash@{0}`, superseded by committed T18); the auth-route extractions T18–T20 were completed by a second worker before it was stopped; T21 finished inline.
+
+### ⚠️ Phase 5 AD-025 caveat (check before executing T26–T28)
+Before extracting GroupsList/GroupDetail/GroupMore from `GroupsNavigationViewModel`, apply the SAME test as T22–T24: are these distinct navigation destinations, or state-derived panels sharing one route ViewModel + shared runtime? If they are panels (shared selection/group-context state, no independent nav entry yet), AD-025 defers their split to the Nav3 stage too. Confirm against the code before splitting; do not force a split that contradicts AD-025.
 
 ## Test Coverage Matrix
 
@@ -337,41 +346,22 @@ T31 → T32 → T33
 **Tests**: unit + Compose | **Gate**: quick
 **Commit**: `refactor(access): name completion route with dedicated ViewModel`
 
-### T22: Extract SettingsViewModel + Root
+### T22 / T23 / T24: Settings / Memberships / Invite — ⏸️ DEFERRED (AD-025 conformance)
 
-**What**: Same shape as T17 for GroupSettings.
-**Depends on**: T17 | **Requirement**: PMVI-001, PMVI-009
-**Tools**: Skill: `android-presentation-mvi`
-**Tests**: unit + Compose | **Gate**: quick
-**Commit**: `refactor(access): settings route with dedicated ViewModel`
+**Decision (2026-07-23, user-approved):** Unlike the pre-auth routes (T17–T21), which are distinct destinations driven by `SessionAccessStateMachine`, the Settings / Membership-administration / Invite destinations are **state-derived panels of the authenticated group-context**: their input lives in the shared `AccessRouteState` (`settingsName`, `settingsTimeZone`, `showExpireConfirmation` alongside `page`/`createName`), their data and actions come from the shared group-administration `runtime` (`administrationState`, `saveSettings()`, `rotateInvite()`, `ChangeRole`), and their screens live in `:features:groups`. **AD-025 explicitly exempts panels that share a route ViewModel until navigation makes them real entries.** Splitting them now would untangle shared route state + shared runtime against the active decision. They stay in `AccessViewModel` and get dedicated route ViewModels when AD-029/Nav3 promotes them to real navigation entries. PMVI-001 for these three destinations is satisfied at that later navigation stage. Original T22–T24 (full extractions) are cancelled for this feature.
 
-### T23: Extract MembershipAdministrationViewModel + Root
+### T25: Verify AccessViewModel reduced to orchestration + deferred panels
 
-**What**: Same shape as T17 for MembershipAdministration (state slice `state.administration` becomes the route State).
-**Depends on**: T17 | **Requirement**: PMVI-001, PMVI-009
-**Tools**: Skill: `android-presentation-mvi`
-**Tests**: unit + Compose | **Gate**: quick
-**Commit**: `refactor(access): membership administration route with dedicated ViewModel`
-
-### T24: Extract InviteManagementViewModel + Root
-
-**What**: Same shape as T17 for InviteManagement.
-**Depends on**: T17 | **Requirement**: PMVI-001, PMVI-009
-**Tools**: Skill: `android-presentation-mvi`
-**Tests**: unit + Compose | **Gate**: quick
-**Commit**: `refactor(access): invite management route with dedicated ViewModel`
-
-### T25: Slim AccessViewModel to orchestration
-
-**What**: Remove migrated per-route state/intents/effects; retain session/bootstrap/group-selection/destination; Bootstrap/Starting screens keep working; cross-route outcomes (login success → destination) arrive via Root callbacks wired in the dispatcher.
+**What (redefined after T22–T24 deferral):** The five auth routes (T17–T21) are already extracted and render via their Roots. Confirm `AccessViewModel` now retains only destination orchestration + session/bootstrap/group-selection + the AD-025-deferred admin panels (settings/memberships/invite). Remove any auth-route projection in `AccessUiState` that is now genuinely dead (no screen consumes it post-extraction — e.g. authentication form-field state no longer read by any Root); if nothing is dead, this task is a documented verification. Do NOT remove the admin-panel state (deferred, still live).
 **Where**: `AccessViewModel.kt`, `AuthenticatedAccessRoot.kt`, tests
-**Depends on**: T17, T18, T19, T20, T21, T22, T23, T24 | **Requirement**: PMVI-001, PMVI-006
+**Depends on**: T17, T18, T19, T20, T21 | **Requirement**: PMVI-001, PMVI-006
 **Tools**: Skill: `android-presentation-mvi`
 **Done when**:
-- [ ] AccessState contains no per-route form/screen slices
+- [ ] AccessUiState carries no auth-route form/screen slice that is unread post-extraction (or a note documents that none is dead)
+- [ ] Admin-panel state (settings/memberships/invite) retained per AD-025
 - [ ] All access flows green end-to-end; full gate passes
 **Tests**: unit + Compose | **Gate**: full
-**Commit**: `refactor(compose): AccessViewModel reduced to access orchestration`
+**Commit**: `refactor(compose): confirm AccessViewModel reduced to orchestration and deferred panels`
 
 ### T26: Extract GroupsListViewModel + Root
 
