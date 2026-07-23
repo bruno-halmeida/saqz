@@ -46,7 +46,7 @@ class JdbcSessionRepository(
         )
     }
 
-    override fun updateProfile(command: ProfileCompletion): SessionView {
+    override fun updateProfile(command: ProfileCompletion): SessionView? {
         val (userId, email, displayName) = jdbc.sql(
             """
             UPDATE access_users
@@ -67,7 +67,8 @@ class JdbcSessionRepository(
                     result.getString("display_name"),
                 )
             }
-            .single()
+            .optional()
+            .orElse(null) ?: return null
 
         return SessionView(
             user = UserAccount(userId, command.subject, email, AccessName.from(displayName), command.phone),

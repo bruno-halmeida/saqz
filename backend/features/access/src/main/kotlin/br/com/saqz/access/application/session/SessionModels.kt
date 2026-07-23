@@ -49,4 +49,6 @@ sealed interface CompleteSessionProfileResult {
     data object InvalidPhone : CompleteSessionProfileResult
 
     data object InvalidDisplayName : CompleteSessionProfileResult
+
+    data object AccountNotFound : CompleteSessionProfileResult
 }

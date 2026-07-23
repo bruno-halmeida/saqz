@@ -275,6 +275,36 @@ class SessionEndpointIntegrationTest {
         assertEquals("subject-session", repository.profileCommands.single().subject)
     }
 
+    @Test
+    fun `profile update for an unbootstrapped account returns a stable 404 problem`() {
+        val response = patchProfile("""{"phone":"+5511911112222"}""")
+
+        assertProblem(response, 404, "ACCOUNT_NOT_FOUND")
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `missing phone field returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"displayName":"New Name"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phone"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `null phone field returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phone":null}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phone"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
     private fun patchProfile(body: String): HttpResponse<String> =
         send(
             HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/session/profile"))
@@ -375,10 +405,10 @@ class SessionEndpointIntegrationTest {
             )
         }
 
-        override fun updateProfile(command: ProfileCompletion): SessionView {
+        override fun updateProfile(command: ProfileCompletion): SessionView? {
             failure?.let { throw it }
+            val id = ids[command.subject] ?: return null
             profileCommands += command
-            val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
             phones[command.subject] = command.phone
             command.displayName?.let { names[command.subject] = it }
             return SessionView(

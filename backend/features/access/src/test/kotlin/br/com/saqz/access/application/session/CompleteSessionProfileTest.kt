@@ -89,14 +89,24 @@ class CompleteSessionProfileTest {
         assertNull(repository.commands.singleOrNull())
     }
 
+    @Test
+    fun `unbootstrapped account is reported as not found instead of a raw failure`() {
+        val repository = RecordingSessionRepository(null)
+
+        val result = CompleteSessionProfile(repository).execute("subject-1", "+5511911112222", null)
+
+        assertSame(CompleteSessionProfileResult.AccountNotFound, result)
+        assertEquals(1, repository.commands.size)
+    }
+
     private class RecordingSessionRepository(
-        private val result: SessionView,
+        private val result: SessionView?,
     ) : SessionRepository {
         val commands: MutableList<ProfileCompletion> = mutableListOf()
 
         override fun upsertAndLoad(command: SessionUpsert): SessionView = error("not used")
 
-        override fun updateProfile(command: ProfileCompletion): SessionView {
+        override fun updateProfile(command: ProfileCompletion): SessionView? {
             commands += command
             return result
         }

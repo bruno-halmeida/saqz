@@ -35,7 +35,7 @@ data class AccessSessionResponse(
 )
 
 data class UpdateSessionProfileRequest @JsonCreator constructor(
-    @JsonProperty("phone") val phone: String,
+    @JsonProperty("phone") val phone: String?,
     @JsonProperty("displayName") val displayName: String? = null,
 )
 
@@ -44,6 +44,8 @@ class EmailNotVerifiedException : RuntimeException()
 class InvalidDisplayNameException : RuntimeException()
 
 class InvalidPhoneException : RuntimeException()
+
+class AccountNotFoundException : RuntimeException()
 
 @RestController
 class AccessSessionController(
@@ -64,10 +66,12 @@ class AccessSessionController(
         @RequestBody request: UpdateSessionProfileRequest,
     ): AccessSessionResponse =
         when (
-            val result = completeSessionProfile.execute(identity.subject, request.phone, request.displayName)
+            val result =
+                completeSessionProfile.execute(identity.subject, request.phone ?: "", request.displayName)
         ) {
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
             is CompleteSessionProfileResult.Success -> result.session.toResponse()
         }
 }

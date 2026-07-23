@@ -14,6 +14,7 @@ class CompleteSessionProfile(
                 ?: return CompleteSessionProfileResult.InvalidDisplayName
         }
         val session = repository.updateProfile(ProfileCompletion(subject, phone, displayName))
+            ?: return CompleteSessionProfileResult.AccountNotFound
         return CompleteSessionProfileResult.Success(session)
     }
 }

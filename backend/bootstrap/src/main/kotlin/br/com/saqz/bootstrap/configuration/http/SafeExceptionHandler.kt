@@ -5,6 +5,7 @@ import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException as Access
 import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
+import br.com.saqz.access.adapter.input.http.AccountNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
@@ -60,6 +61,11 @@ class SafeExceptionHandler(
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = mapOf("phone" to listOf("must be a valid Brazilian mobile number (+55DDD9XXXXXXXX)")),
         )
+    }
+
+    @ExceptionHandler(AccountNotFoundException::class)
+    fun accountNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.ACCOUNT_NOT_FOUND)
     }
 
     @ExceptionHandler(InvalidGroupRequestException::class)

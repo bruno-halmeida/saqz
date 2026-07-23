@@ -195,7 +195,7 @@ class JdbcSessionRepositoryIntegrationTest {
 
         val updated = repository.updateProfile(
             ProfileCompletion("subject-phone", PhoneNumber.from("+5511911112222"), null),
-        )
+        )!!
         val reloaded = repository.upsertAndLoad(command("subject-phone"))
 
         assertEquals(PhoneNumber.from("+5511911112222"), updated.user.phone)
@@ -209,7 +209,7 @@ class JdbcSessionRepositoryIntegrationTest {
 
         val updated = repository.updateProfile(
             ProfileCompletion("subject-keep-name", PhoneNumber.from("+5511911112222"), null),
-        )
+        )!!
 
         assertEquals("Person Name", updated.user.displayName.value)
     }
@@ -220,7 +220,7 @@ class JdbcSessionRepositoryIntegrationTest {
 
         val updated = repository.updateProfile(
             ProfileCompletion("subject-rename", PhoneNumber.from("+5511911112222"), AccessName.from("Renamed Person")),
-        )
+        )!!
 
         assertEquals("Renamed Person", updated.user.displayName.value)
     }
@@ -248,10 +248,19 @@ class JdbcSessionRepositoryIntegrationTest {
 
         val updated = repository.updateProfile(
             ProfileCompletion("profile-member", PhoneNumber.from("+5511911112222"), null),
-        )
+        )!!
 
         assertEquals(listOf(group), updated.memberships.map { it.groupId })
         assertEquals("ADMIN", updated.memberships.single().role)
+    }
+
+    @Test
+    fun `updateProfile returns null for a subject with no bootstrapped account`() {
+        val result = repository.updateProfile(
+            ProfileCompletion("subject-never-bootstrapped", PhoneNumber.from("+5511911112222"), null),
+        )
+
+        assertEquals(null, result)
     }
 
     private fun command(subject: String) =
