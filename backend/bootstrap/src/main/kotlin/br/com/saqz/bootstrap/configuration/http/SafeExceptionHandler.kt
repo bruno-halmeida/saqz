@@ -4,6 +4,7 @@ import br.com.saqz.groups.adapter.input.http.AccessForbiddenException
 import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException as AccessEmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
+import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
@@ -47,6 +48,17 @@ class SafeExceptionHandler(
             400,
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = mapOf("displayName" to listOf("must be between 2 and 80 characters without controls")),
+        )
+    }
+
+    @ExceptionHandler(InvalidPhoneException::class)
+    fun invalidPhone(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = mapOf("phone" to listOf("must be a valid Brazilian mobile number (+55DDD9XXXXXXXX)")),
         )
     }
 

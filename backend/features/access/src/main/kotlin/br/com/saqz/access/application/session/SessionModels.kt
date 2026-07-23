@@ -1,6 +1,7 @@
 package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
+import br.com.saqz.access.domain.PhoneNumber
 import java.util.UUID
 
 data class UserAccount(
@@ -8,6 +9,7 @@ data class UserAccount(
     val firebaseSubject: String,
     val email: String?,
     val displayName: AccessName,
+    val phone: PhoneNumber? = null,
 )
 
 data class SessionMembership(
@@ -27,10 +29,24 @@ data class SessionUpsert(
     val displayName: AccessName,
 )
 
+data class ProfileCompletion(
+    val subject: String,
+    val phone: PhoneNumber,
+    val displayName: AccessName?,
+)
+
 sealed interface BootstrapSessionResult {
     data class Success(val session: SessionView) : BootstrapSessionResult
 
     data object EmailNotVerified : BootstrapSessionResult
 
     data object InvalidDisplayName : BootstrapSessionResult
+}
+
+sealed interface CompleteSessionProfileResult {
+    data class Success(val session: SessionView) : CompleteSessionProfileResult
+
+    data object InvalidPhone : CompleteSessionProfileResult
+
+    data object InvalidDisplayName : CompleteSessionProfileResult
 }

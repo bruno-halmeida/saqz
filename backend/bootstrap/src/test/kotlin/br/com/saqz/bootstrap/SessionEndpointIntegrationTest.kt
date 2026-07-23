@@ -2,12 +2,15 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.CompleteSessionProfile
+import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionMembership
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.UserAccount
 import br.com.saqz.access.domain.AccessName
+import br.com.saqz.access.domain.PhoneNumber
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -202,6 +205,85 @@ class SessionEndpointIntegrationTest {
         assertEquals(correlationId(response), correlationHeader(response))
     }
 
+    @Test
+    fun `session response phoneRequired is true when no phone is on file`() {
+        val body = json(putSession())
+
+        assertTrue(body["user"]["phone"].isNull)
+        assertTrue(body["user"]["phoneRequired"].booleanValue())
+    }
+
+    @Test
+    fun `valid phone is persisted and reflected as no longer required`() {
+        putSession()
+
+        val response = patchProfile("""{"phone":"+5511911112222"}""")
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals("+5511911112222", body["user"]["phone"].stringValue())
+        assertFalse(body["user"]["phoneRequired"].booleanValue())
+        assertEquals(PhoneNumber.from("+5511911112222"), repository.profileCommands.single().phone)
+    }
+
+    @Test
+    fun `masked BR phone input is normalized before persistence`() {
+        putSession()
+
+        val body = json(patchProfile("""{"phone":"(11) 91111-2222"}"""))
+
+        assertEquals("+5511911112222", body["user"]["phone"].stringValue())
+    }
+
+    @Test
+    fun `landline shaped phone returns field validation without write`() {
+        putSession()
+
+        val response = patchProfile("""{"phone":"+551133334444"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phone"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `invalid phone problem never echoes the submitted value`() {
+        putSession()
+
+        val response = patchProfile("""{"phone":"not-a-phone"}""")
+
+        assertFalse(response.body().contains("not-a-phone"))
+    }
+
+    @Test
+    fun `repeat submission of the same phone is an idempotent overwrite`() {
+        putSession()
+
+        val first = json(patchProfile("""{"phone":"+5511911112222"}"""))
+        val second = json(patchProfile("""{"phone":"+5511911112222"}"""))
+
+        assertEquals(first["user"]["phone"], second["user"]["phone"])
+        assertEquals(2, repository.profileCommands.size)
+    }
+
+    @Test
+    fun `profile update scopes to the authenticated principal only`() {
+        putSession()
+
+        patchProfile("""{"phone":"+5511911112222"}""")
+
+        assertEquals("subject-session", repository.profileCommands.single().subject)
+    }
+
+    private fun patchProfile(body: String): HttpResponse<String> =
+        send(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/session/profile"))
+                .header("Authorization", "Bearer session-token")
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
+                .build(),
+        )
+
     private fun identity(
         email: String? = "session@example.test",
         emailVerified: Boolean? = true,
@@ -250,7 +332,11 @@ class SessionEndpointIntegrationTest {
         fun bootstrapSession(repository: RecordingSessionRepository) = BootstrapSession(repository)
 
         @Bean
-        fun accessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
+        fun completeSessionProfile(repository: RecordingSessionRepository) = CompleteSessionProfile(repository)
+
+        @Bean
+        fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
+            AccessSessionController(useCase, profile)
     }
 
     class SessionVerifier : VerifyRequestIdentity {
@@ -261,13 +347,19 @@ class SessionEndpointIntegrationTest {
 
     class RecordingSessionRepository : SessionRepository {
         val commands = mutableListOf<SessionUpsert>()
+        val profileCommands = mutableListOf<ProfileCompletion>()
         private val ids = mutableMapOf<String, UUID>()
+        private val phones = mutableMapOf<String, PhoneNumber>()
+        private val names = mutableMapOf<String, AccessName>()
         var memberships: List<SessionMembership> = emptyList()
         var failure: RuntimeException? = null
 
         fun reset() {
             commands.clear()
+            profileCommands.clear()
             ids.clear()
+            phones.clear()
+            names.clear()
             memberships = emptyList()
             failure = null
         }
@@ -276,8 +368,21 @@ class SessionEndpointIntegrationTest {
             failure?.let { throw it }
             commands += command
             val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
+            names[command.subject] = command.displayName
             return SessionView(
-                UserAccount(id, command.subject, command.email, command.displayName),
+                UserAccount(id, command.subject, command.email, command.displayName, phones[command.subject]),
+                memberships,
+            )
+        }
+
+        override fun updateProfile(command: ProfileCompletion): SessionView {
+            failure?.let { throw it }
+            profileCommands += command
+            val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
+            phones[command.subject] = command.phone
+            command.displayName?.let { names[command.subject] = it }
+            return SessionView(
+                UserAccount(id, command.subject, "session@example.test", names.getValue(command.subject), command.phone),
                 memberships,
             )
         }

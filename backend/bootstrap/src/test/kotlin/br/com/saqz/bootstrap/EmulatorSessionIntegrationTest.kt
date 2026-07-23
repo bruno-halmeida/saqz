@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
@@ -137,6 +138,10 @@ class EmulatorSessionIntegrationTest {
         fun emulatorBootstrapSession(repository: SessionRepository) = BootstrapSession(repository)
 
         @Bean
-        fun emulatorAccessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
+        fun emulatorCompleteSessionProfile(repository: SessionRepository) = CompleteSessionProfile(repository)
+
+        @Bean
+        fun emulatorAccessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
+            AccessSessionController(useCase, profile)
     }
 }
