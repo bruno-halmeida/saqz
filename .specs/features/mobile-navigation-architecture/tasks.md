@@ -555,14 +555,16 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Handlers are exhaustive and duplicate-safe.
-- [ ] Feature ViewModels import neither `:navigation` nor Nav3 UI.
-- [ ] Deferred GameDetail has Games as predecessor.
-- [ ] G5 and G6 pass.
+- [x] Handlers are exhaustive and duplicate-safe.
+- [x] Feature ViewModels import neither `:navigation` nor Nav3 UI.
+- [x] Deferred GameDetail has Games as predecessor.
+- [x] G5 and G6 pass.
 
 **Tests**: Common unit effect matrix and duplicate/deep-link cases.
 **Gate**: G5, then G6.
 **Commit**: `feat(navigation): handle navigation effects`
+
+#### T20 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/effect/NavigationEffectHandlers.kt`: pure translators from feature-owned typed effects to `NavigationSession` mutations. `handleOpenAttendanceGame` canonicalizes `Games` onto the GROUPS stack before pushing `GameDetail(gameId)` so back returns to Games (GROUPNAV-02/BACK-01), guarding the already-open game for duplicate-safety. Exhaustive `when` handlers: `handleGroupSelectionEffect` (OpenCreateGroup→push), `handleGroupContentEffect` (OpenPeople→push, OpenFinance→`resolveFinanceRoute` by role), `handleGroupHomeEffect` (Settings/Memberships/Invite→push returning `true`; SwitchGroup/ConfirmLogout are orchestrator-owned domain events returning `false`, stack untouched). Non-back-stack effects (GroupInviteRouteEffect.RequestShare share, GameDetailEffect domain/edit, empty GroupAdministrationRouteEffect) are documented out of scope and forwarded at the composition root, not here. Feature ViewModels import neither `:navigation` nor Nav3 UI — structurally guaranteed by the T02 dependency guard (no feature depends on `:navigation`). Tests `NavigationEffectHandlersTest.kt` (7 new cases: deep-link Games-predecessor, deep-link duplicate-safety, create-group, people, finance-by-role, panel pushes+consumed, domain effects not navigation). G5 and G6 BUILD SUCCESSFUL; navigation test count 65 → 72 (+7, matches count rule); access/groups untouched.
 
 ### T21: Implement one `ProductNavigationHost`
 
