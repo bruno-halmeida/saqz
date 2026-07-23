@@ -94,6 +94,31 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `restored invalid draft never auto-submits and awaits normal correction`() = runTest(mainDispatcher) {
+        val invalidForm = GameEditorForm(durationMinutes = "2", capacity = "1", gameFeeBrl = "x", notes = "x")
+        val restored = draft().copy(form = invalidForm, commandKey = "restored-invalid")
+
+        val fixture = fixture(stored = restored)
+
+        // Restored (PMVI-018) but never silently submitted (PMVI-019).
+        assertEquals("restored-invalid", fixture.viewModel.state.value.draft.commandKey)
+        assertEquals("2", fixture.viewModel.state.value.draft.form.durationMinutes)
+        assertEquals(0, fixture.gateway.calls.size)
+        assertTrue(fixture.viewModel.state.value.fieldErrors.isEmpty())
+
+        fixture.viewModel.onIntent(GameEditorIntent.Submit)
+        runCurrent()
+
+        // Normal corrective validation state, still no request.
+        assertTrue(
+            fixture.viewModel.state.value.fieldErrors.keys.containsAll(
+                listOf("title", "durationMinutes", "capacity", "gameFeeBrl", "notes"),
+            ),
+        )
+        assertEquals(0, fixture.gateway.calls.size)
+    }
+
+    @Test
     fun `mode and form changes persist together`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
