@@ -95,7 +95,7 @@ import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionScreen
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
-import br.com.saqz.access.ui.VerificationScreen
+import br.com.saqz.access.ui.VerificationRoot
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.SaqzPlatformDependencies
@@ -568,11 +568,7 @@ private fun DestinationContent(
         AccessDestination.LOGIN -> LoginRoot()
         AccessDestination.REGISTRATION -> RegistrationRoot()
         AccessDestination.PASSWORD_RESET -> PasswordResetRoot()
-        AccessDestination.VERIFICATION -> VerificationScreen(
-            state.session as SessionAccessState.AwaitingVerification,
-        ) { intent ->
-            onIntent(AccessIntent.Session(intent))
-        }
+        AccessDestination.VERIFICATION -> VerificationRoot()
         AccessDestination.NAME_COMPLETION -> NameCompletionScreen(
             state.session as SessionAccessState.CompletingName,
         ) { intent ->

@@ -38,6 +38,8 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.isValidEmail
 import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
 import br.com.saqz.access.presentation.passwordreset.PasswordResetState
+import br.com.saqz.access.presentation.verification.VerificationIntent
+import br.com.saqz.access.presentation.verification.VerificationState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_method_conflict
 import br.com.saqz.access.resources.auth_error_network
@@ -84,12 +86,12 @@ internal object IdentityTags {
 
 @Composable
 fun VerificationScreen(
-    state: SessionAccessState.AwaitingVerification,
-    onIntent: (SessionIntent) -> Unit,
+    state: VerificationState,
+    onIntent: (VerificationIntent) -> Unit,
 ) = IdentityColumn {
     IdentityHeading(stringResource(Res.string.verification_title))
     Text(stringResource(Res.string.verification_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
-    Text(state.user.email.orEmpty(), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
+    Text(state.email, style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
     if (state.verificationSent) {
         Text(stringResource(Res.string.verification_sent), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.accent)
     }
@@ -98,13 +100,13 @@ fun VerificationScreen(
     }
     SaqzButton(
         label = stringResource(Res.string.verification_confirm),
-        onClick = { onIntent(SessionIntent.ConfirmVerification) },
+        onClick = { onIntent(VerificationIntent.Confirm) },
         loading = state.isLoading,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.Verify),
     )
     SaqzButton(
         label = stringResource(Res.string.verification_resend),
-        onClick = { onIntent(SessionIntent.ResendVerification) },
+        onClick = { onIntent(VerificationIntent.Resend) },
         variant = SaqzButtonVariant.Secondary,
         enabled = !state.isLoading && !state.verificationSent,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.Resend),
@@ -274,7 +276,7 @@ private val previewIdentityUser = NativeUser("preview-user", "ana@exemplo.com", 
 @Preview
 @Composable
 private fun VerificationScreenPreview() = SaqzTheme {
-    VerificationScreen(SessionAccessState.AwaitingVerification(previewIdentityUser, verificationSent = true), {})
+    VerificationScreen(VerificationState(email = "ana@exemplo.com", verificationSent = true), {})
 }
 
 @Preview

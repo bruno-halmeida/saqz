@@ -13,6 +13,8 @@ import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
 import br.com.saqz.access.presentation.passwordreset.PasswordResetState
+import br.com.saqz.access.presentation.verification.VerificationIntent
+import br.com.saqz.access.presentation.verification.VerificationState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -26,31 +28,31 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `already verified action invokes confirmation`() = runComposeUiTest {
-        var intent: SessionIntent? = null; verification(onIntent = { intent = it })
+        var intent: VerificationIntent? = null; verification(onIntent = { intent = it })
         onNodeWithTag(IdentityTags.Verify).performClick()
-        assertEquals(SessionIntent.ConfirmVerification, intent)
+        assertEquals(VerificationIntent.Confirm, intent)
     }
 
     @Test fun `resend action invokes provider request`() = runComposeUiTest {
-        var intent: SessionIntent? = null; verification(onIntent = { intent = it })
+        var intent: VerificationIntent? = null; verification(onIntent = { intent = it })
         onNodeWithTag(IdentityTags.Resend).performClick()
-        assertEquals(SessionIntent.ResendVerification, intent)
+        assertEquals(VerificationIntent.Resend, intent)
     }
 
     @Test fun `sent verification reports cooldown and disables resend`() = runComposeUiTest {
-        verification(SessionAccessState.AwaitingVerification(user, verificationSent = true))
+        verification(VerificationState(email = "person@example.test", verificationSent = true))
         onNodeWithText("E-mail enviado. Aguarde antes de reenviar").assertExists()
         onNodeWithTag(IdentityTags.Resend).assertIsNotEnabled()
     }
 
     @Test fun `verification loading disables duplicate actions`() = runComposeUiTest {
-        verification(SessionAccessState.AwaitingVerification(user, isLoading = true))
+        verification(VerificationState(isLoading = true))
         onNodeWithTag(IdentityTags.Verify).assertIsNotEnabled()
         onNodeWithTag(IdentityTags.Resend).assertIsNotEnabled()
     }
 
     @Test fun `verification failure is actionable`() = runComposeUiTest {
-        verification(SessionAccessState.AwaitingVerification(user, error = AuthUiError.NETWORK_UNAVAILABLE))
+        verification(VerificationState(error = AuthUiError.NETWORK_UNAVAILABLE))
         onNodeWithText("Verifique sua conexao e tente novamente").assertExists()
     }
 
@@ -104,8 +106,8 @@ class IdentityCompletionScreensTest {
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.verification(
-        state: SessionAccessState.AwaitingVerification = SessionAccessState.AwaitingVerification(user),
-        onIntent: (SessionIntent) -> Unit = {},
+        state: VerificationState = VerificationState(email = "person@example.test"),
+        onIntent: (VerificationIntent) -> Unit = {},
     ) = setContent { SaqzTheme { VerificationScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.name(
