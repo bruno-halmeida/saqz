@@ -40,6 +40,10 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 - Corrections applied (per design/tasks fix): T12/T14/T16 reconcile with existing durable drafts, NO SavedStateHandle (draft key derives from restorable nav args). Only T13 (Expense edit-draft reload key) and T15 (GameDetail — no draft) use `SavedStateHandle.saved()`. Delegate import is `androidx.lifecycle.serialization.saved`; added `lifecycle-viewmodel-savedstate` + kotlin.serialization plugin to `:features:groups` at T13.
 - **Open follow-up → folded into T29:** GameDetail's Koin binding (`ComposePresentationModule.kt:81`) builds the VM manually and does NOT pass the real `SavedStateHandle` (Koin 4.2 `viewModel{}` doesn't auto-inject it), so on-device GameDetail restoration won't fire until the binding forwards `savedStateHandle`. VM-level restoration is correct + tested. T29 (GameDetailRoot extraction) must fix this binding.
 
+### Batch 3 — Phase 4 (T17-T25) — 🔄 in progress
+- T17 `529b2e0` refactor(access): login route with dedicated MVI ViewModel and Root — ✅ committed
+- First Batch-3 worker hit a session limit mid-T18; partial T18 (Registration) work preserved in `git stash@{0}` ("partial-T18-registration-from-failed-batch3") and a fresh worker is redoing T18–T25 clean. T18–T25 pending.
+
 ## Test Coverage Matrix
 
 > Generated from codebase, project guidelines, and spec — confirm before Execute. Guidelines found: `README.md` (verification commands §125–142), `scripts/check-gradle` (zero-test detection), existing commonTest suites (VM tests with `runTest`, Compose tests with `runComposeUiTest`, `testTag` semantics).
