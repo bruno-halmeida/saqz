@@ -24,9 +24,10 @@ class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRe
         pending.forEach{eventId->event(find(eventId)?:error("cancelled charge lost"),ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)}
         jdbc.sql("UPDATE group_charges SET review_required=true,changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status IN ('PAID','WAIVED') AND NOT review_required").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
     }
-    override fun activeMemberIds(groupId:UUID):Set<UUID>?{
+    override fun members(groupId:UUID):GroupMembers?{
         val exists=jdbc.sql("SELECT count(*) FROM access_groups WHERE id=:group").param("group",groupId).query(Int::class.java).single()>0;if(!exists)return null
-        return jdbc.sql("SELECT user_id FROM group_memberships WHERE group_id=:group").param("group",groupId).query(UUID::class.java).list().filterNotNull().toSet()
+        val rows=jdbc.sql("SELECT user_id,active FROM group_memberships WHERE group_id=:group").param("group",groupId).query{rs,_->rs.getObject("user_id",UUID::class.java) to rs.getBoolean("active")}.list()
+        return GroupMembers(rows.map{it.first}.toSet(),rows.filter{it.second}.map{it.first}.toSet())
     }
     override fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant):Charge{
         val id=UUID.randomUUID();val inserted=jdbc.sql(INSERT_MONTHLY).param("id",id).param("group",command.groupId).param("member",memberId).param("month",command.month.atDay(1)).param("amount",command.amountCents).param("due",command.dueDate).param("actor",command.actorId).param("now",Timestamp.from(now)).update()
