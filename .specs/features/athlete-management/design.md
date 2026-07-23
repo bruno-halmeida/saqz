@@ -74,7 +74,7 @@ flowchart TD
 | Component | Location | How to Use |
 | --- | --- | --- |
 | Session bootstrap | `backend/features/access/.../application/session/BootstrapSession.kt`, `AccessSessionController.kt` (`PUT /api/session`) | Extend `SessionView`/response with `phone` and a derived `phoneRequired` flag; the completion gate keys off it. |
-| Access user schema | `backend/features/access/.../db/migration/` | Additive `V4` migration for `phone`, following existing `CHECK`-constraint style. |
+| Access user schema | `backend/features/access/.../db/migration/` | Additive `V8` migration for `phone`, following existing `CHECK`-constraint style. |
 | Invite redemption | `backend/features/groups/.../application/invite/redeem/RedeemInvite.kt` | Unchanged flow; new membership rows land as `AVULSO` via column default. Idempotent re-redeem already preserves existing rows. |
 | Membership models/repository | `.../application/membership/MembershipModels.kt`, `.../adapter/output/jdbc/membership/JdbcMembershipRepository.kt` | Extend with athlete attributes; follow existing owner-synthesis and `AccessName` validation patterns. |
 | Role policy | `.../domain/GroupAccessPolicy.kt` | Reuse `OWNER`/`ADMIN` organizer checks for management routes; athletes mutate only their own row. |
@@ -100,7 +100,7 @@ flowchart TD
 
 ### Access: Phone
 
-- **Migration `V4__add_user_phone.sql` (access):**
+- **Migration `V8__add_user_phone.sql` (access):**
   `ALTER TABLE access_users ADD COLUMN phone varchar(20)` with a `CHECK` for a
   normalized E.164-style Brazilian mobile number (`+55` + 2-digit DDD + mandatory leading `9` + 8 digits = 11 national digits) or `NULL`; a 10-digit landline number is rejected.
   Existing rows stay `NULL`; the completion gate collects them lazily.
@@ -330,7 +330,7 @@ enum names never render.
 
 | Requirement | Design Components |
 | --- | --- |
-| ATH-01 | Access `V4` phone, `PhoneNumber`, session `phoneRequired`, `PATCH /api/session/profile`, mobile completion extension |
+| ATH-01 | Access `V8` phone, `PhoneNumber`, session `phoneRequired`, `PATCH /api/session/profile`, mobile completion extension |
 | ATH-02 | `AVULSO` column default on redeem, onboarding position step, `PATCH .../athletes/me` |
 | ATH-03 | `ListAthletes` read model, financial derivation, roster route/filters UI |
 | ATH-04 | `UpdateAthlete`, `RemoveAthlete`, `AthleteController`, edit sheet + removal dialog |

@@ -199,3 +199,19 @@ history.
 - [ ] The owner filters the roster by type, position, and paid/pending, and every management action is role-guarded.
 - [ ] Removing an athlete never deletes the user or blanks historical names.
 - [ ] All migrations are additive and existing memberships keep working unchanged.
+
+---
+
+## Regression Backprop
+
+- **B1 | 2026-07-23** — T01 added `access`'s
+  `V4__add_user_phone.sql`, but production (bootstrap's Flyway bean) and the
+  groups module's cross-module integration-test helper merge the `access` and
+  `groups` migration folders into one `classpath:db/migration` location, so
+  Flyway sees a single global version sequence. `access`'s new `V4` collided
+  with groups' pre-existing `V4__add_group_games.sql`, breaking every groups
+  migration integration test that loads the merged location. Covered by V1.
+- **V1** — Every new migration file SHALL be numbered as the next version in
+  the single global Flyway sequence shared by `access` and `groups` (not the
+  next version within its own module's folder), until the baseline is
+  explicitly moved by a separate passing change.

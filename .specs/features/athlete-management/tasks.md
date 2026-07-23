@@ -123,7 +123,7 @@ confirmation before dispatching any implementation worker.
 **What:** Add the Access Flyway migration for `access_users.phone` and the
 `PhoneNumber` value object (BR mobile parse, E.164 normalization, rejection).
 
-**Where:** `backend/features/access/src/main/resources/db/migration/V4__add_user_phone.sql`,
+**Where:** `backend/features/access/src/main/resources/db/migration/V8__add_user_phone.sql`,
 `backend/features/access/src/main/kotlin/br/com/saqz/access/domain/`,
 access test/integration-test packages.
 
