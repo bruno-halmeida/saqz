@@ -27,6 +27,7 @@ import br.com.saqz.access.domain.session.AccessMembershipRole
 import br.com.saqz.domain.GroupId
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.domain.session.SessionInvalidator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.cancel
@@ -34,9 +35,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -46,14 +52,26 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccessViewModelTest {
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `V1 initialization starts runtime once and background scope owns collectors`() = runTest {
+    fun `V1 initialization starts runtime once and background scope owns collectors`() = runTest(mainDispatcher) {
         val runtime = FakeRuntime().apply {
             authObserved.value = true
             authentication.value = AuthenticationState(screen = AuthScreen.REGISTRATION, email = "person@example.test")
         }
 
-        val viewModel = AccessViewModel(runtime, backgroundScope)
+        val viewModel = AccessViewModel { runtime }
         runCurrent()
 
         assertEquals(1, runtime.intents.count { it == AccessRuntimeIntent.Start })
@@ -63,7 +81,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `authentication and session inputs forward exact typed payloads`() = runTest {
+    fun `authentication and session inputs forward exact typed payloads`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         val authentication = AuthenticationIntent.UpdateEmail("new@example.test")
         val session = SessionIntent.UpdateName("Person")
@@ -78,7 +96,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `selection administration and deferred invite inputs remain typed`() = runTest {
+    fun `selection administration and deferred invite inputs remain typed`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         val selection = GroupSelectionIntent.Select(GROUP_ID)
         val administration = GroupAdministrationIntent.LoadMemberships
@@ -99,7 +117,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `ready session remains visible to the route`() = runTest {
+    fun `ready session remains visible to the route`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         runtime.session.value = SessionAccessState.Ready(session)
@@ -109,7 +127,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `signed out session closes page and logout dialog`() = runTest {
+    fun `signed out session closes page and logout dialog`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         runtime.session.value = SessionAccessState.Ready(session)
         runCurrent()
@@ -125,7 +143,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `selected group becomes administration context and closes child page`() = runTest {
+    fun `selected group becomes administration context and closes child page`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         viewModel.onIntent(AccessIntent.OpenCreateGroup)
 
@@ -136,7 +154,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `attendance destination opens exact game once selected group matches`() = runTest {
+    fun `attendance destination opens exact game once selected group matches`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         runtime.emit(AccessOrchestratorEffect.OpenAttendanceGame("game-42"))
@@ -146,7 +164,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `create form owns values and submits one stable request id`() = runTest {
+    fun `create form owns values and submits one stable request id`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         viewModel.onIntent(AccessIntent.OpenCreateGroup)
@@ -167,7 +185,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `duplicate create submit while pending remains single flight`() = runTest {
+    fun `duplicate create submit while pending remains single flight`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         viewModel.onIntent(AccessIntent.OpenCreateGroup)
         viewModel.onIntent(AccessIntent.UpdateCreateName("New Group"))
@@ -180,7 +198,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `invalid create submit exposes validation without runtime operation`() = runTest {
+    fun `invalid create submit exposes validation without runtime operation`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         viewModel.onIntent(AccessIntent.OpenCreateGroup)
 
@@ -192,7 +210,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `settings are controlled and save exact edited values`() = runTest {
+    fun `settings are controlled and save exact edited values`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         runtime.administration.value = ownerAdministration
 
@@ -214,7 +232,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `memberships and role changes dispatch exact administration intents`() = runTest {
+    fun `memberships and role changes dispatch exact administration intents`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         viewModel.onIntent(AccessIntent.OpenMemberships)
@@ -234,7 +252,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `switch group requires ready session and sends authoritative session`() = runTest {
+    fun `switch group requires ready session and sends authoritative session`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         viewModel.onIntent(AccessIntent.SwitchGroup)
@@ -247,7 +265,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `confirmed logout clears dialog and routes both cleanup intents`() = runTest {
+    fun `confirmed logout clears dialog and routes both cleanup intents`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
         viewModel.onIntent(AccessIntent.RequestLogout)
         runCurrent()
@@ -268,7 +286,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `invite generation and retry share one loading guard`() = runTest {
+    fun `invite generation and retry share one loading guard`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         viewModel.onIntent(AccessIntent.GenerateInvite)
@@ -280,7 +298,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `share request is buffered once and never replayed`() = runTest {
+    fun `share request is buffered once and never replayed`() = runTest(mainDispatcher) {
         val (viewModel, _) = fixture()
 
         viewModel.onIntent(AccessIntent.ShareInvite("https://example.test/invite"))
@@ -302,7 +320,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `failed native share result returns through intent and updates state`() = runTest {
+    fun `failed native share result returns through intent and updates state`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         viewModel.onIntent(AccessIntent.ShareFinished(successful = false))
@@ -313,7 +331,7 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `clearing viewmodel closes runtime exactly once`() = runTest {
+    fun `clearing viewmodel closes runtime exactly once`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
         viewModel.clearForTest()
@@ -323,9 +341,9 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `session invalidator exposed to route delegates to runtime invalidator`() = runTest {
+    fun `session invalidator exposed to route delegates to runtime invalidator`() = runTest(mainDispatcher) {
         val runtime = FakeRuntime()
-        val viewModel = AccessViewModel(runtime, backgroundScope)
+        val viewModel = AccessViewModel { runtime }
 
         viewModel.sessionInvalidator.invalidate()
 
@@ -334,7 +352,7 @@ class AccessViewModelTest {
 
     private suspend fun kotlinx.coroutines.test.TestScope.fixture(): Fixture {
         val runtime = FakeRuntime()
-        val viewModel = AccessViewModel(runtime, backgroundScope)
+        val viewModel = AccessViewModel { runtime }
         runCurrent()
         runtime.intents.clear()
         return Fixture(viewModel, runtime)

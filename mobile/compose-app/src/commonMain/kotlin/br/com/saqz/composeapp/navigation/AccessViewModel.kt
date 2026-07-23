@@ -1,7 +1,7 @@
 package br.com.saqz.composeapp.navigation
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
@@ -16,37 +16,17 @@ import br.com.saqz.groups.presentation.InviteToolState
 import br.com.saqz.groups.ui.CreateGroupUiState
 import br.com.saqz.access.domain.session.SessionInvalidator
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
-internal class AccessViewModel private constructor(
+internal class AccessViewModel(
     runtimeFactory: (CoroutineScope) -> AccessRuntimeContract,
-    testScope: CoroutineScope?,
-) : ViewModel() {
-    internal constructor(runtimeFactory: (CoroutineScope) -> AccessRuntimeContract) : this(
-        runtimeFactory = runtimeFactory,
-        testScope = null,
-    )
-
-    internal constructor(runtime: AccessRuntimeContract, scope: CoroutineScope) : this(
-        runtimeFactory = { runtime },
-        testScope = scope,
-    )
-
-    private val scope = testScope ?: viewModelScope
-    private val runtime = runtimeFactory(scope)
+) : MviViewModel<AccessUiState, AccessIntent, AccessUiEffect>(AccessUiState()) {
+    private val runtime = runtimeFactory(viewModelScope)
     private val routeState = MutableStateFlow(AccessRouteState(createRequestId = runtime.newRequestId()))
-    private val effectChannel = Channel<AccessUiEffect>(Channel.BUFFERED)
-    val effects: Flow<AccessUiEffect> = effectChannel.receiveAsFlow()
     internal val groupProfileGateway: GroupProfileGateway get() = runtime.groupProfileGateway
     internal val groupPhotoGateway: GroupPhotoGateway get() = runtime.groupPhotoGateway
     internal val sessionInvalidator: SessionInvalidator get() = runtime.sessionInvalidator
@@ -62,52 +42,49 @@ internal class AccessViewModel private constructor(
         AccessCoreState(authObserved, authentication, session, selection, administration)
     }
 
-    val state: StateFlow<AccessUiState> = combine(
-        coreState,
-        runtime.inviteToolState,
-        routeState,
-    ) { core, invite, route ->
-        AccessUiState(
-            authObserved = core.authObserved,
-            authentication = core.authentication,
-            session = core.session,
-            selection = core.selection,
-            administration = core.administration,
-            page = route.page,
-            createName = route.createName,
-            createTimeZone = route.createTimeZone,
-            createValidationAttempted = route.createValidationAttempted,
-            createFlowKey = route.createRequestId,
-            settingsName = route.settingsName,
-            settingsTimeZone = route.settingsTimeZone,
-            invite = invite,
-            showLogoutConfirmation = route.showLogoutConfirmation,
-            showExpireConfirmation = route.showExpireConfirmation,
-        )
-    }.stateIn(
-        scope = scope,
-        started = SharingStarted.Eagerly,
-        initialValue = initialState(),
-    )
-
     init {
+        update { initialState() }
+        combine(
+            coreState,
+            runtime.inviteToolState,
+            routeState,
+        ) { core, invite, route ->
+            AccessUiState(
+                authObserved = core.authObserved,
+                authentication = core.authentication,
+                session = core.session,
+                selection = core.selection,
+                administration = core.administration,
+                page = route.page,
+                createName = route.createName,
+                createTimeZone = route.createTimeZone,
+                createValidationAttempted = route.createValidationAttempted,
+                createFlowKey = route.createRequestId,
+                settingsName = route.settingsName,
+                settingsTimeZone = route.settingsTimeZone,
+                invite = invite,
+                showLogoutConfirmation = route.showLogoutConfirmation,
+                showExpireConfirmation = route.showExpireConfirmation,
+            )
+        }.onEach { projected -> update { projected } }.launchIn(viewModelScope)
+
         runtime.sessionState.onEach { session ->
             if (session == SessionAccessState.SignedOut) {
                 updateRoute { copy(page = AccessPage.CONTEXT, showLogoutConfirmation = false) }
             }
-        }.launchIn(scope)
+        }.launchIn(viewModelScope)
         runtime.selectionState.onEach { selection ->
             if (selection is GroupSelectionState.Selected) updateRoute { copy(page = AccessPage.CONTEXT) }
-        }.launchIn(scope)
+        }.launchIn(viewModelScope)
         runtime.effects.onEach { effect ->
             if (effect is AccessOrchestratorEffect.OpenAttendanceGame) {
-                effectChannel.trySend(AccessUiEffect.OpenAttendanceGame(effect.gameId))
+                emit(AccessUiEffect.OpenAttendanceGame(effect.gameId))
             }
-        }.launchIn(scope)
+        }.launchIn(viewModelScope)
         runtime.onIntent(AccessRuntimeIntent.Start)
     }
 
-    fun onIntent(intent: AccessIntent) {
+    override fun onIntent(intent: AccessIntent) {
         when (intent) {
             is AccessIntent.Authentication -> runtime.onIntent(AccessRuntimeIntent.Authentication(intent.intent))
             is AccessIntent.Session -> runtime.onIntent(AccessRuntimeIntent.Session(intent.intent))
@@ -134,7 +111,7 @@ internal class AccessViewModel private constructor(
             AccessIntent.GenerateInvite,
             AccessIntent.RetryInvite,
             -> rotateInvite()
-            is AccessIntent.ShareInvite -> effectChannel.trySend(AccessUiEffect.RequestShare(intent.url))
+            is AccessIntent.ShareInvite -> emit(AccessUiEffect.RequestShare(intent.url))
             is AccessIntent.ShareFinished -> runtime.onIntent(AccessRuntimeIntent.ShareFinished(intent.successful))
             AccessIntent.RequestExpireInvite -> updateRoute { copy(showExpireConfirmation = true) }
             AccessIntent.ConfirmExpireInvite -> confirmExpireInvite()

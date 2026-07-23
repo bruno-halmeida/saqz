@@ -309,7 +309,7 @@ class AuthenticatedAccessRootTest {
             initialSelection = GroupSelectionState.Selected(group),
             initialAdministration = ownerAdministration,
         )
-        val access = AccessViewModel(runtime, scope)
+        val access = AccessViewModel { runtime }
         try {
             setContent {
                 SaqzTheme {
@@ -629,7 +629,7 @@ class AuthenticatedAccessRootTest {
         val profiles = RecordingProfileGateway()
         val photos = RecordingPhotoGateway()
         val runtime = PhotoRouteRuntime(profiles, photos)
-        val access = AccessViewModel(runtime, scope).also {
+        val access = AccessViewModel { runtime }.also {
             it.onIntent(AccessIntent.OpenCreateGroup)
         }
         val setup = GroupSetupViewModel(
