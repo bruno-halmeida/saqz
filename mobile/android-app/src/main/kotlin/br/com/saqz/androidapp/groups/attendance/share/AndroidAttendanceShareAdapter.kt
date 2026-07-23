@@ -7,7 +7,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.content.FileProvider
-import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
 import br.com.saqz.groups.domain.attendance.share.AttendanceShareImage
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
@@ -30,11 +29,11 @@ internal class AndroidAttendanceShareAdapter(
 ) : NativeAttendanceSharePort {
     private val directory = File(context.cacheDir, "attendance-share")
 
-    override fun shareLink(url: AttendanceLinkUrl, done: (NativeAttendanceShareResult) -> Unit) {
+    override fun shareLink(url: String, done: (NativeAttendanceShareResult) -> Unit) {
         runCatching {
             val send = Intent(Intent.ACTION_SEND)
                 .setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT, url.value)
+                .putExtra(Intent.EXTRA_TEXT, url)
             val chooser = Intent.createChooser(send, null)
             if (context !is android.app.Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooser)

@@ -122,9 +122,9 @@ aggregate Gradle gate:
 backend/gradlew -p backend :features:access:test :features:access:integrationTest --console=plain
 backend/gradlew -p backend :features:groups:test :features:groups:integrationTest --console=plain
 backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain
-mobile/gradlew -p mobile :core:network:allTests --console=plain
-mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain
-mobile/gradlew -p mobile :features:groups:compileAndroidMain :features:groups:allTests --console=plain
+mobile/gradlew -p mobile :core:domain:allTests :core:network:allTests --console=plain
+mobile/gradlew -p mobile :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests --console=plain
+mobile/gradlew -p mobile :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests --console=plain
 ```
 
 Run the complete local gate on macOS:
@@ -141,14 +141,16 @@ scripts/check-ios
 scripts/check-landing
 scripts/check-credentials
 scripts/check-scope
+scripts/check-mobile-boundaries
 scripts/test-scripts
 ```
 
-`scripts/check-gradle` runs credential and scope checks first, then:
+`scripts/check-gradle` runs credential and scope checks first, then the mobile
+domain/data boundary gate, then:
 
 ```bash
 backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
-mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 ```
 
 `scripts/check-ios` runs credential-free simulator tests:
@@ -228,12 +230,48 @@ To add a backend feature:
 and iOS. `mobile/android-app` is the Android launcher. `mobile/ios-app` is the
 Xcode launcher and embeds the one `SaqzMobile` framework.
 
-Authenticated transport lives in `mobile/core/network`; identity/session UI
-lives in `mobile/features/access`, and private group behavior and UI live in
-`mobile/features/groups`. The concrete aggregation directions are
-`compose-app -> features:access -> core:network` and
-`compose-app -> features:groups -> core:network`; no mobile module imports
-backend implementation types.
+Each product feature is split into stable Gradle coordinates with a real
+compile boundary between them:
+
+- `mobile/core/domain` owns the only cross-feature success/failure vocabulary
+  (`SaqzResult`, `SaqzError`, `EmptyResult`, `DataError`, `ValidationDetails`)
+  and genuinely shared identifiers (for example `GroupId`). It depends on the
+  Kotlin standard library only.
+- `mobile/features/access/domain` and `mobile/features/groups/domain` own
+  business-facing models, capability contracts, and feature-specific errors.
+  Each depends only on `:core:domain`.
+- `mobile/features/access/data` and `mobile/features/groups/data` own DTOs,
+  Ktor API implementations, and transport-to-domain mapping for their
+  feature. Each depends on its own feature's domain module, `:core:domain`,
+  `:core:network`, Ktor, and serialization.
+- `mobile/features/access` and `mobile/features/groups` remain the stable
+  presentation coordinates: ViewModels, state machines, Compose UI, and
+  resources. Each depends on its own feature's domain module plus
+  `:core:common`/`:core:design-system`/Compose; neither depends on its data
+  module, `:core:network`, Ktor, or serialization.
+- `mobile/compose-app` is the only module allowed to depend on both a
+  feature's presentation and data modules, so it can bind each domain
+  contract to its Ktor implementation in Koin and translate Access-owned
+  session/membership context into Groups-owned inputs. Feature DTOs and data
+  implementations never enter app state or UI contracts.
+
+Access and Groups never depend on each other at any layer; `compose-app` is
+the only cross-feature coordination point. The concrete aggregation
+directions are:
+
+```text
+compose-app -> features:access -> features:access:domain -> core:domain
+compose-app -> features:access:data -> features:access:domain -> core:network
+compose-app -> features:groups -> features:groups:domain -> core:domain
+compose-app -> features:groups:data -> features:groups:domain -> core:network
+```
+
+Authenticated transport lives in `mobile/core/network` and is consumed only
+by data modules; no domain or presentation module imports it, and no mobile
+module imports backend implementation types.
+`scripts/check-mobile-boundaries` enforces this graph and the equivalent
+Kotlin import boundaries deterministically; run it directly or through
+`scripts/check-gradle`, which invokes it before the mobile Gradle aggregate.
 
 Group photos are private authenticated resources and must never be documented
 or exposed as public URLs. Charges and expenses are manual tracking only: Saqz
@@ -244,12 +282,18 @@ may see only their own charges.
 To add a KMP feature:
 
 1. Create `mobile/features/<feature>/` only when there is real mobile behavior.
-2. Keep feature internals inside that module.
-3. Depend on the feature from `mobile/compose-app`.
+2. Split it into `<feature>/domain` (contracts/models), `<feature>/data`
+   (DTOs/Ktor), and the existing `<feature>` presentation module, following
+   the dependency direction above.
+3. Depend on the feature's presentation and data modules from
+   `mobile/compose-app` only; bind domain contracts to data implementations
+   in the Koin composition root.
 4. Keep iOS consuming only the umbrella framework generated by `compose-app`.
 
-No client source may contain backend business `domain`, `usecase`, or
-`application` packages.
+Client `domain` packages under `mobile/core` and `mobile/features/*/domain`
+are the approved mobile domain layer described above. No client source may
+otherwise contain backend business `domain`, `usecase`, or `application`
+packages, and no mobile module may re-export or depend on backend code.
 
 ## Firebase And Credentials
 

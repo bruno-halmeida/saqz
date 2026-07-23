@@ -159,7 +159,7 @@ class GroupPhotoCoordinator(
         operation = scope.launch {
             when (val result = block()) {
                 is GroupPhotoSelectionResult.Selected -> {
-                    mutableState.value.selection?.source?.let(selections::cleanup)
+                    mutableState.value.selection?.source?.value?.let(selections::cleanup)
                     mutableState.update {
                         it.copy(selection = result.value, crop = GroupPhotoCrop(), stage = GroupPhotoStage.CROPPING)
                     }
@@ -180,7 +180,7 @@ class GroupPhotoCoordinator(
         if (snapshot.stage !in setOf(GroupPhotoStage.IDLE, GroupPhotoStage.CROPPING)) return
         mutableState.update { it.copy(stage = GroupPhotoStage.ENCODING, retryUpload = false, error = null) }
         operation = scope.launch {
-            when (val encoded = encoder.encode(selection.source, snapshot.crop)) {
+            when (val encoded = encoder.encode(selection.source.value, snapshot.crop)) {
                 GroupPhotoEncodingResult.Failed -> mutableState.update {
                     it.copy(stage = GroupPhotoStage.CROPPING, retryUpload = true, error = GroupPhotoError.ENCODING_FAILED)
                 }
@@ -208,7 +208,7 @@ class GroupPhotoCoordinator(
     }
 
     private fun uploadSucceeded(groupId: String, selection: GroupPhotoSelection, receipt: GroupPhotoReceipt) {
-        selections.cleanup(selection.source)
+        selections.cleanup(selection.source.value)
         cache.evict(GroupId(groupId))
         mutableState.update {
             it.copy(
@@ -253,8 +253,8 @@ class GroupPhotoCoordinator(
         operation = null
         val source = mutableState.value.selection?.source
         if (source != null) {
-            encoder.cancel(source)
-            selections.cleanup(source)
+            encoder.cancel(source.value)
+            selections.cleanup(source.value)
         }
         mutableState.update {
             it.copy(selection = null, crop = GroupPhotoCrop(), stage = GroupPhotoStage.IDLE, retryUpload = false, error = null)

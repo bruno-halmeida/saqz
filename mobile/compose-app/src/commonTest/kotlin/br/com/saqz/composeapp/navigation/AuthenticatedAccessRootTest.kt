@@ -681,12 +681,12 @@ class AuthenticatedAccessRootTest {
             return GroupPhotoSelectionResult.Cancelled
         }
 
-        override fun cleanup(source: GroupPhotoSourceHandle) = Unit
+        override fun cleanup(source: String) = Unit
     }
 
     private object ImmediatePhotoEncoder : GroupPhotoEncoderPort {
         override suspend fun encode(
-            source: GroupPhotoSourceHandle,
+            source: String,
             crop: GroupPhotoCrop,
         ): GroupPhotoEncodingResult = GroupPhotoEncodingResult.Encoded(
             EncodedGroupPhoto(
@@ -696,7 +696,7 @@ class AuthenticatedAccessRootTest {
             ),
         )
 
-        override fun cancel(source: GroupPhotoSourceHandle) = Unit
+        override fun cancel(source: String) = Unit
     }
 
     private class RecordingPhotoGateway : GroupPhotoGateway {

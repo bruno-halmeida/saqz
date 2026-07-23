@@ -29,10 +29,10 @@ internal object AndroidSquareCrop {
 
 internal class AndroidPhotoEncoder(private val files: AndroidPhotoFiles) : GroupPhotoEncoderPort {
     override suspend fun encode(
-        source: GroupPhotoSourceHandle,
+        source: String,
         crop: GroupPhotoCrop,
     ): GroupPhotoEncodingResult = withContext(Dispatchers.IO) {
-        val file = files.file(source) ?: return@withContext GroupPhotoEncodingResult.Failed
+        val file = files.file(GroupPhotoSourceHandle(source)) ?: return@withContext GroupPhotoEncodingResult.Failed
         files.metadata(file) ?: return@withContext GroupPhotoEncodingResult.Failed
         val bitmap = BitmapFactory.decodeFile(file.path) ?: return@withContext GroupPhotoEncodingResult.Failed
         try {
@@ -55,7 +55,7 @@ internal class AndroidPhotoEncoder(private val files: AndroidPhotoFiles) : Group
         }
     }
 
-    override fun cancel(source: GroupPhotoSourceHandle) = Unit
+    override fun cancel(source: String) = Unit
 
     private fun encodeBounded(bitmap: Bitmap): ByteArray? {
         for (quality in listOf(92, 85, 75, 65)) {

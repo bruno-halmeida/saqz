@@ -1,22 +1,20 @@
 package br.com.saqz.androidapp
 
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
-import br.com.saqz.groups.model.GroupDraftKey
-import br.com.saqz.groups.model.GroupSetupDraft
-import br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl
 import br.com.saqz.groups.domain.attendance.share.AttendanceShareImage
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
+import br.com.saqz.groups.model.GroupDraftKey
+import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
-import br.com.saqz.groups.port.GroupPhotoCrop
-import br.com.saqz.groups.port.GroupPhotoEncoderPort
-import br.com.saqz.groups.port.GroupPhotoEncodingResult
-import br.com.saqz.groups.port.GroupPhotoPreviewPort
-import br.com.saqz.groups.port.GroupPhotoSelectionPort
-import br.com.saqz.groups.port.GroupPhotoSelectionResult
-import br.com.saqz.groups.port.GroupPhotoSourceHandle
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult
@@ -34,17 +32,17 @@ internal val lifecycleGroupPhotos = GroupPhotoRuntimeDependencies(
     selection = object : GroupPhotoSelectionPort {
         override suspend fun chooseCamera() = GroupPhotoSelectionResult.Failed
         override suspend fun chooseLibrary() = GroupPhotoSelectionResult.Failed
-        override fun cleanup(source: GroupPhotoSourceHandle) = Unit
+        override fun cleanup(source: String) = Unit
     },
     encoder = object : GroupPhotoEncoderPort {
-        override suspend fun encode(source: GroupPhotoSourceHandle, crop: GroupPhotoCrop) = GroupPhotoEncodingResult.Failed
-        override fun cancel(source: GroupPhotoSourceHandle) = Unit
+        override suspend fun encode(source: String, crop: GroupPhotoCrop) = GroupPhotoEncodingResult.Failed
+        override fun cancel(source: String) = Unit
     },
     previews = GroupPhotoPreviewPort { null },
 )
 
 internal object LifecycleAttendanceSharePort : NativeAttendanceSharePort {
-    override fun shareLink(url: AttendanceLinkUrl, done: (NativeAttendanceShareResult) -> Unit) {
+    override fun shareLink(url: String, done: (NativeAttendanceShareResult) -> Unit) {
         done(NativeAttendanceShareResult.Success)
     }
 

@@ -56,8 +56,8 @@ internal class CoilGroupPhotoCache(
         }
     }
 
-    override fun read(preview: GroupPhotoPreviewHandle): ByteArray? {
-        val match = HANDLE_PATTERN.matchEntire(preview.value) ?: return null
+    override fun read(preview: String): ByteArray? {
+        val match = HANDLE_PATTERN.matchEntire(preview) ?: return null
         val key = match.groupValues[1]
         val expectedVersion = match.groupValues[2]
         val snapshot = diskCache.openSnapshot(key) ?: return null

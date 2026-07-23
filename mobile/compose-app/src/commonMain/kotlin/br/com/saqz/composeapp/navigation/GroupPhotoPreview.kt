@@ -33,7 +33,7 @@ internal fun GroupPhotoPreview(
     LaunchedEffect(handle, previews) {
         state = GroupPhotoRenderState.LOADING
         bytes = withContext(Dispatchers.Default) {
-            runCatching { previews.read(handle) }.getOrNull()
+            runCatching { previews.read(handle.value) }.getOrNull()
         }
         if (bytes == null) state = GroupPhotoRenderState.FAILURE
     }

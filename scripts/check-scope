@@ -18,7 +18,7 @@ tracked_files() {
 }
 
 tracked_prod_files() {
-    tracked_files | grep -Ev '(^\.specs/|^AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/(test|androidTest|commonTest|iosTest|nativeTest)/|/SaqzIOSTests/|/SaqzIOSUITests/)' || true
+    tracked_files | grep -Ev '(^\.specs/|^AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/(test|androidTest|commonTest|iosTest|nativeTest)/|/SaqzIOSTests/|/SaqzIOSUITests/|/detekt-baseline\.xml$)' || true
 }
 
 tracked_client_prod_files() {
@@ -106,7 +106,7 @@ reject_matches 'web ui target found' \
     'wasmJs|(^|[^A-Za-z.])js[[:space:]]*[({]|org\.jetbrains\.compose\.web' \
     "$build_files"
 
-extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system|network)/|^mobile/features/(access|groups)/' || true)
+extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system|domain|network)/|^mobile/features/(access|groups)/' || true)
 [ -z "$extra_ui_paths" ] || {
     printf '%s\n' "$extra_ui_paths" >&2
     fail 'extra client UI source path found'
@@ -122,8 +122,13 @@ reject_matches 'cross-workspace Gradle coupling found' \
 reject_matches 'client build depends on backend workspace' \
     'backend/|br\.com\.saqz\.identity|br\.com\.saqz\.sharedkernel' \
     "$(tracked_files | grep -E '^mobile/.*(\.gradle\.kts|\.toml|\.kt|\.swift)$' || true)"
-reject_paths 'client domain or application source segment found' \
-    '^(mobile/.*/src|mobile/ios-app/SaqzIOS)/.*/(domain|usecase|application)(/|$)'
+domain_or_application_paths=$(tracked_files |
+    grep -E '^(mobile/.*/src|mobile/ios-app/SaqzIOS)/.*/(domain|usecase|application)(/|$)' |
+    grep -Ev '^mobile/(core/domain|features/(access|groups)/domain)/src/' || true)
+[ -z "$domain_or_application_paths" ] || {
+    printf '%s\n' "$domain_or_application_paths" >&2
+    fail 'client domain or application source segment found'
+}
 
 feature_modules=$(find "$repository_root/backend/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')
 case "$feature_modules" in

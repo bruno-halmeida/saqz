@@ -141,7 +141,7 @@ bruno
 backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
 mobile-boundaries
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
@@ -185,7 +185,7 @@ make_repo "$happy"
 ) >/dev/null
 happy_log="$happy/repo/invocations.log"
 
-required_suites=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
+required_suites=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
 
 # exactInventory: the mobile invocation lists exactly the required suites.
 [ "$(mobile_line "$happy_log")" = "$required_suites" ] || {
@@ -288,7 +288,7 @@ adb_position=$(grep -n '^adb ' "$happy_log" | cut -d: -f1)
 count=$((count + 1)); printf 'ok %d - backendAccessBeforeAdb\n' "$count"
 
 case " $(mobile_line "$happy_log") " in
-    *' :core:network:allTests :features:access:compileAndroidMain :features:access:allTests '*) ;;
+    *' :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests '*) ;;
     *) printf 'mobile access inventory missing or out of order\n' >&2; exit 1 ;;
 esac
 count=$((count + 1)); printf 'ok %d - mobileAccessInventory\n' "$count"
@@ -313,7 +313,7 @@ esac
 count=$((count + 1)); printf 'ok %d - backendGroupsInventory\n' "$count"
 
 case " $(mobile_line "$happy_log") " in
-    *' :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests '*) ;;
+    *' :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests '*) ;;
     *) printf 'mobile Groups inventory missing or out of order\n' >&2; exit 1 ;;
 esac
 count=$((count + 1)); printf 'ok %d - mobileGroupsInventory\n' "$count"
@@ -323,4 +323,4 @@ fail_case groups-integration-failure '' env FAIL_TASK=:features:groups:integrati
 fail_case groups-mobile-compile-failure '' env FAIL_TASK=:features:groups:compileAndroidMain
 fail_case groups-mobile-tests-failure '' env FAIL_TASK=:features:groups:allTests
 
-[ "$count" -eq 44 ]
+[ "$count" -eq 49 ]

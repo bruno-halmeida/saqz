@@ -6,15 +6,19 @@ import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
 import kotlin.jvm.JvmInline
 
-@JvmInline
-value class GroupPhotoSourceHandle(val value: String) {
+// SPEC_DEVIATION: source/preview handles are data classes, not @JvmInline value classes.
+// Reason: GroupPhotoSelection (below) is constructed by the native Swift photo adapter and
+// returned into Kotlin. Kotlin/Native's Objective-C export erases value-class members to an
+// opaque `id`, so Swift cannot construct a model whose fields are value classes. Data classes
+// export as real Objective-C types with initializers Swift can call. Value-class semantics are
+// not needed for these opaque provider handles.
+data class GroupPhotoSourceHandle(val value: String) {
     init {
         require(value.isNotBlank())
     }
 }
 
-@JvmInline
-value class GroupPhotoPreviewHandle(val value: String) {
+data class GroupPhotoPreviewHandle(val value: String) {
     init {
         require(value.isNotBlank())
     }
@@ -132,23 +136,27 @@ sealed interface GroupPhotoEncodingResult {
     data object Failed : GroupPhotoEncodingResult
 }
 
+// These ports are implemented by native (Swift/Android) adapters and exchange raw String
+// identifiers at the boundary; Kotlin domain code wraps them in GroupPhotoSourceHandle /
+// GroupPhotoPreviewHandle. Keeping the FFI signature primitive avoids leaking domain value
+// objects across the native boundary and keeps the exported Objective-C surface unambiguous.
 interface GroupPhotoSelectionPort {
     suspend fun chooseCamera(): GroupPhotoSelectionResult
     suspend fun chooseLibrary(): GroupPhotoSelectionResult
-    fun cleanup(source: GroupPhotoSourceHandle)
+    fun cleanup(source: String)
 }
 
 interface GroupPhotoEncoderPort {
     suspend fun encode(
-        source: GroupPhotoSourceHandle,
+        source: String,
         crop: GroupPhotoCrop,
     ): GroupPhotoEncodingResult
 
-    fun cancel(source: GroupPhotoSourceHandle)
+    fun cancel(source: String)
 }
 
 fun interface GroupPhotoPreviewPort {
-    fun read(preview: GroupPhotoPreviewHandle): ByteArray?
+    fun read(preview: String): ByteArray?
 }
 
 data class CachedGroupPhoto(

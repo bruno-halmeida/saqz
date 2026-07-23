@@ -197,7 +197,7 @@ enum IOSLocalAccessComposition {
 }
 
 @MainActor
-final class IOSAttendanceShareAdapter: @preconcurrency GroupAttendanceSharePort {
+final class IOSAttendanceShareAdapter: @preconcurrency NativeAttendanceSharePort {
     private let presenter: () -> UIViewController?
     private let directory: URL
 
@@ -210,22 +210,22 @@ final class IOSAttendanceShareAdapter: @preconcurrency GroupAttendanceSharePort 
         self.directory = directory
     }
 
-    func shareLink(url: String, done: GroupResultCallback) {
+    func shareLink(url: String, done: @escaping (any NativeAttendanceShareResult) -> Void) {
         do {
             try present(items: [url])
-            done.complete(result____: GroupOperationResultSuccess.shared)
+            done(NativeAttendanceShareResultSuccess.shared)
         } catch {
-            done.complete(result____: GroupOperationResultFailure(code: .unknown))
+            done(NativeAttendanceShareResultFailure.shared)
         }
     }
 
-    func shareImage(image: AttendanceShareImageModel, done: GroupResultCallback) {
+    func shareImage(image: AttendanceShareImage, done: @escaping (any NativeAttendanceShareResult) -> Void) {
         do {
             let file = try render(image)
             try present(items: [file])
-            done.complete(result____: GroupOperationResultSuccess.shared)
+            done(NativeAttendanceShareResultSuccess.shared)
         } catch {
-            done.complete(result____: GroupOperationResultFailure(code: .unknown))
+            done(NativeAttendanceShareResultFailure.shared)
         }
     }
 
@@ -235,7 +235,7 @@ final class IOSAttendanceShareAdapter: @preconcurrency GroupAttendanceSharePort 
         presenter.present(controller, animated: true)
     }
 
-    private func render(_ image: AttendanceShareImageModel) throws -> URL {
+    private func render(_ image: AttendanceShareImage) throws -> URL {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let width: CGFloat = 1080
         let rowHeight: CGFloat = 56

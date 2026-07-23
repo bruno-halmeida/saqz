@@ -50,9 +50,14 @@ fi
     :core:common:allTests \
     :core:design-system:allTests \
     :core:design-system:bundleAndroidMainAar \
+    :core:domain:allTests \
     :core:network:allTests \
+    :features:access:domain:allTests \
+    :features:access:data:allTests \
     :features:access:compileAndroidMain \
     :features:access:allTests \
+    :features:groups:domain:allTests \
+    :features:groups:data:allTests \
     :features:groups:compileAndroidMain \
     :features:groups:allTests \
     :compose-app:allTests \

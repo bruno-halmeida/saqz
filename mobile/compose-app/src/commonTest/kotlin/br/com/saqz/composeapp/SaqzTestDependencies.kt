@@ -33,7 +33,6 @@ import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
-import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
@@ -127,19 +126,19 @@ private object TestSharePort : NativeSharePort {
 }
 
 private object TestAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {
-    override fun shareLink(url: br.com.saqz.groups.domain.attendance.share.AttendanceLinkUrl, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
+    override fun shareLink(url: String, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
     override fun shareImage(image: br.com.saqz.groups.domain.attendance.share.AttendanceShareImage, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
 }
 
 private object TestGroupPhotoSelectionPort : GroupPhotoSelectionPort {
     override suspend fun chooseCamera() = GroupPhotoSelectionResult.Failed
     override suspend fun chooseLibrary() = GroupPhotoSelectionResult.Failed
-    override fun cleanup(source: GroupPhotoSourceHandle) = Unit
+    override fun cleanup(source: String) = Unit
 }
 
 private object TestGroupPhotoEncoderPort : GroupPhotoEncoderPort {
-    override suspend fun encode(source: GroupPhotoSourceHandle, crop: GroupPhotoCrop) = GroupPhotoEncodingResult.Failed
-    override fun cancel(source: GroupPhotoSourceHandle) = Unit
+    override suspend fun encode(source: String, crop: GroupPhotoCrop) = GroupPhotoEncodingResult.Failed
+    override fun cancel(source: String) = Unit
 }
 
 private object TestGroupLinkPort : NativeGroupLinkPort {

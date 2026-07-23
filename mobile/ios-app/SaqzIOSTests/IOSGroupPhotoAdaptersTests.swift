@@ -40,19 +40,19 @@ final class IOSGroupPhotoAdaptersTests: XCTestCase {
     }
     func testPreviewReaderReturnsOnlyPrivateSourceBytes() throws {
         let fixture = try filesFixture(); let expected = Data([1, 2, 3]); let url = try fixture.files.store(expected)
-        let bytes = IOSPhotoPreviewAdapter(files: fixture.files).read(preview: GroupPhotoPreviewHandle(value: url.lastPathComponent))
+        let bytes = IOSPhotoPreviewAdapter(files: fixture.files).read(preview: url.lastPathComponent)
         let actual = bytes.map { array in
             Data((0..<array.size).map { index in UInt8(bitPattern: array.get(index: index)) })
         }
         XCTAssertEqual(actual, expected)
-        XCTAssertNil(IOSPhotoPreviewAdapter(files: fixture.files).read(preview: GroupPhotoPreviewHandle(value: "missing.img")))
+        XCTAssertNil(IOSPhotoPreviewAdapter(files: fixture.files).read(preview: "missing.img"))
     }
 
     func testEncoderProducesBoundedStaticSquareJPEG() throws {
         let fixture = try filesFixture(); let renderer = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 200))
         let data = renderer.jpegData(withCompressionQuality: 1) { context in UIColor.red.setFill(); context.fill(CGRect(x: 0, y: 0, width: 400, height: 200)) }
         let url = try fixture.files.store(data); let expectation = expectation(description: "encoded")
-        IOSPhotoEncoderAdapter(files: fixture.files).encode(source: fixture.files.handle(url), crop: GroupPhotoCrop(centerX: 0.5, centerY: 0.5, zoom: 1)) { result, error in
+        IOSPhotoEncoderAdapter(files: fixture.files).encode(source: fixture.files.handle(url).value, crop: GroupPhotoCrop(centerX: 0.5, centerY: 0.5, zoom: 1)) { result, error in
             XCTAssertNil(error); let encoded = result as? GroupPhotoEncodingResultEncoded
             XCTAssertNotNil(encoded); XCTAssertLessThanOrEqual(encoded?.value.contentLength ?? .max, Int64(IOSPhotoFiles.maximumBytes))
             if let bytes = encoded?.value.source.read() {

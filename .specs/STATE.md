@@ -245,11 +245,11 @@
 ## Handoff
 
 - **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/`
-- **Phase / Task**: Execute — Batches 1–5 complete (T01–T30); final Batch 6 covers finance, integration and verification (T31–T37).
-- **Completed**: Specify, Discuss and Design; task authoring T01–T37.
-- **In-progress**: Final Batch 6 (T31–T37) ready to start with one worker; no parallel execution.
-- **Next step**: Execute T31–T36 with focused gates, then run `rtk scripts/check-all` once in T37 and perform independent verification. Preserve unrelated concurrent commits.
+- **Phase / Task**: Execute — Batch 6 in progress. T31–T35 complete (T35 committed `d68dc02`); T36–T37 remain.
+- **Completed**: Specify, Discuss and Design; task authoring T01–T37; T01–T35 implemented with focused gates green.
+- **In-progress**: T36 (deterministic mobile boundary architecture gate — `scripts/check-mobile-boundaries` + negative scratch tests + wiring into `scripts/check-gradle`) not yet started.
+- **Next step**: Implement T36, then T37 (docs update + zero-leakage scans + the single `rtk scripts/check-all` aggregate + automatic Verifier dispatch). Preserve unrelated concurrent commits.
 - **Blockers**: none.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/mobile-domain-data-boundaries/spec.md`, `design.md`, `tasks.md`.
+- **Uncommitted files**: none (T35 committed; worktree clean apart from this STATE.md edit).
 - **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending; mobile-solid-refactor-wave-2 remains incomplete and must not be silently overwritten or mixed into this feature's commits.
 - **Branch**: main

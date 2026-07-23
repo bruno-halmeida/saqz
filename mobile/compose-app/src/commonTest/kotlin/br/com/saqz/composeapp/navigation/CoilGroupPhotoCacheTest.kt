@@ -36,7 +36,7 @@ class CoilGroupPhotoCacheTest {
         assertNotNull(written)
         assertEquals("photo-etag", cached?.version?.value)
         assertEquals(written.preview, cached?.preview)
-        assertContentEquals(bytes, cache.read(written.preview))
+        assertContentEquals(bytes, cache.read(written.preview.value))
         assertNotEquals("group-1", written.preview.value)
     }
 
@@ -48,9 +48,9 @@ class CoilGroupPhotoCacheTest {
         assertNotNull(old)
         assertNotNull(latest)
         assertNotEquals(latest.preview, old.preview)
-        assertNull(cache.read(old.preview))
+        assertNull(cache.read(old.preview.value))
         assertEquals("latest", cache.read(GroupId("group-1"))?.version?.value)
-        assertContentEquals(byteArrayOf(9, 8), cache.read(latest.preview))
+        assertContentEquals(byteArrayOf(9, 8), cache.read(latest.preview.value))
     }
 
     @Test
@@ -61,9 +61,9 @@ class CoilGroupPhotoCacheTest {
         cache.evict(GroupId("group-1"))
 
         assertNull(cache.read(GroupId("group-1")))
-        assertNull(first?.preview?.let { cache.read(it) })
+        assertNull(first?.preview?.value?.let { cache.read(it) })
         assertEquals("two", cache.read(GroupId("group-2"))?.version?.value)
-        assertContentEquals(byteArrayOf(2), second?.preview?.let { cache.read(it) })
+        assertContentEquals(byteArrayOf(2), second?.preview?.value?.let { cache.read(it) })
     }
 
     @Test
@@ -76,8 +76,8 @@ class CoilGroupPhotoCacheTest {
                 GroupPhotoVersionToken("etag"),
             ),
         )
-        assertNull(cache.read(GroupPhotoPreviewHandle("../group-photo-secret")))
-        assertNull(cache.read(GroupPhotoPreviewHandle("coil-group-photo:../secret")))
+        assertNull(cache.read(GroupPhotoPreviewHandle("../group-photo-secret").value))
+        assertNull(cache.read(GroupPhotoPreviewHandle("coil-group-photo:../secret").value))
     }
 
     @Test

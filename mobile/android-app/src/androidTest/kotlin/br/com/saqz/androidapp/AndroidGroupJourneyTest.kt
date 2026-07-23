@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
-import br.com.saqz.groups.data.GroupProfileStatusDto
-import br.com.saqz.groups.data.GroupRoleDto
+import br.com.saqz.groups.domain.group.GroupProfileStatus
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupFinanceVisibility
 import br.com.saqz.groups.presentation.GroupRouteAction
 import br.com.saqz.groups.presentation.GroupRoutePolicy
@@ -29,14 +29,14 @@ class AndroidGroupJourneyTest {
     @After fun clearAfter() { AndroidGroupDraftAdapters.create(context).store.clearAll() }
 
     @Test fun completeOwnerSeesPeopleGamesOrganizerFinanceAndCanMutate() {
-        val access = GroupRoutePolicy.evaluate(GroupRoleDto.OWNER, GroupProfileStatusDto.COMPLETE)
+        val access = GroupRoutePolicy.evaluate(GroupRole.OWNER, GroupProfileStatus.COMPLETE)
         assertTrue(access.peopleVisible); assertTrue(access.gamesVisible)
         assertEquals(GroupFinanceVisibility.ORGANIZER, access.financeVisibility)
         assertTrue(access.operationsMutable); assertFalse(access.profileCompletionVisible)
     }
 
     @Test fun completeAdminHasExactOrganizerSemanticOrder() {
-        val access = GroupRoutePolicy.evaluate(GroupRoleDto.ADMIN, GroupProfileStatusDto.COMPLETE)
+        val access = GroupRoutePolicy.evaluate(GroupRole.ADMIN, GroupProfileStatus.COMPLETE)
         assertEquals(
             listOf(GroupRouteAction.PEOPLE, GroupRouteAction.GAMES, GroupRouteAction.FINANCE),
             access.semanticActions,
@@ -45,28 +45,28 @@ class AndroidGroupJourneyTest {
     }
 
     @Test fun athleteSeesGamesAndOwnChargesWithoutPeopleOrMutations() {
-        val access = GroupRoutePolicy.evaluate(GroupRoleDto.ATHLETE, GroupProfileStatusDto.COMPLETE)
+        val access = GroupRoutePolicy.evaluate(GroupRole.ATHLETE, GroupProfileStatus.COMPLETE)
         assertFalse(access.peopleVisible); assertTrue(access.gamesVisible)
         assertEquals(GroupFinanceVisibility.OWN_CHARGES, access.financeVisibility)
         assertFalse(access.operationsMutable); assertFalse(access.profileCompletionVisible)
     }
 
     @Test fun incompleteOwnerStartsWithCompletionThenReadableRoutesInOrder() {
-        val access = GroupRoutePolicy.evaluate(GroupRoleDto.OWNER, GroupProfileStatusDto.INCOMPLETE)
+        val access = GroupRoutePolicy.evaluate(GroupRole.OWNER, GroupProfileStatus.INCOMPLETE)
         assertEquals(GroupRouteAction.COMPLETE_PROFILE, access.semanticActions.first())
         assertTrue(access.profileCompletionVisible); assertFalse(access.operationsMutable)
         assertTrue(access.gamesVisible)
     }
 
     @Test fun incompleteAdminCannotMutateGameAttendanceOrFinance() {
-        val access = GroupRoutePolicy.evaluate(GroupRoleDto.ADMIN, GroupProfileStatusDto.INCOMPLETE)
+        val access = GroupRoutePolicy.evaluate(GroupRole.ADMIN, GroupProfileStatus.INCOMPLETE)
         assertTrue(access.profileCompletionVisible)
         assertFalse(access.operationsMutable)
         assertEquals(GroupFinanceVisibility.ORGANIZER, access.financeVisibility)
     }
 
     @Test fun incompleteAthleteHasNoCompletionEditorAndOnlyOwnFinance() {
-        val access = GroupRoutePolicy.evaluate(GroupRoleDto.ATHLETE, GroupProfileStatusDto.INCOMPLETE)
+        val access = GroupRoutePolicy.evaluate(GroupRole.ATHLETE, GroupProfileStatus.INCOMPLETE)
         assertFalse(access.profileCompletionVisible); assertFalse(access.operationsMutable)
         assertEquals(listOf(GroupRouteAction.GAMES, GroupRouteAction.FINANCE), access.semanticActions)
         assertEquals(GroupFinanceVisibility.OWN_CHARGES, access.financeVisibility)

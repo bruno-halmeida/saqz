@@ -6,9 +6,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import br.com.saqz.androidapp.groups.photo.AndroidPhotoEncoder
 import br.com.saqz.androidapp.groups.photo.AndroidPhotoFiles
 import br.com.saqz.androidapp.groups.photo.AndroidPhotoPreviewAdapter
-import br.com.saqz.groups.port.GroupPhotoCrop
-import br.com.saqz.groups.port.GroupPhotoEncodingResult
-import br.com.saqz.groups.port.GroupPhotoPreviewHandle
+import br.com.saqz.groups.domain.photo.GroupPhotoCrop
+import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -50,10 +50,10 @@ class AndroidGroupPhotoAdapterTest {
         val expected = byteArrayOf(1, 2, 3)
         val file = files.createSource().apply { writeBytes(expected) }
 
-        val actual = AndroidPhotoPreviewAdapter(files).read(GroupPhotoPreviewHandle(file.name))
+        val actual = AndroidPhotoPreviewAdapter(files).read(GroupPhotoPreviewHandle(file.name).value)
 
         assertTrue(expected.contentEquals(actual))
-        assertEquals(null, AndroidPhotoPreviewAdapter(files).read(GroupPhotoPreviewHandle("missing.img")))
+        assertEquals(null, AndroidPhotoPreviewAdapter(files).read(GroupPhotoPreviewHandle("missing.img").value))
     }
 
     @Test fun encoderProducesBoundedStaticSquareJpeg() = runBlocking {
@@ -62,7 +62,7 @@ class AndroidGroupPhotoAdapterTest {
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
 
-        val result = AndroidPhotoEncoder(files).encode(files.handle(file), GroupPhotoCrop())
+        val result = AndroidPhotoEncoder(files).encode(files.handle(file).value, GroupPhotoCrop())
 
         val encoded = (result as GroupPhotoEncodingResult.Encoded).value
         assertEquals("image/jpeg", encoded.mediaType.value)

@@ -110,8 +110,8 @@ final class IOSPhotoPreviewAdapter: GroupPhotoPreviewPort {
     private let files: IOSPhotoFiles
     init(files: IOSPhotoFiles) { self.files = files }
 
-    func read(preview: GroupPhotoPreviewHandle) -> KotlinByteArray? {
-        let source = GroupPhotoSourceHandle(value: preview.value)
+    func read(preview: String) -> KotlinByteArray? {
+        let source = GroupPhotoSourceHandle(value: preview)
         guard let url = files.file(source),
               let data = try? Data(contentsOf: url, options: .mappedIfSafe),
               !data.isEmpty,
@@ -126,15 +126,16 @@ final class IOSPhotoPreviewAdapter: GroupPhotoPreviewPort {
 final class IOSPhotoEncoderAdapter: GroupPhotoEncoderPort {
     private let files: IOSPhotoFiles
     init(files: IOSPhotoFiles) { self.files = files }
-    func cancel(source: GroupPhotoSourceHandle) {}
+    func cancel(source: String) {}
 
     func encode(
-        source: GroupPhotoSourceHandle,
+        source: String,
         crop: GroupPhotoCrop,
         completionHandler: @escaping (GroupPhotoEncodingResult?, Error?) -> Void
     ) {
+        let handle = GroupPhotoSourceHandle(value: source)
         DispatchQueue.global(qos: .userInitiated).async { [files] in
-            guard let url = files.file(source), files.metadata(url) != nil,
+            guard let url = files.file(handle), files.metadata(url) != nil,
                   let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil),
                   let image = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, [
                     kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -210,7 +211,7 @@ final class IOSPhotoSelectionAdapter: NSObject, @preconcurrency GroupPhotoSelect
         root.present(picker, animated: true)
     }
 
-    func cleanup(source: GroupPhotoSourceHandle) { files.cleanup(source) }
+    func cleanup(source: String) { files.cleanup(GroupPhotoSourceHandle(value: source)) }
 
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true); presented = nil

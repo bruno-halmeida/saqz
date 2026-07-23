@@ -39,12 +39,13 @@ require 'scripts/check-ios' 'iOS gate'
 require 'scripts/check-credentials' 'credential gate'
 require 'scripts/check-scope' 'scope gate'
 require 'scripts/check-bruno' 'Bruno contract gate'
+require 'scripts/check-mobile-boundaries' 'mobile boundary gate'
 ok 'native gate commands'
 
 require 'backend/gradlew -p backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain' 'backend Gradle command'
 ok 'backend Gradle command'
 
-require 'mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
+require 'mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain' 'mobile Gradle command'
 
 require ':core:common:allTests' 'core common suite'
 ok 'core common suite documented'
@@ -94,7 +95,7 @@ require 'Add architecture rules' 'backend architecture tests'
 ok 'backend feature procedure'
 
 require 'Create `mobile/features/<feature>/`' 'KMP feature module'
-require 'Depend on the feature from `mobile/compose-app`' 'KMP aggregation'
+require "Depend on the feature's presentation and data modules from" 'KMP aggregation'
 require 'umbrella framework' 'iOS umbrella'
 ok 'KMP umbrella procedure'
 
@@ -127,7 +128,8 @@ ok 'backend access architecture inventory'
 
 require '`mobile/core/network`' 'mobile network module'
 require '`mobile/features/access`' 'mobile access module'
-require 'compose-app -> features:access -> core:network' 'mobile access dependency direction'
+require 'compose-app -> features:access -> features:access:domain -> core:domain' 'mobile access presentation dependency direction'
+require 'compose-app -> features:access:data -> features:access:domain -> core:network' 'mobile access data dependency direction'
 ok 'mobile access architecture inventory'
 
 require '`backend/features/groups`' 'backend Groups module'
@@ -135,7 +137,8 @@ require 'bootstrap -> features:groups -> shared-kernel' 'backend Groups dependen
 ok 'backend Groups architecture inventory'
 
 require '`mobile/features/groups`' 'mobile Groups module'
-require 'compose-app -> features:groups -> core:network' 'mobile Groups dependency direction'
+require 'compose-app -> features:groups -> features:groups:domain -> core:domain' 'mobile Groups presentation dependency direction'
+require 'compose-app -> features:groups:data -> features:groups:domain -> core:network' 'mobile Groups data dependency direction'
 ok 'mobile Groups architecture inventory'
 
 require 'Docker.*PostgreSQL 16.*Testcontainers' 'disposable PostgreSQL prerequisite'
@@ -159,11 +162,11 @@ require 'backend/gradlew -p backend :features:groups:test :features:groups:integ
 require 'backend/gradlew -p backend :bootstrap:test :bootstrap:emulatorTest --console=plain' 'focused backend HTTP and emulator suites'
 ok 'focused backend access commands'
 
-require 'mobile/gradlew -p mobile :core:network:allTests --console=plain' 'focused mobile network suite'
-require 'mobile/gradlew -p mobile :features:access:compileAndroidMain :features:access:allTests --console=plain' 'focused mobile access suites'
+require 'mobile/gradlew -p mobile :core:domain:allTests :core:network:allTests --console=plain' 'focused mobile network suite'
+require 'mobile/gradlew -p mobile :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests --console=plain' 'focused mobile access suites'
 ok 'focused mobile access commands'
 
-require 'mobile/gradlew -p mobile :features:groups:compileAndroidMain :features:groups:allTests --console=plain' 'focused mobile Groups suites'
+require 'mobile/gradlew -p mobile :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests --console=plain' 'focused mobile Groups suites'
 ok 'focused Groups commands'
 
 require 'Group photos are private authenticated resources' 'private group photos'

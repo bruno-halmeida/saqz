@@ -64,7 +64,11 @@ sealed interface NativeAttendanceShareResult {
     data object Failure : NativeAttendanceShareResult
 }
 
+// This port is implemented by native (Swift/Android) share adapters and exchanges the raw
+// link String at the boundary; gateway/domain callers use AttendanceLinkUrl end-to-end and
+// unwrap it here. Keeping the FFI signature primitive avoids leaking domain value objects
+// across the native boundary and keeps the exported Objective-C surface unambiguous.
 interface NativeAttendanceSharePort {
-    fun shareLink(url: AttendanceLinkUrl, done: (NativeAttendanceShareResult) -> Unit)
+    fun shareLink(url: String, done: (NativeAttendanceShareResult) -> Unit)
     fun shareImage(image: AttendanceShareImage, done: (NativeAttendanceShareResult) -> Unit)
 }

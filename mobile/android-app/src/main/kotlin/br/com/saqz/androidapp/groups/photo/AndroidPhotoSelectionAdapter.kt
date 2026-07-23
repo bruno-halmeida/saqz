@@ -51,7 +51,7 @@ internal class AndroidPhotoSelectionAdapter(
         }
     }
 
-    override fun cleanup(source: GroupPhotoSourceHandle) = files.remove(source)
+    override fun cleanup(source: String) = files.remove(GroupPhotoSourceHandle(source))
 
     private suspend fun await(kind: AndroidPhotoRequestKind, target: java.io.File? = null, launch: () -> Unit) =
         suspendCancellableCoroutine { next ->

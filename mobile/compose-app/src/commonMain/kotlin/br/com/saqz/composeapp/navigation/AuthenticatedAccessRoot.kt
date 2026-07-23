@@ -290,7 +290,7 @@ internal fun AuthenticatedAccessRoute(
             gameDetailViewModel.effects.collect { effect ->
                 when (effect) {
                     is GameDetailEffect.ShareAttendanceLink ->
-                        dependencies.attendanceShare.shareLink(effect.url) { result ->
+                        dependencies.attendanceShare.shareLink(effect.url.value) { result ->
                             gameDetailViewModel.onIntent(
                                 GameDetailIntent.ReportAttendanceShareResult(
                                     result is NativeAttendanceShareResult.Success,

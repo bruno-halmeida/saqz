@@ -443,7 +443,7 @@ class GroupPhotoCoordinatorTest {
         val cleaned = mutableListOf<GroupPhotoSourceHandle>()
         override suspend fun chooseCamera() = cameraResult.also { cameraCalls++ }
         override suspend fun chooseLibrary() = libraryResult.also { libraryCalls++ }
-        override fun cleanup(source: GroupPhotoSourceHandle) { cleaned += source }
+        override fun cleanup(source: String) { cleaned += GroupPhotoSourceHandle(source) }
     }
 
     private class FakeEncoder : GroupPhotoEncoderPort {
@@ -452,8 +452,8 @@ class GroupPhotoCoordinatorTest {
             EncodedGroupPhoto(GroupPhotoMediaType.JPEG, 3, GroupPhotoByteSource { byteArrayOf(1, 2, 3) }),
         )
         val cancelled = mutableListOf<GroupPhotoSourceHandle>()
-        override suspend fun encode(source: GroupPhotoSourceHandle, crop: GroupPhotoCrop) = result.also { calls++ }
-        override fun cancel(source: GroupPhotoSourceHandle) { cancelled += source }
+        override suspend fun encode(source: String, crop: GroupPhotoCrop) = result.also { calls++ }
+        override fun cancel(source: String) { cancelled += GroupPhotoSourceHandle(source) }
     }
 
     private class FakeGateway : GroupPhotoGateway {
