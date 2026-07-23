@@ -1,0 +1,80 @@
+package br.com.saqz.navigation
+
+import androidx.navigation3.runtime.NavKey
+
+/**
+ * The four retained bottom-nav tabs (TAB-01). `Games`/`GameDetail` live inside the
+ * `GROUPS` stack; they are not a fifth tab (see design.md, "Tabs and mode").
+ */
+enum class ProductTab { HOME, GROUPS, NOTICES, MORE }
+
+/**
+ * Single writer of route state for the four retained tab back stacks.
+ *
+ * Every public method fully applies its mutation before returning, so calls from
+ * the TopBar back button and the system back handler (GROUPNAV-03, BACK-02) go
+ * through the exact same [goBack] code path and observe/produce one consistent
+ * state (STATE-03) -- there is no separate mutation path for either caller.
+ *
+ * This type only implements the pure in-memory command surface: tab selection,
+ * duplicate-safe forward navigation, and the back algorithm. Transient
+ * reconciliation (T08), authorization pruning (T09), and restoration/scope
+ * clearing (T10) are added to this session by later tasks.
+ */
+class NavigationSession(
+    private val stacks: Map<ProductTab, MutableList<NavKey>>,
+    initialTab: ProductTab = ProductTab.HOME,
+) {
+
+    init {
+        require(stacks.keys == ProductTab.entries.toSet()) {
+            "NavigationSession requires exactly one stack per ProductTab"
+        }
+        require(stacks.values.all { it.isNotEmpty() }) {
+            "Every tab stack must start with a root key"
+        }
+    }
+
+    var selectedTab: ProductTab = initialTab
+        private set
+
+    private val activeStack: MutableList<NavKey>
+        get() = stacks.getValue(selectedTab)
+
+    /** WHEN there is no valid previous entry (BACK-03/04), hosts hide TopBar back. */
+    val canGoBack: Boolean
+        get() = activeStack.size > 1 || selectedTab != ProductTab.HOME
+
+    fun stackFor(tab: ProductTab): List<NavKey> = stacks.getValue(tab)
+
+    /** Selecting the current tab is a no-op (TAB-02): it never duplicates its root. */
+    fun selectTab(tab: ProductTab) {
+        if (tab == selectedTab) return
+        selectedTab = tab
+    }
+
+    /** Appends [key] to the active stack unless it is already the active top (STATE-03). */
+    fun push(key: NavKey) {
+        val stack = activeStack
+        if (stack.lastOrNull() == key) return
+        stack.add(key)
+    }
+
+    /**
+     * BACK-04: pops a nested key when the active stack is deeper than its root;
+     * otherwise, at a non-home tab root, selects Início; at the Início root,
+     * returns `false` so the platform/`NavDisplay` handles back.
+     */
+    fun goBack(): Boolean {
+        val stack = activeStack
+        if (stack.size > 1) {
+            stack.removeAt(stack.lastIndex)
+            return true
+        }
+        if (selectedTab != ProductTab.HOME) {
+            selectTab(ProductTab.HOME)
+            return true
+        }
+        return false
+    }
+}
