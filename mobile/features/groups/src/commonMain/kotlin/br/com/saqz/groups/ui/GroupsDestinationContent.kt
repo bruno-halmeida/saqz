@@ -35,6 +35,10 @@ import br.com.saqz.groups.resources.groups_notices_placeholder
 import br.com.saqz.groups.resources.groups_own_charges
 import br.com.saqz.groups.resources.groups_people
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
+import br.com.saqz.groups.ui.group.GroupDetailScreen
+import br.com.saqz.groups.ui.group.GroupLoadError
+import br.com.saqz.groups.ui.group.GroupsListScreen
+import br.com.saqz.groups.ui.group.RoutePage
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
