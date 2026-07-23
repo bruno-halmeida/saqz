@@ -132,14 +132,34 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Wave-2 PASS evidence exists.
-- [ ] Exact paths and test counts replace provisional values.
-- [ ] The post-Wave-2 Groups state-source-to-adapter inventory and exact legacy navigation artifact/removal patterns are pinned for T13 and T25.
-- [ ] G0 passes without production edits.
+- [x] Wave-2 PASS evidence exists.
+- [x] Exact paths and test counts replace provisional values.
+- [x] The post-Wave-2 Groups state-source-to-adapter inventory and exact legacy navigation artifact/removal patterns are pinned for T13 and T25.
+- [x] G0 passes without production edits.
 
 **Tests**: Focused baseline verification; no new production/test code.
 **Gate**: G0.
 **Commit**: `docs(mobile): rebaseline navigation after wave 2`
+
+#### T01 baseline evidence (2026-07-23)
+
+- Wave-2 PASS: `.specs/features/mobile-solid-refactor-wave-2/validation.md` records final `PASS` (Koin bootstrap + manual graph removal), no blocker/high findings.
+- G0 command run verbatim from `mobile/`: `rtk ./gradlew :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests --console=plain` → `BUILD SUCCESSFUL`, no production edits made.
+- **Exact post-Wave-2 test counts (JUnit XML aggregate, this run)**: `features/access` = 156, `features/groups` = 807, `compose-app` = 185. Total = 1148. These are the pre-task floors for every later count-rule check in this feature.
+- **Legacy navigation artifact inventory pinned for T24/T25** (grep of `*.kt`, current tree):
+  - `AccessPage`, `AccessDestination`(`Stack`), `showAppHome`, `handleGroupsIntent`: `compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/{AccessUiState.kt,AccessViewModel.kt,AccessViewModelSupport.kt,AuthenticatedAccessRoot.kt}` (+ tests `AccessViewModelTest.kt`, `AuthenticatedAccessRootTest.kt`).
+  - `GroupsNavigationState`/`GroupsNavigationEffect`: `features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/navigation/{GroupsNavigationState.kt,GroupsNavigationEffect.kt}`.
+  - `GroupsNavigationViewModel`: `compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/navigation/GroupsNavigationViewModel.kt` (+ test `GroupsNavigationViewModelTest.kt`).
+  - `GroupsRouteHost`: `compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/ui/groups/GroupsRouteHost.kt` (+ test `GroupsRouteHostTest.kt`).
+  - `GroupsDestinationContent`: `features/groups/src/commonMain/kotlin/br/com/saqz/groups/ui/GroupsDestinationContent.kt` (co-located `GroupsNavigationChrome.kt`, `GroupsRouteScreens.kt` reused for chrome/screens, not removed).
+  - `AuthenticatedAccessRoot.kt` (735 lines) hosts the manual `AccessRootSnapshot.destination()` computation targeted by T24; `SaqzKoinBootstrapTest.kt` references `GroupsNavigationState`/effect wiring and is an in-scope T25 regression anchor.
+- **Groups content-route state-source inventory pinned for T13** (existing state machines/adapters a T13 route adapter must project from, one adapter type per source — no new sources introduced by this batch):
+  - `GroupSelectionState` (features/groups presentation) — Setup/Selector/Loading/LoadError/GroupHome selection projection (T12 scope).
+  - Group administration/access/photo state surfaced through `AccessViewModel`'s AD-025-deferred panels (Settings/Memberships/Invite/CreateGroup) — remains the single source for those adapters; no duplicate coordinator permitted.
+  - `GameDetailViewModel` (`features/groups/.../games/detail/`) — existing dedicated VM, factory-wrapped in T14, not adapter-projected.
+  - `GroupSetupViewModel` (`features/groups/.../setup/`) — existing dedicated VM, factory-wrapped in T14.
+  - Finance/OwnCharges placeholders — existing `RoutePage` placeholder content + finance role resolver, inert adapter only (T15 scope).
+- No production or test files were edited to produce this baseline; this section is documentation only.
 
 ### T02: Register Navigation Compose 3 and `:navigation`
 
