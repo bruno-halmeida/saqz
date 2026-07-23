@@ -7,18 +7,34 @@ import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.groups.domain.finance.*
 import br.com.saqz.groups.domain.group.GroupRole
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpenseViewModelTest {
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `athlete route is absent and loads no organizer resources or drafts`() = runTest {
-        val fixture = fixture(this, GroupRole.ATHLETE)
+    fun `athlete route is absent and loads no organizer resources or drafts`() = runTest(mainDispatcher) {
+        val fixture = fixture(GroupRole.ATHLETE)
         runCurrent()
         assertFalse(fixture.vm.state.value.routeAvailable)
         assertEquals(0, fixture.api.expenseReads)
@@ -27,8 +43,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `athlete cannot create edit void refresh or retry`() = runTest {
-        val fixture = fixture(this, GroupRole.ATHLETE)
+    fun `athlete cannot create edit void refresh or retry`() = runTest(mainDispatcher) {
+        val fixture = fixture(GroupRole.ATHLETE)
         fixture.vm.onIntent(ExpenseIntent.OpenCreate)
         fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
         fixture.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE))
@@ -42,8 +58,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `owner loads organizer expense list and finance totals`() = runTest {
-        val fixture = fixture(this)
+    fun `owner loads organizer expense list and finance totals`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         assertEquals(listOf(EXPENSE), fixture.vm.state.value.expenses.map { it.id })
         assertEquals(12345, fixture.vm.state.value.totals!!.activeExpenseCents)
@@ -52,8 +68,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `admin has full expense route`() = runTest {
-        val fixture = fixture(this, GroupRole.ADMIN)
+    fun `admin has full expense route`() = runTest(mainDispatcher) {
+        val fixture = fixture(GroupRole.ADMIN)
         runCurrent()
         assertTrue(fixture.vm.state.value.organizer)
         fixture.vm.onIntent(ExpenseIntent.OpenCreate)
@@ -61,24 +77,24 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `matching draft restores schema group resource etag key and form`() = runTest {
+    fun `matching draft restores schema group resource etag key and form`() = runTest(mainDispatcher) {
         val restored = draft(expenseId = EXPENSE, etag = "\"3\"")
-        val fixture = fixture(this, restored = restored)
+        val fixture = fixture(restored = restored)
         runCurrent()
         assertEquals(restored, fixture.vm.state.value.draft)
     }
 
     @Test
-    fun `foreign or old draft is discarded without mutation`() = runTest {
-        val fixture = fixture(this, restored = draft().copy(schemaVersion = 99, groupId = "other"))
+    fun `foreign or old draft is discarded without mutation`() = runTest(mainDispatcher) {
+        val fixture = fixture(restored = draft().copy(schemaVersion = 99, groupId = "other"))
         runCurrent()
         assertNull(fixture.vm.state.value.draft)
         assertTrue(fixture.api.creates.isEmpty())
     }
 
     @Test
-    fun `open create persists empty form with stable command key`() = runTest {
-        val fixture = fixture(this)
+    fun `open create persists empty form with stable command key`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(ExpenseIntent.OpenCreate)
         val draft = fixture.vm.state.value.draft!!
@@ -88,8 +104,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `open edit preserves values resource quoted version and new key`() = runTest {
-        val fixture = fixture(this)
+    fun `open edit preserves values resource quoted version and new key`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
         val draft = fixture.vm.state.value.draft!!
@@ -101,8 +117,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `preset category clears custom value before draft write`() = runTest {
-        val fixture = fixture(this)
+    fun `preset category clears custom value before draft write`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(ExpenseIntent.OpenCreate)
         fixture.vm.onIntent(ExpenseIntent.UpdateForm(valid().copy(category = ExpenseCategory.Other)))
@@ -114,8 +130,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `local validation covers description amount date category custom and notes`() = runTest {
-        val fixture = fixture(this)
+    fun `local validation covers description amount date category custom and notes`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(ExpenseIntent.OpenCreate)
         fixture.vm.onIntent(
@@ -130,8 +146,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `create sends stable key integer cents clears matching draft and refreshes totals`() = runTest {
-        val fixture = fixture(this)
+    fun `create sends stable key integer cents clears matching draft and refreshes totals`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         openValid(fixture)
         val effect = async { fixture.vm.effects.first() }
@@ -149,8 +165,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `double create submit remains one logical request`() = runTest {
-        val fixture = fixture(this)
+    fun `double create submit remains one logical request`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         openValid(fixture)
         fixture.api.gate = CompletableDeferred()
@@ -163,8 +179,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `edit sends quoted ETag without create idempotency field`() = runTest {
-        val fixture = fixture(this)
+    fun `edit sends quoted ETag without create idempotency field`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
         fixture.vm.onIntent(ExpenseIntent.Submit)
@@ -176,8 +192,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `edit conflict preserves draft etag and operation for exact retry`() = runTest {
-        val fixture = fixture(this)
+    fun `edit conflict preserves draft etag and operation for exact retry`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.api.editResult = SaqzResult.Failure(FinanceError.Conflict)
         fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
@@ -192,8 +208,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `void requires explicit confirmation and may be dismissed`() = runTest {
-        val fixture = fixture(this)
+    fun `void requires explicit confirmation and may be dismissed`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE))
         assertEquals(EXPENSE, fixture.vm.state.value.pendingVoid!!.id)
@@ -204,8 +220,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `void preserves quoted version refreshes totals and audit history`() = runTest {
-        val fixture = fixture(this)
+    fun `void preserves quoted version refreshes totals and audit history`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.api.listed = listOf(voided())
         val effect = async { fixture.vm.effects.first() }
@@ -221,8 +237,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `server validation fields remain attached to draft`() = runTest {
-        val fixture = fixture(this)
+    fun `server validation fields remain attached to draft`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         openValid(fixture)
         val fields = mapOf("amountCents" to listOf("is invalid"))
@@ -236,8 +252,8 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun `draft write failure is typed without losing form or key`() = runTest {
-        val fixture = fixture(this)
+    fun `draft write failure is typed without losing form or key`() = runTest(mainDispatcher) {
+        val fixture = fixture()
         runCurrent()
         fixture.store.failWrites = true
         fixture.vm.onIntent(ExpenseIntent.OpenCreate)
@@ -248,7 +264,6 @@ class ExpenseViewModelTest {
     }
 
     private fun fixture(
-        scope: kotlinx.coroutines.CoroutineScope,
         role: GroupRole = GroupRole.OWNER,
         restored: ExpenseDraft? = null,
     ): Fixture {
@@ -259,7 +274,7 @@ class ExpenseViewModelTest {
         } else {
             ExpenseFinanceCapability.Organizer(api)
         }
-        val viewModel = ExpenseViewModel(GROUP, role, capability, store, ExpenseCommandKeyFactory { KEY }, scope)
+        val viewModel = ExpenseViewModel(GROUP, role, capability, store, ExpenseCommandKeyFactory { KEY })
         return Fixture(viewModel, api, store)
     }
 
