@@ -1,8 +1,8 @@
 package br.com.saqz.groups.presentation.finance.charges
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.finance.AthleteFinanceGateway
@@ -15,13 +15,6 @@ import br.com.saqz.groups.domain.finance.MonthlyChargeCommand
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 sealed interface ChargeFinanceCapability {
@@ -37,15 +30,8 @@ class FinanceViewModel(
     private val memberships: GroupMembershipGateway?,
     private val drafts: MonthlyChargeDraftStorePort,
     private val keys: FinanceCommandKeyFactory,
-    testScope: CoroutineScope? = null,
-) : ViewModel() {
+) : MviViewModel<FinanceState, FinanceIntent, FinanceEffect>(FinanceState(GroupId(rawGroupId).value, role)) {
     private val groupId = GroupId(rawGroupId)
-    private val scope = testScope ?: viewModelScope
-    private val mutable = MutableStateFlow(FinanceState(groupId.value, role))
-    val state: StateFlow<FinanceState> = mutable.asStateFlow()
-
-    private val channel = Channel<FinanceEffect>(Channel.BUFFERED)
-    val effects: Flow<FinanceEffect> = channel.receiveAsFlow()
     private var retryOperation: FinanceOperation? = null
 
     private val organizerGateway: OrganizerFinanceGateway?
@@ -56,7 +42,7 @@ class FinanceViewModel(
         load()
     }
 
-    fun onIntent(intent: FinanceIntent) {
+    override fun onIntent(intent: FinanceIntent) {
         when (intent) {
             FinanceIntent.Refresh -> load()
             is FinanceIntent.UpdateMonthly -> updateMonthly(intent)
@@ -76,36 +62,40 @@ class FinanceViewModel(
                         it.schemaVersion == MonthlyChargeDraft.CURRENT_SCHEMA &&
                             it.groupId == groupId.value
                     }
-                    ?.let { mutable.value = mutable.value.copy(monthlyDraft = it) }
+                    ?.let { draft -> update { it.copy(monthlyDraft = draft) } }
                 MonthlyDraftReadResult.Failure -> {
-                    mutable.value = mutable.value.copy(error = FinanceError.DRAFT_UNAVAILABLE)
+                    update { it.copy(error = FinanceError.DRAFT_UNAVAILABLE) }
                 }
             }
         }
     }
 
     private fun load() {
-        if (mutable.value.isMutating) return
-        mutable.value = mutable.value.copy(
-            isLoading = true,
-            error = null,
-            reloadAvailable = false,
-        )
-        scope.launch {
-            if (mutable.value.organizer) loadOrganizer() else loadAthlete()
+        if (state.value.isMutating) return
+        update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                reloadAvailable = false,
+            )
+        }
+        viewModelScope.launch {
+            if (state.value.organizer) loadOrganizer() else loadAthlete()
         }
     }
 
     private suspend fun loadAthlete() {
         when (val result = athlete.ownCharges(groupId)) {
-            is SaqzResult.Success -> mutable.value = mutable.value.copy(
-                charges = result.value.charges,
-                totals = null,
-                members = emptyList(),
-                monthlyDraft = null,
-                isLoading = false,
-                error = null,
-            )
+            is SaqzResult.Success -> update {
+                it.copy(
+                    charges = result.value.charges,
+                    totals = null,
+                    members = emptyList(),
+                    monthlyDraft = null,
+                    isLoading = false,
+                    error = null,
+                )
+            }
             is SaqzResult.Failure -> fail(result.error)
         }
     }
@@ -118,19 +108,21 @@ class FinanceViewModel(
             is SaqzResult.Failure -> fail(chargeResult.error)
             is SaqzResult.Success -> when (val memberResult = membershipGateway.listMemberships(groupId)) {
                 is SaqzResult.Failure -> fail(DomainFinanceError.Data(br.com.saqz.domain.DataError.Unknown))
-                is SaqzResult.Success -> mutable.value = mutable.value.copy(
-                    charges = chargeResult.value.charges,
-                    members = memberResult.value,
-                    totals = chargeResult.value.toChargeTotalsState(),
-                    isLoading = false,
-                    error = null,
-                )
+                is SaqzResult.Success -> update {
+                    it.copy(
+                        charges = chargeResult.value.charges,
+                        members = memberResult.value,
+                        totals = chargeResult.value.toChargeTotalsState(),
+                        isLoading = false,
+                        error = null,
+                    )
+                }
             }
         }
     }
 
     private fun updateMonthly(intent: FinanceIntent.UpdateMonthly) {
-        val current = mutable.value
+        val current = state.value
         if (!current.organizer || current.isMutating) return
 
         val selected = intent.memberIds.intersect(current.members.map { it.userId }.toSet())
@@ -143,44 +135,48 @@ class FinanceViewModel(
             selectedMemberIds = selected,
             reviewed = false,
         )
-        mutable.value = current.copy(
-            monthlyDraft = draft,
-            fieldErrors = emptyMap(),
-            error = null,
-            reloadAvailable = false,
-        )
+        update {
+            it.copy(
+                monthlyDraft = draft,
+                fieldErrors = emptyMap(),
+                error = null,
+                reloadAvailable = false,
+            )
+        }
         persist(draft)
     }
 
     private fun review() {
-        val current = mutable.value
+        val current = state.value
         val draft = current.monthlyDraft ?: return
         if (!current.organizer || current.isMutating) return
 
         val errors = draft.validate()
         if (errors.isNotEmpty()) {
-            mutable.value = current.copy(fieldErrors = errors, error = FinanceError.VALIDATION)
+            update { it.copy(fieldErrors = errors, error = FinanceError.VALIDATION) }
             return
         }
 
         val reviewed = draft.copy(reviewed = true)
-        mutable.value = current.copy(
-            monthlyDraft = reviewed,
-            fieldErrors = emptyMap(),
-            error = null,
-        )
+        update {
+            it.copy(
+                monthlyDraft = reviewed,
+                fieldErrors = emptyMap(),
+                error = null,
+            )
+        }
         persist(reviewed)
     }
 
     private fun generate() {
-        val current = mutable.value
+        val current = state.value
         val draft = current.monthlyDraft ?: return
         if (!current.organizer || current.isMutating || !draft.reviewed) return
         execute(FinanceOperation.Monthly(draft))
     }
 
     private fun status(intent: FinanceIntent.UpdateStatus) {
-        val current = mutable.value
+        val current = state.value
         if (!current.organizer || current.isMutating) return
 
         val charge = current.charges.firstOrNull { it.id == intent.chargeId } ?: return
@@ -197,18 +193,20 @@ class FinanceViewModel(
     }
 
     private fun execute(operation: FinanceOperation) {
-        val current = mutable.value
+        val current = state.value
         val gateway = organizerGateway ?: return fail(DomainFinanceError.Forbidden)
         if (!current.organizer || current.isMutating) return
 
         retryOperation = operation
-        mutable.value = current.copy(
-            isMutating = true,
-            error = null,
-            retryAvailable = false,
-            fieldErrors = emptyMap(),
-        )
-        scope.launch {
+        update {
+            it.copy(
+                isMutating = true,
+                error = null,
+                retryAvailable = false,
+                fieldErrors = emptyMap(),
+            )
+        }
+        viewModelScope.launch {
             when (operation) {
                 is FinanceOperation.Monthly -> executeMonthly(gateway, operation)
                 is FinanceOperation.Status -> executeStatus(gateway, operation)
@@ -267,53 +265,59 @@ class FinanceViewModel(
             is SaqzResult.Success -> result.value
             is SaqzResult.Failure -> generated
         }
-        mutable.value = mutable.value.copy(
-            charges = refreshed.charges,
-            totals = refreshed.toChargeTotalsState() ?: mutable.value.totals,
-            isMutating = false,
-            monthlyDraft = null,
-            error = null,
-            reloadAvailable = false,
-            retryAvailable = false,
-            lastManualOutcome = "Cobranças registradas manualmente.",
-        )
-        channel.trySend(FinanceEffect.MonthlyGenerated(generated.charges.size))
+        update {
+            it.copy(
+                charges = refreshed.charges,
+                totals = refreshed.toChargeTotalsState() ?: it.totals,
+                isMutating = false,
+                monthlyDraft = null,
+                error = null,
+                reloadAvailable = false,
+                retryAvailable = false,
+                lastManualOutcome = "Cobranças registradas manualmente.",
+            )
+        }
+        emit(FinanceEffect.MonthlyGenerated(generated.charges.size))
     }
 
     private fun statusApplied(charge: Charge) {
-        mutable.value = mutable.value.copy(
-            charges = mutable.value.charges.map { if (it.id == charge.id) charge else it },
-            isMutating = false,
-            error = null,
-            reloadAvailable = false,
-            retryAvailable = false,
-            lastManualOutcome = "Status registrado manualmente no histórico.",
-        )
-        channel.trySend(FinanceEffect.StatusRecorded(charge.id, charge.status))
+        update { s ->
+            s.copy(
+                charges = s.charges.map { if (it.id == charge.id) charge else it },
+                isMutating = false,
+                error = null,
+                reloadAvailable = false,
+                retryAvailable = false,
+                lastManualOutcome = "Status registrado manualmente no histórico.",
+            )
+        }
+        emit(FinanceEffect.StatusRecorded(charge.id, charge.status))
     }
 
     private fun persist(draft: MonthlyChargeDraft) {
         drafts.write(draft) { result ->
             if (result == MonthlyDraftWriteResult.Failure) {
-                mutable.value = mutable.value.copy(error = FinanceError.DRAFT_UNAVAILABLE)
+                update { it.copy(error = FinanceError.DRAFT_UNAVAILABLE) }
             }
         }
     }
 
     private fun fail(failure: DomainFinanceError) {
         val error = failure.toPresentationError()
-        mutable.value = mutable.value.copy(
-            isLoading = false,
-            isMutating = false,
-            error = error,
-            fieldErrors = (failure as? DomainFinanceError.Validation)
-                ?.error
-                ?.details
-                ?.fieldMessages
-                .orEmpty(),
-            reloadAvailable = error == FinanceError.CONFLICT,
-            retryAvailable = error == FinanceError.CONFLICT || error == FinanceError.UNAVAILABLE,
-        )
+        update {
+            it.copy(
+                isLoading = false,
+                isMutating = false,
+                error = error,
+                fieldErrors = (failure as? DomainFinanceError.Validation)
+                    ?.error
+                    ?.details
+                    ?.fieldMessages
+                    .orEmpty(),
+                reloadAvailable = error == FinanceError.CONFLICT,
+                retryAvailable = error == FinanceError.CONFLICT || error == FinanceError.UNAVAILABLE,
+            )
+        }
     }
 
     private fun DomainFinanceError.toPresentationError() = when (this) {
