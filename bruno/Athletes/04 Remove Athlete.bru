@@ -1,0 +1,21 @@
+meta {
+  name: Remove Athlete
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{backendUrl}}/api/groups/{{groupId}}/athletes/{{userId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+tests {
+  test("athlete removal succeeds", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

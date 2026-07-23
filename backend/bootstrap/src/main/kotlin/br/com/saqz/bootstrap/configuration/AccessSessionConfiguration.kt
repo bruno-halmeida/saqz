@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.groups.adapter.input.http.AccessGroupController
+import br.com.saqz.groups.adapter.input.http.AthleteController
 import br.com.saqz.groups.adapter.input.http.AccessGroupReadController
 import br.com.saqz.groups.adapter.input.http.AccessGroupSettingsController
 import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
@@ -361,4 +362,5 @@ class AccessSessionConfiguration {
     @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
     @Bean fun listAthletes(readRepository: JdbcGroupReadRepository, roster: JdbcAthleteRosterRepository) = ListAthletes(readRepository, roster, GroupAccessPolicy())
     @Bean fun getOwnAthleteProfile(roster: JdbcAthleteRosterRepository) = GetOwnAthleteProfile(roster)
+    @Bean fun athleteController(actor: VerifiedGroupActorResolver, list: ListAthletes, updateOwn: UpdateOwnAthleteProfile, update: UpdateAthlete, remove: RemoveAthlete, ownProfile: GetOwnAthleteProfile) = AthleteController(actor, list, updateOwn, update, remove, ownProfile)
 }
