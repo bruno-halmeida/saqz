@@ -7,11 +7,22 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 **If the skill cannot be activated, STOP and tell the user.**
 
 **Design**: `.specs/features/mobile-navigation-architecture/design.md`
-**Status**: Ready for approval
+**Status**: Approved — reconciled 2026-07-23 against post-presentation-MVI code
 
 ### Execution precondition
 
-Execution SHALL NOT start until `.specs/features/mobile-solid-refactor-wave-2/validation.md` records a final `PASS`. T01 then re-baselines every provisional path and count against the post-Wave-2 code.
+Execution SHALL NOT start until `.specs/features/mobile-solid-refactor-wave-2/validation.md` records a final `PASS`. **Satisfied 2026-07-23** (Wave-2 validation.md: final PASS, no blocker/high findings). T01 then re-baselines every provisional path and count against the current code.
+
+### Reconciliation note (2026-07-23 — post `mobile-presentation-compose-mvi`)
+
+The presentation-MVI feature (commits `f7d4060..382c1eb`) landed AFTER this plan was authored and changed its baseline:
+
+- **Five pre-auth routes are already extracted** into per-route ViewModels + feature-module Roots (`LoginRoot`, `RegistrationRoot`, `PasswordResetRoot`, `VerificationRoot`, `NameCompletionRoot` in `:features:access`), each using `koinViewModel` + `collectAsStateWithLifecycle` + callback surfaces. Nav entries for these routes WRAP the existing Roots — do not recreate their ViewModels (affects T03/T11/T17).
+- **Shared presentation primitives now exist and hosts must reuse them**: `MviViewModel<S,I,E>` (`:core:common`), `UiText` and `ObserveAsEvents` (`:core:design-system`), lifecycle-aware collection convention.
+- **`AccessViewModel` is already slimmed** to orchestration (session/bootstrap/selection/destination) + the AD-025-deferred panels (settings/memberships/invite/create). The manual destination computation to remove in T24 is `AccessRootSnapshot.destination()` in `AuthenticatedAccessRoot.kt` (735 lines currently).
+- **Deferred panels land here**: Settings/Memberships/Invite and GroupsList/GroupDetail/GroupMore intentionally still share their orchestrator ViewModels (AD-025). This feature is where they become real `NavEntry`s — the T11–T13 adapter ViewModels are their promotion path (satisfies the deferred PMVI-001 scope; see `mobile-presentation-compose-mvi/tasks.md` deferral log).
+- **T02 version check**: design pins `lifecycle-viewmodel-navigation3:2.10.0` (androidx coordinates), but the catalog uses JetBrains multiplatform `lifecycle = 2.9.6`. T02 MUST resolve the exact JetBrains artifact coordinates/versions compatible with CMP 1.11.1 / Kotlin 2.4.10 before adding entries — do not assume the androidx version string.
+- **T14 note**: `GameDetailViewModel` currently receives `SavedStateHandle` via a manual Koin `get()` (`cfe19b3`). Once entries use `rememberViewModelStoreNavEntryDecorator`, the handle should come from the NavEntry scope — T14 revisits that binding so restoration keys off the entry, not a singleton handle.
 
 ### Verification cadence
 
