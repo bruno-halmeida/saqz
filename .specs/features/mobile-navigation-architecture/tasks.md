@@ -576,15 +576,17 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Exactly one `NavDisplay` renders.
-- [ ] Non-home roots display Home + active entries and back to Início.
-- [ ] `NavDisplay.onBack` and the TopBar callback are wired to the same session mutation; equivalent invocations from the same snapshot remove the same key and produce identical snapshots.
-- [ ] Four stacks/selected tab restore without empty display.
-- [ ] G4 passes.
+- [x] Exactly one `NavDisplay` renders.
+- [x] Non-home roots display Home + active entries and back to Início.
+- [x] `NavDisplay.onBack` and the TopBar callback are wired to the same session mutation; equivalent invocations from the same snapshot remove the same key and produce identical snapshots.
+- [x] Four stacks/selected tab restore without empty display.
+- [x] G4 passes.
 
 **Tests**: Common Compose display count, topology, TopBar/`NavDisplay.onBack` equivalence, tabs, restoration, and lifecycle.
 **Gate**: G4.
 **Commit**: `feat(navigation): compose product navigation host`
+
+#### T21 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/ProductNavigationHost.kt`: one `@Composable ProductNavigationHost` renders exactly one `NavDisplay(entries = ..., onBack = ...)` (the `entries` overload, verified against the `navigation3-ui:1.1.1` klib). `NavigationMode { ACCESS, AUTHENTICATED }` selects the entry set; ACCESS shows the access stack, AUTHENTICATED shows `homeEntries` for Início and `homeEntries + activeTabEntries` for Grupos/Avisos/Mais (BACK-04: non-home root back selects Início, proven by test). All five stacks are decorated unconditionally via `rememberDecoratedNavEntries` + the T16 saveable-state→ViewModel chain, each namespaced by `scopeEntryProvider` (LIFE-01/02). The selected tab, mode, serializable stacks, shared `onBack` (`NavigationSession::goBack`), and the assembled entry provider are hoisted to the composition root (T23) — a marked SPEC_DEVIATION from design's "creates NavigationSession" bullet, behavior unchanged, made for testability and to avoid duplicating T23's binding surface. Tests `ProductNavigationHostTest.kt` (5 new cases: access-only topology, home-only topology, non-home content + root-back-to-Início, shared back pops active stack once, restored deep stack renders without empty display). G4 BUILD SUCCESSFUL; navigation test count 72 → 77 (+5, matches count rule).
 
 ### Phase 4: Integration And Verification
 
