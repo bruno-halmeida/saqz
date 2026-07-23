@@ -19,10 +19,12 @@ enum class ProductTab { HOME, GROUPS, NOTICES, MORE }
  * through the exact same [goBack] code path and observe/produce one consistent
  * state (STATE-03) -- there is no separate mutation path for either caller.
  *
- * This type only implements the pure in-memory command surface: tab selection,
- * duplicate-safe forward navigation, and the back algorithm. Transient
- * reconciliation (T08), authorization pruning (T09), and restoration/scope
- * clearing (T10) are added to this session by later tasks.
+ * This type implements the pure in-memory command surface: tab selection,
+ * duplicate-safe forward navigation, the back algorithm, transient/selection
+ * reconciliation, authorization pruning, and restoration/scope clearing.
+ * Compose-level persistence (`rememberSerializable`/`rememberNavBackStack`) and
+ * the conditional cold-relaunch snapshot store are added by later tasks
+ * (T16-T21, T26); this class never talks to platform persistence directly.
  */
 class NavigationSession(
     private val stacks: Map<ProductTab, MutableList<NavKey>>,
@@ -37,6 +39,11 @@ class NavigationSession(
             "Every tab stack must start with a root key"
         }
     }
+
+    /** Captured before any mutation so scope-clearing (T10) can restore a safe root. */
+    private val initialRoots: Map<ProductTab, NavKey> = stacks.mapValues { (_, stack) -> stack.first() }
+
+    private var currentGroupId: String? = null
 
     var selectedTab: ProductTab = initialTab
         private set
@@ -125,6 +132,38 @@ class NavigationSession(
             if (tab == ProductTab.HOME) continue
             pruneDisallowedSuffix(stacks.getValue(tab), isAllowed, fallback)
         }
+    }
+
+    /**
+     * RESTORE-02: clears every retained tab stack back to its initial root and
+     * selects Início, before the host disposes the authenticated mode on logout.
+     */
+    fun clearAuthenticated() {
+        for (tab in ProductTab.entries) {
+            resetStack(tab)
+        }
+        currentGroupId = null
+        selectedTab = ProductTab.HOME
+    }
+
+    /**
+     * RESTORE-03, STATE-03: clears every group-bound stack (GROUPS, NOTICES,
+     * MORE; Início is app-local, not group-scoped) back to its initial root
+     * before switching to [groupId]. A no-op when [groupId] is already the
+     * current group scope, so redundant reconciliation calls stay idempotent.
+     */
+    fun clearGroupScope(groupId: String) {
+        if (currentGroupId == groupId) return
+        currentGroupId = groupId
+        resetStack(ProductTab.GROUPS)
+        resetStack(ProductTab.NOTICES)
+        resetStack(ProductTab.MORE)
+    }
+
+    private fun resetStack(tab: ProductTab) {
+        val stack = stacks.getValue(tab)
+        stack.clear()
+        stack.add(initialRoots.getValue(tab))
     }
 
     private fun GroupSelectionState.toGroupsRoute(): NavKey = when (this) {
