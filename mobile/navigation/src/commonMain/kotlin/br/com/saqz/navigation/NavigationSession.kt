@@ -1,6 +1,8 @@
 package br.com.saqz.navigation
 
 import androidx.navigation3.runtime.NavKey
+import br.com.saqz.groups.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.GroupSelectionState
 
 /**
  * The four retained bottom-nav tabs (TAB-01). `Games`/`GameDetail` live inside the
@@ -76,5 +78,30 @@ class NavigationSession(
             return true
         }
         return false
+    }
+
+    /**
+     * GROUPNAV-06 / STATE-01..03: reconciles the GROUPS stack's root with the
+     * authoritative [GroupSelectionState]. `Loading`/`LoadError` are transient and
+     * are replaced, never pushed, so back can never reveal an obsolete transient
+     * key (STATE-02). `Setup`/`Selector` are stable roots that are likewise
+     * replaced in place while the selection flow has not navigated deeper. Once
+     * the GROUPS stack has grown past its root (deeper navigation already
+     * occurred), this reconciliation is a no-op; authorization pruning (T09) owns
+     * that case.
+     */
+    fun reconcileGroupSelection(state: GroupSelectionState) {
+        val stack = stacks.getValue(ProductTab.GROUPS)
+        if (stack.size != 1) return
+        val target = state.toGroupsRoute()
+        if (stack[0] != target) stack[0] = target
+    }
+
+    private fun GroupSelectionState.toGroupsRoute(): NavKey = when (this) {
+        GroupSelectionState.NoGroup -> GroupsRoute.Setup
+        is GroupSelectionState.Selector -> GroupsRoute.Selector
+        is GroupSelectionState.Loading -> GroupsRoute.Loading
+        is GroupSelectionState.LoadError -> GroupsRoute.LoadError
+        is GroupSelectionState.Selected -> GroupsRoute.GroupHome
     }
 }
