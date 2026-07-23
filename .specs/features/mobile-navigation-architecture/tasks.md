@@ -219,13 +219,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] All specified keys exist with stable equality.
-- [ ] Blank game identity cannot create a navigation command.
-- [ ] G3 passes.
+- [x] All specified keys exist with stable equality.
+- [x] Blank game identity cannot create a navigation command.
+- [x] G3 passes.
 
 **Tests**: Common unit inventory, equality, valid/blank game identity.
 **Gate**: G3.
 **Commit**: `feat(groups): define navigation route keys`
+
+#### T04 evidence — `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/navigation/GroupsRoute.kt` (14 stable keys + `GameDetail(gameId)` with an `init { require(gameId.isNotBlank()) }` command boundary); tests `mobile/features/groups/src/commonTest/kotlin/br/com/saqz/groups/navigation/GroupsRouteTest.kt` (8 new cases). G3 BUILD SUCCESSFUL; groups test count 807 → 815 (+8, matches count rule). `api(libs.navigation3.runtime)` added to `features/groups/build.gradle.kts`.
 
 ### T05: Define structural Finance route keys
 
