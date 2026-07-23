@@ -258,13 +258,20 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; official KMP serialization docs; MCP NONE.
 
 **Done when**:
-- [ ] Every concrete key round-trips without reflection.
-- [ ] Omitting a route registration fails the discrimination test.
-- [ ] G4 passes.
+- [x] Every concrete key round-trips without reflection.
+- [x] Omitting a route registration fails the discrimination test.
+- [x] G4 passes.
 
 **Tests**: Exhaustive common serializer round-trip matrix.
 **Gate**: G4.
 **Commit**: `feat(navigation): configure route serialization`
+
+#### T06 evidence
+
+- `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/ProductRoute.kt` — host-owned `ProductRoute.AppHome` (no Home feature module exists; co-located with the serialization config it feeds since T06 is the first task needing it).
+- `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/serialization/NavigationSavedStateConfiguration.kt` — one `navigationSavedStateConfiguration: SavedStateConfiguration` (`androidx.savedstate.serialization`) registering all 25 concrete `NavKey` leaves (7 Access + 15 Groups + 2 Finance + 1 Product) via explicit `subclass(X::class, X.serializer())` calls per the official KMP doc example (verified: `polymorphic(NavKey::class) { subclass(RouteA::class, RouteA.serializer()) }`), grouped into one private registration function per family for readability. No reflection (`kotlin-reflect`/`sealedSubclasses`) is used anywhere — portable to iOS.
+- Tests: `mobile/navigation/src/commonTest/kotlin/br/com/saqz/navigation/serialization/NavigationSavedStateConfigurationTest.kt` (3 new cases: exhaustive 25-key round trip, `GameDetail` argument preservation, and a discrimination case proving an unregistered `NavKey` fails to encode under the exact configuration — this is what proves the 25-key pass is not vacuous).
+- G4 BUILD SUCCESSFUL; navigation test count 1 → 4 (+3, matches count rule).
 
 ### Phase 2: State And Route Ownership
 
