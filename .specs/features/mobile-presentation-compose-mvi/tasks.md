@@ -50,8 +50,17 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 - T25 — redefined to a verification/dead-state cleanup (auth routes already extracted; admin panels retained per AD-025). Pending.
 - Session-limit note: first worker died mid-T18 (partial preserved in `git stash@{0}`, superseded by committed T18); the auth-route extractions T18–T20 were completed by a second worker before it was stopped; T21 finished inline.
 
-### ⚠️ Phase 5 AD-025 caveat (check before executing T26–T28)
-Before extracting GroupsList/GroupDetail/GroupMore from `GroupsNavigationViewModel`, apply the SAME test as T22–T24: are these distinct navigation destinations, or state-derived panels sharing one route ViewModel + shared runtime? If they are panels (shared selection/group-context state, no independent nav entry yet), AD-025 defers their split to the Nav3 stage too. Confirm against the code before splitting; do not force a split that contradicts AD-025.
+### T25 — ✅ verification complete (no code change)
+Full multi-module gate green after the auth-route extractions + panel deferral. `AccessViewModel` retains only orchestration (`authObserved`, `session`, `authentication.screen` for destination routing, `selection`) + the AD-025-deferred admin panels (settings/memberships/invite/create). Auth-route form state is owned by the per-route VMs (T17–T21). No dead slice is safely removable without untangling the shared `AuthenticationState` type that the per-route VMs still derive from. Recorded as verification; no commit (no code change).
+
+### T26/T27/T28 — ⏸️ DEFERRED per AD-025 (same finding as T22–T24)
+`GroupsNavigationViewModel` is a pure navigation orchestrator; `GroupsNavigationState` holds only nav state (`destination`, `groupId`, `access`, `gameId`, `memberships`, `requestedGroupId`). GroupsList/GroupDetail/GroupMore render from that shared state — they are state-derived panels sharing the one route ViewModel, exactly AD-025's exemption. They get dedicated route VMs when AD-029/Nav3 promotes them to real entries. Deferred (2026-07-23).
+
+### Remaining real work (post-deferral)
+- **T29** — extract `GroupSetupRoot` + `GameDetailRoot` (both wrap ALREADY-dedicated real VMs) + fix GameDetail Koin `savedStateHandle` forwarding. **Deps: T12, T15, T03** (all done).
+- **T30** — thin `AuthenticatedAccessRoot` (749-line god-Root): move destination enums to own files, `collectAsStateWithLifecycle`, `ObserveAsEvents`, delegate to Roots. **Deps adjusted: T25 (done), T29** (T28 dep dropped — deferred).
+- **T31** previews · **T32** accessibility/stability audit · **T33** docs + closure + build gate.
+- Verifier runs automatically after T33.
 
 ## Test Coverage Matrix
 
@@ -403,7 +412,7 @@ T31 → T32 → T33
 
 **What**: Move `AccessDestination`/`GroupsDestination` enums to own files; every remaining collection `collectAsStateWithLifecycle`; every effect via `ObserveAsEvents`; file reduced to AccessViewModel acquisition + destination `when` delegating to Roots.
 **Where**: `AuthenticatedAccessRoot.kt` + new destination files + tests
-**Depends on**: T25, T28, T29 | **Requirement**: PMVI-009, PMVI-016, PMVI-017, PMVI-021
+**Depends on**: T25, T29 (T28 dropped — deferred per AD-025) | **Requirement**: PMVI-009, PMVI-016, PMVI-017, PMVI-021
 **Tools**: Skill: `android-compose-ui`
 **Done when**:
 - [ ] No raw `collectAsState`/raw effect `LaunchedEffect` left in compose-app navigation
