@@ -87,6 +87,35 @@ class FinanceViewModelTest {
             assertEquals(restored, f.vm.state.value.monthlyDraft)
         }
 
+    @Test fun `restored unreviewed invalid draft never generates and awaits normal review`() =
+        runTest(mainDispatcher) {
+            val invalid = MonthlyChargeDraft(
+                groupId = GROUP,
+                commandKey = KEY,
+                month = "2026-13",
+                amountBrl = "0",
+                dueDate = "bad",
+                selectedMemberIds = emptySet(),
+                reviewed = false,
+            )
+            val f = fixture(restored = invalid)
+            runCurrent()
+
+            // Restored (PMVI-018) but never silently generated (PMVI-019).
+            assertEquals(invalid, f.vm.state.value.monthlyDraft)
+            assertTrue(f.organizer.monthlyCalls.isEmpty())
+            assertTrue(f.vm.state.value.fieldErrors.isEmpty())
+
+            f.vm.onIntent(FinanceIntent.GenerateMonthly)
+            runCurrent()
+            assertTrue(f.organizer.monthlyCalls.isEmpty())
+
+            f.vm.onIntent(FinanceIntent.ReviewMonthly)
+            assertEquals(FinanceError.VALIDATION, f.vm.state.value.error)
+            assertEquals(setOf("month", "amountBrl", "dueDate", "memberIds"), f.vm.state.value.fieldErrors.keys)
+            assertTrue(f.organizer.monthlyCalls.isEmpty())
+        }
+
     @Test fun `foreign or unsupported draft never restores or dispatches`() =
         runTest(mainDispatcher) {
             val f = fixture(restored = draft().copy(schemaVersion = 99, groupId = "other"))

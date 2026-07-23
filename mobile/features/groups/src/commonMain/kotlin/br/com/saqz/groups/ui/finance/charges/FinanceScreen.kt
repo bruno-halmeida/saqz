@@ -17,6 +17,8 @@ import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.formatting.formatLocalDatePtBrString
 import br.com.saqz.core.common.formatting.formatMonthPtBrString
 import br.com.saqz.designsystem.component.*
+import br.com.saqz.designsystem.text.UiText
+import br.com.saqz.designsystem.text.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
@@ -80,15 +82,7 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
             state.lastManualOutcome?.let { Text(it, color = SaqzTheme.colors.textSecondary) }
             state.error?.let {
                 Text(
-                    stringResource(
-                        if (it ==
-                            FinanceError.CONFLICT
-                        ) {
-                            Res.string.finance_conflict
-                        } else {
-                            Res.string.finance_error
-                        },
-                    ),
+                    financeErrorLabel(it).asString(),
                     color = SaqzTheme.colors.errorForeground,
                 )
             }
@@ -287,3 +281,7 @@ private fun Modifier.financeAction(order: Int) =
         financeActionOrder =
             order
     }
+
+private fun financeErrorLabel(error: FinanceError): UiText = UiText.Res(
+    if (error == FinanceError.CONFLICT) Res.string.finance_conflict else Res.string.finance_error,
+)
