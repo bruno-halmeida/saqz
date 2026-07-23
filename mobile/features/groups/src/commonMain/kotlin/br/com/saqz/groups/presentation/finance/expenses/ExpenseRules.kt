@@ -2,11 +2,11 @@ package br.com.saqz.groups.presentation.finance.expenses
 
 import br.com.saqz.core.common.formatting.formatBrlPlain
 import br.com.saqz.core.common.formatting.parseBrlToCents
-import br.com.saqz.groups.data.finance.ExpenseCategoryDto
-import br.com.saqz.groups.data.finance.ExpenseDto
-import br.com.saqz.groups.data.finance.ExpenseWriteCommandDto
+import br.com.saqz.groups.domain.finance.Expense
+import br.com.saqz.groups.domain.finance.ExpenseCategory
+import br.com.saqz.groups.domain.finance.ExpenseWriteCommand
 
-internal fun ExpenseDto.toExpenseForm() = ExpenseForm(
+internal fun Expense.toExpenseForm() = ExpenseForm(
     description = description,
     amountBrl = amountCents.let(::formatBrlPlain),
     expenseDate = expenseDate,
@@ -15,7 +15,7 @@ internal fun ExpenseDto.toExpenseForm() = ExpenseForm(
     notes = notes.orEmpty(),
 )
 
-internal fun ExpenseForm.toExpenseWriteCommand(key: String?) = ExpenseWriteCommandDto(
+internal fun ExpenseForm.toExpenseWriteCommand(key: String?) = ExpenseWriteCommand(
     key,
     description.trim(),
     requireNotNull(parseBrlToCents(amountBrl)),
@@ -44,7 +44,7 @@ internal fun ExpenseForm.validate() = buildMap<String, List<String>> {
         put("category", listOf("is required"))
     }
 
-    if (category == ExpenseCategoryDto.OTHER && customCategory.trim().let {
+    if (category == ExpenseCategory.Other && customCategory.trim().let {
             it.length !in 2..40 || it.any(Char::isISOControl)
         }) {
         put("customCategory", listOf("is invalid"))

@@ -1,51 +1,425 @@
 package br.com.saqz.groups.presentation.finance.expenses
 
-import br.com.saqz.groups.data.GroupRoleDto
-import br.com.saqz.groups.data.finance.*
-import br.com.saqz.groups.presentation.finance.FinanceCapability
-import br.com.saqz.network.*
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.domain.finance.*
+import br.com.saqz.groups.domain.group.GroupRole
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpenseViewModelTest {
-    @Test fun `athlete route is absent and loads no organizer resources or drafts`()=runTest{val f=fixture(this,GroupRoleDto.ATHLETE);runCurrent();assertFalse(f.vm.state.value.routeAvailable);assertEquals(0,f.api.expenseReads);assertEquals(0,f.api.totalReads);assertEquals(0,f.store.reads)}
-    @Test fun `athlete cannot create edit void refresh or retry`()=runTest{val f=fixture(this,GroupRoleDto.ATHLETE);f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE));f.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE));f.vm.onIntent(ExpenseIntent.Refresh);f.vm.onIntent(ExpenseIntent.Retry);runCurrent();assertNull(f.vm.state.value.draft);assertTrue(f.api.creates.isEmpty());assertTrue(f.api.edits.isEmpty());assertTrue(f.api.voids.isEmpty())}
-    @Test fun `owner loads organizer expense list and finance totals`()=runTest{val f=fixture(this);runCurrent();assertEquals(listOf(EXPENSE),f.vm.state.value.expenses.map{it.id});assertEquals(12345,f.vm.state.value.totals!!.activeExpenseCents);assertEquals(1,f.api.expenseReads);assertEquals(1,f.api.totalReads)}
-    @Test fun `admin has full expense route`()=runTest{val f=fixture(this,GroupRoleDto.ADMIN);runCurrent();assertTrue(f.vm.state.value.organizer);f.vm.onIntent(ExpenseIntent.OpenCreate);assertNotNull(f.vm.state.value.draft)}
-    @Test fun `matching draft restores schema group resource etag key and form`()=runTest{val restored=draft(expenseId=EXPENSE,etag="\"3\"");val f=fixture(this,restored=restored);runCurrent();assertEquals(restored,f.vm.state.value.draft)}
-    @Test fun `foreign or old draft is discarded without mutation`()=runTest{val f=fixture(this,restored=draft().copy(schemaVersion=99,groupId="other"));runCurrent();assertNull(f.vm.state.value.draft);assertTrue(f.api.creates.isEmpty())}
-    @Test fun `open create persists empty form with stable command key`()=runTest{val f=fixture(this);runCurrent();f.vm.onIntent(ExpenseIntent.OpenCreate);val draft=f.vm.state.value.draft!!;assertEquals(KEY,draft.commandKey);assertNull(draft.expenseId);assertEquals(draft,f.store.writes.single())}
-    @Test fun `open edit preserves values resource quoted version and new key`()=runTest{val f=fixture(this);runCurrent();f.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE));val draft=f.vm.state.value.draft!!;assertEquals(EXPENSE,draft.expenseId);assertEquals("\"3\"",draft.etag);assertEquals("Água",draft.form.customCategory);assertEquals("123,45",draft.form.amountBrl);assertEquals(KEY,draft.commandKey)}
-    @Test fun `preset category clears custom value before draft write`()=runTest{val f=fixture(this);runCurrent();f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.UpdateForm(valid().copy(category=ExpenseCategoryDto.OTHER,customCategory="Água")));f.vm.onIntent(ExpenseIntent.UpdateForm(valid().copy(category=ExpenseCategoryDto.VENUE,customCategory="deve sumir")));assertEquals("",f.vm.state.value.draft!!.form.customCategory);assertEquals("",f.store.writes.last().form.customCategory)}
-    @Test fun `local validation covers description amount date category custom and notes`()=runTest{val f=fixture(this);runCurrent();f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.UpdateForm(ExpenseForm("x","0","bad",ExpenseCategoryDto.OTHER,"x","x")));f.vm.onIntent(ExpenseIntent.Submit);assertEquals(setOf("description","amountBrl","expenseDate","customCategory","notes"),f.vm.state.value.fieldErrors.keys);assertEquals(ExpenseError.VALIDATION,f.vm.state.value.error)}
-    @Test fun `create sends stable key integer cents clears matching draft and refreshes totals`()=runTest{val f=fixture(this);runCurrent();openValid(f);val effect=async{f.vm.effects.first()};f.vm.onIntent(ExpenseIntent.Submit);runCurrent();val command=f.api.creates.single();assertEquals(KEY,command.requestId);assertEquals(12345,command.amountCents);assertEquals(ExpenseCategoryDto.OTHER,command.category);assertEquals(listOf(ClearCall(GROUP,null,KEY)),f.store.clears);assertEquals(2,f.api.expenseReads);assertEquals(2,f.api.totalReads);assertNull(f.vm.state.value.draft);assertEquals(ExpenseEffect.Saved(EXPENSE),effect.await())}
-    @Test fun `double create submit remains one logical request`()=runTest{val f=fixture(this);runCurrent();openValid(f);f.api.gate=CompletableDeferred();f.vm.onIntent(ExpenseIntent.Submit);f.vm.onIntent(ExpenseIntent.Submit);runCurrent();assertEquals(1,f.api.creates.size);f.api.gate!!.complete(Unit);runCurrent()}
-    @Test fun `edit sends quoted ETag without create idempotency field`()=runTest{val f=fixture(this);runCurrent();f.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE));f.vm.onIntent(ExpenseIntent.Submit);runCurrent();val call=f.api.edits.single();assertEquals("\"3\"",call.etag);assertNull(call.command.requestId);assertEquals(12345,call.command.amountCents)}
-    @Test fun `edit conflict preserves draft etag and operation for exact retry`()=runTest{val f=fixture(this);runCurrent();f.api.editResult=NetworkResult.Failure(problem("VERSION_CONFLICT",409));f.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE));f.vm.onIntent(ExpenseIntent.Submit);runCurrent();assertEquals(ExpenseError.CONFLICT,f.vm.state.value.error);assertTrue(f.vm.state.value.reloadAvailable);f.api.editResult=success();f.vm.onIntent(ExpenseIntent.Retry);runCurrent();assertEquals(listOf("\"3\"","\"3\""),f.api.edits.map{it.etag});assertEquals(EXPENSE,f.vm.state.value.lastAuditOutcome?.let{EXPENSE})}
-    @Test fun `void requires explicit confirmation and may be dismissed`()=runTest{val f=fixture(this);runCurrent();f.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE));assertEquals(EXPENSE,f.vm.state.value.pendingVoid!!.id);assertTrue(f.api.voids.isEmpty());f.vm.onIntent(ExpenseIntent.DismissVoid);assertNull(f.vm.state.value.pendingVoid);assertTrue(f.api.voids.isEmpty())}
-    @Test fun `void preserves quoted version refreshes totals and audit history`()=runTest{val f=fixture(this);runCurrent();f.api.listed=listOf(voided());val effect=async{f.vm.effects.first()};f.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE));f.vm.onIntent(ExpenseIntent.ConfirmVoid);runCurrent();assertEquals(VoidCall(EXPENSE,"\"3\""),f.api.voids.single());val updated=f.vm.state.value.expenses.single();assertEquals(ExpenseStatusDto.VOIDED,updated.status);assertEquals(ExpenseActionDto.VOIDED,updated.events.last().action);assertEquals("Despesa anulada no histórico manual.",f.vm.state.value.lastAuditOutcome);assertEquals(ExpenseEffect.Voided(EXPENSE),effect.await())}
-    @Test fun `server validation fields remain attached to draft`()=runTest{val f=fixture(this);runCurrent();openValid(f);f.api.createResult=NetworkResult.Failure(problem("VALIDATION_FAILED",400,mapOf("amountCents" to listOf("is invalid"))));f.vm.onIntent(ExpenseIntent.Submit);runCurrent();assertEquals(mapOf("amountCents" to listOf("is invalid")),f.vm.state.value.fieldErrors);assertNotNull(f.vm.state.value.draft)}
-    @Test fun `draft write failure is typed without losing form or key`()=runTest{val f=fixture(this);runCurrent();f.store.failWrites=true;f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.UpdateForm(valid()));assertEquals(ExpenseError.DRAFT_UNAVAILABLE,f.vm.state.value.error);assertEquals(KEY,f.vm.state.value.draft!!.commandKey);assertEquals("Água do jogo",f.vm.state.value.draft!!.form.description)}
+    @Test
+    fun `athlete route is absent and loads no organizer resources or drafts`() = runTest {
+        val fixture = fixture(this, GroupRole.ATHLETE)
+        runCurrent()
+        assertFalse(fixture.vm.state.value.routeAvailable)
+        assertEquals(0, fixture.api.expenseReads)
+        assertEquals(0, fixture.api.totalReads)
+        assertEquals(0, fixture.store.reads)
+    }
 
-    private fun fixture(scope:kotlinx.coroutines.CoroutineScope,role:GroupRoleDto=GroupRoleDto.OWNER,restored:ExpenseDraft?=null):Fixture{val api=FakeApi();val store=FakeStore(restored);val capability=if(role==GroupRoleDto.ATHLETE)FinanceCapability.Athlete else FinanceCapability.Organizer(api);val vm=ExpenseViewModel(GROUP,role,capability,store,ExpenseCommandKeyFactory{KEY},scope);return Fixture(vm,api,store)}
-    private fun openValid(f:Fixture){f.vm.onIntent(ExpenseIntent.OpenCreate);f.vm.onIntent(ExpenseIntent.UpdateForm(valid()))}
-    private fun valid()=ExpenseForm("Água do jogo","123,45","2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual")
-    private fun draft(expenseId:String?=null,etag:String?=null)=ExpenseDraft(groupId=GROUP,expenseId=expenseId,etag=etag,commandKey=KEY,form=valid())
-    private fun expense(status:ExpenseStatusDto=ExpenseStatusDto.ACTIVE,version:Long=3,events:List<ExpenseEventDto> = listOf(ExpenseEventDto("actor",ExpenseActionDto.CREATED,"2026-08-12T10:00:00Z")))=ExpenseDto(EXPENSE,GROUP,"Água do jogo",12345,"2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual",status,version,events)
-    private fun voided()=expense(ExpenseStatusDto.VOIDED,4,expense().events+ExpenseEventDto("actor",ExpenseActionDto.VOIDED,"2026-08-13T10:00:00Z"))
-    private fun totals()=FinanceTotalsDto(2500,5000,1000,7000,12345)
-    private fun success()=NetworkResult.Success(VersionedExpenseDto(expense(),"\"3\""))
-    private fun problem(code:String,status:Int,fields:Map<String,List<String>>?=null)=NetworkError.ApiProblemError(ApiProblem(status,code,"c",fields))
-    private data class Fixture(val vm:ExpenseViewModel,val api:FakeApi,val store:FakeStore)
-    private data class EditCall(val expenseId:String,val etag:String,val command:ExpenseWriteCommandDto)
-    private data class VoidCall(val expenseId:String,val etag:String)
-    private data class ClearCall(val groupId:String,val expenseId:String?,val key:String)
-    private inner class FakeApi:OrganizerFinanceGateway{var expenseReads=0;var totalReads=0;var listed=listOf(expense());val creates=mutableListOf<ExpenseWriteCommandDto>();val edits=mutableListOf<EditCall>();val voids=mutableListOf<VoidCall>();var gate:CompletableDeferred<Unit>?=null;var createResult:NetworkResult<VersionedExpenseDto> = success();var editResult:NetworkResult<VersionedExpenseDto> = success();var voidResult:NetworkResult<VersionedExpenseDto> = NetworkResult.Success(VersionedExpenseDto(voided(),"\"4\""));override suspend fun expenses(groupId:String):NetworkResult<ExpenseListDto>{expenseReads++;return NetworkResult.Success(ExpenseListDto(listed,listed.filter{it.status==ExpenseStatusDto.ACTIVE}.sumOf{it.amountCents}))};override suspend fun totals(groupId:String):NetworkResult<FinanceTotalsDto>{totalReads++;return NetworkResult.Success(totals())};override suspend fun createExpense(groupId:String,command:ExpenseWriteCommandDto):NetworkResult<VersionedExpenseDto>{creates+=command;gate?.await();return createResult};override suspend fun editExpense(groupId:String,expenseId:String,etag:String,command:ExpenseWriteCommandDto):NetworkResult<VersionedExpenseDto>{edits+=EditCall(expenseId,etag,command);return editResult};override suspend fun voidExpense(groupId:String,expenseId:String,etag:String):NetworkResult<VersionedExpenseDto>{voids+=VoidCall(expenseId,etag);return voidResult};override suspend fun charges(groupId:String)=error("not used");override suspend fun generateMonthly(groupId:String,command:MonthlyChargeCommandDto)=error("not used");override suspend fun updateChargeStatus(groupId:String,chargeId:String,etag:String,command:ChargeStatusCommandDto)=error("not used")}
-    private class FakeStore(private val restored:ExpenseDraft?):ExpenseDraftStorePort{var reads=0;var failWrites=false;val writes=mutableListOf<ExpenseDraft>();val clears=mutableListOf<ClearCall>();override fun read(groupId:String,expenseId:String?,done:(ExpenseDraftReadResult)->Unit){reads++;done(ExpenseDraftReadResult.Success(restored))};override fun write(draft:ExpenseDraft,done:(ExpenseDraftWriteResult)->Unit){writes+=draft;done(if(failWrites)ExpenseDraftWriteResult.Failure else ExpenseDraftWriteResult.Success)};override fun clear(groupId:String,expenseId:String?,commandKey:String,done:(ExpenseDraftWriteResult)->Unit){clears+=ClearCall(groupId,expenseId,commandKey);done(ExpenseDraftWriteResult.Success)}}
-    private companion object{const val GROUP="group";const val EXPENSE="expense-1";const val KEY="expense-key"}
+    @Test
+    fun `athlete cannot create edit void refresh or retry`() = runTest {
+        val fixture = fixture(this, GroupRole.ATHLETE)
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
+        fixture.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE))
+        fixture.vm.onIntent(ExpenseIntent.Refresh)
+        fixture.vm.onIntent(ExpenseIntent.Retry)
+        runCurrent()
+        assertNull(fixture.vm.state.value.draft)
+        assertTrue(fixture.api.creates.isEmpty())
+        assertTrue(fixture.api.edits.isEmpty())
+        assertTrue(fixture.api.voids.isEmpty())
+    }
+
+    @Test
+    fun `owner loads organizer expense list and finance totals`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        assertEquals(listOf(EXPENSE), fixture.vm.state.value.expenses.map { it.id })
+        assertEquals(12345, fixture.vm.state.value.totals!!.activeExpenseCents)
+        assertEquals(1, fixture.api.expenseReads)
+        assertEquals(1, fixture.api.totalReads)
+    }
+
+    @Test
+    fun `admin has full expense route`() = runTest {
+        val fixture = fixture(this, GroupRole.ADMIN)
+        runCurrent()
+        assertTrue(fixture.vm.state.value.organizer)
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        assertNotNull(fixture.vm.state.value.draft)
+    }
+
+    @Test
+    fun `matching draft restores schema group resource etag key and form`() = runTest {
+        val restored = draft(expenseId = EXPENSE, etag = "\"3\"")
+        val fixture = fixture(this, restored = restored)
+        runCurrent()
+        assertEquals(restored, fixture.vm.state.value.draft)
+    }
+
+    @Test
+    fun `foreign or old draft is discarded without mutation`() = runTest {
+        val fixture = fixture(this, restored = draft().copy(schemaVersion = 99, groupId = "other"))
+        runCurrent()
+        assertNull(fixture.vm.state.value.draft)
+        assertTrue(fixture.api.creates.isEmpty())
+    }
+
+    @Test
+    fun `open create persists empty form with stable command key`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        val draft = fixture.vm.state.value.draft!!
+        assertEquals(KEY, draft.commandKey)
+        assertNull(draft.expenseId)
+        assertEquals(draft, fixture.store.writes.single())
+    }
+
+    @Test
+    fun `open edit preserves values resource quoted version and new key`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
+        val draft = fixture.vm.state.value.draft!!
+        assertEquals(EXPENSE, draft.expenseId)
+        assertEquals("\"3\"", draft.etag)
+        assertEquals("Água", draft.form.customCategory)
+        assertEquals("123,45", draft.form.amountBrl)
+        assertEquals(KEY, draft.commandKey)
+    }
+
+    @Test
+    fun `preset category clears custom value before draft write`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        fixture.vm.onIntent(ExpenseIntent.UpdateForm(valid().copy(category = ExpenseCategory.Other)))
+        fixture.vm.onIntent(
+            ExpenseIntent.UpdateForm(valid().copy(category = ExpenseCategory.Venue, customCategory = "deve sumir")),
+        )
+        assertEquals("", fixture.vm.state.value.draft!!.form.customCategory)
+        assertEquals("", fixture.store.writes.last().form.customCategory)
+    }
+
+    @Test
+    fun `local validation covers description amount date category custom and notes`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        fixture.vm.onIntent(
+            ExpenseIntent.UpdateForm(ExpenseForm("x", "0", "bad", ExpenseCategory.Other, "x", "x")),
+        )
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        assertEquals(
+            setOf("description", "amountBrl", "expenseDate", "customCategory", "notes"),
+            fixture.vm.state.value.fieldErrors.keys,
+        )
+        assertEquals(ExpenseError.VALIDATION, fixture.vm.state.value.error)
+    }
+
+    @Test
+    fun `create sends stable key integer cents clears matching draft and refreshes totals`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        openValid(fixture)
+        val effect = async { fixture.vm.effects.first() }
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        runCurrent()
+        val command = fixture.api.creates.single()
+        assertEquals(KEY, command.requestId)
+        assertEquals(12345, command.amountCents)
+        assertEquals(ExpenseCategory.Other, command.category)
+        assertEquals(listOf(ClearCall(GROUP, null, KEY)), fixture.store.clears)
+        assertEquals(2, fixture.api.expenseReads)
+        assertEquals(2, fixture.api.totalReads)
+        assertNull(fixture.vm.state.value.draft)
+        assertEquals(ExpenseEffect.Saved(EXPENSE), effect.await())
+    }
+
+    @Test
+    fun `double create submit remains one logical request`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        openValid(fixture)
+        fixture.api.gate = CompletableDeferred()
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        runCurrent()
+        assertEquals(1, fixture.api.creates.size)
+        fixture.api.gate!!.complete(Unit)
+        runCurrent()
+    }
+
+    @Test
+    fun `edit sends quoted ETag without create idempotency field`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        runCurrent()
+        val call = fixture.api.edits.single()
+        assertEquals("\"3\"", call.version.value)
+        assertNull(call.command.requestId)
+        assertEquals(12345, call.command.amountCents)
+    }
+
+    @Test
+    fun `edit conflict preserves draft etag and operation for exact retry`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.api.editResult = SaqzResult.Failure(FinanceError.Conflict)
+        fixture.vm.onIntent(ExpenseIntent.OpenEdit(EXPENSE))
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        runCurrent()
+        assertEquals(ExpenseError.CONFLICT, fixture.vm.state.value.error)
+        assertTrue(fixture.vm.state.value.reloadAvailable)
+        fixture.api.editResult = success()
+        fixture.vm.onIntent(ExpenseIntent.Retry)
+        runCurrent()
+        assertEquals(listOf("\"3\"", "\"3\""), fixture.api.edits.map { it.version.value })
+    }
+
+    @Test
+    fun `void requires explicit confirmation and may be dismissed`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE))
+        assertEquals(EXPENSE, fixture.vm.state.value.pendingVoid!!.id)
+        assertTrue(fixture.api.voids.isEmpty())
+        fixture.vm.onIntent(ExpenseIntent.DismissVoid)
+        assertNull(fixture.vm.state.value.pendingVoid)
+        assertTrue(fixture.api.voids.isEmpty())
+    }
+
+    @Test
+    fun `void preserves quoted version refreshes totals and audit history`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.api.listed = listOf(voided())
+        val effect = async { fixture.vm.effects.first() }
+        fixture.vm.onIntent(ExpenseIntent.RequestVoid(EXPENSE))
+        fixture.vm.onIntent(ExpenseIntent.ConfirmVoid)
+        runCurrent()
+        assertEquals(VoidCall(EXPENSE, FinanceVersionToken("\"3\"")), fixture.api.voids.single())
+        val updated = fixture.vm.state.value.expenses.single()
+        assertEquals(ExpenseStatus.Voided, updated.status)
+        assertEquals(ExpenseAction.Voided, updated.audit.last().action)
+        assertEquals("Despesa anulada no histórico manual.", fixture.vm.state.value.lastAuditOutcome)
+        assertEquals(ExpenseEffect.Voided(EXPENSE), effect.await())
+    }
+
+    @Test
+    fun `server validation fields remain attached to draft`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        openValid(fixture)
+        val fields = mapOf("amountCents" to listOf("is invalid"))
+        fixture.api.createResult = SaqzResult.Failure(
+            FinanceError.Validation(DataError.Validation(ValidationDetails(emptyList(), fields))),
+        )
+        fixture.vm.onIntent(ExpenseIntent.Submit)
+        runCurrent()
+        assertEquals(fields, fixture.vm.state.value.fieldErrors)
+        assertNotNull(fixture.vm.state.value.draft)
+    }
+
+    @Test
+    fun `draft write failure is typed without losing form or key`() = runTest {
+        val fixture = fixture(this)
+        runCurrent()
+        fixture.store.failWrites = true
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        fixture.vm.onIntent(ExpenseIntent.UpdateForm(valid()))
+        assertEquals(ExpenseError.DRAFT_UNAVAILABLE, fixture.vm.state.value.error)
+        assertEquals(KEY, fixture.vm.state.value.draft!!.commandKey)
+        assertEquals("Água do jogo", fixture.vm.state.value.draft!!.form.description)
+    }
+
+    private fun fixture(
+        scope: kotlinx.coroutines.CoroutineScope,
+        role: GroupRole = GroupRole.OWNER,
+        restored: ExpenseDraft? = null,
+    ): Fixture {
+        val api = FakeApi()
+        val store = FakeStore(restored)
+        val capability = if (role == GroupRole.ATHLETE) {
+            ExpenseFinanceCapability.Athlete
+        } else {
+            ExpenseFinanceCapability.Organizer(api)
+        }
+        val viewModel = ExpenseViewModel(GROUP, role, capability, store, ExpenseCommandKeyFactory { KEY }, scope)
+        return Fixture(viewModel, api, store)
+    }
+
+    private fun openValid(fixture: Fixture) {
+        fixture.vm.onIntent(ExpenseIntent.OpenCreate)
+        fixture.vm.onIntent(ExpenseIntent.UpdateForm(valid()))
+    }
+
+    private fun valid() = ExpenseForm(
+        "Água do jogo",
+        "123,45",
+        "2026-08-12",
+        ExpenseCategory.Other,
+        "Água",
+        "Compra manual",
+    )
+
+    private fun draft(expenseId: String? = null, etag: String? = null) = ExpenseDraft(
+        groupId = GROUP,
+        expenseId = expenseId,
+        etag = etag,
+        commandKey = KEY,
+        form = valid(),
+    )
+
+    private fun expense(
+        status: ExpenseStatus = ExpenseStatus.Active,
+        version: Long = 3,
+        audit: List<ExpenseAudit> = listOf(
+            ExpenseAudit("actor", ExpenseAction.Created, "2026-08-12T10:00:00Z"),
+        ),
+    ) = Expense(
+        EXPENSE,
+        GroupId(GROUP),
+        "Água do jogo",
+        12345,
+        "2026-08-12",
+        ExpenseCategory.Other,
+        "Água",
+        "Compra manual",
+        status,
+        version,
+        audit,
+    )
+
+    private fun voided() = expense(
+        ExpenseStatus.Voided,
+        4,
+        expense().audit + ExpenseAudit("actor", ExpenseAction.Voided, "2026-08-13T10:00:00Z"),
+    )
+
+    private fun totals() = FinanceTotals(2500, 5000, 1000, 7000, 12345)
+    private fun success() = SaqzResult.Success(VersionedExpense(expense(), FinanceVersionToken("\"3\"")))
+
+    private data class Fixture(val vm: ExpenseViewModel, val api: FakeApi, val store: FakeStore)
+    private data class EditCall(
+        val expenseId: String,
+        val version: FinanceVersionToken,
+        val command: ExpenseWriteCommand,
+    )
+    private data class VoidCall(val expenseId: String, val version: FinanceVersionToken)
+    private data class ClearCall(val groupId: String, val expenseId: String?, val key: String)
+
+    private inner class FakeApi : OrganizerFinanceGateway {
+        var expenseReads = 0
+        var totalReads = 0
+        var listed = listOf(expense())
+        val creates = mutableListOf<ExpenseWriteCommand>()
+        val edits = mutableListOf<EditCall>()
+        val voids = mutableListOf<VoidCall>()
+        var gate: CompletableDeferred<Unit>? = null
+        var createResult: SaqzResult<VersionedExpense, FinanceError> = success()
+        var editResult: SaqzResult<VersionedExpense, FinanceError> = success()
+        var voidResult: SaqzResult<VersionedExpense, FinanceError> =
+            SaqzResult.Success(VersionedExpense(voided(), FinanceVersionToken("\"4\"")))
+
+        override suspend fun expenses(groupId: GroupId): SaqzResult<ExpenseList, FinanceError> {
+            expenseReads++
+            return SaqzResult.Success(
+                ExpenseList(listed, listed.filter { it.status == ExpenseStatus.Active }.sumOf { it.amountCents }),
+            )
+        }
+
+        override suspend fun totals(groupId: GroupId): SaqzResult<FinanceTotals, FinanceError> {
+            totalReads++
+            return SaqzResult.Success(totals())
+        }
+
+        override suspend fun createExpense(
+            groupId: GroupId,
+            command: ExpenseWriteCommand,
+        ): SaqzResult<VersionedExpense, FinanceError> {
+            creates += command
+            gate?.await()
+            return createResult
+        }
+
+        override suspend fun editExpense(
+            groupId: GroupId,
+            expenseId: String,
+            version: FinanceVersionToken,
+            command: ExpenseWriteCommand,
+        ): SaqzResult<VersionedExpense, FinanceError> {
+            edits += EditCall(expenseId, version, command)
+            return editResult
+        }
+
+        override suspend fun voidExpense(
+            groupId: GroupId,
+            expenseId: String,
+            version: FinanceVersionToken,
+        ): SaqzResult<VersionedExpense, FinanceError> {
+            voids += VoidCall(expenseId, version)
+            return voidResult
+        }
+
+        override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> = error("not used")
+        override suspend fun generateMonthly(
+            groupId: GroupId,
+            command: MonthlyChargeCommand,
+        ): SaqzResult<ChargeList, FinanceError> = error("not used")
+
+        override suspend fun updateChargeStatus(
+            groupId: GroupId,
+            chargeId: String,
+            version: FinanceVersionToken,
+            command: ChargeStatusCommand,
+        ): SaqzResult<VersionedCharge, FinanceError> = error("not used")
+    }
+
+    private class FakeStore(private val restored: ExpenseDraft?) : ExpenseDraftStorePort {
+        var reads = 0
+        var failWrites = false
+        val writes = mutableListOf<ExpenseDraft>()
+        val clears = mutableListOf<ClearCall>()
+
+        override fun read(groupId: String, expenseId: String?, done: (ExpenseDraftReadResult) -> Unit) {
+            reads++
+            done(ExpenseDraftReadResult.Success(restored))
+        }
+
+        override fun write(draft: ExpenseDraft, done: (ExpenseDraftWriteResult) -> Unit) {
+            writes += draft
+            done(if (failWrites) ExpenseDraftWriteResult.Failure else ExpenseDraftWriteResult.Success)
+        }
+
+        override fun clear(
+            groupId: String,
+            expenseId: String?,
+            commandKey: String,
+            done: (ExpenseDraftWriteResult) -> Unit,
+        ) {
+            clears += ClearCall(groupId, expenseId, commandKey)
+            done(ExpenseDraftWriteResult.Success)
+        }
+    }
+
+    private companion object {
+        const val GROUP = "group"
+        const val EXPENSE = "expense-1"
+        const val KEY = "expense-key"
+    }
 }

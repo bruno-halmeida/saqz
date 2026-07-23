@@ -1,24 +1,17 @@
 package br.com.saqz.groups.model
 
 import kotlinx.datetime.TimeZone
-import kotlinx.serialization.Serializable
 
-@Serializable
 enum class GroupModality { COURT_VOLLEYBALL, BEACH_VOLLEYBALL, FOOTVOLLEY }
 
-@Serializable
 enum class GroupComposition { WOMEN, MEN, MIXED }
 
-@Serializable
 enum class GroupLevel { BEGINNER, INTERMEDIATE, ADVANCED, MIXED_LEVELS, CUSTOM }
 
-@Serializable
 enum class GroupPlayStyle { SIX_ZERO, FOUR_TWO, FIVE_ONE, CUSTOM }
 
-@Serializable
 enum class GroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
 
-@Serializable
 data class GroupVenueForm(
     val id: String? = null,
     val name: String,
@@ -26,7 +19,6 @@ data class GroupVenueForm(
     val court: String? = null,
 )
 
-@Serializable
 data class GroupRegularSlotForm(
     val id: String? = null,
     val weekday: GroupWeekday,
@@ -34,7 +26,6 @@ data class GroupRegularSlotForm(
     val durationMinutes: Int,
 )
 
-@Serializable
 data class GroupSetupForm(
     val name: String = "",
     val modality: GroupModality? = null,
@@ -101,16 +92,13 @@ data class GroupUpdateCommand(
     val form: GroupSetupForm,
 )
 
-@Serializable
 enum class GroupDraftResource { CREATE_GROUP, UPDATE_GROUP }
 
-@Serializable
 data class GroupDraftKey(
     val resource: GroupDraftResource,
     val groupId: String?,
 )
 
-@Serializable
 data class GroupSetupDraft(
     val schemaVersion: Int = CURRENT_SCHEMA_VERSION,
     val resource: GroupDraftResource,

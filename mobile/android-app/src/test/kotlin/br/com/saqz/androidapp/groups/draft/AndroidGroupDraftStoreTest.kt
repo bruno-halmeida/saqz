@@ -1,6 +1,6 @@
 package br.com.saqz.androidapp.groups.draft
 
-import br.com.saqz.groups.data.finance.ExpenseCategoryDto
+import br.com.saqz.groups.domain.finance.ExpenseCategory
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.model.*
@@ -29,7 +29,7 @@ class AndroidGroupDraftStoreTest {
     private fun setup()=GroupSetupDraft(resource=GroupDraftResource.UPDATE_GROUP,groupId=GROUP,groupVersion=7,etag="\"7\"",commandKey=KEY,form=GroupSetupForm("Vôlei",GroupModality.COURT_VOLLEYBALL,GroupComposition.MIXED,city="Recife",level=GroupLevel.CUSTOM,customLevel="Intermediário +",playStyle=GroupPlayStyle.FIVE_ONE,defaultCapacity=24,monthlyFeeCents=7000,monthlyDueDay=10))
     private fun game()=GameEditorDraft(groupId=GROUP,gameId=GAME,seriesId=null,commandKey=KEY,version=GameVersionToken("\"4\""),mode=GameEditorMode.ONE_TIME,form=GameEditorForm("Treino",GameVenue(null,"Arena","Rua 1"),"2026-08-12","19:30:00","America/Sao_Paulo","2026-08-12T22:30:00Z","90","24","2026-08-12T19:00:00Z","25,00","Notas"))
     private fun monthly()=MonthlyChargeDraft(groupId=GROUP,commandKey=KEY,month="2026-08",amountBrl="70,00",dueDate="2026-08-10",selectedMemberIds=setOf("member-1","member-2"),reviewed=true)
-    private fun expense()=ExpenseDraft(groupId=GROUP,expenseId=EXPENSE,etag="\"3\"",commandKey=KEY,form=ExpenseForm("Água do jogo","123,45","2026-08-12",ExpenseCategoryDto.OTHER,"Água","Compra manual"))
+    private fun expense()=ExpenseDraft(groupId=GROUP,expenseId=EXPENSE,etag="\"3\"",commandKey=KEY,form=ExpenseForm("Água do jogo","123,45","2026-08-12",ExpenseCategory.Other,"Água","Compra manual"))
     private fun <T> success(result:AndroidDraftReadResult<T>)=(result as AndroidDraftReadResult.Success<T>).value
     private data class Fixture(val preferences:FakePreferences,val store:AndroidGroupDraftStore=AndroidGroupDraftStore(preferences))
     private class FakePreferences:AndroidDraftPreferences{val values=linkedMapOf<String,String>();var failWrites=false;override fun read(key:String)=values[key];override fun write(key:String,value:String):Boolean{if(failWrites)return false;values[key]=value;return true};override fun remove(key:String)=values.remove(key)!=null;override fun entries()=values.toMap();fun forceOnly(value:String){val key=values.keys.single();values[key]=value}}

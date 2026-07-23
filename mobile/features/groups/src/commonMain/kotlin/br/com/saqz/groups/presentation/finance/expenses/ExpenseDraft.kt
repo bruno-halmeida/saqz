@@ -1,8 +1,5 @@
 package br.com.saqz.groups.presentation.finance.expenses
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class ExpenseDraft(
     val schemaVersion: Int = CURRENT_SCHEMA,
     val groupId: String,

@@ -32,8 +32,8 @@ import br.com.saqz.groups.data.group.KtorGroupGateway
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
-import br.com.saqz.groups.data.RolesInvitesApi
-import br.com.saqz.groups.data.RolesInvitesGateway
+import br.com.saqz.groups.data.membership.KtorGroupMembershipGateway
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.data.attendance.KtorAttendanceGateway
@@ -282,7 +282,7 @@ class SaqzKoinModulesTest {
         val groupApi = koin.get<KtorGroupGateway>()
         assertSame(groupApi, koin.get<GroupGateway>())
         assertSame(groupApi, koin.get<GroupProfileGateway>())
-        assertSame(koin.get<RolesInvitesApi>(), koin.get<RolesInvitesGateway>())
+        assertSame(koin.get<KtorGroupMembershipGateway>(), koin.get<GroupMembershipGateway>())
         koin.get<GroupPhotoGateway>()
         koin.get<AttendanceSharingGateway>()
         val gameApi = koin.get<KtorGameGateway>()

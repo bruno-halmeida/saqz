@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.SeriesBoundaryScope
 import br.com.saqz.groups.domain.game.Weekday
 import br.com.saqz.groups.domain.game.WeeklySlot
+import br.com.saqz.groups.domain.finance.ExpenseCategory
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
@@ -89,6 +90,106 @@ private data class PersistedGameEditorDraft(
     val scope: PersistedSeriesBoundaryScope? = null,
 )
 
+@Serializable
+private enum class PersistedGroupModality { COURT_VOLLEYBALL, BEACH_VOLLEYBALL, FOOTVOLLEY }
+
+@Serializable
+private enum class PersistedGroupComposition { WOMEN, MEN, MIXED }
+
+@Serializable
+private enum class PersistedGroupLevel { BEGINNER, INTERMEDIATE, ADVANCED, MIXED_LEVELS, CUSTOM }
+
+@Serializable
+private enum class PersistedGroupPlayStyle { SIX_ZERO, FOUR_TWO, FIVE_ONE, CUSTOM }
+
+@Serializable
+private enum class PersistedGroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
+
+@Serializable
+private enum class PersistedGroupDraftResource { CREATE_GROUP, UPDATE_GROUP }
+
+@Serializable
+private enum class PersistedExpenseCategory { VENUE, EQUIPMENT, REFEREE, OTHER }
+
+@Serializable
+private data class PersistedGroupVenueForm(
+    val id: String? = null,
+    val name: String,
+    val address: String,
+    val court: String? = null,
+)
+
+@Serializable
+private data class PersistedGroupRegularSlotForm(
+    val id: String? = null,
+    val weekday: PersistedGroupWeekday,
+    val startTime: String,
+    val durationMinutes: Int,
+)
+
+@Serializable
+private data class PersistedGroupSetupForm(
+    val name: String = "",
+    val modality: PersistedGroupModality? = null,
+    val composition: PersistedGroupComposition? = null,
+    val description: String? = null,
+    val city: String? = null,
+    val level: PersistedGroupLevel? = null,
+    val customLevel: String? = null,
+    val playStyle: PersistedGroupPlayStyle? = null,
+    val customPlayStyle: String? = null,
+    val defaultVenue: PersistedGroupVenueForm? = null,
+    val regularSlots: List<PersistedGroupRegularSlotForm> = emptyList(),
+    val defaultCapacity: Int? = null,
+    val defaultConfirmationLeadMinutes: Int? = null,
+    val defaultGameFeeCents: Long? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
+)
+
+@Serializable
+private data class PersistedGroupSetupDraft(
+    val schemaVersion: Int = GroupSetupDraft.CURRENT_SCHEMA_VERSION,
+    val resource: PersistedGroupDraftResource,
+    val groupId: String?,
+    val groupVersion: Long?,
+    val etag: String?,
+    val commandKey: String,
+    val form: PersistedGroupSetupForm,
+)
+
+@Serializable
+private data class PersistedMonthlyChargeDraft(
+    val schemaVersion: Int = MonthlyChargeDraft.CURRENT_SCHEMA,
+    val groupId: String,
+    val commandKey: String,
+    val month: String,
+    val amountBrl: String,
+    val dueDate: String,
+    val selectedMemberIds: Set<String>,
+    val reviewed: Boolean,
+)
+
+@Serializable
+private data class PersistedExpenseForm(
+    val description: String = "",
+    val amountBrl: String = "",
+    val expenseDate: String = "",
+    val category: PersistedExpenseCategory? = null,
+    val customCategory: String = "",
+    val notes: String = "",
+)
+
+@Serializable
+private data class PersistedExpenseDraft(
+    val schemaVersion: Int = ExpenseDraft.CURRENT_SCHEMA,
+    val groupId: String,
+    val expenseId: String? = null,
+    val etag: String? = null,
+    val commandKey: String,
+    val form: PersistedExpenseForm,
+)
+
 internal enum class AndroidDraftType{SETUP,GAME,MONTHLY,EXPENSE}
 internal data class AndroidDraftRef(val type:AndroidDraftType,val groupId:String?,val resourceId:String?=null)
 internal sealed interface AndroidDraftReadResult<out T>{data class Success<T>(val value:T):AndroidDraftReadResult<T>;data object Missing:AndroidDraftReadResult<Nothing>;data object Corrupt:AndroidDraftReadResult<Nothing>;data object UnsupportedSchema:AndroidDraftReadResult<Nothing>}
@@ -105,18 +206,18 @@ internal class SharedPreferencesDraftPreferences(context:Context):AndroidDraftPr
 
 internal class AndroidGroupDraftStore(private val preferences:AndroidDraftPreferences){
     private val json=Json{explicitNulls=false;ignoreUnknownKeys=false}
-    fun writeSetup(value:GroupSetupDraft)=write(setupRef(value),GroupSetupDraft.serializer(),value)
-    fun readSetup(key:GroupDraftKey)=read(setupRef(key),GroupSetupDraft.serializer(),GroupSetupDraft.CURRENT_SCHEMA_VERSION){it.schemaVersion}
+    fun writeSetup(value:GroupSetupDraft)=write(setupRef(value),PersistedGroupSetupDraft.serializer(),value.toPersisted())
+    fun readSetup(key:GroupDraftKey)=read(setupRef(key),PersistedGroupSetupDraft.serializer(),GroupSetupDraft.CURRENT_SCHEMA_VERSION){it.schemaVersion}.map(PersistedGroupSetupDraft::toDomain)
     fun writeGame(value:GameEditorDraft)=write(gameRef(value),PersistedGameEditorDraft.serializer(),value.toPersisted())
     fun readGame(groupId:String,resourceId:String?=null)=read(AndroidDraftRef(AndroidDraftType.GAME,groupId,resourceId),PersistedGameEditorDraft.serializer(),GameEditorDraft.CURRENT_SCHEMA){it.schemaVersion}.map(PersistedGameEditorDraft::toDomain)
-    fun writeMonthly(value:MonthlyChargeDraft)=write(AndroidDraftRef(AndroidDraftType.MONTHLY,value.groupId),MonthlyChargeDraft.serializer(),value)
-    fun readMonthly(groupId:String)=read(AndroidDraftRef(AndroidDraftType.MONTHLY,groupId),MonthlyChargeDraft.serializer(),MonthlyChargeDraft.CURRENT_SCHEMA){it.schemaVersion}
-    fun writeExpense(value:ExpenseDraft)=write(AndroidDraftRef(AndroidDraftType.EXPENSE,value.groupId,value.expenseId),ExpenseDraft.serializer(),value)
-    fun readExpense(groupId:String,resourceId:String?=null)=read(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),ExpenseDraft.serializer(),ExpenseDraft.CURRENT_SCHEMA){it.schemaVersion}
-    fun clearSetup(key:GroupDraftKey,commandKey:String)=clear(setupRef(key),GroupSetupDraft.serializer(),commandKey){it.commandKey}
+    fun writeMonthly(value:MonthlyChargeDraft)=write(AndroidDraftRef(AndroidDraftType.MONTHLY,value.groupId),PersistedMonthlyChargeDraft.serializer(),value.toPersisted())
+    fun readMonthly(groupId:String)=read(AndroidDraftRef(AndroidDraftType.MONTHLY,groupId),PersistedMonthlyChargeDraft.serializer(),MonthlyChargeDraft.CURRENT_SCHEMA){it.schemaVersion}.map(PersistedMonthlyChargeDraft::toDomain)
+    fun writeExpense(value:ExpenseDraft)=write(AndroidDraftRef(AndroidDraftType.EXPENSE,value.groupId,value.expenseId),PersistedExpenseDraft.serializer(),value.toPersisted())
+    fun readExpense(groupId:String,resourceId:String?=null)=read(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),PersistedExpenseDraft.serializer(),ExpenseDraft.CURRENT_SCHEMA){it.schemaVersion}.map(PersistedExpenseDraft::toDomain)
+    fun clearSetup(key:GroupDraftKey,commandKey:String)=clear(setupRef(key),PersistedGroupSetupDraft.serializer(),commandKey){it.commandKey}
     fun clearGame(groupId:String,resourceId:String?=null,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.GAME,groupId,resourceId),PersistedGameEditorDraft.serializer(),commandKey){it.commandKey}
-    fun clearMonthly(groupId:String,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.MONTHLY,groupId),MonthlyChargeDraft.serializer(),commandKey){it.commandKey}
-    fun clearExpense(groupId:String,resourceId:String?=null,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),ExpenseDraft.serializer(),commandKey){it.commandKey}
+    fun clearMonthly(groupId:String,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.MONTHLY,groupId),PersistedMonthlyChargeDraft.serializer(),commandKey){it.commandKey}
+    fun clearExpense(groupId:String,resourceId:String?=null,commandKey:String)=clear(AndroidDraftRef(AndroidDraftType.EXPENSE,groupId,resourceId),PersistedExpenseDraft.serializer(),commandKey){it.commandKey}
     fun clearGroup(groupId:String):Boolean=preferences.entries().keys.filter{key->parseKey(key)?.groupId==groupId}.all(preferences::remove)
     fun clearAll():Boolean=preferences.entries().keys.filter{it.startsWith(PREFIX)}.all(preferences::remove)
 
@@ -139,6 +240,136 @@ private fun <T, R> AndroidDraftReadResult<T>.map(transform: (T) -> R): AndroidDr
     AndroidDraftReadResult.Corrupt -> AndroidDraftReadResult.Corrupt
     AndroidDraftReadResult.UnsupportedSchema -> AndroidDraftReadResult.UnsupportedSchema
 }
+
+private fun GroupSetupDraft.toPersisted() = PersistedGroupSetupDraft(
+    schemaVersion,
+    PersistedGroupDraftResource.valueOf(resource.name),
+    groupId,
+    groupVersion,
+    etag,
+    commandKey,
+    form.toPersisted(),
+)
+
+private fun PersistedGroupSetupDraft.toDomain() = GroupSetupDraft(
+    schemaVersion,
+    GroupDraftResource.valueOf(resource.name),
+    groupId,
+    groupVersion,
+    etag,
+    commandKey,
+    form.toDomain(),
+)
+
+private fun GroupSetupForm.toPersisted() = PersistedGroupSetupForm(
+    name,
+    modality?.let { PersistedGroupModality.valueOf(it.name) },
+    composition?.let { PersistedGroupComposition.valueOf(it.name) },
+    description,
+    city,
+    level?.let { PersistedGroupLevel.valueOf(it.name) },
+    customLevel,
+    playStyle?.let { PersistedGroupPlayStyle.valueOf(it.name) },
+    customPlayStyle,
+    defaultVenue?.let { PersistedGroupVenueForm(it.id, it.name, it.address, it.court) },
+    regularSlots.map {
+        PersistedGroupRegularSlotForm(
+            it.id,
+            PersistedGroupWeekday.valueOf(it.weekday.name),
+            it.startTime,
+            it.durationMinutes,
+        )
+    },
+    defaultCapacity,
+    defaultConfirmationLeadMinutes,
+    defaultGameFeeCents,
+    monthlyFeeCents,
+    monthlyDueDay,
+)
+
+private fun PersistedGroupSetupForm.toDomain() = GroupSetupForm(
+    name,
+    modality?.let { GroupModality.valueOf(it.name) },
+    composition?.let { GroupComposition.valueOf(it.name) },
+    description,
+    city,
+    level?.let { GroupLevel.valueOf(it.name) },
+    customLevel,
+    playStyle?.let { GroupPlayStyle.valueOf(it.name) },
+    customPlayStyle,
+    defaultVenue?.let { GroupVenueForm(it.id, it.name, it.address, it.court) },
+    regularSlots.map {
+        GroupRegularSlotForm(
+            it.id,
+            GroupWeekday.valueOf(it.weekday.name),
+            it.startTime,
+            it.durationMinutes,
+        )
+    },
+    defaultCapacity,
+    defaultConfirmationLeadMinutes,
+    defaultGameFeeCents,
+    monthlyFeeCents,
+    monthlyDueDay,
+)
+
+private fun MonthlyChargeDraft.toPersisted() = PersistedMonthlyChargeDraft(
+    schemaVersion,
+    groupId,
+    commandKey,
+    month,
+    amountBrl,
+    dueDate,
+    selectedMemberIds,
+    reviewed,
+)
+
+private fun PersistedMonthlyChargeDraft.toDomain() = MonthlyChargeDraft(
+    schemaVersion,
+    groupId,
+    commandKey,
+    month,
+    amountBrl,
+    dueDate,
+    selectedMemberIds,
+    reviewed,
+)
+
+private fun ExpenseDraft.toPersisted() = PersistedExpenseDraft(
+    schemaVersion,
+    groupId,
+    expenseId,
+    etag,
+    commandKey,
+    form.toPersisted(),
+)
+
+private fun PersistedExpenseDraft.toDomain() = ExpenseDraft(
+    schemaVersion,
+    groupId,
+    expenseId,
+    etag,
+    commandKey,
+    form.toDomain(),
+)
+
+private fun ExpenseForm.toPersisted() = PersistedExpenseForm(
+    description,
+    amountBrl,
+    expenseDate,
+    category?.let { PersistedExpenseCategory.entries[it.ordinal] },
+    customCategory,
+    notes,
+)
+
+private fun PersistedExpenseForm.toDomain() = ExpenseForm(
+    description,
+    amountBrl,
+    expenseDate,
+    category?.let { ExpenseCategory.entries[it.ordinal] },
+    customCategory,
+    notes,
+)
 
 private fun GameEditorDraft.toPersisted() = PersistedGameEditorDraft(
     schemaVersion = schemaVersion,

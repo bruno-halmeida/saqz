@@ -1,8 +1,5 @@
 package br.com.saqz.groups.presentation.finance.charges
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class MonthlyChargeDraft(
     val schemaVersion: Int = CURRENT_SCHEMA,
     val groupId: String,
