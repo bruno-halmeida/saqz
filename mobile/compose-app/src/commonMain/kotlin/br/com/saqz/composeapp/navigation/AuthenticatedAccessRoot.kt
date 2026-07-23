@@ -94,6 +94,7 @@ import br.com.saqz.groups.ui.MembershipAdministrationScreen
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PhoneCompletionRoot
+import br.com.saqz.groups.ui.athlete.PositionOnboardingHost
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationRoot
@@ -627,6 +628,7 @@ private fun DestinationContent(
                     onGameDetailIntent,
                 )
             }
+            PositionOnboardingHost(org.koin.compose.viewmodel.koinViewModel())
             if (state.showLogoutConfirmation) {
                 LogoutConfirmationDialog { intent ->
                     onIntent(

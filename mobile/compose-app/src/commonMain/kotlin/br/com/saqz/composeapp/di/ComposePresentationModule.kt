@@ -8,6 +8,7 @@ import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
 import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.namecompletion.NameCompletionViewModel
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
+import br.com.saqz.groups.presentation.athlete.PositionOnboardingViewModel
 import br.com.saqz.access.presentation.passwordreset.PasswordResetViewModel
 import br.com.saqz.access.presentation.registration.RegistrationViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
@@ -77,6 +78,7 @@ internal val composePresentationModule = module {
     viewModelOf(::VerificationViewModel)
     viewModelOf(::NameCompletionViewModel)
     viewModelOf(::PhoneCompletionViewModel)
+    viewModelOf(::PositionOnboardingViewModel)
     viewModel { parameters ->
         val input = parameters.get<GroupSetupViewModelParameters>()
         GroupSetupViewModel(

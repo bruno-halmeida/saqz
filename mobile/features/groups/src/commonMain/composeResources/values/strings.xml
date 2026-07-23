@@ -349,4 +349,13 @@
     <string name="expense_void_confirm">Confirmar anulação</string>
     <string name="expense_conflict">A despesa mudou. Recarregue antes de continuar.</string>
     <string name="expense_error">Não foi possível atualizar o registro manual.</string>
+    <string name="athlete_position_title">Qual sua posição?</string>
+    <string name="athlete_position_body">Escolha sua posição preferida neste grupo. Você pode mudar depois.</string>
+    <string name="athlete_position_skip">Pular</string>
+    <string name="athlete_position_error">Não foi possível salvar sua posição. Tente novamente.</string>
+    <string name="athlete_position_libero">Líbero</string>
+    <string name="athlete_position_ponta">Ponta</string>
+    <string name="athlete_position_central">Central</string>
+    <string name="athlete_position_oposto">Oposto</string>
+    <string name="athlete_position_levantador">Levantador</string>
 </resources>

@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.di
 import br.com.saqz.groups.data.photo.KtorGroupPhotoGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.data.group.KtorGroupGateway
+import br.com.saqz.groups.data.athlete.KtorAthleteGateway
 import br.com.saqz.groups.data.membership.KtorGroupMembershipGateway
 import br.com.saqz.groups.data.attendance.share.KtorAttendanceSharingGateway
 import br.com.saqz.groups.data.attendance.KtorAttendanceGateway
@@ -10,6 +11,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.data.game.KtorGameGateway
 import br.com.saqz.groups.domain.game.GameGateway
@@ -47,6 +49,7 @@ internal val groupsDataModule = module {
     single<GroupProfileGateway> { get<KtorGroupGateway>() }
     single { KtorGroupMembershipGateway(get()) }
     single<GroupMembershipGateway> { get<KtorGroupMembershipGateway>() }
+    single<AthleteGateway> { KtorAthleteGateway(get()) }
     single { KtorAttendanceSharingGateway(get()) }
     single<AttendanceSharingGateway> { get<KtorAttendanceSharingGateway>() }
     single { KtorGroupPhotoGateway(get()) }
