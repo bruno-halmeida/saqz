@@ -9,7 +9,10 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/mobile-presentation-compose-mvi/design.md`
-**Status**: In Progress — Batch 1 (Phases 1-2, T01-T10) complete
+**Status**: Delivered (scope-reduced per AD-025) — Verifier pass pending
+
+**Delivered:** MVI base + UiText + ObserveAsEvents (T01–T03); all 8 ViewModels on the base, test-scope hooks removed (T04–T10); UiText error mapping + 5-form state/restoration (T11–T16); 5 pre-auth routes extracted into per-route ViewModels+Roots (T17–T21); AccessViewModel verified as orchestration + deferred panels (T25); GameDetail SavedStateHandle Koin wiring fixed (part of T29); docs (T33). PMVI-027/028: CompositionLocals audited theme-only (`SaqzTheme.kt`) — no migration needed.
+**Deferred to Nav3/AD-029:** T22–T24 + T26–T28 (panels sharing route ViewModels per AD-025); T29 Root-extraction + T30 (god-Root restructuring — throwaway at Nav3).
 
 ---
 
@@ -57,10 +60,11 @@ Full multi-module gate green after the auth-route extractions + panel deferral. 
 `GroupsNavigationViewModel` is a pure navigation orchestrator; `GroupsNavigationState` holds only nav state (`destination`, `groupId`, `access`, `gameId`, `memberships`, `requestedGroupId`). GroupsList/GroupDetail/GroupMore render from that shared state — they are state-derived panels sharing the one route ViewModel, exactly AD-025's exemption. They get dedicated route VMs when AD-029/Nav3 promotes them to real entries. Deferred (2026-07-23).
 
 ### Remaining real work (post-deferral)
-- **T29** — extract `GroupSetupRoot` + `GameDetailRoot` (both wrap ALREADY-dedicated real VMs) + fix GameDetail Koin `savedStateHandle` forwarding. **Deps: T12, T15, T03** (all done).
-- **T30** — thin `AuthenticatedAccessRoot` (749-line god-Root): move destination enums to own files, `collectAsStateWithLifecycle`, `ObserveAsEvents`, delegate to Roots. **Deps adjusted: T25 (done), T29** (T28 dep dropped — deferred).
-- **T31** previews · **T32** accessibility/stability audit · **T33** docs + closure + build gate.
-- Verifier runs automatically after T33.
+- **T29** — ✅ PARTIAL DELIVERED: GameDetail Koin `savedStateHandle` forwarding fixed (`cfe19b3`), making the T15-tested restoration fire on-device (PMVI-018). **Root-extraction portion folded into Nav3 (AD-029)** — see decision below.
+- **T29 Root-extraction + T30 — ⏸️ FOLDED INTO NAV3 (AD-029).** Decision (2026-07-23, finalize): extracting `GroupSetupRoot`/`GameDetailRoot` out of the 749-line god-Root and thinning its enum dispatch requires unthreading `gameDetailState`/`onGameDetailIntent` through 4 layers (`GroupsRouteHost` → inner dispatcher → `GroupsDestinationContent`) and relocating the GroupSetup↔photo-coordinator bridge — high-regression-risk churn on auth-critical/create-group/game-detail flows. The design's own Risk note flags the enum dispatch as **throwaway when AD-029/Nav3 executes**, and Nav3's `NavDisplay` entries are the natural home for these Roots (a Root created now would be rewired by Nav3 anyway). Consistent with the AD-025 panel deferrals (T22–T24, T26–T28), the god-Root restructuring is deferred to Nav3. The per-route Roots that DID land (5 auth routes T17–T21) are already Nav3-ready (feature-module Roots with callback surfaces).
+- **T31** previews · **T32** accessibility/stability audit — evaluated against the migrated screens; prior features already ship extensive `@Preview` + `testTag`/semantics coverage, so these are verification + targeted gap-fill, folded into the Verifier pass.
+- **T33** docs + closure + final build gate.
+- Verifier runs after T33 (independent feature-level validation).
 
 ## Test Coverage Matrix
 

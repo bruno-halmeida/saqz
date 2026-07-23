@@ -273,6 +273,24 @@ module imports backend implementation types.
 Kotlin import boundaries deterministically; run it directly or through
 `scripts/check-gradle`, which invokes it before the mobile Gradle aggregate.
 
+Presentation follows one MVI contract (AD-025). Every ViewModel extends
+`MviViewModel<State, Intent, Effect>` (`core/common`): immutable `StateFlow`
+state updated atomically, a single `onIntent` entry, and buffered one-shot
+`Effect`s. ViewModels take only constructor-provided business dependencies —
+no test-scope or dispatcher-replacement hooks (tests drive time via
+`Dispatchers.setMain` + `runTest`). Routes split into a Root composable (DI
+via `koinViewModel`, `collectAsStateWithLifecycle`, effect observation via the
+shared `ObserveAsEvents`, cross-feature callbacks) and a stateless
+`(state, onIntent)` screen. Result text reaches the UI only through `UiText`
+(`core/design-system`), never raw transport errors. Essential in-progress
+input survives process death: forms with a durable `DraftsModule` draft
+reconcile with it (draft wins), and the one form without a draft (GameDetail)
+uses a `SavedStateHandle.saved()` snapshot; restored-but-invalid input shows
+the normal corrective state and never auto-submits. Authenticated-context
+panels (group settings, memberships, invite, and the groups sub-destinations)
+still share their route ViewModel per AD-025 until navigation (AD-029)
+promotes them to real entries.
+
 Group photos are private authenticated resources and must never be documented
 or exposed as public URLs. Charges and expenses are manual tracking only: Saqz
 does not process payments, move money, store card data, or claim settlement.
