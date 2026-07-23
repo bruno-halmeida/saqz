@@ -175,6 +175,7 @@ All 26 requirements are assigned to a downstream design or task category. Task i
 | B27 | 2026-07-22 | The new attendance data test imported Ktor's common `UnresolvedAddressException` from the socket package instead of `io.ktor.util.network`, so the iOS test source set could not resolve it. | No new §V invariant: T29's focused multiplatform data gate already detects this mechanical common-test import error. |
 | B28 | 2026-07-22 | A compose-app Koin fixture retained a raw group-ID string after `GameGateway.read` migrated to the opaque `GroupId` domain value, so iOS test compilation failed. | No new §V invariant: T30's composition-aware focused gate detects residual fixture types at the app boundary; construct the declared domain identifier explicitly. |
 | B29 | 2026-07-22 | Koin's constructor DSL attempted to resolve the defaulted retry-delay function parameters of the new game and attendance gateways, causing runtime instance creation failures. | No new §V invariant: the composition gate resolves the production graph and detects constructors whose optional test seams must be omitted by explicit factories. |
+| B30 | 2026-07-22 | Finance domain interface tests used `runTest` without the domain module's test-only coroutines dependency, and nested fake gateways were unable to call outer fixture builders. | No new §V invariant: T31's focused multiplatform test compilation detects missing test dependencies and invalid fixture ownership; keep coroutines test-only and make the fakes explicit inner fixtures. |
 
 ## §V — Backpropagated Invariants
 
