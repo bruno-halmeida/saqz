@@ -337,12 +337,12 @@ object GameDetailTags {
     state: GameDetailState,
     onIntent: (GameDetailIntent) -> Unit,
 ) {
-    var member by remember(state.gameId) { mutableStateOf(TextFieldValue()) }
-    var reason by remember(state.gameId) { mutableStateOf(TextFieldValue()) }
-    var capacity by remember(state.game?.capacity) {
+    var member by remember(state.gameId) { mutableStateOf(TextFieldValue(state.overrideMemberId)) }
+    var reason by remember(state.gameId) { mutableStateOf(TextFieldValue(state.overrideReason)) }
+    var capacity by remember(state.game?.capacity, state.gameId) {
         mutableStateOf(
             TextFieldValue(
-                state.game
+                state.capacityInput ?: state.game
                     ?.capacity
                     ?.toString()
                     .orEmpty(),
@@ -370,11 +370,13 @@ object GameDetailTags {
     )
     SaqzInput(member, {
         member = it.copy(text = it.text.take(64))
+        onIntent(GameDetailIntent.UpdateOverrideMember(member.text))
     }, stringResource(Res.string.attendance_member_id), Modifier.testTag(GameDetailTags.OverrideMember))
     SaqzInput(
         reason,
         {
             reason = it.copy(text = it.text.take(500))
+            onIntent(GameDetailIntent.UpdateOverrideReason(reason.text))
         },
         stringResource(
             Res.string.attendance_override_reason,
@@ -402,6 +404,7 @@ object GameDetailTags {
     }
     SaqzInput(capacity, {
         capacity = it.copy(text = it.text.filter(Char::isDigit).take(3))
+        onIntent(GameDetailIntent.UpdateCapacityInput(capacity.text))
     }, stringResource(Res.string.attendance_capacity), Modifier.testTag(GameDetailTags.Capacity))
     if (belowConfirmed) {
         Text(

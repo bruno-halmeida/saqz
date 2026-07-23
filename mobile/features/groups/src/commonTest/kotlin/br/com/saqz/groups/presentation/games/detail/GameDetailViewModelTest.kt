@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.games.detail
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.group.GroupRole
@@ -246,16 +247,41 @@ class GameDetailViewModelTest {
         assertEquals(GameVersionToken("\"8\""), fixture.viewModel.state.value.version)
     }
 
+    @Test
+    fun `organizer input restores after process death without auto submitting`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle()
+        val first = fixture(handle = handle)
+        runCurrent()
+        first.viewModel.onIntent(GameDetailIntent.UpdateOverrideMember("member-9"))
+        first.viewModel.onIntent(GameDetailIntent.UpdateOverrideReason("motivo valido"))
+        first.viewModel.onIntent(GameDetailIntent.UpdateCapacityInput("30"))
+
+        // Simulate process death: persist and restore the SavedStateHandle.
+        val restoredHandle = SavedStateHandle.createHandle(handle.savedStateProvider().saveState(), null)
+        val second = fixture(handle = restoredHandle)
+        runCurrent()
+
+        // In-progress input restored (PMVI-018).
+        assertEquals("member-9", second.viewModel.state.value.overrideMemberId)
+        assertEquals("motivo valido", second.viewModel.state.value.overrideReason)
+        assertEquals("30", second.viewModel.state.value.capacityInput)
+        // Restoration alone never submits stale data and shows normal state (PMVI-019).
+        assertFalse(second.viewModel.state.value.isAttendanceMutating)
+        assertNull(second.viewModel.state.value.attendanceError)
+        assertTrue(second.gateway.lifecycleCalls.isEmpty())
+    }
+
     private fun fixture(
         role: GroupRole = GroupRole.OWNER,
         initial: VersionedGame = versioned(),
         readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(initial),
         lifecycleResult: SaqzResult<VersionedGame, GameError> =
             SaqzResult.Success(versioned(GameStatus.Published)),
+        handle: SavedStateHandle = SavedStateHandle(),
     ): Fixture {
         val gateway = FakeGateway(readResult, lifecycleResult)
         return Fixture(
-            viewModel = GameDetailViewModel(gateway, "group", "game", role),
+            viewModel = GameDetailViewModel(gateway, "group", "game", role, savedStateHandle = handle),
             gateway = gateway,
         )
     }

@@ -37,6 +37,18 @@ sealed interface GameDetailIntent {
         val capacity: Int,
     ) : GameDetailIntent
 
+    data class UpdateOverrideMember(
+        val value: String,
+    ) : GameDetailIntent
+
+    data class UpdateOverrideReason(
+        val value: String,
+    ) : GameDetailIntent
+
+    data class UpdateCapacityInput(
+        val value: String,
+    ) : GameDetailIntent
+
     data object RetryAttendance : GameDetailIntent
 
     data object RequestAttendanceLinkShare : GameDetailIntent

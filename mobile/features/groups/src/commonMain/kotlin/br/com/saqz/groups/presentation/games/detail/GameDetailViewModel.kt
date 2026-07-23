@@ -1,7 +1,10 @@
 package br.com.saqz.groups.presentation.games.detail
 
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.serialization.saved
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
+import kotlinx.serialization.Serializable
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.attendance.*
@@ -29,10 +32,22 @@ class GameDetailViewModel(
     private val attendanceShareGateway: AttendanceSharingGateway? = null,
     private val keys: AttendanceCommandKeyFactory = AttendanceCommandKeyFactory { "attendance-${Random.nextLong()}" },
     private val now: () -> Instant = { Clock.System.now() },
+    savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState(groupId, gameId, role)) {
     private var retryOperation: AttendanceOperation? = null
 
+    // No durable draft exists for this screen, so the SavedStateHandle snapshot is the
+    // authoritative restore for in-progress organizer input after process death (PMVI-018).
+    private var inputSnapshot by savedStateHandle.saved { GameDetailInputSnapshot() }
+
     init {
+        update {
+            it.copy(
+                overrideMemberId = inputSnapshot.memberId,
+                overrideReason = inputSnapshot.reason,
+                capacityInput = inputSnapshot.capacityInput,
+            )
+        }
         load()
     }
 
@@ -84,6 +99,18 @@ class GameDetailViewModel(
 
             is GameDetailIntent.ChangeCapacity -> {
                 capacity(intent.capacity)
+            }
+
+            is GameDetailIntent.UpdateOverrideMember -> {
+                updateInput { it.copy(overrideMemberId = intent.value) }
+            }
+
+            is GameDetailIntent.UpdateOverrideReason -> {
+                updateInput { it.copy(overrideReason = intent.value) }
+            }
+
+            is GameDetailIntent.UpdateCapacityInput -> {
+                updateInput { it.copy(capacityInput = intent.value) }
             }
 
             GameDetailIntent.RetryAttendance -> {
@@ -557,8 +584,21 @@ class GameDetailViewModel(
                 ),
         )
 
+    private fun updateInput(transform: (GameDetailState) -> GameDetailState) {
+        update(transform)
+        val current = state.value
+        inputSnapshot = GameDetailInputSnapshot(current.overrideMemberId, current.overrideReason, current.capacityInput)
+    }
+
     private data class AttendanceFailure(
         val error: GameDetailError,
         val message: String? = null,
     )
 }
+
+@Serializable
+private data class GameDetailInputSnapshot(
+    val memberId: String = "",
+    val reason: String = "",
+    val capacityInput: String? = null,
+)

@@ -217,7 +217,10 @@ class GameDetailScreenTest {
             field("Motivo do ajuste").performScrollTo().performTextInput("Ajuste manual")
             onNodeWithTag(GameDetailTags.OverrideConfirm).performScrollTo().performClick()
             waitForIdle()
-            assertEquals(GameDetailIntent.OverrideAttendance("member-2", AttendanceIntent.Confirm, "Ajuste manual"), intents.single())
+            assertEquals(
+                GameDetailIntent.OverrideAttendance("member-2", AttendanceIntent.Confirm, "Ajuste manual"),
+                intents.filterIsInstance<GameDetailIntent.OverrideAttendance>().single(),
+            )
         }
 
     @Test fun `organizer decline override dispatches explicit decline`() =
@@ -228,7 +231,10 @@ class GameDetailScreenTest {
             field("Motivo do ajuste").performScrollTo().performTextInput("Não compareceu")
             onNodeWithTag(GameDetailTags.OverrideDecline).performScrollTo().performClick()
             waitForIdle()
-            assertEquals(GameDetailIntent.OverrideAttendance("member-3", AttendanceIntent.Decline, "Não compareceu"), intents.single())
+            assertEquals(
+                GameDetailIntent.OverrideAttendance("member-3", AttendanceIntent.Decline, "Não compareceu"),
+                intents.filterIsInstance<GameDetailIntent.OverrideAttendance>().single(),
+            )
         }
 
     @Test fun `capacity below confirmed warns and never offers demotion`() =
@@ -240,7 +246,7 @@ class GameDetailScreenTest {
             onNodeWithText("A capacidade não pode ficar abaixo dos 3 já confirmados. Ninguém será removido.").assertExists()
             onNodeWithTag(GameDetailTags.SaveCapacity).performScrollTo().assertIsNotEnabled()
             onAllNodesWithText("Remover membro").assertCountEquals(0)
-            assertTrue(intents.isEmpty())
+            assertTrue(intents.filterIsInstance<GameDetailIntent.ChangeCapacity>().isEmpty())
         }
 
     @Test fun `valid capacity dispatches update`() =
@@ -250,7 +256,10 @@ class GameDetailScreenTest {
             field("Capacidade").performScrollTo().performTextReplacement("30")
             onNodeWithTag(GameDetailTags.SaveCapacity).performScrollTo().performClick()
             waitForIdle()
-            assertEquals(GameDetailIntent.ChangeCapacity(30), intents.single())
+            assertEquals(
+                GameDetailIntent.ChangeCapacity(30),
+                intents.filterIsInstance<GameDetailIntent.ChangeCapacity>().single(),
+            )
         }
 
     @Test fun `organizer reason is capped at backend maximum`() =

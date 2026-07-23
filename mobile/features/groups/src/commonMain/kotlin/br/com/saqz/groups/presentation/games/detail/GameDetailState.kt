@@ -38,6 +38,9 @@ data class GameDetailState(
     val attendanceShareSnapshot: AttendanceShareImageModel? = null,
     val attendanceShareError: GameDetailError? = null,
     val showAttendanceSharePrivacy: Boolean = false,
+    val overrideMemberId: String = "",
+    val overrideReason: String = "",
+    val capacityInput: String? = null,
 ) {
     val organizer get() = role == GroupRole.OWNER || role == GroupRole.ADMIN
     val canEdit get() = organizer && (game?.status == GameStatus.Draft || game?.status == GameStatus.Published)
