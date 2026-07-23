@@ -194,7 +194,7 @@ problem mapping.
 membership rows, `game_attendance` FK repoint to `access_users`, and
 `member_display_name` snapshot columns with backfill on attendance and charges.
 
-**Where:** `backend/features/groups/src/main/resources/db/migration/V8__add_athlete_attributes.sql`,
+**Where:** `backend/features/groups/src/main/resources/db/migration/V9__add_athlete_attributes.sql`,
 groups migration integration tests.
 
 **Depends on:** T01

@@ -116,7 +116,7 @@ flowchart TD
 
 ### Groups: Athlete Attributes
 
-- **Migration `V8__add_athlete_attributes.sql` (groups):**
+- **Migration `V9__add_athlete_attributes.sql` (groups):**
   - `ALTER TABLE group_memberships ADD COLUMN position varchar(16)`,
     `membership_type varchar(16) NOT NULL DEFAULT 'AVULSO'`,
     `active boolean NOT NULL DEFAULT true`, with `CHECK` constraints
