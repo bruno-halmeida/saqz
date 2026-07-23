@@ -101,7 +101,7 @@ class AccessSchemaIntegrationTest {
     @Test
     fun `phone accepts null and a normalized brazilian mobile number`() {
         val withoutPhone = insertUser(subject = "phone-null")
-        assertEquals(null, queryStringOrNull("SELECT phone FROM access_users WHERE id = '$withoutPhone'"))
+        assertEquals(null, queryString("SELECT phone FROM access_users WHERE id = '$withoutPhone'"))
 
         val withPhone = UUID.randomUUID()
         execute(
@@ -283,17 +283,7 @@ class AccessSchemaIntegrationTest {
             }
         }
 
-    private fun queryString(sql: String): String =
-        connection().use { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeQuery(sql).use { result ->
-                    result.next()
-                    result.getString(1)
-                }
-            }
-        }
-
-    private fun queryStringOrNull(sql: String): String? =
+    private fun queryString(sql: String): String? =
         connection().use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery(sql).use { result ->
