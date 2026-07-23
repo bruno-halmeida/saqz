@@ -1,35 +1,20 @@
 package br.com.saqz.groups.presentation.games.list
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameGateway
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class GamesViewModel(
     private val gateway: GameGateway,
-    testScope: CoroutineScope? = null,
-) : ViewModel() {
-    private val scope = testScope ?: viewModelScope
-    private val mutableState = MutableStateFlow(GamesState())
-    val state: StateFlow<GamesState> = mutableState.asStateFlow()
-
-    private val effectChannel = Channel<GamesEffect>(Channel.BUFFERED)
-    val effects: Flow<GamesEffect> = effectChannel.receiveAsFlow()
-
+) : MviViewModel<GamesState, GamesIntent, GamesEffect>(GamesState()) {
     private var generation = 0L
     private var today = "9999-12-31"
     private val emittedNavigations = mutableSetOf<String>()
 
-    fun onIntent(intent: GamesIntent) {
+    override fun onIntent(intent: GamesIntent) {
         when (intent) {
             is GamesIntent.SelectGroup -> select(intent)
             GamesIntent.Refresh -> refresh()
@@ -42,25 +27,27 @@ class GamesViewModel(
         generation++
         today = intent.today
         emittedNavigations.clear()
-        mutableState.value = GamesState(
-            groupId = intent.groupId,
-            role = intent.role,
-            isLoading = true,
-        )
+        update {
+            GamesState(
+                groupId = intent.groupId,
+                role = intent.role,
+                isLoading = true,
+            )
+        }
         load(intent.groupId, generation, refresh = false)
     }
 
     private fun refresh() {
-        val current = mutableState.value
+        val current = state.value
         val groupId = current.groupId ?: return
         if (current.isLoading || current.isRefreshing) return
 
-        mutableState.value = current.copy(isRefreshing = true, error = null)
+        update { it.copy(isRefreshing = true, error = null) }
         load(groupId, generation, refresh = true)
     }
 
     private fun load(groupId: String, operation: Long, refresh: Boolean) {
-        scope.launch {
+        viewModelScope.launch {
             when (val result = gateway.list(GroupId(groupId))) {
                 is SaqzResult.Success -> {
                     if (operation != generation) return@launch
@@ -68,47 +55,51 @@ class GamesViewModel(
                     val items = result.value
                         .sortedBy { it.startsAt }
                         .map { it.toGameListItem() }
-                    mutableState.value = mutableState.value.copy(
-                        upcoming = items.filter { it.isoLocalDate() >= today },
-                        past = items.filter { it.isoLocalDate() < today }.reversed(),
-                        isLoading = false,
-                        isRefreshing = false,
-                        error = null,
-                    )
+                    update {
+                        it.copy(
+                            upcoming = items.filter { item -> item.isoLocalDate() >= today },
+                            past = items.filter { item -> item.isoLocalDate() < today }.reversed(),
+                            isLoading = false,
+                            isRefreshing = false,
+                            error = null,
+                        )
+                    }
                 }
                 is SaqzResult.Failure -> {
                     if (operation != generation) return@launch
 
-                    mutableState.value = mutableState.value.copy(
-                        upcoming = if (refresh) mutableState.value.upcoming else emptyList(),
-                        past = if (refresh) mutableState.value.past else emptyList(),
-                        isLoading = false,
-                        isRefreshing = false,
-                        error = GamesLoadError.UNAVAILABLE,
-                    )
+                    update {
+                        it.copy(
+                            upcoming = if (refresh) it.upcoming else emptyList(),
+                            past = if (refresh) it.past else emptyList(),
+                            isLoading = false,
+                            isRefreshing = false,
+                            error = GamesLoadError.UNAVAILABLE,
+                        )
+                    }
                 }
             }
         }
     }
 
     private fun open(gameId: String) {
-        val current = mutableState.value
+        val current = state.value
         val groupId = current.groupId ?: return
         if (current.isLoading) return
         if ((current.upcoming + current.past).none { it.id == gameId }) return
 
         if (emittedNavigations.add("game:$gameId")) {
-            effectChannel.trySend(GamesEffect.OpenGame(groupId, gameId))
+            emit(GamesEffect.OpenGame(groupId, gameId))
         }
     }
 
     private fun create() {
-        val current = mutableState.value
+        val current = state.value
         val groupId = current.groupId ?: return
         if (!current.canCreate || current.isLoading) return
 
         if (emittedNavigations.add("create")) {
-            effectChannel.trySend(GamesEffect.OpenCreate(groupId))
+            emit(GamesEffect.OpenCreate(groupId))
         }
     }
 }
