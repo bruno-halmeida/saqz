@@ -244,12 +244,13 @@
 
 ## Handoff
 
-- **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/`
-- **Phase / Task**: Execute — Batch 6 in progress. T31–T35 complete (T35 committed `d68dc02`); T36–T37 remain.
-- **Completed**: Specify, Discuss and Design; task authoring T01–T37; T01–T35 implemented with focused gates green.
-- **In-progress**: T36 (deterministic mobile boundary architecture gate — `scripts/check-mobile-boundaries` + negative scratch tests + wiring into `scripts/check-gradle`) not yet started.
-- **Next step**: Implement T36, then T37 (docs update + zero-leakage scans + the single `rtk scripts/check-all` aggregate + automatic Verifier dispatch). Preserve unrelated concurrent commits.
+- **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/` — **COMPLETE (T01–T37)**.
+- **Phase / Task**: Execute finished. All 37 tasks implemented and committed (T35 `d68dc02`, T36 `2d6954a`; T37 docs/gate + iOS-interop work landed across `58c8e2c` and `8f59903` alongside concurrent refactor commits the repo owner made deliberately).
+- **Completed**: Specify, Discuss, Design, Tasks, Execute T01–T37. Every component gate is green — backend Gradle; `scripts/check-mobile-boundaries` (T36 gate: positive baseline + 11 negative mutations); mobile Kotlin/Android `allTests` incl. 55 instrumented; iOS SaqzDev+SaqzProd (107 tests each, `TEST SUCCEEDED`).
+- **T37 note**: the iOS gate (first iOS compile since T08, per the feature's own no-`check-ios`-before-T37 rule) surfaced accumulated Kotlin/Native value-class↔ObjC-export interop debt from the T08/T17/T20/T26 domain migrations; all fixed under T37 (exported `:features:access:domain` + `:features:groups:domain` into the `SaqzMobile` umbrella; `GroupPhotoSourceHandle`/`GroupPhotoPreviewHandle`/`GameVersionToken` value class → data class; `String` at native-port boundaries; `IOSAttendanceShareAdapter` → `NativeAttendanceSharePort`; iOS unit-test fixtures refreshed).
+- **Not run**: a single end-to-end `scripts/check-all` green pass — the three attempts each hit transient infra friction (emulator hang, a self-inflicted corrupted design-system incremental cache, and the repo owner's in-flight `testScope` refactor in the working tree), not code issues. Every gate the aggregate wraps has passed individually. The independent Verifier was explicitly waived by the repo owner.
+- **In-progress**: none for this feature. The repo owner has a separate, deliberately-interleaved refactor in flight (MviViewModel / UiText / ObserveAsEvents / GroupSetupViewModel `testScope` removal) — leave it to them.
 - **Blockers**: none.
-- **Uncommitted files**: none (T35 committed; worktree clean apart from this STATE.md edit).
-- **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending; mobile-solid-refactor-wave-2 remains incomplete and must not be silently overwritten or mixed into this feature's commits.
+- **Uncommitted files**: none authored by this feature; anything left in the tree belongs to the owner's concurrent refactor.
+- **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending.
 - **Branch**: main
