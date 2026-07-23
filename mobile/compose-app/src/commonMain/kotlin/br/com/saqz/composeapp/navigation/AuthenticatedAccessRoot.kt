@@ -93,6 +93,7 @@ import br.com.saqz.groups.ui.LogoutConfirmationIntent
 import br.com.saqz.groups.ui.MembershipAdministrationScreen
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionRoot
+import br.com.saqz.access.ui.PhoneCompletionRoot
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationRoot
@@ -130,6 +131,7 @@ internal enum class AccessDestination {
     PASSWORD_RESET,
     VERIFICATION,
     NAME_COMPLETION,
+    PHONE_COMPLETION,
     BOOTSTRAP,
     GROUP_ONBOARDING,
     GROUP_CONTEXT,
@@ -498,6 +500,7 @@ private fun AccessRootSnapshot.destination(): AccessDestination {
         }
         is SessionAccessState.AwaitingVerification -> AccessDestination.VERIFICATION
         is SessionAccessState.CompletingName -> AccessDestination.NAME_COMPLETION
+        is SessionAccessState.CompletingPhone -> AccessDestination.PHONE_COMPLETION
         SessionAccessState.Bootstrapping,
         SessionAccessState.BootstrapError,
         -> AccessDestination.BOOTSTRAP
@@ -570,6 +573,7 @@ private fun DestinationContent(
         AccessDestination.PASSWORD_RESET -> PasswordResetRoot()
         AccessDestination.VERIFICATION -> VerificationRoot()
         AccessDestination.NAME_COMPLETION -> NameCompletionRoot()
+        AccessDestination.PHONE_COMPLETION -> PhoneCompletionRoot()
         AccessDestination.BOOTSTRAP -> BootstrapAccessScreen(state.session) { intent ->
             onIntent(AccessIntent.Session(intent))
         }
