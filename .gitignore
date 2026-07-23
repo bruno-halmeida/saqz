@@ -41,3 +41,6 @@ GoogleService-Info.plist
 
 # Operating systems
 .DS_Store
+
+# Local git worktrees
+.worktrees/
