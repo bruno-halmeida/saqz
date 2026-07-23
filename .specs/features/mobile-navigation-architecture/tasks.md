@@ -471,14 +471,16 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; official lifecycle docs; MCP NONE.
 
 **Done when**:
-- [ ] Equal route keys in distinct stacks have distinct owners/state.
-- [ ] Inactive entries retain owners; definitive pop clears them.
-- [ ] Removing logout- or group-cleared keys releases their entry owners.
-- [ ] G4 passes.
+- [x] Equal route keys in distinct stacks have distinct owners/state.
+- [x] Inactive entries retain owners; definitive pop clears them.
+- [x] Removing logout- or group-cleared keys releases their entry owners.
+- [x] G4 passes.
 
 **Tests**: Common Compose lifecycle and collision cases.
 **Gate**: G4.
 **Commit**: `feat(navigation): scope entries by stack`
+
+#### T16 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/entry/StackScopedEntries.kt` (`NavigationEntryId(stackId, routeIdentity)`, `scopeEntryProvider` namespacing every entry's contentKey by owning stack, `rememberStackEntryDecorators` = saveable-state-then-ViewModel-store chain). Tests `StackScopedEntriesTest.kt` (3 new cases: equal singleton key in two stacks gets distinct `ViewModelStore`s, an inactive stack retains its store across recomposition, removing a key from its backStack releases the store). G4 BUILD SUCCESSFUL; navigation test count 39 → 42 (+3, matches count rule).
 
 ### T17: Implement `AccessNavigationHost`
 
@@ -490,14 +492,16 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] All Access routes render through entries.
-- [ ] Registration/PasswordReset back to Login.
-- [ ] Ready switches navigation mode rather than pushing Groups.
-- [ ] G5 passes.
+- [x] All Access routes render through entries.
+- [x] Registration/PasswordReset back to Login.
+- [x] Ready switches navigation mode rather than pushing Groups.
+- [x] G5 passes.
 
 **Tests**: Common Compose entry inventory, back, and transition cases.
 **Gate**: G5.
 **Commit**: `feat(navigation): add access navigation host`
+
+#### T17 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/access/AccessNavigationHost.kt`: `installAccessEntries(session)` installs all 7 routes (5 wrap existing Roots unchanged; Starting/Bootstrap get entry-scoped `AccessRouteViewModel` via `viewModel(initializer = ...)`, Bootstrap reusing the unmodified `BootstrapAccessScreen` driven by the adapter's projected state); `reconcileAccessStack` (Login/Registration/PasswordReset canonicalize to a Login root + at most one pushed sub-route so back always resolves to Login; every other session state canonicalizes to its single matching route; idempotent no-op); `isAccessSession` (false only for `Ready`, per ACCESSNAV-04). Added `implementation(project(":core:common"))` to `navigation/build.gradle.kts` (required transitively for `MviViewModel`). Tests `AccessNavigationHostTest.kt` (9 new cases: entry inventory via `entryProvider` without composing content, Login/Registration/PasswordReset canonicalization, back-to-Login, idempotency, non-SignedOut states, Ready/non-Ready mode). G5 (`:features:access` + `:navigation`) BUILD SUCCESSFUL; navigation test count 42 → 51 (+9, matches count rule); access test count unchanged at 126 (no access files touched).
 
 ### T18: Implement `GroupsNavigationHost`
 
@@ -509,15 +513,17 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] GameDetail back returns Games; next back returns predecessor.
-- [ ] Single-membership GroupHome has no TopBar back; multiple membership returns Selector.
-- [ ] The Groups TopBar delegates to the supplied `NavigationSession.goBack` callback and removes the expected key; actual `NavDisplay.onBack` equivalence is owned by T21.
-- [ ] MENU-08/13 chrome and four tabs remain exact.
-- [ ] G6 passes.
+- [x] GameDetail back returns Games; next back returns predecessor.
+- [x] Single-membership GroupHome has no TopBar back; multiple membership returns Selector.
+- [x] The Groups TopBar delegates to the supplied `NavigationSession.goBack` callback and removes the expected key; actual `NavDisplay.onBack` equivalence is owned by T21.
+- [x] MENU-08/13 chrome and four tabs remain exact.
+- [x] G6 passes.
 
 **Tests**: Common Compose route inventory, TopBar callback delegation, chrome, transient, and membership cases.
 **Gate**: G6.
 **Commit**: `feat(navigation): add groups navigation host`
+
+#### T18 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/groups/GroupsNavigationHost.kt`: `installGroupsEntries(session, titleFor, bottomBar, content)` installs the host-owned `ProductRoute.AppHome` slot plus all 15 `GroupsRoute` keys (16 distinct entries). Localized titles, the four-item tab bar, and each route's screen are composition-root bindings (Groups strings/icons/screens are module-internal — no `publicResClass` — so `:navigation` cannot import them); the host owns only chrome + the shared back callback. `chromeFor` classifies SELECTOR (AppHome/Selector) / BARE (Setup/Loading/LoadError/CreateGroup) / SCOPED (everything else, top bar, no bottom menu — MENU-08). `canonicalizeSelectedGroup` gives single membership `[GroupHome]` (root, no back) and multiple `[Selector, GroupHome]` (back → Selector); `groupsBackVisible(depth)` = depth > 1. `GroupsScopedScaffold` renders `SaqzTopBar` whose back delegates to `session::goBack` and is hidden when `!canGoBack` (BACK-03). Tests `GroupsNavigationHostTest.kt` (9 new cases: entry inventory via `entryProvider` without composing content, chrome classification, single/multiple membership shape, idempotency, GameDetail→Games→GroupHome→Selector back chain, scoped TopBar back delegation + hidden-back, selector scaffold bottom-bar/no-top-bar). G6 BUILD SUCCESSFUL; navigation test count 51 → 60 (+9, matches count rule); groups untouched.
 
 ### T19: Implement structural `FinanceNavigationHost`
 
