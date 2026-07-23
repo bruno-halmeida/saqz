@@ -10,9 +10,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
+import br.com.saqz.access.presentation.passwordreset.PasswordResetState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -78,29 +78,29 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `reset email emits controlled value`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; reset(onIntent = { intent = it })
+        var intent: PasswordResetIntent? = null; reset(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("person@example.test")
-        assertEquals(AuthenticationIntent.UpdateEmail("person@example.test"), intent)
+        assertEquals(PasswordResetIntent.UpdateEmail("person@example.test"), intent)
     }
 
     @Test fun `reset validation state exposes invalid email`() = runComposeUiTest {
-        reset(AuthenticationState(email = "invalid", validationAttempted = true))
+        reset(PasswordResetState(email = "invalid", validationAttempted = true))
         onNodeWithText("Informe um e-mail valido").assertExists()
     }
 
     @Test fun `reset submit emits exact typed intent`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
-        reset(AuthenticationState(email = "person@example.test"), onIntent = { intent = it })
+        var intent: PasswordResetIntent? = null
+        reset(PasswordResetState(email = "person@example.test"), onIntent = { intent = it })
         onNodeWithTag(IdentityTags.ResetSubmit).performClick()
-        assertEquals(AuthenticationIntent.SubmitPasswordReset, intent)
+        assertEquals(PasswordResetIntent.SubmitPasswordReset, intent)
     }
 
     @Test fun `reset confirmation stays neutral and returns through one callback`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
-        reset(AuthenticationState(resetConfirmation = true, error = AuthUiError.UNKNOWN), onIntent = { intent = it })
+        var intent: PasswordResetIntent? = null
+        reset(PasswordResetState(resetConfirmation = true), onIntent = { intent = it })
         onNodeWithText("Se o e-mail estiver cadastrado, voce recebera as instrucoes").assertExists()
         onNodeWithTag(IdentityTags.ResetBack).performClick()
-        assertEquals(AuthenticationIntent.ShowLogin, intent)
+        assertEquals(PasswordResetIntent.ShowLogin, intent)
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.verification(
@@ -114,8 +114,8 @@ class IdentityCompletionScreensTest {
     ) = setContent { SaqzTheme { NameCompletionScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.reset(
-        state: AuthenticationState = AuthenticationState(),
-        onIntent: (AuthenticationIntent) -> Unit = {},
+        state: PasswordResetState = PasswordResetState(),
+        onIntent: (PasswordResetIntent) -> Unit = {},
     ) = setContent { SaqzTheme { PasswordResetScreen(state, onIntent) } }
 
     private companion object {

@@ -93,7 +93,7 @@ import br.com.saqz.groups.ui.LogoutConfirmationIntent
 import br.com.saqz.groups.ui.MembershipAdministrationScreen
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionScreen
-import br.com.saqz.access.ui.PasswordResetScreen
+import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationScreen
 import br.com.saqz.designsystem.component.SaqzLoadingState
@@ -567,9 +567,7 @@ private fun DestinationContent(
         AccessDestination.STARTING -> SaqzLoadingState()
         AccessDestination.LOGIN -> LoginRoot()
         AccessDestination.REGISTRATION -> RegistrationRoot()
-        AccessDestination.PASSWORD_RESET -> PasswordResetScreen(state.authentication) { intent ->
-            onIntent(AccessIntent.Authentication(intent))
-        }
+        AccessDestination.PASSWORD_RESET -> PasswordResetRoot()
         AccessDestination.VERIFICATION -> VerificationScreen(
             state.session as SessionAccessState.AwaitingVerification,
         ) { intent ->

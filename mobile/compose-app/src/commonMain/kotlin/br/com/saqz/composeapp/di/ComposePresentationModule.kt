@@ -6,6 +6,7 @@ import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.composeapp.navigation.RequestIdGenerator
 import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.passwordreset.PasswordResetViewModel
 import br.com.saqz.access.presentation.registration.RegistrationViewModel
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
@@ -69,6 +70,7 @@ internal val composePresentationModule = module {
     viewModelOf(::GroupsNavigationViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::RegistrationViewModel)
+    viewModelOf(::PasswordResetViewModel)
     viewModel { parameters ->
         val input = parameters.get<GroupSetupViewModelParameters>()
         GroupSetupViewModel(

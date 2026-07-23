@@ -161,19 +161,22 @@ class AuthenticatedAccessRootTest {
     }
 
     @Test
-    fun `password reset back returns through one callback`() = runComposeUiTest {
-        val intents = mutableListOf<AccessIntent>()
-        root(
-            snapshot(authentication = AuthenticationState(screen = AuthScreen.PASSWORD_RESET)),
-            intents::add,
-        )
+    fun `password reset destination renders the dedicated reset route`() = runComposeUiTest {
+        startTestSaqzKoin()
+        try {
+            setContent {
+                SaqzTheme {
+                    AuthenticatedAccessRoot(
+                        snapshot(authentication = AuthenticationState(screen = AuthScreen.PASSWORD_RESET)),
+                    ) {}
+                }
+            }
 
-        onNodeWithText("Voltar para entrar").performClick()
-
-        assertEquals(
-            listOf<AccessIntent>(AccessIntent.Authentication(AuthenticationIntent.ShowLogin)),
-            intents,
-        )
+            onNodeWithText("Esqueceu sua senha?").assertExists()
+            onNodeWithText("Voltar para entrar").assertExists()
+        } finally {
+            stopTestSaqzKoin()
+        }
     }
 
     @Test

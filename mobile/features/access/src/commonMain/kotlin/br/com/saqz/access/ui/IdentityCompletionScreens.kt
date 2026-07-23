@@ -33,11 +33,11 @@ import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.message
 import br.com.saqz.designsystem.text.asString
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.isValidEmail
+import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
+import br.com.saqz.access.presentation.passwordreset.PasswordResetState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_method_conflict
 import br.com.saqz.access.resources.auth_error_network
@@ -138,8 +138,8 @@ fun NameCompletionScreen(
 
 @Composable
 fun PasswordResetScreen(
-    state: AuthenticationState,
-    onIntent: (AuthenticationIntent) -> Unit,
+    state: PasswordResetState,
+    onIntent: (PasswordResetIntent) -> Unit,
 ) {
     val colors = SaqzTheme.colors
     Box(
@@ -193,7 +193,7 @@ fun PasswordResetScreen(
                 Spacer(Modifier.height(28.dp))
                 SaqzInput(
                     value = TextFieldValue(state.email),
-                    onValueChange = { onIntent(AuthenticationIntent.UpdateEmail(it.text)) },
+                    onValueChange = { onIntent(PasswordResetIntent.UpdateEmail(it.text)) },
                     label = stringResource(Res.string.reset_email),
                     kind = SaqzInputKind.Email,
                     inlineLabel = true,
@@ -206,7 +206,7 @@ fun PasswordResetScreen(
                 Spacer(Modifier.height(28.dp))
                 SaqzButton(
                     label = stringResource(Res.string.reset_submit),
-                    onClick = { onIntent(AuthenticationIntent.SubmitPasswordReset) },
+                    onClick = { onIntent(PasswordResetIntent.SubmitPasswordReset) },
                     loading = state.isLoading,
                     labelStyle = SaqzTheme.typography.navigation.copy(
                         fontSize = 13.sp,
@@ -222,7 +222,7 @@ fun PasswordResetScreen(
             Spacer(Modifier.height(10.dp))
             SaqzButton(
                 label = stringResource(Res.string.reset_back),
-                onClick = { onIntent(AuthenticationIntent.ShowLogin) },
+                onClick = { onIntent(PasswordResetIntent.ShowLogin) },
                 variant = SaqzButtonVariant.Ghost,
                 enabled = !state.isLoading,
                 labelStyle = SaqzTheme.typography.navigation.copy(
@@ -286,5 +286,5 @@ private fun NameCompletionScreenPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun PasswordResetScreenPreview() = SaqzTheme {
-    PasswordResetScreen(AuthenticationState(email = "ana@exemplo.com"), {})
+    PasswordResetScreen(PasswordResetState(email = "ana@exemplo.com"), {})
 }
