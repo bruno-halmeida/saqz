@@ -6,6 +6,7 @@ enum class GroupAction {
     MANAGE_INVITE,
     MANAGE_ATTENDANCE_SHARE,
     MANAGE_ROLES,
+    MANAGE_ATHLETES,
 }
 
 sealed interface GroupAccessDecision {
@@ -25,6 +26,7 @@ class GroupAccessPolicy {
             GroupAction.UPDATE_SETTINGS,
             GroupAction.MANAGE_INVITE,
             GroupAction.MANAGE_ATTENDANCE_SHARE,
+            GroupAction.MANAGE_ATHLETES,
             -> role == GroupRole.OWNER || role == GroupRole.ADMIN
             GroupAction.MANAGE_ROLES -> role == GroupRole.OWNER
         }
