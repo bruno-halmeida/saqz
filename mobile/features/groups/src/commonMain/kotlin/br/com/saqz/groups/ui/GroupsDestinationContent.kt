@@ -54,6 +54,7 @@ fun GroupsDestinationContent(
     onRequestLogout: () -> Unit,
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
     athleteRoster: (@Composable () -> Unit)? = null,
+    athleteProfile: (@Composable () -> Unit)? = null,
 ) {
     when (navigation.destination) {
         GroupsDestination.SETUP -> Unit
@@ -137,7 +138,7 @@ fun GroupsDestinationContent(
             tag = GroupsNavigationTags.NoticesScreen,
             onNavigationIntent = onNavigationIntent,
         )
-        GroupsDestination.MORE -> GroupMoreScreen(navigation, onNavigationIntent)
+        GroupsDestination.MORE -> GroupMoreScreen(navigation, onNavigationIntent, athleteProfile)
     }
 }
 
@@ -145,6 +146,7 @@ fun GroupsDestinationContent(
 private fun GroupMoreScreen(
     navigation: GroupsNavigationState,
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
+    athleteProfile: (@Composable () -> Unit)? = null,
 ) {
     Column(
         Modifier.fillMaxSize()
@@ -175,5 +177,6 @@ private fun GroupMoreScreen(
                 variant = SaqzButtonVariant.Secondary,
             )
         }
+        athleteProfile?.invoke()
     }
 }

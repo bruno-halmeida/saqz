@@ -378,4 +378,8 @@
     <string name="roster_remove_body">%1$s sairá do grupo, mas o histórico de jogos e cobranças será mantido. A pessoa pode voltar por um novo convite.</string>
     <string name="roster_remove_confirm">Confirmar remoção</string>
     <string name="roster_remove_error">Não foi possível remover. Tente novamente.</string>
+    <string name="own_profile_title">Meu perfil de atleta</string>
+    <string name="own_profile_phone">Celular: %1$s</string>
+    <string name="own_profile_no_position">Sem posição definida</string>
+    <string name="own_profile_error">Não foi possível carregar seu perfil.</string>
 </resources>

@@ -9,6 +9,7 @@ import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.namecompletion.NameCompletionViewModel
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
 import br.com.saqz.groups.presentation.athlete.AthleteRosterViewModel
+import br.com.saqz.groups.presentation.athlete.OwnAthleteProfileViewModel
 import br.com.saqz.groups.presentation.athlete.PositionOnboardingViewModel
 import br.com.saqz.access.presentation.passwordreset.PasswordResetViewModel
 import br.com.saqz.access.presentation.registration.RegistrationViewModel
@@ -81,6 +82,7 @@ internal val composePresentationModule = module {
     viewModelOf(::PhoneCompletionViewModel)
     viewModelOf(::PositionOnboardingViewModel)
     viewModelOf(::AthleteRosterViewModel)
+    viewModelOf(::OwnAthleteProfileViewModel)
     viewModel { parameters ->
         val input = parameters.get<GroupSetupViewModelParameters>()
         GroupSetupViewModel(

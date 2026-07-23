@@ -95,7 +95,9 @@ import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PhoneCompletionRoot
 import br.com.saqz.groups.presentation.athlete.AthleteRosterViewModel
+import br.com.saqz.groups.presentation.athlete.OwnAthleteProfileViewModel
 import br.com.saqz.groups.ui.athlete.AthleteRosterScreen
+import br.com.saqz.groups.ui.athlete.OwnAthleteProfileSection
 import br.com.saqz.groups.ui.athlete.PositionOnboardingHost
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
@@ -747,6 +749,11 @@ private fun GroupsRouteContent(
                 canManage = state.administration.actions.canManageRoles,
                 onIntent = rosterViewModel::onIntent,
             )
+        },
+        athleteProfile = {
+            val profileViewModel = koinViewModel<OwnAthleteProfileViewModel>()
+            val profileState by profileViewModel.state.collectAsState()
+            OwnAthleteProfileSection(state = profileState, onIntent = profileViewModel::onIntent)
         },
     )
 }
