@@ -15,30 +15,229 @@ import kotlin.test.*
 
 @OptIn(ExperimentalTestApi::class)
 class FinanceScreenTest {
-    @Test fun `athlete sees own manual charge heading and notice`()=runComposeUiTest{screen(state());onNodeWithText("Minhas cobranças").assertExists();onNodeWithText("Controle manual: o app apenas registra cobranças e seus status.").assertExists()}
-    @Test fun `athlete charge localizes kind amount due date and status`()=runComposeUiTest{screen(state());onNodeWithText("Jogo game-1").assertExists();onNodeWithText("Valor: R$ 25,00").assertExists();onNodeWithText("Vencimento: 12/08/2026").assertExists();onNodeWithText("Pendente").assertExists()}
-    @Test fun `athlete monthly charge localizes subject month`()=runComposeUiTest{screen(state(charges=listOf(charge().copy(kind=ChargeKind.Monthly,gameId=null,month="2026-08"))));onNodeWithText("Mensalidade 08/2026").assertExists()}
-    @Test fun `athlete has no totals other member status monthly or expense semantics`()=runComposeUiTest{screen(state());onNodeWithTag(FinanceTags.Totals).assertDoesNotExist();onNodeWithText("Membro: member-2").assertDoesNotExist();onNodeWithTag(FinanceTags.paid(CHARGE)).assertDoesNotExist();onNodeWithTag(FinanceTags.Month).assertDoesNotExist();onAllNodesWithText("Despesas").assertCountEquals(0)}
-    @Test fun `organizer sees localized recorded totals`()=runComposeUiTest{screen(state(role=GroupRole.OWNER,totals=ChargeTotalsState(2500,5000,1000,7000)));onNodeWithText("Pendentes: R$ 25,00").assertExists();onNodeWithText("Pagas registradas: R$ 50,00").assertExists();onNodeWithText("Dispensadas: R$ 10,00").assertExists();onNodeWithText("Canceladas: R$ 70,00").assertExists()}
-    @Test fun `organizer sees member and manual status controls`()=runComposeUiTest{screen(state(role=GroupRole.ADMIN));onNodeWithText("Membro: member-1").assertExists();onNodeWithTag(FinanceTags.paid(CHARGE)).assertExists();onNodeWithTag(FinanceTags.waived(CHARGE)).assertExists();onNodeWithTag(FinanceTags.cancelled(CHARGE)).assertExists()}
-    @Test fun `monthly text editing emits complete draft update`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(organizerState(),intents::add);field("Mês (AAAA-MM)").performTextReplacement("2026-09");val intent=assertIs<FinanceIntent.UpdateMonthly>(intents.last());assertEquals("2026-09",intent.month);assertEquals("70,00",intent.amountBrl);assertEquals(setOf(MEMBER),intent.memberIds)}
-    @Test fun `member selector excludes and restores explicit member`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(organizerState(),intents::add);onNodeWithTag(FinanceTags.member(MEMBER)).performScrollTo().performClick();assertTrue(assertIs<FinanceIntent.UpdateMonthly>(intents.last()).memberIds.isEmpty());onNodeWithTag(FinanceTags.member(MEMBER)).performClick();assertEquals(setOf(MEMBER),assertIs<FinanceIntent.UpdateMonthly>(intents.last()).memberIds)}
-    @Test fun `review action is explicit and reachable`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(organizerState(),intents::add);onNodeWithTag(FinanceTags.Review).performScrollTo().performClick();assertEquals(FinanceIntent.ReviewMonthly,intents.single())}
-    @Test fun `reviewed draft shows exact summary and generate action`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(organizerState(reviewed=true),intents::add);onNodeWithText("Revisão: 2026-08 • R$ 70,00 • vence 2026-08-10 • 1 membros").assertExists();onNodeWithTag(FinanceTags.Generate).performScrollTo().performClick();assertEquals(FinanceIntent.GenerateMonthly,intents.single())}
-    @Test fun `paid control records manual status with optional note`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(state(role=GroupRole.OWNER),intents::add);field("Nota do registro (opcional)").performScrollTo().performTextInput("Recebido em mãos");onNodeWithTag(FinanceTags.paid(CHARGE)).performScrollTo().performClick();assertEquals(FinanceIntent.UpdateStatus(CHARGE,ChargeStatus.Paid,"Recebido em mãos"),intents.single())}
-    @Test fun `waive control records explicit waived status`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(state(role=GroupRole.OWNER),intents::add);onNodeWithTag(FinanceTags.waived(CHARGE)).performScrollTo().performClick();assertEquals(FinanceIntent.UpdateStatus(CHARGE,ChargeStatus.Waived,""),intents.single())}
-    @Test fun `cancel control records explicit cancelled status`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(state(role=GroupRole.OWNER),intents::add);onNodeWithTag(FinanceTags.cancelled(CHARGE)).performScrollTo().performClick();assertEquals(FinanceIntent.UpdateStatus(CHARGE,ChargeStatus.Cancelled,""),intents.single())}
-    @Test fun `audit feedback preserves authoritative status and timestamp`()=runComposeUiTest{val event=ChargeAudit("actor",ChargeStatus.Pending,ChargeStatus.Paid,null,"2026-08-12T10:00:00Z");screen(state(charges=listOf(charge().copy(status=ChargeStatus.Paid,audit=listOf(event)))));onNodeWithText("Histórico: Paga registrada em 2026-08-12T10:00:00Z").assertExists()}
-    @Test fun `monthly field validation is attached to exact input`()=runComposeUiTest{screen(organizerState().copy(fieldErrors=mapOf("month" to listOf("Mês inválido"))));field("Mês (AAAA-MM)").assertIsDisplayed();onNodeWithText("Mês inválido").assertExists()}
-    @Test fun `retry action dispatches preserved operation`()=runComposeUiTest{val intents=mutableListOf<FinanceIntent>();screen(state(role=GroupRole.OWNER).copy(error=FinanceError.CONFLICT,retryAvailable=true),intents::add);onNodeWithTag(FinanceTags.Retry).performScrollTo().performClick();assertEquals(FinanceIntent.Retry,intents.single())}
-    @Test fun `manual copy contains no processor partial refund balance or credential language`()=runComposeUiTest{screen(state());listOf("processador","parcial","reembolso","saldo","credencial").forEach{onAllNodesWithText(it,substring=true,ignoreCase=true).assertCountEquals(0)}}
-    @Test fun `status note caps at backend maximum`()=runComposeUiTest{screen(state(role=GroupRole.OWNER));val note=field("Nota do registro (opcional)");note.performScrollTo().performTextInput("x".repeat(501));assertEquals(500,note.fetchSemanticsNode().config[SemanticsProperties.EditableText].text.length)}
-    @Test fun `status actions retain semantic order and minimum touch targets`()=runComposeUiTest{screen(state(role=GroupRole.OWNER));val paid=onNodeWithTag(FinanceTags.paid(CHARGE)).fetchSemanticsNode().config;val waived=onNodeWithTag(FinanceTags.waived(CHARGE)).fetchSemanticsNode().config;assertTrue(paid[FinanceMinimumTouchTargetKey]);assertTrue(waived[FinanceMinimumTouchTargetKey]);assertEquals(1,paid[FinanceActionOrderKey]);assertEquals(2,waived[FinanceActionOrderKey])}
+    @Test fun `athlete sees own manual charge heading and notice`() =
+        runComposeUiTest {
+            screen(state())
+            onNodeWithText("Minhas cobranças").assertExists()
+            onNodeWithText("Controle manual: o app apenas registra cobranças e seus status.").assertExists()
+        }
 
-    private fun androidx.compose.ui.test.ComposeUiTest.screen(value:FinanceState,onIntent:(FinanceIntent)->Unit={})=setContent{SaqzTheme{FinanceScreen(value,onIntent)}}
-    private fun androidx.compose.ui.test.ComposeUiTest.field(label:String)=onNodeWithContentDescription(label,useUnmergedTree=true)
-    private fun organizerState(reviewed:Boolean=false)=state(role=GroupRole.OWNER).copy(members=listOf(GroupMembership(MEMBER,"Ana",GroupRole.ATHLETE)),monthlyDraft=MonthlyChargeDraft(groupId=GROUP,commandKey="key",month="2026-08",amountBrl="70,00",dueDate="2026-08-10",selectedMemberIds=setOf(MEMBER),reviewed=reviewed))
-    private fun state(role:GroupRole=GroupRole.ATHLETE,charges:List<Charge> = listOf(charge()),totals:ChargeTotalsState?=null)=FinanceState(GROUP,role,charges=charges,totals=totals,isLoading=false)
-    private fun charge()=Charge(CHARGE,GroupId(GROUP),MEMBER,ChargeKind.Game,"game-1",null,2500,"2026-08-12",ChargeStatus.Pending,false,4,emptyList())
-    private companion object{const val GROUP="group";const val MEMBER="member-1";const val CHARGE="charge-1"}
+    @Test fun `athlete charge localizes kind amount due date and status`() =
+        runComposeUiTest {
+            screen(state())
+            onNodeWithText("Jogo game-1").assertExists()
+            onNodeWithText("Valor: R$ 25,00").assertExists()
+            onNodeWithText("Vencimento: 12/08/2026").assertExists()
+            onNodeWithText("Pendente").assertExists()
+        }
+
+    @Test fun `athlete monthly charge localizes subject month`() =
+        runComposeUiTest {
+            screen(state(charges = listOf(charge().copy(kind = ChargeKind.Monthly, gameId = null, month = "2026-08"))))
+            onNodeWithText("Mensalidade 08/2026").assertExists()
+        }
+
+    @Test fun `athlete has no totals other member status monthly or expense semantics`() =
+        runComposeUiTest {
+            screen(state())
+            onNodeWithTag(FinanceTags.Totals).assertDoesNotExist()
+            onNodeWithText("Membro: member-2").assertDoesNotExist()
+            onNodeWithTag(FinanceTags.paid(CHARGE)).assertDoesNotExist()
+            onNodeWithTag(FinanceTags.Month).assertDoesNotExist()
+            onAllNodesWithText("Despesas").assertCountEquals(0)
+        }
+
+    @Test fun `organizer sees localized recorded totals`() =
+        runComposeUiTest {
+            screen(state(role = GroupRole.OWNER, totals = ChargeTotalsState(2500, 5000, 1000, 7000)))
+            onNodeWithText("Pendentes: R$ 25,00").assertExists()
+            onNodeWithText("Pagas registradas: R$ 50,00").assertExists()
+            onNodeWithText("Dispensadas: R$ 10,00").assertExists()
+            onNodeWithText("Canceladas: R$ 70,00").assertExists()
+        }
+
+    @Test fun `organizer sees member and manual status controls`() =
+        runComposeUiTest {
+            screen(state(role = GroupRole.ADMIN))
+            onNodeWithText("Membro: member-1").assertExists()
+            onNodeWithTag(FinanceTags.paid(CHARGE)).assertExists()
+            onNodeWithTag(FinanceTags.waived(CHARGE)).assertExists()
+            onNodeWithTag(FinanceTags.cancelled(CHARGE)).assertExists()
+        }
+
+    @Test fun `monthly text editing emits complete draft update`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(organizerState(), intents::add)
+            field("Mês (AAAA-MM)").performTextReplacement("2026-09")
+            val intent = assertIs<FinanceIntent.UpdateMonthly>(intents.last())
+            assertEquals("2026-09", intent.month)
+            assertEquals("70,00", intent.amountBrl)
+            assertEquals(setOf(MEMBER), intent.memberIds)
+        }
+
+    @Test fun `member selector excludes and restores explicit member`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(organizerState(), intents::add)
+            onNodeWithTag(FinanceTags.member(MEMBER)).performScrollTo().performClick()
+            assertTrue(assertIs<FinanceIntent.UpdateMonthly>(intents.last()).memberIds.isEmpty())
+            onNodeWithTag(FinanceTags.member(MEMBER)).performClick()
+            assertEquals(setOf(MEMBER), assertIs<FinanceIntent.UpdateMonthly>(intents.last()).memberIds)
+        }
+
+    @Test fun `review action is explicit and reachable`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(organizerState(), intents::add)
+            onNodeWithTag(FinanceTags.Review).performScrollTo().performClick()
+            assertEquals(FinanceIntent.ReviewMonthly, intents.single())
+        }
+
+    @Test fun `reviewed draft shows exact summary and generate action`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(organizerState(reviewed = true), intents::add)
+            onNodeWithText("Revisão: 2026-08 • R$ 70,00 • vence 2026-08-10 • 1 membros").assertExists()
+            onNodeWithTag(FinanceTags.Generate).performScrollTo().performClick()
+            assertEquals(FinanceIntent.GenerateMonthly, intents.single())
+        }
+
+    @Test fun `paid control records manual status with optional note`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(state(role = GroupRole.OWNER), intents::add)
+            field("Nota do registro (opcional)").performScrollTo().performTextInput("Recebido em mãos")
+            onNodeWithTag(FinanceTags.paid(CHARGE)).performScrollTo().performClick()
+            assertEquals(FinanceIntent.UpdateStatus(CHARGE, ChargeStatus.Paid, "Recebido em mãos"), intents.single())
+        }
+
+    @Test fun `waive control records explicit waived status`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(state(role = GroupRole.OWNER), intents::add)
+            onNodeWithTag(FinanceTags.waived(CHARGE)).performScrollTo().performClick()
+            assertEquals(FinanceIntent.UpdateStatus(CHARGE, ChargeStatus.Waived, ""), intents.single())
+        }
+
+    @Test fun `cancel control records explicit cancelled status`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(state(role = GroupRole.OWNER), intents::add)
+            onNodeWithTag(FinanceTags.cancelled(CHARGE)).performScrollTo().performClick()
+            assertEquals(FinanceIntent.UpdateStatus(CHARGE, ChargeStatus.Cancelled, ""), intents.single())
+        }
+
+    @Test fun `audit feedback preserves authoritative status and timestamp`() =
+        runComposeUiTest {
+            val event = ChargeAudit("actor", ChargeStatus.Pending, ChargeStatus.Paid, null, "2026-08-12T10:00:00Z")
+            screen(state(charges = listOf(charge().copy(status = ChargeStatus.Paid, audit = listOf(event)))))
+            onNodeWithText("Histórico: Paga registrada em 2026-08-12T10:00:00Z").assertExists()
+        }
+
+    @Test fun `monthly field validation is attached to exact input`() =
+        runComposeUiTest {
+            screen(
+                organizerState().copy(
+                    fieldErrors =
+                        mapOf("month" to listOf("Mês inválido")),
+                ),
+            )
+            ;field("Mês (AAAA-MM)").assertIsDisplayed()
+            onNodeWithText("Mês inválido").assertExists()
+        }
+
+    @Test fun `retry action dispatches preserved operation`() =
+        runComposeUiTest {
+            val intents = mutableListOf<FinanceIntent>()
+            screen(state(role = GroupRole.OWNER).copy(error = FinanceError.CONFLICT, retryAvailable = true), intents::add)
+            onNodeWithTag(FinanceTags.Retry).performScrollTo().performClick()
+            assertEquals(FinanceIntent.Retry, intents.single())
+        }
+
+    @Test fun `manual copy contains no processor partial refund balance or credential language`() =
+        runComposeUiTest {
+            screen(state())
+            listOf("processador", "parcial", "reembolso", "saldo", "credencial").forEach {
+                onAllNodesWithText(it, substring = true, ignoreCase = true).assertCountEquals(0)
+            }
+        }
+
+    @Test fun `status note caps at backend maximum`() =
+        runComposeUiTest {
+            screen(state(role = GroupRole.OWNER))
+            val note = field("Nota do registro (opcional)")
+            note.performScrollTo().performTextInput("x".repeat(501))
+            assertEquals(
+                500,
+                note
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.EditableText]
+                    .text.length,
+            )
+        }
+
+    @Test fun `status actions retain semantic order and minimum touch targets`() =
+        runComposeUiTest {
+            screen(state(role = GroupRole.OWNER))
+            val paid = onNodeWithTag(FinanceTags.paid(CHARGE)).fetchSemanticsNode().config
+            val waived = onNodeWithTag(FinanceTags.waived(CHARGE)).fetchSemanticsNode().config
+            assertTrue(paid[FinanceMinimumTouchTargetKey])
+            assertTrue(waived[FinanceMinimumTouchTargetKey])
+            assertEquals(1, paid[FinanceActionOrderKey])
+            assertEquals(2, waived[FinanceActionOrderKey])
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.screen(
+        value: FinanceState,
+        onIntent: (FinanceIntent) -> Unit = {
+        },
+    ) = setContent { SaqzTheme { FinanceScreen(value, onIntent) } }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.field(label: String) = onNodeWithContentDescription(label, useUnmergedTree = true)
+
+    private fun organizerState(reviewed: Boolean = false) =
+        state(
+            role = GroupRole.OWNER,
+        ).copy(
+            members = listOf(GroupMembership(MEMBER, "Ana", GroupRole.ATHLETE)),
+            monthlyDraft =
+                MonthlyChargeDraft(
+                    groupId = GROUP,
+                    commandKey = "key",
+                    month = "2026-08",
+                    amountBrl = "70,00",
+                    dueDate = "2026-08-10",
+                    selectedMemberIds = setOf(MEMBER),
+                    reviewed = reviewed,
+                ),
+        )
+
+    private fun state(
+        role: GroupRole = GroupRole.ATHLETE,
+        charges: List<Charge> = listOf(charge()),
+        totals: ChargeTotalsState? = null,
+    ) = FinanceState(GROUP, role, charges = charges, totals = totals, isLoading = false)
+
+    private fun charge() =
+        Charge(
+            CHARGE,
+            GroupId(GROUP),
+            MEMBER,
+            ChargeKind.Game,
+            "game-1",
+            null,
+            2500,
+            "2026-08-12",
+            ChargeStatus.Pending,
+            false,
+            4,
+            emptyList(),
+        )
+
+    private companion object {
+        const val GROUP = "group"
+        const val MEMBER = "member-1"
+        const val CHARGE = "charge-1"
+    }
 }
