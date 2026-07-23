@@ -1187,6 +1187,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T37: Update architecture documentation and run the only final aggregate
 
+**Status:** Complete — docs/gate updates and final zero-leakage scans done; all component gates green (backend Gradle; `check-mobile-boundaries`; mobile Kotlin/Android `allTests` incl. 55 instrumented; iOS SaqzDev+SaqzProd 107 each — `TEST SUCCEEDED`). The iOS gate was the first iOS compile since T08 (feature rules forbid `check-ios` before T37) and surfaced accumulated Kotlin/Native value-class↔ObjC-export interop debt from the T08/T17/T20/T26 domain migrations, all fixed under T37: exported `:features:access:domain` + `:features:groups:domain` into the `SaqzMobile` umbrella; reverted `GroupPhotoSourceHandle`/`GroupPhotoPreviewHandle`/`GameVersionToken` from `@JvmInline value class` to `data class` so the native Swift adapters can construct the models; raw `String` at native-port boundaries; migrated `IOSAttendanceShareAdapter` to `NativeAttendanceSharePort`; refreshed iOS unit-test fixtures to the current model shapes.
+
 **What:** Update the mobile architecture/testing inventory and aggregate commands for the new modules, perform final zero-leakage searches, and run the complete repository gate exactly once.
 
 **Where:** Focused sections of `README.md`, `scripts/check-gradle`, related command-contract tests if not completed in T36, and feature task/status documentation; no production behavior changes.

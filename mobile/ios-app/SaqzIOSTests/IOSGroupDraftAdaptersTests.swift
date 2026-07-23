@@ -18,7 +18,7 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
         let fixture = makeFixture(); let draft = gameDraft()
         XCTAssertTrue(fixture.store.writeGame(draft))
         guard case .success(let restored) = fixture.store.readGame(groupID: group, resourceID: game) else { return XCTFail("Expected game draft") }
-        XCTAssertEqual(restored.gameId, game); XCTAssertEqual(restored.etag, "\"4\"")
+        XCTAssertEqual(restored.gameId, game); XCTAssertEqual(restored.version?.value, "\"4\"")
         XCTAssertEqual(restored.commandKey, commandKey); XCTAssertEqual(restored.form.title, "Treino")
         XCTAssertEqual(restored.form.localTime, "19:30:00"); XCTAssertEqual(restored.form.gameFeeBrl, "25,00")
     }
@@ -35,7 +35,7 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
     func testExpenseRoundTripsConditionalFormVersionEtagAndKey() {
         let fixture = makeFixture(); let draft = expense()
         XCTAssertTrue(fixture.store.writeExpense(draft))
-        guard case .success(let restored) = fixture.store.readExpense(groupID: group) else { return XCTFail("Expected expense draft") }
+        guard case .success(let restored) = fixture.store.readExpense(groupID: group, resourceID: expenseID) else { return XCTFail("Expected expense draft") }
         XCTAssertEqual(restored.schemaVersion, 1); XCTAssertEqual(restored.expenseId, expenseID)
         XCTAssertEqual(restored.etag, "\"3\""); XCTAssertEqual(restored.commandKey, commandKey)
         XCTAssertEqual(restored.form.category, .other); XCTAssertEqual(restored.form.customCategory, "Água")
@@ -59,7 +59,7 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
     func testCorruptEnvelopeReturnsTypedCorruptWithoutDraft() {
         let fixture = makeFixture(); XCTAssertTrue(fixture.store.writeExpense(expense()))
         fixture.files.values[fixture.files.values.keys.first!] = Data("not-json".utf8)
-        guard case .corrupt = fixture.store.readExpense(groupID: group) else { return XCTFail("Expected corrupt") }
+        guard case .corrupt = fixture.store.readExpense(groupID: group, resourceID: expenseID) else { return XCTFail("Expected corrupt") }
     }
 
     func testOldPayloadSchemaReturnsTypedUnsupportedWithoutDispatch() {
@@ -80,7 +80,7 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
         guard case .success = fixture.store.readMonthly(groupID: group) else { return XCTFail("Mismatch must preserve") }
         XCTAssertTrue(fixture.store.clearMonthly(groupID: group, commandKey: commandKey))
         guard case .missing = fixture.store.readMonthly(groupID: group) else { return XCTFail("Match must clear") }
-        guard case .success(let remaining) = fixture.store.readExpense(groupID: group) else { return XCTFail("Unrelated draft must remain") }
+        guard case .success(let remaining) = fixture.store.readExpense(groupID: group, resourceID: expenseID) else { return XCTFail("Unrelated draft must remain") }
         XCTAssertEqual(remaining.expenseId, expenseID)
     }
 
@@ -89,7 +89,7 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
         XCTAssertTrue(fixture.store.writeExpense(expense(groupID: otherGroup)))
         XCTAssertTrue(fixture.store.clearGroup(group))
         guard case .missing = fixture.store.readMonthly(groupID: group) else { return XCTFail("Group draft must clear") }
-        guard case .success(let remaining) = fixture.store.readExpense(groupID: otherGroup) else { return XCTFail("Other group must remain") }
+        guard case .success(let remaining) = fixture.store.readExpense(groupID: otherGroup, resourceID: expenseID) else { return XCTFail("Other group must remain") }
         XCTAssertEqual(remaining.groupId, otherGroup)
     }
 
@@ -105,11 +105,11 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
     private func setupKey() -> GroupDraftKey { GroupDraftKey(resource: .updateGroup, groupId: group) }
     private func setup() -> GroupSetupDraft {
         GroupSetupDraft(schemaVersion: 1, resource: .updateGroup, groupId: group, groupVersion: KotlinLong(value: 7), etag: "\"7\"", commandKey: commandKey,
-            form: GroupSetupForm(name: "Vôlei", modality: .courtVolleyball, composition: .mixed, description: nil, city: "Recife", level: .custom, customLevel: "Intermediário +", playStyle: .fiveOne, customPlayStyle: nil, defaultVenue: nil, regularSlots: [], defaultCapacity: KotlinInt(value: 24), defaultConfirmationLeadMinutes: nil, defaultGameFeeCents: nil, monthlyFeeCents: KotlinLong(value: 7000), monthlyDueDay: KotlinInt(value: 10)))
+            form: GroupSetupForm_(name: "Vôlei", modality: .courtVolleyball, composition: .mixed, description: nil, city: "Recife", level: .custom, customLevel: "Intermediário +", playStyle: .fiveOne, customPlayStyle: nil, defaultVenue: nil, regularSlots: [], defaultCapacity: KotlinInt(value: 24), defaultConfirmationLeadMinutes: nil, defaultGameFeeCents: nil, monthlyFeeCents: KotlinLong(value: 7000), monthlyDueDay: KotlinInt(value: 10)))
     }
     private func gameDraft() -> GameEditorDraft {
-        GameEditorDraft(schemaVersion: 1, groupId: group, gameId: game, seriesId: nil, commandKey: commandKey, etag: "\"4\"", mode: .oneTime,
-            form: GameEditorForm(title: "Treino", venue: GameVenueDto(venueId: nil, name: "Arena", address: "Rua 1", court: nil), localDate: "2026-08-12", localTime: "19:30:00", zoneId: "America/Sao_Paulo", startsAt: "2026-08-12T22:30:00Z", durationMinutes: "90", capacity: "24", confirmationDeadline: "2026-08-12T19:00:00Z", gameFeeBrl: "25,00", notes: "Notas", localEndDate: "", slots: []), scope: nil)
+        GameEditorDraft(schemaVersion: 1, groupId: group, gameId: game, seriesId: nil, commandKey: commandKey, version: GameVersionToken(value: "\"4\""), mode: .oneTime,
+            form: GameEditorForm(title: "Treino", venue: GameVenue(venueId: nil, name: "Arena", address: "Rua 1", court: nil), localDate: "2026-08-12", localTime: "19:30:00", zoneId: "America/Sao_Paulo", startsAt: "2026-08-12T22:30:00Z", durationMinutes: "90", capacity: "24", confirmationDeadline: "2026-08-12T19:00:00Z", gameFeeBrl: "25,00", notes: "Notas", localEndDate: "", slots: []), scope: nil)
     }
     private func monthly(schema: Int32 = 1, amount: String = "70,00") -> MonthlyChargeDraft {
         MonthlyChargeDraft(schemaVersion: schema, groupId: group, commandKey: commandKey, month: "2026-08", amountBrl: amount, dueDate: "2026-08-10", selectedMemberIds: Set(["member-1", "member-2"]), reviewed: true)

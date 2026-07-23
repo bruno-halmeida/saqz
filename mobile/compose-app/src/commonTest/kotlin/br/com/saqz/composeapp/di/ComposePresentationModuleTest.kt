@@ -44,21 +44,39 @@ import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
 import br.com.saqz.groups.presentation.setup.GroupSetupInput
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ComposePresentationModuleTest {
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun groupSetupResolvesDraftAndTimeZonePortsFromKoin() = runTest {
+    fun groupSetupResolvesDraftAndTimeZonePortsFromKoin() = runTest(mainDispatcher) {
         val drafts = RecordingDraftStore()
         val timeZones = RecordingTimeZonePort()
         val app = koinApplication {
@@ -77,7 +95,6 @@ class ComposePresentationModuleTest {
                     GroupSetupViewModelParameters(
                         input = GroupSetupInput(),
                         commandKeys = GroupCommandKeyFactory { "command" },
-                        testScope = this,
                     ),
                 )
             }

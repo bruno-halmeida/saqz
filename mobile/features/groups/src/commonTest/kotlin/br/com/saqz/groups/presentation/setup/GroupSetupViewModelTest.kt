@@ -33,11 +33,17 @@ import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.TestScope
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -47,8 +53,20 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupSetupViewModelTest {
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `create initializes every section with one stable command key and detected timezone`() = runTest {
+    fun `create initializes every section with one stable command key and detected timezone`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         assertEquals(GroupSetupMode.CREATE, fixture.viewModel.state.value.mode)
@@ -59,7 +77,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `timezone failure requires friendly fallback and rejects invalid identifiers`() = runTest {
+    fun `timezone failure requires friendly fallback and rejects invalid identifiers`() = runTest(mainDispatcher) {
         val fixture = fixture(timeZoneResult = GroupSystemTimeZoneResult.Unavailable)
 
         assertTrue(fixture.viewModel.state.value.timezoneSelectionRequired)
@@ -71,7 +89,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `matching versioned draft restores form version etag and stable command key`() = runTest {
+    fun `matching versioned draft restores form version etag and stable command key`() = runTest(mainDispatcher) {
         val draft = GroupSetupDraft(
             resource = GroupDraftResource.CREATE_GROUP,
             groupId = null,
@@ -89,7 +107,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `draft read failure is typed and keeps a usable empty form`() = runTest {
+    fun `draft read failure is typed and keeps a usable empty form`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Failure(GroupDraftFailure.CORRUPT))
 
         assertEquals(GroupSetupError.DRAFT_UNAVAILABLE, fixture.viewModel.state.value.error)
@@ -97,7 +115,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `non-court modality immediately clears style and custom style`() = runTest {
+    fun `non-court modality immediately clears style and custom style`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm().copy(
             modality = GroupModality.COURT_VOLLEYBALL,
             playStyle = GroupPlayStyle.CUSTOM,
@@ -112,7 +130,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `preset level immediately clears obsolete custom level`() = runTest {
+    fun `preset level immediately clears obsolete custom level`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm().copy(
             level = GroupLevel.CUSTOM,
             customLevel = "Elite",
@@ -126,7 +144,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `preset play style immediately clears obsolete custom style`() = runTest {
+    fun `preset play style immediately clears obsolete custom style`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm().copy(
             modality = GroupModality.COURT_VOLLEYBALL,
             playStyle = GroupPlayStyle.CUSTOM,
@@ -141,7 +159,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `invalid required form submits no request and exposes exact fields`() = runTest {
+    fun `invalid required form submits no request and exposes exact fields`() = runTest(mainDispatcher) {
         val fixture = fixture(
             draftResult = GroupDraftReadResult.Success(draft(GroupSetupForm())),
         )
@@ -155,7 +173,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `invalid nested defaults expose exact paths and submit no request`() = runTest {
+    fun `invalid nested defaults expose exact paths and submit no request`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm().copy(
             defaultVenue = GroupVenue(name = "", address = "x"),
             regularSlots = listOf(GroupRegularSlot(weekday = GroupWeekday.MONDAY, startTime = "", durationMinutes = 10)),
@@ -175,7 +193,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `duplicate submit remains single flight with one command key`() = runTest {
+    fun `duplicate submit remains single flight with one command key`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
 
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
@@ -187,7 +205,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `failed create retry reuses the same command key`() = runTest {
+    fun `failed create retry reuses the same command key`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.gateway.createResult = failure(503, "UNAVAILABLE")
 
@@ -202,7 +220,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `confirmed create clears only matching draft and selects then opens group`() = runTest {
+    fun `confirmed create clears only matching draft and selects then opens group`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
 
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
@@ -215,7 +233,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `post-create photo failure remains retryable without another create`() = runTest {
+    fun `post-create photo failure remains retryable without another create`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(true))
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
@@ -231,7 +249,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `pending photo completes before created group navigation`() = runTest {
+    fun `pending photo completes before created group navigation`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(true))
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
@@ -246,7 +264,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `cancelling pending photo after create continues without another create`() = runTest {
+    fun `cancelling pending photo after create continues without another create`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.viewModel.onIntent(GroupSetupIntent.SetPhotoPending(true))
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
@@ -261,7 +279,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `edit initializes from authoritative nested profile and finance defaults`() = runTest {
+    fun `edit initializes from authoritative nested profile and finance defaults`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versioned())
 
         assertEquals(GroupSetupMode.EDIT, fixture.viewModel.state.value.mode)
@@ -272,7 +290,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `edit sends current group ETag and opens updated group`() = runTest {
+    fun `edit sends current group ETag and opens updated group`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versioned())
 
         fixture.viewModel.onIntent(GroupSetupIntent.Submit)
@@ -285,7 +303,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `version conflict retains draft and offers reload`() = runTest {
+    fun `version conflict retains draft and offers reload`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versioned())
         fixture.gateway.updateResult = failure(409, "VERSION_CONFLICT")
 
@@ -300,7 +318,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `conflict reload replaces form and ETag with authoritative response`() = runTest {
+    fun `conflict reload replaces form and ETag with authoritative response`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versioned())
         fixture.gateway.readResult = SaqzResult.Success(versioned(name = "Reloaded Group", version = 9, etag = "\"9\""))
 
@@ -314,7 +332,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `server validation preserves exact field paths and local draft`() = runTest {
+    fun `server validation preserves exact field paths and local draft`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.gateway.createResult = SaqzResult.Failure(
             GroupProfileError.Validation(
@@ -334,7 +352,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `server validation without global message uses generic presentation fallback`() = runTest {
+    fun `server validation without global message uses generic presentation fallback`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.gateway.createResult = SaqzResult.Failure(
             GroupProfileError.Validation(
@@ -352,7 +370,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `server validation preserves safe global messages`() = runTest {
+    fun `server validation preserves safe global messages`() = runTest(mainDispatcher) {
         val fixture = fixture(draftResult = GroupDraftReadResult.Success(draft(validForm())))
         fixture.gateway.createResult = SaqzResult.Failure(
             GroupProfileError.Validation(
@@ -373,7 +391,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `forbidden and missing responses remain distinct typed errors`() = runTest {
+    fun `forbidden and missing responses remain distinct typed errors`() = runTest(mainDispatcher) {
         val forbidden = fixture(existing = versioned()).also { it.gateway.updateResult = failure(403, "ACCESS_FORBIDDEN") }
         forbidden.viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
@@ -386,7 +404,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `each form mutation persists current command and resource identity`() = runTest {
+    fun `each form mutation persists current command and resource identity`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(GroupSetupIntent.UpdateName("Draft Group"))
@@ -411,7 +429,6 @@ class GroupSetupViewModelTest {
             GroupSystemTimeZonePort { it(timeZoneResult) },
             drafts,
             GroupCommandKeyFactory { "command-1" },
-            backgroundScope,
         )
         return Fixture(viewModel, gateway, drafts)
     }

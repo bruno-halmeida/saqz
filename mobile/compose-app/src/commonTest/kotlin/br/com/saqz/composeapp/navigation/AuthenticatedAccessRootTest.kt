@@ -640,7 +640,6 @@ class AuthenticatedAccessRootTest {
             },
             drafts = ImmediateDraftStore(validSetupDraft()),
             commandKeys = GroupCommandKeyFactory { "create-command" },
-            testScope = scope,
         )
         val selections = RecordingPhotoSelectionPort()
         val dependencies = GroupPhotoRuntimeDependencies(

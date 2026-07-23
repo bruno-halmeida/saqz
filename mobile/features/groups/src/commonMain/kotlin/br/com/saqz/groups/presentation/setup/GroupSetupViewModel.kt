@@ -1,7 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -23,14 +23,6 @@ import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class GroupSetupViewModel(
@@ -39,35 +31,21 @@ class GroupSetupViewModel(
     private val timeZones: GroupSystemTimeZonePort,
     private val drafts: GroupDraftStorePort,
     commandKeys: GroupCommandKeyFactory,
-    testScope: CoroutineScope? = null,
-) : ViewModel() {
-    private val scope = testScope ?: viewModelScope
+) : MviViewModel<GroupSetupState, GroupSetupIntent, GroupSetupEffect>(
+    initialGroupSetupState(input, commandKeys),
+) {
     private val existing = input.existing
     private val draftKey = GroupDraftKey(
         if (existing == null) GroupDraftResource.CREATE_GROUP else GroupDraftResource.UPDATE_GROUP,
         existing?.group?.id?.value,
     )
-    private val mutableState = MutableStateFlow(
-        GroupSetupState(
-            mode = if (existing == null) GroupSetupMode.CREATE else GroupSetupMode.EDIT,
-            form = existing?.group?.toForm() ?: newGroupDefaults(),
-            commandKey = commandKeys.create(),
-            groupId = existing?.group?.id?.value,
-            groupVersion = existing?.group?.version,
-            etag = existing?.versionToken?.value,
-            timeZone = existing?.group?.timeZone,
-        ),
-    )
-    val state: StateFlow<GroupSetupState> = mutableState.asStateFlow()
-    private val effectChannel = Channel<GroupSetupEffect>(Channel.BUFFERED)
-    val effects: Flow<GroupSetupEffect> = effectChannel.receiveAsFlow()
 
     init {
         restoreDraft()
         if (existing == null) detectTimeZone()
     }
 
-    fun onIntent(intent: GroupSetupIntent) {
+    override fun onIntent(intent: GroupSetupIntent) {
         when (intent) {
             is GroupSetupIntent.UpdateName -> updateForm { copy(name = intent.value) }
             is GroupSetupIntent.UpdateModality -> updateForm {
@@ -100,19 +78,19 @@ class GroupSetupViewModel(
             }
             is GroupSetupIntent.SelectFallbackTimeZone -> selectFallbackTimeZone(intent.identifier)
             is GroupSetupIntent.SetPhotoPending -> {
-                val shouldOpen = !intent.value && mutableState.value.photoPending
-                val groupId = mutableState.value.successGroupId
-                mutableState.update { it.copy(photoPending = intent.value) }
+                val shouldOpen = !intent.value && state.value.photoPending
+                val groupId = state.value.successGroupId
+                update { it.copy(photoPending = intent.value) }
                 if (shouldOpen && groupId != null) openConfirmedGroup(groupId)
             }
             GroupSetupIntent.Submit -> submit()
             GroupSetupIntent.ReloadConflict -> reloadConflict()
             GroupSetupIntent.RetryPhotoUpload -> retryPhoto()
-            GroupSetupIntent.PhotoUploadFailed -> mutableState.update { it.copy(photoRetryAvailable = true) }
+            GroupSetupIntent.PhotoUploadFailed -> update { it.copy(photoRetryAvailable = true) }
             GroupSetupIntent.PhotoUploadSucceeded -> {
-                val shouldOpen = mutableState.value.photoPending
-                val groupId = mutableState.value.successGroupId
-                mutableState.update {
+                val shouldOpen = state.value.photoPending
+                val groupId = state.value.successGroupId
+                update {
                     it.copy(photoPending = false, photoRetryAvailable = false)
                 }
                 if (shouldOpen && groupId != null) openConfirmedGroup(groupId)
@@ -122,7 +100,7 @@ class GroupSetupViewModel(
 
     private fun detectTimeZone() {
         timeZones.detect { result ->
-            mutableState.update { current ->
+            update { current ->
                 when (result) {
                     is GroupSystemTimeZoneResult.Available -> current.copy(
                         timeZone = GroupTimeZone(result.value.id),
@@ -137,11 +115,11 @@ class GroupSetupViewModel(
     private fun selectFallbackTimeZone(identifier: String) {
         val parsed = identifier.toGroupTimeZone()
         if (parsed != null) {
-            mutableState.update {
+            update {
                 it.copy(timeZone = parsed, timezoneSelectionRequired = false, fieldErrors = it.fieldErrors - "timeZone")
             }
         } else {
-            mutableState.update {
+            update {
                 it.copy(fieldErrors = it.fieldErrors + ("timeZone" to listOf("must be a valid timezone")))
             }
         }
@@ -154,7 +132,7 @@ class GroupSetupViewModel(
                     if (draft.schemaVersion == GroupSetupDraft.CURRENT_SCHEMA_VERSION &&
                         draft.resource == draftKey.resource && draft.groupId == draftKey.groupId
                     ) {
-                        mutableState.update {
+                        update {
                             it.copy(
                                 form = draft.form.toDomainForm(),
                                 commandKey = draft.commandKey,
@@ -164,13 +142,13 @@ class GroupSetupViewModel(
                         }
                     }
                 }
-                is GroupDraftReadResult.Failure -> mutableState.update { it.copy(error = GroupSetupError.DRAFT_UNAVAILABLE) }
+                is GroupDraftReadResult.Failure -> update { it.copy(error = GroupSetupError.DRAFT_UNAVAILABLE) }
             }
         }
     }
 
     private fun updateForm(transform: GroupSetupForm.() -> GroupSetupForm) {
-        mutableState.update {
+        update {
             it.copy(
                 form = it.form.transform(),
                 fieldErrors = emptyMap(),
@@ -182,24 +160,24 @@ class GroupSetupViewModel(
     }
 
     private fun persistDraft() {
-        val current = mutableState.value
+        val current = state.value
         drafts.write(current.toDraft(draftKey)) { result ->
             if (result is GroupDraftWriteResult.Failure) {
-                mutableState.update { it.copy(error = GroupSetupError.DRAFT_UNAVAILABLE) }
+                update { it.copy(error = GroupSetupError.DRAFT_UNAVAILABLE) }
             }
         }
     }
 
     private fun submit() {
-        val current = mutableState.value
+        val current = state.value
         if (current.isLoading) return
         val errors = validateGroupSetup(current)
         if (errors.isNotEmpty()) {
-            mutableState.update { it.copy(validationAttempted = true, fieldErrors = errors) }
+            update { it.copy(validationAttempted = true, fieldErrors = errors) }
             return
         }
         persistDraft()
-        mutableState.update {
+        update {
             it.copy(
                 isLoading = true,
                 validationAttempted = true,
@@ -208,7 +186,7 @@ class GroupSetupViewModel(
                 error = null,
             )
         }
-        scope.launch {
+        viewModelScope.launch {
             if (current.mode == GroupSetupMode.CREATE) create(current) else update(current)
         }
     }
@@ -235,17 +213,17 @@ class GroupSetupViewModel(
             )
             is SaqzResult.Failure -> {
                 if (result.error is GroupProfileError.Conflict) {
-                    mutableState.update { it.copy(isLoading = false, conflict = true) }
+                    update { it.copy(isLoading = false, conflict = true) }
                 } else fail(result.error)
             }
         }
     }
 
     private fun confirmedSuccess(groupId: String, version: Long, etag: String?) {
-        val commandKey = mutableState.value.commandKey
+        val commandKey = state.value.commandKey
         val confirmedEtag = etag ?: "\"$version\""
         drafts.clear(draftKey, commandKey) { result ->
-            mutableState.update {
+            update {
                 it.copy(
                     isLoading = false,
                     conflict = false,
@@ -256,8 +234,8 @@ class GroupSetupViewModel(
                     error = if (result is GroupDraftWriteResult.Failure) GroupSetupError.DRAFT_UNAVAILABLE else null,
                 )
             }
-            if (mutableState.value.photoPending) {
-                effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId, confirmedEtag))
+            if (state.value.photoPending) {
+                emit(GroupSetupEffect.UploadPhoto(groupId, confirmedEtag))
             } else {
                 openConfirmedGroup(groupId)
             }
@@ -265,18 +243,18 @@ class GroupSetupViewModel(
     }
 
     private fun openConfirmedGroup(groupId: String) {
-        if (existing == null) effectChannel.trySend(GroupSetupEffect.SelectGroup(groupId))
-        effectChannel.trySend(GroupSetupEffect.OpenGroup(groupId))
+        if (existing == null) emit(GroupSetupEffect.SelectGroup(groupId))
+        emit(GroupSetupEffect.OpenGroup(groupId))
     }
 
     private fun reloadConflict() {
-        val groupId = mutableState.value.groupId ?: return
-        if (mutableState.value.isLoading) return
-        mutableState.update { it.copy(isLoading = true, error = null) }
-        scope.launch {
+        val groupId = state.value.groupId ?: return
+        if (state.value.isLoading) return
+        update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
             when (val result = gateway.readProfile(GroupId(groupId))) {
                 is SaqzResult.Success -> {
-                    mutableState.update {
+                    update {
                         it.copy(
                             form = result.value.group.toForm(),
                             groupVersion = result.value.group.version,
@@ -294,15 +272,15 @@ class GroupSetupViewModel(
     }
 
     private fun retryPhoto() {
-        val groupId = mutableState.value.successGroupId ?: return
-        val groupEtag = mutableState.value.etag ?: return
-        mutableState.update { it.copy(photoRetryAvailable = false) }
-        effectChannel.trySend(GroupSetupEffect.UploadPhoto(groupId, groupEtag))
+        val groupId = state.value.successGroupId ?: return
+        val groupEtag = state.value.etag ?: return
+        update { it.copy(photoRetryAvailable = false) }
+        emit(GroupSetupEffect.UploadPhoto(groupId, groupEtag))
     }
 
     private fun fail(error: GroupProfileError) {
         when (error) {
-            is GroupProfileError.Validation -> mutableState.update {
+            is GroupProfileError.Validation -> update {
                 it.copy(
                     isLoading = false,
                     fieldErrors = error.details.fieldMessages,
@@ -312,10 +290,10 @@ class GroupSetupViewModel(
                     error = null,
                 )
             }
-            is GroupProfileError.Conflict -> mutableState.update {
+            is GroupProfileError.Conflict -> update {
                 it.copy(isLoading = false, conflict = true)
             }
-            is GroupProfileError.DataFailure -> mutableState.update {
+            is GroupProfileError.DataFailure -> update {
                 it.copy(
                     isLoading = false,
                     fieldErrors = emptyMap(),
@@ -329,4 +307,20 @@ class GroupSetupViewModel(
         }
     }
 
+}
+
+private fun initialGroupSetupState(
+    input: GroupSetupInput,
+    commandKeys: GroupCommandKeyFactory,
+): GroupSetupState {
+    val existing = input.existing
+    return GroupSetupState(
+        mode = if (existing == null) GroupSetupMode.CREATE else GroupSetupMode.EDIT,
+        form = existing?.group?.toForm() ?: newGroupDefaults(),
+        commandKey = commandKeys.create(),
+        groupId = existing?.group?.id?.value,
+        groupVersion = existing?.group?.version,
+        etag = existing?.versionToken?.value,
+        timeZone = existing?.group?.timeZone,
+    )
 }

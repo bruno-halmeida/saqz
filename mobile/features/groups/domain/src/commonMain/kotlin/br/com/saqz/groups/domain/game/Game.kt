@@ -4,7 +4,6 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.GroupId
-import kotlin.jvm.JvmInline
 
 enum class GameStatus { Draft, Published, Cancelled, Completed }
 
@@ -14,8 +13,12 @@ enum class SeriesBoundaryAction { Edit, Cancel }
 
 enum class Weekday { Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday }
 
-@JvmInline
-value class GameVersionToken(val value: String)
+// SPEC_DEVIATION: data class, not @JvmInline value class.
+// Reason: GameEditorDraft carries this version token and is constructed field-by-field by the
+// native iOS draft codec/tests; Kotlin/Native erases value-class members to an opaque `id`,
+// so Swift cannot build a model whose fields are value classes. A data class exports as a real
+// Objective-C type Swift can construct. Value-class semantics are not needed for this token.
+data class GameVersionToken(val value: String)
 
 data class GameVenue(
     val venueId: String? = null,
