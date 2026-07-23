@@ -1,0 +1,3 @@
+<resources>
+    <string name="uitext_probe_greeting">Olá, %1$s</string>
+</resources>
