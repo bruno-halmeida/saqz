@@ -285,14 +285,16 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] One writer applies commands atomically.
-- [ ] Nested back pops; non-home root selects Início; Início root returns false.
-- [ ] Duplicate keys/tab roots are suppressed.
-- [ ] G4 passes.
+- [x] One writer applies commands atomically.
+- [x] Nested back pops; non-home root selects Início; Início root returns false.
+- [x] Duplicate keys/tab roots are suppressed.
+- [x] G4 passes.
 
 **Tests**: Common unit command-order, push, tab, duplicate, and back matrix.
 **Gate**: G4.
 **Commit**: `feat(navigation): implement navigation session`
+
+#### T07 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/NavigationSession.kt` (`ProductTab`, `NavigationSession` with `selectedTab`, `canGoBack`, `stackFor`, `selectTab`, `push`, `goBack`); tests `mobile/navigation/src/commonTest/kotlin/br/com/saqz/navigation/NavigationSessionTest.kt` (11 new cases). G4 BUILD SUCCESSFUL; navigation test count 4 → 15 (+11, matches count rule).
 
 ### T08: Implement transient route reconciliation
 
@@ -304,13 +306,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Rapid Loading/Error transitions are idempotent.
-- [ ] Back cannot reveal obsolete transient keys.
-- [ ] G4 passes.
+- [x] Rapid Loading/Error transitions are idempotent.
+- [x] Back cannot reveal obsolete transient keys.
+- [x] G4 passes.
 
 **Tests**: Common unit transition table and race ordering.
 **Gate**: G4.
 **Commit**: `feat(navigation): reconcile transient routes`
+
+#### T08 evidence — `NavigationSession.reconcileGroupSelection(GroupSelectionState)` added to `NavigationSession.kt`, replacing the GROUPS root in place (never pushing) so Loading/LoadError can never remain in back history; tests `mobile/navigation/src/commonTest/kotlin/br/com/saqz/navigation/NavigationSessionGroupReconciliationTest.kt` (9 new cases: NoGroup/Selector/Loading/LoadError/Selected mapping, flapping idempotency, back-cannot-reveal-transient, no-op once stack has grown past root). G4 BUILD SUCCESSFUL; navigation test count 15 → 24 (+9, matches count rule).
 
 ### T09: Implement authorization pruning
 
@@ -322,13 +326,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Active and inactive stacks cannot retain disallowed visible suffixes.
-- [ ] Membership loss and invalid IDs follow exact fallbacks.
-- [ ] G6 passes.
+- [x] Active and inactive stacks cannot retain disallowed visible suffixes.
+- [x] Membership loss and invalid IDs follow exact fallbacks.
+- [x] G6 passes.
 
 **Tests**: Common unit predecessor, all-stack pruning, fallback, invalid-ID cases.
 **Gate**: G6.
 **Commit**: `feat(navigation): prune unauthorized routes`
+
+#### T09 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/authorization/RouteAuthorizationPruning.kt` (pure `pruneDisallowedSuffix(stack, isAllowed, fallback)`) plus `NavigationSession.pruneDisallowed(isAllowed, membershipActive, fallback, membershipLostFallback)`, applied to every non-HOME stack identically. Tests: `RouteAuthorizationPruningTest.kt` (4 cases) + `NavigationSessionPruningTest.kt` (5 cases, including a RESTORE-04 case). G6 (`:features:groups` + `:navigation`) BUILD SUCCESSFUL; navigation test count 24 → 33 (+9, matches count rule). AUTHZ-03 (blank `gameId` rejection) remains fully covered by T04's `GroupsRouteTest`; no duplicate test added here.
 
 ### T10: Implement saved tab, restoration, and scope clearing
 
@@ -340,14 +346,16 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Selected tab and stacks restore together.
-- [ ] Unauthorized restored state is pruned.
-- [ ] Logout/group switch clear the proper stack/session data; entry-owner release is verified only after decorators exist in T16 and at integration in T23.
-- [ ] G4 passes.
+- [x] Selected tab and stacks restore together.
+- [x] Unauthorized restored state is pruned.
+- [x] Logout/group switch clear the proper stack/session data; entry-owner release is verified only after decorators exist in T16 and at integration in T23.
+- [x] G4 passes.
 
 **Tests**: Common restoration, selected-tab, logout, same/different-group cases.
 **Gate**: G4.
 **Commit**: `feat(navigation): restore and clear navigation state`
+
+#### T10 evidence — `NavigationSession.clearAuthenticated()` (resets every tab stack to its captured initial root, selects Início) and `clearGroupScope(groupId)` (resets GROUPS/NOTICES/MORE, idempotent per groupId) added to `NavigationSession.kt`; restoration reuses the existing `initialTab`/`stacks` constructor parameters. Tests: `NavigationSessionRestorationTest.kt` (6 new cases: restore-together, RESTORE-04 reuse, clearAuthenticated, clearGroupScope, idempotent same-group, different-group re-clear). G4 BUILD SUCCESSFUL; navigation test count 33 → 39 (+6, matches count rule).
 
 ### T11: Add Access route adapter ViewModel
 
@@ -359,13 +367,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Every Access entry obtains its own adapter instance.
-- [ ] Adapter owns no auth/session state machine and imports no Nav3 UI/`:navigation`.
-- [ ] G2 passes.
+- [x] Every Access entry obtains its own adapter instance.
+- [x] Adapter owns no auth/session state machine and imports no Nav3 UI/`:navigation`.
+- [x] G2 passes.
 
 **Tests**: Common unit state/intent/effect coverage for each Access route mode.
 **Gate**: G2.
 **Commit**: `feat(access): add route view model adapter`
+
+#### T11 evidence — Login/Registration/PasswordReset/Verification/NameCompletion already have dedicated ViewModels+Roots (pre-existing, not recreated). The two remaining routes without one -- Starting and Bootstrap -- get one reusable `AccessRouteViewModel(mode: AccessRouteMode, session: SessionAccessStateMachine)` in `mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/presentation/route/{AccessRouteContract.kt,AccessRouteViewModel.kt}`; STARTING mode is a static projection, BOOTSTRAP mode projects `SessionAccessState.Bootstrapping/BootstrapError`. Tests `AccessRouteViewModelTest.kt` (7 new cases). G2 BUILD SUCCESSFUL; access test count 119 → 126 (+7, matches count rule; this batch's own measured baseline, since `:features:access` has only one Gradle test task, `iosSimulatorArm64Test`).
 
 ### T12: Add Groups selection route adapter ViewModel
 
@@ -377,13 +387,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Each state-root entry has immutable projected state and typed commands.
-- [ ] Selection business logic remains in the existing machine.
-- [ ] G3 passes.
+- [x] Each state-root entry has immutable projected state and typed commands.
+- [x] Selection business logic remains in the existing machine.
+- [x] G3 passes.
 
 **Tests**: Common unit projections and intent delegation.
 **Gate**: G3.
 **Commit**: `feat(groups): add selection route adapter`
+
+#### T12 evidence — `GroupSelectionRouteViewModel` in `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/route/GroupSelectionRouteViewModel.kt`: one reusable type for Setup/Selector/Loading/LoadError, projecting the existing `GroupSelectionState` and reusing the existing `GroupOnboardingIntent` contract directly (no new state/intent types), forwarding Select/Retry to `GroupSelectionStateMachine` and emitting a typed `GroupSelectionRouteEffect.OpenCreateGroup` instead of navigating directly. Tests `GroupSelectionRouteViewModelTest.kt` (5 new cases). G3 BUILD SUCCESSFUL; groups test count 462 → 467 (+5, matches count rule).
 
 ### T13: Add Groups content route adapter ViewModels
 
@@ -395,15 +407,17 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Route instances expose only their relevant immutable state/typed intents.
-- [ ] Routes sharing a state source reuse its single adapter type; routes backed by different sources do not acquire a catch-all coordinator.
-- [ ] A structural/unit inventory test fails for a duplicate adapter type, missing source mapping, or catch-all coordinator relative to the T01 inventory.
-- [ ] No coordinator/business state is duplicated.
-- [ ] G3 passes.
+- [x] Route instances expose only their relevant immutable state/typed intents.
+- [x] Routes sharing a state source reuse its single adapter type; routes backed by different sources do not acquire a catch-all coordinator.
+- [x] A structural/unit inventory test fails for a duplicate adapter type, missing source mapping, or catch-all coordinator relative to the T01 inventory.
+- [x] No coordinator/business state is duplicated.
+- [x] G3 passes.
 
 **Tests**: Common unit source-to-adapter inventory, route-mode projections, role gating, and typed effects.
 **Gate**: G3.
 **Commit**: `feat(groups): add content route adapter`
+
+#### T13 evidence — Four adapter types, one per underlying source, in `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/route/`: `GroupHomeRouteViewModel` (administration + photo, the sole two-source route), `GroupAdministrationRouteViewModel` (mode SETTINGS/MEMBERSHIPS, reusing `GroupAdministrationState`/`GroupAdministrationIntent` directly), `GroupContentPlaceholderRouteViewModel` (mode PROFILE_COMPLETION/PEOPLE/GAMES/NOTICES/MORE, deriving an immutable `GroupRouteAccess` via the existing `GroupRoutePolicy`), `GroupInviteRouteViewModel` (`InviteToolStateMachine`). `GroupContentRouteInventoryTest.kt` proves routes sharing a source produce instances of the identical `::class` and distinct sources produce distinct classes. Tests: `GroupHomeRouteViewModelTest.kt` (6), `GroupAdministrationRouteViewModelTest.kt` (4), `GroupContentPlaceholderRouteViewModelTest.kt` (6), `GroupInviteRouteViewModelTest.kt` (4), `GroupContentRouteInventoryTest.kt` (1) = 21 new cases. G3 BUILD SUCCESSFUL; groups test count 467 → 488 (+21, matches count rule).
 
 ### T14: Add existing route ViewModel factories
 
@@ -415,13 +429,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Factories accept route identity and shared dependencies.
-- [ ] Existing ViewModel tests remain unchanged in outcome.
-- [ ] G3 passes.
+- [x] Factories accept route identity and shared dependencies.
+- [x] Existing ViewModel tests remain unchanged in outcome.
+- [x] G3 passes.
 
 **Tests**: Common unit factory identity and existing VM regressions.
 **Gate**: G3.
 **Commit**: `feat(groups): add route view model factories`
+
+#### T14 evidence — `GameDetailViewModelFactory` (`games/detail/GameDetailViewModelFactory.kt`) and `GroupSetupViewModelFactory` (`setup/GroupSetupViewModelFactory.kt`): thin `create(...)` bindings threading route identity into the unchanged existing ViewModels. `GameDetailViewModelFactory.create` accepts an explicit `SavedStateHandle` parameter instead of the current manual singleton Koin `get()` (`cfe19b3`), so a future entry decorator (T16/T21) can supply its own entry-scoped handle. Existing `GameDetailViewModelTest.kt`/`GroupSetupViewModelTest.kt` untouched. Tests: `GameDetailViewModelFactoryTest.kt` (3), `GroupSetupViewModelFactoryTest.kt` (3) = 6 new cases. G3 BUILD SUCCESSFUL; groups test count 488 → 494 (+6, matches count rule).
 
 ### T15: Add Finance placeholder route adapter ViewModel
 
@@ -433,13 +449,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Adapter never resolves finance/expense gateways or real finance screens.
-- [ ] Owner/athlete labels and typed back/navigation effects remain correct.
-- [ ] G3 passes.
+- [x] Adapter never resolves finance/expense gateways or real finance screens.
+- [x] Owner/athlete labels and typed back/navigation effects remain correct.
+- [x] G3 passes.
 
 **Tests**: Common unit inertness and role-label cases.
 **Gate**: G3.
 **Commit**: `feat(groups): add finance placeholder adapter`
+
+#### T15 evidence — `FinancePlaceholderRouteViewModel` in `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/presentation/route/FinancePlaceholderRouteViewModel.kt`: a dependency-free adapter carrying only its `FinancePlaceholderMode` (FINANCE/OWN_CHARGES); `FinancePlaceholderIntent`/`Effect` are empty sealed interfaces (no command, no navigation -- these are leaf routes). Which mode a user reaches is decided elsewhere by the existing `GroupRoutePolicy`-based resolver (T13's More adapter, T20's effect handler), not duplicated here. Tests `FinancePlaceholderRouteViewModelTest.kt` (4 new cases). G3 BUILD SUCCESSFUL; groups test count 494 → 498 (+4, matches count rule).
 
 ### Phase 3: Navigation Displays
 
