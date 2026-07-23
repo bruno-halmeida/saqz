@@ -46,3 +46,57 @@ sealed interface RemoveAthleteResult {
 
     data object OwnerImmutable : RemoveAthleteResult
 }
+
+enum class FinancialStatus {
+    EM_DIA,
+    PENDENTE,
+    DESCONHECIDO,
+}
+
+data class AthleteRosterFilter(
+    val search: String? = null,
+    val membershipType: AthleteMembershipType? = null,
+    val position: AthletePosition? = null,
+    val financialStatus: FinancialStatus? = null,
+    val includeInactive: Boolean = false,
+)
+
+data class AthleteRosterEntry(
+    val userId: UUID,
+    val displayName: AccessName,
+    val phone: String?,
+    val position: AthletePosition?,
+    val membershipType: AthleteMembershipType,
+    val active: Boolean,
+    val financialStatus: FinancialStatus,
+)
+
+sealed interface ListAthletesResult {
+    data class Success(val athletes: List<AthleteRosterEntry>) : ListAthletesResult
+
+    data object GroupNotFound : ListAthletesResult
+
+    data object AccessForbidden : ListAthletesResult
+}
+
+data class OwnAthleteMembership(
+    val groupId: UUID,
+    val groupName: AccessName,
+    val role: GroupRole,
+    val position: AthletePosition?,
+    val membershipType: AthleteMembershipType,
+    val active: Boolean,
+)
+
+data class OwnAthleteProfile(
+    val userId: UUID,
+    val displayName: AccessName,
+    val phone: String?,
+    val memberships: List<OwnAthleteMembership>,
+)
+
+sealed interface GetOwnAthleteProfileResult {
+    data class Success(val profile: OwnAthleteProfile) : GetOwnAthleteProfileResult
+
+    data object NotFound : GetOwnAthleteProfileResult
+}
