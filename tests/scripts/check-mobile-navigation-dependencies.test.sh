@@ -121,4 +121,4 @@ make_repo "$dir"
 count=$((count + 1))
 printf 'ok %d - require-no-legacy-passes-once-nav2-removed\n' "$count"
 
-[ "$count" -eq 9 ]
+[ "$count" -eq 13 ]
