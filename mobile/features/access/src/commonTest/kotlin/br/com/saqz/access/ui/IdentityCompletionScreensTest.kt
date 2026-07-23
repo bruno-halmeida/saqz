@@ -8,14 +8,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
+import br.com.saqz.access.presentation.namecompletion.NameCompletionState
 import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
 import br.com.saqz.access.presentation.passwordreset.PasswordResetState
 import br.com.saqz.access.presentation.verification.VerificationIntent
 import br.com.saqz.access.presentation.verification.VerificationState
-import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,25 +56,25 @@ class IdentityCompletionScreensTest {
     }
 
     @Test fun `name input emits controlled value`() = runComposeUiTest {
-        var intent: SessionIntent? = null; name(onIntent = { intent = it })
+        var intent: NameCompletionIntent? = null; name(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("Person Name")
-        assertEquals(SessionIntent.UpdateName("Person Name"), intent)
+        assertEquals(NameCompletionIntent.UpdateName("Person Name"), intent)
     }
 
     @Test fun `invalid name exposes associated error`() = runComposeUiTest {
-        name(SessionAccessState.CompletingName(user, invalidName = true))
+        name(NameCompletionState(invalidName = true))
         onNodeWithText("Informe um nome entre 2 e 80 caracteres").assertExists()
     }
 
     @Test fun `name completion invokes submit`() = runComposeUiTest {
-        var intent: SessionIntent? = null
-        name(SessionAccessState.CompletingName(user, name = "Person Name"), onIntent = { intent = it })
+        var intent: NameCompletionIntent? = null
+        name(NameCompletionState(name = "Person Name"), onIntent = { intent = it })
         onNodeWithTag(IdentityTags.NameSubmit).performClick()
-        assertEquals(SessionIntent.CompleteName, intent)
+        assertEquals(NameCompletionIntent.Complete, intent)
     }
 
     @Test fun `name loading disables field and submit`() = runComposeUiTest {
-        name(SessionAccessState.CompletingName(user, isLoading = true))
+        name(NameCompletionState(isLoading = true))
         onNodeWithTag(IdentityTags.NameSubmit).assertIsNotEnabled()
     }
 
@@ -111,8 +110,8 @@ class IdentityCompletionScreensTest {
     ) = setContent { SaqzTheme { VerificationScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.name(
-        state: SessionAccessState.CompletingName = SessionAccessState.CompletingName(user),
-        onIntent: (SessionIntent) -> Unit = {},
+        state: NameCompletionState = NameCompletionState(),
+        onIntent: (NameCompletionIntent) -> Unit = {},
     ) = setContent { SaqzTheme { NameCompletionScreen(state, onIntent) } }
 
     private fun androidx.compose.ui.test.ComposeUiTest.reset(
@@ -120,7 +119,4 @@ class IdentityCompletionScreensTest {
         onIntent: (PasswordResetIntent) -> Unit = {},
     ) = setContent { SaqzTheme { PasswordResetScreen(state, onIntent) } }
 
-    private companion object {
-        val user = NativeUser("subject", "person@example.test", false, "Person Name")
-    }
 }

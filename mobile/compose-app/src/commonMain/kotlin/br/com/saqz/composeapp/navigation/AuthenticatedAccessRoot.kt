@@ -92,7 +92,7 @@ import br.com.saqz.groups.ui.LogoutConfirmationDialog
 import br.com.saqz.groups.ui.LogoutConfirmationIntent
 import br.com.saqz.groups.ui.MembershipAdministrationScreen
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
-import br.com.saqz.access.ui.NameCompletionScreen
+import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationRoot
@@ -569,11 +569,7 @@ private fun DestinationContent(
         AccessDestination.REGISTRATION -> RegistrationRoot()
         AccessDestination.PASSWORD_RESET -> PasswordResetRoot()
         AccessDestination.VERIFICATION -> VerificationRoot()
-        AccessDestination.NAME_COMPLETION -> NameCompletionScreen(
-            state.session as SessionAccessState.CompletingName,
-        ) { intent ->
-            onIntent(AccessIntent.Session(intent))
-        }
+        AccessDestination.NAME_COMPLETION -> NameCompletionRoot()
         AccessDestination.BOOTSTRAP -> BootstrapAccessScreen(state.session) { intent ->
             onIntent(AccessIntent.Session(intent))
         }

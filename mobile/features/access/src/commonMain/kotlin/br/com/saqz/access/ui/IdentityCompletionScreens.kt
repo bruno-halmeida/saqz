@@ -29,13 +29,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.message
 import br.com.saqz.designsystem.text.asString
-import br.com.saqz.access.presentation.SessionAccessState
-import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.isValidEmail
+import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
+import br.com.saqz.access.presentation.namecompletion.NameCompletionState
 import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
 import br.com.saqz.access.presentation.passwordreset.PasswordResetState
 import br.com.saqz.access.presentation.verification.VerificationIntent
@@ -115,14 +114,14 @@ fun VerificationScreen(
 
 @Composable
 fun NameCompletionScreen(
-    state: SessionAccessState.CompletingName,
-    onIntent: (SessionIntent) -> Unit,
+    state: NameCompletionState,
+    onIntent: (NameCompletionIntent) -> Unit,
 ) = IdentityColumn {
     IdentityHeading(stringResource(Res.string.name_title))
     Text(stringResource(Res.string.name_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     SaqzInput(
         value = TextFieldValue(state.name),
-        onValueChange = { onIntent(SessionIntent.UpdateName(it.text)) },
+        onValueChange = { onIntent(NameCompletionIntent.UpdateName(it.text)) },
         label = stringResource(Res.string.name_label),
         errorText = if (state.invalidName) stringResource(Res.string.name_invalid) else null,
         enabled = !state.isLoading,
@@ -132,7 +131,7 @@ fun NameCompletionScreen(
     }
     SaqzButton(
         label = stringResource(Res.string.name_submit),
-        onClick = { onIntent(SessionIntent.CompleteName) },
+        onClick = { onIntent(NameCompletionIntent.Complete) },
         loading = state.isLoading,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.NameSubmit),
     )
@@ -271,8 +270,6 @@ private fun IdentityHeading(text: String) {
     Text(text, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
 }
 
-private val previewIdentityUser = NativeUser("preview-user", "ana@exemplo.com", false, "Ana")
-
 @Preview
 @Composable
 private fun VerificationScreenPreview() = SaqzTheme {
@@ -282,7 +279,7 @@ private fun VerificationScreenPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun NameCompletionScreenPreview() = SaqzTheme {
-    NameCompletionScreen(SessionAccessState.CompletingName(previewIdentityUser, name = "Ana"), {})
+    NameCompletionScreen(NameCompletionState(name = "Ana"), {})
 }
 
 @Preview
