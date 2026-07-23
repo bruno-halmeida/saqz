@@ -19,8 +19,11 @@ kotlinx-datetime = "0.8.0"
 koin-bom = "4.2.2"
 ktor = "3.5.1"
 lifecycle = "2.9.6"
+lifecycle-navigation3 = "2.10.0"
 min-sdk = "23"
 navigation = "2.9.2"
+navigation3-runtime = "1.1.1"
+navigation3-ui = "1.1.1"
 okio = "3.17.0"
 serialization-json = "1.11.0"
 
@@ -68,4 +71,7 @@ lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecyc
 lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel-savedstate = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate", version.ref = "lifecycle" }
+lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycle-navigation3" }
+navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3-ui" }
+navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3-runtime" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }

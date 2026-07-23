@@ -171,16 +171,23 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; official Nav3 docs; MCP NONE.
 
 **Done when**:
-- [ ] `:navigation` targets Android and iOS.
-- [ ] Features do not depend on `:navigation` or Nav3 UI.
-- [ ] Structural fixtures fail if a feature imports Navigation Compose 3 UI, declares a direct `navigation3-ui` Gradle dependency, or depends on `:navigation`.
-- [ ] Framework-export fixtures prove `:compose-app` remains the only iOS umbrella framework, fail if `:navigation` is exported independently, and fail if a public `SaqzMobile` API exposes a `:navigation` type.
-- [ ] Script fixtures recognize the module boundary.
-- [ ] G1S, G1G, G1N, and G1D pass while legacy Nav2 remains temporarily allowed.
+- [x] `:navigation` targets Android and iOS.
+- [x] Features do not depend on `:navigation` or Nav3 UI.
+- [x] Structural fixtures fail if a feature imports Navigation Compose 3 UI, declares a direct `navigation3-ui` Gradle dependency, or depends on `:navigation`.
+- [x] Framework-export fixtures prove `:compose-app` remains the only iOS umbrella framework, fail if `:navigation` is exported independently, and fail if a public `SaqzMobile` API exposes a `:navigation` type.
+- [x] Script fixtures recognize the module boundary.
+- [x] G1S, G1G, G1N, and G1D pass while legacy Nav2 remains temporarily allowed.
 
 **Tests**: Positive and discriminating-negative structural fixtures for module direction, forbidden Nav3 UI imports/dependencies, independent framework export, public-API leakage, plus a navigation smoke test.
 **Gate**: G1S, G1G, G1N, then G1D.
 **Commit**: `feat(mobile): add navigation module`
+
+#### T02 evidence (2026-07-23)
+
+- Verified exact JetBrains Nav3 KMP coordinates directly against Maven Central/Google Maven metadata (not assumed): `org.jetbrains.androidx.navigation3:navigation3-ui:1.1.1`, `org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3:2.10.0` (both confirmed present in `repo1.maven.org` metadata), and the lightweight KMP key contract `androidx.navigation3:navigation3-runtime:1.1.1` (confirmed on `dl.google.com`, publishes `iosArm64`/`iosSimulatorArm64` variants, depends only on `androidx.compose.runtime` — no Compose UI) for feature route contracts.
+- New module: `mobile/navigation/build.gradle.kts` (Android + iOS targets), smoke test `mobile/navigation/src/commonTest/kotlin/br/com/saqz/navigation/NavigationModuleSmokeTest.kt`.
+- New dependency-guard script `scripts/check-mobile-navigation-dependencies` (module-direction, Nav3-UI-import ban, framework-export leakage, `--require-no-legacy` mode) with fixture contract `tests/scripts/check-mobile-navigation-dependencies.test.sh` (9 positive/discriminating cases).
+- Gates run: G1S (`rtk scripts/check-scope` + fixture, PASS), G1G (fixture, PASS), G1N (`rtk ./gradlew :navigation:compileAndroidMain :navigation:allTests`, BUILD SUCCESSFUL, 1 test), G1D (fixture, 9/9 PASS).
 
 ### T03: Define Access route keys
 
