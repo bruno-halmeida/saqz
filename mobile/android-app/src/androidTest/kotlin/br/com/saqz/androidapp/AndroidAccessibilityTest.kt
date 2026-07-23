@@ -11,7 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.designsystem.theme.saqzFontFamily
@@ -49,7 +49,7 @@ class AndroidAccessibilityTest {
     fun talkBackOrderMatchesSemantics() {
         composeRule.setContent {
             SaqzTheme {
-                LoginScreen(AuthenticationState()) { }
+                LoginScreen(LoginState()) { }
             }
         }
         composeRule.waitForIdle()

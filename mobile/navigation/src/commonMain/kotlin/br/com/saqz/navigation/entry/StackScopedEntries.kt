@@ -14,10 +14,12 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
  * shares saved state or a ViewModel store (design.md, "Serialization and Entry
  * Identity" -> `ScopedEntryProviderFactory`).
  */
-data class NavigationEntryId(val stackId: String, val routeIdentity: Any)
+// Bundle-compatible on Android: saveable-state keys must be storable in a Bundle,
+// so the namespaced identity is a plain String, not a data class.
+fun navigationEntryId(stackId: String, routeIdentity: Any): String = "$stackId:$routeIdentity" 
 
 /**
- * Wraps [delegate] so every [NavEntry] it produces carries a [NavigationEntryId]
+ * Wraps [delegate] so every [NavEntry] it produces carries a [navigationEntryId]
  * content key instead of the shared entry provider's default `key.toString()` identity.
  * The one entry provider built by the Access/Groups/Finance/host installers
  * (`ProductNavigationHost`) is therefore safe to reuse, unmodified, across every
@@ -30,7 +32,7 @@ fun <T : NavKey> scopeEntryProvider(
     val original = delegate(key)
     NavEntry(
         key = key,
-        contentKey = NavigationEntryId(stackId, original.contentKey),
+        contentKey = navigationEntryId(stackId, original.contentKey),
         metadata = original.metadata,
     ) { original.Content() }
 }

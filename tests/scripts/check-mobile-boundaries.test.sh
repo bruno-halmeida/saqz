@@ -123,4 +123,9 @@ fail_case forbidden-source-import 'access presentation imports its own data laye
 fail_case compatibility-adapter-path 'compatibility adapter path found' sh -c \
     "mkdir -p mobile/features/access/data/src/commonMain/kotlin/br/com/saqz/access/data/legacy && printf 'package br.com.saqz.access.data.legacy\n\nclass SessionCompatAdapter\n' >mobile/features/access/data/src/commonMain/kotlin/br/com/saqz/access/data/legacy/SessionCompatAdapter.kt"
 
-[ "$count" -eq 12 ]
+# The @Serializable annotation is allowed in presentation (Nav3 route keys, saved()
+# snapshots) but the transport engine stays forbidden in production sources.
+fail_case presentation-json-engine-import 'access presentation imports the serialization transport engine' sh -c \
+    "mkdir -p mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/leak && printf 'package br.com.saqz.access.leak\n\nimport kotlinx.serialization.json.Json\n' >mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/leak/JsonLeak.kt"
+
+[ "$count" -eq 13 ]

@@ -296,7 +296,9 @@ internal fun ProductNavigation(
         moreBackStack = moreStack,
         entryProvider = provider,
         onBack = { session.goBack() },
-        modifier = modifier,
+        // Legacy observable contract: exactly one active product destination host
+        // (rotation/recreation tests count this tag and assert catalog never leaks).
+        modifier = modifier.testTag("authenticated-access-destination"),
     )
 }
 
