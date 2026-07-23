@@ -21,13 +21,13 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberNavBackStack
 import br.com.saqz.composeapp.SaqzAppEnvironment
 import br.com.saqz.composeapp.catalog.saqzCatalogVariantTag
 import br.com.saqz.composeapp.navigation.SaqzDestination
-import br.com.saqz.composeapp.navigation.navigateTopLevel
+import br.com.saqz.composeapp.navigation.saqzLocalNavConfiguration
 import br.com.saqz.designsystem.theme.SaqzMetrics
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -134,11 +134,10 @@ class SaqzAppShellTest {
 
     @Test
     fun selectedDestinationRestores() = runComposeUiTest {
-        lateinit var nav: NavHostController
+        lateinit var backStack: NavBackStack<NavKey>
         setContent {
-            val controller = rememberNavController()
-            nav = controller
-            SaqzAppShell(navController = controller)
+            backStack = rememberNavBackStack(saqzLocalNavConfiguration, SaqzDestination.Home)
+            SaqzAppShell(backStack = backStack)
         }
         waitForIdle()
         shellTab("Componentes").performClick()
@@ -148,8 +147,9 @@ class SaqzAppShellTest {
         shellTab("Componentes").performClick()
         waitForIdle()
         // Re-selecting via the bottom nav restores the saved Catalog destination.
-        assertTrue(
-            nav.currentDestination?.hasRoute<SaqzDestination.Catalog>() == true,
+        assertEquals(
+            SaqzDestination.Catalog,
+            backStack.last(),
             "selected destination must be restored on reselection",
         )
     }

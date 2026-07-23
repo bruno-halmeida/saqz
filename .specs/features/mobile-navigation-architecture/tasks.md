@@ -600,13 +600,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Exactly two routes remain with all existing behaviors.
-- [ ] A focused resolved-dependency check proves legacy `navigation-compose:2.9.2` is absent from every mobile resolvable graph, and its discriminating fixture fails when the legacy alias/dependency is restored.
-- [ ] G7 passes.
+- [x] Exactly two routes remain with all existing behaviors.
+- [x] A focused resolved-dependency check proves legacy `navigation-compose:2.9.2` is absent from every mobile resolvable graph, and its discriminating fixture fails when the legacy alias/dependency is restored.
+- [x] G7 passes.
 
 **Tests**: Rewritten common Compose tests preserving all existing outcomes plus resolved-dependency and discriminating-negative legacy-dependency checks.
 **Gate**: G7, then G7D.
 **Commit**: `refactor(compose-app): migrate local navigation to nav3`
+
+#### T22 evidence — `SaqzNavHost.kt` now renders the app-local Home/Catalog graph through Nav3 `NavDisplay` over an app-owned `NavBackStack<NavKey>` (`rememberNavBackStack(saqzLocalNavConfiguration, SaqzDestination.Home)`); `SaqzDestination : NavKey`; new `SaqzLocalNavConfiguration.kt` provides the compose-app-owned explicit polymorphic `SavedStateConfiguration` (reflection-free, iOS-safe) for the two local keys. `navigateTopLevel`/`popTopLevel` are `MutableList<NavKey>` extensions (Home = root, Catalog pushed single-top; back pops Catalog, no-op at Home root). `SaqzAppShell` drives the same shared back stack (bottom-nav selection from stack top). Legacy `navigation-compose:2.9.2` removed from `compose-app/build.gradle.kts` and the version catalog (`navigation` version + `navigation-compose` alias deleted); replaced by `libs.navigation3.runtime` + `libs.navigation3.ui`. Tests rewritten preserving every outcome: `SaqzNavHostTest` (8 cases, `graphHasExactlyTwoDestinations` → `reachableDestinationsAreExactlyHomeAndCatalog`), `SaqzAppShellTest.selectedDestinationRestores` migrated off `NavHostController`. G7 BUILD SUCCESSFUL; compose-app test count unchanged at 185. G7D (`rtk scripts/check-mobile-navigation-dependencies --require-no-legacy`) → `ok`, exit 0 (discriminating fixture is the T02 `check-mobile-navigation-dependencies.test.sh`, unchanged).
 
 ### T23: Integrate product navigation at the composition root
 

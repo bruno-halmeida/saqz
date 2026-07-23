@@ -1,81 +1,72 @@
 package br.com.saqz.composeapp.navigation
 
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberNavBackStack
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class SaqzNavHostTest {
 
-    private fun runNav(block: androidx.compose.ui.test.ComposeUiTest.(NavHostController) -> Unit) =
+    private fun runNav(block: ComposeUiTest.(NavBackStack<NavKey>) -> Unit) =
         runComposeUiTest {
-            lateinit var navController: NavHostController
+            lateinit var backStack: NavBackStack<NavKey>
             setContent {
                 SaqzTheme {
-                    navController = rememberNavController()
-                    SaqzNavHost(navController = navController)
+                    backStack = rememberNavBackStack(saqzLocalNavConfiguration, SaqzDestination.Home)
+                    SaqzNavHost(backStack = backStack)
                 }
             }
             waitForIdle()
-            block(navController)
+            block(backStack)
         }
-
-    private fun NavHostController.atHome() =
-        currentDestination?.hasRoute<SaqzDestination.Home>() == true
-
-    private fun NavHostController.atCatalog() =
-        currentDestination?.hasRoute<SaqzDestination.Catalog>() == true
-
-    private val NavHostController.entryCount: Int
-        get() = currentBackStack.value.count { it.destination.route != null }
 
     @Test
     fun startsAtHome() = runNav { nav ->
-        assertTrue(nav.atHome(), "start destination must be Home")
+        assertEquals(SaqzDestination.Home, nav.last(), "start destination must be Home")
     }
 
     @Test
     fun exploreOpensCatalog() = runNav { nav ->
         onNodeWithText("Explorar componentes").performClick()
         waitForIdle()
-        assertTrue(nav.atCatalog(), "explore action must open Catalog")
+        assertEquals(SaqzDestination.Catalog, nav.last(), "explore action must open Catalog")
     }
 
     @Test
     fun backReturnsHome() = runNav { nav ->
         runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
         waitForIdle()
-        runOnIdle { nav.popBackStack() }
+        runOnIdle { nav.popTopLevel() }
         waitForIdle()
-        assertTrue(nav.atHome(), "back from Catalog must return to Home")
+        assertEquals(SaqzDestination.Home, nav.last(), "back from Catalog must return to Home")
     }
 
     @Test
     fun homeReselectionIsIdempotent() = runNav { nav ->
-        val before = nav.entryCount
+        val before = nav.size
         runOnIdle { nav.navigateTopLevel(SaqzDestination.Home) }
         waitForIdle()
-        assertTrue(nav.atHome())
-        assertEquals(before, nav.entryCount, "reselecting Home must not add an entry")
+        assertEquals(SaqzDestination.Home, nav.last())
+        assertEquals(before, nav.size, "reselecting Home must not add an entry")
     }
 
     @Test
     fun catalogReselectionIsIdempotent() = runNav { nav ->
         runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
         waitForIdle()
-        val before = nav.entryCount
+        val before = nav.size
         runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
         waitForIdle()
-        assertTrue(nav.atCatalog())
-        assertEquals(before, nav.entryCount, "reselecting Catalog must not add an entry")
+        assertEquals(SaqzDestination.Catalog, nav.last())
+        assertEquals(before, nav.size, "reselecting Catalog must not add an entry")
     }
 
     @Test
@@ -87,8 +78,8 @@ class SaqzNavHostTest {
             waitForIdle()
         }
         // Back at Home with a single live destination entry — no accumulation.
-        assertTrue(nav.atHome())
-        assertEquals(1, nav.entryCount, "repeated navigation must keep one live entry")
+        assertEquals(SaqzDestination.Home, nav.last())
+        assertEquals(1, nav.size, "repeated navigation must keep one live entry")
     }
 
     @Test
@@ -99,12 +90,17 @@ class SaqzNavHostTest {
         waitForIdle()
         runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
         waitForIdle()
-        assertTrue(nav.atCatalog(), "restoreState must return the saved Catalog destination")
+        assertEquals(SaqzDestination.Catalog, nav.last(), "reselecting must return the Catalog destination")
     }
 
     @Test
-    fun graphHasExactlyTwoDestinations() = runNav { nav ->
-        val routed = nav.graph.count { it.route != null }
-        assertEquals(2, routed, "graph must contain exactly Home and Catalog")
+    fun reachableDestinationsAreExactlyHomeAndCatalog() = runNav { nav ->
+        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
+        waitForIdle()
+        assertEquals<Set<NavKey>>(
+            setOf(SaqzDestination.Home, SaqzDestination.Catalog),
+            nav.toSet(),
+            "local graph must contain exactly Home and Catalog",
+        )
     }
 }
