@@ -9,9 +9,36 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/mobile-presentation-compose-mvi/design.md`
-**Status**: Draft
+**Status**: In Progress — Batch 1 (Phases 1-2, T01-T10) complete
 
 ---
+
+## Progress Log
+
+### Batch 1 — Phases 1-2 (T01-T10) — ✅ complete
+- T01 `f7d4060` feat(core): add MviViewModel MVI base contract
+- T02 `01a566a` feat(design-system): add UiText presentation-text abstraction
+- T03 `76293b5` feat(design-system): add lifecycle-aware ObserveAsEvents
+- T04 `8f59903` refactor(groups): GroupSetupViewModel on MviViewModel without test scope
+- T05 `e7d67ba` refactor(groups): ExpenseViewModel on MviViewModel without test scope
+- T06 `ae30dca` refactor(groups): FinanceViewModel on MviViewModel without test scope
+- T07 `161dbd0` refactor(groups): GameDetailViewModel on MviViewModel without test scope
+- T08 `9384c69` refactor(groups): games ViewModels on MviViewModel without test scope
+- T09 `abac098` refactor(compose): GroupsNavigationViewModel on MviViewModel
+- T10 `b4d7bee` refactor(compose): AccessViewModel on MviViewModel without test scope
+- Tests: all green, full gate passed, per-suite floors preserved.
+- Deviations: test determinism uses `StandardTestDispatcher` + `runCurrent()` instead of `UnconfinedTestDispatcher` (Unconfined broke existing single-flight assertions); `AccessViewModel`'s derived `combine`/`stateIn` state adapted onto the base via an `onEach { update {} }` collector. Both zero production test-scope surface (PMVI-007/008 intact).
+
+### Batch 2 — Phase 3 (T11-T16) — ✅ complete
+- T11 `3391286` refactor(access): error mapping through UiText
+- T12 `f1011af` feat(groups): group setup error labels via UiText with restoration corrective-state test
+- T13 `72fe387` feat(groups): expense form state reconciled with drafts
+- T14 `cb17535` feat(groups): finance form state reconciled with existing draft
+- T15 `3a2396e` feat(groups): game detail input state with process restoration
+- T16 `572d406` test(groups): game editor restoration corrective-state coverage
+- Tests: full gate green (iosSimulatorArm64), +5 new tests, floors preserved.
+- Corrections applied (per design/tasks fix): T12/T14/T16 reconcile with existing durable drafts, NO SavedStateHandle (draft key derives from restorable nav args). Only T13 (Expense edit-draft reload key) and T15 (GameDetail — no draft) use `SavedStateHandle.saved()`. Delegate import is `androidx.lifecycle.serialization.saved`; added `lifecycle-viewmodel-savedstate` + kotlin.serialization plugin to `:features:groups` at T13.
+- **Open follow-up → folded into T29:** GameDetail's Koin binding (`ComposePresentationModule.kt:81`) builds the VM manually and does NOT pass the real `SavedStateHandle` (Koin 4.2 `viewModel{}` doesn't auto-inject it), so on-device GameDetail restoration won't fire until the binding forwards `savedStateHandle`. VM-level restoration is correct + tested. T29 (GameDetailRoot extraction) must fix this binding.
 
 ## Test Coverage Matrix
 
@@ -207,53 +234,58 @@ T31 → T32 → T33
 **Tests**: unit | **Gate**: quick
 **Commit**: `refactor(access): error mapping through UiText`
 
-### T12: GroupSetup form state into ViewModel + saved() restoration
+### T12: GroupSetup form state into ViewModel + draft reconciliation
 
-**What**: Catalog entry `lifecycle-viewmodel-savedstate`; move validation/submission-affecting fields from `GroupSetupScreen.kt:128-130` `remember` into `State` via field intents; `@Serializable GroupSetupFormSnapshot` + `savedStateHandle.saved {}`; restored input re-validates, never auto-submits; error labels (`GroupSetupScreen.kt:438`) → UiText. Purely visual state (sheets) stays local.
-**Where**: `GroupSetupViewModel.kt`, `GroupSetupScreen.kt`, catalog, groups `build.gradle.kts`, Koin binding, tests
-**Depends on**: T04, T02 | **Requirement**: PMVI-002, PMVI-018, PMVI-019
+**CORRECTED (found during Batch 2 implementation, 2026-07-23):** `GroupDraftStorePort` (`DraftsModule`) already durably persists this form and already restores it in `GroupSetupViewModel.init` via `restoreDraft()`/`persistDraft()` (`GroupSetupViewModel.kt:44,128-148`), keyed off nav args that navigation itself restores. A competing full-form `saved()` snapshot would violate PMVI-020 (two sources of truth). No `SavedStateHandle` needed here — the existing draft already satisfies PMVI-018.
+**What**: Move validation/submission-affecting fields from `GroupSetupScreen.kt:128-130` `remember` into `State` via field intents (PMVI-002), routed through the existing draft-backed VM state; confirm/extend the existing `restoreDraft()` path so restored-but-invalid input shows the normal corrective state and never auto-submits (PMVI-019); error labels (`GroupSetupScreen.kt:438`) → UiText. Purely visual state (sheets) stays local.
+**Where**: `GroupSetupViewModel.kt`, `GroupSetupScreen.kt`, tests
+**Depends on**: T04, T02 | **Requirement**: PMVI-002, PMVI-019, PMVI-020
 **Tools**: Skill: `android-presentation-mvi`
 **Done when**:
-- [ ] VM recreated with populated `SavedStateHandle` restores fields; invalid restored input shows normal validation state
+- [ ] Draft-restored invalid input shows normal validation state, does not auto-submit
 - [ ] Test count ≥ current; quick gate passes: `:features:groups:allTests`
 **Tests**: unit | **Gate**: quick
-**Commit**: `feat(groups): group setup form state with process restoration`
+**Commit**: `feat(groups): group setup form state reconciled with existing draft`
 
 ### T13: Expense form state into ViewModel + draft reconciliation
 
-**What**: Same field-migration shape as T12 for `ExpenseScreen.kt:215-220`; snapshot stores draft reload keys only — drafts repo stays source of truth (PMVI-020); errors → UiText.
+**What**: Same shape as T12 for `ExpenseScreen.kt:215-220`, reconciled with `ExpenseDraftStorePort`; where the draft key needs a value the draft itself can't supply on cold start, `SavedStateHandle.saved()` carries only that reload identifier (never the full form) — drafts repo stays source of truth (PMVI-020); errors → UiText.
 **Where**: `ExpenseViewModel.kt`, `ExpenseScreen.kt`, tests
 **Depends on**: T05, T12 | **Requirement**: PMVI-002, PMVI-018, PMVI-020
 **Tools**: Skill: `android-presentation-mvi`
 **Done when**:
-- [ ] With existing draft, restoration loads draft (draft wins over snapshot); without draft, snapshot restores
+- [ ] With existing draft, restoration loads draft (draft wins over any reload-key snapshot); without draft, form starts empty
 - [ ] Quick gate passes: `:features:groups:allTests`
 **Tests**: unit | **Gate**: quick
 **Commit**: `feat(groups): expense form state reconciled with drafts`
 
-### T14: Finance form state into ViewModel + saved()
+### T14: Finance form state into ViewModel + draft reconciliation
 
-**What/Where**: same shape as T12 for `FinanceScreen.kt:53-56,71` fields → `FinanceViewModel` + snapshot + UiText errors + tests.
-**Depends on**: T06, T12 | **Requirement**: PMVI-002, PMVI-018, PMVI-019
+**What/Where**: same shape as T12 for `FinanceScreen.kt:53-56,71` fields → `FinanceViewModel`, reconciled with `MonthlyChargeDraftStorePort` + UiText errors + tests.
+**Depends on**: T06, T12 | **Requirement**: PMVI-002, PMVI-019, PMVI-020
 **Tools**: Skill: `android-presentation-mvi`
 **Tests**: unit | **Gate**: quick (`:features:groups:allTests`)
-**Commit**: `feat(groups): finance form state with process restoration`
+**Commit**: `feat(groups): finance form state reconciled with existing draft`
 
-### T15: GameDetail input state into ViewModel + saved()
+### T15: GameDetail input state into ViewModel + saved() restoration
 
-**What/Where**: same shape as T12 for `GameDetailScreen.kt:100-102` fields → `GameDetailViewModel` + snapshot + tests.
+**What**: The only one of the five forms with **no durable draft** — `GameDetailViewModel` gets an authoritative `@Serializable GameDetailFormSnapshot` + `savedStateHandle.saved {}` (add `lifecycle-viewmodel-savedstate` catalog entry here, first task that needs it). Move validation/submission-affecting fields from `GameDetailScreen.kt:100-102` `remember` into `State`; restored input re-validates, never auto-submits.
+**Where**: `GameDetailViewModel.kt`, `GameDetailScreen.kt`, catalog, groups `build.gradle.kts`, Koin binding, tests
 **Depends on**: T07, T12 | **Requirement**: PMVI-002, PMVI-018, PMVI-019
 **Tools**: Skill: `android-presentation-mvi`
-**Tests**: unit | **Gate**: quick (`:features:groups:allTests`)
+**Done when**:
+- [ ] VM recreated with populated `SavedStateHandle` restores fields; invalid restored input shows normal validation state
+- [ ] Quick gate passes: `:features:groups:allTests`
+**Tests**: unit | **Gate**: quick
 **Commit**: `feat(groups): game detail input state with process restoration`
 
-### T16: GameEditor form state into ViewModel + saved()
+### T16: GameEditor form state into ViewModel + draft reconciliation
 
-**What/Where**: same shape as T12 for GameEditor weekly-slot form → `GameEditorViewModel` + snapshot + tests (`GameEditorScreenTest` updated).
-**Depends on**: T08, T12 | **Requirement**: PMVI-002, PMVI-018, PMVI-019
+**What/Where**: same shape as T12 for GameEditor weekly-slot form → `GameEditorViewModel`, reconciled with `GameDraftStorePort` + tests (`GameEditorScreenTest` updated).
+**Depends on**: T08, T12 | **Requirement**: PMVI-002, PMVI-019, PMVI-020
 **Tools**: Skill: `android-presentation-mvi`
 **Tests**: unit | **Gate**: quick (`:features:groups:allTests`)
-**Commit**: `feat(groups): game editor form state with process restoration`
+**Commit**: `feat(groups): game editor form state reconciled with existing draft`
 
 ### T17: Extract LoginViewModel + LoginRoot
 
@@ -362,11 +394,14 @@ T31 → T32 → T33
 
 ### T29: Extract GroupSetupRoot + GameDetailRoot
 
-**What**: Roots for the two already-dedicated VMs; move their `koinViewModel`/collection/effect blocks out of `AuthenticatedAccessRoot.kt` (lines 197/213/290/315); cross-VM rerouting (`GroupSetupEffect.SelectGroup` → `AccessIntent.Selection`) becomes an explicit Root callback.
-**Where**: `mobile/features/groups/.../ui/GroupSetupRoot.kt`, `GameDetailRoot.kt`, `AuthenticatedAccessRoot.kt`, tests
-**Depends on**: T12, T15, T03 | **Requirement**: PMVI-006, PMVI-009, PMVI-011
+**What**: Roots for the two already-dedicated VMs; move their `koinViewModel`/collection/effect blocks out of `AuthenticatedAccessRoot.kt` (lines 197/213/290/315); cross-VM rerouting (`GroupSetupEffect.SelectGroup` → `AccessIntent.Selection`) becomes an explicit Root callback. **Also fix the GameDetail Koin binding** (`ComposePresentationModule.kt:81`) so it forwards the real `SavedStateHandle` into the VM (Koin 4.2 manual `viewModel{}` does not auto-inject it) — without this, T15's tested restoration never fires on-device (PMVI-018).
+**Where**: `mobile/features/groups/.../ui/GroupSetupRoot.kt`, `GameDetailRoot.kt`, `AuthenticatedAccessRoot.kt`, `ComposePresentationModule.kt`, tests
+**Depends on**: T12, T15, T03 | **Requirement**: PMVI-006, PMVI-009, PMVI-011, PMVI-018
 **Tools**: Skill: `android-compose-ui`
-**Tests**: unit + Compose | **Gate**: quick
+**Done when**:
+- [ ] GameDetail Koin binding forwards `savedStateHandle`; a binding/wiring test asserts the VM receives a real handle
+- [ ] Full gate passes
+**Tests**: unit + Compose | **Gate**: full
 **Commit**: `refactor(groups): group setup and game detail Roots own their ViewModels`
 
 ### T30: Thin AuthenticatedAccessRoot
