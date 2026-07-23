@@ -30,7 +30,7 @@ class GroupInviteRouteViewModelTest {
         val gateway = FakeMembershipGateway()
         gateway.rotateResult = SaqzResult.Success(GroupInviteUrl("https://saqz.example/invite/abc"))
         val invite = InviteToolStateMachine(gateway, { "g1" }, this)
-        val viewModel = GroupInviteRouteViewModel(invite)
+        val viewModel = GroupInviteRouteViewModel({ invite })
 
         viewModel.onIntent(GroupInviteRouteIntent.Rotate)
         runCurrent()
@@ -41,7 +41,7 @@ class GroupInviteRouteViewModelTest {
     @Test
     fun `ShareInvite emits a typed share request effect`() = runTest {
         val invite = InviteToolStateMachine(FakeMembershipGateway(), { "g1" }, this)
-        val viewModel = GroupInviteRouteViewModel(invite)
+        val viewModel = GroupInviteRouteViewModel({ invite })
 
         viewModel.onIntent(GroupInviteRouteIntent.ShareInvite("https://saqz.example/invite/abc"))
         val delivered = viewModel.effects.take(1).toList()
@@ -56,7 +56,7 @@ class GroupInviteRouteViewModelTest {
     fun `expire requires confirmation before forwarding to the shared invite machine`() = runTest {
         val gateway = FakeMembershipGateway()
         val invite = InviteToolStateMachine(gateway, { "g1" }, this)
-        val viewModel = GroupInviteRouteViewModel(invite)
+        val viewModel = GroupInviteRouteViewModel({ invite })
 
         viewModel.onIntent(GroupInviteRouteIntent.RequestExpire)
         assertTrue(viewModel.state.value.showExpireConfirmation)
@@ -73,7 +73,7 @@ class GroupInviteRouteViewModelTest {
     fun `CancelExpire dismisses the dialog without forwarding to the shared invite machine`() = runTest {
         val gateway = FakeMembershipGateway()
         val invite = InviteToolStateMachine(gateway, { "g1" }, this)
-        val viewModel = GroupInviteRouteViewModel(invite)
+        val viewModel = GroupInviteRouteViewModel({ invite })
         viewModel.onIntent(GroupInviteRouteIntent.RequestExpire)
 
         viewModel.onIntent(GroupInviteRouteIntent.CancelExpire)

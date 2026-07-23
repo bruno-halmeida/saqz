@@ -13,6 +13,12 @@ import br.com.saqz.access.presentation.verification.VerificationViewModel
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.InviteToolStateMachine
+import br.com.saqz.groups.presentation.route.FinancePlaceholderRouteViewModel
+import br.com.saqz.groups.presentation.route.GroupAdministrationRouteViewModel
+import br.com.saqz.groups.presentation.route.GroupContentPlaceholderRouteViewModel
+import br.com.saqz.groups.presentation.route.GroupHomeRouteViewModel
+import br.com.saqz.groups.presentation.route.GroupInviteRouteViewModel
+import br.com.saqz.groups.presentation.route.GroupSelectionRouteViewModel
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
 import br.com.saqz.groups.presentation.setup.GroupSetupInput
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
@@ -70,6 +76,14 @@ internal val composePresentationModule = module {
         }
     }
     viewModelOf(::GroupsNavigationViewModel)
+    // Route-adapter ViewModels (T11-T15): resolved per NavEntry through the entry's
+    // ViewModelStoreOwner, projecting the shared singleton state machines.
+    viewModel { GroupSelectionRouteViewModel(get()) }
+    viewModel { parameters -> GroupHomeRouteViewModel(get(), parameters.get()) }
+    viewModel { parameters -> GroupContentPlaceholderRouteViewModel(parameters.get(), get()) }
+    viewModel { parameters -> GroupAdministrationRouteViewModel(parameters.get(), get()) }
+    viewModel { GroupInviteRouteViewModel { scope -> get { parametersOf(scope) } } }
+    viewModel { parameters -> FinancePlaceholderRouteViewModel(parameters.get()) }
     viewModelOf(::LoginViewModel)
     viewModelOf(::RegistrationViewModel)
     viewModelOf(::PasswordResetViewModel)

@@ -39,7 +39,7 @@ class GroupContentRouteInventoryTest {
         val games = GroupContentPlaceholderRouteViewModel(GroupContentPlaceholderMode.GAMES, administration)
         val notices = GroupContentPlaceholderRouteViewModel(GroupContentPlaceholderMode.NOTICES, administration)
         val more = GroupContentPlaceholderRouteViewModel(GroupContentPlaceholderMode.MORE, administration)
-        val inviteRoute = GroupInviteRouteViewModel(invite)
+        val inviteRoute = GroupInviteRouteViewModel({ invite })
 
         // Routes sharing a state source reuse its single adapter type (T13 "Done when").
         assertEquals(settings::class, memberships::class)

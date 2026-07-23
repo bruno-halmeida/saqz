@@ -20,7 +20,6 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
-import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import kotlin.test.Test
 
 /**
@@ -41,8 +40,6 @@ class ProductNavigationTest {
                 ProductNavigation(
                     state = signedOut,
                     onIntent = {},
-                    groupsNavigation = GroupsNavigationState(),
-                    onGroupsIntent = {},
                 )
             }
         }
@@ -61,8 +58,6 @@ class ProductNavigationTest {
                 ProductNavigation(
                     state = ready,
                     onIntent = {},
-                    groupsNavigation = GroupsNavigationState(),
-                    onGroupsIntent = {},
                 )
             }
         }
@@ -82,8 +77,6 @@ class ProductNavigationTest {
                 ProductNavigation(
                     state = snapshot,
                     onIntent = {},
-                    groupsNavigation = GroupsNavigationState(),
-                    onGroupsIntent = {},
                 )
             }
         }

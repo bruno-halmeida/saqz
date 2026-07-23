@@ -36,12 +36,16 @@ sealed interface GroupInviteRouteEffect {
  * LIFE-05, REG-01).
  */
 class GroupInviteRouteViewModel(
-    private val invite: InviteToolStateMachine,
+    inviteFactory: (kotlinx.coroutines.CoroutineScope) -> InviteToolStateMachine,
 ) : MviViewModel<GroupInviteRouteState, GroupInviteRouteIntent, GroupInviteRouteEffect>(
-    GroupInviteRouteState(invite.state.value),
+    GroupInviteRouteState(),
 ) {
+    // The invite machine is scope-bound; each entry-owned instance builds its own
+    // machine on viewModelScope (same lifetime), mirroring the orchestrator pattern.
+    private val invite: InviteToolStateMachine = inviteFactory(viewModelScope)
 
     init {
+        update { it.copy(invite = invite.state.value) }
         invite.state.onEach { current -> update { it.copy(invite = current) } }.launchIn(viewModelScope)
     }
 
