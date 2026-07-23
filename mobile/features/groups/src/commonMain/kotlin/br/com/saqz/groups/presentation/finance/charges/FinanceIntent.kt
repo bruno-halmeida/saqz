@@ -1,6 +1,6 @@
 package br.com.saqz.groups.presentation.finance.charges
 
-import br.com.saqz.groups.data.finance.ChargeStatusDto
+import br.com.saqz.groups.domain.finance.ChargeStatus
 
 sealed interface FinanceIntent {
     data object Refresh : FinanceIntent
@@ -18,7 +18,7 @@ sealed interface FinanceIntent {
 
     data class UpdateStatus(
         val chargeId: String,
-        val status: ChargeStatusDto,
+        val status: ChargeStatus,
         val note: String? = null,
     ) : FinanceIntent
 

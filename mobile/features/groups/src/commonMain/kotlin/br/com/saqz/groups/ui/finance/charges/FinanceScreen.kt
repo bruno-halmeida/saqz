@@ -18,7 +18,9 @@ import br.com.saqz.core.common.formatting.formatLocalDatePtBrString
 import br.com.saqz.core.common.formatting.formatMonthPtBrString
 import br.com.saqz.designsystem.component.*
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.data.finance.*
+import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.domain.finance.ChargeKind
+import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.presentation.finance.charges.*
 import br.com.saqz.groups.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -65,7 +67,7 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
     }}
 }
 
-@Composable private fun ChargeCard(charge:ChargeDto,organizer:Boolean,onIntent:(FinanceIntent)->Unit){
+@Composable private fun ChargeCard(charge:Charge,organizer:Boolean,onIntent:(FinanceIntent)->Unit){
     var note by remember(charge.id){mutableStateOf(TextFieldValue())}
     SaqzCard(Modifier.fillMaxWidth()){Column(verticalArrangement=Arrangement.spacedBy(SaqzTheme.metrics.grid)){
         Text(charge.subject(),style=SaqzTheme.typography.body,color=SaqzTheme.colors.textPrimary)
@@ -74,11 +76,11 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
         Text(stringResource(Res.string.finance_charge_due,formatLocalDatePtBrString(charge.dueDate)),color=SaqzTheme.colors.textSecondary)
         SaqzBadge(charge.status.label(),SaqzBadgeVariant.Neutral)
         if(charge.reviewRequired)Text(stringResource(Res.string.finance_review_required),color=SaqzTheme.colors.textSecondary)
-        charge.events.lastOrNull()?.let{Text(stringResource(Res.string.finance_audit,it.newStatus.label(),it.occurredAt),color=SaqzTheme.colors.textSecondary)}
-        if(organizer&&charge.status==ChargeStatusDto.PENDING){SaqzInput(note,{note=it.copy(text=it.text.take(500))},stringResource(Res.string.finance_note),Modifier.testTag(FinanceTags.Note));SaqzButton(stringResource(Res.string.finance_record_paid),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.PAID,note.text))},Modifier.financeAction(1).testTag(FinanceTags.paid(charge.id)));SaqzButton(stringResource(Res.string.finance_record_waived),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.WAIVED,note.text))},Modifier.financeAction(2).testTag(FinanceTags.waived(charge.id)),SaqzButtonVariant.Secondary);SaqzButton(stringResource(Res.string.finance_record_cancelled),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatusDto.CANCELLED,note.text))},Modifier.financeAction(3).testTag(FinanceTags.cancelled(charge.id)),SaqzButtonVariant.Destructive)}
+        charge.audit.lastOrNull()?.let{Text(stringResource(Res.string.finance_audit,it.newStatus.label(),it.occurredAt),color=SaqzTheme.colors.textSecondary)}
+        if(organizer&&charge.status==ChargeStatus.Pending){SaqzInput(note,{note=it.copy(text=it.text.take(500))},stringResource(Res.string.finance_note),Modifier.testTag(FinanceTags.Note));SaqzButton(stringResource(Res.string.finance_record_paid),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatus.Paid,note.text))},Modifier.financeAction(1).testTag(FinanceTags.paid(charge.id)));SaqzButton(stringResource(Res.string.finance_record_waived),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatus.Waived,note.text))},Modifier.financeAction(2).testTag(FinanceTags.waived(charge.id)),SaqzButtonVariant.Secondary);SaqzButton(stringResource(Res.string.finance_record_cancelled),{onIntent(FinanceIntent.UpdateStatus(charge.id,ChargeStatus.Cancelled,note.text))},Modifier.financeAction(3).testTag(FinanceTags.cancelled(charge.id)),SaqzButtonVariant.Destructive)}
     }}
 }
 
-@Composable private fun ChargeDto.subject()=when(kind){ChargeKindDto.GAME->stringResource(Res.string.finance_kind_game,gameId.orEmpty());ChargeKindDto.MONTHLY->stringResource(Res.string.finance_kind_month,month?.let(::formatMonthPtBrString).orEmpty())}
-@Composable private fun ChargeStatusDto.label()=stringResource(when(this){ChargeStatusDto.PENDING->Res.string.finance_status_pending;ChargeStatusDto.PAID->Res.string.finance_status_paid;ChargeStatusDto.WAIVED->Res.string.finance_status_waived;ChargeStatusDto.CANCELLED->Res.string.finance_status_cancelled})
+@Composable private fun Charge.subject()=when(kind){ChargeKind.Game->stringResource(Res.string.finance_kind_game,gameId.orEmpty());ChargeKind.Monthly->stringResource(Res.string.finance_kind_month,month?.let(::formatMonthPtBrString).orEmpty())}
+@Composable private fun ChargeStatus.label()=stringResource(when(this){ChargeStatus.Pending->Res.string.finance_status_pending;ChargeStatus.Paid->Res.string.finance_status_paid;ChargeStatus.Waived->Res.string.finance_status_waived;ChargeStatus.Cancelled->Res.string.finance_status_cancelled})
 private fun Modifier.financeAction(order:Int)=fillMaxWidth().heightIn(min=48.dp).semantics{financeMinimumTouchTarget=true;financeActionOrder=order}

@@ -1,23 +1,16 @@
 package br.com.saqz.groups.presentation.finance.charges
 
 import br.com.saqz.core.common.formatting.parseBrlToCents
-import br.com.saqz.groups.data.finance.ChargeListDto
+import br.com.saqz.groups.domain.finance.ChargeList
 
-internal fun ChargeListDto.toChargeTotalsState(): ChargeTotalsState? {
-    if (
-        pendingTotalCents == null ||
-        paidTotalCents == null ||
-        waivedTotalCents == null ||
-        cancelledTotalCents == null
-    ) {
-        return null
-    }
+internal fun ChargeList.toChargeTotalsState(): ChargeTotalsState? {
+    val value = totals ?: return null
 
     return ChargeTotalsState(
-        pendingCents = pendingTotalCents,
-        paidCents = paidTotalCents,
-        waivedCents = waivedTotalCents,
-        cancelledCents = cancelledTotalCents,
+        pendingCents = value.pendingCents,
+        paidCents = value.paidCents,
+        waivedCents = value.waivedCents,
+        cancelledCents = value.cancelledCents,
     )
 }
 
