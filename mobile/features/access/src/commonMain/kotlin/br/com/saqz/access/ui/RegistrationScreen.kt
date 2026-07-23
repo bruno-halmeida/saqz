@@ -33,7 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.messageRes
+import br.com.saqz.access.presentation.message
+import br.com.saqz.designsystem.text.asString
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.isValidDisplayName
@@ -184,7 +185,7 @@ fun RegistrationScreen(
             )
             state.registrationGlobalError()?.let { message ->
                 Text(
-                    text = stringResource(message),
+                    text = message.asString(),
                     style = SaqzTheme.typography.caption,
                     color = colors.errorForeground,
                     textAlign = TextAlign.Center,
@@ -258,7 +259,7 @@ private fun RegistrationDivider(label: String) {
 
 private fun AuthenticationState.registrationGlobalError() = when (error) {
     AuthUiError.EMAIL_IN_USE, AuthUiError.WEAK_PASSWORD, null -> null
-    else -> error.messageRes()
+    else -> error.message()
 }
 
 @Preview

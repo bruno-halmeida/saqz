@@ -9,16 +9,16 @@ import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_provider
 import br.com.saqz.access.resources.auth_error_unknown
 import br.com.saqz.access.resources.auth_error_weak_password
-import org.jetbrains.compose.resources.StringResource
+import br.com.saqz.designsystem.text.UiText
 
-fun AuthUiError.messageRes(): StringResource = when (this) {
-    AuthUiError.INVALID_CREDENTIALS -> Res.string.auth_error_invalid_credentials
-    AuthUiError.EMAIL_IN_USE -> Res.string.auth_error_email_in_use
-    AuthUiError.WEAK_PASSWORD -> Res.string.auth_error_weak_password
-    AuthUiError.AUTH_METHOD_CONFLICT -> Res.string.auth_error_method_conflict
-    AuthUiError.NETWORK_UNAVAILABLE -> Res.string.auth_error_network
-    AuthUiError.PROVIDER_UNAVAILABLE -> Res.string.auth_error_provider
-    AuthUiError.UNKNOWN -> Res.string.auth_error_unknown
+fun AuthUiError.message(): UiText = when (this) {
+    AuthUiError.INVALID_CREDENTIALS -> UiText.Res(Res.string.auth_error_invalid_credentials)
+    AuthUiError.EMAIL_IN_USE -> UiText.Res(Res.string.auth_error_email_in_use)
+    AuthUiError.WEAK_PASSWORD -> UiText.Res(Res.string.auth_error_weak_password)
+    AuthUiError.AUTH_METHOD_CONFLICT -> UiText.Res(Res.string.auth_error_method_conflict)
+    AuthUiError.NETWORK_UNAVAILABLE -> UiText.Res(Res.string.auth_error_network)
+    AuthUiError.PROVIDER_UNAVAILABLE -> UiText.Res(Res.string.auth_error_provider)
+    AuthUiError.UNKNOWN -> UiText.Res(Res.string.auth_error_unknown)
 }
 
 fun NativeFailureCode.toUiError(): AuthUiError = when (this) {

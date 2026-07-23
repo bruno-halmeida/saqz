@@ -31,7 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.messageRes
+import br.com.saqz.access.presentation.message
+import br.com.saqz.designsystem.text.asString
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
@@ -93,7 +94,7 @@ fun VerificationScreen(
         Text(stringResource(Res.string.verification_sent), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.accent)
     }
     state.error?.let {
-        Text(stringResource(it.messageRes()), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(it.message().asString(), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.verification_confirm),
@@ -125,7 +126,7 @@ fun NameCompletionScreen(
         enabled = !state.isLoading,
     )
     state.error?.let {
-        Text(stringResource(it.messageRes()), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(it.message().asString(), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.name_submit),

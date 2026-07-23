@@ -9,19 +9,20 @@ import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_provider
 import br.com.saqz.access.resources.auth_error_unknown
 import br.com.saqz.access.resources.auth_error_weak_password
+import br.com.saqz.designsystem.text.UiText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class AuthUiErrorMapperTest {
     @Test
-    fun `messageRes covers every AuthUiError value`() {
-        assertEquals(Res.string.auth_error_invalid_credentials, AuthUiError.INVALID_CREDENTIALS.messageRes())
-        assertEquals(Res.string.auth_error_email_in_use, AuthUiError.EMAIL_IN_USE.messageRes())
-        assertEquals(Res.string.auth_error_weak_password, AuthUiError.WEAK_PASSWORD.messageRes())
-        assertEquals(Res.string.auth_error_method_conflict, AuthUiError.AUTH_METHOD_CONFLICT.messageRes())
-        assertEquals(Res.string.auth_error_network, AuthUiError.NETWORK_UNAVAILABLE.messageRes())
-        assertEquals(Res.string.auth_error_provider, AuthUiError.PROVIDER_UNAVAILABLE.messageRes())
-        assertEquals(Res.string.auth_error_unknown, AuthUiError.UNKNOWN.messageRes())
+    fun `message covers every AuthUiError value`() {
+        assertEquals(UiText.Res(Res.string.auth_error_invalid_credentials), AuthUiError.INVALID_CREDENTIALS.message())
+        assertEquals(UiText.Res(Res.string.auth_error_email_in_use), AuthUiError.EMAIL_IN_USE.message())
+        assertEquals(UiText.Res(Res.string.auth_error_weak_password), AuthUiError.WEAK_PASSWORD.message())
+        assertEquals(UiText.Res(Res.string.auth_error_method_conflict), AuthUiError.AUTH_METHOD_CONFLICT.message())
+        assertEquals(UiText.Res(Res.string.auth_error_network), AuthUiError.NETWORK_UNAVAILABLE.message())
+        assertEquals(UiText.Res(Res.string.auth_error_provider), AuthUiError.PROVIDER_UNAVAILABLE.message())
+        assertEquals(UiText.Res(Res.string.auth_error_unknown), AuthUiError.UNKNOWN.message())
     }
 
     @Test
