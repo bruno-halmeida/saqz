@@ -239,12 +239,14 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Both keys serialize and remain gateway/ViewModel independent.
-- [ ] G3 passes.
+- [x] Both keys serialize and remain gateway/ViewModel independent.
+- [x] G3 passes.
 
 **Tests**: Common unit route inventory/equality and dependency guard.
 **Gate**: G3.
 **Commit**: `feat(groups): define finance navigation keys`
+
+#### T05 evidence — `mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/navigation/FinanceRoute.kt` (`Finance`, `OwnCharges`); tests `mobile/features/groups/src/commonTest/kotlin/br/com/saqz/groups/navigation/FinanceRouteTest.kt` (6 new cases, including a singleton-identity dependency guard proving no gateway/ViewModel can attach to a zero-argument route object). G3 BUILD SUCCESSFUL; groups test count 815 → 821 (+6, matches count rule). No production wiring to `FinanceScreen`/`ExpenseScreen` added.
 
 ### T06: Add explicit polymorphic route serialization
 
