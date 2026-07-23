@@ -126,6 +126,33 @@ class AthleteAttributesMigrationIntegrationTest {
     }
 
     @Test
+    fun `attendance events member fk references access users not group memberships`() {
+        val group = completeGroup("events-fk-repoint")
+        val member = member(group, "events-fk-repoint-member")
+        val game = game(group)
+        attendance(game, group, member, displayName = "Member")
+        attendanceEvent(game, group, member)
+
+        execute("DELETE FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'")
+
+        assertEquals(1, int("SELECT count(*) FROM game_attendance WHERE game_id = '$game' AND member_user_id = '$member'"))
+        assertEquals(1, int("SELECT count(*) FROM attendance_events WHERE game_id = '$game' AND member_user_id = '$member'"))
+    }
+
+    @Test
+    fun `attendance events still requires an existing access user`() {
+        val group = completeGroup("events-fk-still-enforced")
+        val actor = member(group, "events-fk-still-enforced-actor")
+        val game = game(group)
+        assertFails {
+            execute(
+                "INSERT INTO attendance_events (id, game_id, group_id, member_user_id, actor_user_id, source, new_status, occurred_at) VALUES " +
+                    "('${UUID.randomUUID()}', '$game', '$group', '${UUID.randomUUID()}', '$actor', 'SELF', 'CONFIRMED', now())",
+            )
+        }
+    }
+
+    @Test
     fun `game attendance still requires an existing access user`() {
         val group = completeGroup("fk-still-enforced")
         val game = game(group)
@@ -178,6 +205,12 @@ class AthleteAttributesMigrationIntegrationTest {
             execute(
                 "INSERT INTO group_charges (id, group_id, member_user_id, kind, billing_month, amount_cents, due_date, created_by_user_id, changed_by_user_id, created_at, updated_at, member_display_name) VALUES " +
                     "('${UUID.randomUUID()}', '$group', '$member', 'MONTHLY', DATE '2026-08-01', 5000, DATE '2026-08-10', '$member', '$member', now(), now(), NULL)",
+            )
+        }
+        assertFails {
+            execute(
+                "INSERT INTO group_charges (id, group_id, member_user_id, kind, billing_month, amount_cents, due_date, created_by_user_id, changed_by_user_id, created_at, updated_at, member_display_name) VALUES " +
+                    "('${UUID.randomUUID()}', '$group', '$member', 'MONTHLY', DATE '2026-08-01', 5000, DATE '2026-08-10', '$member', '$member', now(), now(), '  ')",
             )
         }
     }
@@ -248,6 +281,13 @@ class AthleteAttributesMigrationIntegrationTest {
         execute(
             "INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version$column) VALUES " +
                 "('$game', '$group', '$member', 'CONFIRMED', NULL, now(), now(), 1$value)",
+        )
+    }
+
+    private fun attendanceEvent(game: UUID, group: UUID, member: UUID) {
+        execute(
+            "INSERT INTO attendance_events (id, game_id, group_id, member_user_id, actor_user_id, source, new_status, occurred_at) VALUES " +
+                "('${UUID.randomUUID()}', '$game', '$group', '$member', '$member', 'SELF', 'CONFIRMED', now())",
         )
     }
 

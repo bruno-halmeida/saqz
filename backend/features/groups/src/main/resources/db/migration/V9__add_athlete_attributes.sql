@@ -24,6 +24,10 @@ ALTER TABLE game_attendance DROP CONSTRAINT fk_game_attendance_member;
 ALTER TABLE game_attendance
     ADD CONSTRAINT fk_game_attendance_member FOREIGN KEY (member_user_id) REFERENCES access_users (id);
 
+ALTER TABLE attendance_events DROP CONSTRAINT fk_attendance_events_member;
+ALTER TABLE attendance_events
+    ADD CONSTRAINT fk_attendance_events_member FOREIGN KEY (member_user_id) REFERENCES access_users (id);
+
 ALTER TABLE game_attendance ADD COLUMN member_display_name varchar(80);
 UPDATE game_attendance ga
 SET member_display_name = au.display_name
