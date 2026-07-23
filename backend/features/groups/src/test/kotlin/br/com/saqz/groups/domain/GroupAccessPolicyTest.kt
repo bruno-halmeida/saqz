@@ -54,6 +54,18 @@ class GroupAccessPolicyTest {
     @Test
     fun `non member manages roles as not found`() = assertNotFound(GroupAction.MANAGE_ROLES)
 
+    @Test
+    fun `owner can manage athletes`() = assertAllowed(GroupRole.OWNER, GroupAction.MANAGE_ATHLETES)
+
+    @Test
+    fun `admin can manage athletes`() = assertAllowed(GroupRole.ADMIN, GroupAction.MANAGE_ATHLETES)
+
+    @Test
+    fun `athlete cannot manage athletes`() = assertForbidden(GroupRole.ATHLETE, GroupAction.MANAGE_ATHLETES)
+
+    @Test
+    fun `non member manages athletes as not found`() = assertNotFound(GroupAction.MANAGE_ATHLETES)
+
     private fun assertAllowed(role: GroupRole, action: GroupAction) {
         assertSame(GroupAccessDecision.Allowed, policy.authorize(role, action))
     }
