@@ -94,6 +94,7 @@ internal val composePresentationModule = module {
             role = input.role,
             attendanceGateway = get(),
             attendanceShareGateway = get(),
+            savedStateHandle = get(),
         )
     }
 }

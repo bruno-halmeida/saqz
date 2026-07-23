@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.di
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
@@ -116,6 +117,7 @@ class ComposePresentationModuleTest {
                     single<GameGateway> { PublishedGameGateway }
                     single<AttendanceGateway> { EmptyAttendanceGateway }
                     single<AttendanceSharingGateway> { share }
+                    single { SavedStateHandle() }
                 },
                 composePresentationModule,
             )
