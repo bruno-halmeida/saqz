@@ -42,11 +42,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.message
 import br.com.saqz.designsystem.text.asString
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.presentation.login.LoginIntent
+import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.access_brand
 import br.com.saqz.access.resources.auth_error_email_in_use
@@ -96,8 +94,8 @@ internal object LoginTags {
 
 @Composable
 fun LoginScreen(
-    state: AuthenticationState,
-    onIntent: (AuthenticationIntent) -> Unit,
+    state: LoginState,
+    onIntent: (LoginIntent) -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
     val colors = SaqzTheme.colors
@@ -159,7 +157,7 @@ fun LoginScreen(
             Spacer(Modifier.height(30.dp))
             SaqzInput(
                 value = TextFieldValue(state.email),
-                onValueChange = { onIntent(AuthenticationIntent.UpdateEmail(it.text)) },
+                onValueChange = { onIntent(LoginIntent.UpdateEmail(it.text)) },
                 label = stringResource(Res.string.login_email),
                 kind = SaqzInputKind.Email,
                 enabled = !state.isLoading,
@@ -171,7 +169,7 @@ fun LoginScreen(
             Spacer(Modifier.height(10.dp))
             SaqzInput(
                 value = TextFieldValue(state.password),
-                onValueChange = { onIntent(AuthenticationIntent.UpdatePassword(it.text)) },
+                onValueChange = { onIntent(LoginIntent.UpdatePassword(it.text)) },
                 label = stringResource(Res.string.login_password),
                 kind = SaqzInputKind.Password,
                 enabled = !state.isLoading,
@@ -183,7 +181,7 @@ fun LoginScreen(
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 SaqzButton(
                     label = stringResource(Res.string.login_reset),
-                    onClick = { onIntent(AuthenticationIntent.ShowPasswordReset) },
+                    onClick = { onIntent(LoginIntent.ShowPasswordReset) },
                     variant = SaqzButtonVariant.Ghost,
                     enabled = !state.isLoading,
                     labelStyle = SaqzTheme.typography.navigation.copy(
@@ -195,7 +193,7 @@ fun LoginScreen(
             }
             state.error?.let { error ->
                 Text(
-                    text = error.message().asString(),
+                    text = error.asString(),
                     style = SaqzTheme.typography.caption,
                     color = colors.errorForeground,
                     textAlign = TextAlign.Center,
@@ -204,7 +202,7 @@ fun LoginScreen(
             }
             LoginPrimaryAction(
                 label = stringResource(Res.string.login_submit),
-                onClick = { onIntent(AuthenticationIntent.SubmitPasswordLogin) },
+                onClick = { onIntent(LoginIntent.SubmitPasswordLogin) },
                 enabled = !state.isLoading,
                 loading = state.isLoading,
             )
@@ -213,7 +211,7 @@ fun LoginScreen(
             Spacer(Modifier.height(14.dp))
             GoogleAction(
                 label = stringResource(Res.string.login_google),
-                onClick = { onIntent(AuthenticationIntent.SubmitGoogleLogin) },
+                onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
                 enabled = !state.isLoading,
             )
             Spacer(Modifier.weight(0.5f))
@@ -225,7 +223,7 @@ fun LoginScreen(
             )
             SaqzButton(
                 label = stringResource(Res.string.login_register),
-                onClick = { onIntent(AuthenticationIntent.ShowRegistration) },
+                onClick = { onIntent(LoginIntent.ShowRegistration) },
                 variant = SaqzButtonVariant.Ghost,
                 enabled = !state.isLoading,
                 labelStyle = SaqzTheme.typography.caption.copy(
@@ -410,5 +408,5 @@ private fun GoogleIcon(modifier: Modifier = Modifier) {
 )
 @Composable
 private fun LoginScreenPreview() = SaqzTheme {
-    LoginScreen(AuthenticationState(email = "ana@exemplo.com"), {})
+    LoginScreen(LoginState(email = "ana@exemplo.com"), {})
 }

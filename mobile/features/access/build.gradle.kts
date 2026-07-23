@@ -31,6 +31,9 @@ kotlin {
             implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.koin.compose.viewmodel)
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.lifecycle.runtime.compose)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

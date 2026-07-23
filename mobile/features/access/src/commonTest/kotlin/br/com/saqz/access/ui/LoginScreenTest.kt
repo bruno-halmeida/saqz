@@ -21,9 +21,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.AuthenticationIntent
-import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.presentation.login.LoginIntent
+import br.com.saqz.access.presentation.login.LoginState
+import br.com.saqz.access.resources.Res
+import br.com.saqz.access.resources.auth_error_invalid_credentials
+import br.com.saqz.designsystem.text.UiText
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,29 +33,29 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class LoginScreenTest {
     @Test fun `email input emits controlled value`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
+        var intent: LoginIntent? = null
         content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("person@example.test")
-        assertEquals(AuthenticationIntent.UpdateEmail("person@example.test"), intent)
+        assertEquals(LoginIntent.UpdateEmail("person@example.test"), intent)
     }
 
     @Test fun `password input emits controlled value`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null
+        var intent: LoginIntent? = null
         content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("secret")
-        assertEquals(AuthenticationIntent.UpdatePassword("secret"), intent)
+        assertEquals(LoginIntent.UpdatePassword("secret"), intent)
     }
 
     @Test fun `primary action submits password login`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: LoginIntent? = null; content(onIntent = { intent = it })
         onNodeWithTag(LoginTags.Submit).performClick()
-        assertEquals(AuthenticationIntent.SubmitPasswordLogin, intent)
+        assertEquals(LoginIntent.SubmitPasswordLogin, intent)
     }
 
     @Test fun `google action invokes provider flow`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: LoginIntent? = null; content(onIntent = { intent = it })
         onNodeWithText("Entrar com Google").performClick()
-        assertEquals(AuthenticationIntent.SubmitGoogleLogin, intent)
+        assertEquals(LoginIntent.SubmitGoogleLogin, intent)
     }
 
     @Test fun `approved visual hierarchy exposes the complete login journey`() = runComposeUiTest {
@@ -84,30 +86,30 @@ class LoginScreenTest {
     }
 
     @Test fun `registration action is reachable`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: LoginIntent? = null; content(onIntent = { intent = it })
         onNodeWithText("Criar conta").performClick()
-        assertEquals(AuthenticationIntent.ShowRegistration, intent)
+        assertEquals(LoginIntent.ShowRegistration, intent)
     }
 
     @Test fun `password reset action is reachable`() = runComposeUiTest {
-        var intent: AuthenticationIntent? = null; content(onIntent = { intent = it })
+        var intent: LoginIntent? = null; content(onIntent = { intent = it })
         onNodeWithText("Esqueci minha senha").performClick()
-        assertEquals(AuthenticationIntent.ShowPasswordReset, intent)
+        assertEquals(LoginIntent.ShowPasswordReset, intent)
     }
 
     @Test fun `loading disables all submit actions`() = runComposeUiTest {
-        content(state = AuthenticationState(isLoading = true))
+        content(state = LoginState(isLoading = true))
         onNodeWithTag(LoginTags.Submit).assertIsNotEnabled()
         onNodeWithTag(LoginTags.Google).assertIsNotEnabled()
     }
 
     @Test fun `stable actionable error is rendered`() = runComposeUiTest {
-        content(state = AuthenticationState(error = AuthUiError.INVALID_CREDENTIALS))
+        content(state = LoginState(error = UiText.Res(Res.string.auth_error_invalid_credentials)))
         onNodeWithText("E-mail ou senha invalidos").assertExists()
     }
 
     @Test fun `password starts with accessible reveal control`() = runComposeUiTest {
-        content(state = AuthenticationState(password = "secret"))
+        content(state = LoginState(password = "secret"))
         onNodeWithContentDescription("Mostrar senha").assertHasClickAction()
     }
 
@@ -123,7 +125,7 @@ class LoginScreenTest {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
                     Box(Modifier.size(280.dp, 320.dp)) {
-                        LoginScreen(AuthenticationState(), {})
+                        LoginScreen(LoginState(), {})
                     }
                 }
             }
@@ -133,8 +135,8 @@ class LoginScreenTest {
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.content(
-        state: AuthenticationState = AuthenticationState(),
-        onIntent: (AuthenticationIntent) -> Unit = {},
+        state: LoginState = LoginState(),
+        onIntent: (LoginIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
             LoginScreen(state, onIntent)

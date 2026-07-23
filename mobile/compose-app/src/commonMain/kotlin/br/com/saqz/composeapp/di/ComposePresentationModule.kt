@@ -5,6 +5,7 @@ import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.composeapp.navigation.RequestIdGenerator
 import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
+import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
 import br.com.saqz.groups.presentation.InviteToolStateMachine
@@ -65,6 +66,7 @@ internal val composePresentationModule = module {
         }
     }
     viewModelOf(::GroupsNavigationViewModel)
+    viewModelOf(::LoginViewModel)
     viewModel { parameters ->
         val input = parameters.get<GroupSetupViewModelParameters>()
         GroupSetupViewModel(

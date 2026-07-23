@@ -87,7 +87,7 @@ import br.com.saqz.groups.ui.InviteManagementScreen
 import br.com.saqz.groups.ui.InviteManagementIntent
 import br.com.saqz.groups.ui.InviteManagementUiState
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
-import br.com.saqz.access.ui.LoginScreen
+import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.groups.ui.LogoutConfirmationDialog
 import br.com.saqz.groups.ui.LogoutConfirmationIntent
 import br.com.saqz.groups.ui.MembershipAdministrationScreen
@@ -565,9 +565,7 @@ private fun DestinationContent(
     }
     when (destination) {
         AccessDestination.STARTING -> SaqzLoadingState()
-        AccessDestination.LOGIN -> LoginScreen(state.authentication) { intent ->
-            onIntent(AccessIntent.Authentication(intent))
-        }
+        AccessDestination.LOGIN -> LoginRoot()
         AccessDestination.REGISTRATION -> RegistrationScreen(state.authentication) { intent ->
             onIntent(AccessIntent.Authentication(intent))
         }

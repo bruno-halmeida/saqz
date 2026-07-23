@@ -127,13 +127,18 @@ class AuthenticatedAccessRootTest {
 
     @Test
     fun `absence of session renders login without protected shell`() = runComposeUiTest {
-        root(snapshot())
+        startTestSaqzKoin()
+        try {
+            setContent { SaqzTheme { AuthenticatedAccessRoot(snapshot()) {} } }
 
-        onNodeWithTag("login-submit").assertExists()
-        onNodeWithTag(SaqzTopBarTag).assertDoesNotExist()
-        onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
-        onNodeWithText("Current Group").assertDoesNotExist()
-        onNodeWithText("Componentes").assertDoesNotExist()
+            onNodeWithTag("login-submit").assertExists()
+            onNodeWithTag(SaqzTopBarTag).assertDoesNotExist()
+            onNodeWithTag(GroupsNavigationTags.BottomMenu).assertDoesNotExist()
+            onNodeWithText("Current Group").assertDoesNotExist()
+            onNodeWithText("Componentes").assertDoesNotExist()
+        } finally {
+            stopTestSaqzKoin()
+        }
     }
 
     @Test
@@ -552,23 +557,33 @@ class AuthenticatedAccessRootTest {
 
     @Test
     fun `access resources resolve through umbrella packaging`() = runComposeUiTest {
-        root(snapshot())
+        startTestSaqzKoin()
+        try {
+            setContent { SaqzTheme { AuthenticatedAccessRoot(snapshot()) {} } }
 
-        onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
+            onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
+        } finally {
+            stopTestSaqzKoin()
+        }
     }
 
     @Test
     fun `maximum text scale keeps login actions reachable`() = runComposeUiTest {
-        setContent {
-            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
-                Box(Modifier) {
-                    SaqzTheme { AuthenticatedAccessRoot(snapshot()) {} }
+        startTestSaqzKoin()
+        try {
+            setContent {
+                CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
+                    Box(Modifier) {
+                        SaqzTheme { AuthenticatedAccessRoot(snapshot()) {} }
+                    }
                 }
             }
-        }
 
-        onNodeWithText("Entrar com Google").performScrollTo().assertIsDisplayed()
-        onNodeWithText("Criar conta").performScrollTo().assertIsDisplayed()
+            onNodeWithText("Entrar com Google").performScrollTo().assertIsDisplayed()
+            onNodeWithText("Criar conta").performScrollTo().assertIsDisplayed()
+        } finally {
+            stopTestSaqzKoin()
+        }
     }
 
     @Test
