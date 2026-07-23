@@ -1,6 +1,6 @@
 package br.com.saqz.composeapp.navigation
 
-import androidx.lifecycle.ViewModel
+import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupProfileStatus
 import br.com.saqz.groups.domain.group.GroupRole
@@ -14,20 +14,11 @@ import br.com.saqz.groups.presentation.navigation.GroupsNavigationEffect
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.isGroupScoped
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 
-internal class GroupsNavigationViewModel : ViewModel() {
-    private val mutableState = MutableStateFlow(GroupsNavigationState())
-    val state: StateFlow<GroupsNavigationState> = mutableState.asStateFlow()
-    private val effectChannel = Channel<GroupsNavigationEffect>(Channel.BUFFERED)
-    val effects: Flow<GroupsNavigationEffect> = effectChannel.receiveAsFlow()
+internal class GroupsNavigationViewModel :
+    MviViewModel<GroupsNavigationState, GroupsNavigationIntent, GroupsNavigationEffect>(GroupsNavigationState()) {
 
-    fun onIntent(intent: GroupsNavigationIntent) {
+    override fun onIntent(intent: GroupsNavigationIntent) {
         when (intent) {
             is GroupsNavigationIntent.Reconcile -> reconcile(intent.selection, intent.memberships)
             is GroupsNavigationIntent.OpenGroup -> openGroup(intent.groupId)
@@ -120,7 +111,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
         groupId: String,
         memberships: List<GroupSelectionMembership>,
     ) {
-        val requestedGroupId = mutableState.value.requestedGroupId
+        val requestedGroupId = state.value.requestedGroupId
         if (memberships.size > 1 && requestedGroupId != groupId) {
             showGroups(memberships)
             return
@@ -133,7 +124,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
             showGroups(memberships)
             return
         }
-        val current = mutableState.value
+        val current = state.value
         val detailAlreadyOpen = current.groupId == group.id.value && current.destination.isGroupScoped()
         val requestedGroupLoaded = current.requestedGroupId == group.id.value
         if (memberships.size > 1 && !detailAlreadyOpen && !requestedGroupLoaded) {
@@ -144,24 +135,28 @@ internal class GroupsNavigationViewModel : ViewModel() {
     }
 
     private fun select(group: Group, memberships: List<GroupSelectionMembership>) {
-        val current = mutableState.value
+        val current = state.value
         if (current.groupId == group.id.value) {
-            mutableState.value = current.copy(
-                access = accessFor(group),
-                memberships = memberships,
-                requestedGroupId = null,
-            )
+            update {
+                current.copy(
+                    access = accessFor(group),
+                    memberships = memberships,
+                    requestedGroupId = null,
+                )
+            }
             enforceAllowedDestination(group)
             return
         }
         val destination = initialDestination(group)
-        mutableState.value = GroupsNavigationState(
-            destination = destination,
-            groupId = group.id.value,
-            access = accessFor(group),
-            memberships = memberships,
-        )
-        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id.value))
+        update {
+            GroupsNavigationState(
+                destination = destination,
+                groupId = group.id.value,
+                access = accessFor(group),
+                memberships = memberships,
+            )
+        }
+        emit(GroupsNavigationEffect.DestinationChanged(destination, group.id.value))
     }
 
     private fun replaceUnscoped(
@@ -169,13 +164,13 @@ internal class GroupsNavigationViewModel : ViewModel() {
         memberships: List<GroupSelectionMembership> = emptyList(),
         requestedGroupId: String? = null,
     ) {
-        val state = GroupsNavigationState(
+        val next = GroupsNavigationState(
             destination = destination,
             memberships = memberships,
             requestedGroupId = requestedGroupId,
         )
-        if (mutableState.value == state) return
-        mutableState.value = state
+        if (state.value == next) return
+        update { next }
     }
 
     private fun showGroups(memberships: List<GroupSelectionMembership>) {
@@ -183,7 +178,7 @@ internal class GroupsNavigationViewModel : ViewModel() {
     }
 
     private fun openGroup(groupId: String) {
-        val current = mutableState.value
+        val current = state.value
         if (current.destination != GroupsDestination.SELECTOR) return
         if (current.memberships.none { it.groupId == groupId }) return
         replaceUnscoped(
@@ -194,41 +189,41 @@ internal class GroupsNavigationViewModel : ViewModel() {
     }
 
     private fun openGroups() {
-        val memberships = mutableState.value.memberships
+        val memberships = state.value.memberships
         if (memberships.isEmpty()) return
         showGroups(memberships)
     }
 
     private fun navigate(destination: GroupsDestination) {
-        val current = mutableState.value
+        val current = state.value
         val groupId = current.groupId ?: return
         if (!isAllowed(destination, current.access)) return
         if (current.destination == destination && current.gameId == null) return
-        mutableState.value = current.copy(destination = destination, gameId = null)
-        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, groupId))
+        update { current.copy(destination = destination, gameId = null) }
+        emit(GroupsNavigationEffect.DestinationChanged(destination, groupId))
     }
 
     private fun openGameDetail(gameId: String) {
         if (gameId.isBlank()) return
-        val current = mutableState.value
+        val current = state.value
         val groupId = current.groupId ?: return
         if (!current.access.showGames) return
         if (current.destination == GroupsDestination.GAME_DETAIL && current.gameId == gameId) return
-        mutableState.value = current.copy(destination = GroupsDestination.GAME_DETAIL, gameId = gameId)
-        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(GroupsDestination.GAME_DETAIL, groupId))
+        update { current.copy(destination = GroupsDestination.GAME_DETAIL, gameId = gameId) }
+        emit(GroupsNavigationEffect.DestinationChanged(GroupsDestination.GAME_DETAIL, groupId))
     }
 
     private fun openFinance() {
-        val destination = mutableState.value.access.financeDestination ?: return
+        val destination = state.value.access.financeDestination ?: return
         navigate(destination)
     }
 
     private fun enforceAllowedDestination(group: Group) {
-        val state = mutableState.value
-        if (isAllowed(state.destination, state.access)) return
+        val current = state.value
+        if (isAllowed(current.destination, current.access)) return
         val destination = initialDestination(group)
-        mutableState.value = state.copy(destination = destination, gameId = null)
-        effectChannel.trySend(GroupsNavigationEffect.DestinationChanged(destination, group.id.value))
+        update { current.copy(destination = destination, gameId = null) }
+        emit(GroupsNavigationEffect.DestinationChanged(destination, group.id.value))
     }
 
     private fun initialDestination(group: Group): GroupsDestination = when {
