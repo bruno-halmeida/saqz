@@ -60,11 +60,12 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ## Gate Check Commands
 
 > Generated from codebase — confirm before Execute.
+> **Gate note (corrected 2026-07-23):** these KMP modules have NO `jvm()` target — only `android` (AGP KMP library plugin, no local `testDebugUnitTest`) + iOS. The only host-runnable unit test is `iosSimulatorArm64Test` (Kotlin/Native), so `:<module>:allTests` ≈ that single task. There is no faster "Android JVM" gate to switch to; Kotlin/Native compile is inherent. Fastest per-task gate = `:<module>:iosSimulatorArm64Test` scoped to the touched module(s); run the full multi-module `allTests` once at phase/batch end.
 
 | Gate Level | When to Use | Command |
 | --- | --- | --- |
-| Quick | After a task touching one module | `mobile/gradlew -p mobile :<module>:allTests --console=plain` (module = task's Where) |
-| Full | After tasks spanning features + compose-app | `mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :features:access:allTests :features:groups:allTests :compose-app:allTests --console=plain` |
+| Quick (per-task) | After a task touching one/two modules | `mobile/gradlew -p mobile :<module>:iosSimulatorArm64Test --console=plain` (scope to the touched modules) |
+| Full (phase/batch end) | Once after the last task of a batch; spans all modules | `mobile/gradlew -p mobile :core:common:allTests :core:design-system:allTests :features:access:allTests :features:groups:allTests :compose-app:allTests --console=plain` |
 | Build | Phase completion / final task | `scripts/check-gradle` (repo root; requires adb) |
 
 ---
