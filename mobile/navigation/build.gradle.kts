@@ -21,6 +21,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":core:common"))
             implementation(project(":core:design-system"))
             implementation(project(":features:access"))
             implementation(project(":features:groups"))
