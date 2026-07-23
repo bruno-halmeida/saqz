@@ -7,7 +7,7 @@ value class PhoneNumber private constructor(
     override fun toString(): String = "PhoneNumber(+55***${value.takeLast(2)})"
 
     companion object {
-        private val NATIONAL_LENGTHS = 10..11
+        private const val MOBILE_NATIONAL_LENGTH = 11
         private val DDD_RANGE = 11..99
 
         fun from(raw: String): PhoneNumber {
@@ -23,8 +23,9 @@ value class PhoneNumber private constructor(
                 digits
             }
 
-            require(national.length in NATIONAL_LENGTHS) { "phone must contain 10 or 11 digits after the country code" }
+            require(national.length == MOBILE_NATIONAL_LENGTH) { "phone must contain 11 digits (mobile) after the country code" }
             require(national.take(2).toInt() in DDD_RANGE) { "phone area code must be between 11 and 99" }
+            require(national[2] == '9') { "phone must be a mobile number with a leading 9 after the area code" }
             return PhoneNumber("+55$national")
         }
     }

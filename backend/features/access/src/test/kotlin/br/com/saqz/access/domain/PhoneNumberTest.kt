@@ -11,8 +11,18 @@ class PhoneNumberTest {
     }
 
     @Test
-    fun `normalizes a masked landline number without country code`() {
-        assertEquals("+551134567890", PhoneNumber.from("(11) 3456-7890").value)
+    fun `rejects a masked landline number without country code`() {
+        assertFailsWith<IllegalArgumentException> { PhoneNumber.from("(11) 3456-7890") }
+    }
+
+    @Test
+    fun `rejects a landline shaped number with country code`() {
+        assertFailsWith<IllegalArgumentException> { PhoneNumber.from("+551134567890") }
+    }
+
+    @Test
+    fun `rejects a mobile shaped number missing the leading nine after ddd`() {
+        assertFailsWith<IllegalArgumentException> { PhoneNumber.from("+5511887654321") }
     }
 
     @Test

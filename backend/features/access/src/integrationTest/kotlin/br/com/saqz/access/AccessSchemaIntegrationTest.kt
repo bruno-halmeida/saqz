@@ -113,7 +113,7 @@ class AccessSchemaIntegrationTest {
 
     @Test
     fun `phone rejects malformed values`() {
-        listOf("11987654321", "+1234567890123", "+55123", "+5511987654321a").forEach { phone ->
+        listOf("11987654321", "+1234567890123", "+55123", "+5511987654321a", "+551134567890").forEach { phone ->
             assertSqlFails {
                 execute(
                     "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, phone, created_at, updated_at) " +
