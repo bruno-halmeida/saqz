@@ -3,6 +3,7 @@ package br.com.saqz.navigation
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.groups.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.navigation.authorization.pruneDisallowedSuffix
 
 /**
  * The four retained bottom-nav tabs (TAB-01). `Games`/`GameDetail` live inside the
@@ -95,6 +96,35 @@ class NavigationSession(
         if (stack.size != 1) return
         val target = state.toGroupsRoute()
         if (stack[0] != target) stack[0] = target
+    }
+
+    /**
+     * AUTHZ-01..02, RESTORE-04: reconciles every retained authenticated stack
+     * except Início (`AppHome` is never role-gated) against [isAllowed]. Each
+     * stack is walked backward preserving its nearest allowed prefix -- the
+     * active stack and every inactive stack are pruned identically. If
+     * membership is lost, the GROUPS stack is cleared and replaced with
+     * [membershipLostFallback] (Selector or Setup) and Grupos becomes the
+     * active tab; otherwise a stack left with no allowed entry is reset to
+     * [fallback] (GroupHome).
+     */
+    fun pruneDisallowed(
+        isAllowed: (NavKey) -> Boolean,
+        membershipActive: Boolean,
+        fallback: NavKey,
+        membershipLostFallback: NavKey,
+    ) {
+        if (!membershipActive) {
+            val groupsStack = stacks.getValue(ProductTab.GROUPS)
+            groupsStack.clear()
+            groupsStack.add(membershipLostFallback)
+            selectTab(ProductTab.GROUPS)
+            return
+        }
+        for (tab in ProductTab.entries) {
+            if (tab == ProductTab.HOME) continue
+            pruneDisallowedSuffix(stacks.getValue(tab), isAllowed, fallback)
+        }
     }
 
     private fun GroupSelectionState.toGroupsRoute(): NavKey = when (this) {
