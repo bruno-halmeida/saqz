@@ -127,7 +127,10 @@ class GroupOnboardingScreensTest {
 
     private companion object {
         val selector = GroupSelectionState.Selector(
-            listOf(GroupSelectionMembership("group-1", "First Group", "OWNER"), GroupSelectionMembership("group-2", "Second Group", "ATHLETE")),
+            listOf(
+                GroupSelectionMembership("group-1", "First Group", GroupRole.OWNER),
+                GroupSelectionMembership("group-2", "Second Group", GroupRole.ATHLETE),
+            ),
         )
         val versioned = VersionedGroup(
             Group("group-2", "Current Group", "America/Sao_Paulo", 1, GroupRole.OWNER),

@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
@@ -38,7 +39,7 @@ sealed interface GroupSelectionIntent {
 data class GroupSelectionMembership(
     val groupId: String,
     val groupName: String,
-    val role: String,
+    val role: GroupRole,
 )
 
 class GroupSelectionStateMachine(

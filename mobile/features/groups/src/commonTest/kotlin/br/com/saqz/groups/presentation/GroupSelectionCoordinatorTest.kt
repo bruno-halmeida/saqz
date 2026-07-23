@@ -185,7 +185,7 @@ class GroupSelectionStateMachineTest {
         val fixture = fixture(this)
         fixture.groups.results[GROUP_A] = success(GROUP_A, GroupRole.ATHLETE)
 
-        fixture.machine.onIntent(GroupSelectionIntent.Reconcile(session(memberA.copy(role = "ADMIN"))))
+        fixture.machine.onIntent(GroupSelectionIntent.Reconcile(session(memberA.copy(role = GroupRole.ADMIN))))
         runCurrent()
 
         assertEquals(
@@ -251,8 +251,8 @@ class GroupSelectionStateMachineTest {
     private companion object {
         const val GROUP_A = "group-a"
         const val GROUP_B = "group-b"
-        val memberA = GroupSelectionMembership(GROUP_A, "Group A", "OWNER")
-        val memberB = GroupSelectionMembership(GROUP_B, "Group B", "ATHLETE")
+        val memberA = GroupSelectionMembership(GROUP_A, "Group A", GroupRole.OWNER)
+        val memberB = GroupSelectionMembership(GROUP_B, "Group B", GroupRole.ATHLETE)
         fun session(vararg memberships: GroupSelectionMembership) = memberships.toList()
         fun success(groupId: String, role: GroupRole) = SaqzResult.Success(
             VersionedGroup(Group(groupId, "Group $groupId", "UTC", 1, role), GroupVersionToken("\"1\"")),

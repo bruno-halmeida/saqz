@@ -1048,11 +1048,7 @@ private fun groupRoleLabel(role: GroupRole): String = when (role) {
 }
 
 @Composable
-private fun sessionRoleLabel(role: String): String = when (role.uppercase()) {
-    GroupRole.OWNER.name -> stringResource(Res.string.groups_role_owner)
-    GroupRole.ADMIN.name -> stringResource(Res.string.groups_role_admin)
-    else -> stringResource(Res.string.groups_role_athlete)
-}
+private fun sessionRoleLabel(role: GroupRole): String = groupRoleLabel(role)
 
 private fun initials(name: String): String = name.trim()
     .split(' ')
@@ -1116,7 +1112,7 @@ private val previewNavigation = GroupsNavigationState(
         financeDestination = GroupsDestination.FINANCE,
     ),
     memberships = listOf(
-        GroupSelectionMembership(previewGroup.id.value, previewGroup.name, GroupRole.OWNER.name),
+        GroupSelectionMembership(previewGroup.id.value, previewGroup.name, GroupRole.OWNER),
     ),
 )
 
@@ -1125,8 +1121,8 @@ private val previewNavigation = GroupsNavigationState(
 private fun GroupsListScreenPreview() = SaqzTheme {
     GroupsListScreen(
         memberships = listOf(
-            GroupSelectionMembership("alpha", "Alpha", "OWNER"),
-            GroupSelectionMembership("beta", "Beta", "ATHLETE"),
+            GroupSelectionMembership("alpha", "Alpha", GroupRole.OWNER),
+            GroupSelectionMembership("beta", "Beta", GroupRole.ATHLETE),
         ),
         onSelectGroup = {},
         onOpenCreateGroup = {},

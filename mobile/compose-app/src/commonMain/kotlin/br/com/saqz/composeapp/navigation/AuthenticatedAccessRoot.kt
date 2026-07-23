@@ -276,7 +276,7 @@ internal fun AuthenticatedAccessRoute(
         groupsViewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 selection = state.selection,
-                memberships = sessionMemberships.toGroupSelectionMemberships(),
+                memberships = sessionMemberships.toSafeGroupSelectionMemberships(),
             ),
         )
     }

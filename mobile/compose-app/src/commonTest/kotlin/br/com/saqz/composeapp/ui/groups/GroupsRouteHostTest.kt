@@ -595,8 +595,8 @@ class GroupsRouteHostTest {
         val owner = group(GroupRole.OWNER)
         val athlete = group(GroupRole.ATHLETE)
         val sessionGroups = listOf(
-            GroupSelectionMembership("group-1", "Private Group", "OWNER"),
-            GroupSelectionMembership("next", "Next", "ADMIN"),
+            GroupSelectionMembership("group-1", "Private Group", GroupRole.OWNER),
+            GroupSelectionMembership("next", "Next", GroupRole.ADMIN),
         )
         val ownerWithRoutine = owner.copy(
             profile = GroupProfile(

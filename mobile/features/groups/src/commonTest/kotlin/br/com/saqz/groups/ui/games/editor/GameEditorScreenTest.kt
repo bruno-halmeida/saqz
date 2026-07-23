@@ -247,7 +247,7 @@ class GameEditorScreenTest {
     }
 
     @Test
-    fun `compact keyboard-safe form reaches submit with touch target`() = runComposeUiTest {
+    fun `keyboard-safe form reaches submit with touch target`() = runComposeUiTest {
         setContent {
             Box(
                 Modifier.size(

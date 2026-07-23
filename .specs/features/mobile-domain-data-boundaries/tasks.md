@@ -1123,6 +1123,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T35: Replace app-level DTO coupling with explicit feature coordination
 
+**Status:** Complete — focused compose-app and groups gates passed.
+
 **What:** Convert compose-app Access/Groups orchestration, navigation state inputs and Koin bindings to domain contracts, including explicit Access-membership-to-Groups-access translation.
 
 **Where:** `compose-app/src/commonMain/**/{di,navigation,groups}/**`; `compose-app/src/commonTest/**`; `compose-app/build.gradle.kts`.

@@ -19,6 +19,7 @@ import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.DeferredInviteIntent
 import br.com.saqz.groups.presentation.DeferredInviteStateMachine
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
@@ -142,7 +143,9 @@ internal class AccessOrchestrator(
         invites.onIntent(DeferredInviteIntent.SetSessionReady(current is SessionAccessState.Ready))
         attendanceLinks.onIntent(DeferredAttendanceLinkIntent.SetSessionReady(current is SessionAccessState.Ready))
         if (current is SessionAccessState.Ready) {
-            selection.onIntent(GroupSelectionIntent.Reconcile(current.session.toGroupSelectionMemberships()))
+            selection.onIntent(
+                GroupSelectionIntent.Reconcile(current.session.toSafeGroupSelectionMemberships()),
+            )
         }
     }
 
@@ -191,19 +194,39 @@ internal class AccessOrchestrator(
     private fun showGroupSelector(session: AccessSession) {
         localAccessState.writeSelectedGroupId(null, object : ResultCallback {
             override fun complete(result: OperationResult) {
-                selection.onIntent(GroupSelectionIntent.Reconcile(session.toGroupSelectionMemberships()))
+                selection.onIntent(GroupSelectionIntent.Reconcile(session.toSafeGroupSelectionMemberships()))
             }
         })
     }
 }
 
-internal fun AccessSession.toGroupSelectionMemberships(): List<GroupSelectionMembership> =
+internal sealed interface AccessToGroupsMemberships {
+    data class Valid(val memberships: List<GroupSelectionMembership>) : AccessToGroupsMemberships
+    data class InvalidRole(val value: String) : AccessToGroupsMemberships
+}
+
+internal fun AccessSession.toGroupSelectionMemberships(): AccessToGroupsMemberships =
     memberships.toGroupSelectionMemberships()
 
-internal fun List<AccessMembership>.toGroupSelectionMemberships(): List<GroupSelectionMembership> = map { membership ->
-    GroupSelectionMembership(
-        groupId = membership.groupId.value,
-        groupName = membership.groupName,
-        role = membership.role.value,
-    )
+internal fun List<AccessMembership>.toGroupSelectionMemberships(): AccessToGroupsMemberships {
+    val translated = ArrayList<GroupSelectionMembership>(size)
+    for (membership in this) {
+        val role = GroupRole.entries.singleOrNull { it.name == membership.role.value }
+            ?: return AccessToGroupsMemberships.InvalidRole(membership.role.value)
+        translated += GroupSelectionMembership(
+            groupId = membership.groupId.value,
+            groupName = membership.groupName,
+            role = role,
+        )
+    }
+    return AccessToGroupsMemberships.Valid(translated)
 }
+
+internal fun AccessSession.toSafeGroupSelectionMemberships(): List<GroupSelectionMembership> =
+    memberships.toSafeGroupSelectionMemberships()
+
+internal fun List<AccessMembership>.toSafeGroupSelectionMemberships(): List<GroupSelectionMembership> =
+    when (val result = toGroupSelectionMemberships()) {
+        is AccessToGroupsMemberships.Valid -> result.memberships
+        is AccessToGroupsMemberships.InvalidRole -> emptyList()
+    }

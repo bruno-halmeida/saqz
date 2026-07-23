@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.groups.presentation.GroupSelectionMembership
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.resources.*
@@ -84,7 +85,7 @@ fun GroupOnboardingScreen(
             state.memberships.forEach { membership ->
                 SaqzListItem(
                     headline = membership.groupName,
-                    trailingContent = { SaqzBadge(membership.role, SaqzBadgeVariant.Neutral) },
+                    trailingContent = { SaqzBadge(membership.role.name, SaqzBadgeVariant.Neutral) },
                     onClick = { onIntent(GroupOnboardingIntent.Select(membership.groupId)) },
                 )
             }
@@ -161,7 +162,12 @@ internal fun ScrollColumn(content: @Composable () -> Unit) {
 @Preview
 @Composable
 private fun GroupOnboardingScreenPreview() = SaqzTheme {
-    GroupOnboardingScreen(GroupSelectionState.Selector(listOf(GroupSelectionMembership("preview-group", "Futebol de terça", "OWNER"))), {})
+    GroupOnboardingScreen(
+        GroupSelectionState.Selector(
+            listOf(GroupSelectionMembership("preview-group", "Futebol de terça", GroupRole.OWNER)),
+        ),
+        {},
+    )
 }
 
 @Preview

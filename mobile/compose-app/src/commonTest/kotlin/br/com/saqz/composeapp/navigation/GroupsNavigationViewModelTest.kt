@@ -134,7 +134,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 GroupSelectionState.Loading("next"),
-                listOf(GroupSelectionMembership("next", "Next", "ADMIN")),
+                listOf(GroupSelectionMembership("next", "Next", GroupRole.ADMIN)),
             ),
         )
         assertUnscoped(viewModel, GroupsDestination.LOADING)
@@ -146,7 +146,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 GroupSelectionState.LoadError("removed"),
-                listOf(GroupSelectionMembership("removed", "Removed", "OWNER")),
+                listOf(GroupSelectionMembership("removed", "Removed", GroupRole.OWNER)),
             ),
         )
         assertUnscoped(viewModel, GroupsDestination.LOAD_ERROR)
@@ -271,7 +271,7 @@ class GroupsNavigationViewModelTest {
         viewModel.onIntent(
             GroupsNavigationIntent.Reconcile(
                 selectedState(admin.copy(id = GroupId("next"))),
-                listOf(GroupSelectionMembership("next", "Next", "ADMIN")),
+                listOf(GroupSelectionMembership("next", "Next", GroupRole.ADMIN)),
             ),
         )
         assertEquals("next", viewModel.state.value.groupId)
@@ -314,7 +314,7 @@ class GroupsNavigationViewModelTest {
         VersionedGroup(group, br.com.saqz.groups.domain.group.GroupVersionToken("etag")),
     )
 
-    private fun membership(group: Group) = GroupSelectionMembership(group.id.value, group.name, group.role.name)
+    private fun membership(group: Group) = GroupSelectionMembership(group.id.value, group.name, group.role)
 
     private fun assertUnscoped(viewModel: GroupsNavigationViewModel, destination: GroupsDestination) {
         assertEquals(destination, viewModel.state.value.destination)
@@ -332,8 +332,8 @@ class GroupsNavigationViewModelTest {
         val admin = group(GroupRole.ADMIN)
         val athlete = group(GroupRole.ATHLETE)
         val memberships = listOf(
-            GroupSelectionMembership(GROUP_ID, "Private Group", "OWNER"),
-            GroupSelectionMembership("next", "Next", "ADMIN"),
+            GroupSelectionMembership(GROUP_ID, "Private Group", GroupRole.OWNER),
+            GroupSelectionMembership("next", "Next", GroupRole.ADMIN),
         )
 
         fun group(role: GroupRole) = Group(

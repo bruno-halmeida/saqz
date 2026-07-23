@@ -356,7 +356,7 @@ class AuthenticatedAccessRootTest {
             state = ready(selector),
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.SELECTOR,
-                memberships = session.memberships.toGroupSelectionMemberships(),
+                memberships = session.toSafeGroupSelectionMemberships(),
             ),
             onGroupsIntent = groupsIntents::add,
             initiallyShowAppHome = true,
@@ -438,7 +438,7 @@ class AuthenticatedAccessRootTest {
             onIntent = accessIntents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.SELECTOR,
-                memberships = session.memberships.toGroupSelectionMemberships(),
+                memberships = session.toSafeGroupSelectionMemberships(),
             ),
             onGroupsIntent = groupsIntents::add,
         )
@@ -463,7 +463,7 @@ class AuthenticatedAccessRootTest {
             onIntent = intents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.SELECTOR,
-                memberships = session.memberships.toGroupSelectionMemberships(),
+                memberships = session.toSafeGroupSelectionMemberships(),
             ),
         )
 
@@ -480,7 +480,7 @@ class AuthenticatedAccessRootTest {
             onIntent = intents::add,
             groupsNavigation = GroupsNavigationState(
                 destination = GroupsDestination.LOAD_ERROR,
-                memberships = session.memberships.toGroupSelectionMemberships(),
+                memberships = session.toSafeGroupSelectionMemberships(),
                 requestedGroupId = "beta",
             ),
         )
@@ -509,7 +509,7 @@ class AuthenticatedAccessRootTest {
                     canMutateOperations = true,
                     financeDestination = GroupsDestination.FINANCE,
                 ),
-                memberships = session.memberships.toGroupSelectionMemberships(),
+                memberships = session.toSafeGroupSelectionMemberships(),
             ),
         )
 
@@ -825,7 +825,7 @@ class AuthenticatedAccessRootTest {
                 AccessMembership(GroupId("beta"), "Beta", AccessMembershipRole("ATHLETE")),
             ),
         )
-        val selector = GroupSelectionState.Selector(session.memberships.toGroupSelectionMemberships())
+        val selector = GroupSelectionState.Selector(session.toSafeGroupSelectionMemberships())
         val group = VersionedGroup(
             Group("current", "Current Group", "America/Sao_Paulo", 1, GroupRole.OWNER),
             br.com.saqz.groups.domain.group.GroupVersionToken("\"1\""),
