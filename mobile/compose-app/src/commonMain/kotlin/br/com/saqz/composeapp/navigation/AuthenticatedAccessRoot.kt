@@ -362,6 +362,7 @@ internal fun AuthenticatedAccessRoute(
         accessViewModel.onIntent(intent)
     }
     AuthenticatedAccessRoot(
+        positionOnboarding = { PositionOnboardingHost(koinViewModel()) },
         state = state,
         onIntent = onAccessIntent,
         groupsNavigation = groupsNavigation,
@@ -422,6 +423,7 @@ internal fun AuthenticatedAccessRoot(
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
     gameDetailState: GameDetailState? = null,
     onGameDetailIntent: (GameDetailIntent) -> Unit = {},
+    positionOnboarding: (@Composable () -> Unit)? = null,
     onIntent: (AccessIntent) -> Unit,
 ) {
     val desired = state.destination()
@@ -475,6 +477,7 @@ internal fun AuthenticatedAccessRoot(
                 loadListPhoto,
                 gameDetailState,
                 onGameDetailIntent,
+                positionOnboarding = positionOnboarding,
             )
         }
     }
@@ -557,6 +560,7 @@ private fun DestinationContent(
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)?,
     gameDetailState: GameDetailState?,
     onGameDetailIntent: (GameDetailIntent) -> Unit,
+    positionOnboarding: (@Composable () -> Unit)? = null,
 ) {
     if (
         showAppHome &&
@@ -632,7 +636,7 @@ private fun DestinationContent(
                     onGameDetailIntent,
                 )
             }
-            PositionOnboardingHost(org.koin.compose.viewmodel.koinViewModel())
+            positionOnboarding?.invoke()
             if (state.showLogoutConfirmation) {
                 LogoutConfirmationDialog { intent ->
                     onIntent(

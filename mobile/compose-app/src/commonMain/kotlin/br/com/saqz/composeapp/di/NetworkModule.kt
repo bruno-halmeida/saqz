@@ -47,7 +47,7 @@ internal val coreNetworkModule = module {
 
 internal val accessDataModule = module {
     singleOf(::NativeTokenProvider) { bind<IdTokenProvider>() }
-    singleOf(::KtorSessionGateway) { bind<SessionGateway>() }
+    single<SessionGateway> { KtorSessionGateway(get()) }
 }
 
 internal val accessInvalidationModule = module {

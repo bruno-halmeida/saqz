@@ -282,6 +282,11 @@ class SessionAccessStateMachineTest {
             calls += 1
             return result
         }
+
+        override suspend fun completeProfile(
+            phone: String,
+            displayName: String?,
+        ): SaqzResult<AccessSession, AccessError> = result
     }
 
     private class FakeAuthPort : NativeAuthPort {
