@@ -358,4 +358,24 @@
     <string name="athlete_position_central">Central</string>
     <string name="athlete_position_oposto">Oposto</string>
     <string name="athlete_position_levantador">Levantador</string>
+    <string name="roster_search">Buscar atleta</string>
+    <string name="roster_filter_all">Todos</string>
+    <string name="roster_filter_mensalista">Mensalista</string>
+    <string name="roster_filter_avulso">Avulso</string>
+    <string name="roster_filter_em_dia">Pago</string>
+    <string name="roster_filter_pendente">Pendente</string>
+    <string name="roster_status_desconhecido">Sem info</string>
+    <string name="roster_show_inactive">Mostrar inativos</string>
+    <string name="roster_inactive">Inativo</string>
+    <string name="roster_empty">Nenhum atleta encontrado</string>
+    <string name="roster_edit_title">Editar atleta</string>
+    <string name="roster_edit_position_none">Sem posição</string>
+    <string name="roster_edit_active">Atleta ativo</string>
+    <string name="roster_edit_save">Salvar</string>
+    <string name="roster_edit_error">Não foi possível salvar. Tente novamente.</string>
+    <string name="roster_remove">Remover do grupo</string>
+    <string name="roster_remove_title">Remover atleta?</string>
+    <string name="roster_remove_body">%1$s sairá do grupo, mas o histórico de jogos e cobranças será mantido. A pessoa pode voltar por um novo convite.</string>
+    <string name="roster_remove_confirm">Confirmar remoção</string>
+    <string name="roster_remove_error">Não foi possível remover. Tente novamente.</string>
 </resources>

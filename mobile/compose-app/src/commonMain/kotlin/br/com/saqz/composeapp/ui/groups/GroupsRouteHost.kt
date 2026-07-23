@@ -33,6 +33,7 @@ internal fun GroupsRouteHost(
     onRetryGroup: () -> Unit,
     onOpenInvite: () -> Unit,
     onRequestLogout: () -> Unit,
+    athleteRoster: (@Composable () -> Unit)? = null,
 ) {
     val content = @Composable {
         GroupsDestinationContent(
@@ -50,6 +51,7 @@ internal fun GroupsRouteHost(
             onOpenInvite = onOpenInvite,
             onRequestLogout = onRequestLogout,
             loadListPhoto = loadListPhoto,
+            athleteRoster = athleteRoster,
         )
     }
     when {

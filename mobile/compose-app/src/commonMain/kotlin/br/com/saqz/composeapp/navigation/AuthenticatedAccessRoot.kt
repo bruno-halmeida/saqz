@@ -94,6 +94,8 @@ import br.com.saqz.groups.ui.MembershipAdministrationScreen
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PhoneCompletionRoot
+import br.com.saqz.groups.presentation.athlete.AthleteRosterViewModel
+import br.com.saqz.groups.ui.athlete.AthleteRosterScreen
 import br.com.saqz.groups.ui.athlete.PositionOnboardingHost
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
@@ -737,5 +739,14 @@ private fun GroupsRouteContent(
         onRetryGroup = { onIntent(AccessIntent.Selection(GroupSelectionIntent.Retry)) },
         onOpenInvite = { onIntent(AccessIntent.OpenInvite) },
         onRequestLogout = { onIntent(AccessIntent.RequestLogout) },
+        athleteRoster = {
+            val rosterViewModel = koinViewModel<AthleteRosterViewModel>()
+            val rosterState by rosterViewModel.state.collectAsState()
+            AthleteRosterScreen(
+                state = rosterState,
+                canManage = state.administration.actions.canManageRoles,
+                onIntent = rosterViewModel::onIntent,
+            )
+        },
     )
 }

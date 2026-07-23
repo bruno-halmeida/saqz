@@ -53,6 +53,7 @@ fun GroupsDestinationContent(
     onOpenInvite: () -> Unit,
     onRequestLogout: () -> Unit,
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
+    athleteRoster: (@Composable () -> Unit)? = null,
 ) {
     when (navigation.destination) {
         GroupsDestination.SETUP -> Unit
@@ -86,12 +87,16 @@ fun GroupsDestinationContent(
             tag = GroupsNavigationTags.ProfileCompletion,
             onNavigationIntent = onNavigationIntent,
         )
-        GroupsDestination.PEOPLE -> RoutePage(
-            title = stringResource(Res.string.groups_people),
-            body = "Gerencie participantes, funções e convites privados.",
-            tag = GroupsNavigationTags.People,
-            onNavigationIntent = onNavigationIntent,
-        )
+        GroupsDestination.PEOPLE -> if (athleteRoster != null) {
+            athleteRoster()
+        } else {
+            RoutePage(
+                title = stringResource(Res.string.groups_people),
+                body = "Gerencie participantes, funções e convites privados.",
+                tag = GroupsNavigationTags.People,
+                onNavigationIntent = onNavigationIntent,
+            )
+        }
         GroupsDestination.GAMES -> RoutePage(
             title = stringResource(Res.string.groups_games),
             body = if (navigation.access.canMutateOperations) {
