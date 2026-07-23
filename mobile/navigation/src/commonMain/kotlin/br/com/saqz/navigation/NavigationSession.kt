@@ -22,9 +22,9 @@ enum class ProductTab { HOME, GROUPS, NOTICES, MORE }
  * This type implements the pure in-memory command surface: tab selection,
  * duplicate-safe forward navigation, the back algorithm, transient/selection
  * reconciliation, authorization pruning, and restoration/scope clearing.
- * Compose-level persistence (`rememberSerializable`/`rememberNavBackStack`) and
+ * Compose-level saved state (`rememberSerializable`/`rememberNavBackStack`) and
  * the conditional cold-relaunch snapshot store are added by later tasks
- * (T16-T21, T26); this class never talks to platform persistence directly.
+ * (T16-T21, T26); this class never talks to platform saved-state storage directly.
  */
 class NavigationSession(
     private val stacks: Map<ProductTab, MutableList<NavKey>>,
