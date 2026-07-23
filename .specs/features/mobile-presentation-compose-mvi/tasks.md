@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/mobile-presentation-compose-mvi/design.md`
-**Status**: Delivered (scope-reduced per AD-025) — Verifier pass pending
+**Status**: ✅ Delivered & verified (scope-reduced per AD-025) — Verifier PASS (16/16 in-scope ACs, 6/6 mutants killed, 0 gaps; see `validation.md`)
 
 **Delivered:** MVI base + UiText + ObserveAsEvents (T01–T03); all 8 ViewModels on the base, test-scope hooks removed (T04–T10); UiText error mapping + 5-form state/restoration (T11–T16); 5 pre-auth routes extracted into per-route ViewModels+Roots (T17–T21); AccessViewModel verified as orchestration + deferred panels (T25); GameDetail SavedStateHandle Koin wiring fixed (part of T29); docs (T33). PMVI-027/028: CompositionLocals audited theme-only (`SaqzTheme.kt`) — no migration needed.
 **Deferred to Nav3/AD-029:** T22–T24 + T26–T28 (panels sharing route ViewModels per AD-025); T29 Root-extraction + T30 (god-Root restructuring — throwaway at Nav3).
