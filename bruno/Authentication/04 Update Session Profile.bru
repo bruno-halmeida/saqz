@@ -1,0 +1,31 @@
+meta {
+  name: Update Session Profile
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{backendUrl}}/api/session/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "phone": "+5511911112222"
+  }
+}
+
+tests {
+  test("backend persists the phone and marks it no longer required", function () {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.user.phone).to.equal("+5511911112222");
+    expect(body.user.phoneRequired).to.equal(false);
+  });
+}

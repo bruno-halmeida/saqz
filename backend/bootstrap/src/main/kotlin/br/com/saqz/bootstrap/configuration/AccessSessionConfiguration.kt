@@ -68,6 +68,7 @@ import br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects
 import br.com.saqz.groups.application.finance.expense.ExpenseService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
@@ -116,7 +117,11 @@ class AccessSessionConfiguration {
     }
 
     @Bean
-    fun accessSessionController(useCase: BootstrapSession) = AccessSessionController(useCase)
+    fun completeSessionProfile(repository: JdbcSessionRepository) = CompleteSessionProfile(repository)
+
+    @Bean
+    fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
+        AccessSessionController(useCase, profile)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)
