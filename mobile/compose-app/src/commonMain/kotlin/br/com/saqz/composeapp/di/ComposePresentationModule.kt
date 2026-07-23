@@ -2,7 +2,6 @@ package br.com.saqz.composeapp.di
 
 import br.com.saqz.composeapp.navigation.AccessOrchestrator
 import br.com.saqz.composeapp.navigation.AccessViewModel
-import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
 import br.com.saqz.composeapp.navigation.RequestIdGenerator
 import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
 import br.com.saqz.access.presentation.login.LoginViewModel
@@ -75,7 +74,6 @@ internal val composePresentationModule = module {
             get<AccessOrchestrator> { parametersOf(scope) }
         }
     }
-    viewModelOf(::GroupsNavigationViewModel)
     // Route-adapter ViewModels (T11-T15): resolved per NavEntry through the entry's
     // ViewModelStoreOwner, projecting the shared singleton state machines.
     viewModel { GroupSelectionRouteViewModel(get()) }

@@ -17,7 +17,6 @@ import br.com.saqz.groups.presentation.GroupSelectionState
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
-import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
 import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
@@ -95,9 +94,8 @@ fun GroupLoadErrorRoot(viewModel: GroupSelectionRouteViewModel) {
 }
 
 /**
- * GroupHome root: projects administration + photo through [GroupHomeRouteViewModel]
- * and keeps [GroupDetailScreen] unchanged by synthesizing its navigation projection
- * from the group's own policy (the legacy `GroupsNavigationState` fields die in T25).
+ * GroupHome root: projects administration + photo through [GroupHomeRouteViewModel];
+ * the navigation projection derives from the group's own policy (T25).
  */
 @Composable
 fun GroupHomeRoot(
@@ -110,11 +108,7 @@ fun GroupHomeRoot(
     GroupDetailScreen(
         group = group,
         administration = state.administration,
-        navigation = GroupsNavigationState(
-            destination = GroupsDestination.HOME,
-            groupId = group.id.value,
-            access = navigationAccessFor(group),
-        ),
+        access = navigationAccessFor(group),
         groupPhotoState = state.photo,
         groupPhotoPreview = groupPhotoPreview,
         onNavigationIntent = onNavigate,

@@ -61,11 +61,9 @@ import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationState
-import br.com.saqz.groups.presentation.GroupSelectionMembership
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
-import br.com.saqz.groups.presentation.navigation.GroupsNavigationState
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
 import br.com.saqz.groups.presentation.photo.ExistingGroupPhoto
 import br.com.saqz.groups.presentation.photo.GroupPhotoRenderState
@@ -112,7 +110,7 @@ import org.jetbrains.compose.resources.stringResource
 fun GroupDetailScreen(
     group: Group,
     administration: GroupAdministrationState,
-    navigation: GroupsNavigationState,
+    access: GroupsNavigationAccess,
     groupPhotoState: GroupPhotoState,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)?,
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
@@ -129,23 +127,23 @@ fun GroupDetailScreen(
     ) {
         GroupSummary(group, administration.memberships, groupPhotoState, groupPhotoPreview)
         NextGameCard(
-            showGames = navigation.access.showGames,
+            showGames = access.showGames,
             onOpenGames = { onNavigationIntent(GroupsNavigationIntent.OpenGames) },
         )
         ShortcutCard(
-            navigation = navigation,
+            access = access,
             administration = administration,
             onNavigationIntent = onNavigationIntent,
             onOpenSettings = onOpenSettings,
         )
         NoticesCard(
             incomplete = group.profileStatus == GroupProfileStatus.INCOMPLETE,
-            canCompleteProfile = navigation.access.canCompleteProfile,
+            canCompleteProfile = access.canCompleteProfile,
             onCompleteProfile = { onNavigationIntent(GroupsNavigationIntent.OpenProfileCompletion) },
         )
         MembersCard(
             memberships = administration.memberships,
-            canOpenPeople = navigation.access.showPeople,
+            canOpenPeople = access.showPeople,
             onOpenPeople = { onNavigationIntent(GroupsNavigationIntent.OpenPeople) },
         )
         if (administration.actions.canManageInvite) {
@@ -308,7 +306,7 @@ private fun NextGameCard(showGames: Boolean, onOpenGames: () -> Unit) {
 
 @Composable
 private fun ShortcutCard(
-    navigation: GroupsNavigationState,
+    access: GroupsNavigationAccess,
     administration: GroupAdministrationState,
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
     onOpenSettings: () -> Unit,
@@ -318,20 +316,20 @@ private fun ShortcutCard(
         contentPadding = 8.dp,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (navigation.access.showGames) Shortcut(
+            if (access.showGames) Shortcut(
                 label = stringResource(Res.string.groups_games),
                 icon = Res.drawable.material_calendar,
                 tag = GroupsNavigationTags.ShortcutGames,
                 modifier = Modifier.weight(1f),
             ) { onNavigationIntent(GroupsNavigationIntent.OpenGames) }
-            if (navigation.access.showPeople) Shortcut(
+            if (access.showPeople) Shortcut(
                 label = stringResource(Res.string.groups_people),
                 icon = Res.drawable.material_group_add,
                 tag = GroupsNavigationTags.ShortcutPeople,
                 modifier = Modifier.weight(1f),
             ) { onNavigationIntent(GroupsNavigationIntent.OpenPeople) }
-            if (navigation.access.showFinance) Shortcut(
-                label = if (navigation.access.financeDestination == GroupsDestination.OWN_CHARGES) {
+            if (access.showFinance) Shortcut(
+                label = if (access.financeDestination == GroupsDestination.OWN_CHARGES) {
                     stringResource(Res.string.groups_own_charges)
                 } else {
                     stringResource(Res.string.groups_finance)
@@ -570,19 +568,12 @@ private val previewAdministration = GroupAdministrationState(
     actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
 )
 
-private val previewNavigation = GroupsNavigationState(
-    destination = GroupsDestination.HOME,
-    groupId = previewGroup.id.value,
-    access = GroupsNavigationAccess(
-        showPeople = true,
-        showGames = true,
-        showFinance = true,
-        canMutateOperations = true,
-        financeDestination = GroupsDestination.FINANCE,
-    ),
-    memberships = listOf(
-        GroupSelectionMembership(previewGroup.id.value, previewGroup.name, GroupRole.OWNER),
-    ),
+private val previewAccess = GroupsNavigationAccess(
+    showPeople = true,
+    showGames = true,
+    showFinance = true,
+    canMutateOperations = true,
+    financeDestination = GroupsDestination.FINANCE,
 )
 
 @Preview
@@ -591,7 +582,7 @@ private fun GroupDetailScreenPreview() = SaqzTheme {
     GroupDetailScreen(
         group = previewGroup,
         administration = previewAdministration,
-        navigation = previewNavigation,
+        access = previewAccess,
         groupPhotoState = GroupPhotoState(),
         groupPhotoPreview = null,
         onNavigationIntent = {},

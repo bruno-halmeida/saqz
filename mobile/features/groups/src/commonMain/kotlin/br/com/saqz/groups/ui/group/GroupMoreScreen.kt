@@ -24,7 +24,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Mais tab content backed by the policy-derived [GroupRouteAccess] projection
- * (T25: replaces the legacy private GroupMoreScreen that read GroupsNavigationState).
+ * (T25: replaces the legacy private More screen that read the shared destination state).
  * Same buttons, labels, and testTags as the legacy screen.
  */
 @Composable

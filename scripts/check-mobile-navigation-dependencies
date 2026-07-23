@@ -104,6 +104,12 @@ reject_grep 'a removed manual Access navigation artifact was reintroduced (T24)'
     '\bAccessPage\b|\bAccessDestination\b|\bAccessDestinationStack\b|\bshowAppHome\b|\bhandleGroupsIntent\b' \
     "$mobile_prod_kt"
 
+# T25 structural guard: the legacy Groups destination state must never return.
+# Route history lives only in NavigationSession; these artifacts are removed.
+reject_grep 'a removed legacy Groups navigation artifact was reintroduced (T25)' \
+    '\bGroupsNavigationViewModel\b|\bGroupsNavigationEffect\b|\bGroupsNavigationState\b|\bGroupsRouteHost\b|\bGroupsDestinationContent\b' \
+    "$mobile_prod_kt"
+
 # ponytail: static declared-dependency scan across build files/catalog, not a
 # real `gradlew dependencies` graph resolution; swap for a live resolution
 # check if a transitive-only legacy Nav2 pull is ever suspected.

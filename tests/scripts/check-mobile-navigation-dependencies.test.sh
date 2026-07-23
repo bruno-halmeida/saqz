@@ -98,6 +98,14 @@ fail_case removed-access-destination-stack-reintroduced \
     'a removed manual Access navigation artifact was reintroduced (T24)' \
     'mkdir -p mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak && printf "package br.com.saqz.composeapp.leak\n\nclass AccessDestinationStack\n" >mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak/StackLeak.kt'
 
+fail_case removed-groups-navigation-viewmodel-reintroduced \
+    'a removed legacy Groups navigation artifact was reintroduced (T25)' \
+    'mkdir -p mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak && printf "package br.com.saqz.composeapp.leak\n\nclass GroupsNavigationViewModel\n" >mobile/compose-app/src/commonMain/kotlin/br/com/saqz/composeapp/leak/GroupsVmLeak.kt'
+
+fail_case removed-groups-destination-content-reintroduced \
+    'a removed legacy Groups navigation artifact was reintroduced (T25)' \
+    'mkdir -p mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/leak && printf "package br.com.saqz.groups.leak\n\nfun GroupsDestinationContent() = Unit\n" >mobile/features/groups/src/commonMain/kotlin/br/com/saqz/groups/leak/ContentLeak.kt'
+
 # Positive case for --require-no-legacy: remove every legacy navigation-compose
 # reference from the catalog/build files, then the flagged run must pass.
 dir="$scratch_root/require-no-legacy-passes-once-nav2-removed"
