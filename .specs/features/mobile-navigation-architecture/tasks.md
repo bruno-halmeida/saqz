@@ -535,13 +535,15 @@ Suggested sequential batches: Worker 1 = Phase 1 (6 tasks), Worker 2 = Phase 2 (
 **Tools**: Skill `tlc-spec-driven`; MCP NONE.
 
 **Done when**:
-- [ ] Back reveals GroupHome or More according to actual predecessor.
-- [ ] No real finance/expense screen/gateway is composed.
-- [ ] G6 passes.
+- [x] Back reveals GroupHome or More according to actual predecessor.
+- [x] No real finance/expense screen/gateway is composed.
+- [x] G6 passes.
 
 **Tests**: Common Compose owner/athlete predecessor and inertness cases.
 **Gate**: G6.
 **Commit**: `feat(navigation): add structural finance host`
+
+#### T19 evidence — `mobile/navigation/src/commonMain/kotlin/br/com/saqz/navigation/finance/FinanceNavigationHost.kt`: `installFinanceEntries(session, titleFor, content)` installs Finance/OwnCharges as two distinct entries wrapped in the shared `GroupsScopedScaffold` (top bar, back → `session::goBack`); placeholder content and titles are composition-root bindings. `resolveFinanceRoute(canManageFinance)` = Finance for finance managers, OwnCharges otherwise (same owner/athlete split as the existing policy resolver). A finance key is pushed onto the active launching stack, so back reveals the real predecessor (GroupHome or More). No `FinanceScreen`/`ExpenseScreen`/gateway is referenced (FINNAV-02). Tests `FinanceNavigationHostTest.kt` (5 new cases: entry inventory, role resolution, Finance→GroupHome back, OwnCharges→More back, inert placeholder-only composition). G6 BUILD SUCCESSFUL; navigation test count 60 → 65 (+5, matches count rule); groups untouched.
 
 ### T20: Implement typed navigation effect handlers
 
