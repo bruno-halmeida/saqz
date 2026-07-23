@@ -44,6 +44,8 @@ if ! adb devices | grep -Eq '^[^[:space:]]+[[:space:]]+device$'; then
     fail "Android emulator/device is required for connectedDevDebugAndroidTest"
 fi
 
+"$repository_root/scripts/check-mobile-boundaries"
+
 "$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
     :core:common:allTests \
     :core:design-system:allTests \

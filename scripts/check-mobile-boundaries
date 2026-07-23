@@ -1,0 +1,153 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mobile_root="$repository_root/mobile"
+
+fail() {
+    printf 'mobile boundary gate failed: %s\n' "$1" >&2
+    exit 1
+}
+
+tracked_mobile_files() {
+    git -C "$repository_root" ls-files -- 'mobile' | while IFS= read -r file; do
+        [ -e "$repository_root/$file" ] && printf '%s\n' "$file"
+    done
+}
+
+# extract_common_main FILE - print the body of the commonMain.dependencies { ... }
+# block. The repository's build files never nest braces inside that block, so a
+# marker-to-first-closing-brace scan is sufficient and avoids a full Groovy/KTS parser.
+extract_common_main() {
+    awk '
+        /commonMain\.dependencies[[:space:]]*\{/ { found=1; next }
+        found && /^[[:space:]]*\}[[:space:]]*$/ { found=0; next }
+        found { print }
+    ' "$1"
+}
+
+# domain_only_allowlist FILE - every non-blank dependency line must be exactly the
+# shared-kernel dependency; anything else (Compose, Koin, Ktor, serialization, the
+# other feature, its own data/presentation) is rejected by construction.
+check_domain_allowlist() {
+    module_label=$1
+    file=$2
+    [ -f "$file" ] || return 0
+    violation=$(extract_common_main "$file" | grep -Ev '^[[:space:]]*$' | grep -Ev '^[[:space:]]*implementation\(project\(":core:domain"\)\)[[:space:]]*$' || true)
+    [ -z "$violation" ] || {
+        printf '%s\n' "$violation" >&2
+        fail "$module_label domain module depends on more than :core:domain in $file"
+    }
+}
+
+# check_denylist FILE LABEL PATTERN - fail if any commonMain dependency line matches
+# the forbidden pattern; the diagnostic names both the file and the offending line.
+check_denylist() {
+    file=$1
+    label=$2
+    pattern=$3
+    [ -f "$file" ] || return 0
+    matches=$(extract_common_main "$file" | grep -E "$pattern" || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail "$label in $file"
+    }
+}
+
+check_presentation_build() {
+    feature=$1
+    other=$2
+    file="$mobile_root/features/$feature/build.gradle.kts"
+    check_denylist "$file" "presentation depends on its own data module" "\":features:$feature:data\""
+    check_denylist "$file" "presentation depends on core:network" '":core:network"'
+    check_denylist "$file" "presentation depends on Ktor" 'io\.ktor|libs\.ktor'
+    check_denylist "$file" "presentation depends on serialization" 'serialization'
+    check_denylist "$file" "presentation depends on the other feature" "\":features:$other"
+}
+
+check_data_build() {
+    feature=$1
+    other=$2
+    file="$mobile_root/features/$feature/data/build.gradle.kts"
+    check_denylist "$file" "data module depends on its own presentation module" "\":features:$feature\"\\)"
+    check_denylist "$file" "data module depends on the other feature" "\":features:$other"
+}
+
+# --- Gradle dependency allowlists -------------------------------------------
+
+check_domain_allowlist 'core' "$mobile_root/core/domain/build.gradle.kts"
+check_domain_allowlist 'access' "$mobile_root/features/access/domain/build.gradle.kts"
+check_domain_allowlist 'groups' "$mobile_root/features/groups/domain/build.gradle.kts"
+
+check_presentation_build access groups
+check_presentation_build groups access
+
+check_data_build access groups
+check_data_build groups access
+
+# --- Source import scans ----------------------------------------------------
+
+# reject_source_imports LABEL DIR_PATTERN IMPORT_PATTERN
+reject_source_imports() {
+    label=$1
+    dir_pattern=$2
+    import_pattern=$3
+    files=$(tracked_mobile_files | grep -E "$dir_pattern" | grep -E '\.kt$' || true)
+    [ -n "$files" ] || return 0
+    matches=$(printf '%s\n' "$files" | sed "s#^#$repository_root/#" | xargs grep -InE "$import_pattern" 2>/dev/null || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail "$label"
+    }
+}
+
+# Presentation: reject data/network/serialization imports and the other feature.
+reject_source_imports 'access presentation imports its own data layer' \
+    '^mobile/features/access/src/' 'import br\.com\.saqz\.access\.data\.'
+reject_source_imports 'access presentation imports core network' \
+    '^mobile/features/access/src/' 'import br\.com\.saqz\.network\.'
+reject_source_imports 'access presentation imports serialization' \
+    '^mobile/features/access/src/' 'import kotlinx\.serialization'
+reject_source_imports 'access presentation imports the Groups feature' \
+    '^mobile/features/access/src/' 'import br\.com\.saqz\.groups\.'
+
+reject_source_imports 'groups presentation imports its own data layer' \
+    '^mobile/features/groups/src/' 'import br\.com\.saqz\.groups\.data\.'
+reject_source_imports 'groups presentation imports core network' \
+    '^mobile/features/groups/src/' 'import br\.com\.saqz\.network\.'
+reject_source_imports 'groups presentation imports serialization' \
+    '^mobile/features/groups/src/' 'import kotlinx\.serialization'
+reject_source_imports 'groups presentation imports the Access feature' \
+    '^mobile/features/groups/src/' 'import br\.com\.saqz\.access\.'
+
+# Domain: reject framework imports and the other feature.
+reject_source_imports 'core domain imports a framework' \
+    '^mobile/core/domain/src/' 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
+reject_source_imports 'access domain imports a framework' \
+    '^mobile/features/access/domain/src/' 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
+reject_source_imports 'access domain imports the Groups feature' \
+    '^mobile/features/access/domain/src/' 'import br\.com\.saqz\.groups\.'
+reject_source_imports 'groups domain imports a framework' \
+    '^mobile/features/groups/domain/src/' 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
+reject_source_imports 'groups domain imports the Access feature' \
+    '^mobile/features/groups/domain/src/' 'import br\.com\.saqz\.access\.'
+
+# Data: reject presentation imports and the other feature.
+reject_source_imports 'access data imports Access presentation' \
+    '^mobile/features/access/data/src/' 'import br\.com\.saqz\.access\.(presentation|ui)\.'
+reject_source_imports 'access data imports the Groups feature' \
+    '^mobile/features/access/data/src/' 'import br\.com\.saqz\.groups\.'
+reject_source_imports 'groups data imports Groups presentation' \
+    '^mobile/features/groups/data/src/' 'import br\.com\.saqz\.groups\.(presentation|ui)\.'
+reject_source_imports 'groups data imports the Access feature' \
+    '^mobile/features/groups/data/src/' 'import br\.com\.saqz\.access\.'
+
+# --- Compatibility adapter markers ------------------------------------------
+
+compat_paths=$(tracked_mobile_files | grep -E '^mobile/(core|features)/' | grep -Ei 'compat[a-z]*(adapter|bridge|seam|alias)' || true)
+[ -z "$compat_paths" ] || {
+    printf '%s\n' "$compat_paths" >&2
+    fail 'compatibility adapter path found after migration'
+}
+
+printf 'ok - mobile domain/data boundary\n'

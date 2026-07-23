@@ -31,6 +31,12 @@ set -eu
 printf 'bruno\n' >>"$LOG_FILE"
 [ "${FAIL_BRUNO:-0}" = 0 ] || exit 46
 SH
+    cat >"$target/repo/scripts/check-mobile-boundaries" <<'SH'
+#!/bin/sh
+set -eu
+printf 'mobile-boundaries\n' >>"$LOG_FILE"
+[ "${FAIL_MOBILE_BOUNDARIES:-0}" = 0 ] || exit 47
+SH
 cat >"$target/repo/backend/gradlew" <<'SH'
 #!/bin/sh
 set -eu
@@ -90,7 +96,7 @@ else
 fi
 SH
     chmod +x "$target/repo/scripts/check-credentials" "$target/repo/scripts/check-scope" \
-        "$target/repo/scripts/check-bruno" \
+        "$target/repo/scripts/check-bruno" "$target/repo/scripts/check-mobile-boundaries" \
         "$target/repo/backend/gradlew" "$target/repo/mobile/gradlew" \
         "$target/repo/bin/adb" "$target/repo/bin/unzip"
     : >"$log"
@@ -134,6 +140,7 @@ scope
 bruno
 backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
+mobile-boundaries
 mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:network:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
@@ -147,6 +154,22 @@ fail_case scope-failure '' env FAIL_SCOPE=1
 fail_case bruno-failure '' env FAIL_BRUNO=1
 fail_case firebase-emulator-failure '' env FAIL_FIREBASE_EMULATOR=1
 fail_case android-instrumented-failure '' env FAIL_ANDROID_INSTRUMENTED=1
+fail_case mobile-boundaries-failure '' env FAIL_MOBILE_BOUNDARIES=1
+
+# mobileBoundariesBeforeAggregate: the boundary gate runs before the real mobile
+# Gradle aggregate and never triggers a mobile Gradle invocation itself.
+boundaries_dir="$scratch_root/mobile-boundaries-blocks-aggregate"
+make_repo "$boundaries_dir"
+(
+    cd "$boundaries_dir/repo"
+    LOG_FILE="$PWD/invocations.log" PATH="$PWD/bin:$PATH" FAIL_MOBILE_BOUNDARIES=1 scripts/check-gradle
+) >/dev/null 2>&1 || true
+grep -q '^mobile-boundaries$' "$boundaries_dir/repo/invocations.log"
+if grep -q '^mobile ' "$boundaries_dir/repo/invocations.log"; then
+    printf 'mobileBoundariesBeforeAggregate: mobile Gradle aggregate ran despite boundary gate failure\n' >&2
+    exit 1
+fi
+count=$((count + 1)); printf 'ok %d - mobileBoundariesBeforeAggregate\n' "$count"
 
 # --- T38: mandatory KMP + Android suites -----------------------------------
 
@@ -179,13 +202,15 @@ awk '
     /^bruno$/ { seen["bruno"] = ++i }
     /^backend / { seen["backend"] = ++i }
     /^adb / { seen["adb"] = ++i }
+    /^mobile-boundaries$/ { seen["mobile-boundaries"] = ++i }
     /^mobile / { seen["mobile"] = ++i }
     END {
         ok = seen["credentials"] < seen["scope"] &&
              seen["scope"] < seen["bruno"] &&
              seen["bruno"] < seen["backend"] &&
              seen["backend"] < seen["adb"] &&
-             seen["adb"] < seen["mobile"]
+             seen["adb"] < seen["mobile-boundaries"] &&
+             seen["mobile-boundaries"] < seen["mobile"]
         exit ok ? 0 : 1
     }
 ' "$happy_log" || { printf 'exactOrder: stages out of order\n' >&2; exit 1; }
@@ -298,4 +323,4 @@ fail_case groups-integration-failure '' env FAIL_TASK=:features:groups:integrati
 fail_case groups-mobile-compile-failure '' env FAIL_TASK=:features:groups:compileAndroidMain
 fail_case groups-mobile-tests-failure '' env FAIL_TASK=:features:groups:allTests
 
-[ "$count" -eq 42 ]
+[ "$count" -eq 44 ]

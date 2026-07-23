@@ -1154,6 +1154,8 @@ T34 -> T35 -> T36 -> T37
 
 ### T36: Add the deterministic mobile boundary architecture gate
 
+**Status:** Complete — positive baseline + 11 negative mutations passed; `check-gradle` wiring proven.
+
 **What:** Add a repository gate and negative scratch tests that reject every forbidden Gradle edge/import, wire it into `scripts/check-gradle`, and update only the affected script command contracts.
 
 **Where:** `scripts/check-mobile-boundaries`; `tests/scripts/check-mobile-boundaries.test.sh`; focused edits to `scripts/check-gradle`, `tests/scripts/check-gradle.test.sh`, `scripts/test-scripts`, and its contract test if required.
