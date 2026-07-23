@@ -139,7 +139,7 @@ migration inventory sensor update pattern (B59/B60 precedent).
 **Done when:**
 
 - [ ] Migration is additive; existing rows keep `phone NULL` and all current data survives upgrade.
-- [ ] DB `CHECK` accepts only normalized `+55` + 10–11 digits or `NULL`.
+- [ ] DB `CHECK` accepts only a normalized `+55` mobile number (2-digit DDD + leading `9` + 8 digits = 11 national digits) or `NULL`; a 10-digit landline number is rejected.
 - [ ] `PhoneNumber` parses common masked BR inputs, normalizes to E.164, and rejects implausible numbers with typed failures.
 - [ ] `toString` of the value object does not leak the full number into diagnostics.
 - [ ] Access migration/table inventory sensors updated in this task.

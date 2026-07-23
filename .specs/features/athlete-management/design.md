@@ -102,7 +102,7 @@ flowchart TD
 
 - **Migration `V4__add_user_phone.sql` (access):**
   `ALTER TABLE access_users ADD COLUMN phone varchar(20)` with a `CHECK` for a
-  normalized E.164-style Brazilian number (`+55` + 10–11 digits) or `NULL`.
+  normalized E.164-style Brazilian mobile number (`+55` + 2-digit DDD + mandatory leading `9` + 8 digits = 11 national digits) or `NULL`; a 10-digit landline number is rejected.
   Existing rows stay `NULL`; the completion gate collects them lazily.
 - **`PhoneNumber` value object** in access domain: parses user input (masked BR
   formats), normalizes to E.164, rejects implausible numbers. Mirrors
