@@ -26,6 +26,7 @@ data class GroupActions(
     val canEditSettings: Boolean,
     val canManageRoles: Boolean,
     val canManageInvite: Boolean,
+    val canManageAthletes: Boolean,
 )
 
 enum class GroupAdministrationError {
@@ -37,7 +38,7 @@ enum class GroupAdministrationError {
 data class GroupAdministrationState(
     val group: VersionedGroup? = null,
     val memberships: List<GroupMembership> = emptyList(),
-    val actions: GroupActions = GroupActions(false, false, false),
+    val actions: GroupActions = GroupActions(false, false, false, false),
     val isLoading: Boolean = false,
     val fieldErrors: Map<String, List<String>> = emptyMap(),
     val versionConflict: Boolean = false,
@@ -238,8 +239,9 @@ class GroupAdministrationStateMachine(
     }
 }
 
+// Mirrors backend GroupAccessPolicy: MANAGE_ATHLETES is organizer-wide, MANAGE_ROLES owner-only.
 private fun actionsFor(role: GroupRole): GroupActions = when (role) {
-    GroupRole.OWNER -> GroupActions(true, true, true)
-    GroupRole.ADMIN -> GroupActions(true, false, true)
-    GroupRole.ATHLETE -> GroupActions(false, false, false)
+    GroupRole.OWNER -> GroupActions(true, true, true, true)
+    GroupRole.ADMIN -> GroupActions(true, false, true, true)
+    GroupRole.ATHLETE -> GroupActions(false, false, false, false)
 }

@@ -34,15 +34,15 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupAdministrationStateMachineTest {
     @Test fun `owner receives edit roles and invite actions`() = runTest {
-        assertEquals(GroupActions(true, true, true), fixture(this).withGroup(GroupRole.OWNER).machine.state.value.actions)
+        assertEquals(GroupActions(true, true, true, true), fixture(this).withGroup(GroupRole.OWNER).machine.state.value.actions)
     }
 
     @Test fun `admin receives edit and invite without role administration`() = runTest {
-        assertEquals(GroupActions(true, false, true), fixture(this).withGroup(GroupRole.ADMIN).machine.state.value.actions)
+        assertEquals(GroupActions(true, false, true, true), fixture(this).withGroup(GroupRole.ADMIN).machine.state.value.actions)
     }
 
     @Test fun `athlete receives read only actions`() = runTest {
-        assertEquals(GroupActions(false, false, false), fixture(this).withGroup(GroupRole.ATHLETE).machine.state.value.actions)
+        assertEquals(GroupActions(false, false, false, false), fixture(this).withGroup(GroupRole.ATHLETE).machine.state.value.actions)
     }
 
     @Test fun `create sends exact stable request values`() = runTest {
@@ -163,7 +163,7 @@ class GroupAdministrationStateMachineTest {
     @Test fun `role refresh immediately governs available actions`() = runTest {
         val fixture = fixture(this).withGroup(GroupRole.OWNER)
         fixture.machine.onIntent(GroupAdministrationIntent.SetGroup(versioned(GroupRole.ATHLETE)))
-        assertEquals(GroupActions(false, false, false), fixture.machine.state.value.actions)
+        assertEquals(GroupActions(false, false, false, false), fixture.machine.state.value.actions)
     }
 
     @Test fun `duplicate role change is single flight`() = runTest {
