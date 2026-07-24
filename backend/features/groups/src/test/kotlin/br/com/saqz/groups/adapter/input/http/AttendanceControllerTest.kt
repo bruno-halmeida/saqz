@@ -32,6 +32,7 @@ class AttendanceControllerTest {
             RespondAttendance(transaction, repository, charges, { NOW }, UUID::randomUUID),
             AdjustGameCapacity(transaction, repository, charges, { NOW }, UUID::randomUUID),
             repository,
+            repository,
             UndoAutomaticPromotion(transaction, repository, { NOW }, UUID::randomUUID),
         )
     }
@@ -51,6 +52,8 @@ class AttendanceControllerTest {
     @Test fun `undo restores an automatically promoted avulso to its original waitlist position`() { repository.membership[second] = AthleteMembershipType.AVULSO; actor = second; controller.respond(ID, "$group", "$game", self()); actor = member; controller.respond(ID, "$group", "$game", self()); controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE")); assertEquals(AttendanceStatus.CONFIRMED, repository.records[second]!!.status); actor = owner; val response = controller.undoPromotion(ID, "$group", "$game", undo(second)); assertEquals("WAITLISTED", response.body!!.attendance.status); assertEquals(1, response.body!!.attendance.waitlistPosition) }
     @Test fun `undo is refused for a manual organizer promotion`() { repository.membership[member] = AthleteMembershipType.AVULSO; controller.override(ID, "$group", "$game", override()); assertFailsWith<AttendancePromotionNotAutomaticException> { controller.undoPromotion(ID, "$group", "$game", undo(member)) } }
     @Test fun `athlete cannot undo a promotion`() { actor = member; assertFailsWith<AccessForbiddenException> { controller.undoPromotion(ID, "$group", "$game", undo(member)) } }
+    @Test fun `undo is refused once the game is no longer published`() { repository.membership[second] = AthleteMembershipType.AVULSO; actor = second; controller.respond(ID, "$group", "$game", self()); actor = member; controller.respond(ID, "$group", "$game", self()); controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE")); repository.status = GameStatus.COMPLETED; actor = owner; assertFailsWith<AttendanceFrozenException> { controller.undoPromotion(ID, "$group", "$game", undo(second)) } }
+    @Test fun `undo is refused for a legacy promotion missing its original waitlist position`() { repository.record(member, AttendanceStatus.CONFIRMED); repository.events += AttendanceEvent(UUID.randomUUID(), game, group, member, owner, AttendanceSource.SYSTEM, AttendanceStatus.WAITLISTED, AttendanceStatus.CONFIRMED, null, NOW); assertFailsWith<AttendancePromotionNotAutomaticException> { controller.undoPromotion(ID, "$group", "$game", undo(member)) } }
     @Test fun `self request exposes no client authored capacity queue charge actor or timestamp`() { assertEquals(setOf("requestId", "intent"), AttendanceSelfRequest::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }.toSet()) }
     @Test fun `self response requires request id`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(requestId = null)) } }
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
@@ -65,14 +68,17 @@ class AttendanceControllerTest {
     @Test fun `stale capacity returns conflict and preserves game`() { assertFailsWith<VersionConflictException> { controller.capacity(ID, "$group", "$game", "\"2\"", CapacityRequest(UUID.randomUUID(), 3)) }; assertEquals(2, repository.capacity) }
     @Test fun `capacity requires quoted If Match`() { assertFailsWith<PreconditionRequiredException> { controller.capacity(ID, "$group", "$game", null, CapacityRequest(UUID.randomUUID(), 3)) }; assertFailsWith<InvalidGroupRequestException> { controller.capacity(ID, "$group", "$game", "1", CapacityRequest(UUID.randomUUID(), 3)) } }
     @Test fun `capacity rejects out of range value`() { assertFailsWith<InvalidGroupRequestException> { controller.capacity(ID, "$group", "$game", "\"1\"", CapacityRequest(UUID.randomUUID(), 1)) } }
+    @Test fun `member roster read returns confirmed and waitlisted names`() { actor = member; repository.record(member, AttendanceStatus.CONFIRMED, name = "Bruno"); repository.record(second, AttendanceStatus.WAITLISTED, 1, "Ana"); val roster = controller.roster(ID, "$group", "$game"); assertEquals(listOf("Bruno"), roster.confirmed.map { it.displayName }); assertEquals(listOf("Ana"), roster.waitlisted.map { it.displayName }); assertEquals(listOf(1L), roster.waitlisted.map { it.waitlistPosition }) }
+    @Test fun `nonmember roster read is privacy hidden`() { actor = UUID.randomUUID(); assertFailsWith<GameNotFoundException> { controller.roster(ID, "$group", "$game") } }
     @Test fun `malformed attendance identifiers are privacy hidden`() { actor = member; assertFailsWith<GameNotFoundException> { controller.read(ID, "bad", "bad") } }
 
     private fun self() = AttendanceSelfRequest(UUID.randomUUID(), "CONFIRM")
     private fun override() = AttendanceOverrideRequest(UUID.randomUUID(), member, "CONFIRM", "Chegou após o prazo")
     private fun undo(memberId: UUID) = UndoPromotionRequest(UUID.randomUUID(), memberId)
 
-    private inner class MemoryRepository : AttendanceCommandRepository, AttendanceDetailQuery {
+    private inner class MemoryRepository : AttendanceCommandRepository, AttendanceDetailQuery, AttendanceRosterQuery {
         val members = linkedSetOf(member, second); val records = linkedMapOf<UUID, AttendanceRecord>(); val events = mutableListOf<AttendanceEvent>()
+        val names = mutableMapOf<UUID, String>()
         val membership = linkedMapOf<UUID, AthleteMembershipType>()
         var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
         override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? = if (groupId == group && gameId == game && memberId in members) AttendanceAggregate(group, game, memberId, actorId, role(actorId), status, deadline, capacity, confirmed(), records[memberId], 2500, LocalDate.of(2026, 8, 12), membership[memberId] ?: AthleteMembershipType.MENSALISTA) else null
@@ -84,7 +90,16 @@ class AttendanceControllerTest {
         override fun append(event: AttendanceEvent) { events += event }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }
         override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? = if (groupId == group && gameId == game && role(actorId) != null) AttendanceDetail(records[actorId], confirmed(), (capacity - confirmed()).coerceAtLeast(0), records.values.count { it.status == AttendanceStatus.WAITLISTED }, capacity, version) else null
-        fun record(memberId: UUID, status: AttendanceStatus, sequence: Long? = null) { records[memberId] = AttendanceRecord(game, group, memberId, status, sequence, NOW, NOW, 1); if (sequence != null) allocator = maxOf(allocator, sequence) }
+        override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
+            if (groupId != group || gameId != game || role(actorId) == null) return null
+            fun entries(status: AttendanceStatus) = records.values.filter { it.status == status }
+                .map { AttendanceRosterMember(it.memberId, names[it.memberId] ?: "Atleta", it.waitlistSequence) }
+            return AttendanceRoster(
+                entries(AttendanceStatus.CONFIRMED).sortedBy { it.displayName.lowercase() },
+                entries(AttendanceStatus.WAITLISTED).sortedBy { it.waitlistPosition },
+            )
+        }
+        fun record(memberId: UUID, status: AttendanceStatus, sequence: Long? = null, name: String? = null) { records[memberId] = AttendanceRecord(game, group, memberId, status, sequence, NOW, NOW, 1); name?.let { names[memberId] = it }; if (sequence != null) allocator = maxOf(allocator, sequence) }
         private fun confirmed() = records.values.count { it.status == AttendanceStatus.CONFIRMED }
         private fun role(actorId: UUID) = when (actorId) { owner -> GroupRole.OWNER; in members -> GroupRole.ATHLETE; else -> null }
     }

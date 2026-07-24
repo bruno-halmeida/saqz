@@ -4,6 +4,7 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
+import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
 import java.util.UUID
 
@@ -11,6 +12,7 @@ sealed interface UndoPromotionResult {
     data class Success(val attendance: AttendanceRecord, val event: AttendanceEvent) : UndoPromotionResult
     data object Hidden : UndoPromotionResult
     data object Forbidden : UndoPromotionResult
+    data object Frozen : UndoPromotionResult
     data object NotAutomaticPromotion : UndoPromotionResult
 }
 
@@ -31,13 +33,15 @@ class UndoAutomaticPromotion(
         if (aggregate.actorRole != GroupRole.OWNER && aggregate.actorRole != GroupRole.ADMIN) {
             return@inTransaction UndoPromotionResult.Forbidden
         }
+        if (aggregate.gameStatus != GameStatus.PUBLISHED) return@inTransaction UndoPromotionResult.Frozen
         val current = aggregate.current
         if (current?.status != AttendanceStatus.CONFIRMED) return@inTransaction UndoPromotionResult.NotAutomaticPromotion
         val promotion = repository.latestEvent(groupId, gameId, memberId)
             ?: return@inTransaction UndoPromotionResult.NotAutomaticPromotion
         val isAutomaticPromotion = promotion.source == AttendanceSource.SYSTEM &&
             promotion.oldStatus == AttendanceStatus.WAITLISTED &&
-            promotion.newStatus == AttendanceStatus.CONFIRMED
+            promotion.newStatus == AttendanceStatus.CONFIRMED &&
+            promotion.previousWaitlistSequence != null
         if (!isAutomaticPromotion) return@inTransaction UndoPromotionResult.NotAutomaticPromotion
         val timestamp = now()
         val restored = current.copy(
