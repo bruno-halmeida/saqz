@@ -46,7 +46,7 @@ class GroupsNavigationHostTest {
         GroupsRoute.People,
         GroupsRoute.Games,
         GroupsRoute.GameDetail("game-1"),
-        GroupsRoute.GameEditor(),
+        GroupsRoute.GameEditor,
         GroupsRoute.Notices,
         GroupsRoute.More,
         GroupsRoute.Settings,
@@ -94,8 +94,7 @@ class GroupsNavigationHostTest {
             GroupsRoute.People,
             GroupsRoute.Games,
             GroupsRoute.GameDetail("g"),
-            GroupsRoute.GameEditor(),
-            GroupsRoute.GameEditor("g"),
+            GroupsRoute.GameEditor,
             GroupsRoute.Notices,
             GroupsRoute.More,
             GroupsRoute.Settings,
@@ -157,21 +156,11 @@ class GroupsNavigationHostTest {
     fun `game editor back returns to the games list that opened it`() {
         val groups = mutableListOf<NavKey>(GroupsRoute.Selector, GroupsRoute.GroupHome, GroupsRoute.Games)
         val s = session(groups)
-        s.push(GroupsRoute.GameEditor())
+        s.push(GroupsRoute.GameEditor)
 
         assertTrue(groupsBackVisible(s.stackFor(ProductTab.GROUPS).size))
         assertTrue(s.goBack())
         assertEquals(GroupsRoute.Games, s.stackFor(ProductTab.GROUPS).last())
-    }
-
-    @Test
-    fun `game editor opened from a detail returns to that detail`() {
-        val groups = mutableListOf<NavKey>(GroupsRoute.GroupHome, GroupsRoute.Games, GroupsRoute.GameDetail("game-1"))
-        val s = session(groups)
-        s.push(GroupsRoute.GameEditor("game-1"))
-
-        assertTrue(s.goBack())
-        assertEquals(GroupsRoute.GameDetail("game-1"), s.stackFor(ProductTab.GROUPS).last())
     }
 
     @Test

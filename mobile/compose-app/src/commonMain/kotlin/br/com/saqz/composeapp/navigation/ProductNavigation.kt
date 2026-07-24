@@ -36,10 +36,7 @@ import br.com.saqz.designsystem.component.SaqzBottomNav
 import br.com.saqz.designsystem.component.SaqzBottomNavItem
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.designsystem.effects.ObserveAsEvents
-import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
-import br.com.saqz.groups.domain.game.GameGateway
-import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.navigation.FinanceRoute
@@ -85,7 +82,6 @@ import br.com.saqz.groups.ui.athlete.AthleteRosterScreen
 import br.com.saqz.groups.ui.athlete.OwnAthleteProfileSection
 import br.com.saqz.groups.ui.athlete.PositionOnboardingHost
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
-import br.com.saqz.groups.ui.games.editor.GameEditorLoadError
 import br.com.saqz.groups.ui.games.editor.GameEditorScreen
 import br.com.saqz.groups.ui.route.FinancePlaceholderRoot
 import br.com.saqz.groups.ui.route.GamesRoot
@@ -106,7 +102,6 @@ import br.com.saqz.navigation.ProductTab
 import br.com.saqz.navigation.access.installAccessEntries
 import br.com.saqz.navigation.access.isAccessSession
 import br.com.saqz.navigation.access.reconcileAccessStack
-import br.com.saqz.navigation.effect.handleGameDetailEffect
 import br.com.saqz.navigation.effect.handleGameEditorEffect
 import br.com.saqz.navigation.effect.handleGamesEffect
 import br.com.saqz.navigation.effect.handleGroupContentEffect
@@ -427,7 +422,6 @@ private fun GroupsEntryContent(
                 )
                 val detailState by viewModel.state.collectAsState()
                 ObserveAsEvents(viewModel.effects) { effect ->
-                    if (handleGameDetailEffect(session, effect)) return@ObserveAsEvents
                     when (effect) {
                         is GameDetailEffect.ShareAttendanceLink -> attendanceShare?.shareLink(effect.url.value) { result ->
                             viewModel.onIntent(
@@ -448,7 +442,7 @@ private fun GroupsEntryContent(
             }
         }
 
-        is GroupsRoute.GameEditor -> GameEditorEntry(session, state.administration.group?.group, key.gameId)
+        GroupsRoute.GameEditor -> GameEditorEntry(session, state.administration.group?.group)
 
         GroupsRoute.Settings -> {
             val viewModel = koinViewModel<GroupAdministrationRouteViewModel>(
@@ -530,55 +524,32 @@ private fun GamesEntry(session: NavigationSession, group: Group?) {
 }
 
 /**
- * Game editor entry: creation opens immediately from the group's own defaults, while an
- * edit first reads the game so the editor starts from its current values and version
- * token. A failed read is recoverable in place, and `Reload` (offered after a conflict)
- * re-reads through the same path with a fresh editor ViewModel.
+ * Game editor entry: creation only. It opens from the group's own defaults and pops back
+ * to the games list on save. Editing an existing game is intentionally not wired here yet:
+ * the mobile read model exposes no series membership, so the route cannot scope an edit to a
+ * series occurrence without silently mis-scoping it (see the seriesId propagation ticket).
  */
 @Composable
-private fun GameEditorEntry(session: NavigationSession, group: Group?, gameId: String?) {
+private fun GameEditorEntry(session: NavigationSession, group: Group?) {
     if (group == null) {
         SaqzLoadingState(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameEditor))
         return
     }
-    val gateway = koinInject<GameGateway>()
-    var attempt by remember(group.id.value, gameId) { mutableStateOf(0) }
-    var existing by remember(group.id.value, gameId, attempt) { mutableStateOf<VersionedGame?>(null) }
-    var failed by remember(group.id.value, gameId, attempt) { mutableStateOf(false) }
-    LaunchedEffect(group.id.value, gameId, attempt) {
-        if (gameId == null) return@LaunchedEffect
-        when (val result = gateway.read(group.id, gameId)) {
-            is SaqzResult.Success -> existing = result.value
-            is SaqzResult.Failure -> failed = true
-        }
-    }
-    when {
-        failed -> GameEditorLoadError(onRetry = { attempt++ })
-        gameId != null && existing == null ->
-            SaqzLoadingState(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameEditor))
-        else -> {
-            val viewModel = koinViewModel<GameEditorViewModel>(
-                key = "game-editor-${group.id.value}-${gameId.orEmpty()}-$attempt",
-                parameters = {
-                    parametersOf(
-                        GameEditorInput(
-                            groupId = group.id.value,
-                            defaults = group.toGameEditorDefaults(),
-                            existing = existing,
-                        ),
-                    )
-                },
+    val viewModel = koinViewModel<GameEditorViewModel>(
+        key = "game-editor-${group.id.value}",
+        parameters = {
+            parametersOf(
+                GameEditorInput(
+                    groupId = group.id.value,
+                    defaults = group.toGameEditorDefaults(),
+                ),
             )
-            val editorState by viewModel.state.collectAsState()
-            ObserveAsEvents(viewModel.effects) { effect ->
-                // Reload is the only editor effect that is not a stack mutation: it
-                // re-reads the game and restarts the editor from the current version.
-                if (!handleGameEditorEffect(session, effect)) attempt++
-            }
-            Box(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameEditor)) {
-                GameEditorScreen(editorState, viewModel::onIntent)
-            }
-        }
+        },
+    )
+    val editorState by viewModel.state.collectAsState()
+    ObserveAsEvents(viewModel.effects) { effect -> handleGameEditorEffect(session, effect) }
+    Box(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameEditor)) {
+        GameEditorScreen(editorState, viewModel::onIntent)
     }
 }
 
@@ -749,7 +720,7 @@ private fun routeTitle(key: NavKey): String = when (key) {
     GroupsRoute.Games -> "Jogos"
     GroupsRoute.Notices -> "Avisos"
     is GroupsRoute.GameDetail -> "Detalhes do jogo"
-    is GroupsRoute.GameEditor -> if (key.gameId == null) "Novo jogo" else "Editar jogo"
+    GroupsRoute.GameEditor -> "Novo jogo"
     FinanceRoute.Finance -> "Finanças"
     FinanceRoute.OwnCharges -> "Minhas cobranças"
     else -> ""

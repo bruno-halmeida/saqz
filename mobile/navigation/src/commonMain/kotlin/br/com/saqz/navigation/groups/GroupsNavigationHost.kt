@@ -134,7 +134,7 @@ fun EntryProviderScope<NavKey>.installGroupsEntries(
     entry<GroupsRoute.People> { install(GroupsRoute.People) }
     entry<GroupsRoute.Games> { install(GroupsRoute.Games) }
     entry<GroupsRoute.GameDetail> { key -> install(key) }
-    entry<GroupsRoute.GameEditor> { key -> install(key) }
+    entry<GroupsRoute.GameEditor> { install(GroupsRoute.GameEditor) }
     entry<GroupsRoute.Notices> { install(GroupsRoute.Notices) }
     entry<GroupsRoute.More> { install(GroupsRoute.More) }
     entry<GroupsRoute.Settings> { install(GroupsRoute.Settings) }

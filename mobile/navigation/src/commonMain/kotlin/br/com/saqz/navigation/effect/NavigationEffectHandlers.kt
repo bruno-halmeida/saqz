@@ -1,7 +1,6 @@
 package br.com.saqz.navigation.effect
 
 import br.com.saqz.groups.navigation.GroupsRoute
-import br.com.saqz.groups.presentation.games.detail.GameDetailEffect
 import br.com.saqz.groups.presentation.games.editor.GameEditorEffect
 import br.com.saqz.groups.presentation.games.list.GamesEffect
 import br.com.saqz.groups.presentation.route.GroupContentPlaceholderEffect
@@ -45,39 +44,26 @@ fun handleOpenAttendanceGame(session: NavigationSession, gameId: String) {
  * stack, so back returns to the list itself (not the group home), and the owner's create
  * action pushes the editor with no game identity. Duplicate-safe through
  * [NavigationSession.push].
+ *
+ * There is deliberately no detail -> edit handler: editing an existing game is withheld
+ * until the mobile read model carries series membership. The backend `games` table has a
+ * `series_id`, but neither the read DTO, the domain `Game`, nor the list item expose it,
+ * so navigation cannot tell a series occurrence from a standalone game. Routing edit would
+ * let an occurrence be edited through the single-game path and silently mis-scoped, so
+ * `GameEditor` is reachable only for creation until that gap is closed (see the seriesId
+ * propagation ticket).
  */
 fun handleGamesEffect(session: NavigationSession, effect: GamesEffect) {
     when (effect) {
         is GamesEffect.OpenGame -> session.push(GroupsRoute.GameDetail(effect.gameId))
-        is GamesEffect.OpenCreate -> session.push(GroupsRoute.GameEditor())
+        is GamesEffect.OpenCreate -> session.push(GroupsRoute.GameEditor)
     }
 }
 
 /**
- * Exhaustive over [GameDetailEffect]. Only `OpenEdit` is a back-stack mutation (the
- * owner's edit action pushes the editor above the detail, so back returns to the
- * detail); every other case is an attendance/lifecycle/platform-share concern the
- * composition root handles, so the stack is left untouched and `false` is returned.
- */
-fun handleGameDetailEffect(session: NavigationSession, effect: GameDetailEffect): Boolean =
-    when (effect) {
-        is GameDetailEffect.OpenEdit -> {
-            session.push(GroupsRoute.GameEditor(effect.gameId))
-            true
-        }
-        is GameDetailEffect.LifecycleApplied,
-        is GameDetailEffect.AttendanceApplied,
-        is GameDetailEffect.CapacityApplied,
-        is GameDetailEffect.ShareAttendanceLink,
-        is GameDetailEffect.ShareAttendanceImage,
-        -> false
-    }
-
-/**
- * Exhaustive over [GameEditorEffect]. `Saved` pops the editor, returning to whichever
- * route opened it (the games list for a creation, the game detail for an edit).
- * `Reload` re-reads the edited game instead of mutating the stack, so it is returned to
- * the composition root as unhandled.
+ * Exhaustive over [GameEditorEffect]. `Saved` pops the editor, returning to the games list
+ * that opened it. `Reload` re-reads instead of mutating the stack, so it is returned to the
+ * composition root as unhandled.
  */
 fun handleGameEditorEffect(session: NavigationSession, effect: GameEditorEffect): Boolean =
     when (effect) {

@@ -45,8 +45,7 @@ class NavigationSavedStateConfigurationTest {
         GroupsRoute.People,
         GroupsRoute.Games,
         GroupsRoute.GameDetail("game-42"),
-        GroupsRoute.GameEditor(),
-        GroupsRoute.GameEditor("game-42"),
+        GroupsRoute.GameEditor,
         GroupsRoute.Notices,
         GroupsRoute.More,
         GroupsRoute.Settings,
@@ -60,7 +59,7 @@ class NavigationSavedStateConfigurationTest {
 
     @Test
     fun `every registered key round-trips to an equal instance`() {
-        assertEquals(27, allKeys.size)
+        assertEquals(26, allKeys.size)
         allKeys.forEach { key -> assertEquals(key, roundTrip(key)) }
     }
 
@@ -68,12 +67,6 @@ class NavigationSavedStateConfigurationTest {
     fun `GameDetail round-trips preserving its gameId argument`() {
         val decoded = roundTrip(GroupsRoute.GameDetail("game-77")) as GroupsRoute.GameDetail
         assertEquals("game-77", decoded.gameId)
-    }
-
-    @Test
-    fun `GameEditor round-trips preserving creation and edit identity`() {
-        assertEquals(null, (roundTrip(GroupsRoute.GameEditor()) as GroupsRoute.GameEditor).gameId)
-        assertEquals("game-77", (roundTrip(GroupsRoute.GameEditor("game-77")) as GroupsRoute.GameEditor).gameId)
     }
 
     @Test

@@ -233,6 +233,28 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `an incompatible weekly draft is discarded when editing a standalone game`() = runTest(mainDispatcher) {
+        val weeklyDraftForStandalone = draft().copy(
+            gameId = GAME,
+            mode = GameEditorMode.WEEKLY,
+            form = validForm().copy(slots = listOf(slot())),
+        )
+        val fixture = fixture(stored = weeklyDraftForStandalone, existing = versionedGame())
+
+        // A standalone game is one-time; a persisted WEEKLY draft is incompatible and is
+        // discarded, so restore never lands the editor in weekly mode where submit would
+        // crash on the missing series context.
+        assertEquals(GameEditorMode.ONE_TIME, fixture.viewModel.state.value.draft.mode)
+
+        fixture.viewModel.onIntent(GameEditorIntent.UpdateForm(validForm()))
+        fixture.viewModel.onIntent(GameEditorIntent.Submit)
+        runCurrent()
+
+        assertEquals(listOf("edit"), fixture.gateway.calls)
+        assertTrue(fixture.gateway.boundaries.isEmpty())
+    }
+
+    @Test
     fun `an existing standalone game cannot switch to weekly mode`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versionedGame())
 

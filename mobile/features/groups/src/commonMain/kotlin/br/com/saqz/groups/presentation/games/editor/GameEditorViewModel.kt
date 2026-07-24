@@ -23,7 +23,9 @@ class GameEditorViewModel(
             when (result) {
                 is GameDraftReadResult.Success -> result.draft
                     ?.takeIf {
-                        it.schemaVersion == GameEditorDraft.CURRENT_SCHEMA && it.groupId == input.groupId
+                        it.schemaVersion == GameEditorDraft.CURRENT_SCHEMA &&
+                            it.groupId == input.groupId &&
+                            it.mode.matchesResourceOf(input)
                     }
                     ?.let { draft -> update { GameEditorState(draft) } }
                 GameDraftReadResult.Failure -> update {
@@ -31,6 +33,19 @@ class GameEditorViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * An existing game's recurrence type is fixed, so a persisted draft whose mode disagrees
+     * with the resource is stale/incompatible: restoring a WEEKLY draft over a standalone game
+     * would submit down the series-boundary path and crash on the absent series context (and a
+     * ONE_TIME draft over a series occurrence would drop its slots). Such a draft is discarded
+     * and the fresh, resource-correct draft is kept. Creation (no existing resource) accepts
+     * either mode — the user is still choosing.
+     */
+    private fun GameEditorMode.matchesResourceOf(input: GameEditorInput): Boolean {
+        if (input.existing == null) return true
+        return this == if (input.series == null) GameEditorMode.ONE_TIME else GameEditorMode.WEEKLY
     }
 
     override fun onIntent(intent: GameEditorIntent) {
