@@ -22,11 +22,49 @@ user directive to defer test validation to final delivery).
 | Credentials | `scripts/check-credentials` | ok — credential safety |
 | Scope | `scripts/check-scope` | ok — mobile-first scope |
 
-Not run in this delivery (deferred, flagged for follow-up before release):
-Android instrumented (`connectedDevDebugAndroidTest`), iOS native
-(`check-ios`), aggregate `check-gradle`/`check-all`, and end-to-end native
-journeys (signup → completion → redeem → onboarding). The plan's T14 journey
-coverage is the main open verification gap.
+## Aggregate Gate Closeout (T15 — VUL-7, 2026-07-24)
+
+The gates deferred at delivery time were run to completion on the merged
+`main` tree (`decfca3`, i.e. after VUL-5 and VUL-6 landed). All six pass; no
+verification gap remains open.
+
+| Gate | Command | Result | Duration |
+| --- | --- | --- | --- |
+| Credentials | `rtk scripts/check-credentials` | ok — credential safety | 1s |
+| Scope | `rtk scripts/check-scope` | ok — mobile-first scope | 4s |
+| API contract | `rtk scripts/check-bruno` | ok — Bruno covers explicit backend routes | 19s |
+| Gradle/Kotlin/Android | `rtk scripts/check-gradle` | ok — complete Kotlin and Android gate | backend suites 7m47s; mobile + `connectedDevDebugAndroidTest` 60/60 on `Saqz_API_30` (API 30), 0 failures |
+| iOS | `rtk scripts/check-ios` | `** TEST SUCCEEDED **` (SaqzDev) + `** BUILD SUCCEEDED **` (SaqzProd Release) + `** TEST SUCCEEDED **` (SaqzProd Release unit) | 17m11s |
+| Aggregate | `rtk scripts/check-all` | ok — all local gates (`check-gradle` + `check-ios` + `check-landing`) | 10m03s |
+
+iOS coverage detail: the SaqzDev pass executed the 120-case unit suite plus
+the UI suites, including the 13 `IOSAthleteJourneyTests` journeys from VUL-6;
+the SaqzProd Release pass re-executed the unit suites (120 cases) under
+Release with `ENABLE_TESTABILITY=YES` (AD-009/AD-024). Zero failures in every
+suite of every stage.
+
+Phone-number hygiene (T15 criterion) re-audited across the merged tree: no
+phone value appears in any log assertion, and no build artifact, test-results
+XML, or screenshot is committed. Backend production code logs no phone at all
+(the `spec.md` observability row is satisfied by absence, not by redaction),
+and the redaction guards remain asserted — `PhoneNumberTest` asserts
+`toString()` hides the subscriber digits and `AttendanceShareEndpointIntegrationTest`
+asserts the share payload carries no `phone` field. All fixtures use fake
+numbers (`+5511911112222`, `+5511987654321`, `(11) 98888-0000`).
+
+Two environment-only obstacles were hit and resolved without touching product
+code: `check-gradle` does not self-select JDK 21 the way `check-all` does, so
+it must run with `JAVA_HOME` pointing at 21; and an `xcodebuild` run wedged
+after building with the simulator idle at 0% CPU, cleared by
+`xcrun simctl shutdown all` before the re-run. Neither indicates a repository
+defect.
+
+### T14 gap — closed
+
+The T14 native journey gap recorded at delivery is closed: Android journeys
+landed in VUL-5 (PR #6, merge `9988080`, section below) and iOS journeys in
+VUL-6 (PR #1, merge `decfca3`, section above). Both suites execute inside the
+gates above.
 
 ### T14 follow-up — iOS journeys (VUL-6, 2026-07-23)
 
