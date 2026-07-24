@@ -1,16 +1,21 @@
 #!/bin/sh
 set -eu
 
-[ "$#" -eq 3 ] || {
-    printf 'usage: %s gradle-result ios-result landing-result\n' "$0" >&2
+[ "$#" -eq 4 ] || {
+    printf 'usage: %s scripts-result backend-result mobile-result landing-result\n' "$0" >&2
     exit 2
 }
 
+# skipped é sucesso: os gates de PR são path-filtered (VUL-23) — um gate pulado
+# significa que o workspace dele não foi tocado, não que algo falhou.
 for result in "$@"; do
-    if [ "$result" != success ]; then
-        printf 'initialization gate failed: expected success, got %s\n' "$result" >&2
-        exit 1
-    fi
+    case "$result" in
+        success|skipped) ;;
+        *)
+            printf 'initialization gate failed: expected success or skipped, got %s\n' "${result:-<empty>}" >&2
+            exit 1
+            ;;
+    esac
 done
 
 printf 'ok - initialization gate\n'

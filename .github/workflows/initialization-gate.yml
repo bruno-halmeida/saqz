@@ -1,5 +1,10 @@
 name: Initialization Gate
 
+# CI de PR ágil (VUL-23): apenas gates rápidos e path-filtered bloqueiam PR.
+# Emulador Android e iOS saem do caminho de PR — vivem em full-ui-gate.yml
+# (nightly + workflow_dispatch), obrigatórios antes do merge de tickets de
+# alto risco (C1/D/F). scripts/check-all local continua rodando tudo.
+
 on:
   pull_request:
     branches: [main]
@@ -15,9 +20,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gradle-gate:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      scripts: ${{ steps.filter.outputs.scripts }}
+      backend: ${{ steps.filter.outputs.backend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      landing: ${{ steps.filter.outputs.landing }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Detect changed workspaces
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            scripts:
+              - 'scripts/**'
+              - 'tests/**'
+              - '.github/**'
+            backend:
+              - 'backend/**'
+              - 'bruno/**'
+              - 'firebase/**'
+              - 'scripts/**'
+              - '.github/**'
+            mobile:
+              - 'mobile/**'
+              - 'scripts/**'
+              - '.github/**'
+            landing:
+              - 'landing-page/**'
+              - 'scripts/**'
+              - '.github/**'
+
+  scripts-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.scripts == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Run script test suite
+        run: scripts/test-scripts
+
+  backend-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -33,37 +90,14 @@ jobs:
         run: |
           docker info
           npx --yes firebase-tools@15.23.0 --version
-      - name: Enable KVM for Android emulator
-        run: |
-          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          sudo chmod 0666 /dev/kvm
-          test -r /dev/kvm
-          test -w /dev/kvm
-      - name: Start Android emulator and run Gradle gate
-        uses: ReactiveCircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_atd
-          arch: x86
-          profile: pixel_2
-          ram-size: 2048M
-          avd-name: saqz-ci
-          emulator-build: 13823996
-          emulator-boot-timeout: 300
-          pre-emulator-launch-script: adb start-server
-          disable-animations: true
-          script: scripts/check-gradle
+      - name: Run backend gate
+        run: scripts/check-gradle --backend
 
-  # android-api35-gate migrou para api35-probe.yml (nightly + workflow_dispatch):
-  # emulador API 35 é flaky e não deve bloquear o loop de PR.
-
-  ios-gate:
-    runs-on: macos-26
-    timeout-minutes: 45
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+  mobile-fast-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.mobile == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -75,19 +109,14 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
-      - name: Cache SPM / DerivedData
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-spm-${{ hashFiles('mobile/ios-app/SaqzIOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
-      - name: Run iOS gate
-        run: scripts/check-ios --dev-only
+      - name: Run mobile JVM gate
+        run: scripts/check-gradle --mobile-jvm
 
   landing-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.landing == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -98,7 +127,7 @@ jobs:
 
   initialization-gate:
     runs-on: ubuntu-latest
-    needs: [gradle-gate, ios-gate, landing-gate]
+    needs: [scripts-gate, backend-gate, mobile-fast-gate, landing-gate]
     if: always()
     steps:
       - name: Checkout
@@ -106,8 +135,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Evaluate gate results
-        run: scripts/evaluate-ci-gates "$GRADLE_RESULT" "$IOS_RESULT" "$LANDING_RESULT"
+        run: scripts/evaluate-ci-gates "$SCRIPTS_RESULT" "$BACKEND_RESULT" "$MOBILE_RESULT" "$LANDING_RESULT"
         env:
-          GRADLE_RESULT: ${{ needs.gradle-gate.result }}
-          IOS_RESULT: ${{ needs.ios-gate.result }}
+          SCRIPTS_RESULT: ${{ needs.scripts-gate.result }}
+          BACKEND_RESULT: ${{ needs.backend-gate.result }}
+          MOBILE_RESULT: ${{ needs.mobile-fast-gate.result }}
           LANDING_RESULT: ${{ needs.landing-gate.result }}
