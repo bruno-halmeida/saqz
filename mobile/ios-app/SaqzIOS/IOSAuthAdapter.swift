@@ -286,6 +286,9 @@ final class LiveGoogleSignInClient: IOSGoogleSignInClient {
 
     func signIn(completion: @escaping (IOSGoogleSignInResult) -> Void) {
         guard let presenter = presentingViewController() else { completion(.failure(.providerUnavailable)); return }
+        // Formed on the MainActor: an isolated function value is Sendable, so only it and the
+        // provider-neutral Sendable response cross the GoogleSignIn callback boundary.
+        let deliver: @MainActor (IOSGoogleSignInResult) -> Void = { completion($0) }
         GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { result, error in
             let response: IOSGoogleSignInResult
             if let error = error as NSError? {
@@ -298,10 +301,9 @@ final class LiveGoogleSignInClient: IOSGoogleSignInClient {
             } else {
                 response = .failure(.providerUnavailable)
             }
-            // GoogleSignIn documents this completion on the main queue. Only the provider-neutral,
-            // Sendable response crosses into the actor-isolated application callback.
+            // GoogleSignIn documents this completion on the main queue.
             MainActor.assumeIsolated {
-                completion(response)
+                deliver(response)
             }
         }
     }
