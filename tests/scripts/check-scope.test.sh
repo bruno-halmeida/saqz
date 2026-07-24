@@ -15,15 +15,12 @@ make_repo() {
     fi
     cp "$repository_root/scripts/check-scope" "$target/repo/scripts/check-scope"
     cp "$repository_root/.gitignore" "$target/repo/.gitignore"
-    cp "$repository_root/AGENTS.md" "$target/repo/AGENTS.md"
-    rm -rf "$target/repo/.specs"
-    cp -R "$repository_root/.specs" "$target/repo/.specs"
     chmod +x "$target/repo/scripts/check-scope"
     (
         cd "$target/repo"
         git config user.email test@example.invalid
         git config user.name 'Scope Test'
-        git add .gitignore AGENTS.md .specs scripts/check-scope
+        git add .gitignore scripts/check-scope
         # V1: setup works whether the cloned HEAD already contains governance or not.
         git diff --cached --quiet || git commit -qm governance-fixture
     )
