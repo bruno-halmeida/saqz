@@ -28,6 +28,19 @@ Android instrumented (`connectedDevDebugAndroidTest`), iOS native
 journeys (signup → completion → redeem → onboarding). The plan's T14 journey
 coverage is the main open verification gap.
 
+### T14 follow-up — iOS journeys (VUL-6, 2026-07-23)
+
+`SaqzIOSTests/IOSAthleteJourneyTests.swift` now covers the four Épico 04
+journeys through the exported `SaqzMobile` seam with Swift fakes (V42
+registration, V51 per-test isolation, fake-only phone fixtures): phone
+completion gate (ATH-01), pending-invite survival across the gate with
+post-completion resumption, skippable position onboarding (ATH-02), and
+roster reachability plus organizer-only management gating (ATH-03/04).
+`compose-app/iosMain/IOSJourneySupport.kt` provides the Swift-facing fixture
+seam (CoroutineScope, `SaqzResult`, and value classes are not constructible
+across the ObjC bridge). Android journeys remain with VUL-5; aggregate gates
+with VUL-7.
+
 ## Requirement Status
 
 | Requirement | Status | Notes |
@@ -53,3 +66,12 @@ coverage is the main open verification gap.
 - B4 | 2026-07-23 — An unconditional `koinViewModel()` call added under
   GROUP_CONTEXT broke Compose tests that render without Koin; hoisted
   behind a nullable slot (same pattern as GameDetail's hoisted state).
+- B5 | 2026-07-23 — Writing the VUL-6 iOS roster journey exposed that the
+  People route gated athlete management with `GroupActions.canManageRoles`
+  (owner-only), while backend `GroupAccessPolicy` authorizes
+  `MANAGE_ATHLETES` for OWNER and ADMIN (ATH-03/04): admins saw a roster
+  with no edit/removal controls. Root fix adds `canManageAthletes` to
+  `GroupActions` mirroring the backend action; regression asserted in
+  `GroupAdministrationStateMachineTest` (common) and
+  `IOSAthleteJourneyTests` (native seam). Lesson: client route gating must
+  name the backend action it mirrors, not borrow a stricter neighbor flag.

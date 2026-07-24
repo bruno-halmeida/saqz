@@ -119,9 +119,12 @@ final class LiveBranchSessionClient: IOSBranchSessionClient {
     }
 
     func initialize(callback: @escaping ([String: Any]?) -> Void) {
+        // Formed on the MainActor: an isolated function value is Sendable, so only it
+        // crosses the Branch callback boundary (same shape as LiveGoogleSignInClient.signIn).
+        let deliver: @MainActor ([String: Any]?) -> Void = { callback($0) }
         branch.initSession(launchOptions: nil) { parameters, error in
             MainActor.assumeIsolated {
-                callback(error == nil ? parameters as? [String: Any] : nil)
+                deliver(error == nil ? parameters as? [String: Any] : nil)
             }
         }
     }

@@ -565,7 +565,7 @@ private val previewAdministration = GroupAdministrationState(
         br.com.saqz.groups.domain.group.GroupVersionToken("preview-etag"),
     ),
     memberships = previewMemberships,
-    actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
+    actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true, canManageAthletes = true),
 )
 
 private val previewAccess = GroupsNavigationAccess(

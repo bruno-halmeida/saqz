@@ -375,7 +375,7 @@ private fun GroupsEntryContent(
         GroupsRoute.People -> {
             val rosterViewModel = koinViewModel<AthleteRosterViewModel>()
             val rosterState by rosterViewModel.state.collectAsState()
-            val canManage = state.administration.actions.canManageRoles
+            val canManage = state.administration.actions.canManageAthletes
             AthleteRosterScreen(
                 state = rosterState,
                 canManage = canManage,
