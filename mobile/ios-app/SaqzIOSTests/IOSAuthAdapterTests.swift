@@ -286,7 +286,7 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
 private final class FakeGoogleSignInClient: IOSGoogleSignInClient {
     var result: IOSGoogleSignInResult = .failure(.unknown)
     var handledURLs: [URL] = []
-    func signIn(completion: @escaping (IOSGoogleSignInResult) -> Void) { completion(result) }
+    func signIn(completion: @escaping @MainActor (IOSGoogleSignInResult) -> Void) { completion(result) }
     func handle(url: URL) -> Bool { handledURLs.append(url); return true }
 }
 
