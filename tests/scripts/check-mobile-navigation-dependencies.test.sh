@@ -63,7 +63,7 @@ pass_case clean-repository-no-flag
 
 fail_case feature-depends-on-navigation-module \
     'a feature module depends on :navigation' \
-    'sed -i.bak "s#implementation(project(\":core:domain\"))#implementation(project(\":core:domain\"))\n            implementation(project(\":navigation\"))#" mobile/features/groups/build.gradle.kts && rm -f mobile/features/groups/build.gradle.kts.bak'
+    'sed -i.bak "s#commonMain.dependencies {#commonMain.dependencies {\n            implementation(project(\":navigation\"))#" mobile/features/groups/build.gradle.kts && rm -f mobile/features/groups/build.gradle.kts.bak'
 
 fail_case feature-imports-navigation-package \
     'a feature module imports the :navigation package' \
@@ -71,7 +71,7 @@ fail_case feature-imports-navigation-package \
 
 fail_case feature-declares-navigation3-ui-dependency \
     'a feature module declares a direct navigation3-ui Gradle dependency' \
-    'sed -i.bak "s#implementation(project(\":core:domain\"))#implementation(project(\":core:domain\"))\n            implementation(\"org.jetbrains.androidx.navigation3:navigation3-ui:1.1.1\")#" mobile/features/access/build.gradle.kts && rm -f mobile/features/access/build.gradle.kts.bak'
+    'sed -i.bak "s#commonMain.dependencies {#commonMain.dependencies {\n            implementation(\"org.jetbrains.androidx.navigation3:navigation3-ui:1.1.1\")#" mobile/features/access/build.gradle.kts && rm -f mobile/features/access/build.gradle.kts.bak'
 
 fail_case feature-imports-navigation3-ui \
     'a feature module imports Navigation Compose 3 UI' \
