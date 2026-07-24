@@ -424,7 +424,7 @@ com `Dispatchers.setMain()` no setup.
 | ViewModel | `<x>:presentation/commonTest` | **fake** do gateway, assert em `state` e `effects` |
 | Screen | `<x>:presentation/commonTest` | `ComposeTestRule` + `testTag` do objeto `Tags` |
 | Journey Android | `android-app/androidTest` | fluxo real ponta a ponta |
-| Journey iOS | `ios-app/SaqzIOSTests` | Swift, via seam `IOSJourneySupport` |
+| Adapter nativo iOS | `ios-app/SaqzIOSTests` | Swift, direto contra o adapter |
 | Visual | `android-app/src/test` | Roborazzi — **olhe os PNGs** antes de entregar UI |
 
 **Fake > mock, sempre.** Fake é implementação em memória da interface, com um `var shouldFail` para
