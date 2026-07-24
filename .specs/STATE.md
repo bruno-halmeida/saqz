@@ -244,13 +244,11 @@
 
 ## Handoff
 
-- **Feature**: mobile-domain-data-boundaries — `.specs/features/mobile-domain-data-boundaries/` — **COMPLETE (T01–T37)**.
-- **Phase / Task**: Execute finished. All 37 tasks implemented and committed (T35 `d68dc02`, T36 `2d6954a`; T37 docs/gate + iOS-interop work landed across `58c8e2c` and `8f59903` alongside concurrent refactor commits the repo owner made deliberately).
-- **Completed**: Specify, Discuss, Design, Tasks, Execute T01–T37. Every component gate is green — backend Gradle; `scripts/check-mobile-boundaries` (T36 gate: positive baseline + 11 negative mutations); mobile Kotlin/Android `allTests` incl. 55 instrumented; iOS SaqzDev+SaqzProd (107 tests each, `TEST SUCCEEDED`).
-- **T37 note**: the iOS gate (first iOS compile since T08, per the feature's own no-`check-ios`-before-T37 rule) surfaced accumulated Kotlin/Native value-class↔ObjC-export interop debt from the T08/T17/T20/T26 domain migrations; all fixed under T37 (exported `:features:access:domain` + `:features:groups:domain` into the `SaqzMobile` umbrella; `GroupPhotoSourceHandle`/`GroupPhotoPreviewHandle`/`GameVersionToken` value class → data class; `String` at native-port boundaries; `IOSAttendanceShareAdapter` → `NativeAttendanceSharePort`; iOS unit-test fixtures refreshed).
-- **Not run**: a single end-to-end `scripts/check-all` green pass — the three attempts each hit transient infra friction (emulator hang, a self-inflicted corrupted design-system incremental cache, and the repo owner's in-flight `testScope` refactor in the working tree), not code issues. Every gate the aggregate wraps has passed individually. The independent Verifier was explicitly waived by the repo owner.
-- **In-progress**: none for this feature. The repo owner has a separate, deliberately-interleaved refactor in flight (MviViewModel / UiText / ObserveAsEvents / GroupSetupViewModel `testScope` removal) — leave it to them.
-- **Blockers**: none.
-- **Uncommitted files**: none authored by this feature; anything left in the tree belongs to the owner's concurrent refactor.
-- **Previous feature**: mobile-navigation-architecture remains designed with Tasks pending.
+- **Feature**: mobile-navigation-architecture — `.specs/features/mobile-navigation-architecture/` — **T01–T26 ALL COMPLETE**; independent Verifier dispatched (validation.md pending its report).
+- **Phase / Task**: Execute finished 2026-07-23. T01–T21 via ultracode workflow batches; T22 via worker (`46f8dd6`); T23–T26 inline: adapter wiring `cd2e44c`, T23 `baaf013`, T24 `0243d87` (AuthenticatedAccessRoot deleted, AccessViewModel slimmed to orchestration, structural guards), T25 `4802875` (GroupsNavigationViewModel/State/Effect/RouteHost/DestinationContent deleted, GroupDetailScreen takes GroupsNavigationAccess), T26 `be59042` (`rtk scripts/check-all` green: boundaries serialization rule refined to transport-engine-only, AndroidAccessibilityTest→LoginState, Bundle-compatible navigationEntryId platform fix, rotation-contract testTag on ProductNavigationHost).
+- **Architecture now**: every product route renders through Nav3 NavDisplay entries backed by route-adapter ViewModels (T11–T15) via feature-owned Roots (`groups/ui/route/`); route history lives only in NavigationSession; the AD-025-deferred panels (Settings/Memberships/Invite/CreateGroup, GroupsList/Detail/More) are real NavEntrys with dedicated adapters — the deferred PMVI-001 scope is satisfied.
+- **Blockers**: none. Verifier fix→re-verify loop (max 3) applies if it returns FAIL.
+- **Uncommitted files**: pre-existing unrelated `GameEditorScreenTest.kt` wildcard-import change (not ours); `athlete-management` WIP is stashed (`git stash list`: athlete-management-wip-blocking-nav-gates) — POP IT BACK before resuming that feature. Older stashes (partial-T18, phase4-double-run, incidental-gamedetail-reformat, nav-t23 empty leftover) can be dropped after review.
+- **Previous feature**: mobile-presentation-compose-mvi delivered & verified (Verifier PASS).
 - **Branch**: main
+

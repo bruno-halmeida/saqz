@@ -5,7 +5,7 @@ import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.composeapp.di.loadSaqzPlatformDependencies
 import br.com.saqz.composeapp.navigation.AccessOrchestrator
-import br.com.saqz.composeapp.navigation.GroupsNavigationViewModel
+import br.com.saqz.groups.presentation.route.GroupSelectionRouteViewModel
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.network.AuthenticatedNetworkClient
@@ -31,7 +31,7 @@ class SaqzKoinBootstrapTest {
             val koin = KoinPlatformTools.defaultContext().get()
             assertNotNull(koin.get<AuthenticatedNetworkClient>())
             assertNotNull(koin.get<SessionAccessStateMachine>())
-            assertNotNull(koin.get<GroupsNavigationViewModel>())
+            assertNotNull(koin.get<GroupSelectionRouteViewModel>())
             val orchestrator = koin.get<AccessOrchestrator> { parametersOf(runtimeScope) }
             assertSame(koin.get<GroupProfileGateway>(), orchestrator.groupProfileGateway)
             assertSame(koin.get<GroupPhotoGateway>(), orchestrator.groupPhotoGateway)

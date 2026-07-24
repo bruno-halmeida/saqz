@@ -35,11 +35,13 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.viewmodel.savedstate)
+            api(libs.navigation3.runtime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
+            implementation(libs.kotlinx.serialization.json)
         }
     }
 }

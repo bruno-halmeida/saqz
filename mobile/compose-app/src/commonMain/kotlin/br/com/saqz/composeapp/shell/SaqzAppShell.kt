@@ -19,16 +19,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberNavBackStack
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.material.Text
 import br.com.saqz.composeapp.SaqzAppEnvironment
 import br.com.saqz.composeapp.navigation.SaqzDestination
 import br.com.saqz.composeapp.navigation.SaqzNavHost
 import br.com.saqz.composeapp.navigation.navigateTopLevel
+import br.com.saqz.composeapp.navigation.saqzLocalNavConfiguration
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.nav_components
 import br.com.saqz.composeapp.resources.nav_home
@@ -51,10 +51,14 @@ internal const val SaqzShellNavTag = "saqz-shell-nav"
 @Composable
 internal fun SaqzAppShell(
     environment: SaqzAppEnvironment = SaqzAppEnvironment(),
-    navController: NavHostController = rememberNavController(),
+    backStack: NavBackStack<NavKey> = rememberNavBackStack(
+        saqzLocalNavConfiguration,
+        SaqzDestination.Home,
+    ),
 ) {
     SaqzTheme(preferences = environment.toPreferences()) {
-        val currentDestination = navController.currentBackStackEntryAsState().value?.destination
+        // Home is the root; a Catalog on top means Componentes is the active tab.
+        val atCatalog = backStack.lastOrNull() == SaqzDestination.Catalog
         var navHeightPx by remember { mutableStateOf(0) }
         val navHeight = with(LocalDensity.current) { navHeightPx.toDp() }
 
@@ -74,21 +78,21 @@ internal fun SaqzAppShell(
                         // ...while the reserved bottom padding keeps every action reachable.
                         .padding(bottom = navHeight)
                         .testTag(SaqzShellSlotTag),
-                    content = { SaqzNavHost(navController = navController, modifier = Modifier.fillMaxSize()) },
+                    content = { SaqzNavHost(backStack = backStack, modifier = Modifier.fillMaxSize()) },
                 )
             }
             SaqzBottomNav(
                 items = listOf(
                     SaqzBottomNavItem(
                         label = stringResource(Res.string.nav_home),
-                        selected = currentDestination?.hasRoute<SaqzDestination.Home>() == true,
-                        onClick = { navController.navigateTopLevel(SaqzDestination.Home) },
+                        selected = !atCatalog,
+                        onClick = { backStack.navigateTopLevel(SaqzDestination.Home) },
                         icon = { Text("•") },
                     ),
                     SaqzBottomNavItem(
                         label = stringResource(Res.string.nav_components),
-                        selected = currentDestination?.hasRoute<SaqzDestination.Catalog>() == true,
-                        onClick = { navController.navigateTopLevel(SaqzDestination.Catalog) },
+                        selected = atCatalog,
+                        onClick = { backStack.navigateTopLevel(SaqzDestination.Catalog) },
                         icon = { Text("•") },
                     ),
                 ),

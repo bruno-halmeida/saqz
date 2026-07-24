@@ -1,0 +1,116 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mobile_root="$repository_root/mobile"
+
+require_no_legacy=0
+for arg in "$@"; do
+    case "$arg" in
+        --require-no-legacy) require_no_legacy=1 ;;
+        *) ;;
+    esac
+done
+
+fail() {
+    printf 'mobile navigation dependency gate failed: %s\n' "$1" >&2
+    exit 1
+}
+
+tracked_mobile_files() {
+    git -C "$repository_root" ls-files -- 'mobile' | while IFS= read -r file; do
+        [ -e "$repository_root/$file" ] && printf '%s\n' "$file"
+    done
+}
+
+feature_prod_kt_files() {
+    tracked_mobile_files | grep -E '^mobile/features/(access|groups)(/domain|/data)?/src/' | grep -E '\.kt$' | grep -Ev '/src/(commonTest|test|androidTest|iosTest)/'
+}
+
+feature_build_files() {
+    tracked_mobile_files | grep -E '^mobile/features/(access|groups)(/domain|/data)?/build\.gradle\.kts$'
+}
+
+reject_grep() {
+    label=$1
+    pattern=$2
+    files=${3:-}
+    [ -n "$files" ] || return 0
+    matches=$(printf '%s\n' "$files" | sed "s#^#$repository_root/#" | xargs grep -InE "$pattern" 2>/dev/null || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail "$label"
+    }
+}
+
+feature_kt=$(feature_prod_kt_files)
+feature_build=$(feature_build_files)
+
+# Module direction: no feature may depend on :navigation or import its package.
+reject_grep 'a feature module depends on :navigation' \
+    '":navigation"' "$feature_build"
+reject_grep 'a feature module imports the :navigation package' \
+    'import br\.com\.saqz\.navigation\.' "$feature_kt"
+
+# Nav3 UI is :navigation-only; features may depend only on the lightweight
+# navigation3-runtime key contract (NavKey/NavBackStack), never navigation3-ui.
+reject_grep 'a feature module declares a direct navigation3-ui Gradle dependency' \
+    'navigation3-ui|libs\.navigation3\.ui' "$feature_build"
+reject_grep 'a feature module imports Navigation Compose 3 UI' \
+    'import androidx\.navigation3\.ui\.' "$feature_kt"
+
+# Framework export: :compose-app is the only iOS umbrella framework; :navigation
+# must never be independently exported, nor produce its own framework binary.
+navigation_build="$mobile_root/navigation/build.gradle.kts"
+if [ -f "$navigation_build" ]; then
+    matches=$(grep -InE 'binaries\s*\{|\.framework\s*\{|export\(' "$navigation_build" || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail ':navigation declares its own iOS framework/export block'
+    }
+fi
+
+compose_app_build="$mobile_root/compose-app/build.gradle.kts"
+if [ -f "$compose_app_build" ]; then
+    matches=$(grep -InE 'export\(\s*project\(\s*["'\'']:navigation["'\'']\s*\)\s*\)' "$compose_app_build" || true)
+    [ -z "$matches" ] || {
+        printf '%s\n' "$matches" >&2
+        fail ':navigation types are exported through the SaqzMobile framework API'
+    }
+fi
+
+# Legacy Navigation Compose 2 removal: only enforced once T22 flips the flag.
+legacy_matches=$(
+    tracked_mobile_files | grep -E '\.(gradle\.kts|toml)$' |
+        sed "s#^#$repository_root/#" |
+        xargs grep -InE 'navigation-compose|org\.jetbrains\.androidx\.navigation:navigation-compose' 2>/dev/null || true
+)
+if [ "$require_no_legacy" -eq 1 ]; then
+    [ -z "$legacy_matches" ] || {
+        printf '%s\n' "$legacy_matches" >&2
+        fail 'legacy navigation-compose:2.9.2 dependency is still present'
+    }
+fi
+
+# T24 structural guard: the manual Access navigation artifacts must never return.
+# Scans every production Kotlin file in compose-app and the feature modules;
+# test sources are the implicit allowlist (negative fixtures live there).
+mobile_prod_kt_files() {
+    tracked_mobile_files | grep -E '^mobile/(compose-app|features)/.*\.kt$' |
+        grep -Ev '/src/(commonTest|test|androidTest|iosTest)/'
+}
+mobile_prod_kt=$(mobile_prod_kt_files)
+reject_grep 'a removed manual Access navigation artifact was reintroduced (T24)' \
+    '\bAccessPage\b|\bAccessDestination\b|\bAccessDestinationStack\b|\bshowAppHome\b|\bhandleGroupsIntent\b' \
+    "$mobile_prod_kt"
+
+# T25 structural guard: the legacy Groups destination state must never return.
+# Route history lives only in NavigationSession; these artifacts are removed.
+reject_grep 'a removed legacy Groups navigation artifact was reintroduced (T25)' \
+    '\bGroupsNavigationViewModel\b|\bGroupsNavigationEffect\b|\bGroupsNavigationState\b|\bGroupsRouteHost\b|\bGroupsDestinationContent\b' \
+    "$mobile_prod_kt"
+
+# ponytail: static declared-dependency scan across build files/catalog, not a
+# real `gradlew dependencies` graph resolution; swap for a live resolution
+# check if a transitive-only legacy Nav2 pull is ever suspected.
+printf 'ok - mobile navigation dependency graph\n'

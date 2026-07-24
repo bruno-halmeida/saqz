@@ -61,7 +61,6 @@ check_presentation_build() {
     check_denylist "$file" "presentation depends on its own data module" "\":features:$feature:data\""
     check_denylist "$file" "presentation depends on core:network" '":core:network"'
     check_denylist "$file" "presentation depends on Ktor" 'io\.ktor|libs\.ktor'
-    check_denylist "$file" "presentation depends on serialization" 'serialization'
     check_denylist "$file" "presentation depends on the other feature" "\":features:$other"
 }
 
@@ -106,8 +105,8 @@ reject_source_imports 'access presentation imports its own data layer' \
     '^mobile/features/access/src/' 'import br\.com\.saqz\.access\.data\.'
 reject_source_imports 'access presentation imports core network' \
     '^mobile/features/access/src/' 'import br\.com\.saqz\.network\.'
-reject_source_imports 'access presentation imports serialization' \
-    '^mobile/features/access/src/' 'import kotlinx\.serialization'
+reject_source_imports 'access presentation imports the serialization transport engine' \
+    '^mobile/features/access/src/(commonMain|androidMain|iosMain|appleMain|nativeMain)/' 'import kotlinx\.serialization\.json'
 reject_source_imports 'access presentation imports the Groups feature' \
     '^mobile/features/access/src/' 'import br\.com\.saqz\.groups\.'
 
@@ -115,8 +114,8 @@ reject_source_imports 'groups presentation imports its own data layer' \
     '^mobile/features/groups/src/' 'import br\.com\.saqz\.groups\.data\.'
 reject_source_imports 'groups presentation imports core network' \
     '^mobile/features/groups/src/' 'import br\.com\.saqz\.network\.'
-reject_source_imports 'groups presentation imports serialization' \
-    '^mobile/features/groups/src/' 'import kotlinx\.serialization'
+reject_source_imports 'groups presentation imports the serialization transport engine' \
+    '^mobile/features/groups/src/(commonMain|androidMain|iosMain|appleMain|nativeMain)/' 'import kotlinx\.serialization\.json'
 reject_source_imports 'groups presentation imports the Access feature' \
     '^mobile/features/groups/src/' 'import br\.com\.saqz\.access\.'
 

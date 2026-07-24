@@ -1,55 +1,51 @@
 package br.com.saqz.composeapp.navigation
 
-import br.com.saqz.groups.domain.group.Group
-import br.com.saqz.groups.domain.group.GroupRole
-import br.com.saqz.groups.domain.membership.AssignableGroupRole
-import br.com.saqz.groups.domain.group.GroupProfileGateway
-import br.com.saqz.groups.domain.photo.GroupPhotoGateway
-import br.com.saqz.groups.domain.group.VersionedGroup
+import br.com.saqz.access.domain.session.AccessMembership
+import br.com.saqz.access.domain.session.AccessMembershipRole
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessUser
+import br.com.saqz.access.domain.session.SessionInvalidator
 import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationState
+import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.presentation.DeferredInviteIntent
-import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
-import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
-import br.com.saqz.groups.presentation.GroupActions
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupAdministrationState
 import br.com.saqz.groups.presentation.GroupSelectionIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
-import br.com.saqz.groups.presentation.InviteUiError
-import br.com.saqz.access.presentation.SessionAccessState
-import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.groups.presentation.InviteToolState
-import br.com.saqz.access.domain.session.AccessSession
-import br.com.saqz.access.domain.session.AccessMembership
-import br.com.saqz.access.domain.session.AccessMembershipRole
-import br.com.saqz.domain.GroupId
-import br.com.saqz.access.domain.session.AccessUser
-import br.com.saqz.access.domain.session.SessionInvalidator
+import br.com.saqz.groups.presentation.attendance.share.AttendanceLinkDestination
+import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkIntent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * Orchestrator-scope tests (T24). Per-route screen behaviors formerly asserted here
+ * migrated with their state to the route adapters and are covered by
+ * GroupSetupViewModelTest (create form), GroupAdministrationRouteViewModelTest
+ * (settings/memberships), GroupInviteRouteViewModelTest (invite/share/expire), and
+ * GroupHomeRouteViewModelTest (logout confirmation dialog).
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccessViewModelTest {
     private val mainDispatcher = StandardTestDispatcher()
@@ -127,33 +123,6 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `signed out session closes page and logout dialog`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-        runtime.session.value = SessionAccessState.Ready(session)
-        runCurrent()
-        viewModel.onIntent(AccessIntent.OpenCreateGroup)
-        viewModel.onIntent(AccessIntent.RequestLogout)
-
-        runtime.intents.clear()
-        runtime.session.value = SessionAccessState.SignedOut
-        runCurrent()
-
-        assertEquals(AccessPage.CONTEXT, viewModel.state.value.page)
-        assertFalse(viewModel.state.value.showLogoutConfirmation)
-    }
-
-    @Test
-    fun `selected group becomes administration context and closes child page`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-        viewModel.onIntent(AccessIntent.OpenCreateGroup)
-
-        runtime.selection.value = GroupSelectionState.Selected(group)
-        runCurrent()
-
-        assertEquals(AccessPage.CONTEXT, viewModel.state.value.page)
-    }
-
-    @Test
     fun `attendance destination opens exact game once selected group matches`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
 
@@ -161,94 +130,6 @@ class AccessViewModelTest {
         runCurrent()
 
         assertEquals(AccessUiEffect.OpenAttendanceGame("game-42"), viewModel.effects.first())
-    }
-
-    @Test
-    fun `create form owns values and submits one stable request id`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-
-        viewModel.onIntent(AccessIntent.OpenCreateGroup)
-        viewModel.onIntent(AccessIntent.UpdateCreateName("New Group"))
-        viewModel.onIntent(AccessIntent.UpdateCreateTimeZone("Europe/Lisbon"))
-        viewModel.onIntent(AccessIntent.SubmitCreateGroup)
-        runCurrent()
-
-        assertEquals(AccessPage.CREATE_GROUP, viewModel.state.value.page)
-        assertEquals("New Group", viewModel.state.value.createName)
-        assertEquals("Europe/Lisbon", viewModel.state.value.createTimeZone)
-        assertEquals(
-            AccessRuntimeIntent.Administration(
-                GroupAdministrationIntent.CreateGroup("request-2", "New Group", "Europe/Lisbon"),
-            ),
-            runtime.intents.single(),
-        )
-    }
-
-    @Test
-    fun `duplicate create submit while pending remains single flight`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-        viewModel.onIntent(AccessIntent.OpenCreateGroup)
-        viewModel.onIntent(AccessIntent.UpdateCreateName("New Group"))
-        viewModel.onIntent(AccessIntent.UpdateCreateTimeZone("Europe/Lisbon"))
-
-        viewModel.onIntent(AccessIntent.SubmitCreateGroup)
-        viewModel.onIntent(AccessIntent.SubmitCreateGroup)
-
-        assertEquals(1, runtime.intents.count { it is AccessRuntimeIntent.Administration })
-    }
-
-    @Test
-    fun `invalid create submit exposes validation without runtime operation`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-        viewModel.onIntent(AccessIntent.OpenCreateGroup)
-
-        viewModel.onIntent(AccessIntent.SubmitCreateGroup)
-        runCurrent()
-
-        assertTrue(viewModel.state.value.createValidationAttempted)
-        assertTrue(runtime.intents.isEmpty())
-    }
-
-    @Test
-    fun `settings are controlled and save exact edited values`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-        runtime.administration.value = ownerAdministration
-
-        viewModel.onIntent(AccessIntent.OpenSettings)
-        viewModel.onIntent(AccessIntent.UpdateSettingsName("Renamed"))
-        viewModel.onIntent(AccessIntent.UpdateSettingsTimeZone("America/Sao_Paulo"))
-        viewModel.onIntent(AccessIntent.SaveSettings)
-        runCurrent()
-
-        assertEquals(AccessPage.SETTINGS, viewModel.state.value.page)
-        assertEquals("Renamed", viewModel.state.value.settingsName)
-        assertEquals("America/Sao_Paulo", viewModel.state.value.settingsTimeZone)
-        assertEquals(
-            AccessRuntimeIntent.Administration(
-                GroupAdministrationIntent.UpdateSettings("Renamed", "America/Sao_Paulo"),
-            ),
-            runtime.intents.single(),
-        )
-    }
-
-    @Test
-    fun `memberships and role changes dispatch exact administration intents`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-
-        viewModel.onIntent(AccessIntent.OpenMemberships)
-        viewModel.onIntent(AccessIntent.ChangeRole(USER_ID, AssignableGroupRole.ADMIN))
-        runCurrent()
-
-        assertEquals(AccessPage.MEMBERSHIPS, viewModel.state.value.page)
-        assertEquals(
-            listOf<AccessRuntimeIntent>(
-                AccessRuntimeIntent.Administration(GroupAdministrationIntent.LoadMemberships),
-                AccessRuntimeIntent.Administration(
-                    GroupAdministrationIntent.ChangeRole(USER_ID, AssignableGroupRole.ADMIN),
-                ),
-            ),
-            runtime.intents,
-        )
     }
 
     @Test
@@ -265,16 +146,12 @@ class AccessViewModelTest {
     }
 
     @Test
-    fun `confirmed logout clears dialog and routes both cleanup intents`() = runTest(mainDispatcher) {
+    fun `confirmed logout routes both cleanup intents before session logout`() = runTest(mainDispatcher) {
         val (viewModel, runtime) = fixture()
-        viewModel.onIntent(AccessIntent.RequestLogout)
-        runCurrent()
-        assertTrue(viewModel.state.value.showLogoutConfirmation)
 
         viewModel.onIntent(AccessIntent.ConfirmLogout)
         runCurrent()
 
-        assertFalse(viewModel.state.value.showLogoutConfirmation)
         assertEquals(
             listOf(
                 AccessRuntimeIntent.DeferredInvite(DeferredInviteIntent.Logout),
@@ -283,51 +160,6 @@ class AccessViewModelTest {
             ),
             runtime.intents,
         )
-    }
-
-    @Test
-    fun `invite generation and retry share one loading guard`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-
-        viewModel.onIntent(AccessIntent.GenerateInvite)
-        viewModel.onIntent(AccessIntent.RetryInvite)
-        runCurrent()
-
-        assertEquals(listOf<AccessRuntimeIntent>(AccessRuntimeIntent.RotateInvite), runtime.intents)
-        assertTrue(viewModel.state.value.invite.isLoading)
-    }
-
-    @Test
-    fun `share request is buffered once and never replayed`() = runTest(mainDispatcher) {
-        val (viewModel, _) = fixture()
-
-        viewModel.onIntent(AccessIntent.ShareInvite("https://example.test/invite"))
-
-        assertEquals(
-            AccessUiEffect.RequestShare("https://example.test/invite"),
-            viewModel.effects.first(),
-        )
-        var replayed: AccessUiEffect? = null
-        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.effects.collect {
-                replayed = it
-                cancel()
-            }
-        }
-        runCurrent()
-        assertNull(replayed)
-        collector.cancel()
-    }
-
-    @Test
-    fun `failed native share result returns through intent and updates state`() = runTest(mainDispatcher) {
-        val (viewModel, runtime) = fixture()
-
-        viewModel.onIntent(AccessIntent.ShareFinished(successful = false))
-        runCurrent()
-
-        assertEquals(listOf<AccessRuntimeIntent>(AccessRuntimeIntent.ShareFinished(false)), runtime.intents)
-        assertEquals(InviteUiError.UNAVAILABLE, viewModel.state.value.invite.error)
     }
 
     @Test
@@ -350,7 +182,7 @@ class AccessViewModelTest {
         assertEquals(1, runtime.invalidatorCalls)
     }
 
-    private suspend fun kotlinx.coroutines.test.TestScope.fixture(): Fixture {
+    private fun kotlinx.coroutines.test.TestScope.fixture(): Fixture {
         val runtime = FakeRuntime()
         val viewModel = AccessViewModel { runtime }
         runCurrent()
@@ -389,18 +221,6 @@ class AccessViewModelTest {
 
         override fun onIntent(intent: AccessRuntimeIntent) {
             intents += intent
-            when (intent) {
-                is AccessRuntimeIntent.Administration -> {
-                    if (intent.intent is GroupAdministrationIntent.CreateGroup) {
-                        administration.value = administration.value.copy(isLoading = true)
-                    }
-                }
-                AccessRuntimeIntent.RotateInvite -> invite.value = invite.value.copy(isLoading = true)
-                is AccessRuntimeIntent.ShareFinished -> if (!intent.successful) {
-                    invite.value = invite.value.copy(error = InviteUiError.UNAVAILABLE)
-                }
-                else -> Unit
-            }
         }
 
         override fun newRequestId(): String = "request-${++requestCounter}"
@@ -416,14 +236,6 @@ class AccessViewModelTest {
         val session = AccessSession(
             user = AccessUser(USER_ID, "person@example.test", "Person"),
             memberships = listOf(AccessMembership(GroupId(GROUP_ID), "Group", AccessMembershipRole("OWNER"))),
-        )
-        val group = VersionedGroup(
-            group = Group(GROUP_ID, "Group", "UTC", 7, GroupRole.OWNER),
-            versionToken = br.com.saqz.groups.domain.group.GroupVersionToken("\"7\""),
-        )
-        val ownerAdministration = GroupAdministrationState(
-            group = group,
-            actions = GroupActions(true, true, true),
         )
     }
 }

@@ -1,7 +1,7 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.runtime.Composable
-import br.com.saqz.composeapp.navigation.AuthenticatedAccessRoute
+import br.com.saqz.composeapp.navigation.ProductNavigationRoute
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.theme.SaqzTheme
 
@@ -17,7 +17,7 @@ fun SaqzApp(
             reduceTransparency = reduceTransparency,
         ).toPreferences(),
     ) {
-        AuthenticatedAccessRoute(dependencies)
+        ProductNavigationRoute(dependencies)
     }
 }
 

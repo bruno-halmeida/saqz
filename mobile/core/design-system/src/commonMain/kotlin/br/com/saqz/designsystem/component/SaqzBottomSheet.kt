@@ -44,12 +44,14 @@ fun SaqzBottomSheet(
 @Preview
 @Composable
 private fun SaqzBottomSheetPreview() = SaqzTheme {
-    SaqzBottomSheet(
-        "Opções",
-        {},
-        primaryAction = {
-            SaqzButton(
-                "Salvar",
-                {})
-        }) { Text("Conteúdo") }
+    SaqzModalScaffold(
+        title = "Opções",
+        onCloseRequest = {},
+        primaryAction = { SaqzButton("Salvar", {}) },
+        showCloseAction = true,
+        dismissOnClickOutside = false,
+        alignment = Alignment.BottomCenter,
+        cardModifier = Modifier.fillMaxWidth(),
+        content = { Text("Conteúdo") },
+    )
 }

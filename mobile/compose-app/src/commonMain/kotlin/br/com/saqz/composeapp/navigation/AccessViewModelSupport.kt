@@ -12,15 +12,3 @@ internal data class AccessCoreState(
     val selection: GroupSelectionState,
     val administration: GroupAdministrationState,
 )
-
-internal data class AccessRouteState(
-    val page: AccessPage = AccessPage.CONTEXT,
-    val createName: String = "",
-    val createTimeZone: String = "",
-    val createValidationAttempted: Boolean = false,
-    val createRequestId: String,
-    val settingsName: String = "",
-    val settingsTimeZone: String = "",
-    val showLogoutConfirmation: Boolean = false,
-    val showExpireConfirmation: Boolean = false,
-)

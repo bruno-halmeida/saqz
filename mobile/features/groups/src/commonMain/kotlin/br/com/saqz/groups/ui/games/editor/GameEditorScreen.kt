@@ -59,30 +59,108 @@ fun GameEditorScreen(state: GameEditorState, onIntent: (GameEditorIntent) -> Uni
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding),
     ) {
         Text(
-            stringResource(if (draft.gameId == null) Res.string.game_editor_new_title else Res.string.game_editor_edit_title),
+            stringResource(
+                if (draft.gameId == null) Res.string.game_editor_new_title
+                else Res.string.game_editor_edit_title,
+            ),
             style = SaqzTheme.typography.lead,
             color = SaqzTheme.colors.textPrimary,
             modifier = Modifier.semantics { heading() },
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
-            ModeButton(Res.string.game_editor_one_time, GameEditorTags.OneTime, draft.mode == GameEditorMode.ONE_TIME, Modifier.weight(1f)) { onIntent(GameEditorIntent.SetMode(GameEditorMode.ONE_TIME)) }
-            ModeButton(Res.string.game_editor_weekly, GameEditorTags.Weekly, draft.mode == GameEditorMode.WEEKLY, Modifier.weight(1f)) { onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY)) }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        ) {
+            ModeButton(
+                Res.string.game_editor_one_time,
+                GameEditorTags.OneTime,
+                draft.mode == GameEditorMode.ONE_TIME,
+                Modifier.weight(1f),
+            ) { onIntent(GameEditorIntent.SetMode(GameEditorMode.ONE_TIME)) }
+            ModeButton(
+                Res.string.game_editor_weekly,
+                GameEditorTags.Weekly,
+                draft.mode == GameEditorMode.WEEKLY,
+                Modifier.weight(1f),
+            ) { onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY)) }
         }
-        EditorInput(form.title, Res.string.game_editor_title, state.errorFor("title"), GameEditorTags.field("title")) { onIntent(GameEditorIntent.UpdateForm(form.copy(title = it))) }
-        EditorInput(form.venue?.name.orEmpty(), Res.string.game_editor_venue_name, state.errorFor("venue"), GameEditorTags.field("venueName")) { onIntent(GameEditorIntent.UpdateForm(form.copy(venue = form.venue.withName(it)))) }
-        EditorInput(form.venue?.address.orEmpty(), Res.string.game_editor_venue_address, state.errorFor("venue"), GameEditorTags.field("venueAddress")) { onIntent(GameEditorIntent.UpdateForm(form.copy(venue = form.venue.withAddress(it)))) }
-        EditorInput(form.localDate, Res.string.game_editor_start_date, state.errorFor("localDate"), GameEditorTags.field("localDate")) { onIntent(GameEditorIntent.UpdateForm(form.copy(localDate = it))) }
+        EditorInput(
+            form.title,
+            Res.string.game_editor_title,
+            state.errorFor("title"),
+            GameEditorTags.field("title"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(title = it))) }
+        EditorInput(
+            form.venue?.name.orEmpty(),
+            Res.string.game_editor_venue_name,
+            state.errorFor("venue"),
+            GameEditorTags.field("venueName"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(venue = form.venue.withName(it)))) }
+        EditorInput(
+            form.venue?.address.orEmpty(),
+            Res.string.game_editor_venue_address,
+            state.errorFor("venue"),
+            GameEditorTags.field("venueAddress"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(venue = form.venue.withAddress(it)))) }
+        EditorInput(
+            form.localDate,
+            Res.string.game_editor_start_date,
+            state.errorFor("localDate"),
+            GameEditorTags.field("localDate"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(localDate = it))) }
         if (draft.mode == GameEditorMode.ONE_TIME) {
-            EditorInput(form.localTime, Res.string.game_editor_start_time, state.errorFor("localTime"), GameEditorTags.field("localTime")) { onIntent(GameEditorIntent.UpdateForm(form.copy(localTime = it))) }
+            EditorInput(
+                form.localTime,
+                Res.string.game_editor_start_time,
+                state.errorFor("localTime"),
+                GameEditorTags.field("localTime"),
+            ) { onIntent(GameEditorIntent.UpdateForm(form.copy(localTime = it))) }
         } else {
-            EditorInput(form.localEndDate, Res.string.game_editor_end_date, state.errorFor("localEndDate"), GameEditorTags.field("localEndDate")) { onIntent(GameEditorIntent.UpdateForm(form.copy(localEndDate = it))) }
+            EditorInput(
+                form.localEndDate,
+                Res.string.game_editor_end_date,
+                state.errorFor("localEndDate"),
+                GameEditorTags.field("localEndDate"),
+            ) { onIntent(GameEditorIntent.UpdateForm(form.copy(localEndDate = it))) }
         }
-        EditorInput(form.zoneId, Res.string.game_editor_timezone, state.errorFor("zoneId"), GameEditorTags.field("zoneId")) { onIntent(GameEditorIntent.UpdateForm(form.copy(zoneId = it))) }
-        EditorInput(form.durationMinutes, Res.string.game_editor_duration, state.errorFor("durationMinutes"), GameEditorTags.field("duration")) { onIntent(GameEditorIntent.UpdateForm(form.copy(durationMinutes = it))) }
-        EditorInput(form.capacity, Res.string.game_editor_capacity, state.errorFor("capacity"), GameEditorTags.field("capacity")) { onIntent(GameEditorIntent.UpdateForm(form.copy(capacity = it))) }
-        if (draft.mode == GameEditorMode.ONE_TIME) EditorInput(form.confirmationDeadline, Res.string.game_editor_deadline, state.errorFor("confirmationDeadline"), GameEditorTags.field("deadline")) { onIntent(GameEditorIntent.UpdateForm(form.copy(confirmationDeadline = it))) }
-        EditorInput(form.gameFeeBrl, Res.string.game_editor_fee, state.errorFor("gameFeeBrl"), GameEditorTags.field("fee")) { onIntent(GameEditorIntent.UpdateForm(form.copy(gameFeeBrl = it))) }
-        EditorInput(form.notes, Res.string.game_editor_notes, state.errorFor("notes"), GameEditorTags.field("notes")) { onIntent(GameEditorIntent.UpdateForm(form.copy(notes = it))) }
+        EditorInput(
+            form.zoneId,
+            Res.string.game_editor_timezone,
+            state.errorFor("zoneId"),
+            GameEditorTags.field("zoneId"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(zoneId = it))) }
+        EditorInput(
+            form.durationMinutes,
+            Res.string.game_editor_duration,
+            state.errorFor("durationMinutes"),
+            GameEditorTags.field("duration"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(durationMinutes = it))) }
+        EditorInput(
+            form.capacity,
+            Res.string.game_editor_capacity,
+            state.errorFor("capacity"),
+            GameEditorTags.field("capacity"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(capacity = it))) }
+        if (draft.mode == GameEditorMode.ONE_TIME) {
+            EditorInput(
+                form.confirmationDeadline,
+                Res.string.game_editor_deadline,
+                state.errorFor("confirmationDeadline"),
+                GameEditorTags.field("deadline"),
+            ) { onIntent(GameEditorIntent.UpdateForm(form.copy(confirmationDeadline = it))) }
+        }
+        EditorInput(
+            form.gameFeeBrl,
+            Res.string.game_editor_fee,
+            state.errorFor("gameFeeBrl"),
+            GameEditorTags.field("fee"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(gameFeeBrl = it))) }
+        EditorInput(
+            form.notes,
+            Res.string.game_editor_notes,
+            state.errorFor("notes"),
+            GameEditorTags.field("notes"),
+        ) { onIntent(GameEditorIntent.UpdateForm(form.copy(notes = it))) }
         for (message in state.globalValidationMessages) {
             ErrorText(message)
         }
@@ -91,51 +169,164 @@ fun GameEditorScreen(state: GameEditorState, onIntent: (GameEditorIntent) -> Uni
         }
         if (draft.mode == GameEditorMode.WEEKLY) WeeklySlots(form, state, onIntent)
         if (draft.gameId != null && draft.mode == GameEditorMode.WEEKLY) ScopeChoice(state, onIntent)
-        if (state.reloadAvailable) SaqzButton(stringResource(Res.string.game_editor_reload), { onIntent(GameEditorIntent.Reload) }, Modifier.fillMaxWidth().testTag(GameEditorTags.Reload))
-        SaqzButton(stringResource(Res.string.game_editor_submit), { onIntent(GameEditorIntent.Submit) }, Modifier.fillMaxWidth().testTag(GameEditorTags.Submit), loading = state.isLoading)
+        if (state.reloadAvailable) {
+            SaqzButton(
+                stringResource(Res.string.game_editor_reload),
+                { onIntent(GameEditorIntent.Reload) },
+                Modifier.fillMaxWidth().testTag(GameEditorTags.Reload),
+            )
+        }
+        SaqzButton(
+            stringResource(Res.string.game_editor_submit),
+            { onIntent(GameEditorIntent.Submit) },
+            Modifier.fillMaxWidth().testTag(GameEditorTags.Submit),
+            loading = state.isLoading,
+        )
     }
 }
 
 @Composable
 private fun WeeklySlots(form: GameEditorForm, state: GameEditorState, onIntent: (GameEditorIntent) -> Unit) {
-    Text(stringResource(Res.string.game_editor_slots), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary, modifier = Modifier.semantics { heading() })
+    Text(
+        stringResource(Res.string.game_editor_slots),
+        style = SaqzTheme.typography.bodyStrong,
+        color = SaqzTheme.colors.textPrimary,
+        modifier = Modifier.semantics { heading() },
+    )
     state.errorFor("slots")?.let { ErrorText(it) }
     form.slots.forEachIndexed { index, slot ->
         SaqzCard(Modifier.fillMaxWidth().testTag(GameEditorTags.slot(index))) {
             Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
-                Text(stringResource(Res.string.game_editor_slot, index + 1), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
-                Weekday.entries.forEach { weekday -> ModeButton(weekday.label(), GameEditorTags.weekday(index, weekday), slot.weekday == weekday, Modifier.fillMaxWidth()) { form.updateSlot(index, slot.copy(weekday = weekday), onIntent) } }
-                SlotInput(index, "title", slot.title, Res.string.game_editor_title, state, form, slot, onIntent) { value -> slot.copy(title = value) }
-                SlotInput(index, "localTime", slot.localTime, Res.string.game_editor_start_time, state, form, slot, onIntent) { value -> slot.copy(localTime = value) }
-                SlotInput(index, "durationMinutes", slot.durationMinutes.toString(), Res.string.game_editor_duration, state, form, slot, onIntent) { value -> slot.copy(durationMinutes = value.toIntOrNull() ?: 0) }
-                SlotInput(index, "venue", slot.venue.name, Res.string.game_editor_venue_name, state, form, slot, onIntent) { value -> slot.copy(venue = slot.venue.copy(name = value)) }
-                SlotInput(index, "venueAddress", slot.venue.address, Res.string.game_editor_venue_address, state, form, slot, onIntent) { value -> slot.copy(venue = slot.venue.copy(address = value)) }
-                SlotInput(index, "capacity", slot.capacity.toString(), Res.string.game_editor_capacity, state, form, slot, onIntent) { value -> slot.copy(capacity = value.toIntOrNull() ?: 0) }
-                SlotInput(index, "confirmationLeadMinutes", slot.confirmationLeadMinutes.toString(), Res.string.game_editor_confirmation_lead, state, form, slot, onIntent) { value -> slot.copy(confirmationLeadMinutes = value.toIntOrNull() ?: 0) }
-                SaqzButton(stringResource(Res.string.game_editor_remove_slot), { onIntent(GameEditorIntent.UpdateForm(form.copy(slots = form.slots.filterIndexed { i, _ -> i != index }))) }, Modifier.fillMaxWidth().testTag(GameEditorTags.removeSlot(index)), SaqzButtonVariant.Secondary)
+                Text(
+                    stringResource(Res.string.game_editor_slot, index + 1),
+                    style = SaqzTheme.typography.bodyStrong,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                Weekday.entries.forEach { weekday ->
+                    ModeButton(
+                        weekday.label(),
+                        GameEditorTags.weekday(index, weekday),
+                        slot.weekday == weekday,
+                        Modifier.fillMaxWidth(),
+                    ) { form.updateSlot(index, slot.copy(weekday = weekday), onIntent) }
+                }
+                SlotInput(index, "title", slot.title, Res.string.game_editor_title, state, form, slot, onIntent) { value ->
+                    slot.copy(title = value)
+                }
+                SlotInput(index, "localTime", slot.localTime, Res.string.game_editor_start_time, state, form, slot, onIntent) { value ->
+                    slot.copy(localTime = value)
+                }
+                SlotInput(index, "durationMinutes", slot.durationMinutes.toString(), Res.string.game_editor_duration, state, form, slot, onIntent) { value ->
+                    slot.copy(durationMinutes = value.toIntOrNull() ?: 0)
+                }
+                SlotInput(index, "venue", slot.venue.name, Res.string.game_editor_venue_name, state, form, slot, onIntent) { value ->
+                    slot.copy(venue = slot.venue.copy(name = value))
+                }
+                SlotInput(index, "venueAddress", slot.venue.address, Res.string.game_editor_venue_address, state, form, slot, onIntent) { value ->
+                    slot.copy(venue = slot.venue.copy(address = value))
+                }
+                SlotInput(index, "capacity", slot.capacity.toString(), Res.string.game_editor_capacity, state, form, slot, onIntent) { value ->
+                    slot.copy(capacity = value.toIntOrNull() ?: 0)
+                }
+                SlotInput(index, "confirmationLeadMinutes", slot.confirmationLeadMinutes.toString(), Res.string.game_editor_confirmation_lead, state, form, slot, onIntent) { value ->
+                    slot.copy(confirmationLeadMinutes = value.toIntOrNull() ?: 0)
+                }
+                SaqzButton(
+                    stringResource(Res.string.game_editor_remove_slot),
+                    { onIntent(GameEditorIntent.UpdateForm(form.copy(slots = form.slots.filterIndexed { i, _ -> i != index }))) },
+                    Modifier.fillMaxWidth().testTag(GameEditorTags.removeSlot(index)),
+                    SaqzButtonVariant.Secondary,
+                )
             }
         }
     }
-    SaqzButton(stringResource(Res.string.game_editor_add_slot), { onIntent(GameEditorIntent.AddSlot) }, Modifier.fillMaxWidth().testTag(GameEditorTags.AddSlot), SaqzButtonVariant.Secondary)
+    SaqzButton(
+        stringResource(Res.string.game_editor_add_slot),
+        { onIntent(GameEditorIntent.AddSlot) },
+        Modifier.fillMaxWidth().testTag(GameEditorTags.AddSlot),
+        SaqzButtonVariant.Secondary,
+    )
 }
 
 @Composable
 private fun ScopeChoice(state: GameEditorState, onIntent: (GameEditorIntent) -> Unit) {
-    Text(stringResource(Res.string.game_editor_scope_title), style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
+    Text(
+        stringResource(Res.string.game_editor_scope_title),
+        style = SaqzTheme.typography.bodyStrong,
+        color = SaqzTheme.colors.textPrimary,
+    )
     state.errorFor("scope")?.let { ErrorText(it) }
-    ModeButton(Res.string.game_editor_only_this, GameEditorTags.ScopeOnly, state.draft.scope == SeriesBoundaryScope.OnlyThis, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis)) }
-    ModeButton(Res.string.game_editor_this_future, GameEditorTags.ScopeFuture, state.draft.scope == SeriesBoundaryScope.ThisAndFuture, Modifier.fillMaxWidth()) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.ThisAndFuture)) }
+    ModeButton(
+        Res.string.game_editor_only_this,
+        GameEditorTags.ScopeOnly,
+        state.draft.scope == SeriesBoundaryScope.OnlyThis,
+        Modifier.fillMaxWidth(),
+    ) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis)) }
+    ModeButton(
+        Res.string.game_editor_this_future,
+        GameEditorTags.ScopeFuture,
+        state.draft.scope == SeriesBoundaryScope.ThisAndFuture,
+        Modifier.fillMaxWidth(),
+    ) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.ThisAndFuture)) }
 }
 
-@Composable private fun ModeButton(label: org.jetbrains.compose.resources.StringResource, tag: String, selected: Boolean, modifier: Modifier, click: () -> Unit) = ModeButton(stringResource(label), tag, selected, modifier, click)
-@Composable private fun ModeButton(label: String, tag: String, selected: Boolean, modifier: Modifier, click: () -> Unit) = SaqzButton(label, click, modifier.testTag(tag), if (selected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary)
-@Composable private fun EditorInput(value: String, label: org.jetbrains.compose.resources.StringResource, error: String?, tag: String, change: (String) -> Unit) = SaqzInput(TextFieldValue(value), { change(it.text) }, stringResource(label), Modifier.testTag(tag), errorText = error)
-@Composable private fun ErrorText(value: String) = Text(value, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
-@Composable private fun SlotInput(index: Int, name: String, value: String, label: org.jetbrains.compose.resources.StringResource, state: GameEditorState, form: GameEditorForm, slot: WeeklySlot, onIntent: (GameEditorIntent) -> Unit, update: (String) -> WeeklySlot) = EditorInput(value, label, state.errorFor("slots[$index].$name"), GameEditorTags.field("slot-$index-$name")) { form.updateSlot(index, update(it), onIntent) }
+@Composable
+private fun ModeButton(
+    label: org.jetbrains.compose.resources.StringResource,
+    tag: String,
+    selected: Boolean,
+    modifier: Modifier,
+    click: () -> Unit,
+) = ModeButton(stringResource(label), tag, selected, modifier, click)
+
+@Composable
+private fun ModeButton(
+    label: String,
+    tag: String,
+    selected: Boolean,
+    modifier: Modifier,
+    click: () -> Unit,
+) = SaqzButton(label, click, modifier.testTag(tag), if (selected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary)
+
+@Composable
+private fun EditorInput(
+    value: String,
+    label: org.jetbrains.compose.resources.StringResource,
+    error: String?,
+    tag: String,
+    change: (String) -> Unit,
+) = SaqzInput(TextFieldValue(value), { change(it.text) }, stringResource(label), Modifier.testTag(tag), errorText = error)
+
+@Composable
+private fun ErrorText(value: String) = Text(value, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+
+@Composable
+private fun SlotInput(
+    index: Int,
+    name: String,
+    value: String,
+    label: org.jetbrains.compose.resources.StringResource,
+    state: GameEditorState,
+    form: GameEditorForm,
+    slot: WeeklySlot,
+    onIntent: (GameEditorIntent) -> Unit,
+    update: (String) -> WeeklySlot,
+) = EditorInput(
+    value,
+    label,
+    state.errorFor("slots[$index].$name"),
+    GameEditorTags.field("slot-$index-$name"),
+) { form.updateSlot(index, update(it), onIntent) }
+
 private fun GameEditorState.errorFor(name: String) = fieldErrors[name]?.firstOrNull()
+
 private fun GameVenue?.withName(value: String) = (this ?: GameVenue(null, "", "")).copy(name = value)
+
 private fun GameVenue?.withAddress(value: String) = (this ?: GameVenue(null, "", "")).copy(address = value)
-private fun GameEditorForm.updateSlot(index: Int, slot: WeeklySlot, onIntent: (GameEditorIntent) -> Unit) = onIntent(GameEditorIntent.UpdateForm(copy(slots = slots.mapIndexed { i, old -> if (i == index) slot else old })))
+
+private fun GameEditorForm.updateSlot(index: Int, slot: WeeklySlot, onIntent: (GameEditorIntent) -> Unit) =
+    onIntent(GameEditorIntent.UpdateForm(copy(slots = slots.mapIndexed { i, old -> if (i == index) slot else old })))
+
 private fun Weekday.label() = when (this) {
     Weekday.Monday -> "Segunda-feira"
     Weekday.Tuesday -> "Terça-feira"
