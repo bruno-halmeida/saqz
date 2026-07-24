@@ -3,11 +3,11 @@ package br.com.saqz.composeapp.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.ui.platform.testTag
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
@@ -36,10 +36,10 @@ internal const val SaqzDestinationHostTag = "authenticated-access-destination"
 internal fun SaqzNavHost(
     state: AccessUiState,
     onIntent: (AccessIntent) -> Unit,
-    backStack: NavBackStack<NavKey> = rememberNavBackStack(
-        saqzLocalNavConfiguration,
-        AccessRoute.Starting,
-    ),
+    backStack: NavBackStack<NavKey> = rememberSerializable(
+        serializer = saqzAccessBackStackSerializer,
+        configuration = saqzLocalNavConfiguration,
+    ) { defaultAccessBackStack() },
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(state.session) {
