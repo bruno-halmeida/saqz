@@ -13,7 +13,8 @@ import java.sql.Timestamp
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceCommandRepository, AttendanceDetailQuery, GameAttendanceCountSource {
+class JdbcAttendanceCommandRepository(dataSource: DataSource) :
+    AttendanceCommandRepository, AttendanceDetailQuery, AttendanceRosterQuery, GameAttendanceCountSource {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? {
@@ -158,11 +159,44 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             .optional()
             .orElse(null)
 
+    override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
+        val rows = jdbc.sql(ROSTER)
+            .param("actor", actorId)
+            .param("group", groupId)
+            .param("game", gameId)
+            .query { rs, _ ->
+                RosterRow(
+                    rs.getObject("member_user_id", UUID::class.java),
+                    rs.getString("member_display_name"),
+                    rs.getString("attendance_status"),
+                    rs.getObject("waitlist_sequence", Long::class.javaObjectType),
+                )
+            }
+            .list()
+        // The header row survives a game with no responses, so an empty result
+        // means the game is absent or hidden from this actor.
+        if (rows.isEmpty()) return null
+        val responded = rows.filter { it.memberId != null }
+        return AttendanceRoster(
+            responded.filter { it.status == "CONFIRMED" }.map(RosterRow::member),
+            responded.filter { it.status == "WAITLISTED" }.map(RosterRow::member),
+        )
+    }
+
     override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> = gameIds.associateWith { gameId ->
         jdbc.sql(
             "SELECT count(*) FILTER (WHERE status='CONFIRMED') AS confirmed," +
                 "count(*) FILTER (WHERE status='WAITLISTED') AS waitlisted FROM game_attendance WHERE game_id=:game",
         ).param("game", gameId).query { rs, _ -> GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted")) }.single()
+    }
+
+    private data class RosterRow(
+        val memberId: UUID?,
+        val displayName: String?,
+        val status: String?,
+        val waitlistSequence: Long?,
+    ) {
+        fun member() = AttendanceRosterMember(requireNotNull(memberId), requireNotNull(displayName), waitlistSequence)
     }
 
     private fun aggregate(rs: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int): AttendanceAggregate {
@@ -253,6 +287,18 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
             WHERE g.group_id=:group AND g.id=:game
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
+        """
+        const val ROSTER = """
+            SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence
+            FROM games g
+            JOIN access_groups ag ON ag.id=g.group_id
+            LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
+            LEFT JOIN game_attendance a ON a.game_id=g.id AND a.group_id=g.group_id
+                AND a.status IN ('CONFIRMED','WAITLISTED')
+            WHERE g.group_id=:group AND g.id=:game
+              AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
+            ORDER BY a.waitlist_sequence NULLS FIRST,
+                     lower(a.member_display_name),a.member_display_name,a.member_user_id
         """
     }
 }

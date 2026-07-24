@@ -87,3 +87,20 @@ data class AttendanceDetail(
 fun interface AttendanceDetailQuery {
     fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail?
 }
+
+// Names reuse the AttendanceShareSnapshotPerson convention, read from the
+// attendance row snapshot instead of the live membership name.
+data class AttendanceRosterMember(
+    val memberId: UUID,
+    val displayName: String,
+    val waitlistPosition: Long? = null,
+)
+
+data class AttendanceRoster(
+    val confirmed: List<AttendanceRosterMember>,
+    val waitlisted: List<AttendanceRosterMember>,
+)
+
+fun interface AttendanceRosterQuery {
+    fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster?
+}

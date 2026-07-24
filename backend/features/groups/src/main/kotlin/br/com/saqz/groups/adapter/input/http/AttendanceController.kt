@@ -46,6 +46,15 @@ data class AttendanceDetailResponse(
     val waitlistCount: Int,
     val capacity: Int,
 )
+data class AttendanceRosterMemberResponse(
+    val memberId: UUID,
+    val displayName: String,
+    val waitlistPosition: Long?,
+)
+data class AttendanceRosterResponse(
+    val confirmed: List<AttendanceRosterMemberResponse>,
+    val waitlisted: List<AttendanceRosterMemberResponse>,
+)
 data class AttendanceMutationResponse(
     val attendance: AttendanceEntryResponse,
     val audit: AttendanceAuditResponse?,
@@ -67,6 +76,7 @@ class AttendanceController(
     private val responses: RespondAttendance,
     private val capacities: AdjustGameCapacity,
     private val details: AttendanceDetailQuery,
+    private val rosters: AttendanceRosterQuery,
 ) {
     @GetMapping("/api/groups/{groupId}/games/{gameId}/attendance")
     fun read(
@@ -74,6 +84,14 @@ class AttendanceController(
         @PathVariable groupId: String,
         @PathVariable gameId: String,
     ): AttendanceDetailResponse = detail(actors.resolve(identity), uuid(groupId), uuid(gameId))
+
+    @GetMapping("/api/groups/{groupId}/games/{gameId}/attendance/roster")
+    fun roster(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+        @PathVariable gameId: String,
+    ): AttendanceRosterResponse =
+        rosters.roster(actors.resolve(identity), uuid(groupId), uuid(gameId))?.response() ?: throw GameNotFoundException()
 
     @PutMapping("/api/groups/{groupId}/games/{gameId}/attendance")
     fun respond(
@@ -159,3 +177,5 @@ class AttendanceController(
 private fun AttendanceRecord.response() = AttendanceEntryResponse(memberId, status.name, waitlistSequence, version)
 private fun AttendanceEvent.response() = AttendanceAuditResponse(actorId, source.name, oldStatus?.name, newStatus.name, reason, occurredAt)
 private fun AttendanceDetail.response() = AttendanceDetailResponse(own?.response(), confirmedCount, availableSpots, waitlistCount, capacity)
+private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition)
+private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() })
