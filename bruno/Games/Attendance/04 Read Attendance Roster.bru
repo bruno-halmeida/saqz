@@ -1,0 +1,14 @@
+meta {
+  name: Read Attendance Roster
+  type: http
+  seq: 4
+}
+get {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/attendance/roster
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("member reads confirmed and waitlist rosters with snapshot names", function () { expect(res.status).to.equal(200); expect(res.body.confirmed).to.be.an("array"); expect(res.body.waitlisted).to.be.an("array"); res.body.confirmed.forEach(function (entry) { expect(entry.displayName).to.be.a("string"); expect(entry.waitlistPosition).to.equal(null); }); res.body.waitlisted.forEach(function (entry) { expect(entry.displayName).to.be.a("string"); expect(entry.waitlistPosition).to.be.a("number"); }); });
+}

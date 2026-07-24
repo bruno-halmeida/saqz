@@ -59,6 +59,7 @@ import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
 import br.com.saqz.groups.application.attendance.AdjustGameCapacity
 import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
+import br.com.saqz.groups.application.attendance.AttendanceRosterQuery
 import br.com.saqz.groups.application.attendance.RespondAttendance
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
@@ -347,7 +348,7 @@ class AccessSessionConfiguration {
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
-    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery) = AttendanceController(actor, responses, capacities, details)
+    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery) = AttendanceController(actor, responses, capacities, details, rosters)
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)
