@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
@@ -40,6 +41,10 @@ class AttendanceControllerTest {
     @Test fun `nonmember attendance read is privacy hidden`() { actor = UUID.randomUUID(); assertFailsWith<GameNotFoundException> { controller.read(ID, "$group", "$game") } }
     @Test fun `self confirm returns ETag audit and updated aggregate`() { actor = member; val response = controller.respond(ID, "$group", "$game", self()); assertEquals("\"1\"", response.headers.eTag); assertEquals("CONFIRMED", response.body!!.attendance.status); assertEquals("SELF", response.body!!.audit!!.source); assertEquals(1, response.body!!.detail.confirmedCount) }
     @Test fun `self confirm at capacity becomes waitlisted`() { actor = member; repository.record(second, AttendanceStatus.CONFIRMED); repository.record(UUID.randomUUID().also(repository.members::add), AttendanceStatus.CONFIRMED); val response = controller.respond(ID, "$group", "$game", self()); assertEquals("WAITLISTED", response.body!!.attendance.status); assertEquals(1, response.body!!.attendance.waitlistPosition) }
+    @Test fun `mensalista self confirm takes the free spot`() { actor = member; repository.membership[member] = AthleteMembershipType.MENSALISTA; val response = controller.respond(ID, "$group", "$game", self()); assertEquals("CONFIRMED", response.body!!.attendance.status); assertEquals(1, response.body!!.detail.confirmedCount) }
+    @Test fun `avulso self confirm waits even with a free spot`() { actor = member; repository.membership[member] = AthleteMembershipType.AVULSO; val response = controller.respond(ID, "$group", "$game", self()); assertEquals("WAITLISTED", response.body!!.attendance.status); assertEquals(1, response.body!!.attendance.waitlistPosition); assertEquals(0, response.body!!.detail.confirmedCount) }
+    @Test fun `confirmed withdrawal promotes the earliest waiting avulso`() { repository.membership[second] = AthleteMembershipType.AVULSO; actor = second; controller.respond(ID, "$group", "$game", self()); actor = member; controller.respond(ID, "$group", "$game", self()); controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE")); assertEquals(AttendanceStatus.CONFIRMED, repository.records[second]!!.status); assertNull(repository.records[second]!!.waitlistSequence) }
+    @Test fun `organizer override confirms an avulso into a free spot`() { repository.membership[member] = AthleteMembershipType.AVULSO; val response = controller.override(ID, "$group", "$game", override()); assertEquals("CONFIRMED", response.body!!.attendance.status); assertEquals("ORGANIZER", response.body!!.audit!!.source) }
     @Test fun `self request exposes no client authored capacity queue charge actor or timestamp`() { assertEquals(setOf("requestId", "intent"), AttendanceSelfRequest::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }.toSet()) }
     @Test fun `self response requires request id`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(requestId = null)) } }
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
@@ -61,8 +66,9 @@ class AttendanceControllerTest {
 
     private inner class MemoryRepository : AttendanceCommandRepository, AttendanceDetailQuery {
         val members = linkedSetOf(member, second); val records = linkedMapOf<UUID, AttendanceRecord>(); val events = mutableListOf<AttendanceEvent>()
+        val membership = linkedMapOf<UUID, AthleteMembershipType>()
         var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
-        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? = if (groupId == group && gameId == game && memberId in members) AttendanceAggregate(group, game, memberId, actorId, role(actorId), status, deadline, capacity, confirmed(), records[memberId], 2500, LocalDate.of(2026, 8, 12)) else null
+        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? = if (groupId == group && gameId == game && memberId in members) AttendanceAggregate(group, game, memberId, actorId, role(actorId), status, deadline, capacity, confirmed(), records[memberId], 2500, LocalDate.of(2026, 8, 12), membership[memberId] ?: AthleteMembershipType.MENSALISTA) else null
         override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? = if (groupId == group && gameId == game) CapacityAggregate(group, game, actorId, role(actorId), status, deadline, capacity, confirmed(), version, 2500, LocalDate.of(2026, 8, 12)) else null
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator
         override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }

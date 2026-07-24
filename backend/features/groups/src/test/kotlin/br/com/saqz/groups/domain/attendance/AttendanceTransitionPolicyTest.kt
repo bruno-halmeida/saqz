@@ -1,5 +1,6 @@
 package br.com.saqz.groups.domain.attendance
 
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.game.GameStatus
 import org.junit.jupiter.api.Test
 import java.time.Instant
@@ -37,6 +38,14 @@ class AttendanceTransitionPolicyTest {
     @Test fun `organizer reason is trimmed into audit transition`() = transition(organizer(reason = "  Ajuste manual  "), AttendanceIntent.DECLINE, AttendanceStatus.DECLINED, changed = true, reason = "Ajuste manual")
     @Test fun `self transition never accepts audit reason`() = transition(context(reason = "client authored"), AttendanceIntent.DECLINE, AttendanceStatus.DECLINED, changed = true, reason = null)
     @Test fun `organizer confirmation still respects full capacity`() = transition(organizer(confirmed = 2, reason = "Lista de espera"), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true, reason = "Lista de espera")
+    @Test fun `mensalista confirms into the free spot`() = transition(context(membership = AthleteMembershipType.MENSALISTA), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true)
+    @Test fun `mensalista without a free spot waits`() = transition(context(membership = AthleteMembershipType.MENSALISTA, confirmed = 2), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `avulso waits even with a free spot`() = transition(context(membership = AthleteMembershipType.AVULSO), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `avulso rejoin after decline returns to the queue`() = transition(context(membership = AthleteMembershipType.AVULSO, current = AttendanceStatus.DECLINED), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `avulso confirmation retry never demotes a promoted member`() = transition(context(membership = AthleteMembershipType.AVULSO, current = AttendanceStatus.CONFIRMED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED)
+    @Test fun `avulso may decline like any member`() = transition(context(membership = AthleteMembershipType.AVULSO, current = AttendanceStatus.WAITLISTED), AttendanceIntent.DECLINE, AttendanceStatus.DECLINED, changed = true)
+    @Test fun `organizer confirms an avulso within capacity`() = transition(organizer(membership = AthleteMembershipType.AVULSO, reason = "Autorizado"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Autorizado")
+    @Test fun `organizer confirmation of an avulso still respects full capacity`() = transition(organizer(membership = AthleteMembershipType.AVULSO, confirmed = 2, reason = "Lista de espera"), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true, reason = "Lista de espera")
     @Test fun `only a newly confirmed transition requests a charge`() { transition(context(current = AttendanceStatus.DECLINED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true); transition(context(current = AttendanceStatus.CONFIRMED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, charge = false) }
 
     private fun transition(
@@ -66,7 +75,8 @@ class AttendanceTransitionPolicyTest {
         confirmed: Int = 0,
         current: AttendanceStatus? = null,
         reason: String? = null,
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason)
+        membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership)
 
     private fun organizer(
         status: GameStatus = GameStatus.PUBLISHED,
@@ -75,7 +85,8 @@ class AttendanceTransitionPolicyTest {
         confirmed: Int = 0,
         current: AttendanceStatus? = null,
         reason: String? = "Ajuste do organizador",
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.ORGANIZER, reason)
+        membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.ORGANIZER, reason, membership)
 
     private companion object { val DEADLINE: Instant = Instant.parse("2026-08-11T22:30:00Z") }
 }
