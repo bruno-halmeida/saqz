@@ -5,7 +5,6 @@ import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
-import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.SessionAccessState
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,11 +16,9 @@ import kotlin.test.assertEquals
  */
 class SaqzNavHostTest {
 
-    private fun stackFor(
-        session: SessionAccessState,
-        authScreen: AuthScreen = AuthScreen.LOGIN,
-    ): List<NavKey> = mutableListOf<NavKey>(AccessRoute.Starting)
-        .also { reconcileAccessStack(it, session, authScreen) }
+    private fun stackFor(session: SessionAccessState): List<NavKey> =
+        mutableListOf<NavKey>(AccessRoute.Starting)
+            .also { reconcileAccessStack(it, session) }
 
     @Test
     fun signedOutRoutesToLogin() {
@@ -63,32 +60,26 @@ class SaqzNavHostTest {
         assertEquals(listOf(SaqzShellDestination), stackFor(SessionAccessState.Ready(session)))
     }
 
+    // VUL-35: registration and password reset are gone, so signed-out has no sub-route
+    // left to stack on top of Login -- the access stack is never deeper than one entry.
     @Test
-    fun signedOutSubRoutesStackOnTopOfLogin() {
-        assertEquals(
-            listOf(AccessRoute.Login, AccessRoute.Registration),
-            stackFor(SessionAccessState.SignedOut, AuthScreen.REGISTRATION),
-        )
-        assertEquals(
-            listOf(AccessRoute.Login, AccessRoute.PasswordReset),
-            stackFor(SessionAccessState.SignedOut, AuthScreen.PASSWORD_RESET),
-        )
-    }
-
-    @Test
-    fun authScreenIsIgnoredOnceSignedIn() {
-        // A stale REGISTRATION screen must not leak a sub-route into an authenticated stack.
-        assertEquals(
-            listOf(SaqzShellDestination),
-            stackFor(SessionAccessState.Ready(session), AuthScreen.REGISTRATION),
-        )
+    fun everySessionStateResolvesToASingleEntry() {
+        listOf(
+            SessionAccessState.SignedOut,
+            SessionAccessState.AwaitingVerification(user),
+            SessionAccessState.CompletingName(user),
+            SessionAccessState.CompletingPhone(session),
+            SessionAccessState.Bootstrapping,
+            SessionAccessState.BootstrapError,
+            SessionAccessState.Ready(session),
+        ).forEach { state -> assertEquals(1, stackFor(state).size) }
     }
 
     @Test
     fun reconcilingAnAlreadyMatchingStackIsANoOp() {
         val stack = mutableListOf<NavKey>(AccessRoute.Login)
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.LOGIN)
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.LOGIN)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }
 

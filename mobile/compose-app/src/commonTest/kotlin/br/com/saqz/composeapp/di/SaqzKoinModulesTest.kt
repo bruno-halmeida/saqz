@@ -236,7 +236,7 @@ class SaqzKoinModulesTest {
         val session = koin.get<SessionAccessStateMachine>()
         session.onIntent(
             SessionIntent.Accept(
-                AuthTransition.VerificationRequired(
+                AuthTransition.Authenticated(
                     NativeUser(subject = "user-1", email = "person@example.com", displayName = "Person", emailVerified = false),
                 ),
             ),

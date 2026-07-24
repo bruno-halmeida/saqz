@@ -6,7 +6,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.access.navigation.AccessRoute
-import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.route.AccessRouteIntent
@@ -17,23 +16,20 @@ import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PhoneCompletionRoot
-import br.com.saqz.access.ui.PasswordResetRoot
-import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationRoot
 import br.com.saqz.designsystem.component.SaqzLoadingState
 
 /**
- * ACCESSNAV-01: installs Starting/Login/Registration/PasswordReset/Verification/
- * NameCompletion/Bootstrap into the shared product entry provider (MODNAV-01).
+ * ACCESSNAV-01: installs Starting/Login/Verification/NameCompletion/PhoneCompletion/
+ * Bootstrap into the shared product entry provider (MODNAV-01).
  *
- * Login, Registration, PasswordReset, Verification, and NameCompletion already have
- * dedicated per-route ViewModels and feature-owned Roots (design.md, Reconciliation
- * note) -- their entries wrap the existing `*Root()` composables unchanged and do not
- * recreate a ViewModel. Starting and Bootstrap have no dedicated ViewModel yet; each of
+ * Login, Verification, NameCompletion and PhoneCompletion already have dedicated
+ * per-route ViewModels and feature-owned Roots -- their entries wrap the existing
+ * `*Root()` composables unchanged and do not recreate a ViewModel. Starting and Bootstrap have no dedicated ViewModel yet; each of
  * their entries obtains its own [AccessRouteViewModel] adapter instance (T11),
  * entry-scoped through [viewModel] (LIFE-01, LIFE-05). No entry here imports
  * Navigation Compose 3 UI or performs a Koin lookup -- `koinViewModel()` resolution for
- * the five existing Roots happens inside `:features:access` itself.
+ * the existing Roots happens inside `:features:access` itself.
  */
 fun EntryProviderScope<NavKey>.installAccessEntries(session: SessionAccessStateMachine) {
     entry<AccessRoute.Starting> {
@@ -43,8 +39,6 @@ fun EntryProviderScope<NavKey>.installAccessEntries(session: SessionAccessStateM
         SaqzLoadingState()
     }
     entry<AccessRoute.Login> { LoginRoot() }
-    entry<AccessRoute.Registration> { RegistrationRoot() }
-    entry<AccessRoute.PasswordReset> { PasswordResetRoot() }
     entry<AccessRoute.Verification> { VerificationRoot() }
     entry<AccessRoute.NameCompletion> { NameCompletionRoot() }
     entry<AccessRoute.PhoneCompletion> { PhoneCompletionRoot() }
@@ -71,21 +65,14 @@ private fun AccessRouteState.Bootstrap.toSessionAccessState(): SessionAccessStat
 }
 
 /**
- * ACCESSNAV-03: reconciles [stack]'s root/top with the shared [session]/[authScreen]
- * source of truth. `Login`/`Registration`/`PasswordReset` are user-driven
- * sub-navigation while [SessionAccessState.SignedOut] is active: navigating away from
- * Login pushes exactly one additional entry, so system/TopBar back (ACCESSNAV-02)
- * always resolves back to Login. Every other session state canonicalizes the stack to
- * its single matching route. No-op when the stack already equals the target shape
- * (STATE-03 idempotency) -- safe to call on every recomposition/state emission.
+ * ACCESSNAV-03: reconciles [stack]'s root/top with the shared [session] source of truth.
+ * Every session state canonicalizes the stack to its single matching route -- with
+ * registration and password reset gone, Login has no user-driven sub-navigation left.
+ * No-op when the stack already equals the target shape (STATE-03 idempotency) -- safe to
+ * call on every recomposition/state emission.
  */
-fun reconcileAccessStack(stack: MutableList<NavKey>, session: SessionAccessState, authScreen: AuthScreen) {
-    val target: List<NavKey> = if (session == SessionAccessState.SignedOut) {
-        val subRoute = authScreen.toSubRouteOrNull()
-        if (subRoute == null) listOf(AccessRoute.Login) else listOf(AccessRoute.Login, subRoute)
-    } else {
-        listOf(session.toAccessRoute())
-    }
+fun reconcileAccessStack(stack: MutableList<NavKey>, session: SessionAccessState) {
+    val target: List<NavKey> = listOf(session.toAccessRoute())
     if (stack != target) {
         stack.clear()
         stack.addAll(target)
@@ -97,12 +84,6 @@ fun reconcileAccessStack(stack: MutableList<NavKey>, session: SessionAccessState
  * mode switches to `AUTHENTICATED` instead of pushing Groups onto the access stack.
  */
 fun isAccessSession(session: SessionAccessState): Boolean = session !is SessionAccessState.Ready
-
-private fun AuthScreen.toSubRouteOrNull(): AccessRoute? = when (this) {
-    AuthScreen.LOGIN -> null
-    AuthScreen.REGISTRATION -> AccessRoute.Registration
-    AuthScreen.PASSWORD_RESET -> AccessRoute.PasswordReset
-}
 
 private fun SessionAccessState.toAccessRoute(): AccessRoute = when (this) {
     SessionAccessState.SignedOut -> AccessRoute.Login

@@ -2,9 +2,7 @@ package br.com.saqz.composeapp.di
 
 import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.namecompletion.NameCompletionViewModel
-import br.com.saqz.access.presentation.passwordreset.PasswordResetViewModel
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
-import br.com.saqz.access.presentation.registration.RegistrationViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
 import br.com.saqz.composeapp.navigation.AccessOrchestrator
 import br.com.saqz.composeapp.navigation.AccessRuntimeContract
@@ -23,8 +21,6 @@ internal val composePresentationModule = module {
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
     viewModelOf(::LoginViewModel)
-    viewModelOf(::RegistrationViewModel)
-    viewModelOf(::PasswordResetViewModel)
     viewModelOf(::VerificationViewModel)
     viewModelOf(::NameCompletionViewModel)
     viewModelOf(::PhoneCompletionViewModel)

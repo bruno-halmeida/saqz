@@ -17,8 +17,6 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
         polymorphic(NavKey::class) {
             subclass(AccessRoute.Starting::class, AccessRoute.Starting.serializer())
             subclass(AccessRoute.Login::class, AccessRoute.Login.serializer())
-            subclass(AccessRoute.Registration::class, AccessRoute.Registration.serializer())
-            subclass(AccessRoute.PasswordReset::class, AccessRoute.PasswordReset.serializer())
             subclass(AccessRoute.Verification::class, AccessRoute.Verification.serializer())
             subclass(AccessRoute.NameCompletion::class, AccessRoute.NameCompletion.serializer())
             subclass(AccessRoute.PhoneCompletion::class, AccessRoute.PhoneCompletion.serializer())

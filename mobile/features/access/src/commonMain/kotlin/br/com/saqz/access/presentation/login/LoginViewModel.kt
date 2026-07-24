@@ -25,8 +25,6 @@ class LoginViewModel(
             is LoginIntent.UpdatePassword -> authentication.onIntent(AuthenticationIntent.UpdatePassword(intent.value))
             LoginIntent.SubmitPasswordLogin -> authentication.onIntent(AuthenticationIntent.SubmitPasswordLogin)
             LoginIntent.SubmitGoogleLogin -> authentication.onIntent(AuthenticationIntent.SubmitGoogleLogin)
-            LoginIntent.ShowRegistration -> authentication.onIntent(AuthenticationIntent.ShowRegistration)
-            LoginIntent.ShowPasswordReset -> authentication.onIntent(AuthenticationIntent.ShowPasswordReset)
         }
     }
 }
