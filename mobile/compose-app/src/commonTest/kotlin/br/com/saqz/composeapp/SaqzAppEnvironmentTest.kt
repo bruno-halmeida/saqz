@@ -1,10 +1,8 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.core.common.state.SaqzUiState
 import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -16,39 +14,16 @@ import kotlin.test.assertTrue
 class SaqzAppEnvironmentTest {
 
     @Test
-    fun defaultShowsContent() {
-        val dependencies = startTestSaqzKoin()
+    fun defaultBootRendersTheAccessGate() {
+        startTestSaqzKoin()
         try {
             runComposeUiTest {
-                setContent { SaqzApp(dependencies) }
-                // Default startup is Content(Unit): the Home content slot renders, not a state view.
+                setContent { SaqzApp() }
                 onNodeWithText("Organize seu grupo.", substring = true).assertExists()
-                onNodeWithContentDescription("Carregando").assertDoesNotExist()
             }
         } finally {
             stopTestSaqzKoin()
         }
-    }
-
-    @Test
-    fun loadingUsesStateHost() = runComposeUiTest {
-        setContent { SaqzApp(SaqzAppEnvironment(startupState = SaqzUiState.Loading)) }
-        onNodeWithContentDescription("Carregando").assertExists()
-        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
-    }
-
-    @Test
-    fun emptyUsesStateHost() = runComposeUiTest {
-        setContent { SaqzApp(SaqzAppEnvironment(startupState = SaqzUiState.Empty)) }
-        onNodeWithText("Nada por aqui").assertExists()
-        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
-    }
-
-    @Test
-    fun errorUsesStateHost() = runComposeUiTest {
-        setContent { SaqzApp(SaqzAppEnvironment(startupState = SaqzUiState.Error)) }
-        onNodeWithText("Não foi possível carregar").assertExists()
-        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -81,13 +56,10 @@ class SaqzAppEnvironmentTest {
 
     @Test
     fun nativeBoundaryHasOnlyTwoBooleans() {
-        // Native supplies just the two booleans; startup stays Content(Unit), so no core
-        // SaqzUiState type crosses the boundary.
+        // Native supplies just the two accessibility booleans; nothing else crosses.
         val env = SaqzAppEnvironment(reduceMotion = true, reduceTransparency = true)
-        assertEquals(SaqzUiState.Content(Unit), env.startupState)
         assertTrue(env.reduceMotion && env.reduceTransparency)
         val defaults = SaqzAppEnvironment()
-        assertEquals(SaqzUiState.Content(Unit), defaults.startupState)
         assertFalse(defaults.reduceMotion || defaults.reduceTransparency)
     }
 }

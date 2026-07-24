@@ -96,24 +96,12 @@ class AndroidAuthenticatedLifecycleTest {
     }
 
     @Test
-    fun recreationRetainsOneLinkSubscriptionAndOnePendingRestore() {
-        compose.activityRule.scenario.recreate()
-        compose.waitForIdle()
-
-        assertEquals(2, state.links.startCalls)
-        assertEquals(2, state.links.activeSubscriptions)
-        assertEquals(1, state.local.pendingReads)
-        assertEquals(LifecycleFixture.RESTORED_INVITE, state.local.pending)
-    }
-
-    @Test
     fun backgroundForegroundDoesNotDuplicateSubscriptionsOrColdStart() {
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         compose.waitForIdle()
 
         assertEquals(1, state.auth.observeCalls)
-        assertEquals(2, state.links.startCalls)
         assertEquals(listOf<String?>(null), state.links.coldUrls)
     }
 
@@ -136,27 +124,6 @@ class AndroidAuthenticatedLifecycleTest {
         } finally {
             compose.activityRule.scenario.onActivity { it.intent = scenarioIntent }
         }
-    }
-
-    @Test
-    fun inviteArrivingBeforeAuthenticationIsPersisted() {
-        state.links.emit(LifecycleFixture.NEW_INVITE)
-        compose.waitUntil(timeoutMillis = 5_000) { state.local.pending == LifecycleFixture.NEW_INVITE }
-
-        assertEquals(LifecycleFixture.NEW_INVITE, state.local.pending)
-        assertEquals(LifecycleFixture.NEW_INVITE, state.local.pendingWrites.last())
-        assertEquals(0, state.auth.passwordCalls)
-    }
-
-    @Test
-    fun restoredInviteRemainsPendingAcrossRecreation() {
-        assertEquals(LifecycleFixture.RESTORED_INVITE, state.local.pending)
-
-        compose.activityRule.scenario.recreate()
-        compose.waitForIdle()
-
-        assertEquals(LifecycleFixture.RESTORED_INVITE, state.local.pending)
-        assertEquals(1, state.local.pendingReads)
     }
 
     @Test

@@ -1,13 +1,20 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.runtime.Composable
-import br.com.saqz.composeapp.navigation.ProductNavigationRoute
-import br.com.saqz.composeapp.shell.SaqzAppShell
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import br.com.saqz.composeapp.navigation.AccessViewModel
+import br.com.saqz.composeapp.navigation.SaqzNavHost
 import br.com.saqz.designsystem.theme.SaqzTheme
+import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * C1 composition root: theme + session gate + the acesso→shell back stack. Everything it
+ * needs comes from Koin, which the platform launcher starts with `SaqzPlatformDependencies`
+ * before this composes.
+ */
 @Composable
 fun SaqzApp(
-    dependencies: SaqzPlatformDependencies,
     reduceMotion: Boolean = false,
     reduceTransparency: Boolean = false,
 ) {
@@ -17,13 +24,12 @@ fun SaqzApp(
             reduceTransparency = reduceTransparency,
         ).toPreferences(),
     ) {
-        ProductNavigationRoute(dependencies)
+        AccessGate()
     }
 }
 
-// Retained as a package-local initialization fixture while native launchers migrate to
-// SaqzPlatformDependencies. Product entry points use the authenticated root above.
 @Composable
-internal fun SaqzApp(environment: SaqzAppEnvironment) {
-    SaqzAppShell(environment = environment)
+private fun AccessGate(viewModel: AccessViewModel = koinViewModel()) {
+    val state by viewModel.state.collectAsState()
+    SaqzNavHost(state = state, onIntent = viewModel::onIntent)
 }
