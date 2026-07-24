@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
 import br.com.saqz.groups.domain.attendance.*
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
@@ -20,6 +21,7 @@ data class AttendanceAggregate(
     val current: AttendanceRecord?,
     val gameFeeCents: Long?,
     val gameDate: LocalDate,
+    val membershipType: AthleteMembershipType,
 )
 
 data class AttendanceRecord(

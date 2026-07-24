@@ -71,7 +71,7 @@ class AttendanceConcurrencySensorIntegrationTest {
     private fun chargePort() = AttendanceChargeAdapter(ChargeTransactions(JdbcTransactionRunner(dataSource), JdbcChargeTransactionRepository(dataSource)) { NOW })
     private fun confirmed(f: Fixture, member: UUID) = execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','CONFIRMED',now(),now(),'Member')")
     private fun waitlisted(f: Fixture, member: UUID, sequence: Int) = execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','WAITLISTED',$sequence,now(),now(),'Member')")
-    private fun member(group: UUID, subject: String): UUID { val id = user(subject); execute("INSERT INTO group_memberships VALUES ('$group','$id','ATHLETE',now(),now())"); return id }
+    private fun member(group: UUID, subject: String): UUID { val id = user(subject); execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at,membership_type) VALUES ('$group','$id','ATHLETE',now(),now(),'MENSALISTA')"); return id }
     private fun user(subject: String): UUID { val id = UUID.randomUUID(); execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-${UUID.randomUUID()}',true,'User',now(),now())"); return id }
     private fun status(member: UUID) = string("SELECT status FROM game_attendance WHERE member_user_id='$member'")
     private fun countStatus(status: String) = int("SELECT count(*) FROM game_attendance WHERE status='$status'")
