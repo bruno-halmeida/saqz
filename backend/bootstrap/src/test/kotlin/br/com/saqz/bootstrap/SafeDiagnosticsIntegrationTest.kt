@@ -40,6 +40,11 @@ import tools.jackson.databind.ObjectMapper
 @ActiveProfiles("test")
 @TestPropertySource(properties = ["saqz.firebase.emulator.enabled=true"])
 class SafeDiagnosticsIntegrationTest {
+    private companion object {
+        const val LOG_CAPTURE_TIMEOUT_MILLIS = 2_000L
+        const val LOG_CAPTURE_POLL_MILLIS = 25L
+    }
+
     @LocalServerPort
     private var port: Int = 0
 
@@ -61,7 +66,7 @@ class SafeDiagnosticsIntegrationTest {
 
         assertProblem(response, 401, "AUTHENTICATION_REQUIRED")
         assertTrue(correlationId.isNotBlank())
-        assertTrue(output.out.contains("correlationId=$correlationId status=401"))
+        assertCorrelationLogged(output, correlationId, 401)
     }
 
     @Test
@@ -72,7 +77,7 @@ class SafeDiagnosticsIntegrationTest {
         val correlationId = correlationId(response)
 
         assertProblem(response, 503, "IDENTITY_PROVIDER_UNAVAILABLE")
-        assertTrue(output.out.contains("correlationId=$correlationId status=503"))
+        assertCorrelationLogged(output, correlationId, 503)
     }
 
     @Test
@@ -86,7 +91,7 @@ class SafeDiagnosticsIntegrationTest {
         assertTrue(response.body().contains("\"status\":500"))
         assertFalse(response.body().contains("FirebaseAuthException"))
         assertFalse(response.body().contains("private-key-content"))
-        assertTrue(output.out.contains("correlationId=$correlationId status=500"))
+        assertCorrelationLogged(output, correlationId, 500)
     }
 
     @Test
@@ -159,7 +164,7 @@ class SafeDiagnosticsIntegrationTest {
         val correlationId = correlationHeader(response)
 
         assertTrue(correlationId.isNotBlank())
-        assertTrue(output.out.contains("correlationId=$correlationId status=200"))
+        assertCorrelationLogged(output, correlationId, 200)
     }
 
     @Test
@@ -229,6 +234,18 @@ class SafeDiagnosticsIntegrationTest {
         assertEquals("application/problem+json", response.headers().firstValue("Content-Type").get())
         assertTrue(response.body().contains("\"status\":$status"))
         assertTrue(response.body().contains("\"code\":\"$code\""))
+    }
+
+    // The response reaches the client before the access log line is flushed, so reading
+    // CapturedOutput right away races the writer. Poll for the exact expected line instead
+    // of asserting on a snapshot; the assertion itself is unchanged.
+    private fun assertCorrelationLogged(output: CapturedOutput, correlationId: String, status: Int) {
+        val expected = "correlationId=$correlationId status=$status"
+        val deadline = System.currentTimeMillis() + LOG_CAPTURE_TIMEOUT_MILLIS
+        while (System.currentTimeMillis() < deadline && !output.out.contains(expected)) {
+            Thread.sleep(LOG_CAPTURE_POLL_MILLIS)
+        }
+        assertTrue(output.out.contains(expected), "captured output never contained: $expected")
     }
 
     private fun correlationId(response: HttpResponse<String>): String =

@@ -114,6 +114,19 @@ with VUL-7.
   `IOSAthleteJourneyTests` (native seam). Lesson: client route gating must
   name the backend action it mirrors, not borrow a stricter neighbor flag.
 
+- B7 | 2026-07-24 — `SafeDiagnosticsIntegrationTest` flaked twice in four recent
+  CI runs on `:bootstrap:test`: run 30065178132 (PR #6) failed the 503 and 500
+  correlation assertions, and run 30099951513 (this PR, docs-only on a green
+  base) failed the 401 one. All four correlation tests read `CapturedOutput`
+  immediately after the HTTP client returns, but the response reaches the
+  client before the access-log line is flushed, so the assertion races the log
+  writer and which method loses the race is arbitrary. Fixed in the capture,
+  not the assertion: `assertCorrelationLogged` polls `output.out` for up to 2s
+  (25ms interval) for the exact same `correlationId=<id> status=<code>` string
+  before asserting it. The assertion is byte-for-byte what it was — only its
+  timing changed. Lesson: an assertion on asynchronously flushed output must
+  own its wait, or it encodes a race as a pass/fail coin flip.
+
 ## T14 Android Journey Follow-up (VUL-5, 2026-07-24)
 
 Android end-to-end journey coverage added in `AndroidAthleteJourneyTest`
