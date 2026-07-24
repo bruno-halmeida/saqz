@@ -67,7 +67,7 @@ class AdjustGameCapacity(
                     AttendanceEvent(
                         ids(), aggregate.gameId, aggregate.groupId, promoted.memberId,
                         aggregate.actorId, AttendanceSource.SYSTEM, AttendanceStatus.WAITLISTED,
-                        AttendanceStatus.CONFIRMED, null, timestamp,
+                        AttendanceStatus.CONFIRMED, null, timestamp, waiting.waitlistSequence,
                     ),
                 )
                 charges.promoted(aggregate.forMember(waiting), aggregate.actorId)

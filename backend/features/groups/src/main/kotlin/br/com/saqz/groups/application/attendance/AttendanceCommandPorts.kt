@@ -46,6 +46,7 @@ data class AttendanceEvent(
     val newStatus: AttendanceStatus,
     val reason: String?,
     val occurredAt: Instant,
+    val previousWaitlistSequence: Long? = null,
 )
 
 interface AttendanceCommandRepository {
@@ -53,6 +54,7 @@ interface AttendanceCommandRepository {
     fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate?
     fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long
     fun earliestWaitlisted(groupId: UUID, gameId: UUID): AttendanceRecord?
+    fun latestEvent(groupId: UUID, gameId: UUID, memberId: UUID): AttendanceEvent?
     fun save(record: AttendanceRecord)
     fun append(event: AttendanceEvent)
     fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean

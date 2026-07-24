@@ -32,6 +32,7 @@ class AttendanceControllerTest {
             RespondAttendance(transaction, repository, charges, { NOW }, UUID::randomUUID),
             AdjustGameCapacity(transaction, repository, charges, { NOW }, UUID::randomUUID),
             repository,
+            UndoAutomaticPromotion(transaction, repository, { NOW }, UUID::randomUUID),
         )
     }
 
@@ -45,6 +46,11 @@ class AttendanceControllerTest {
     @Test fun `avulso self confirm waits even with a free spot`() { actor = member; repository.membership[member] = AthleteMembershipType.AVULSO; val response = controller.respond(ID, "$group", "$game", self()); assertEquals("WAITLISTED", response.body!!.attendance.status); assertEquals(1, response.body!!.attendance.waitlistPosition); assertEquals(0, response.body!!.detail.confirmedCount) }
     @Test fun `confirmed withdrawal promotes the earliest waiting avulso`() { repository.membership[second] = AthleteMembershipType.AVULSO; actor = second; controller.respond(ID, "$group", "$game", self()); actor = member; controller.respond(ID, "$group", "$game", self()); controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE")); assertEquals(AttendanceStatus.CONFIRMED, repository.records[second]!!.status); assertNull(repository.records[second]!!.waitlistSequence) }
     @Test fun `organizer override confirms an avulso into a free spot`() { repository.membership[member] = AthleteMembershipType.AVULSO; val response = controller.override(ID, "$group", "$game", override()); assertEquals("CONFIRMED", response.body!!.attendance.status); assertEquals("ORGANIZER", response.body!!.audit!!.source) }
+    @Test fun `organizer confirms a self waitlisted avulso when a spot is free`() { actor = member; repository.membership[member] = AthleteMembershipType.AVULSO; controller.respond(ID, "$group", "$game", self()); assertEquals("WAITLISTED", repository.records[member]!!.status.name); actor = owner; val response = controller.override(ID, "$group", "$game", override()); assertEquals("CONFIRMED", response.body!!.attendance.status); assertEquals("ORGANIZER", response.body!!.audit!!.source); assertEquals(1, response.body!!.detail.confirmedCount) }
+    @Test fun `organizer confirm on a full waitlist is explicitly denied not a silent success`() { actor = member; repository.membership[member] = AthleteMembershipType.AVULSO; controller.respond(ID, "$group", "$game", self()); repository.record(second, AttendanceStatus.CONFIRMED); repository.record(UUID.randomUUID().also(repository.members::add), AttendanceStatus.CONFIRMED); actor = owner; assertFailsWith<AttendanceCapacityFullException> { controller.override(ID, "$group", "$game", override()) } }
+    @Test fun `undo restores an automatically promoted avulso to its original waitlist position`() { repository.membership[second] = AthleteMembershipType.AVULSO; actor = second; controller.respond(ID, "$group", "$game", self()); actor = member; controller.respond(ID, "$group", "$game", self()); controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE")); assertEquals(AttendanceStatus.CONFIRMED, repository.records[second]!!.status); actor = owner; val response = controller.undoPromotion(ID, "$group", "$game", undo(second)); assertEquals("WAITLISTED", response.body!!.attendance.status); assertEquals(1, response.body!!.attendance.waitlistPosition) }
+    @Test fun `undo is refused for a manual organizer promotion`() { repository.membership[member] = AthleteMembershipType.AVULSO; controller.override(ID, "$group", "$game", override()); assertFailsWith<AttendancePromotionNotAutomaticException> { controller.undoPromotion(ID, "$group", "$game", undo(member)) } }
+    @Test fun `athlete cannot undo a promotion`() { actor = member; assertFailsWith<AccessForbiddenException> { controller.undoPromotion(ID, "$group", "$game", undo(member)) } }
     @Test fun `self request exposes no client authored capacity queue charge actor or timestamp`() { assertEquals(setOf("requestId", "intent"), AttendanceSelfRequest::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }.toSet()) }
     @Test fun `self response requires request id`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(requestId = null)) } }
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
@@ -63,6 +69,7 @@ class AttendanceControllerTest {
 
     private fun self() = AttendanceSelfRequest(UUID.randomUUID(), "CONFIRM")
     private fun override() = AttendanceOverrideRequest(UUID.randomUUID(), member, "CONFIRM", "Chegou após o prazo")
+    private fun undo(memberId: UUID) = UndoPromotionRequest(UUID.randomUUID(), memberId)
 
     private inner class MemoryRepository : AttendanceCommandRepository, AttendanceDetailQuery {
         val members = linkedSetOf(member, second); val records = linkedMapOf<UUID, AttendanceRecord>(); val events = mutableListOf<AttendanceEvent>()
@@ -72,6 +79,7 @@ class AttendanceControllerTest {
         override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? = if (groupId == group && gameId == game) CapacityAggregate(group, game, actorId, role(actorId), status, deadline, capacity, confirmed(), version, 2500, LocalDate.of(2026, 8, 12)) else null
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator
         override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
+        override fun latestEvent(groupId: UUID, gameId: UUID, memberId: UUID) = events.lastOrNull { it.groupId == groupId && it.gameId == gameId && it.memberId == memberId }
         override fun save(record: AttendanceRecord) { records[record.memberId] = record }
         override fun append(event: AttendanceEvent) { events += event }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }

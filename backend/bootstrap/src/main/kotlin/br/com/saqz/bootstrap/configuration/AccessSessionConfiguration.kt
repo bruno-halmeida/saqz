@@ -60,6 +60,7 @@ import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRe
 import br.com.saqz.groups.application.attendance.AdjustGameCapacity
 import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
 import br.com.saqz.groups.application.attendance.RespondAttendance
+import br.com.saqz.groups.application.attendance.UndoAutomaticPromotion
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
@@ -347,7 +348,8 @@ class AccessSessionConfiguration {
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
-    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery) = AttendanceController(actor, responses, capacities, details)
+    @Bean fun undoAutomaticPromotion(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository) = UndoAutomaticPromotion(transaction, repository, Instant::now)
+    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, undo: UndoAutomaticPromotion) = AttendanceController(actor, responses, capacities, details, undo)
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)

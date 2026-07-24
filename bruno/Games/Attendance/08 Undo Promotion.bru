@@ -1,0 +1,15 @@
+meta {
+  name: Undo Promotion
+  type: http
+  seq: 8
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/attendance/undo-promotion
+  body: json
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+body:json { {"requestId":"{{$guid}}","memberId":"{{memberId}}"} }
+tests {
+  test("undo returns the athlete to the waitlist", function () { expect(res.status).to.equal(200); expect(res.body.attendance.status).to.equal("WAITLISTED"); expect(res.body.audit.source).to.equal("ORGANIZER"); });
+}

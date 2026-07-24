@@ -85,6 +85,7 @@ class RespondAttendance(
                 decision.newStatus,
                 decision.reason,
                 timestamp,
+                aggregate.current?.waitlistSequence.takeIf { decision.oldStatus == AttendanceStatus.WAITLISTED },
             )
         repository.append(event)
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
@@ -116,6 +117,7 @@ class RespondAttendance(
                 AttendanceStatus.CONFIRMED,
                 null,
                 timestamp,
+                waiting.waitlistSequence,
             ),
         )
         charges.promoted(aggregate.copy(memberId = promoted.memberId, current = waiting), aggregate.actorId)

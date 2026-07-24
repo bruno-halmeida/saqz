@@ -26,6 +26,7 @@ enum class AttendanceDenial {
     DEADLINE_PASSED,
     REASON_REQUIRED,
     REASON_INVALID,
+    CAPACITY_FULL,
 }
 
 sealed interface AttendanceDecision {
@@ -66,6 +67,7 @@ object AttendanceTransitionPolicy {
         val target = when (intent) {
             AttendanceIntent.DECLINE -> AttendanceStatus.DECLINED
             AttendanceIntent.CONFIRM -> confirmationTarget(context)
+                ?: return AttendanceDecision.Denied(AttendanceDenial.CAPACITY_FULL)
         }
         val changed = context.currentStatus != target
         return AttendanceDecision.Transition(
@@ -79,9 +81,16 @@ object AttendanceTransitionPolicy {
         )
     }
 
-    private fun confirmationTarget(context: AttendanceDecisionContext): AttendanceStatus = when (context.currentStatus) {
+    // Retorna null quando um CONFIRM de organizador sobre um espera não pode
+    // promover por falta de vaga: o caller trata isso como negação explícita,
+    // nunca como um no-op silencioso com resposta de sucesso.
+    private fun confirmationTarget(context: AttendanceDecisionContext): AttendanceStatus? = when (context.currentStatus) {
         AttendanceStatus.CONFIRMED -> AttendanceStatus.CONFIRMED
-        AttendanceStatus.WAITLISTED -> AttendanceStatus.WAITLISTED
+        AttendanceStatus.WAITLISTED -> when {
+            context.source != AttendanceSource.ORGANIZER -> AttendanceStatus.WAITLISTED
+            context.confirmedCount < context.capacity -> AttendanceStatus.CONFIRMED
+            else -> null
+        }
         AttendanceStatus.DECLINED, null -> when {
             // O avulso nunca toma vaga por conta própria: entra na espera e só é confirmado por
             // promoção do sistema (FIFO) ou por decisão do organizador.

@@ -25,6 +25,10 @@ data class CapacityRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
     @JsonProperty("capacity") val capacity: Int?,
 )
+data class UndoPromotionRequest @JsonCreator constructor(
+    @JsonProperty("requestId") val requestId: UUID?,
+    @JsonProperty("memberId") val memberId: UUID?,
+)
 data class AttendanceEntryResponse(
     val memberId: UUID,
     val status: String,
@@ -60,6 +64,8 @@ data class CapacityResponse(
 )
 class AttendanceDeadlinePassedException : RuntimeException()
 class AttendanceFrozenException : RuntimeException()
+class AttendanceCapacityFullException : RuntimeException()
+class AttendancePromotionNotAutomaticException : RuntimeException()
 
 @RestController
 class AttendanceController(
@@ -67,6 +73,7 @@ class AttendanceController(
     private val responses: RespondAttendance,
     private val capacities: AdjustGameCapacity,
     private val details: AttendanceDetailQuery,
+    private val undo: UndoAutomaticPromotion,
 ) {
     @GetMapping("/api/groups/{groupId}/games/{gameId}/attendance")
     fun read(
@@ -106,6 +113,26 @@ class AttendanceController(
         )
     }
 
+    @PostMapping("/api/groups/{groupId}/games/{gameId}/attendance/undo-promotion")
+    fun undoPromotion(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+        @PathVariable gameId: String,
+        @RequestBody request: UndoPromotionRequest,
+    ): ResponseEntity<AttendanceMutationResponse> {
+        required(request.requestId, "requestId")
+        val member = required(request.memberId, "memberId")
+        val actor = actors.resolve(identity)
+        val group = uuid(groupId); val game = uuid(gameId)
+        return when (val result = undo.execute(actor, group, game, member)) {
+            is UndoPromotionResult.Success -> ResponseEntity.ok().eTag(result.attendance.version.toString())
+                .body(AttendanceMutationResponse(result.attendance.response(), result.event.response(), 0, detail(actor, group, game)))
+            UndoPromotionResult.Hidden -> throw GameNotFoundException()
+            UndoPromotionResult.Forbidden -> throw AccessForbiddenException()
+            UndoPromotionResult.NotAutomaticPromotion -> throw AttendancePromotionNotAutomaticException()
+        }
+    }
+
     @PutMapping("/api/groups/{groupId}/games/{gameId}/capacity")
     fun capacity(
         @AuthenticationPrincipal identity: RequestIdentity,
@@ -142,6 +169,7 @@ class AttendanceController(
             AttendanceDenial.REASON_REQUIRED, AttendanceDenial.REASON_INVALID -> invalid("reason")
             AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
             AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
+            AttendanceDenial.CAPACITY_FULL -> throw AttendanceCapacityFullException()
         }
         AttendanceCommandResult.Hidden -> throw GameNotFoundException()
         AttendanceCommandResult.Forbidden -> throw AccessForbiddenException()

@@ -96,6 +96,29 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             .optional()
             .orElse(null)
 
+    override fun latestEvent(groupId: UUID, gameId: UUID, memberId: UUID): AttendanceEvent? =
+        jdbc.sql(LATEST_EVENT)
+            .param("group", groupId)
+            .param("game", gameId)
+            .param("member", memberId)
+            .query { rs, _ ->
+                AttendanceEvent(
+                    rs.getObject("id", UUID::class.java),
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    rs.getObject("actor_user_id", UUID::class.java),
+                    AttendanceSource.valueOf(rs.getString("source")),
+                    rs.getString("old_status")?.let(AttendanceStatus::valueOf),
+                    AttendanceStatus.valueOf(rs.getString("new_status")),
+                    rs.getString("reason"),
+                    rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getObject("previous_waitlist_sequence", Long::class.javaObjectType),
+                )
+            }
+            .optional()
+            .orElse(null)
+
     override fun save(record: AttendanceRecord) {
         check(
             jdbc.sql(SAVE)
@@ -123,6 +146,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             .param("new", event.newStatus.name)
             .param("reason", event.reason, java.sql.Types.VARCHAR)
             .param("occurred", Timestamp.from(event.occurredAt))
+            .param("previousSequence", event.previousWaitlistSequence, java.sql.Types.BIGINT)
             .update()
     }
 
@@ -224,8 +248,15 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
         """
         const val APPEND = """
             INSERT INTO attendance_events
-                (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at)
-            VALUES (:id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred)
+                (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at,previous_waitlist_sequence)
+            VALUES (:id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred,:previousSequence)
+        """
+        const val LATEST_EVENT = """
+            SELECT id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at,previous_waitlist_sequence
+            FROM attendance_events
+            WHERE group_id=:group AND game_id=:game AND member_user_id=:member
+            ORDER BY occurred_at DESC, id DESC
+            LIMIT 1
         """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
