@@ -9,11 +9,11 @@ import kotlin.test.Test
 class SaqzAppTest {
     @Test
     @OptIn(ExperimentalTestApi::class)
-    fun rendersTheSharedSaqzPlaceholder() {
-        val dependencies = startTestSaqzKoin()
+    fun signedOutBootLandsOnLogin() {
+        startTestSaqzKoin()
         try {
             runComposeUiTest {
-                setContent { SaqzApp(dependencies) }
+                setContent { SaqzApp() }
 
                 onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
             }

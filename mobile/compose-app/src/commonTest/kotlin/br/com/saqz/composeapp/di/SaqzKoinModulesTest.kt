@@ -1,7 +1,5 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.domain.GroupId
-
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.AuthState
@@ -28,17 +26,10 @@ import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.AuthTransition
-import br.com.saqz.groups.data.group.KtorGroupGateway
-import br.com.saqz.groups.domain.group.GroupGateway
-import br.com.saqz.groups.domain.photo.GroupPhotoGateway
-import br.com.saqz.groups.domain.group.GroupProfileGateway
-import br.com.saqz.groups.data.membership.KtorGroupMembershipGateway
-import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import br.com.saqz.groups.domain.attendance.AttendanceGateway
-import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
-import br.com.saqz.groups.data.attendance.KtorAttendanceGateway
-import br.com.saqz.groups.domain.game.GameGateway
-import br.com.saqz.groups.data.game.KtorGameGateway
+import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
+import br.com.saqz.composeapp.navigation.AccessRuntimeContract
+import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.port.GroupCancelable
@@ -58,10 +49,6 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import br.com.saqz.groups.presentation.DeferredInviteStateMachine
-import br.com.saqz.groups.presentation.GroupAdministrationStateMachine
-import br.com.saqz.groups.presentation.GroupSelectionStateMachine
-import br.com.saqz.groups.presentation.attendance.share.DeferredAttendanceLinkStateMachine
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
 import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult
@@ -189,8 +176,6 @@ class SaqzKoinModulesTest {
                 accessDataModule,
                 accessInvalidationModule,
                 accessPresentationModule,
-                groupsDataModule,
-                groupsPresentationModule,
                 composePresentationModule,
             )
         }
@@ -206,11 +191,18 @@ class SaqzKoinModulesTest {
         assertSame(FakeLocalAccessStatePort, koin.get<LocalAccessStatePort>())
         assertSame(FakeSharePort, koin.get<NativeSharePort>())
 
+        // C1: the whole app graph is the session gate plus the access screens — the
+        // orchestrator resolves as the runtime contract and the gate resolves on top of it.
+        koin.get<AccessRuntimeContract>()
+        koin.get<AccessViewModel>()
+        koin.get<LoginViewModel>()
+        koin.get<PhoneCompletionViewModel>()
+
         app.close()
     }
 
     @Test
-    fun gameDetailUnauthorizedResponseInvalidatesResolvedSession() = runTest {
+    fun unauthorizedResponseInvalidatesResolvedSession() = runTest {
         val auth = RefreshingAuthPort()
         val unauthorizedNetwork = module {
             single<NativeAuthPort> { auth }
@@ -237,7 +229,6 @@ class SaqzKoinModulesTest {
                 accessDataModule,
                 accessInvalidationModule,
                 accessPresentationModule,
-                groupsDataModule,
                 unauthorizedNetwork,
             )
         }
@@ -252,7 +243,9 @@ class SaqzKoinModulesTest {
         )
         assertIs<SessionAccessState.AwaitingVerification>(session.state.value)
 
-        koin.get<GameGateway>().read(GroupId("group-1"), "game-1")
+        // Any authenticated call is enough: the invalidator lives in the network client,
+        // not in the gateway. Bootstrap is the one the reset keeps.
+        koin.get<SessionGateway>().bootstrap()
 
         assertEquals(SessionAccessState.SignedOut, session.state.value)
         assertEquals(1, auth.signOutCalls)
@@ -261,7 +254,9 @@ class SaqzKoinModulesTest {
     }
 
     @Test
-    fun groupsModuleResolvesGatewaysAndMachines() {
+    fun nativePortsStayBoundForTheNativeIntegrationSurface() {
+        // C1 orphans the group screens but keeps the native integration: every port the
+        // launchers supply still resolves from the single SaqzNativePorts instance.
         val app = koinApplication {
             modules(
                 configFixturesModule,
@@ -270,30 +265,9 @@ class SaqzKoinModulesTest {
                 platformDraftsModule,
                 accessDataModule,
                 accessInvalidationModule,
-                accessPresentationModule,
-                groupsDataModule,
-                groupsPresentationModule,
-                composePresentationModule,
             )
         }
         val koin = app.koin
-
-        val groupApi = koin.get<KtorGroupGateway>()
-        assertSame(groupApi, koin.get<GroupGateway>())
-        assertSame(groupApi, koin.get<GroupProfileGateway>())
-        assertSame(koin.get<KtorGroupMembershipGateway>(), koin.get<GroupMembershipGateway>())
-        koin.get<GroupPhotoGateway>()
-        koin.get<AttendanceSharingGateway>()
-        val gameApi = koin.get<KtorGameGateway>()
-        assertSame(gameApi, koin.get<GameGateway>())
-        val attendanceApi = koin.get<KtorAttendanceGateway>()
-        assertSame(attendanceApi, koin.get<AttendanceGateway>())
-
-        koin.get<GroupSelectionStateMachine>()
-        koin.get<GroupAdministrationStateMachine>()
-        koin.get<DeferredInviteStateMachine>()
-        koin.get<DeferredAttendanceLinkStateMachine>()
-        koin.get<AttendanceDestinationStore>()
 
         assertSame(FakeAttendanceSharePort, koin.get<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort>())
         assertSame(FakeGroupPhotoSelectionPort, koin.get<GroupPhotoSelectionPort>())
