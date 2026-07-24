@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -75,8 +76,10 @@ class AdjustGameCapacity(
         }
     }
 
+    // A promoção por capacidade é FIFO e independe do vínculo; o agregado aqui só alimenta a cobrança.
     private fun CapacityAggregate.forMember(record: AttendanceRecord) = AttendanceAggregate(
         groupId, gameId, record.memberId, actorId, actorRole, gameStatus,
         confirmationDeadline, capacity, confirmedCount, record, gameFeeCents, gameDate,
+        AthleteMembershipType.MENSALISTA,
     )
 }
