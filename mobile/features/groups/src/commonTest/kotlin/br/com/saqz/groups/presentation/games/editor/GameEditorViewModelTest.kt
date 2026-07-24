@@ -233,12 +233,22 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `editing a game outside a series stays a single game edit in weekly mode`() = runTest(mainDispatcher) {
+    fun `an existing standalone game cannot switch to weekly mode`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versionedGame())
 
         fixture.viewModel.onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY))
-        fixture.viewModel.onIntent(GameEditorIntent.UpdateForm(validForm().copy(slots = listOf(slot()))))
-        fixture.viewModel.onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis))
+
+        // Recurrence type is fixed on an edit: the mode stays one-time, so weekly slot
+        // edits can never be entered and silently dropped by the single-game save path.
+        assertEquals(GameEditorMode.ONE_TIME, fixture.viewModel.state.value.draft.mode)
+    }
+
+    @Test
+    fun `editing a standalone game submits a single game edit even after a weekly toggle`() = runTest(mainDispatcher) {
+        val fixture = fixture(existing = versionedGame())
+
+        fixture.viewModel.onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY))
+        fixture.viewModel.onIntent(GameEditorIntent.UpdateForm(validForm()))
         fixture.viewModel.onIntent(GameEditorIntent.Submit)
         runCurrent()
 

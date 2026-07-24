@@ -330,6 +330,7 @@ case " $(mobile_line "$happy_log") " in
 esac
 count=$((count + 1)); printf 'ok %d - mobileNavigationInventory\n' "$count"
 
-fail_case navigation-mobile-tests-failure '' env FAIL_TASK=:navigation:allTests
+# The suite itself is in required_suites, so eachSuiteFailurePropagates already
+# proves FAIL_TASK=:navigation:allTests is fatal; no separate fail_case needed.
 
-[ "$count" -eq 50 ]
+[ "$count" -eq 51 ]

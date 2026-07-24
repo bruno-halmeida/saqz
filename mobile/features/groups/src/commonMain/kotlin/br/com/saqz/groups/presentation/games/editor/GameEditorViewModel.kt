@@ -35,7 +35,12 @@ class GameEditorViewModel(
 
     override fun onIntent(intent: GameEditorIntent) {
         when (intent) {
-            is GameEditorIntent.SetMode -> updateDraft { copy(mode = intent.mode, scope = null) }
+            // One-time vs. weekly is a creation-time choice: an existing game's recurrence
+            // type is fixed (there is no convert-standalone-to-series operation), so changing
+            // mode while editing would let weekly slot edits be submitted down the single-game
+            // edit path and silently dropped. Ignore SetMode for an existing resource.
+            is GameEditorIntent.SetMode ->
+                if (input.existing == null) updateDraft { copy(mode = intent.mode, scope = null) }
             is GameEditorIntent.UpdateForm -> updateDraft { copy(form = intent.form) }
             GameEditorIntent.AddSlot -> updateDraft {
                 copy(form = form.copy(slots = form.slots + form.newWeeklySlot(keys.create())))
@@ -100,9 +105,7 @@ class GameEditorViewModel(
                 gateway.createSeries(GroupId(input.groupId), draft.toSeriesWriteCommand()),
                 draft,
             )
-            // A game that belongs to no series has no boundary to apply a weekly scope
-            // to, so editing it stays a single-game edit whichever mode is selected.
-            draft.mode == GameEditorMode.ONE_TIME || input.series == null -> handleGameResult(
+            draft.mode == GameEditorMode.ONE_TIME -> handleGameResult(
                 gateway.edit(
                     GroupId(input.groupId),
                     input.existing.game.id,
@@ -112,6 +115,8 @@ class GameEditorViewModel(
                 draft,
             )
             else -> {
+                // Reachable only for a series occurrence (mode is locked to WEEKLY at
+                // construction and cannot be changed on an edit), so series is present.
                 val series = requireNotNull(input.series)
                 handleSeriesResult(
                     gateway.boundary(
