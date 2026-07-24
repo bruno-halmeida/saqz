@@ -20,9 +20,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.formatting.formatLocalDatePtBrString
+import br.com.saqz.domain.GroupId
 import br.com.saqz.designsystem.component.SaqzBadge
 import br.com.saqz.designsystem.component.SaqzBadgeVariant
 import br.com.saqz.designsystem.component.SaqzButton
@@ -32,10 +34,16 @@ import br.com.saqz.designsystem.component.SaqzDialog
 import br.com.saqz.designsystem.component.SaqzInput
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
+import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.game.GameVersionToken
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.games.detail.AttendanceAction
 import br.com.saqz.groups.presentation.games.detail.GameDetailError
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
@@ -72,9 +80,10 @@ object GameDetailTags {
 @Composable fun GameDetailScreen(
     state: GameDetailState,
     onIntent: (GameDetailIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding),
     ) {
         Text(
@@ -336,7 +345,7 @@ object GameDetailTags {
 @Composable private fun OrganizerAttendance(
     state: GameDetailState,
     onIntent: (GameDetailIntent) -> Unit,
-) {
+) = Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     var member by remember(state.gameId) { mutableStateOf(TextFieldValue(state.overrideMemberId)) }
     var reason by remember(state.gameId) { mutableStateOf(TextFieldValue(state.overrideReason)) }
     var capacity by remember(state.game?.capacity, state.gameId) {
@@ -475,7 +484,7 @@ object GameDetailTags {
 @Composable private fun ErrorPanel(
     state: GameDetailState,
     onIntent: (GameDetailIntent) -> Unit,
-) {
+) = Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     Text(
         stringResource(
             if (state.error ==
@@ -573,3 +582,148 @@ private fun Game.availability() =
         waitlistCount > 0 -> "Lista de espera: $waitlistCount"
         else -> "Sem vagas"
     }
+
+private val previewVenue = GameVenue(null, "Arena Saqz", "Rua das Laranjeiras, 123")
+private val previewGameVersion = GameVersionToken("\"7\"")
+private val previewAttendanceVersion = AttendanceVersionToken("\"1\"")
+
+private fun previewGame(status: GameStatus = GameStatus.Draft) = Game(
+    id = "game",
+    groupId = GroupId("group"),
+    title = "Treino semanal",
+    venue = previewVenue,
+    localDate = "2026-08-12",
+    localTime = "19:30:00",
+    zoneId = "America/Sao_Paulo",
+    startsAt = "2026-08-12T22:30:00Z",
+    durationMinutes = 90,
+    capacity = 24,
+    confirmationDeadline = "2026-08-12T19:00:00Z",
+    gameFeeCents = 2500,
+    notes = "Levar roupa branca. Jogadores confirmados chegam 15 min antes.",
+    status = status,
+    version = 7,
+    confirmedCount = 3,
+    availableSpots = 21,
+    waitlistCount = 2,
+    financeReviewRequired = status == GameStatus.Cancelled,
+)
+
+private fun previewState(
+    role: GroupRole = GroupRole.OWNER,
+    status: GameStatus = GameStatus.Draft,
+    attendanceOpen: Boolean = false,
+    ownAttendance: AttendanceEntry? = null,
+): GameDetailState {
+    val game = previewGame(status)
+    return GameDetailState(
+        groupId = "group",
+        gameId = "game",
+        role = role,
+        game = game,
+        version = previewGameVersion,
+        attendance = AttendanceDetail(
+            ownAttendance = ownAttendance,
+            confirmedCount = 3,
+            availableSpots = if (status == GameStatus.Published) 21 else 24,
+            waitlistCount = 2,
+            capacity = 24,
+        ),
+        attendanceVersion = previewAttendanceVersion,
+        attendanceOpen = attendanceOpen,
+        isLoading = false,
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenLoadingPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState().copy(game = null, isLoading = true),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenDraftOrganizerPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState(role = GroupRole.OWNER, status = GameStatus.Draft),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenPublishedOrganizerPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState(
+            role = GroupRole.OWNER,
+            status = GameStatus.Published,
+            attendanceOpen = true,
+        ),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenAthleteConfirmedPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState(
+            role = GroupRole.ATHLETE,
+            status = GameStatus.Published,
+            attendanceOpen = true,
+            ownAttendance = AttendanceEntry("member", AttendanceStatus.Confirmed, null, 1),
+        ),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenAthleteWaitlistedPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState(
+            role = GroupRole.ATHLETE,
+            status = GameStatus.Published,
+            attendanceOpen = true,
+            ownAttendance = AttendanceEntry("member", AttendanceStatus.Waitlisted, 3, 1),
+        ),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenCancelledPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState(role = GroupRole.OWNER, status = GameStatus.Cancelled),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenErrorPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState().copy(
+            game = null,
+            error = GameDetailError.UNAVAILABLE,
+            reloadAvailable = true,
+        ),
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameDetailScreenPendingCancelPreview() = SaqzTheme {
+    GameDetailScreen(
+        state = previewState(role = GroupRole.OWNER, status = GameStatus.Published).copy(
+            pendingAction = GameLifecycleAction.CANCEL,
+            isMutating = true,
+        ),
+        onIntent = {},
+    )
+}

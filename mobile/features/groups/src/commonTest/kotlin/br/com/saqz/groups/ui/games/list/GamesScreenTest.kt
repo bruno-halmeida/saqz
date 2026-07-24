@@ -100,7 +100,7 @@ class GamesScreenTest {
     @Test fun `compact viewport scrolls to every game card`() =
         runComposeUiTest {
             val many = (1..12).map { item("game-$it") }
-            setContent { Box(Modifier.size(320.dp, 420.dp)) { SaqzTheme { GamesScreen(GamesScreenState(base.copy(upcoming = many))) {} } } }
+            setContent { Box(Modifier.size(320.dp, 420.dp)) { SaqzTheme { GamesScreen(GamesScreenState(base.copy(upcoming = many)), onIntent = {}) } } }
             waitForIdle()
             many.forEachIndexed { index, item ->
                 onNodeWithTag(GamesTags.List).performScrollToIndex(index)
@@ -111,7 +111,7 @@ class GamesScreenTest {
     @Test fun `max text retains reachable 48 dp actions`() =
         runComposeUiTest {
             setContent {
-                CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) { SaqzTheme { GamesScreen(GamesScreenState(base)) {} } }
+                CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) { SaqzTheme { GamesScreen(GamesScreenState(base), onIntent = {}) } }
             }
             ;onNodeWithTag(GamesTags.Create).assertIsDisplayed().assertHeightIsAtLeast(48.dp)
             onNodeWithTag(GamesTags.card("future")).performScrollTo().assertHasClickAction()

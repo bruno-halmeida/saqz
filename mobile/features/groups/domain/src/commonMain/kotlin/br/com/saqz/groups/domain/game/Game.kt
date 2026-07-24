@@ -138,9 +138,27 @@ interface GameGateway {
     suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError>
     suspend fun read(groupId: GroupId, gameId: String): SaqzResult<VersionedGame, GameError>
     suspend fun create(groupId: GroupId, command: GameWriteCommand): SaqzResult<VersionedGame, GameError>
-    suspend fun edit(groupId: GroupId, gameId: String, version: GameVersionToken, command: GameWriteCommand): SaqzResult<VersionedGame, GameError>
-    suspend fun lifecycle(groupId: GroupId, gameId: String, version: GameVersionToken, action: GameLifecycleAction): SaqzResult<VersionedGame, GameError>
+    suspend fun edit(
+        groupId: GroupId,
+        gameId: String,
+        version: GameVersionToken,
+        command: GameWriteCommand,
+    ): SaqzResult<VersionedGame, GameError>
+
+    suspend fun lifecycle(
+        groupId: GroupId,
+        gameId: String,
+        version: GameVersionToken,
+        action: GameLifecycleAction,
+    ): SaqzResult<VersionedGame, GameError>
+
     suspend fun createSeries(groupId: GroupId, command: WeeklySeriesWriteCommand): SaqzResult<VersionedSeries, GameError>
     suspend fun readSeries(groupId: GroupId, seriesId: String): SaqzResult<VersionedSeries, GameError>
-    suspend fun boundary(groupId: GroupId, seriesId: String, version: GameVersionToken, command: SeriesBoundaryCommand): SaqzResult<VersionedSeries, GameError>
+
+    suspend fun boundary(
+        groupId: GroupId,
+        seriesId: String,
+        version: GameVersionToken,
+        command: SeriesBoundaryCommand,
+    ): SaqzResult<VersionedSeries, GameError>
 }

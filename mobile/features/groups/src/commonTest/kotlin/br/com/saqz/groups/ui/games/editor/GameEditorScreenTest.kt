@@ -5,7 +5,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -254,7 +265,7 @@ class GameEditorScreenTest {
                     320.dp,
                     420.dp
                 )
-            ) { SaqzTheme { GameEditorScreen(state()) {} } }
+            ) { SaqzTheme { GameEditorScreen(state(), onIntent = {}) } }
         }; onNodeWithTag(GameEditorTags.Submit).performScrollTo().assertIsDisplayed()
         .assertHeightIsAtLeast(48.dp).assertHasClickAction()
     }
@@ -267,7 +278,7 @@ class GameEditorScreenTest {
                     1f,
                     2f
                 )
-            ) { SaqzTheme { GameEditorScreen(state()) {} } }
+            ) { SaqzTheme { GameEditorScreen(state(), onIntent = {}) } }
         }; onNodeWithTag(GameEditorTags.OneTime).assertHeightIsAtLeast(48.dp); onNodeWithTag(
         GameEditorTags.Submit
     ).performScrollTo().assertHeightIsAtLeast(48.dp)

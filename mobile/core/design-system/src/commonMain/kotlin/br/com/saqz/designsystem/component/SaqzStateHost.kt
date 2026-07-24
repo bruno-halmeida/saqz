@@ -33,10 +33,10 @@ fun <T> SaqzStateHost(
     state: SaqzUiState<T>,
     modifier: Modifier = Modifier,
     loading: @Composable () -> Unit = { SaqzLoadingState() },
-    content: @Composable (T) -> Unit,
     empty: @Composable () -> Unit = { SaqzEmptyState() },
     error: @Composable (onRetry: () -> Unit) -> Unit = { retry -> SaqzErrorState(onRetry = retry) },
     onRetry: () -> Unit = {},
+    content: @Composable (T) -> Unit,
 ) {
     val transition = saqzStateTransition(SaqzTheme.motion)
     val translatePx = with(LocalDensity.current) { transition.translation.roundToPx() }

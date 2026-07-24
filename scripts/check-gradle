@@ -45,6 +45,7 @@ if ! adb devices | grep -Eq '^[^[:space:]]+[[:space:]]+device$'; then
 fi
 
 "$repository_root/scripts/check-mobile-boundaries"
+"$repository_root/scripts/check-design-tokens"
 
 "$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
     :core:common:allTests \
@@ -61,6 +62,7 @@ fi
     :features:groups:compileAndroidMain \
     :features:groups:allTests \
     :compose-app:allTests \
+    detektAll \
     :android-app:testDevDebugUnitTest \
     :android-app:connectedDevDebugAndroidTest \
     --console=plain

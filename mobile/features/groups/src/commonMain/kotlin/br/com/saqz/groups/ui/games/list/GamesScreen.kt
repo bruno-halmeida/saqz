@@ -48,11 +48,15 @@ object GamesTags {
 }
 
 @Composable
-fun GamesScreen(state: GamesScreenState, onIntent: (GamesScreenIntent) -> Unit) {
+fun GamesScreen(
+    state: GamesScreenState,
+    onIntent: (GamesScreenIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val games = state.games
     val visible = if (state.tab == GamesTab.UPCOMING) games.upcoming else games.past
     Column(
-        Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
+        modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {

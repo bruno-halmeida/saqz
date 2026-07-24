@@ -45,7 +45,7 @@ class ResourcePackagingTest {
     fun apkRendersGroupsStringResourceV46() {
         composeRule.setContent {
             SaqzTheme {
-                GroupOnboardingScreen(GroupSelectionState.NoGroup) {}
+                GroupOnboardingScreen(GroupSelectionState.NoGroup, onIntent = {})
             }
         }
 

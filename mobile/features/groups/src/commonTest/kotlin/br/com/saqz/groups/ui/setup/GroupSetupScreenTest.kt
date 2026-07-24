@@ -403,7 +403,9 @@ class GroupSetupScreenTest {
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Box(Modifier.size(360.dp, 800.dp)) {
-                    SaqzTheme { GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}) {} }
+                    SaqzTheme {
+                        GroupSetupScreen(state(), photoState = GroupPhotoState(), onPhotoIntent = {}, onIntent = {})
+                    }
                 }
             }
         }

@@ -78,7 +78,7 @@ fun SaqzDialog(
             showCloseAction = showCloseAction,
             dismissOnClickOutside = dismissOnClickOutside,
             alignment = Alignment.Center,
-            cardModifier = modifier.fillMaxWidth(0.92f),
+            modifier = modifier.fillMaxWidth(0.92f),
             content = content,
         )
     }
@@ -88,6 +88,9 @@ fun SaqzDialog(
 // blocks the background; the card taps are consumed so they never reach the scrim.
 // Title sits first, body scrolls, footer stays fixed regardless of content length.
 @Composable
+// O root deste overlay é o scrim de tela cheia; o modifier pertence ao card
+// (largura/âncora controladas pelo chamador), então não pode ir para o root.
+@Suppress("ModifierNotUsedAtRoot")
 internal fun SaqzModalScaffold(
     title: String,
     onCloseRequest: () -> Unit,
@@ -95,7 +98,7 @@ internal fun SaqzModalScaffold(
     showCloseAction: Boolean,
     dismissOnClickOutside: Boolean,
     alignment: Alignment,
-    cardModifier: Modifier,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val colors = SaqzTheme.colors
@@ -125,7 +128,7 @@ internal fun SaqzModalScaffold(
         )
 
         Column(
-            modifier = cardModifier
+            modifier = modifier
                 .align(alignment)
                 .heightIn(max = maxCardHeight)
                 // Consume taps so a press inside the card never reaches the scrim below.

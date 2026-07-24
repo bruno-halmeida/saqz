@@ -84,12 +84,27 @@ private fun NetworkResult<AttendanceShareSnapshotDto>.toSnapshotResult() = when 
 }
 
 private fun AttendanceShareSnapshotDto.toDomain(): AttendanceShareSnapshot? {
-    if (title.isBlank() || startsAt.isBlank() || timeZone.isBlank() || venue.isBlank() || capacity < 0) return null
+    val identityValid = title.isNotBlank() && startsAt.isNotBlank() && timeZone.isNotBlank()
+    val payloadValid = venue.isNotBlank() && capacity >= 0
+    if (!identityValid || !payloadValid) return null
     fun List<AttendanceShareSnapshotPersonDto>.people(): List<AttendanceSharePerson>? =
-        takeIf { list -> list.all { it.displayName.isNotBlank() && (it.waitlistPosition == null || it.waitlistPosition > 0) } }
-            ?.map { AttendanceSharePerson(it.displayName, it.waitlistPosition) }
-    return AttendanceShareSnapshot(title, startsAt, timeZone, venue, capacity, confirmed.people() ?: return null,
-        waitlisted.people() ?: return null, declined.people() ?: return null)
+        takeIf { list ->
+            list.all { it.displayName.isNotBlank() && (it.waitlistPosition == null || it.waitlistPosition > 0) }
+        }?.map { AttendanceSharePerson(it.displayName, it.waitlistPosition) }
+    val confirmedPeople = confirmed.people()
+    val waitlistedPeople = waitlisted.people()
+    val declinedPeople = declined.people()
+    if (confirmedPeople == null || waitlistedPeople == null || declinedPeople == null) return null
+    return AttendanceShareSnapshot(
+        title,
+        startsAt,
+        timeZone,
+        venue,
+        capacity,
+        confirmedPeople,
+        waitlistedPeople,
+        declinedPeople,
+    )
 }
 
 private fun NetworkError.toSharingError(): AttendanceSharingError = when (this) {

@@ -57,9 +57,10 @@ fun EntryProviderScope<NavKey>.installAccessEntries(session: SessionAccessStateM
         // Reuses the existing BootstrapAccessScreen (REG-01: same texts/testTag)
         // unchanged, driven by this entry's own AccessRouteViewModel projection
         // instead of the raw shared SessionAccessState union.
-        BootstrapAccessScreen(bootstrap.toSessionAccessState()) {
-            bootstrapViewModel.onIntent(AccessRouteIntent.RetryBootstrap)
-        }
+        BootstrapAccessScreen(
+            bootstrap.toSessionAccessState(),
+            onIntent = { bootstrapViewModel.onIntent(AccessRouteIntent.RetryBootstrap) },
+        )
     }
 }
 

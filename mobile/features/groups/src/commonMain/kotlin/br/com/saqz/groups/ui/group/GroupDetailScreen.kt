@@ -117,9 +117,10 @@ fun GroupDetailScreen(
     onOpenSettings: () -> Unit,
     onOpenInvite: () -> Unit,
     onRequestLogout: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxSize()
+        modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.grid)
             .testTag(GroupsNavigationTags.Home),
@@ -320,14 +321,16 @@ private fun ShortcutCard(
                 label = stringResource(Res.string.groups_games),
                 icon = Res.drawable.material_calendar,
                 tag = GroupsNavigationTags.ShortcutGames,
+                onClick = { onNavigationIntent(GroupsNavigationIntent.OpenGames) },
                 modifier = Modifier.weight(1f),
-            ) { onNavigationIntent(GroupsNavigationIntent.OpenGames) }
+            )
             if (access.showPeople) Shortcut(
                 label = stringResource(Res.string.groups_people),
                 icon = Res.drawable.material_group_add,
                 tag = GroupsNavigationTags.ShortcutPeople,
+                onClick = { onNavigationIntent(GroupsNavigationIntent.OpenPeople) },
                 modifier = Modifier.weight(1f),
-            ) { onNavigationIntent(GroupsNavigationIntent.OpenPeople) }
+            )
             if (access.showFinance) Shortcut(
                 label = if (access.financeDestination == GroupsDestination.OWN_CHARGES) {
                     stringResource(Res.string.groups_own_charges)
@@ -336,8 +339,9 @@ private fun ShortcutCard(
                 },
                 icon = Res.drawable.material_payments,
                 tag = GroupsNavigationTags.ShortcutFinance,
+                onClick = { onNavigationIntent(GroupsNavigationIntent.OpenFinance) },
                 modifier = Modifier.weight(1f),
-            ) { onNavigationIntent(GroupsNavigationIntent.OpenFinance) }
+            )
             if (administration.actions.canEditSettings) Shortcut(
                 label = stringResource(Res.string.groups_settings),
                 icon = Res.drawable.material_settings,
@@ -354,8 +358,8 @@ private fun Shortcut(
     label: String,
     icon: DrawableResource,
     tag: String,
-    modifier: Modifier,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }

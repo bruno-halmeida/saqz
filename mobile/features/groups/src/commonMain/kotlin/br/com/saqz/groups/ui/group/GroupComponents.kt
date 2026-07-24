@@ -206,7 +206,7 @@ internal fun CountAvatar(remaining: Int) {
 }
 
 @Composable
-internal fun GroupPhotoSkeleton(modifier: Modifier) {
+internal fun GroupPhotoSkeleton(modifier: Modifier = Modifier) {
     val reducedMotion = SaqzTheme.motion.maxTranslation == 0.dp
     val progress = if (reducedMotion) {
         0.5f

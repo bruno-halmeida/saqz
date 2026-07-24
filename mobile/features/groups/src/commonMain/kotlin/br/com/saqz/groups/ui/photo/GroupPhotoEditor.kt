@@ -71,7 +71,8 @@ fun GroupPhotoEditor(
     optional: Boolean,
     deferUpload: Boolean,
     onIntent: (GroupPhotoIntent) -> Unit,
-    onPrepared: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier,
+    onPrepare: (Boolean) -> Unit = {},
     onReloadTarget: () -> Unit = {},
     preview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     sourceActionBorderColor: Color? = null,
@@ -88,7 +89,7 @@ fun GroupPhotoEditor(
     )
     var sourceSheetVisible by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Editor),
+        modifier = modifier.fillMaxWidth().testTag(GroupPhotoTags.Editor),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) {
         if (!compactIdle) {
@@ -195,7 +196,7 @@ fun GroupPhotoEditor(
             SaqzButton(
                 stringResource(if (deferUpload) Res.string.group_photo_use else Res.string.group_photo_upload),
                 {
-                    if (deferUpload) onPrepared(true) else onIntent(GroupPhotoIntent.Upload)
+                    if (deferUpload) onPrepare(true) else onIntent(GroupPhotoIntent.Upload)
                 },
                 enabled = !busy,
                 loading = state.stage in setOf(GroupPhotoStage.ENCODING, GroupPhotoStage.UPLOADING),
@@ -205,7 +206,7 @@ fun GroupPhotoEditor(
                 stringResource(Res.string.action_cancel),
                 {
                     onIntent(GroupPhotoIntent.Cancel)
-                    onPrepared(false)
+                    onPrepare(false)
                 },
                 variant = SaqzButtonVariant.Ghost,
                 enabled = !busy,
@@ -243,12 +244,12 @@ fun GroupPhotoEditor(
             Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
                 PhotoSheetAction(Res.string.group_photo_take, GroupPhotoTags.Camera, sourceActionBorderColor) {
                     sourceSheetVisible = false
-                    onPrepared(false)
+                    onPrepare(false)
                     onIntent(GroupPhotoIntent.ChooseCamera)
                 }
                 PhotoSheetAction(Res.string.group_photo_choose_library, GroupPhotoTags.Library, sourceActionBorderColor) {
                     sourceSheetVisible = false
-                    onPrepared(false)
+                    onPrepare(false)
                     onIntent(GroupPhotoIntent.ChooseLibrary)
                 }
                 SaqzButton(
@@ -285,8 +286,8 @@ private fun PhotoPreview(
     groupName: String,
     busy: Boolean,
     description: String,
+    modifier: Modifier = Modifier,
     photoIconFallback: Boolean = false,
-    modifier: Modifier,
 ) {
     val shape = RoundedCornerShape(SaqzTheme.metrics.cardRadius)
     Box(
@@ -386,6 +387,7 @@ private fun PhotoError(
         GroupPhotoError.STALE_VERSION -> Res.string.group_photo_stale
         GroupPhotoError.TARGET_UNAVAILABLE -> Res.string.group_photo_target_unavailable
     }
+    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     Text(stringResource(label), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
     when (error) {
         GroupPhotoError.ENCODING_FAILED, GroupPhotoError.UPLOAD_FAILED -> SaqzButton(
@@ -408,6 +410,7 @@ private fun PhotoError(
             modifier = Modifier.fillMaxWidth().testTag(GroupPhotoTags.Reload),
         )
         else -> Unit
+    }
     }
 }
 

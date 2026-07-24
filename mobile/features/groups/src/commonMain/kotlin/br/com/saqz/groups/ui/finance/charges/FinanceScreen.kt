@@ -54,9 +54,10 @@ internal var SemanticsPropertyReceiver.financeActionOrder by FinanceActionOrderK
 @Composable fun FinanceScreen(
     state: FinanceState,
     onIntent: (FinanceIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding),
     ) {
         Text(

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.IconButton
@@ -71,9 +72,10 @@ sealed interface ExpireInviteConfirmationIntent {
 fun MembershipAdministrationScreen(
     state: GroupAdministrationState,
     onIntent: (MembershipAdministrationIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (!state.actions.canManageRoles) return
-    ScrollColumn {
+    ScrollColumn(modifier) {
         Text(
             stringResource(Res.string.memberships_title),
             style = SaqzTheme.typography.lead,
@@ -119,9 +121,10 @@ fun MembershipAdministrationScreen(
 fun InviteManagementScreen(
     state: InviteManagementUiState,
     onIntent: (InviteManagementIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (!state.actions.canManageInvite) return
-    ScrollColumn {
+    ScrollColumn(modifier) {
         Text(
             stringResource(Res.string.invite_title),
             style = SaqzTheme.typography.lead,
@@ -172,8 +175,12 @@ fun InviteManagementScreen(
 }
 
 @Composable
-fun ExpireInviteConfirmationDialog(onIntent: (ExpireInviteConfirmationIntent) -> Unit) {
+fun ExpireInviteConfirmationDialog(
+    onIntent: (ExpireInviteConfirmationIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     SaqzDialog(
+        modifier = modifier,
         title = stringResource(Res.string.invite_expire_title),
         onCloseRequest = { onIntent(ExpireInviteConfirmationIntent.Cancel) },
         primaryAction = {
@@ -236,14 +243,17 @@ private fun InviteFeedback(state: InviteToolState, onRetry: () -> Unit) {
         )
         InviteUiError.UNAVAILABLE -> stringResource(Res.string.invite_unavailable)
     }
-    Text(message, color = SaqzTheme.colors.errorForeground)
-    SaqzButton(
-        stringResource(Res.string.action_retry),
-        onClick = onRetry,
-        modifier = Modifier.testTag(MembershipInviteTags.Retry),
-        variant = SaqzButtonVariant.Secondary,
-        enabled = error != InviteUiError.ATTEMPT_LIMIT && !state.isLoading,
-    )
+    // Um único emissor no topo; o espaçamento espelha o grid do ScrollColumn pai.
+    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+        Text(message, color = SaqzTheme.colors.errorForeground)
+        SaqzButton(
+            stringResource(Res.string.action_retry),
+            onClick = onRetry,
+            modifier = Modifier.testTag(MembershipInviteTags.Retry),
+            variant = SaqzButtonVariant.Secondary,
+            enabled = error != InviteUiError.ATTEMPT_LIMIT && !state.isLoading,
+        )
+    }
 }
 
 private val previewInviteActions = GroupActions(true, true, true, true)
@@ -256,7 +266,7 @@ private fun MembershipAdministrationScreenPreview() = SaqzTheme {
             actions = previewInviteActions,
             memberships = listOf(GroupMembership("preview-athlete", "Bruno", GroupRole.ATHLETE)),
         ),
-        {},
+        onIntent = {},
     )
 }
 
@@ -265,9 +275,10 @@ private fun MembershipAdministrationScreenPreview() = SaqzTheme {
 private fun InviteManagementScreenPreview() = SaqzTheme {
     InviteManagementScreen(
         InviteManagementUiState(previewInviteActions, InviteToolState(inviteUrl = "https://saqz.app/i/preview")),
-    ) {}
+        onIntent = {},
+    )
 }
 
 @Preview
 @Composable
-private fun ExpireInviteConfirmationDialogPreview() = SaqzTheme { ExpireInviteConfirmationDialog {} }
+private fun ExpireInviteConfirmationDialogPreview() = SaqzTheme { ExpireInviteConfirmationDialog(onIntent = {}) }

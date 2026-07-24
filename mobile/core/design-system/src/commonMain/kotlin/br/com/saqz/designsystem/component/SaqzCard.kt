@@ -33,18 +33,8 @@ fun SaqzCard(
     val motion = SaqzTheme.motion
     val shape = RoundedCornerShape(metrics.cardRadius)
 
-    // No shadow/gradient: a flat surface with a hairline is the whole affordance.
-    val surface = Modifier
-        .clip(shape)
-        .background(colors.surface, shape)
-        .padding(metrics.utilityCardPadding)
-
-    if (onClick == null) {
-        // Static: no clickable, so no click role/action and no press feedback.
-        Box(modifier = modifier.then(surface)) { content() }
-        return
-    }
-
+    // Estado de interação sempre criado (barato e fica ocioso no cartão estático);
+    // isso mantém um único content() para o slot preservar estado interno.
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -57,14 +47,12 @@ fun SaqzCard(
         animationSpec = tween(motion.opacityFeedbackDurationMillis),
         label = "cardPressAlpha",
     )
-    Box(
-        modifier = modifier
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-                onClick = onClick,
-            )
+
+    // Static: no clickable, so no click role/action and no press feedback.
+    val pressFeedback = if (onClick == null) {
+        Modifier
+    } else {
+        Modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -72,7 +60,27 @@ fun SaqzCard(
             }
             .semantics { saqzPressFeedback = SaqzPressFeedback(scale, alpha) }
             .sizeIn(minWidth = metrics.minimumTouchTarget, minHeight = metrics.minimumTouchTarget)
-            .then(surface),
+    }
+    // clickable depois de clip/background para a área de toque seguir a forma.
+    val press = if (onClick == null) {
+        Modifier
+    } else {
+        Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            role = Role.Button,
+            onClick = onClick,
+        )
+    }
+
+    // No shadow/gradient: a flat surface with a hairline is the whole affordance.
+    Box(
+        modifier = modifier
+            .then(pressFeedback)
+            .clip(shape)
+            .background(colors.surface, shape)
+            .then(press)
+            .padding(metrics.utilityCardPadding),
     ) { content() }
 }
 

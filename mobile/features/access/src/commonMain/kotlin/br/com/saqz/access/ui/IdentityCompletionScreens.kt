@@ -95,7 +95,8 @@ internal object IdentityTags {
 fun VerificationScreen(
     state: VerificationState,
     onIntent: (VerificationIntent) -> Unit,
-) = IdentityColumn {
+    modifier: Modifier = Modifier,
+) = IdentityColumn(modifier) {
     IdentityHeading(stringResource(Res.string.verification_title))
     Text(stringResource(Res.string.verification_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     Text(state.email, style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
@@ -124,7 +125,8 @@ fun VerificationScreen(
 fun NameCompletionScreen(
     state: NameCompletionState,
     onIntent: (NameCompletionIntent) -> Unit,
-) = IdentityColumn {
+    modifier: Modifier = Modifier,
+) = IdentityColumn(modifier) {
     IdentityHeading(stringResource(Res.string.name_title))
     Text(stringResource(Res.string.name_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     SaqzInput(
@@ -149,7 +151,8 @@ fun NameCompletionScreen(
 fun PhoneCompletionScreen(
     state: PhoneCompletionState,
     onIntent: (PhoneCompletionIntent) -> Unit,
-) = IdentityColumn {
+    modifier: Modifier = Modifier,
+) = IdentityColumn(modifier) {
     IdentityHeading(stringResource(Res.string.phone_title))
     Text(stringResource(Res.string.phone_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     SaqzInput(
@@ -175,10 +178,11 @@ fun PhoneCompletionScreen(
 fun PasswordResetScreen(
     state: PasswordResetState,
     onIntent: (PasswordResetIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = SaqzTheme.colors
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(colors.background),
     ) {
@@ -287,10 +291,10 @@ fun PasswordResetScreen(
 }
 
 @Composable
-private fun IdentityColumn(content: @Composable () -> Unit) {
+private fun IdentityColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val metrics = SaqzTheme.metrics
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .imePadding()
             .verticalScroll(rememberScrollState())

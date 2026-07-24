@@ -17,9 +17,9 @@ import br.com.saqz.groups.resources.groups_retry
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun GroupLoadError(onRetry: () -> Unit) {
+fun GroupLoadError(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
+        modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

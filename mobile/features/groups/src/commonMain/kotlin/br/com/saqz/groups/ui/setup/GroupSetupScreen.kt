@@ -119,10 +119,11 @@ fun GroupSetupScreen(
     state: GroupSetupState,
     photoState: GroupPhotoState,
     onPhotoIntent: (GroupPhotoIntent) -> Unit,
+    onIntent: (GroupSetupIntent) -> Unit,
+    modifier: Modifier = Modifier,
     photoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> Boolean)? = null,
     onBack: () -> Unit = {},
     onMoreOptions: () -> Unit = {},
-    onIntent: (GroupSetupIntent) -> Unit,
 ) {
     val editable = state.canEdit
     val form = state.form
@@ -131,7 +132,7 @@ fun GroupSetupScreen(
     var slotsEditing by remember(form.regularSlots.map { it.id }) { mutableStateOf(form.regularSlots.any { it.startTime.isBlank() }) }
 
     Column(
-        Modifier.fillMaxSize()
+        modifier.fillMaxSize()
             .background(SaqzTheme.colors.background)
             .imePadding()
             .testTag(GroupSetupTags.Screen),
@@ -166,7 +167,7 @@ fun GroupSetupScreen(
                     optional = state.mode == GroupSetupMode.CREATE,
                     deferUpload = state.mode == GroupSetupMode.CREATE && state.successGroupId == null,
                     onIntent = onPhotoIntent,
-                    onPrepared = { onIntent(GroupSetupIntent.SetPhotoPending(it)) },
+                    onPrepare = { onIntent(GroupSetupIntent.SetPhotoPending(it)) },
                     onReloadTarget = { onIntent(GroupSetupIntent.ReloadConflict) },
                     preview = photoPreview,
                     sourceActionBorderColor = SaqzTheme.colors.primary,
@@ -237,7 +238,12 @@ fun GroupSetupScreen(
                     ) { sheet = SetupSheet.PlayStyle }
                 }
                 if (state.showCustomPlayStyle) {
-                    SetupInput(form.customPlayStyle.orEmpty(), Res.string.group_setup_custom_play_style, editable, error(state, "customPlayStyle")) {
+                    SetupInput(
+                        form.customPlayStyle.orEmpty(),
+                        Res.string.group_setup_custom_play_style,
+                        editable,
+                        error(state, "customPlayStyle"),
+                    ) {
                         onIntent(GroupSetupIntent.UpdateCustomPlayStyle(it))
                     }
                 }

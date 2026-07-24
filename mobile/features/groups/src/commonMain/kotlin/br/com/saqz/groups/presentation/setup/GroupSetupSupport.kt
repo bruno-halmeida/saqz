@@ -27,6 +27,13 @@ internal object GroupSetupRules {
 
 internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String>> = buildMap {
     val form = state.form
+    validateIdentity(form)
+    validateVenueAndSlots(form)
+    validateOperationalDefaults(form)
+    if (state.mode == GroupSetupMode.CREATE && state.timeZone == null) put("timeZone", listOf("is required"))
+}
+
+private fun MutableMap<String, List<String>>.validateIdentity(form: GroupSetupForm) {
     if (!form.name.trim().hasLength(2, 80)) put("name", listOf("must be between 2 and 80 characters"))
     if (form.modality == null) put("modality", listOf("is required"))
     if (form.composition == null) put("composition", listOf("is required"))
@@ -34,6 +41,9 @@ internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String
     if (form.playStyle == GroupPlayStyle.CUSTOM && !form.customPlayStyle.hasLength(2, 40)) {
         put("customPlayStyle", listOf("is required"))
     }
+}
+
+private fun MutableMap<String, List<String>>.validateVenueAndSlots(form: GroupSetupForm) {
     form.defaultVenue?.let { venue ->
         if (!venue.name.trim().hasLength(2, 120)) put("defaultVenue.name", listOf("is required"))
         if (!venue.address.trim().hasLength(5, 300)) put("defaultVenue.address", listOf("is required"))
@@ -42,6 +52,9 @@ internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String
         if (slot.startTime.isBlank()) put("regularSlots[$index].startTime", listOf("is required"))
         if (slot.durationMinutes !in 15..480) put("regularSlots[$index].durationMinutes", listOf("must be between 15 and 480"))
     }
+}
+
+private fun MutableMap<String, List<String>>.validateOperationalDefaults(form: GroupSetupForm) {
     if (form.defaultCapacity != null && form.defaultCapacity !in GroupSetupRules.capacityRange) {
         put("defaultCapacity", listOf("must be between 2 and 100"))
     }
@@ -55,7 +68,6 @@ internal fun validateGroupSetup(state: GroupSetupState): Map<String, List<String
         put("monthlyFeeCents", listOf("invalid"))
     }
     if (form.monthlyFeeCents != null && form.monthlyDueDay !in 1..28) put("monthlyDueDay", listOf("is required"))
-    if (state.mode == GroupSetupMode.CREATE && state.timeZone == null) put("timeZone", listOf("is required"))
 }
 
 internal fun newGroupDefaults() = GroupSetupForm(
