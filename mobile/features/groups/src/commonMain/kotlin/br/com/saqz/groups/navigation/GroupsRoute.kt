@@ -48,6 +48,18 @@ sealed interface GroupsRoute : NavKey {
         }
     }
 
+    /**
+     * Game editor route: a null [gameId] creates a new game, a non-blank [gameId]
+     * edits the existing one. AUTHZ-03: a blank id is rejected at construction so no
+     * navigation command can ever carry an invalid game identity.
+     */
+    @Serializable
+    data class GameEditor(val gameId: String? = null) : GroupsRoute {
+        init {
+            require(gameId == null || gameId.isNotBlank()) { "GameEditor.gameId must not be blank" }
+        }
+    }
+
     @Serializable
     data object Notices : GroupsRoute
 

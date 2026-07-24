@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.games.editor
 
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
+import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.game.SeriesBoundaryScope
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.game.VersionedSeries
@@ -59,4 +60,19 @@ data class GameEditorInput(
     val defaults: GameEditorDefaults,
     val existing: VersionedGame? = null,
     val series: VersionedSeries? = null,
+)
+
+/**
+ * Seeds a new game from the group's own profile/finance defaults, so the create route
+ * opens pre-filled with the group's usual venue, capacity, duration and fee instead of
+ * an empty form. Every field is optional at the group level and stays empty when unset.
+ */
+fun Group.toGameEditorDefaults(): GameEditorDefaults = GameEditorDefaults(
+    title = name,
+    venue = profile?.defaultVenue?.let { GameVenue(it.id, it.name, it.address, it.court) },
+    zoneId = timeZone.id,
+    durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes,
+    capacity = profile?.defaultCapacity,
+    confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes,
+    gameFeeCents = financeDefaults?.defaultGameFeeCents,
 )

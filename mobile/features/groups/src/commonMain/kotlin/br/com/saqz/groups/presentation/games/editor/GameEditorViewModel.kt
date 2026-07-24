@@ -100,7 +100,9 @@ class GameEditorViewModel(
                 gateway.createSeries(GroupId(input.groupId), draft.toSeriesWriteCommand()),
                 draft,
             )
-            draft.mode == GameEditorMode.ONE_TIME -> handleGameResult(
+            // A game that belongs to no series has no boundary to apply a weekly scope
+            // to, so editing it stays a single-game edit whichever mode is selected.
+            draft.mode == GameEditorMode.ONE_TIME || input.series == null -> handleGameResult(
                 gateway.edit(
                     GroupId(input.groupId),
                     input.existing.game.id,

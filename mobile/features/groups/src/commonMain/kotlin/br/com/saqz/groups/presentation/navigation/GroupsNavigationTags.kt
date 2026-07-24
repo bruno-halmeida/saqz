@@ -26,6 +26,7 @@ object GroupsNavigationTags {
     const val People = "groups-people"
     const val Games = "groups-games"
     const val GameDetail = "groups-game-detail"
+    const val GameEditor = "groups-game-editor"
     const val Finance = "groups-finance"
     const val OwnCharges = "groups-own-charges"
     const val NoticesScreen = "groups-notices-screen"

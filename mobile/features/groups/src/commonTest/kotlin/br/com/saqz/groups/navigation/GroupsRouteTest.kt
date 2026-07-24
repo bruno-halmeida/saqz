@@ -28,6 +28,13 @@ class GroupsRouteTest {
         GroupsRoute.CreateGroup,
     )
 
+    /** The parameterized keys, exercised alongside [stableRoutes] in every inventory test. */
+    private val parameterizedRoutes: List<GroupsRoute> = listOf(
+        GroupsRoute.GameDetail("game-1"),
+        GroupsRoute.GameEditor(),
+        GroupsRoute.GameEditor("game-1"),
+    )
+
     @Test
     fun `route inventory contains exactly the fourteen stable keys plus GameDetail`() {
         assertEquals(14, stableRoutes.size)
@@ -36,14 +43,14 @@ class GroupsRouteTest {
 
     @Test
     fun `every route is a NavKey`() {
-        (stableRoutes + GroupsRoute.GameDetail("game-1")).forEach { route ->
+        (stableRoutes + parameterizedRoutes).forEach { route ->
             assertTrue(route is NavKey)
         }
     }
 
     @Test
     fun `exhaustive when over GroupsRoute covers every key without an else branch`() {
-        (stableRoutes + GroupsRoute.GameDetail("game-1")).forEach { route ->
+        (stableRoutes + parameterizedRoutes).forEach { route ->
             val label = when (route) {
                 GroupsRoute.Setup -> "Setup"
                 GroupsRoute.Selector -> "Selector"
@@ -54,6 +61,7 @@ class GroupsRouteTest {
                 GroupsRoute.People -> "People"
                 GroupsRoute.Games -> "Games"
                 is GroupsRoute.GameDetail -> "GameDetail"
+                is GroupsRoute.GameEditor -> "GameEditor"
                 GroupsRoute.Notices -> "Notices"
                 GroupsRoute.More -> "More"
                 GroupsRoute.Settings -> "Settings"
@@ -93,9 +101,26 @@ class GroupsRouteTest {
     }
 
     @Test
+    fun `GameEditor distinguishes creation from editing a specific game`() {
+        assertEquals(GroupsRoute.GameEditor(), GroupsRoute.GameEditor())
+        assertNotEquals(GroupsRoute.GameEditor(), GroupsRoute.GameEditor("game-1"))
+        assertNotEquals(GroupsRoute.GameEditor("game-1"), GroupsRoute.GameEditor("game-2"))
+        assertEquals("game-42", GroupsRoute.GameEditor("game-42").gameId)
+    }
+
+    @Test
+    fun `GameEditor rejects a blank or empty gameId at construction`() {
+        assertFailsWith<IllegalArgumentException> { GroupsRoute.GameEditor("") }
+        assertFailsWith<IllegalArgumentException> { GroupsRoute.GameEditor("   ") }
+    }
+
+    @Test
     fun `each concrete route serializes and deserializes to an equal instance`() {
         assertEquals(GroupsRoute.GroupHome, Json.decodeFromString(GroupsRoute.GroupHome.serializer(), Json.encodeToString(GroupsRoute.GroupHome.serializer(), GroupsRoute.GroupHome)))
         val gameDetail = GroupsRoute.GameDetail("game-77")
         assertEquals(gameDetail, Json.decodeFromString(GroupsRoute.GameDetail.serializer(), Json.encodeToString(GroupsRoute.GameDetail.serializer(), gameDetail)))
+        listOf(GroupsRoute.GameEditor(), GroupsRoute.GameEditor("game-77")).forEach { editor ->
+            assertEquals(editor, Json.decodeFromString(GroupsRoute.GameEditor.serializer(), Json.encodeToString(GroupsRoute.GameEditor.serializer(), editor)))
+        }
     }
 }

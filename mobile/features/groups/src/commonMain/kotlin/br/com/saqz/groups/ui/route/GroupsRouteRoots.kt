@@ -2,6 +2,7 @@ package br.com.saqz.groups.ui.route
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -11,9 +12,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewHandle
 import br.com.saqz.groups.presentation.GroupAdministrationIntent
 import br.com.saqz.groups.presentation.GroupSelectionState
+import br.com.saqz.groups.presentation.games.list.GamesIntent
+import br.com.saqz.groups.presentation.games.list.GamesViewModel
 import br.com.saqz.groups.presentation.navigation.GroupsDestination
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationAccess
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
@@ -52,11 +56,18 @@ import br.com.saqz.groups.ui.LogoutConfirmationDialog
 import br.com.saqz.groups.ui.LogoutConfirmationIntent
 import br.com.saqz.groups.ui.MembershipAdministrationIntent
 import br.com.saqz.groups.ui.MembershipAdministrationScreen
+import br.com.saqz.groups.ui.games.list.GamesScreen
+import br.com.saqz.groups.ui.games.list.GamesScreenIntent
+import br.com.saqz.groups.ui.games.list.GamesScreenState
+import br.com.saqz.groups.ui.games.list.GamesTab
 import br.com.saqz.groups.ui.group.GroupDetailScreen
 import br.com.saqz.groups.ui.group.GroupLoadError
 import br.com.saqz.groups.ui.group.GroupMoreScreen
 import br.com.saqz.groups.ui.group.GroupsListScreen
 import br.com.saqz.groups.ui.group.RoutePage
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -128,7 +139,40 @@ fun GroupHomeRoot(
     }
 }
 
-/** Placeholder roots (ProfileCompletion/People/Games/Notices) keep their exact copy. */
+/**
+ * Games list root: renders the real upcoming/past list from [GamesViewModel]. The
+ * visible tab is the only piece of state the Root owns (it is pure view state, never
+ * business state); the group scope is (re)selected whenever the composition root
+ * supplies a different group or role, and every navigation decision leaves through the
+ * ViewModel's one-shot effects.
+ */
+@Composable
+fun GamesRoot(viewModel: GamesViewModel, groupId: String, role: GroupRole) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var upcoming by rememberSaveable(groupId) { mutableStateOf(true) }
+    LaunchedEffect(viewModel, groupId, role) {
+        viewModel.onIntent(GamesIntent.SelectGroup(groupId, role, today()))
+    }
+    GamesScreen(
+        GamesScreenState(state, if (upcoming) GamesTab.UPCOMING else GamesTab.PAST),
+    ) { intent ->
+        when (intent) {
+            is GamesScreenIntent.SelectTab -> upcoming = intent.tab == GamesTab.UPCOMING
+            GamesScreenIntent.Retry, GamesScreenIntent.Refresh -> viewModel.onIntent(GamesIntent.Refresh)
+            GamesScreenIntent.OpenCreate -> viewModel.onIntent(GamesIntent.OpenCreate)
+            is GamesScreenIntent.OpenGame -> viewModel.onIntent(GamesIntent.OpenGame(intent.id))
+        }
+    }
+}
+
+/**
+ * The local date that splits upcoming games from history. The device zone is the
+ * boundary today; group-timezone-aware game formatting is owned by its own ticket.
+ */
+private fun today(): String =
+    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+
+/** Placeholder roots (ProfileCompletion/People/Notices) keep their exact copy. */
 @Composable
 fun GroupPlaceholderRoot(
     viewModel: GroupContentPlaceholderRouteViewModel,

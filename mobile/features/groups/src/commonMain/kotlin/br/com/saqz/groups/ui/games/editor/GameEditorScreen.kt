@@ -35,6 +35,8 @@ import org.jetbrains.compose.resources.stringResource
 
 object GameEditorTags {
     const val Screen = "game-editor-screen"
+    const val LoadError = "game-editor-load-error"
+    const val LoadErrorRetry = "game-editor-load-error-retry"
     const val OneTime = "game-editor-one-time"
     const val Weekly = "game-editor-weekly"
     const val AddSlot = "game-editor-add-slot"
@@ -181,6 +183,29 @@ fun GameEditorScreen(state: GameEditorState, onIntent: (GameEditorIntent) -> Uni
             { onIntent(GameEditorIntent.Submit) },
             Modifier.fillMaxWidth().testTag(GameEditorTags.Submit),
             loading = state.isLoading,
+        )
+    }
+}
+
+/**
+ * Shown while the edit route cannot read the game it was opened for; the editor itself
+ * never renders from a partial game, so the only action offered is reading it again.
+ */
+@Composable
+fun GameEditorLoadError(onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding).testTag(GameEditorTags.LoadError),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+    ) {
+        Text(
+            stringResource(Res.string.game_editor_load_error),
+            style = SaqzTheme.typography.body,
+            color = SaqzTheme.colors.errorForeground,
+        )
+        SaqzButton(
+            stringResource(Res.string.game_editor_reload),
+            onRetry,
+            Modifier.fillMaxWidth().testTag(GameEditorTags.LoadErrorRetry),
         )
     }
 }

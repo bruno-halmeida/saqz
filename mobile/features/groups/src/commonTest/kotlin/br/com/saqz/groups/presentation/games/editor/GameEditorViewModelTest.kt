@@ -233,6 +233,20 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `editing a game outside a series stays a single game edit in weekly mode`() = runTest(mainDispatcher) {
+        val fixture = fixture(existing = versionedGame())
+
+        fixture.viewModel.onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY))
+        fixture.viewModel.onIntent(GameEditorIntent.UpdateForm(validForm().copy(slots = listOf(slot()))))
+        fixture.viewModel.onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis))
+        fixture.viewModel.onIntent(GameEditorIntent.Submit)
+        runCurrent()
+
+        assertEquals(listOf("edit"), fixture.gateway.calls)
+        assertTrue(fixture.gateway.boundaries.isEmpty())
+    }
+
+    @Test
     fun `weekly edit refuses silent scope default`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versionedGame(), series = versionedSeries())
 
