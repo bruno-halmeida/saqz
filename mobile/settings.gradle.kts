@@ -32,8 +32,5 @@ include(":features:access:data")
 include(":features:groups")
 include(":features:groups:domain")
 include(":features:groups:data")
-// ponytail: :navigation ficou fora do build porque suas fontes compilam contra
-// GroupsRoute/FinanceRoute e groups.presentation, apagados aqui (VUL-30). Nada
-// mais depende do módulo desde o C1. O diretório inteiro cai no C3 (VUL-31).
 include(":compose-app")
 include(":android-app")
