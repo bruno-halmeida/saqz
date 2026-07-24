@@ -33,17 +33,16 @@ fun formatLocalDatePtBrString(iso: String): String {
     val parts = iso.split('-')
     if (parts.size != 3) return iso
     val (year, month, day) = parts
-    if (year.length != 4 || !year.all(Char::isDigit)) return iso
-    if (month.length != 2 || !month.all(Char::isDigit)) return iso
-    if (day.length != 2 || !day.all(Char::isDigit)) return iso
-    return "$day/$month/$year"
+    val valid = isDigits(year, 4) && isDigits(month, 2) && isDigits(day, 2)
+    return if (valid) "$day/$month/$year" else iso
 }
 
 fun formatMonthPtBrString(iso: String): String {
     val parts = iso.split('-')
     if (parts.size != 2) return iso
     val (year, month) = parts
-    if (year.length != 4 || !year.all(Char::isDigit)) return iso
-    if (month.length != 2 || !month.all(Char::isDigit)) return iso
-    return "$month/$year"
+    return if (isDigits(year, 4) && isDigits(month, 2)) "$month/$year" else iso
 }
+
+private fun isDigits(value: String, length: Int): Boolean =
+    value.length == length && value.all(Char::isDigit)

@@ -84,8 +84,8 @@ fun GroupSelectorRoot(
 }
 
 @Composable
-fun GroupLoadingRoot() {
-    SaqzLoadingState(Modifier.fillMaxSize().testTag("group-loading"))
+fun GroupLoadingRoot(modifier: Modifier = Modifier) {
+    SaqzLoadingState(modifier.fillMaxSize().testTag("group-loading"))
 }
 
 @Composable
@@ -117,14 +117,14 @@ fun GroupHomeRoot(
         onRequestLogout = { viewModel.onIntent(GroupHomeRouteIntent.RequestLogout) },
     )
     if (state.showLogoutConfirmation) {
-        LogoutConfirmationDialog { intent ->
+        LogoutConfirmationDialog(onIntent = { intent ->
             viewModel.onIntent(
                 when (intent) {
                     LogoutConfirmationIntent.Confirm -> GroupHomeRouteIntent.ConfirmLogout
                     LogoutConfirmationIntent.Cancel -> GroupHomeRouteIntent.CancelLogout
                 },
             )
-        }
+        })
     }
 }
 
@@ -167,22 +167,15 @@ fun GroupPlaceholderRoot(
             tag = GroupsNavigationTags.NoticesScreen,
             onNavigationIntent = back,
         )
-        GroupContentPlaceholderMode.MORE -> GroupMoreRootContent(viewModel, athleteProfile)
+        // Estado já coletado neste root; encaminhar a ViewModel para um filho só
+        // duplicaria a coleta (e a regra de forwarding barra isso).
+        GroupContentPlaceholderMode.MORE -> GroupMoreScreen(
+            access = state.access,
+            onOpenPeople = { viewModel.onIntent(GroupContentPlaceholderIntent.OpenPeople) },
+            onOpenFinance = { viewModel.onIntent(GroupContentPlaceholderIntent.OpenFinance) },
+            athleteProfile = athleteProfile,
+        )
     }
-}
-
-@Composable
-private fun GroupMoreRootContent(
-    viewModel: GroupContentPlaceholderRouteViewModel,
-    athleteProfile: (@Composable () -> Unit)? = null,
-) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    GroupMoreScreen(
-        access = state.access,
-        onOpenPeople = { viewModel.onIntent(GroupContentPlaceholderIntent.OpenPeople) },
-        onOpenFinance = { viewModel.onIntent(GroupContentPlaceholderIntent.OpenFinance) },
-        athleteProfile = athleteProfile,
-    )
 }
 
 /** Settings root: pre-save name/timezone edits are transient UI state seeded from the group. */
@@ -194,31 +187,35 @@ fun GroupSettingsRoot(viewModel: GroupAdministrationRouteViewModel, onBack: () -
     var timeZone by rememberSaveable(group?.id?.value) { mutableStateOf(group?.timeZone?.id.orEmpty()) }
     GroupSettingsScreen(
         GroupSettingsUiState(administration = state, name = name, timeZone = timeZone),
-    ) { intent ->
-        when (intent) {
-            is GroupSettingsIntent.UpdateName -> name = intent.value
-            is GroupSettingsIntent.UpdateTimeZone -> timeZone = intent.value
-            GroupSettingsIntent.Save ->
-                viewModel.onIntent(GroupAdministrationIntent.UpdateSettings(name, timeZone))
-            GroupSettingsIntent.Reload -> {
-                name = group?.name.orEmpty()
-                timeZone = group?.timeZone?.id.orEmpty()
+        onIntent = { intent ->
+            when (intent) {
+                is GroupSettingsIntent.UpdateName -> name = intent.value
+                is GroupSettingsIntent.UpdateTimeZone -> timeZone = intent.value
+                GroupSettingsIntent.Save ->
+                    viewModel.onIntent(GroupAdministrationIntent.UpdateSettings(name, timeZone))
+                GroupSettingsIntent.Reload -> {
+                    name = group?.name.orEmpty()
+                    timeZone = group?.timeZone?.id.orEmpty()
+                }
+                GroupSettingsIntent.Back -> onBack()
             }
-            GroupSettingsIntent.Back -> onBack()
-        }
-    }
+        },
+    )
 }
 
 @Composable
 fun GroupMembershipsRoot(viewModel: GroupAdministrationRouteViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    MembershipAdministrationScreen(state) { intent ->
-        when (intent) {
-            is MembershipAdministrationIntent.ChangeRole ->
-                viewModel.onIntent(GroupAdministrationIntent.ChangeRole(intent.userId, intent.role))
-            MembershipAdministrationIntent.Back -> onBack()
-        }
-    }
+    MembershipAdministrationScreen(
+        state,
+        onIntent = { intent ->
+            when (intent) {
+                is MembershipAdministrationIntent.ChangeRole ->
+                    viewModel.onIntent(GroupAdministrationIntent.ChangeRole(intent.userId, intent.role))
+                MembershipAdministrationIntent.Back -> onBack()
+            }
+        },
+    )
 }
 
 /** Invite root: link state from the invite adapter; capability gating from administration. */
@@ -232,26 +229,27 @@ fun GroupInviteRoot(
     val administration by administrationViewModel.state.collectAsStateWithLifecycle()
     InviteManagementScreen(
         InviteManagementUiState(administration.actions, inviteState.invite),
-    ) { intent ->
-        inviteViewModel.onIntent(
-            when (intent) {
-                InviteManagementIntent.Generate -> GroupInviteRouteIntent.Rotate
-                is InviteManagementIntent.Share -> GroupInviteRouteIntent.ShareInvite(intent.url)
-                InviteManagementIntent.RequestExpire -> GroupInviteRouteIntent.RequestExpire
-                InviteManagementIntent.Retry -> GroupInviteRouteIntent.Retry
-                InviteManagementIntent.Back -> return@InviteManagementScreen onBack()
-            },
-        )
-    }
+        onIntent = { intent ->
+            inviteViewModel.onIntent(
+                when (intent) {
+                    InviteManagementIntent.Generate -> GroupInviteRouteIntent.Rotate
+                    is InviteManagementIntent.Share -> GroupInviteRouteIntent.ShareInvite(intent.url)
+                    InviteManagementIntent.RequestExpire -> GroupInviteRouteIntent.RequestExpire
+                    InviteManagementIntent.Retry -> GroupInviteRouteIntent.Retry
+                    InviteManagementIntent.Back -> return@InviteManagementScreen onBack()
+                },
+            )
+        },
+    )
     if (inviteState.showExpireConfirmation) {
-        ExpireInviteConfirmationDialog { intent ->
+        ExpireInviteConfirmationDialog(onIntent = { intent ->
             inviteViewModel.onIntent(
                 when (intent) {
                     ExpireInviteConfirmationIntent.Confirm -> GroupInviteRouteIntent.ConfirmExpire
                     ExpireInviteConfirmationIntent.Cancel -> GroupInviteRouteIntent.CancelExpire
                 },
             )
-        }
+        })
     }
 }
 

@@ -216,7 +216,8 @@ private fun NetworkResult<GroupDto>.toVersionedResult(): SaqzResult<VersionedGro
 }
 
 private fun GroupDto.toDomain(): Group? {
-    if (id.isBlank() || name.isBlank() || timeZone.isBlank() || version == null || role == null) return null
+    val identityValid = id.isNotBlank() && name.isNotBlank() && timeZone.isNotBlank()
+    if (!identityValid || version == null || role == null) return null
     val domainProfile = profile?.toDomain() ?: if (profile == null) null else return null
     return Group(
         id = GroupId(id),

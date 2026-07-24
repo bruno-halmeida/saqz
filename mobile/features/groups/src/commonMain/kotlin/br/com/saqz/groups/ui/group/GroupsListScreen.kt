@@ -68,11 +68,12 @@ fun GroupsListScreen(
     memberships: List<GroupSelectionMembership>,
     onSelectGroup: (String) -> Unit,
     onOpenCreateGroup: () -> Unit,
+    modifier: Modifier = Modifier,
     loadListPhoto: (suspend (String) -> ExistingGroupPhoto?)? = null,
     groupPhotoPreview: (@Composable (GroupPhotoPreviewHandle, Modifier) -> GroupPhotoRenderState)? = null,
 ) {
     Column(
-        Modifier.fillMaxSize().testTag(GroupsNavigationTags.List),
+        modifier.fillMaxSize().testTag(GroupsNavigationTags.List),
     ) {
         SaqzTopBar(title = stringResource(Res.string.groups_list_title))
         Column(

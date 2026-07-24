@@ -160,45 +160,64 @@ private inline fun <T, R : Any> List<T>.mapNotNullOrInvalid(transform: (T) -> R?
     return mapped.filterNotNull()
 }
 
+private inline fun <reified T : Enum<T>> enumOrNull(name: String): T? =
+    runCatching { enumValueOf<T>(name) }.getOrNull()
+
 private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
     if (userId.isBlank() || displayName.isBlank()) return null
+    val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
+    val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
+    val parsedFinancial = enumOrNull<AthleteFinancialStatus>(financialStatus)
+    val invalidPosition = position != null && parsedPosition == null
+    if (invalidPosition || parsedMembership == null || parsedFinancial == null) return null
     return AthleteRosterEntry(
         userId = userId,
         displayName = displayName,
         phone = phone,
-        position = position?.let { runCatching { AthletePosition.valueOf(it) }.getOrNull() ?: return null },
-        membershipType = runCatching { AthleteMembershipType.valueOf(membershipType) }.getOrNull() ?: return null,
+        position = parsedPosition,
+        membershipType = parsedMembership,
         active = active,
-        financialStatus = runCatching { AthleteFinancialStatus.valueOf(financialStatus) }.getOrNull() ?: return null,
+        financialStatus = parsedFinancial,
     )
 }
 
 private fun AthleteDto.toDomain(): Athlete? {
     if (userId.isBlank() || displayName.isBlank()) return null
+    val parsedRole = enumOrNull<GroupRole>(role)
+    val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
+    val invalidPosition = position != null && parsedPosition == null
+    if (parsedRole == null || invalidPosition) return null
+    val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType) ?: return null
     return Athlete(
         userId = userId,
         displayName = displayName,
-        role = runCatching { GroupRole.valueOf(role) }.getOrNull() ?: return null,
-        position = position?.let { runCatching { AthletePosition.valueOf(it) }.getOrNull() ?: return null },
-        membershipType = runCatching { AthleteMembershipType.valueOf(membershipType) }.getOrNull() ?: return null,
+        role = parsedRole,
+        position = parsedPosition,
+        membershipType = parsedMembership,
+        active = active,
+    )
+}
+
+private fun OwnMembershipDto.toDomain(): OwnAthleteMembership? {
+    if (groupId.isBlank() || groupName.isBlank()) return null
+    val parsedRole = enumOrNull<GroupRole>(role)
+    val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
+    val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
+    val invalidPosition = position != null && parsedPosition == null
+    if (parsedRole == null || invalidPosition || parsedMembership == null) return null
+    return OwnAthleteMembership(
+        groupId = GroupId(groupId),
+        groupName = groupName,
+        role = parsedRole,
+        position = parsedPosition,
+        membershipType = parsedMembership,
         active = active,
     )
 }
 
 private fun OwnProfileDto.toDomain(): OwnAthleteProfile? {
     if (userId.isBlank() || displayName.isBlank()) return null
-    val mapped = memberships.map { dto ->
-        if (dto.groupId.isBlank() || dto.groupName.isBlank()) return null
-        OwnAthleteMembership(
-            groupId = GroupId(dto.groupId),
-            groupName = dto.groupName,
-            role = runCatching { GroupRole.valueOf(dto.role) }.getOrNull() ?: return null,
-            position = dto.position?.let { runCatching { AthletePosition.valueOf(it) }.getOrNull() ?: return null },
-            membershipType = runCatching { AthleteMembershipType.valueOf(dto.membershipType) }.getOrNull()
-                ?: return null,
-            active = dto.active,
-        )
-    }
+    val mapped = memberships.mapNotNullOrInvalid { it.toDomain() } ?: return null
     return OwnAthleteProfile(userId, displayName, phone, mapped)
 }
 

@@ -32,10 +32,11 @@ fun GroupMoreScreen(
     access: GroupRouteAccess,
     onOpenPeople: () -> Unit,
     onOpenFinance: () -> Unit,
+    modifier: Modifier = Modifier,
     athleteProfile: (@Composable () -> Unit)? = null,
 ) {
     Column(
-        Modifier.fillMaxSize()
+        modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(SaqzTheme.metrics.horizontalPadding)
             .testTag(GroupsNavigationTags.More),

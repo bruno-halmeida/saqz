@@ -37,6 +37,12 @@ set -eu
 printf 'mobile-boundaries\n' >>"$LOG_FILE"
 [ "${FAIL_MOBILE_BOUNDARIES:-0}" = 0 ] || exit 47
 SH
+    cat >"$target/repo/scripts/check-design-tokens" <<'SH'
+#!/bin/sh
+set -eu
+printf 'design-tokens\n' >>"$LOG_FILE"
+[ "${FAIL_DESIGN_TOKENS:-0}" = 0 ] || exit 48
+SH
 cat >"$target/repo/backend/gradlew" <<'SH'
 #!/bin/sh
 set -eu
@@ -97,6 +103,7 @@ fi
 SH
     chmod +x "$target/repo/scripts/check-credentials" "$target/repo/scripts/check-scope" \
         "$target/repo/scripts/check-bruno" "$target/repo/scripts/check-mobile-boundaries" \
+        "$target/repo/scripts/check-design-tokens" \
         "$target/repo/backend/gradlew" "$target/repo/mobile/gradlew" \
         "$target/repo/bin/adb" "$target/repo/bin/unzip"
     : >"$log"
@@ -141,7 +148,8 @@ bruno
 backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
 adb devices
 mobile-boundaries
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+design-tokens
+mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
@@ -155,6 +163,7 @@ fail_case bruno-failure '' env FAIL_BRUNO=1
 fail_case firebase-emulator-failure '' env FAIL_FIREBASE_EMULATOR=1
 fail_case android-instrumented-failure '' env FAIL_ANDROID_INSTRUMENTED=1
 fail_case mobile-boundaries-failure '' env FAIL_MOBILE_BOUNDARIES=1
+fail_case design-tokens-failure '' env FAIL_DESIGN_TOKENS=1
 
 # mobileBoundariesBeforeAggregate: the boundary gate runs before the real mobile
 # Gradle aggregate and never triggers a mobile Gradle invocation itself.
@@ -185,7 +194,7 @@ make_repo "$happy"
 ) >/dev/null
 happy_log="$happy/repo/invocations.log"
 
-required_suites=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
+required_suites=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
 
 # exactInventory: the mobile invocation lists exactly the required suites.
 [ "$(mobile_line "$happy_log")" = "$required_suites" ] || {
@@ -203,6 +212,7 @@ awk '
     /^backend / { seen["backend"] = ++i }
     /^adb / { seen["adb"] = ++i }
     /^mobile-boundaries$/ { seen["mobile-boundaries"] = ++i }
+    /^design-tokens$/ { seen["design-tokens"] = ++i }
     /^mobile / { seen["mobile"] = ++i }
     END {
         ok = seen["credentials"] < seen["scope"] &&
@@ -210,7 +220,8 @@ awk '
              seen["bruno"] < seen["backend"] &&
              seen["backend"] < seen["adb"] &&
              seen["adb"] < seen["mobile-boundaries"] &&
-             seen["mobile-boundaries"] < seen["mobile"]
+             seen["mobile-boundaries"] < seen["design-tokens"] &&
+             seen["design-tokens"] < seen["mobile"]
         exit ok ? 0 : 1
     }
 ' "$happy_log" || { printf 'exactOrder: stages out of order\n' >&2; exit 1; }
@@ -323,4 +334,4 @@ fail_case groups-integration-failure '' env FAIL_TASK=:features:groups:integrati
 fail_case groups-mobile-compile-failure '' env FAIL_TASK=:features:groups:compileAndroidMain
 fail_case groups-mobile-tests-failure '' env FAIL_TASK=:features:groups:allTests
 
-[ "$count" -eq 49 ]
+[ "$count" -eq 51 ]

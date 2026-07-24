@@ -74,9 +74,10 @@ fun AthleteRosterScreen(
     state: AthleteRosterState,
     canManage: Boolean,
     onIntent: (AthleteRosterIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
+        modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SaqzInput(

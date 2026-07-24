@@ -74,14 +74,19 @@ data class CreateGroupUiState(
 fun GroupOnboardingScreen(
     state: GroupSelectionState,
     onIntent: (GroupOnboardingIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     when (state) {
-        GroupSelectionState.NoGroup -> CenteredActions {
+        GroupSelectionState.NoGroup -> CenteredActions(modifier) {
             Text(stringResource(Res.string.groups_empty), color = SaqzTheme.colors.textPrimary)
             CreateGroupButton { onIntent(GroupOnboardingIntent.OpenCreateGroup) }
         }
-        is GroupSelectionState.Selector -> ScrollColumn {
-            Text(stringResource(Res.string.groups_select), style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
+        is GroupSelectionState.Selector -> ScrollColumn(modifier) {
+            Text(
+                stringResource(Res.string.groups_select),
+                style = SaqzTheme.typography.lead,
+                color = SaqzTheme.colors.textPrimary,
+            )
             state.memberships.forEach { membership ->
                 SaqzListItem(
                     headline = membership.groupName,
@@ -106,21 +111,30 @@ fun GroupOnboardingScreen(
 fun CreateGroupScreen(
     state: CreateGroupUiState,
     onIntent: (CreateGroupIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    ScrollColumn {
-        Text(stringResource(Res.string.group_create_title), style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
+    ScrollColumn(modifier) {
+        Text(
+            stringResource(Res.string.group_create_title),
+            style = SaqzTheme.typography.lead,
+            color = SaqzTheme.colors.textPrimary,
+        )
+        val nameInvalid = (state.validationAttempted && !state.validName) ||
+            state.administration.fieldErrors.containsKey("name")
         SaqzInput(
-            TextFieldValue(state.name), { onIntent(CreateGroupIntent.UpdateName(it.text)) }, stringResource(Res.string.group_name),
-            errorText = if ((state.validationAttempted && !state.validName) || state.administration.fieldErrors.containsKey("name")) {
-                stringResource(Res.string.group_name_invalid)
-            } else null,
+            TextFieldValue(state.name),
+            { onIntent(CreateGroupIntent.UpdateName(it.text)) },
+            stringResource(Res.string.group_name),
+            errorText = if (nameInvalid) stringResource(Res.string.group_name_invalid) else null,
             enabled = !state.administration.isLoading,
         )
+        val timeZoneInvalid = (state.validationAttempted && !state.validTimeZone) ||
+            state.administration.fieldErrors.containsKey("timeZone")
         SaqzInput(
-            TextFieldValue(state.timeZone), { onIntent(CreateGroupIntent.UpdateTimeZone(it.text)) }, stringResource(Res.string.group_timezone),
-            errorText = if ((state.validationAttempted && !state.validTimeZone) || state.administration.fieldErrors.containsKey("timeZone")) {
-                stringResource(Res.string.group_timezone_invalid)
-            } else null,
+            TextFieldValue(state.timeZone),
+            { onIntent(CreateGroupIntent.UpdateTimeZone(it.text)) },
+            stringResource(Res.string.group_timezone),
+            errorText = if (timeZoneInvalid) stringResource(Res.string.group_timezone_invalid) else null,
             enabled = !state.administration.isLoading,
         )
         SaqzButton(
@@ -143,17 +157,17 @@ private fun CreateGroupButton(onCreate: () -> Unit) = SaqzButton(
 )
 
 @Composable
-private fun CenteredActions(content: @Composable () -> Unit) {
+private fun CenteredActions(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
+        modifier.fillMaxSize().padding(SaqzTheme.metrics.horizontalPadding),
         verticalArrangement = Arrangement.Center,
     ) { content() }
 }
 
 @Composable
-internal fun ScrollColumn(content: @Composable () -> Unit) {
+internal fun ScrollColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
+        modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
             .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.sectionVerticalPadding),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) { content() }

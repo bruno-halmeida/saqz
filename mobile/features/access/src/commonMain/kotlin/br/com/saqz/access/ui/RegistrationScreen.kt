@@ -85,13 +85,14 @@ internal object RegistrationTags {
 fun RegistrationScreen(
     state: RegistrationState,
     onIntent: (RegistrationIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val validName = isValidDisplayName(state.name)
     val validEmail = state.email.isValidEmail()
     val colors = SaqzTheme.colors
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(colors.background),
     ) {

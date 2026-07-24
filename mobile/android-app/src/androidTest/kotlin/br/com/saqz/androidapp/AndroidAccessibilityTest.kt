@@ -49,7 +49,7 @@ class AndroidAccessibilityTest {
     fun talkBackOrderMatchesSemantics() {
         composeRule.setContent {
             SaqzTheme {
-                LoginScreen(LoginState()) { }
+                LoginScreen(LoginState(), onIntent = {})
             }
         }
         composeRule.waitForIdle()

@@ -10,6 +10,8 @@ sealed interface UiText {
 }
 
 @Composable
+// A API de stringResource só aceita vararg; o spread é o único caminho aqui.
+@Suppress("SpreadOperator")
 fun UiText.asString(): String = when (this) {
     is UiText.Raw -> value
     is UiText.Res -> if (args.isEmpty()) {

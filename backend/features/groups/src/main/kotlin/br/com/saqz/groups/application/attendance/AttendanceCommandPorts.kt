@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
 import br.com.saqz.groups.domain.attendance.*
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
@@ -20,6 +21,7 @@ data class AttendanceAggregate(
     val current: AttendanceRecord?,
     val gameFeeCents: Long?,
     val gameDate: LocalDate,
+    val membershipType: AthleteMembershipType,
 )
 
 data class AttendanceRecord(
@@ -86,4 +88,21 @@ data class AttendanceDetail(
 
 fun interface AttendanceDetailQuery {
     fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail?
+}
+
+// Names reuse the AttendanceShareSnapshotPerson convention, read from the
+// attendance row snapshot instead of the live membership name.
+data class AttendanceRosterMember(
+    val memberId: UUID,
+    val displayName: String,
+    val waitlistPosition: Long? = null,
+)
+
+data class AttendanceRoster(
+    val confirmed: List<AttendanceRosterMember>,
+    val waitlisted: List<AttendanceRosterMember>,
+)
+
+fun interface AttendanceRosterQuery {
+    fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster?
 }

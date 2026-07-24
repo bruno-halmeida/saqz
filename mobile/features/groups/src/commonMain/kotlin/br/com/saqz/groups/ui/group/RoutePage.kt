@@ -29,9 +29,10 @@ fun RoutePage(
     body: String,
     tag: String,
     onNavigationIntent: (GroupsNavigationIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxSize()
+        modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(SaqzTheme.metrics.horizontalPadding)
             .testTag(tag),

@@ -96,12 +96,13 @@ internal object LoginTags {
 fun LoginScreen(
     state: LoginState,
     onIntent: (LoginIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
     val colors = SaqzTheme.colors
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(colors.background),
     ) {

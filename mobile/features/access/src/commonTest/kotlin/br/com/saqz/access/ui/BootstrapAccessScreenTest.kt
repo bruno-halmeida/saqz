@@ -21,7 +21,9 @@ class BootstrapAccessScreenTest {
 
     @Test fun `bootstrap error retries without returning to login`() = runComposeUiTest {
         var intent: SessionIntent? = null
-        setContent { SaqzTheme { BootstrapAccessScreen(SessionAccessState.BootstrapError) { intent = it } } }
+        setContent {
+            SaqzTheme { BootstrapAccessScreen(SessionAccessState.BootstrapError, onIntent = { intent = it }) }
+        }
         onNodeWithText("Nao foi possivel carregar sua conta").assertExists()
         onNodeWithText("Tentar novamente").performClick()
         assertEquals(SessionIntent.RetryBootstrap, intent)

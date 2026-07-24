@@ -68,8 +68,13 @@ class DeferredAttendanceLinkStateMachine(
         { state, processing -> state.copy(isResolving = processing, error = if (processing) null else state.error) },
         { it.copy(hasPending = false, isResolving = false, retryAfterSeconds = null) },
         { state, error -> when (error) {
-            AttendanceSharingError.InvalidOrExpired -> DeferredAttendanceLinkState(error = AttendanceLinkUiError.INVALID_OR_EXPIRED) to true
-            is AttendanceSharingError.AttemptLimit -> state.copy(isResolving = false, error = AttendanceLinkUiError.ATTEMPT_LIMIT, retryAfterSeconds = error.retryAfterSeconds) to false
+            AttendanceSharingError.InvalidOrExpired ->
+                DeferredAttendanceLinkState(error = AttendanceLinkUiError.INVALID_OR_EXPIRED) to true
+            is AttendanceSharingError.AttemptLimit -> state.copy(
+                isResolving = false,
+                error = AttendanceLinkUiError.ATTEMPT_LIMIT,
+                retryAfterSeconds = error.retryAfterSeconds,
+            ) to false
             is AttendanceSharingError.DataFailure -> state.copy(isResolving = false, error = AttendanceLinkUiError.UNAVAILABLE) to false
         } }, scope,
     )

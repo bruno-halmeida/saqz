@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.roborazzi)
     id("saqz.android-application")
     id("saqz.detekt")
 }
@@ -82,6 +83,14 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests {
+            // Roborazzi/Robolectric: screenshots de tela em JVM, sem emulador.
+            isIncludeAndroidResources = true
+            all { it.systemProperty("robolectric.graphicsMode", "NATIVE") }
+        }
+    }
+
     sourceSets {
         // Package the pinned Inter OFL license into the test APK so the
         // instrumented checksum test verifies the same file kept for attribution.
@@ -158,6 +167,15 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(project(":core:design-system"))
+    testImplementation(project(":core:domain"))
+    testImplementation("org.jetbrains.compose.components:components-resources:1.11.1")
+    testImplementation("org.jetbrains.compose.material:material:1.11.1")
+    testImplementation("org.jetbrains.compose.foundation:foundation:1.11.1")
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

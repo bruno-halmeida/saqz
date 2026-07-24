@@ -35,7 +35,7 @@ fun SaqzBottomSheet(
             dismissOnClickOutside = dismissOnClickOutside,
             alignment = Alignment.BottomCenter,
             // Full width within the scaffold's horizontal safe-area padding.
-            cardModifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth(),
             content = content,
         )
     }
@@ -51,7 +51,7 @@ private fun SaqzBottomSheetPreview() = SaqzTheme {
         showCloseAction = true,
         dismissOnClickOutside = false,
         alignment = Alignment.BottomCenter,
-        cardModifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         content = { Text("Conteúdo") },
     )
 }

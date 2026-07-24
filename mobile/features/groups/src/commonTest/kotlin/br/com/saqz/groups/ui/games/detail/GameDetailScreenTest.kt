@@ -304,7 +304,7 @@ class GameDetailScreenTest {
         zone: String = "America/Sao_Paulo",
     ) = setContent {
         SaqzTheme {
-            GameDetailScreen(value, onIntent, SaqzDateTimeFormatter(SaqzTimeZoneProvider { TimeZone.of(zone) }))
+            GameDetailScreen(value, onIntent, formatter = SaqzDateTimeFormatter(SaqzTimeZoneProvider { TimeZone.of(zone) }))
         }
     }
 

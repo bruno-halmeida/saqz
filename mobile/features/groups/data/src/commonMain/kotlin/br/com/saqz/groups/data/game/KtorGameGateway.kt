@@ -175,12 +175,27 @@ class KtorGameGateway(
             network.execute(HttpMethod.Post, "api/groups/${groupId.value}/games", GameTransport.serializer(), request(command))
         }.versionedGame()
 
-    override suspend fun edit(groupId: GroupId, gameId: String, version: GameVersionToken, command: GameWriteCommand): SaqzResult<VersionedGame, GameError> =
+    override suspend fun edit(
+        groupId: GroupId,
+        gameId: String,
+        version: GameVersionToken,
+        command: GameWriteCommand,
+    ): SaqzResult<VersionedGame, GameError> =
         retryTransport(command.requestId.safety(), delayMillis = retryDelay) {
-            network.execute(HttpMethod.Put, gameRoute(groupId, gameId), GameTransport.serializer(), request(command, version))
+            network.execute(
+                HttpMethod.Put,
+                gameRoute(groupId, gameId),
+                GameTransport.serializer(),
+                request(command, version),
+            )
         }.versionedGame()
 
-    override suspend fun lifecycle(groupId: GroupId, gameId: String, version: GameVersionToken, action: GameLifecycleAction): SaqzResult<VersionedGame, GameError> =
+    override suspend fun lifecycle(
+        groupId: GroupId,
+        gameId: String,
+        version: GameVersionToken,
+        action: GameLifecycleAction,
+    ): SaqzResult<VersionedGame, GameError> =
         network.execute(
             HttpMethod.Post,
             "${gameRoute(groupId, gameId)}/${action.route}",
@@ -198,7 +213,12 @@ class KtorGameGateway(
             network.execute(HttpMethod.Get, "${seriesRoute(groupId)}/$seriesId", WeeklySeriesTransport.serializer())
         }.versionedSeries()
 
-    override suspend fun boundary(groupId: GroupId, seriesId: String, version: GameVersionToken, command: SeriesBoundaryCommand): SaqzResult<VersionedSeries, GameError> =
+    override suspend fun boundary(
+        groupId: GroupId,
+        seriesId: String,
+        version: GameVersionToken,
+        command: SeriesBoundaryCommand,
+    ): SaqzResult<VersionedSeries, GameError> =
         retryTransport(RetrySafety.IdempotentWrite, delayMillis = retryDelay) {
             network.execute(
                 HttpMethod.Post,

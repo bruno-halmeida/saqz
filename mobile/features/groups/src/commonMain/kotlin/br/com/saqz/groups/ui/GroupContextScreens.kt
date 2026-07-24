@@ -62,7 +62,8 @@ sealed interface LogoutConfirmationIntent {
 fun GroupSettingsScreen(
     state: GroupSettingsUiState,
     onIntent: (GroupSettingsIntent) -> Unit,
-) = ScrollColumn {
+    modifier: Modifier = Modifier,
+) = ScrollColumn(modifier) {
     Text(stringResource(Res.string.settings_title), style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
     SaqzInput(
         TextFieldValue(state.name),
@@ -99,8 +100,9 @@ fun GroupSettingsScreen(
 }
 
 @Composable
-fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit) {
+fun LogoutConfirmationDialog(onIntent: (LogoutConfirmationIntent) -> Unit, modifier: Modifier = Modifier) {
     SaqzDialog(
+        modifier = modifier,
         title = stringResource(Res.string.logout_title),
         onCloseRequest = { onIntent(LogoutConfirmationIntent.Cancel) },
         primaryAction = {
@@ -130,9 +132,9 @@ private val previewGroupState = GroupAdministrationState(
 @Preview
 @Composable
 private fun GroupSettingsScreenPreview() = SaqzTheme {
-    GroupSettingsScreen(GroupSettingsUiState(previewGroupState, "Futebol de terça", "America/Sao_Paulo")) {}
+    GroupSettingsScreen(GroupSettingsUiState(previewGroupState, "Futebol de terça", "America/Sao_Paulo"), onIntent = {})
 }
 
 @Preview
 @Composable
-private fun LogoutConfirmationDialogPreview() = SaqzTheme { LogoutConfirmationDialog {} }
+private fun LogoutConfirmationDialogPreview() = SaqzTheme { LogoutConfirmationDialog(onIntent = {}) }

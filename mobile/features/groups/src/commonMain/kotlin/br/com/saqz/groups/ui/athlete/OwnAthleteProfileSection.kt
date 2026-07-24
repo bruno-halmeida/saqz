@@ -35,9 +35,10 @@ object OwnAthleteProfileTags {
 fun OwnAthleteProfileSection(
     state: OwnAthleteProfileState,
     onIntent: (OwnAthleteProfileIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxWidth().testTag(OwnAthleteProfileTags.Section),
+        modifier.fillMaxWidth().testTag(OwnAthleteProfileTags.Section),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(

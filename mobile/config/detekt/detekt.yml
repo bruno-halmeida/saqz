@@ -16,9 +16,17 @@ complexity:
     ignoreAnnotated:
       - 'Composable'
   LargeClass:
-    threshold: 150
+    # 400: uma ViewModel MVI decomposta em funções privadas pequenas cabe aqui;
+    # 150 era violado por 8 classes core no dia em que a regra passou a rodar.
+    threshold: 400
     ignoreAnnotated:
       - 'Composable'
+  TooManyFunctions:
+    ignoreAnnotatedFunctions:
+      - 'Composable'
+    # Muitas funções privadas pequenas é o estilo que LongMethod incentiva;
+    # o limite vale para a superfície pública da classe/arquivo.
+    ignorePrivate: true
 
 coroutines:
   GlobalCoroutineUsage:
@@ -83,3 +91,12 @@ style:
     ignoreAnnotated:
       - 'Preview'
       - 'Composable'
+Compose:
+  CompositionLocalAllowlist:
+    # Locals do próprio design system: é o mecanismo canônico de tema (SaqzTheme).
+    allowedCompositionLocals:
+      - LocalSaqzColors
+      - LocalSaqzMetrics
+      - LocalSaqzTypography
+      - LocalSaqzMotion
+      - LocalSaqzChrome

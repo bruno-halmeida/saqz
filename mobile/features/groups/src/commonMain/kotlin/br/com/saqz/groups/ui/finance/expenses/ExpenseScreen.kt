@@ -109,11 +109,15 @@ internal var SemanticsPropertyReceiver.expenseMinimumTouchTarget by ExpenseMinim
 internal var SemanticsPropertyReceiver.expenseActionOrder by ExpenseActionOrderKey
 
 @Composable
-fun ExpenseScreen(state: ExpenseState, onIntent: (ExpenseIntent) -> Unit) {
+fun ExpenseScreen(
+    state: ExpenseState,
+    onIntent: (ExpenseIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (!state.routeAvailable) return
 
     Column(
-        Modifier
+        modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(SaqzTheme.metrics.horizontalPadding),

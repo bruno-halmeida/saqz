@@ -85,7 +85,9 @@ import org.jetbrains.compose.resources.stringResource
 import br.com.saqz.groups.ui.setup.*
 @Composable
 internal fun GroupSetupTopBar(mode: GroupSetupMode, onBack: () -> Unit, onMoreOptions: () -> Unit) {
-    val title = stringResource(if (mode == GroupSetupMode.CREATE) Res.string.group_setup_create_title else Res.string.group_setup_edit_title)
+    val title = stringResource(
+        if (mode == GroupSetupMode.CREATE) Res.string.group_setup_create_title else Res.string.group_setup_edit_title,
+    )
     Box(
         Modifier.fillMaxWidth().height(56.dp).background(SaqzTheme.colors.surface)
             .border(0.dp, Color.Transparent).testTag(GroupSetupTags.Header),
@@ -115,7 +117,12 @@ internal fun GroupSetupTopBar(mode: GroupSetupMode, onBack: () -> Unit, onMoreOp
 }
 
 @Composable
-internal fun TopBarAction(resource: DrawableResource, description: String, onClick: () -> Unit, modifier: Modifier) {
+internal fun TopBarAction(
+    resource: DrawableResource,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier.size(48.dp).clickable(onClickLabel = description, onClick = onClick)
             .semantics { contentDescription = description },
@@ -170,7 +177,11 @@ internal fun SetupInput(
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(label), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
+            Text(
+                stringResource(label),
+                style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp),
+                color = SaqzTheme.colors.textSecondary,
+            )
             badge?.let {
                 Text(
                     stringResource(it),
@@ -255,7 +266,12 @@ internal fun SelectorField(label: StringResource, value: String, enabled: Boolea
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(value, style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))
+            Text(
+                value,
+                style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp),
+                color = SaqzTheme.colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
             MaterialIcon(Res.drawable.material_expand_more, SaqzTheme.colors.textSecondary, 20.dp)
         }
     }
@@ -273,17 +289,28 @@ internal fun RoutineAction(icon: DrawableResource, label: StringResource, tag: S
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         MaterialIcon(icon, SaqzTheme.colors.primary, 20.dp)
-        Text(stringResource(label), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)
+        Text(
+            stringResource(label),
+            style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp),
+            color = SaqzTheme.colors.textPrimary,
+        )
     }
 }
 
 @Composable
 internal fun SummaryRow(summary: String, enabled: Boolean, onEdit: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).background(SaqzTheme.colors.surfacePearl, RoundedCornerShape(10.dp)).padding(start = 14.dp),
+        Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .background(SaqzTheme.colors.surfacePearl, RoundedCornerShape(10.dp))
+            .padding(start = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(summary, style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))
+        Text(
+            summary,
+            style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp),
+            color = SaqzTheme.colors.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
         SetupButton(
             stringResource(Res.string.group_setup_edit),
             onEdit,
@@ -312,8 +339,18 @@ internal fun VenueEditor(
             onIntent(GroupSetupIntent.UpdateVenue(venue.copy(court = it)))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            SetupButton(stringResource(Res.string.group_setup_remove_venue), { onIntent(GroupSetupIntent.UpdateVenue(null)) }, variant = SaqzButtonVariant.Ghost, enabled = editable)
-            SetupButton(stringResource(Res.string.group_setup_done), onDone, variant = SaqzButtonVariant.Ghost, enabled = editable && venue.name.isNotBlank())
+            SetupButton(
+                stringResource(Res.string.group_setup_remove_venue),
+                { onIntent(GroupSetupIntent.UpdateVenue(null)) },
+                variant = SaqzButtonVariant.Ghost,
+                enabled = editable,
+            )
+            SetupButton(
+                stringResource(Res.string.group_setup_done),
+                onDone,
+                variant = SaqzButtonVariant.Ghost,
+                enabled = editable && venue.name.isNotBlank(),
+            )
         }
     }
 }
@@ -329,7 +366,11 @@ internal fun SlotEditors(
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         slots.forEachIndexed { index, slot ->
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(Res.string.group_setup_slot_number, index + 1), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)
+                Text(
+                    stringResource(Res.string.group_setup_slot_number, index + 1),
+                    style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp),
+                    color = SaqzTheme.colors.textPrimary,
+                )
                 InlineChoice(
                     label = Res.string.group_setup_weekday,
                     options = GroupWeekday.entries.map { it to weekdayLabel(it.name) },
@@ -339,7 +380,13 @@ internal fun SlotEditors(
                 SetupInput(slot.startTime, Res.string.group_setup_start_time, editable, error(state, "regularSlots[$index].startTime")) {
                     onIntent(GroupSetupIntent.UpdateSlots(slots.replace(index, slot.copy(startTime = it))))
                 }
-                SetupInput(slot.durationMinutes.toString(), Res.string.group_setup_duration, editable, error(state, "regularSlots[$index].durationMinutes"), keyboardType = KeyboardType.Number) {
+                SetupInput(
+                    slot.durationMinutes.toString(),
+                    Res.string.group_setup_duration,
+                    editable,
+                    error(state, "regularSlots[$index].durationMinutes"),
+                    keyboardType = KeyboardType.Number,
+                ) {
                     onIntent(GroupSetupIntent.UpdateSlots(slots.replace(index, slot.copy(durationMinutes = it.toIntOrNull() ?: 0))))
                 }
                 SetupButton(
@@ -388,7 +435,11 @@ internal fun <T> InlineChoice(label: StringResource, options: List<Pair<T, Strin
 internal fun CapacityStepper(value: Int, minimum: Int, maximum: Int, enabled: Boolean, error: String?, onChange: (Int) -> Unit) {
     val capacityDescription = stringResource(Res.string.group_setup_capacity)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(Res.string.group_setup_capacity), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
+        Text(
+            stringResource(Res.string.group_setup_capacity),
+            style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp),
+            color = SaqzTheme.colors.textSecondary,
+        )
         Row(
             Modifier.width(200.dp).heightIn(min = 52.dp).clip(RoundedCornerShape(10.dp))
                 .border(1.dp, if (error == null) SaqzTheme.colors.primary else SaqzTheme.colors.errorForeground, RoundedCornerShape(10.dp)),
@@ -400,7 +451,11 @@ internal fun CapacityStepper(value: Int, minimum: Int, maximum: Int, enabled: Bo
                 onValueChange = { raw -> raw.filter(Char::isDigit).toIntOrNull()?.let(onChange) },
                 enabled = enabled,
                 singleLine = true,
-                textStyle = SaqzTheme.typography.bodyStrong.copy(color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center, letterSpacing = 0.sp),
+                textStyle = SaqzTheme.typography.bodyStrong.copy(
+                    color = SaqzTheme.colors.textPrimary,
+                    textAlign = TextAlign.Center,
+                    letterSpacing = 0.sp,
+                ),
                 modifier = Modifier.weight(1f).semantics { contentDescription = capacityDescription }.testTag(GroupSetupTags.CapacityValue),
             )
             StepperButton(Res.drawable.material_add, capacityDescription, enabled && value < maximum) { onChange(value + 1) }
@@ -412,7 +467,9 @@ internal fun CapacityStepper(value: Int, minimum: Int, maximum: Int, enabled: Bo
 @Composable
 internal fun StepperButton(icon: DrawableResource, description: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
-        Modifier.size(52.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = description },
+        Modifier.size(52.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) { MaterialIcon(icon, if (enabled) SaqzTheme.colors.primary else SaqzTheme.colors.disabledForeground, 20.dp) }
 }
@@ -421,15 +478,34 @@ internal fun StepperButton(icon: DrawableResource, description: String, enabled:
 internal fun FeeEditor(cents: Long?, label: StringResource, enabled: Boolean, error: String?, onChange: (Long?) -> Unit) {
     if (cents == null) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(label), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
+            Text(
+                stringResource(label),
+                style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp),
+                color = SaqzTheme.colors.textSecondary,
+            )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(Res.string.group_setup_no_charge), style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))
-                SetupButton(stringResource(Res.string.group_setup_add_value), { onChange(0) }, variant = SaqzButtonVariant.Ghost, enabled = enabled)
+                Text(
+                    stringResource(Res.string.group_setup_no_charge),
+                    style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp),
+                    color = SaqzTheme.colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                SetupButton(
+                    stringResource(Res.string.group_setup_add_value),
+                    { onChange(0) },
+                    variant = SaqzButtonVariant.Ghost,
+                    enabled = enabled,
+                )
             }
         }
     } else {
         MoneyInput(cents, label, enabled, error) { onChange(it) }
-        SetupButton(stringResource(Res.string.group_setup_remove_value), { onChange(null) }, variant = SaqzButtonVariant.Ghost, enabled = enabled)
+        SetupButton(
+            stringResource(Res.string.group_setup_remove_value),
+            { onChange(null) },
+            variant = SaqzButtonVariant.Ghost,
+            enabled = enabled,
+        )
     }
 }
 
@@ -463,24 +539,48 @@ internal fun MoneyInput(cents: Long, label: StringResource, enabled: Boolean, er
             keyboardType = KeyboardType.Decimal,
             enabled = enabled,
             errorText = error,
-            leadingContent = { Text("R$", style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary) },
+            leadingContent = {
+                Text(
+                    "R$",
+                    style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp),
+                    color = SaqzTheme.colors.textSecondary,
+                )
+            },
             showLabel = false,
         )
     }
 }
 
 @Composable
-internal fun MonthlyToggle(form: GroupSetupForm, editable: Boolean, state: GroupSetupState, defaultMonthlyDueDay: Int, onIntent: (GroupSetupIntent) -> Unit, onDueDay: () -> Unit) {
+internal fun MonthlyToggle(
+    form: GroupSetupForm,
+    editable: Boolean,
+    state: GroupSetupState,
+    defaultMonthlyDueDay: Int,
+    onIntent: (GroupSetupIntent) -> Unit,
+    onDueDay: () -> Unit,
+) {
     val monthlyFeeCents = form.monthlyFeeCents
     val active = monthlyFeeCents != null
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(stringResource(Res.string.group_setup_monthly_question), style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textPrimary)
-            Text(stringResource(if (active) Res.string.group_setup_monthly_yes else Res.string.group_setup_monthly_no), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
+            Text(
+                stringResource(Res.string.group_setup_monthly_question),
+                style = SaqzTheme.typography.bodyStrong.copy(letterSpacing = 0.sp),
+                color = SaqzTheme.colors.textPrimary,
+            )
+            Text(
+                stringResource(if (active) Res.string.group_setup_monthly_yes else Res.string.group_setup_monthly_no),
+                style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp),
+                color = SaqzTheme.colors.textSecondary,
+            )
         }
         Switch(
             checked = active,
-            onCheckedChange = { checked -> onIntent(GroupSetupIntent.UpdateMonthlyFee(if (checked) 0 else null, if (checked) defaultMonthlyDueDay else null)) },
+            onCheckedChange = { checked ->
+                val dueDay = if (checked) defaultMonthlyDueDay else null
+                onIntent(GroupSetupIntent.UpdateMonthlyFee(if (checked) 0 else null, dueDay))
+            },
             enabled = editable,
             colors = SwitchDefaults.colors(checkedThumbColor = SaqzTheme.colors.onPrimary, checkedTrackColor = SaqzTheme.colors.primary),
             modifier = Modifier.testTag(GroupSetupTags.MonthlySwitch),
@@ -507,7 +607,12 @@ internal fun <T> SelectionSheet(title: String, options: List<Pair<T?, String>>, 
         dismissOnBackPress = true,
         dismissOnClickOutside = true,
         primaryAction = {
-            SetupButton(stringResource(Res.string.action_cancel), onClose, variant = SaqzButtonVariant.Ghost, modifier = Modifier.fillMaxWidth())
+            SetupButton(
+                stringResource(Res.string.action_cancel),
+                onClose,
+                variant = SaqzButtonVariant.Ghost,
+                modifier = Modifier.fillMaxWidth(),
+            )
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -521,7 +626,12 @@ internal fun <T> SelectionSheet(title: String, options: List<Pair<T?, String>>, 
                         .semantics { semanticsSelected = active }.padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp), color = if (active) SaqzTheme.colors.primary else SaqzTheme.colors.textPrimary, modifier = Modifier.weight(1f))
+                    Text(
+                        label,
+                        style = SaqzTheme.typography.body.copy(letterSpacing = 0.sp),
+                        color = if (active) SaqzTheme.colors.primary else SaqzTheme.colors.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
                     if (active) MaterialIcon(Res.drawable.material_check, SaqzTheme.colors.primary, 20.dp)
                 }
             }
@@ -536,7 +646,13 @@ internal fun StickySubmit(state: GroupSetupState, onSubmit: () -> Unit) {
             .border(1.dp, SaqzTheme.colors.hairline).padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         SetupButton(
-            stringResource(if (state.mode == GroupSetupMode.CREATE) Res.string.group_setup_create_action else Res.string.group_setup_save_action),
+            stringResource(
+                if (state.mode == GroupSetupMode.CREATE) {
+                    Res.string.group_setup_create_action
+                } else {
+                    Res.string.group_setup_save_action
+                },
+            ),
             onSubmit,
             enabled = state.form.name.isNotBlank() && !state.conflict,
             loading = state.isLoading,
@@ -549,13 +665,23 @@ internal fun StickySubmit(state: GroupSetupState, onSubmit: () -> Unit) {
 @Composable
 internal fun FriendlyTimeZoneSelector(editable: Boolean, error: String?, onIntent: (GroupSetupIntent) -> Unit) {
     Column(Modifier.testTag(GroupSetupTags.TimeZone), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(Res.string.group_setup_timezone_region), style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp), color = SaqzTheme.colors.textSecondary)
+        Text(
+            stringResource(Res.string.group_setup_timezone_region),
+            style = SaqzTheme.typography.caption.copy(letterSpacing = 0.sp),
+            color = SaqzTheme.colors.textSecondary,
+        )
         listOf(
             Res.string.group_setup_timezone_sao_paulo to "America/Sao_Paulo",
             Res.string.group_setup_timezone_manaus to "America/Manaus",
             Res.string.group_setup_timezone_recife to "America/Recife",
         ).forEach { (label, identifier) ->
-            SetupButton(stringResource(label), { onIntent(GroupSetupIntent.SelectFallbackTimeZone(identifier)) }, variant = SaqzButtonVariant.Secondary, enabled = editable, modifier = Modifier.fillMaxWidth())
+            SetupButton(
+                stringResource(label),
+                { onIntent(GroupSetupIntent.SelectFallbackTimeZone(identifier)) },
+                variant = SaqzButtonVariant.Secondary,
+                enabled = editable,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         error?.let { Text(it, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground) }
     }

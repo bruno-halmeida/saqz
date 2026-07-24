@@ -55,6 +55,7 @@ fun PositionOnboardingHost(viewModel: PositionOnboardingViewModel) {
 fun PositionOnboardingSheet(
     state: PositionOnboardingState,
     onIntent: (PositionOnboardingIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) = SaqzBottomSheet(
     title = stringResource(Res.string.athlete_position_title),
     onCloseRequest = { onIntent(PositionOnboardingIntent.Skip) },
@@ -67,7 +68,7 @@ fun PositionOnboardingSheet(
             modifier = Modifier.fillMaxWidth().testTag(PositionOnboardingTags.Skip),
         )
     },
-    modifier = Modifier.testTag(PositionOnboardingTags.Sheet),
+    modifier = modifier.testTag(PositionOnboardingTags.Sheet),
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(

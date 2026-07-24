@@ -107,7 +107,7 @@ class GroupPhotoEditorTest {
                         optional = true,
                         deferUpload = true,
                         onIntent = {},
-                        onPrepared = { prepared = it },
+                        onPrepare = { prepared = it },
                         compactIdle = true,
                         prepared = prepared,
                     )
@@ -199,7 +199,16 @@ class GroupPhotoEditorTest {
     ) = setContent {
         SaqzTheme {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                GroupPhotoEditor(state, groupName, canEdit, optional, deferUpload, onIntent, onPrepared, onReloadTarget)
+                GroupPhotoEditor(
+                    state,
+                    groupName,
+                    canEdit,
+                    optional,
+                    deferUpload,
+                    onIntent,
+                    onPrepare = onPrepared,
+                    onReloadTarget = onReloadTarget,
+                )
             }
         }
     }

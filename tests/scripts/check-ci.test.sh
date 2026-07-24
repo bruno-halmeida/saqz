@@ -3,6 +3,7 @@ set -eu
 
 repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 workflow="$repository_root/.github/workflows/initialization-gate.yml"
+probe_workflow="$repository_root/.github/workflows/api35-probe.yml"
 pages_workflow="$repository_root/.github/workflows/deploy-pages.yml"
 evaluator="$repository_root/scripts/evaluate-ci-gates"
 count=0
@@ -105,8 +106,27 @@ grep -Eq '/usr/libexec/java_home -v 21' "$repository_root/scripts/check-ios" || 
 }
 ok 'ios java home fallback'
 
-assert_workflow '^[[:space:]]*android-api35-gate:[[:space:]]*$' 'api35 gate job'
-ok 'api35 gate jobExists'
+assert_probe() {
+    pattern=$1
+    label=$2
+    grep -Eq "$pattern" "$probe_workflow" || {
+        printf 'missing probe contract: %s\n' "$label" >&2
+        exit 1
+    }
+}
+
+assert_probe '^[[:space:]]*android-api35-gate:[[:space:]]*$' 'api35 gate job'
+ok 'api35 probeJobExists'
+
+if grep -Eq '^[[:space:]]*android-api35-gate:[[:space:]]*$' "$workflow"; then
+    printf 'api35 gate must not block the PR initialization gate\n' >&2
+    exit 1
+fi
+ok 'api35 outOfPrPath'
+
+assert_probe '^[[:space:]]*schedule:[[:space:]]*$' 'nightly schedule trigger'
+assert_probe '^[[:space:]]*workflow_dispatch:[[:space:]]*$' 'manual trigger'
+ok 'api35 nightlyAndManualTriggers'
 
 awk '
     /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gate = 1 }
@@ -119,7 +139,7 @@ awk '
     in_gate && /^[[:space:]]*avd-name:[[:space:]]*saqz-api35-probe[[:space:]]*$/ { avd = 1 }
     in_gate && /^[[:space:]]*emulator-build:[[:space:]]*13823996[[:space:]]*$/ { build = 1 }
     END { exit api && target && arch && profile && ram && avd && build ? 0 : 1 }
-' "$workflow" || {
+' "$probe_workflow" || {
     printf 'api35 gate tuple must be pinned exactly\n' >&2
     exit 1
 }
@@ -130,7 +150,7 @@ awk '
     /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
     in_gate && /^[[:space:]]*emulator-boot-timeout:[[:space:]]*300[[:space:]]*$/ { found = 1 }
     END { exit found ? 0 : 1 }
-' "$workflow" || {
+' "$probe_workflow" || {
     printf 'api35 gate must keep boot timeout at 300 seconds\n' >&2
     exit 1
 }
@@ -143,7 +163,7 @@ awk '
     in_gate && /test -r \/dev\/kvm/ { read = 1 }
     in_gate && /test -w \/dev\/kvm/ { write = 1 }
     END { exit chmod && read && write ? 0 : 1 }
-' "$workflow" || {
+' "$probe_workflow" || {
     printf 'api35 gate must enable and verify KVM access\n' >&2
     exit 1
 }
@@ -156,7 +176,7 @@ awk '
     in_gate && /android\.testInstrumentationRunnerArguments\.class=br\.com\.saqz\.androidapp\.ModernAndroidBehaviorTest/ { modern = 1 }
     in_gate && /scripts\/check-gradle/ { full_gate = 1 }
     END { exit connected && modern && !full_gate ? 0 : 1 }
-' "$workflow" || {
+' "$probe_workflow" || {
     printf 'api35 gate must run only ModernAndroidBehaviorTest, not check-gradle\n' >&2
     exit 1
 }
@@ -167,61 +187,61 @@ awk '
     /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gate = 0 }
     in_gate && /continue-on-error/ { found = 1 }
     END { exit found ? 0 : 1 }
-' "$workflow" >/dev/null 2>&1 && {
+' "$probe_workflow" >/dev/null 2>&1 && {
     printf 'api35 gate must be strict internally, without continue-on-error\n' >&2
     exit 1
 }
 ok 'api35 internalFailureIsFatal'
 
-assert_workflow 'needs:[[:space:]]*\[gradle-gate, android-api35-gate, ios-gate, landing-gate\]' 'aggregate includes api35 gate'
-ok 'api35 aggregateNeedsFourJobs'
+assert_workflow 'needs:[[:space:]]*\[gradle-gate, ios-gate, landing-gate\]' 'aggregate excludes api35 gate'
+ok 'aggregateNeedsThreeJobs'
 
-"$evaluator" success success success success >/dev/null
-ok 'api35 evaluatorAcceptsFourSuccesses'
+"$evaluator" success success success >/dev/null
+ok 'evaluatorAcceptsThreeSuccesses'
 
-grep -Eq 'gradle-result api35-result ios-result landing-result' "$evaluator" || {
-    printf 'aggregate evaluator usage must name all four results\n' >&2
+grep -Eq 'gradle-result ios-result landing-result' "$evaluator" || {
+    printf 'aggregate evaluator usage must name all three results\n' >&2
     exit 1
 }
-ok 'api35 evaluatorUsageNamesFourResults'
+ok 'evaluatorUsageNamesThreeResults'
 
 grep -Eq 'scripts/check-credentials' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-scope' "$repository_root/scripts/check-gradle"
 grep -Eq 'scripts/check-bruno' "$repository_root/scripts/check-gradle"
 
 assert_workflow '^[[:space:]]*initialization-gate:[[:space:]]*$' 'aggregate job'
-assert_workflow 'needs:[[:space:]]*\[gradle-gate, android-api35-gate, ios-gate, landing-gate\]' 'aggregate needs'
+assert_workflow 'needs:[[:space:]]*\[gradle-gate, ios-gate, landing-gate\]' 'aggregate needs'
 assert_workflow 'if:[[:space:]]*always\(\)' 'aggregate always'
-assert_workflow 'scripts/evaluate-ci-gates "\$GRADLE_RESULT" "\$API35_RESULT" "\$IOS_RESULT" "\$LANDING_RESULT"' 'aggregate evaluator'
-"$evaluator" success success success success >/dev/null
+assert_workflow 'scripts/evaluate-ci-gates "\$GRADLE_RESULT" "\$IOS_RESULT" "\$LANDING_RESULT"' 'aggregate evaluator'
+"$evaluator" success success success >/dev/null
 
-assert_workflow 'API35_RESULT:[[:space:]]*\$\{\{[[:space:]]*needs\.android-api35-gate\.result[[:space:]]*\}\}' 'api35 aggregate result binding'
-ok 'api35 aggregateResultBinding'
+assert_workflow 'IOS_RESULT:[[:space:]]*\$\{\{[[:space:]]*needs\.ios-gate\.result[[:space:]]*\}\}' 'ios aggregate result binding'
+ok 'aggregateResultBinding'
 
 awk '
     /^[[:space:]]*gradle-gate:[[:space:]]*$/ { in_gradle = 1 }
-    /^[[:space:]]*android-api35-gate:[[:space:]]*$/ { in_gradle = 0 }
+    /^[[:space:]]*ios-gate:[[:space:]]*$/ { in_gradle = 0 }
     in_gradle && /^[[:space:]]*api-level:[[:space:]]*30[[:space:]]*$/ { api30 = 1 }
     END { exit api30 ? 0 : 1 }
 ' "$workflow" || {
-    printf 'stable API 30 gate must remain required after API 35 promotion\n' >&2
+    printf 'stable API 30 gate must remain required after API 35 moved to the nightly probe\n' >&2
     exit 1
 }
-ok 'api35 api30StillRequired'
+ok 'api30StillRequired'
 
-if "$evaluator" success success success >/dev/null 2>&1; then
+if "$evaluator" success success >/dev/null 2>&1; then
     printf 'aggregate evaluator accepted a missing job result\n' >&2
     exit 1
 fi
 ok 'aggregate rejects missing result'
 
-if "$evaluator" success '' success success >/dev/null 2>&1; then
-    printf 'aggregate evaluator accepted an empty API 35 result\n' >&2
+if "$evaluator" success '' success >/dev/null 2>&1; then
+    printf 'aggregate evaluator accepted an empty job result\n' >&2
     exit 1
 fi
-ok 'api35 missingFails'
+ok 'aggregate rejects empty result'
 
-if "$evaluator" success success success success success >/dev/null 2>&1; then
+if "$evaluator" success success success success >/dev/null 2>&1; then
     printf 'aggregate evaluator accepted an extra job result\n' >&2
     exit 1
 fi
@@ -278,36 +298,32 @@ git -C "$repository_root" diff --quiet -- "$pages_workflow" || {
 }
 ok 'pages workflow preserved'
 
-for gate in gradle api35 ios landing; do
+for gate in gradle ios landing; do
     gradle=success
-    api35=success
     ios=success
     landing=success
     case "$gate" in
         gradle) gradle=failure ;;
-        api35) api35=failure ;;
         ios) ios=failure ;;
         landing) landing=failure ;;
     esac
-    if "$evaluator" "$gradle" "$api35" "$ios" "$landing" >/dev/null 2>&1; then
+    if "$evaluator" "$gradle" "$ios" "$landing" >/dev/null 2>&1; then
         printf 'aggregate accepted %s failure\n' "$gate" >&2
         exit 1
     fi
     ok "aggregate rejects $gate failure"
 done
 
-for gate in gradle api35 ios landing; do
+for gate in gradle ios landing; do
     gradle=success
-    api35=success
     ios=success
     landing=success
     case "$gate" in
         gradle) gradle=cancelled ;;
-        api35) api35=cancelled ;;
         ios) ios=cancelled ;;
         landing) landing=cancelled ;;
     esac
-    if "$evaluator" "$gradle" "$api35" "$ios" "$landing" >/dev/null 2>&1; then
+    if "$evaluator" "$gradle" "$ios" "$landing" >/dev/null 2>&1; then
         printf 'aggregate accepted %s cancellation\n' "$gate" >&2
         exit 1
     fi

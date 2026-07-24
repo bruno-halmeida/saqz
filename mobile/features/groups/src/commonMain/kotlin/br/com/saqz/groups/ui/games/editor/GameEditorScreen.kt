@@ -49,11 +49,15 @@ object GameEditorTags {
 }
 
 @Composable
-fun GameEditorScreen(state: GameEditorState, onIntent: (GameEditorIntent) -> Unit) {
+fun GameEditorScreen(
+    state: GameEditorState,
+    onIntent: (GameEditorIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val draft = state.draft
     val form = draft.form
     Column(
-        Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
+        modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
             .padding(SaqzTheme.metrics.horizontalPadding)
             .testTag(GameEditorTags.Screen),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding),
@@ -187,6 +191,8 @@ fun GameEditorScreen(state: GameEditorState, onIntent: (GameEditorIntent) -> Uni
 
 @Composable
 private fun WeeklySlots(form: GameEditorForm, state: GameEditorState, onIntent: (GameEditorIntent) -> Unit) {
+    // Emissor único no topo; espaçamento espelha o sectionVerticalPadding do pai.
+    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding)) {
     Text(
         stringResource(Res.string.game_editor_slots),
         style = SaqzTheme.typography.bodyStrong,
@@ -210,25 +216,49 @@ private fun WeeklySlots(form: GameEditorForm, state: GameEditorState, onIntent: 
                         Modifier.fillMaxWidth(),
                     ) { form.updateSlot(index, slot.copy(weekday = weekday), onIntent) }
                 }
-                SlotInput(index, "title", slot.title, Res.string.game_editor_title, state, form, slot, onIntent) { value ->
+                SlotInput(index, "title", slot.title, Res.string.game_editor_title, state, form, onIntent) { value ->
                     slot.copy(title = value)
                 }
-                SlotInput(index, "localTime", slot.localTime, Res.string.game_editor_start_time, state, form, slot, onIntent) { value ->
+                SlotInput(index, "localTime", slot.localTime, Res.string.game_editor_start_time, state, form, onIntent) { value ->
                     slot.copy(localTime = value)
                 }
-                SlotInput(index, "durationMinutes", slot.durationMinutes.toString(), Res.string.game_editor_duration, state, form, slot, onIntent) { value ->
+                SlotInput(
+                    index,
+                    "durationMinutes",
+                    slot.durationMinutes.toString(),
+                    Res.string.game_editor_duration,
+                    state,
+                    form,
+                    onIntent,
+                ) { value ->
                     slot.copy(durationMinutes = value.toIntOrNull() ?: 0)
                 }
-                SlotInput(index, "venue", slot.venue.name, Res.string.game_editor_venue_name, state, form, slot, onIntent) { value ->
+                SlotInput(index, "venue", slot.venue.name, Res.string.game_editor_venue_name, state, form, onIntent) { value ->
                     slot.copy(venue = slot.venue.copy(name = value))
                 }
-                SlotInput(index, "venueAddress", slot.venue.address, Res.string.game_editor_venue_address, state, form, slot, onIntent) { value ->
+                SlotInput(
+                    index,
+                    "venueAddress",
+                    slot.venue.address,
+                    Res.string.game_editor_venue_address,
+                    state,
+                    form,
+                    onIntent,
+                ) { value ->
                     slot.copy(venue = slot.venue.copy(address = value))
                 }
-                SlotInput(index, "capacity", slot.capacity.toString(), Res.string.game_editor_capacity, state, form, slot, onIntent) { value ->
+                SlotInput(index, "capacity", slot.capacity.toString(), Res.string.game_editor_capacity, state, form, onIntent) { value ->
                     slot.copy(capacity = value.toIntOrNull() ?: 0)
                 }
-                SlotInput(index, "confirmationLeadMinutes", slot.confirmationLeadMinutes.toString(), Res.string.game_editor_confirmation_lead, state, form, slot, onIntent) { value ->
+                SlotInput(
+                    index,
+                    "confirmationLeadMinutes",
+                    slot.confirmationLeadMinutes.toString(),
+                    Res.string.game_editor_confirmation_lead,
+                    state,
+                    form,
+                    onIntent,
+                ) { value ->
                     slot.copy(confirmationLeadMinutes = value.toIntOrNull() ?: 0)
                 }
                 SaqzButton(
@@ -246,28 +276,32 @@ private fun WeeklySlots(form: GameEditorForm, state: GameEditorState, onIntent: 
         Modifier.fillMaxWidth().testTag(GameEditorTags.AddSlot),
         SaqzButtonVariant.Secondary,
     )
+    }
 }
 
 @Composable
 private fun ScopeChoice(state: GameEditorState, onIntent: (GameEditorIntent) -> Unit) {
-    Text(
-        stringResource(Res.string.game_editor_scope_title),
-        style = SaqzTheme.typography.bodyStrong,
-        color = SaqzTheme.colors.textPrimary,
-    )
-    state.errorFor("scope")?.let { ErrorText(it) }
-    ModeButton(
-        Res.string.game_editor_only_this,
-        GameEditorTags.ScopeOnly,
-        state.draft.scope == SeriesBoundaryScope.OnlyThis,
-        Modifier.fillMaxWidth(),
-    ) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis)) }
-    ModeButton(
-        Res.string.game_editor_this_future,
-        GameEditorTags.ScopeFuture,
-        state.draft.scope == SeriesBoundaryScope.ThisAndFuture,
-        Modifier.fillMaxWidth(),
-    ) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.ThisAndFuture)) }
+    // Emissor único no topo; espaçamento espelha o sectionVerticalPadding do pai.
+    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionVerticalPadding)) {
+        Text(
+            stringResource(Res.string.game_editor_scope_title),
+            style = SaqzTheme.typography.bodyStrong,
+            color = SaqzTheme.colors.textPrimary,
+        )
+        state.errorFor("scope")?.let { ErrorText(it) }
+        ModeButton(
+            Res.string.game_editor_only_this,
+            GameEditorTags.ScopeOnly,
+            state.draft.scope == SeriesBoundaryScope.OnlyThis,
+            Modifier.fillMaxWidth(),
+        ) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.OnlyThis)) }
+        ModeButton(
+            Res.string.game_editor_this_future,
+            GameEditorTags.ScopeFuture,
+            state.draft.scope == SeriesBoundaryScope.ThisAndFuture,
+            Modifier.fillMaxWidth(),
+        ) { onIntent(GameEditorIntent.SetScope(SeriesBoundaryScope.ThisAndFuture)) }
+    }
 }
 
 @Composable
@@ -275,7 +309,7 @@ private fun ModeButton(
     label: org.jetbrains.compose.resources.StringResource,
     tag: String,
     selected: Boolean,
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     click: () -> Unit,
 ) = ModeButton(stringResource(label), tag, selected, modifier, click)
 
@@ -284,7 +318,7 @@ private fun ModeButton(
     label: String,
     tag: String,
     selected: Boolean,
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     click: () -> Unit,
 ) = SaqzButton(label, click, modifier.testTag(tag), if (selected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary)
 
@@ -308,7 +342,6 @@ private fun SlotInput(
     label: org.jetbrains.compose.resources.StringResource,
     state: GameEditorState,
     form: GameEditorForm,
-    slot: WeeklySlot,
     onIntent: (GameEditorIntent) -> Unit,
     update: (String) -> WeeklySlot,
 ) = EditorInput(

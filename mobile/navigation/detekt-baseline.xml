@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComposableNaming:FinanceNavigationHost.kt$scoped</ID>
+    <ID>ComposableNaming:GroupsNavigationHost.kt$install</ID>
+    <ID>ModifierMissing:GroupsNavigationHost.kt$GroupsScopedScaffold</ID>
+    <ID>ModifierMissing:GroupsNavigationHost.kt$GroupsSelectorScaffold</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -112,14 +112,9 @@ fun SaqzButton(
     val content = if (active) contentColor ?: resolved.content else colors.disabledForeground
 
     Box(
+        // clickable fica depois de clip/background para a área de toque respeitar a
+        // forma; graphicsLayer segue antes do clip para o feedback escalar o fundo junto.
         modifier = modifier
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = active,
-                onClickLabel = label,
-                onClick = onClick,
-            )
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -134,6 +129,13 @@ fun SaqzButton(
             .background(container, shape)
             .then(
                 (borderColor ?: resolved.border)?.let { Modifier.border(1.dp, it, shape) } ?: Modifier,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = active,
+                onClickLabel = label,
+                onClick = onClick,
             )
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.subGrid),
         contentAlignment = Alignment.Center,
