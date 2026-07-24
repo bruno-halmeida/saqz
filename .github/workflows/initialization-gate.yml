@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gradle-gate:
     runs-on: ubuntu-latest
@@ -24,6 +28,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
       - name: Verify disposable test tooling
         run: |
           docker info
@@ -69,6 +74,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
+      - name: Cache SPM / DerivedData
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-spm-${{ hashFiles('mobile/ios-app/SaqzIOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
       - name: Run iOS gate
         run: scripts/check-ios --dev-only
 
