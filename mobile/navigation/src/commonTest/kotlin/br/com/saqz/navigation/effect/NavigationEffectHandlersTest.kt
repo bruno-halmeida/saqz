@@ -3,6 +3,8 @@ package br.com.saqz.navigation.effect
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.groups.navigation.FinanceRoute
 import br.com.saqz.groups.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.games.editor.GameEditorEffect
+import br.com.saqz.groups.presentation.games.list.GamesEffect
 import br.com.saqz.groups.presentation.route.GroupContentPlaceholderEffect
 import br.com.saqz.groups.presentation.route.GroupHomeRouteEffect
 import br.com.saqz.groups.presentation.route.GroupSelectionRouteEffect
@@ -101,6 +103,49 @@ class NavigationEffectHandlersTest {
         val invite = session()
         assertTrue(handleGroupHomeEffect(invite, GroupHomeRouteEffect.OpenInvite))
         assertEquals(GroupsRoute.Invite, invite.stackFor(ProductTab.GROUPS).last())
+    }
+
+    @Test
+    fun `games list open game pushes the detail so back returns to the list`() {
+        val s = session(mutableListOf(GroupsRoute.GroupHome, GroupsRoute.Games))
+
+        handleGamesEffect(s, GamesEffect.OpenGame("alpha", "game-42"))
+
+        assertEquals(GroupsRoute.GameDetail("game-42"), s.stackFor(ProductTab.GROUPS).last())
+        assertTrue(s.goBack())
+        assertEquals(GroupsRoute.Games, s.stackFor(ProductTab.GROUPS).last())
+    }
+
+    @Test
+    fun `games list open create pushes the editor and back returns to the list`() {
+        val s = session(mutableListOf(GroupsRoute.GroupHome, GroupsRoute.Games))
+
+        handleGamesEffect(s, GamesEffect.OpenCreate("alpha"))
+
+        assertEquals(GroupsRoute.GameEditor, s.stackFor(ProductTab.GROUPS).last())
+        assertTrue(s.goBack())
+        assertEquals(GroupsRoute.Games, s.stackFor(ProductTab.GROUPS).last())
+    }
+
+    @Test
+    fun `game editor saved pops back to the games list that opened it`() {
+        val s = session(mutableListOf(GroupsRoute.GroupHome, GroupsRoute.Games, GroupsRoute.GameEditor))
+
+        assertTrue(handleGameEditorEffect(s, GameEditorEffect.Saved("game-42")))
+
+        assertEquals(GroupsRoute.Games, s.stackFor(ProductTab.GROUPS).last())
+    }
+
+    @Test
+    fun `game editor reload is a re-read rather than a back-stack mutation`() {
+        val s = session(mutableListOf(GroupsRoute.GroupHome, GroupsRoute.GameEditor))
+
+        assertFalse(handleGameEditorEffect(s, GameEditorEffect.Reload("alpha", "game-42")))
+
+        assertEquals(
+            listOf<NavKey>(GroupsRoute.GroupHome, GroupsRoute.GameEditor),
+            s.stackFor(ProductTab.GROUPS),
+        )
     }
 
     @Test

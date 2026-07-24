@@ -233,6 +233,52 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `an incompatible weekly draft is discarded when editing a standalone game`() = runTest(mainDispatcher) {
+        val weeklyDraftForStandalone = draft().copy(
+            gameId = GAME,
+            mode = GameEditorMode.WEEKLY,
+            form = validForm().copy(slots = listOf(slot())),
+        )
+        val fixture = fixture(stored = weeklyDraftForStandalone, existing = versionedGame())
+
+        // A standalone game is one-time; a persisted WEEKLY draft is incompatible and is
+        // discarded, so restore never lands the editor in weekly mode where submit would
+        // crash on the missing series context.
+        assertEquals(GameEditorMode.ONE_TIME, fixture.viewModel.state.value.draft.mode)
+
+        fixture.viewModel.onIntent(GameEditorIntent.UpdateForm(validForm()))
+        fixture.viewModel.onIntent(GameEditorIntent.Submit)
+        runCurrent()
+
+        assertEquals(listOf("edit"), fixture.gateway.calls)
+        assertTrue(fixture.gateway.boundaries.isEmpty())
+    }
+
+    @Test
+    fun `an existing standalone game cannot switch to weekly mode`() = runTest(mainDispatcher) {
+        val fixture = fixture(existing = versionedGame())
+
+        fixture.viewModel.onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY))
+
+        // Recurrence type is fixed on an edit: the mode stays one-time, so weekly slot
+        // edits can never be entered and silently dropped by the single-game save path.
+        assertEquals(GameEditorMode.ONE_TIME, fixture.viewModel.state.value.draft.mode)
+    }
+
+    @Test
+    fun `editing a standalone game submits a single game edit even after a weekly toggle`() = runTest(mainDispatcher) {
+        val fixture = fixture(existing = versionedGame())
+
+        fixture.viewModel.onIntent(GameEditorIntent.SetMode(GameEditorMode.WEEKLY))
+        fixture.viewModel.onIntent(GameEditorIntent.UpdateForm(validForm()))
+        fixture.viewModel.onIntent(GameEditorIntent.Submit)
+        runCurrent()
+
+        assertEquals(listOf("edit"), fixture.gateway.calls)
+        assertTrue(fixture.gateway.boundaries.isEmpty())
+    }
+
+    @Test
     fun `weekly edit refuses silent scope default`() = runTest(mainDispatcher) {
         val fixture = fixture(existing = versionedGame(), series = versionedSeries())
 

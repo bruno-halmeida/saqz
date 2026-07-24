@@ -37,6 +37,7 @@ import br.com.saqz.designsystem.component.SaqzBottomNavItem
 import br.com.saqz.designsystem.component.SaqzLoadingState
 import br.com.saqz.designsystem.effects.ObserveAsEvents
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult
+import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.navigation.FinanceRoute
 import br.com.saqz.groups.navigation.GroupsRoute
@@ -47,6 +48,10 @@ import br.com.saqz.groups.presentation.GroupSelectionStateMachine
 import br.com.saqz.groups.presentation.games.detail.GameDetailEffect
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
+import br.com.saqz.groups.presentation.games.editor.GameEditorInput
+import br.com.saqz.groups.presentation.games.editor.GameEditorViewModel
+import br.com.saqz.groups.presentation.games.editor.toGameEditorDefaults
+import br.com.saqz.groups.presentation.games.list.GamesViewModel
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationIntent
 import br.com.saqz.groups.presentation.navigation.GroupsNavigationTags
 import br.com.saqz.groups.presentation.photo.GroupPhotoCoordinator
@@ -77,7 +82,9 @@ import br.com.saqz.groups.ui.athlete.AthleteRosterScreen
 import br.com.saqz.groups.ui.athlete.OwnAthleteProfileSection
 import br.com.saqz.groups.ui.athlete.PositionOnboardingHost
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
+import br.com.saqz.groups.ui.games.editor.GameEditorScreen
 import br.com.saqz.groups.ui.route.FinancePlaceholderRoot
+import br.com.saqz.groups.ui.route.GamesRoot
 import br.com.saqz.groups.ui.route.GroupHomeRoot
 import br.com.saqz.groups.ui.route.GroupInviteRoot
 import br.com.saqz.groups.ui.route.GroupLoadErrorRoot
@@ -95,6 +102,8 @@ import br.com.saqz.navigation.ProductTab
 import br.com.saqz.navigation.access.installAccessEntries
 import br.com.saqz.navigation.access.isAccessSession
 import br.com.saqz.navigation.access.reconcileAccessStack
+import br.com.saqz.navigation.effect.handleGameEditorEffect
+import br.com.saqz.navigation.effect.handleGamesEffect
 import br.com.saqz.navigation.effect.handleGroupContentEffect
 import br.com.saqz.navigation.effect.handleGroupHomeEffect
 import br.com.saqz.navigation.effect.handleGroupSelectionEffect
@@ -382,7 +391,7 @@ private fun GroupsEntryContent(
                 onIntent = rosterViewModel::onIntent,
             )
         }
-        GroupsRoute.Games -> PlaceholderEntry(GroupContentPlaceholderMode.GAMES, session)
+        GroupsRoute.Games -> GamesEntry(session, state.administration.group?.group)
         GroupsRoute.Notices -> PlaceholderEntry(GroupContentPlaceholderMode.NOTICES, session)
         GroupsRoute.More -> PlaceholderEntry(
             GroupContentPlaceholderMode.MORE,
@@ -432,6 +441,8 @@ private fun GroupsEntryContent(
                 }
             }
         }
+
+        GroupsRoute.GameEditor -> GameEditorEntry(session, state.administration.group?.group)
 
         GroupsRoute.Settings -> {
             val viewModel = koinViewModel<GroupAdministrationRouteViewModel>(
@@ -490,6 +501,55 @@ private fun GroupsEntryContent(
         }
 
         else -> Unit
+    }
+}
+
+/**
+ * Games entry: the real upcoming/past list for the selected group, scoped per group so
+ * switching groups never reuses another group's loaded games. Its typed effects become
+ * GROUPS-stack pushes (detail for an athlete, editor for an owner), so back from either
+ * returns to this list.
+ */
+@Composable
+private fun GamesEntry(session: NavigationSession, group: Group?) {
+    if (group == null) {
+        SaqzLoadingState(Modifier.fillMaxSize().testTag(GroupsNavigationTags.Games))
+        return
+    }
+    val viewModel = koinViewModel<GamesViewModel>(key = "games-${group.id.value}")
+    ObserveAsEvents(viewModel.effects) { handleGamesEffect(session, it) }
+    Box(Modifier.fillMaxSize().testTag(GroupsNavigationTags.Games)) {
+        GamesRoot(viewModel = viewModel, groupId = group.id.value, role = group.role)
+    }
+}
+
+/**
+ * Game editor entry: creation only. It opens from the group's own defaults and pops back
+ * to the games list on save. Editing an existing game is intentionally not wired here yet:
+ * the mobile read model exposes no series membership, so the route cannot scope an edit to a
+ * series occurrence without silently mis-scoping it (see the seriesId propagation ticket).
+ */
+@Composable
+private fun GameEditorEntry(session: NavigationSession, group: Group?) {
+    if (group == null) {
+        SaqzLoadingState(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameEditor))
+        return
+    }
+    val viewModel = koinViewModel<GameEditorViewModel>(
+        key = "game-editor-${group.id.value}",
+        parameters = {
+            parametersOf(
+                GameEditorInput(
+                    groupId = group.id.value,
+                    defaults = group.toGameEditorDefaults(),
+                ),
+            )
+        },
+    )
+    val editorState by viewModel.state.collectAsState()
+    ObserveAsEvents(viewModel.effects) { effect -> handleGameEditorEffect(session, effect) }
+    Box(Modifier.fillMaxSize().testTag(GroupsNavigationTags.GameEditor)) {
+        GameEditorScreen(editorState, viewModel::onIntent)
     }
 }
 
@@ -660,6 +720,7 @@ private fun routeTitle(key: NavKey): String = when (key) {
     GroupsRoute.Games -> "Jogos"
     GroupsRoute.Notices -> "Avisos"
     is GroupsRoute.GameDetail -> "Detalhes do jogo"
+    GroupsRoute.GameEditor -> "Novo jogo"
     FinanceRoute.Finance -> "Finanças"
     FinanceRoute.OwnCharges -> "Minhas cobranças"
     else -> ""

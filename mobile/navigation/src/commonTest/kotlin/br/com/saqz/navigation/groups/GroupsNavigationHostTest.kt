@@ -46,6 +46,7 @@ class GroupsNavigationHostTest {
         GroupsRoute.People,
         GroupsRoute.Games,
         GroupsRoute.GameDetail("game-1"),
+        GroupsRoute.GameEditor,
         GroupsRoute.Notices,
         GroupsRoute.More,
         GroupsRoute.Settings,
@@ -65,7 +66,7 @@ class GroupsNavigationHostTest {
     )
 
     @Test
-    fun `installs app home and all fifteen groups routes as distinct entries`() {
+    fun `installs app home and all sixteen groups routes as distinct entries`() {
         val provider = entryProvider<NavKey> {
             installGroupsEntries(
                 session = session(mutableListOf(GroupsRoute.GroupHome)),
@@ -77,8 +78,8 @@ class GroupsNavigationHostTest {
 
         val entries: List<NavEntry<NavKey>> = allKeys.map(provider)
 
-        assertEquals(16, allKeys.size)
-        assertEquals(16, entries.map { it.contentKey }.toSet().size, "every route maps to a distinct entry")
+        assertEquals(17, allKeys.size)
+        assertEquals(17, entries.map { it.contentKey }.toSet().size, "every route maps to a distinct entry")
     }
 
     @Test
@@ -93,6 +94,7 @@ class GroupsNavigationHostTest {
             GroupsRoute.People,
             GroupsRoute.Games,
             GroupsRoute.GameDetail("g"),
+            GroupsRoute.GameEditor,
             GroupsRoute.Notices,
             GroupsRoute.More,
             GroupsRoute.Settings,
@@ -148,6 +150,17 @@ class GroupsNavigationHostTest {
         assertEquals(GroupsRoute.GroupHome, s.stackFor(ProductTab.GROUPS).last())
         assertTrue(s.goBack())
         assertEquals(GroupsRoute.Selector, s.stackFor(ProductTab.GROUPS).last())
+    }
+
+    @Test
+    fun `game editor back returns to the games list that opened it`() {
+        val groups = mutableListOf<NavKey>(GroupsRoute.Selector, GroupsRoute.GroupHome, GroupsRoute.Games)
+        val s = session(groups)
+        s.push(GroupsRoute.GameEditor)
+
+        assertTrue(groupsBackVisible(s.stackFor(ProductTab.GROUPS).size))
+        assertTrue(s.goBack())
+        assertEquals(GroupsRoute.Games, s.stackFor(ProductTab.GROUPS).last())
     }
 
     @Test

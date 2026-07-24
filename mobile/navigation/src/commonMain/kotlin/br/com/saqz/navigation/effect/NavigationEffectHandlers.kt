@@ -1,6 +1,8 @@
 package br.com.saqz.navigation.effect
 
 import br.com.saqz.groups.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.games.editor.GameEditorEffect
+import br.com.saqz.groups.presentation.games.list.GamesEffect
 import br.com.saqz.groups.presentation.route.GroupContentPlaceholderEffect
 import br.com.saqz.groups.presentation.route.GroupHomeRouteEffect
 import br.com.saqz.groups.presentation.route.GroupSelectionRouteEffect
@@ -17,8 +19,8 @@ import br.com.saqz.navigation.finance.resolveFinanceRoute
  * only here.
  *
  * Effects that are NOT back-stack navigation are intentionally out of scope: platform
- * share (`GroupInviteRouteEffect.RequestShare`), game-editor/attendance/domain effects
- * (`GameDetailEffect`), and the empty `GroupAdministrationRouteEffect` carry no
+ * share (`GroupInviteRouteEffect.RequestShare`), the attendance/domain cases of
+ * `GameDetailEffect`, and the empty `GroupAdministrationRouteEffect` carry no
  * back-stack meaning and are forwarded to the orchestrator/platform at the composition
  * root, not to a stack mutation.
  */
@@ -36,6 +38,41 @@ fun handleOpenAttendanceGame(session: NavigationSession, gameId: String) {
     session.push(GroupsRoute.Games)
     session.push(target)
 }
+
+/**
+ * Exhaustive over [GamesEffect]: the games list pushes the opened game onto the GROUPS
+ * stack, so back returns to the list itself (not the group home), and the owner's create
+ * action pushes the editor with no game identity. Duplicate-safe through
+ * [NavigationSession.push].
+ *
+ * There is deliberately no detail -> edit handler: editing an existing game is withheld
+ * until the mobile read model carries series membership. The backend `games` table has a
+ * `series_id`, but neither the read DTO, the domain `Game`, nor the list item expose it,
+ * so navigation cannot tell a series occurrence from a standalone game. Routing edit would
+ * let an occurrence be edited through the single-game path and silently mis-scoped, so
+ * `GameEditor` is reachable only for creation until that gap is closed (see the seriesId
+ * propagation ticket).
+ */
+fun handleGamesEffect(session: NavigationSession, effect: GamesEffect) {
+    when (effect) {
+        is GamesEffect.OpenGame -> session.push(GroupsRoute.GameDetail(effect.gameId))
+        is GamesEffect.OpenCreate -> session.push(GroupsRoute.GameEditor)
+    }
+}
+
+/**
+ * Exhaustive over [GameEditorEffect]. `Saved` pops the editor, returning to the games list
+ * that opened it. `Reload` re-reads instead of mutating the stack, so it is returned to the
+ * composition root as unhandled.
+ */
+fun handleGameEditorEffect(session: NavigationSession, effect: GameEditorEffect): Boolean =
+    when (effect) {
+        is GameEditorEffect.Saved -> {
+            session.goBack()
+            true
+        }
+        is GameEditorEffect.Reload -> false
+    }
 
 /** Exhaustive over [GroupSelectionRouteEffect]: the only case opens Create Group. */
 fun handleGroupSelectionEffect(session: NavigationSession, effect: GroupSelectionRouteEffect) {

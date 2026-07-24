@@ -60,6 +60,7 @@ fi
     :features:groups:data:allTests \
     :features:groups:compileAndroidMain \
     :features:groups:allTests \
+    :navigation:allTests \
     :compose-app:allTests \
     :android-app:testDevDebugUnitTest \
     :android-app:connectedDevDebugAndroidTest \

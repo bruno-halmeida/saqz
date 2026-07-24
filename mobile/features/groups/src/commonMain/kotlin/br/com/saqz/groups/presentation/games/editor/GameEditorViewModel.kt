@@ -23,7 +23,9 @@ class GameEditorViewModel(
             when (result) {
                 is GameDraftReadResult.Success -> result.draft
                     ?.takeIf {
-                        it.schemaVersion == GameEditorDraft.CURRENT_SCHEMA && it.groupId == input.groupId
+                        it.schemaVersion == GameEditorDraft.CURRENT_SCHEMA &&
+                            it.groupId == input.groupId &&
+                            it.mode.matchesResourceOf(input)
                     }
                     ?.let { draft -> update { GameEditorState(draft) } }
                 GameDraftReadResult.Failure -> update {
@@ -33,9 +35,27 @@ class GameEditorViewModel(
         }
     }
 
+    /**
+     * An existing game's recurrence type is fixed, so a persisted draft whose mode disagrees
+     * with the resource is stale/incompatible: restoring a WEEKLY draft over a standalone game
+     * would submit down the series-boundary path and crash on the absent series context (and a
+     * ONE_TIME draft over a series occurrence would drop its slots). Such a draft is discarded
+     * and the fresh, resource-correct draft is kept. Creation (no existing resource) accepts
+     * either mode — the user is still choosing.
+     */
+    private fun GameEditorMode.matchesResourceOf(input: GameEditorInput): Boolean {
+        if (input.existing == null) return true
+        return this == if (input.series == null) GameEditorMode.ONE_TIME else GameEditorMode.WEEKLY
+    }
+
     override fun onIntent(intent: GameEditorIntent) {
         when (intent) {
-            is GameEditorIntent.SetMode -> updateDraft { copy(mode = intent.mode, scope = null) }
+            // One-time vs. weekly is a creation-time choice: an existing game's recurrence
+            // type is fixed (there is no convert-standalone-to-series operation), so changing
+            // mode while editing would let weekly slot edits be submitted down the single-game
+            // edit path and silently dropped. Ignore SetMode for an existing resource.
+            is GameEditorIntent.SetMode ->
+                if (input.existing == null) updateDraft { copy(mode = intent.mode, scope = null) }
             is GameEditorIntent.UpdateForm -> updateDraft { copy(form = intent.form) }
             GameEditorIntent.AddSlot -> updateDraft {
                 copy(form = form.copy(slots = form.slots + form.newWeeklySlot(keys.create())))
@@ -110,6 +130,8 @@ class GameEditorViewModel(
                 draft,
             )
             else -> {
+                // Reachable only for a series occurrence (mode is locked to WEEKLY at
+                // construction and cannot be changed on an edit), so series is present.
                 val series = requireNotNull(input.series)
                 handleSeriesResult(
                     gateway.boundary(

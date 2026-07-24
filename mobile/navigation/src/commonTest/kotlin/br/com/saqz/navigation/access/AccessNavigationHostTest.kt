@@ -183,5 +183,10 @@ class AccessNavigationHostTest {
     private class NoopSessionGateway : SessionGateway {
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> =
             SaqzResult.Failure(AccessError.Unauthenticated)
+
+        override suspend fun completeProfile(
+            phone: String,
+            displayName: String?,
+        ): SaqzResult<AccessSession, AccessError> = SaqzResult.Failure(AccessError.Unauthenticated)
     }
 }

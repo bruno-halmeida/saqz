@@ -48,6 +48,15 @@ sealed interface GroupsRoute : NavKey {
         }
     }
 
+    /**
+     * Game creation route. Editing an existing game is intentionally not modeled here yet:
+     * the mobile read model carries no series membership, so the editor cannot safely scope
+     * an edit to a series occurrence (see the seriesId propagation ticket). The edit variant
+     * (a route carrying the game id) is added once that context is available.
+     */
+    @Serializable
+    data object GameEditor : GroupsRoute
+
     @Serializable
     data object Notices : GroupsRoute
 

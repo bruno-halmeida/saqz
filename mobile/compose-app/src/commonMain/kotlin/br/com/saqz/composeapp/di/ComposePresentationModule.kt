@@ -15,6 +15,10 @@ import br.com.saqz.access.presentation.registration.RegistrationViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
+import br.com.saqz.groups.presentation.games.editor.GameCommandKeyFactory
+import br.com.saqz.groups.presentation.games.editor.GameEditorInput
+import br.com.saqz.groups.presentation.games.editor.GameEditorViewModel
+import br.com.saqz.groups.presentation.games.list.GamesViewModel
 import br.com.saqz.groups.presentation.InviteToolStateMachine
 import br.com.saqz.groups.presentation.route.FinancePlaceholderRouteViewModel
 import br.com.saqz.groups.presentation.route.GroupAdministrationRouteViewModel
@@ -115,6 +119,16 @@ internal val composePresentationModule = module {
             attendanceGateway = get(),
             attendanceShareGateway = get(),
             savedStateHandle = get(),
+        )
+    }
+    viewModelOf(::GamesViewModel)
+    viewModel { parameters ->
+        val requestIds = get<RequestIdGenerator>()
+        GameEditorViewModel(
+            input = parameters.get<GameEditorInput>(),
+            gateway = get(),
+            store = get(),
+            keys = GameCommandKeyFactory { requestIds.next() },
         )
     }
 }

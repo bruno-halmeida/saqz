@@ -50,6 +50,7 @@ private fun PolymorphicModuleBuilder<NavKey>.registerGroupsRoutes() {
     subclass(GroupsRoute.People::class, GroupsRoute.People.serializer())
     subclass(GroupsRoute.Games::class, GroupsRoute.Games.serializer())
     subclass(GroupsRoute.GameDetail::class, GroupsRoute.GameDetail.serializer())
+    subclass(GroupsRoute.GameEditor::class, GroupsRoute.GameEditor.serializer())
     subclass(GroupsRoute.Notices::class, GroupsRoute.Notices.serializer())
     subclass(GroupsRoute.More::class, GroupsRoute.More.serializer())
     subclass(GroupsRoute.Settings::class, GroupsRoute.Settings.serializer())
