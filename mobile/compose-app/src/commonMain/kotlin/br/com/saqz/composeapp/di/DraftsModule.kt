@@ -1,9 +1,9 @@
 package br.com.saqz.composeapp.di
 
+import br.com.saqz.groups.port.ExpenseDraftStorePort
+import br.com.saqz.groups.port.GameDraftStorePort
 import br.com.saqz.groups.port.GroupDraftStorePort
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftStorePort
-import br.com.saqz.groups.presentation.games.editor.GameDraftStorePort
+import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import org.koin.dsl.module
 
 class SaqzDraftStores(

@@ -1,18 +1,18 @@
 package br.com.saqz.composeapp
 
 import br.com.saqz.groups.domain.finance.ExpenseCategory
-import br.com.saqz.groups.model.*
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseForm
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraft
-import br.com.saqz.groups.presentation.games.editor.GameEditorDraft
-import br.com.saqz.groups.presentation.games.editor.GameEditorForm
-import br.com.saqz.groups.presentation.games.editor.GameEditorMode
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.SeriesBoundaryScope
 import br.com.saqz.groups.domain.game.Weekday
 import br.com.saqz.groups.domain.game.WeeklySlot
+import br.com.saqz.groups.model.*
+import br.com.saqz.groups.model.ExpenseDraft
+import br.com.saqz.groups.model.ExpenseForm
+import br.com.saqz.groups.model.GameEditorDraft
+import br.com.saqz.groups.model.GameEditorForm
+import br.com.saqz.groups.model.GameEditorMode
+import br.com.saqz.groups.model.MonthlyChargeDraft
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

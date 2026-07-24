@@ -1,14 +1,14 @@
 package br.com.saqz.composeapp
 
 import br.com.saqz.groups.domain.finance.ExpenseCategory
+import br.com.saqz.groups.model.ExpenseDraft
+import br.com.saqz.groups.model.ExpenseForm
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupDraftResource
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.model.GroupSetupForm
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraft
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseForm
+import br.com.saqz.groups.model.MonthlyChargeDraft
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

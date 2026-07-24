@@ -4,9 +4,8 @@ import br.com.saqz.groups.domain.finance.ExpenseCategory
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.model.*
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
-import br.com.saqz.groups.presentation.finance.expenses.*
-import br.com.saqz.groups.presentation.games.editor.*
+import br.com.saqz.groups.model.MonthlyChargeDraft
+import br.com.saqz.groups.port.*
 import org.junit.Assert.*
 import org.junit.Test
 

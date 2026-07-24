@@ -1,17 +1,14 @@
 package br.com.saqz.androidapp.groups.draft
 
 import android.content.Context
-import br.com.saqz.groups.model.*
-import br.com.saqz.groups.port.*
-import br.com.saqz.groups.presentation.finance.charges.*
-import br.com.saqz.groups.presentation.finance.expenses.*
-import br.com.saqz.groups.presentation.games.editor.*
+import br.com.saqz.groups.domain.finance.ExpenseCategory
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.SeriesBoundaryScope
 import br.com.saqz.groups.domain.game.Weekday
 import br.com.saqz.groups.domain.game.WeeklySlot
-import br.com.saqz.groups.domain.finance.ExpenseCategory
+import br.com.saqz.groups.model.*
+import br.com.saqz.groups.port.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
