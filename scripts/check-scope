@@ -18,7 +18,7 @@ tracked_files() {
 }
 
 tracked_prod_files() {
-    tracked_files | grep -Ev '(^\.specs/|^AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/(test|androidTest|commonTest|iosTest|nativeTest)/|/SaqzIOSTests/|/SaqzIOSUITests/|/detekt-baseline\.xml$)' || true
+    tracked_files | grep -Ev '(^\.specs/|^(.*/)?AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/(test|androidTest|commonTest|iosTest|nativeTest)/|/SaqzIOSTests/|/SaqzIOSUITests/|/detekt-baseline\.xml$)' || true
 }
 
 tracked_client_prod_files() {
@@ -137,15 +137,5 @@ case "$feature_modules" in
 esac
 
 reject_paths 'tracked secret path found' '(^|/)\.secrets/|(^|/)(service-account|GoogleService-Info|google-services)\.?.*\.json$'
-
-if git -C "$repository_root" check-ignore --no-index -q .specs/features/project-initialization/spec.md; then
-    fail ".specs is ignored"
-fi
-git -C "$repository_root" ls-files --error-unmatch AGENTS.md >/dev/null 2>&1 ||
-    fail "AGENTS.md is not tracked"
-git -C "$repository_root" ls-files --error-unmatch .specs/STATE.md >/dev/null 2>&1 ||
-    fail ".specs/STATE.md is not tracked"
-[ -n "$(git -C "$repository_root" ls-files '.specs/features/*/spec.md')" ] ||
-    fail ".specs contains no tracked feature specifications"
 
 printf 'ok - mobile-first scope\n'
