@@ -115,7 +115,7 @@ private fun GameCard(item: GameListItem, onClick: () -> Unit) = SaqzCard(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         Text(item.title, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
-        Text("${item.dateText} às ${item.timeText}", color = SaqzTheme.colors.textSecondary)
+        Text(item.scheduleText, color = SaqzTheme.colors.textSecondary)
         Text(item.venueText, color = SaqzTheme.colors.textSecondary)
         Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
             SaqzBadge(item.status.label(), SaqzBadgeVariant.Neutral)

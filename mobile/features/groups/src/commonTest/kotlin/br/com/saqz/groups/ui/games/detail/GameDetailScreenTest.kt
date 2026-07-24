@@ -2,6 +2,8 @@ package br.com.saqz.groups.ui.games.detail
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
+import br.com.saqz.core.common.formatting.SaqzDateTimeFormatter
+import br.com.saqz.core.common.formatting.SaqzTimeZoneProvider
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
@@ -14,6 +16,7 @@ import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.games.detail.*
+import kotlinx.datetime.TimeZone
 import kotlin.test.*
 
 @OptIn(ExperimentalTestApi::class)
@@ -22,10 +25,18 @@ class GameDetailScreenTest {
         runComposeUiTest {
             screen(state())
             onNodeWithText("Treino").assertExists()
-            onNodeWithText("12/08/2026 às 19:30").assertExists()
+            onNodeWithText("12/08/2026 às 19:30 – 21:00").assertExists()
             onNodeWithText("Arena").assertExists()
             onNodeWithText("21 vagas").assertExists()
             onNodeWithText("Valor: R$ 25,00").assertExists()
+        }
+
+    @Test fun `device in another timezone sees the converted start and end`() =
+        runComposeUiTest {
+            // Jogo às 19:30 em America/Sao_Paulo (2026-08-12T22:30Z, 90 min) lido num dispositivo em Tokyo.
+            screen(state(), zone = "Asia/Tokyo")
+            onNodeWithText("13/08/2026 às 07:30 – 09:00").assertExists()
+            onNodeWithText("12/08/2026 às 19:30 – 21:00").assertDoesNotExist()
         }
 
     @Test fun `athlete never sees organizer actions`() =
@@ -290,7 +301,12 @@ class GameDetailScreenTest {
         value: GameDetailState,
         onIntent: (GameDetailIntent) -> Unit = {
         },
-    ) = setContent { SaqzTheme { GameDetailScreen(value, onIntent) } }
+        zone: String = "America/Sao_Paulo",
+    ) = setContent {
+        SaqzTheme {
+            GameDetailScreen(value, onIntent, SaqzDateTimeFormatter(SaqzTimeZoneProvider { TimeZone.of(zone) }))
+        }
+    }
 
     private fun androidx.compose.ui.test.ComposeUiTest.field(label: String) = onNodeWithContentDescription(label, useUnmergedTree = true)
 

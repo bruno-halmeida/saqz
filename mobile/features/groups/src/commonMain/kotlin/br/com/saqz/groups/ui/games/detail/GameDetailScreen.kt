@@ -21,8 +21,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import br.com.saqz.core.common.formatting.SaqzDateTimeFormatter
 import br.com.saqz.core.common.formatting.formatBrl
-import br.com.saqz.core.common.formatting.formatLocalDatePtBrString
 import br.com.saqz.designsystem.component.SaqzBadge
 import br.com.saqz.designsystem.component.SaqzBadgeVariant
 import br.com.saqz.designsystem.component.SaqzButton
@@ -41,6 +41,7 @@ import br.com.saqz.groups.presentation.games.detail.GameDetailError
 import br.com.saqz.groups.presentation.games.detail.GameDetailIntent
 import br.com.saqz.groups.presentation.games.detail.GameDetailState
 import br.com.saqz.groups.presentation.games.detail.GameLifecycleAction
+import br.com.saqz.groups.presentation.games.scheduleText
 import br.com.saqz.groups.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -72,6 +73,7 @@ object GameDetailTags {
 @Composable fun GameDetailScreen(
     state: GameDetailState,
     onIntent: (GameDetailIntent) -> Unit,
+    formatter: SaqzDateTimeFormatter = SaqzDateTimeFormatter(),
 ) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),
@@ -105,7 +107,7 @@ object GameDetailTags {
                     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
                         Text(game.title, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
                         Text(
-                            "${formatLocalDatePtBrString(game.localDate)} às ${game.localTime.take(5)}",
+                            game.scheduleText(formatter),
                             color = SaqzTheme.colors.textSecondary,
                         )
                         Text(game.venue.name, color = SaqzTheme.colors.textPrimary)

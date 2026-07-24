@@ -45,6 +45,12 @@ class SaqzDateTimeFormatterTest {
     }
 
     @Test
+    fun defaultProviderIsDeviceTimeZone() {
+        val device = SaqzDateTimeFormatter(SaqzTimeZoneProvider { TimeZone.currentSystemDefault() })
+        assertEquals(device.formatDateTime(canonicalInstant), SaqzDateTimeFormatter().formatDateTime(canonicalInstant))
+    }
+
+    @Test
     fun invalidZoneFails() {
         val invalid = SaqzDateTimeFormatter(SaqzTimeZoneProvider { TimeZone.of("Not/AZone") })
         assertFailsWith<IllegalTimeZoneException> { invalid.formatDate(canonicalInstant) }

@@ -7,8 +7,8 @@ import br.com.saqz.groups.domain.game.GameStatus
 data class GameListItem(
     val id: String,
     val title: String,
-    val dateText: String,
-    val timeText: String,
+    val scheduleText: String,
+    val localDateIso: String,
     val venueText: String,
     val status: GameStatus,
     val availableSpots: Int,

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.games.list
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.formatting.SaqzDateTimeFormatter
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -9,6 +10,7 @@ import kotlinx.coroutines.launch
 
 class GamesViewModel(
     private val gateway: GameGateway,
+    private val formatter: SaqzDateTimeFormatter = SaqzDateTimeFormatter(),
 ) : MviViewModel<GamesState, GamesIntent, GamesEffect>(GamesState()) {
     private var generation = 0L
     private var today = "9999-12-31"
@@ -54,11 +56,11 @@ class GamesViewModel(
 
                     val items = result.value
                         .sortedBy { it.startsAt }
-                        .map { it.toGameListItem() }
+                        .map { it.toGameListItem(formatter) }
                     update {
                         it.copy(
-                            upcoming = items.filter { item -> item.isoLocalDate() >= today },
-                            past = items.filter { item -> item.isoLocalDate() < today }.reversed(),
+                            upcoming = items.filter { item -> item.localDateIso >= today },
+                            past = items.filter { item -> item.localDateIso < today }.reversed(),
                             isLoading = false,
                             isRefreshing = false,
                             error = null,

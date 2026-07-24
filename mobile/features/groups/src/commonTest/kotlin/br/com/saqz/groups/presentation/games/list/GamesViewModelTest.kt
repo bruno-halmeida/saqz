@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.games.list
 
+import br.com.saqz.core.common.formatting.SaqzDateTimeFormatter
+import br.com.saqz.core.common.formatting.SaqzTimeZoneProvider
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -12,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.*
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.datetime.TimeZone
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -79,11 +82,37 @@ class GamesViewModelTest {
             val item =
                 f.vm.state.value.upcoming
                     .single()
-            assertEquals("12/08/2026", item.dateText)
-            assertEquals("19:30", item.timeText)
+            assertEquals("12/08/2026 às 19:30 – 21:00", item.scheduleText)
             assertEquals("Arena Central", item.venueText)
             assertEquals(21, item.availableSpots)
             assertEquals(2, item.waitlistCount)
+        }
+
+    @Test fun `device in another timezone sees the converted instant`() =
+        runTest(mainDispatcher) {
+            // Jogo às 19:30 em America/Sao_Paulo (2026-08-12T22:30Z, 90 min) num dispositivo em Tokyo:
+            // 07:30 às 09:00 do dia seguinte no fuso do dispositivo.
+            val f = fixture(zone = "Asia/Tokyo")
+            f.vm.onIntent(select(A))
+            runCurrent()
+            val item =
+                f.vm.state.value.upcoming
+                    .single()
+            assertEquals("13/08/2026 às 07:30 – 09:00", item.scheduleText)
+            assertEquals("2026-08-13", item.localDateIso)
+        }
+
+    @Test fun `game crossing local midnight shows the end date`() =
+        runTest(mainDispatcher) {
+            // 14:30Z + 120 min em Asia/Tokyo (UTC+9): 23:30 de 12/08 até 01:30 de 13/08.
+            val f = fixture(zone = "Asia/Tokyo")
+            f.gateway.results[A] = success(listOf(game("future", "2026-08-12").copy(startsAt = "2026-08-12T14:30:00Z", durationMinutes = 120)))
+            f.vm.onIntent(select(A))
+            runCurrent()
+            val item =
+                f.vm.state.value.upcoming
+                    .single()
+            assertEquals("12/08/2026 às 23:30 – 13/08/2026 às 01:30", item.scheduleText)
         }
 
     @Test fun `empty success is distinct from loading and error`() =
@@ -236,12 +265,13 @@ class GamesViewModelTest {
             assertNull(withTimeoutOrNull(1) { f.vm.effects.first() })
         }
 
-    private fun fixture(): Fixture {
+    private fun fixture(zone: String = "America/Sao_Paulo"): Fixture {
         val gateway = FakeGateway()
         gateway.results[A] = success(listOf(game("future", "2026-08-12")))
         gateway.results[B] =
             success(listOf(game("b", "2026-08-13")))
-        return Fixture(GamesViewModel(gateway), gateway)
+        val formatter = SaqzDateTimeFormatter(SaqzTimeZoneProvider { TimeZone.of(zone) })
+        return Fixture(GamesViewModel(gateway, formatter), gateway)
     }
 
     private fun select(

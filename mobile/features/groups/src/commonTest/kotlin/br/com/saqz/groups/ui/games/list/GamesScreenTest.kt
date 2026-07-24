@@ -59,7 +59,7 @@ class GamesScreenTest {
         runComposeUiTest {
             screen(base)
             onNodeWithText("Treino semanal").assertExists()
-            onNodeWithText("12/08/2026 às 19:30").assertExists()
+            onNodeWithText("12/08/2026 às 19:30 – 21:00").assertExists()
             onNodeWithText("Arena Central").assertExists()
             onNodeWithText("Publicado").assertExists()
             onNodeWithText("21 vagas").assertExists()
@@ -129,7 +129,17 @@ class GamesScreenTest {
         status: GameStatus = GameStatus.Published,
         spots: Int = 21,
         waitlist: Int = 2,
-    ) = GameListItem(id, "Treino semanal", "12/08/2026", "19:30", "Arena Central", status, spots, waitlist, "2026-08-12T22:30:00Z")
+    ) = GameListItem(
+        id,
+        "Treino semanal",
+        "12/08/2026 às 19:30 – 21:00",
+        "2026-08-12",
+        "Arena Central",
+        status,
+        spots,
+        waitlist,
+        "2026-08-12T22:30:00Z",
+    )
 
     private val base get() = GamesState("group", GroupRole.OWNER, listOf(item()), listOf(item("past")))
 }
