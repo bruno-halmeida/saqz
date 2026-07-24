@@ -19,11 +19,7 @@ sealed interface LoginIntent {
     data object SubmitPasswordLogin : LoginIntent
 
     data object SubmitGoogleLogin : LoginIntent
-
-    data object ShowRegistration : LoginIntent
-
-    data object ShowPasswordReset : LoginIntent
 }
 
-/** Login exposes no one-off effects: screen changes and sign-in flow through the shared session. */
+/** Login exposes no one-off effects: sign-in flows through the shared session. */
 sealed interface LoginEffect

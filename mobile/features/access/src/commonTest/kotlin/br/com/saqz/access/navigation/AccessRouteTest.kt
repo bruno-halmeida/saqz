@@ -9,12 +9,10 @@ import kotlin.test.assertTrue
 
 class AccessRouteTest {
 
-    // ACCESSNAV-01: the route inventory is exhaustive - exactly these seven keys.
+    // ACCESSNAV-01: the route inventory is exhaustive - exactly these six keys.
     private val allRoutes: List<AccessRoute> = listOf(
         AccessRoute.Starting,
         AccessRoute.Login,
-        AccessRoute.Registration,
-        AccessRoute.PasswordReset,
         AccessRoute.Verification,
         AccessRoute.NameCompletion,
         AccessRoute.PhoneCompletion,
@@ -22,9 +20,9 @@ class AccessRouteTest {
     )
 
     @Test
-    fun `route inventory contains exactly the eight specified keys`() {
-        assertEquals(8, allRoutes.size)
-        assertEquals(8, allRoutes.distinct().size)
+    fun `route inventory contains exactly the six specified keys`() {
+        assertEquals(6, allRoutes.size)
+        assertEquals(6, allRoutes.distinct().size)
     }
 
     @Test
@@ -38,8 +36,6 @@ class AccessRouteTest {
             val label = when (route) {
                 AccessRoute.Starting -> "Starting"
                 AccessRoute.Login -> "Login"
-                AccessRoute.Registration -> "Registration"
-                AccessRoute.PasswordReset -> "PasswordReset"
                 AccessRoute.Verification -> "Verification"
                 AccessRoute.NameCompletion -> "NameCompletion"
                 AccessRoute.PhoneCompletion -> "PhoneCompletion"
@@ -63,8 +59,6 @@ class AccessRouteTest {
     fun `each concrete route serializes and deserializes to an equal instance`() {
         assertEquals(AccessRoute.Starting, Json.decodeFromString(AccessRoute.Starting.serializer(), Json.encodeToString(AccessRoute.Starting.serializer(), AccessRoute.Starting)))
         assertEquals(AccessRoute.Login, Json.decodeFromString(AccessRoute.Login.serializer(), Json.encodeToString(AccessRoute.Login.serializer(), AccessRoute.Login)))
-        assertEquals(AccessRoute.Registration, Json.decodeFromString(AccessRoute.Registration.serializer(), Json.encodeToString(AccessRoute.Registration.serializer(), AccessRoute.Registration)))
-        assertEquals(AccessRoute.PasswordReset, Json.decodeFromString(AccessRoute.PasswordReset.serializer(), Json.encodeToString(AccessRoute.PasswordReset.serializer(), AccessRoute.PasswordReset)))
         assertEquals(AccessRoute.Verification, Json.decodeFromString(AccessRoute.Verification.serializer(), Json.encodeToString(AccessRoute.Verification.serializer(), AccessRoute.Verification)))
         assertEquals(AccessRoute.NameCompletion, Json.decodeFromString(AccessRoute.NameCompletion.serializer(), Json.encodeToString(AccessRoute.NameCompletion.serializer(), AccessRoute.NameCompletion)))
         assertEquals(AccessRoute.Bootstrap, Json.decodeFromString(AccessRoute.Bootstrap.serializer(), Json.encodeToString(AccessRoute.Bootstrap.serializer(), AccessRoute.Bootstrap)))

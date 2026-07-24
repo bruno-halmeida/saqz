@@ -13,7 +13,8 @@ fail() {
 # 2026-07-24; new code must not add raw values (swap-one-for-one still passes,
 # which is an accepted ceiling of this check). When you remove raw values,
 # lower the matching ceiling here so the gate keeps the progress.
-raw_dp_ceiling=258
+# 258 -> 66 em 2026-07-24 (VUL-30): a apresentação de groups saiu com 192 dp cruas.
+raw_dp_ceiling=66
 raw_color_ceiling=2
 
 feature_common_main() {

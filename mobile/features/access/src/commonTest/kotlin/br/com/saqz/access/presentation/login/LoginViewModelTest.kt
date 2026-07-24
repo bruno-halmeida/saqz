@@ -8,7 +8,6 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
-import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.resources.Res
@@ -84,25 +83,9 @@ class LoginViewModelTest {
         assertEquals(UiText.Res(Res.string.auth_error_invalid_credentials), viewModel.state.value.error)
     }
 
-    @Test
-    fun `navigation intents switch the shared authentication screen`() = runTest(mainDispatcher) {
-        val (viewModel, machine) = fixtureWithMachine()
-
-        viewModel.onIntent(LoginIntent.ShowRegistration)
-        assertEquals(AuthScreen.REGISTRATION, machine.state.value.screen)
-
-        viewModel.onIntent(LoginIntent.ShowPasswordReset)
-        assertEquals(AuthScreen.PASSWORD_RESET, machine.state.value.screen)
-    }
-
     private fun fixture(): Pair<LoginViewModel, FakeAuthPort> {
         val auth = FakeAuthPort()
         return LoginViewModel(AuthenticationStateMachine(auth) {}) to auth
-    }
-
-    private fun fixtureWithMachine(): Pair<LoginViewModel, AuthenticationStateMachine> {
-        val machine = AuthenticationStateMachine(FakeAuthPort()) {}
-        return LoginViewModel(machine) to machine
     }
 
     private data class LoginCall(val email: String, val password: String)

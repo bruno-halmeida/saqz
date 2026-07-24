@@ -1,11 +1,47 @@
-package br.com.saqz.groups.presentation.games.editor
+package br.com.saqz.groups.model
 
+import br.com.saqz.groups.domain.finance.ExpenseCategory
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.SeriesBoundaryScope
-import br.com.saqz.groups.domain.game.VersionedGame
-import br.com.saqz.groups.domain.game.VersionedSeries
 import br.com.saqz.groups.domain.game.WeeklySlot
+
+data class MonthlyChargeDraft(
+    val schemaVersion: Int = CURRENT_SCHEMA,
+    val groupId: String,
+    val commandKey: String,
+    val month: String = "",
+    val amountBrl: String = "",
+    val dueDate: String = "",
+    val selectedMemberIds: Set<String> = emptySet(),
+    val reviewed: Boolean = false,
+) {
+    companion object {
+        const val CURRENT_SCHEMA = 1
+    }
+}
+
+data class ExpenseForm(
+    val description: String = "",
+    val amountBrl: String = "",
+    val expenseDate: String = "",
+    val category: ExpenseCategory? = null,
+    val customCategory: String = "",
+    val notes: String = "",
+)
+
+data class ExpenseDraft(
+    val schemaVersion: Int = CURRENT_SCHEMA,
+    val groupId: String,
+    val expenseId: String? = null,
+    val etag: String? = null,
+    val commandKey: String,
+    val form: ExpenseForm,
+) {
+    companion object {
+        const val CURRENT_SCHEMA = 1
+    }
+}
 
 enum class GameEditorMode {
     ONE_TIME,
@@ -43,20 +79,3 @@ data class GameEditorDraft(
         const val CURRENT_SCHEMA = 1
     }
 }
-
-data class GameEditorDefaults(
-    val title: String,
-    val venue: GameVenue?,
-    val zoneId: String,
-    val durationMinutes: Int?,
-    val capacity: Int?,
-    val confirmationLeadMinutes: Int?,
-    val gameFeeCents: Long?,
-)
-
-data class GameEditorInput(
-    val groupId: String,
-    val defaults: GameEditorDefaults,
-    val existing: VersionedGame? = null,
-    val series: VersionedSeries? = null,
-)

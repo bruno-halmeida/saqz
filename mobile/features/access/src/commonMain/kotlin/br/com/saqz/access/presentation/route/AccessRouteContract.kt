@@ -4,10 +4,10 @@ import androidx.compose.runtime.Immutable
 
 /**
  * Distinguishes the two Access routes that have no dedicated per-route
- * ViewModel yet (Login/Registration/PasswordReset/Verification/NameCompletion
- * were already extracted; see design.md, "Route ownership inventory"). Each
- * Navigation Compose 3 entry supplies its own [AccessRouteViewModel] instance
- * with the mode matching its route (ACCESSNAV-01, LIFE-01).
+ * ViewModel (Login, Verification, NameCompletion and PhoneCompletion were
+ * already extracted). Each Navigation Compose 3 entry supplies its own
+ * [AccessRouteViewModel] instance with the mode matching its route
+ * (ACCESSNAV-01, LIFE-01).
  */
 enum class AccessRouteMode { STARTING, BOOTSTRAP }
 
