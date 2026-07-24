@@ -54,7 +54,9 @@ protocol IOSFirebaseAuthClient: AnyObject {
 
 @MainActor
 protocol IOSGoogleSignInClient: AnyObject {
-    func signIn(completion: @escaping (IOSGoogleSignInResult) -> Void)
+    // The completion is invoked on the main actor, so it is a Sendable function value and only the
+    // Sendable result crosses back from the provider callback into application code.
+    func signIn(completion: @escaping @MainActor (IOSGoogleSignInResult) -> Void)
     func handle(url: URL) -> Bool
 }
 
@@ -284,7 +286,7 @@ final class LiveGoogleSignInClient: IOSGoogleSignInClient {
         self.presentingViewController = presentingViewController
     }
 
-    func signIn(completion: @escaping (IOSGoogleSignInResult) -> Void) {
+    func signIn(completion: @escaping @MainActor (IOSGoogleSignInResult) -> Void) {
         guard let presenter = presentingViewController() else { completion(.failure(.providerUnavailable)); return }
         GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { result, error in
             let response: IOSGoogleSignInResult

@@ -105,7 +105,7 @@ final class IOSAppCompositionTests: XCTestCase {
 }
 
 @MainActor private final class FakeGoogle: IOSGoogleSignInClient {
-    var urls: [URL] = []; func signIn(completion: @escaping (IOSGoogleSignInResult) -> Void) {}
+    var urls: [URL] = []; func signIn(completion: @escaping @MainActor (IOSGoogleSignInResult) -> Void) {}
     func handle(url: URL) -> Bool { urls.append(url); return true }
 }
 
