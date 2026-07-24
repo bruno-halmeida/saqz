@@ -245,17 +245,19 @@ internal fun ProductNavigation(
     LaunchedEffect(state.session, state.authentication.screen) {
         reconcileAccessStack(accessStack, state.session, state.authentication.screen)
     }
-    // GROUPNAV-06/STATE-01..02: reconcile the Groups root with GroupSelectionState.
+    // GROUPNAV-06/STATE-01..02 + RESTORE-03: on switch, clear the group scope BEFORE
+    // reconciling the Groups root. As two separate effects the reconciled GroupHome
+    // root was immediately reset back to the initial Selector root by clearGroupScope,
+    // leaving a freshly selected group unreachable until the next selection emission.
     LaunchedEffect(state.selection) {
+        (state.selection as? GroupSelectionState.Selected)?.group?.group?.id?.value?.let {
+            session.clearGroupScope(it)
+        }
         session.reconcileGroupSelection(state.selection)
     }
-    // RESTORE-02/03: clear authenticated stacks on logout; clear group scope on switch.
+    // RESTORE-02: clear authenticated stacks on logout.
     LaunchedEffect(state.session) {
         if (state.session == SessionAccessState.SignedOut) session.clearAuthenticated()
-    }
-    val selectedGroupId = (state.selection as? GroupSelectionState.Selected)?.group?.group?.id?.value
-    LaunchedEffect(selectedGroupId) {
-        if (selectedGroupId != null) session.clearGroupScope(selectedGroupId)
     }
     // LIFE-04: orchestrator one-off effects -> session mutations.
     if (accessEffects != null) {
@@ -542,7 +544,7 @@ private fun CreateGroupEntry(
         when (effect) {
             is GroupSetupEffect.SelectGroup -> {
                 session.goBack()
-                selectionMachine.onIntent(GroupSelectionIntent.Select(effect.groupId))
+                selectionMachine.onIntent(GroupSelectionIntent.SelectJoined(effect.groupId))
             }
             is GroupSetupEffect.OpenGroup -> Unit
             is GroupSetupEffect.UploadPhoto -> {

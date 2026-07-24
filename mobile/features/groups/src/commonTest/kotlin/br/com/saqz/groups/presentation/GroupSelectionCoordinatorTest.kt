@@ -166,6 +166,37 @@ class GroupSelectionStateMachineTest {
     }
 
     @Test
+    fun `server confirmed join selects a group missing from memberships`() = runTest {
+        val fixture = fixture(this)
+        fixture.groups.results[JOINED] = success(JOINED, GroupRole.ATHLETE)
+        fixture.machine.onIntent(GroupSelectionIntent.Reconcile(session()))
+
+        fixture.machine.onIntent(GroupSelectionIntent.SelectJoined(JOINED))
+        runCurrent()
+
+        assertEquals(listOf(JOINED), fixture.groups.reads)
+        assertEquals(listOf<String?>(JOINED), fixture.local.writes)
+        assertEquals(JOINED, assertIs<GroupSelectionState.Selected>(fixture.machine.state.value).group.group.id.value)
+    }
+
+    @Test
+    fun `stale in-flight selection cannot replace a server confirmed join`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(GroupSelectionIntent.Reconcile(session(memberA, memberB)))
+        fixture.groups.pending[GROUP_A] = CompletableDeferred()
+        fixture.machine.onIntent(GroupSelectionIntent.Select(GROUP_A))
+        runCurrent()
+        fixture.groups.results[JOINED] = success(JOINED, GroupRole.ATHLETE)
+
+        fixture.machine.onIntent(GroupSelectionIntent.SelectJoined(JOINED))
+        runCurrent()
+        fixture.groups.pending.getValue(GROUP_A).complete(success(GROUP_A, GroupRole.OWNER))
+        runCurrent()
+
+        assertEquals(JOINED, assertIs<GroupSelectionState.Selected>(fixture.machine.state.value).group.group.id.value)
+    }
+
+    @Test
     fun `duplicate selection while loading is single flight`() = runTest {
         val fixture = fixture(this)
         fixture.machine.onIntent(GroupSelectionIntent.Reconcile(session(memberA, memberB)))
@@ -251,6 +282,7 @@ class GroupSelectionStateMachineTest {
     private companion object {
         const val GROUP_A = "group-a"
         const val GROUP_B = "group-b"
+        const val JOINED = "joined-group"
         val memberA = GroupSelectionMembership(GROUP_A, "Group A", GroupRole.OWNER)
         val memberB = GroupSelectionMembership(GROUP_B, "Group B", GroupRole.ATHLETE)
         fun session(vararg memberships: GroupSelectionMembership) = memberships.toList()
