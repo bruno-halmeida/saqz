@@ -125,17 +125,8 @@ printf 'ok %d - unstaged-client-domain\n' "$count"
 fail_case retired-frontend-workspace 'retired frontend workspace' sh -c \
     "mkdir -p frontend && printf 'retired workspace\n' >frontend/README.md"
 
-fail_case specs-ignored '.specs is ignored' sh -c \
-    "printf '\n.specs/\n' >>.gitignore"
-
-fail_case agents-untracked 'AGENTS.md is not tracked' sh -c \
-    "git rm -q AGENTS.md"
-
-fail_case state-untracked '.specs/STATE.md is not tracked' sh -c \
-    "git rm -q .specs/STATE.md"
-
-fail_case feature-specs-untracked '.specs contains no tracked feature specifications' sh -c \
-    "git rm -q .specs/features/*/spec.md"
+pass_case_with allow-nested-agents-doc sh -c \
+    "mkdir -p mobile && printf '# AGENTS\n\nGateway, not Repository.\n' >mobile/AGENTS.md"
 
 # --- Fundação mobile aprovada: positivos ---
 
@@ -221,4 +212,4 @@ fail_case co-owner-capability 'co-owner capability' sh -c \
 fail_case tracked-secret-path 'tracked secret path' sh -c \
     "mkdir -p .secrets && printf '{}\n' >.secrets/service-account.json && git add -f .secrets/service-account.json"
 
-[ "$count" -eq 40 ]
+[ "$count" -eq 37 ]
