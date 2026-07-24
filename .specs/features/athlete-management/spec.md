@@ -181,14 +181,16 @@ history.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| ATH-01 | P1: Mandatory phone in completion | Done | Delivered |
-| ATH-02 | P1: Invite entry as avulso + position onboarding | Done | Delivered |
-| ATH-03 | P1: Roster list, search, and filters | Done | Delivered |
-| ATH-04 | P1: Type switch, edit, active toggle, removal | Done | Delivered |
-| ATH-05 | P1: Name snapshot in attendance and charges | Done | Delivered |
-| ATH-06 | P2: Athlete profile and per-group history | Done | Delivered |
+| ATH-01 | P1: Mandatory phone in completion | Done | Done |
+| ATH-02 | P1: Invite entry as avulso + position onboarding | Done | Done |
+| ATH-03 | P1: Roster list, search, and filters | Done | Done |
+| ATH-04 | P1: Type switch, edit, active toggle, removal | Done | Done |
+| ATH-05 | P1: Name snapshot in attendance and charges | Done | Done |
+| ATH-06 | P2: Athlete profile and per-group history | Done | Done |
 
-**Coverage:** 6 total, 6 delivered (see validation.md for gate evidence and open verification gaps).
+**Coverage:** 6 total, 6 done and verified — every aggregate gate green in the
+T15 closeout (VUL-7) with native journey coverage from VUL-5/VUL-6; see
+validation.md for gate evidence. No verification gap remains open.
 
 ---
 

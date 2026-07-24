@@ -244,11 +244,13 @@
 
 ## Handoff
 
-- **Feature**: mobile-navigation-architecture — `.specs/features/mobile-navigation-architecture/` — **T01–T26 ALL COMPLETE**; independent Verifier dispatched (validation.md pending its report).
-- **Phase / Task**: Execute finished 2026-07-23. T01–T21 via ultracode workflow batches; T22 via worker (`46f8dd6`); T23–T26 inline: adapter wiring `cd2e44c`, T23 `baaf013`, T24 `0243d87` (AuthenticatedAccessRoot deleted, AccessViewModel slimmed to orchestration, structural guards), T25 `4802875` (GroupsNavigationViewModel/State/Effect/RouteHost/DestinationContent deleted, GroupDetailScreen takes GroupsNavigationAccess), T26 `be59042` (`rtk scripts/check-all` green: boundaries serialization rule refined to transport-engine-only, AndroidAccessibilityTest→LoginState, Bundle-compatible navigationEntryId platform fix, rotation-contract testTag on ProductNavigationHost).
-- **Architecture now**: every product route renders through Nav3 NavDisplay entries backed by route-adapter ViewModels (T11–T15) via feature-owned Roots (`groups/ui/route/`); route history lives only in NavigationSession; the AD-025-deferred panels (Settings/Memberships/Invite/CreateGroup, GroupsList/Detail/More) are real NavEntrys with dedicated adapters — the deferred PMVI-001 scope is satisfied.
-- **Blockers**: none. Verifier fix→re-verify loop (max 3) applies if it returns FAIL.
-- **Uncommitted files**: pre-existing unrelated `GameEditorScreenTest.kt` wildcard-import change (not ours); `athlete-management` WIP is stashed (`git stash list`: athlete-management-wip-blocking-nav-gates) — POP IT BACK before resuming that feature. Older stashes (partial-T18, phase4-double-run, incidental-gamedetail-reformat, nav-t23 empty leftover) can be dropped after review.
-- **Previous feature**: mobile-presentation-compose-mvi delivered & verified (Verifier PASS).
-- **Branch**: main
+- **Feature**: athlete-management (Épico 04) — `.specs/features/athlete-management/` — **T01–T15 ALL COMPLETE AND VERIFIED**. Closed 2026-07-24.
+- **Phase / Task**: Verify finished. T01–T13 delivered in the feature branch; the two follow-ups it left open are closed: **T14** native journeys — Android in VUL-5 (PR #6, merge `9988080`: `AndroidAthleteJourneyTest` + 3 navigation fixes, B6) and iOS in VUL-6 (PR #1, merge `decfca3`: `IOSAthleteJourneyTests` 13 cases + roster ADMIN gating fix, B5) — and **T15** aggregate gates in VUL-7 (this closeout).
+- **Gate status**: all six aggregate gates green locally on the merged tree — `check-credentials`, `check-scope`, `check-bruno`, `check-gradle` (backend suites + `connectedDevDebugAndroidTest` 60/60 on API 30), `check-ios` (SaqzDev test + SaqzProd Release build + SaqzProd Release unit, AD-009/AD-024), and `check-all`. Evidence table in the feature's `validation.md`; requirement traceability in `spec.md` is at `Done` for ATH-01..06 with no open verification gap.
+- **Next queue**: Épico 05 — Gestão de Jogos. Start from its own spec set; do not carry athlete-management context into it.
+- **Blockers**: none for Épico 04.
+- **Environment notes for gates**: `check-gradle` does not self-select JDK 21 (unlike `check-all`) — export `JAVA_HOME` for 21; backend integration needs Docker (Colima socket) and an Android device/emulator must be attached for the connected suite. A wedged `xcodebuild` (built, then idle at 0% CPU) clears with `xcrun simctl shutdown all`.
+- **Uncommitted files**: none beyond this closeout's `.specs` edits. The `athlete-management` WIP stash is gone (applied and delivered); the remaining older stashes (incidental-gamedetail-reformat, phase4-double-run, partial-T18, codex-group-management-final-validation) can be dropped after review.
+- **Previous feature**: mobile-navigation-architecture delivered (T01–T26, `check-all` green at `be59042`).
+- **Branch**: `vul-7-epico-04-closeout` (PR into `main`)
 
