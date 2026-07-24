@@ -195,7 +195,7 @@ Estado sempre via `update { it.copy(...) }` — nunca atribuição direta do flo
 - **Efeito de navegação idempotente**: um `Set` de chaves emitidas evita duplo push por duplo toque.
 - **Intent inválido retorna cedo**: não emite efeito, não altera estado.
 - **Regra densa sai do ViewModel**: validação, totais e permissão vivem em arquivos próprios e
-  testáveis (`FinanceChargeRules`, `GameEditorValidator`, `GroupRoutePolicy`).
+  testáveis.
 - **Process death**: formulário longo persiste os campos que importam em `SavedStateHandle` — só
   os que importam, não o estado inteiro.
 - **Dispatcher não se injeta** em ViewModel (`viewModelScope` basta). Injete só em classe que

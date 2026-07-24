@@ -1,14 +1,12 @@
 plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.compose)
-    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.kotlin.serialization)
-    id("saqz.kmp-compose-library")
     id("saqz.detekt")
 }
 
 kotlin {
+    jvmToolchain(21)
+
     android {
         namespace = "br.com.saqz.groups.feature"
         compileSdk = libs.versions.compile.sdk.get().toInt()
@@ -21,32 +19,11 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":core:domain"))
             api(project(":features:groups:domain"))
-            implementation(project(":core:common"))
-            implementation(project(":core:design-system"))
-            implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
-            implementation("org.jetbrains.compose.material:material:1.11.1")
-            implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
-            implementation("org.jetbrains.compose.components:components-resources:1.11.1")
-            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.lifecycle.viewmodel.compose)
-            implementation(libs.lifecycle.viewmodel.savedstate)
-            api(libs.navigation3.runtime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
-            implementation(libs.kotlinx.coroutines.test)
-            implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
-            implementation(libs.kotlinx.serialization.json)
         }
     }
-}
-
-compose.resources {
-    packageOfResClass = "br.com.saqz.groups.resources"
-    generateResClass = always
 }

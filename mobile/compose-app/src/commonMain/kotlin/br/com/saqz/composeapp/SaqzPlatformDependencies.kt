@@ -5,15 +5,15 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
-import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.port.ExpenseDraftStorePort
+import br.com.saqz.groups.port.GameDraftStorePort
+import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.LocalGroupStatePort
+import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftStorePort
-import br.com.saqz.groups.presentation.games.editor.GameDraftStorePort
 
 class GroupPhotoRuntimeDependencies(
     val selection: GroupPhotoSelectionPort,

@@ -59,15 +59,19 @@ fail_case() {
 }
 
 # inject_dependency_case LABEL EXPECTED FILE DEPENDENCY_LINE - clone the repo, insert
-# DEPENDENCY_LINE right after the module's existing `:core:domain` dependency inside
-# FILE's build.gradle.kts, then assert the gate rejects it with the EXPECTED marker.
+# DEPENDENCY_LINE as the first entry of FILE's commonMain.dependencies block, then
+# assert the gate rejects it with the EXPECTED marker. The anchor is the block opener
+# and not a concrete dependency line: módulos perdem dependências (VUL-30 tirou
+# `:core:domain` de features/groups), e uma âncora ausente transforma a mutação em
+# no-op — o teste passaria a provar nada em vez de falhar.
 inject_dependency_case() {
     label=$1
     expected=$2
     file=$3
     line=$4
     fail_case "$label" "$expected" sh -c \
-        "sed -i.bak 's#implementation(project(\":core:domain\"))#implementation(project(\":core:domain\"))\\n            $line#' '$file' && rm -f '$file.bak'"
+        "grep -q 'commonMain.dependencies {' '$file' || { printf 'injection anchor missing in %s\\n' '$file' >&2; exit 1; }
+         sed -i.bak 's#commonMain.dependencies {#commonMain.dependencies {\\n            $line#' '$file' && rm -f '$file.bak'"
 }
 
 pass_case clean-repository

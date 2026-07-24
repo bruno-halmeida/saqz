@@ -10,23 +10,23 @@ import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
+import br.com.saqz.groups.model.ExpenseDraft
+import br.com.saqz.groups.model.GameEditorDraft
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
+import br.com.saqz.groups.model.MonthlyChargeDraft
+import br.com.saqz.groups.port.ExpenseDraftReadResult
+import br.com.saqz.groups.port.ExpenseDraftStorePort
+import br.com.saqz.groups.port.ExpenseDraftWriteResult
+import br.com.saqz.groups.port.GameDraftReadResult
+import br.com.saqz.groups.port.GameDraftStorePort
+import br.com.saqz.groups.port.GameDraftWriteResult
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraft
-import br.com.saqz.groups.presentation.finance.charges.MonthlyChargeDraftStorePort
-import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftReadResult
-import br.com.saqz.groups.presentation.finance.charges.MonthlyDraftWriteResult
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraft
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftReadResult
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftStorePort
-import br.com.saqz.groups.presentation.finance.expenses.ExpenseDraftWriteResult
-import br.com.saqz.groups.presentation.games.editor.GameDraftReadResult
-import br.com.saqz.groups.presentation.games.editor.GameDraftStorePort
-import br.com.saqz.groups.presentation.games.editor.GameDraftWriteResult
-import br.com.saqz.groups.presentation.games.editor.GameEditorDraft
+import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
+import br.com.saqz.groups.port.MonthlyDraftReadResult
+import br.com.saqz.groups.port.MonthlyDraftWriteResult
 
 internal val lifecycleGroupPhotos = GroupPhotoRuntimeDependencies(
     selection = object : GroupPhotoSelectionPort {
