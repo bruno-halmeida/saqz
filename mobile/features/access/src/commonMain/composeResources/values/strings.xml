@@ -40,6 +40,11 @@
     <string name="name_label">Nome</string>
     <string name="name_invalid">Informe um nome entre 2 e 80 caracteres</string>
     <string name="name_submit">Continuar</string>
+    <string name="phone_title">Qual seu telefone?</string>
+    <string name="phone_body">Usamos seu celular para contato do grupo</string>
+    <string name="phone_label">Celular</string>
+    <string name="phone_invalid">Informe um celular valido com DDD, ex: (11) 98765-4321</string>
+    <string name="phone_submit">Continuar</string>
     <string name="reset_title">Esqueceu sua senha?</string>
     <string name="reset_body">Informe seu e-mail para recuperar o acesso à sua conta.</string>
     <string name="reset_email">E-mail</string>

@@ -11,6 +11,8 @@ data class AccessUser(
     val id: String,
     val email: String?,
     val displayName: String,
+    val phone: String? = null,
+    val phoneRequired: Boolean = false,
 )
 
 @JvmInline
@@ -35,8 +37,13 @@ sealed interface AccessError : SaqzError {
     data class DataFailure(val error: DataError) : AccessError
 }
 
-fun interface SessionGateway {
+interface SessionGateway {
     suspend fun bootstrap(): SaqzResult<AccessSession, AccessError>
+
+    suspend fun completeProfile(
+        phone: String,
+        displayName: String? = null,
+    ): SaqzResult<AccessSession, AccessError>
 }
 
 interface SessionInvalidator {

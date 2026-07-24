@@ -134,6 +134,7 @@ fun GroupPlaceholderRoot(
     viewModel: GroupContentPlaceholderRouteViewModel,
     mode: GroupContentPlaceholderMode,
     onBack: () -> Unit,
+    athleteProfile: (@Composable () -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val back: (GroupsNavigationIntent) -> Unit = { if (it == GroupsNavigationIntent.OpenHome) onBack() }
@@ -166,17 +167,21 @@ fun GroupPlaceholderRoot(
             tag = GroupsNavigationTags.NoticesScreen,
             onNavigationIntent = back,
         )
-        GroupContentPlaceholderMode.MORE -> GroupMoreRootContent(viewModel)
+        GroupContentPlaceholderMode.MORE -> GroupMoreRootContent(viewModel, athleteProfile)
     }
 }
 
 @Composable
-private fun GroupMoreRootContent(viewModel: GroupContentPlaceholderRouteViewModel) {
+private fun GroupMoreRootContent(
+    viewModel: GroupContentPlaceholderRouteViewModel,
+    athleteProfile: (@Composable () -> Unit)? = null,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     GroupMoreScreen(
         access = state.access,
         onOpenPeople = { viewModel.onIntent(GroupContentPlaceholderIntent.OpenPeople) },
         onOpenFinance = { viewModel.onIntent(GroupContentPlaceholderIntent.OpenFinance) },
+        athleteProfile = athleteProfile,
     )
 }
 

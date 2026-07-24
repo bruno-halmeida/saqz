@@ -1,0 +1,31 @@
+meta {
+  name: Update Athlete
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{backendUrl}}/api/groups/{{groupId}}/athletes/{{userId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  content-type: application/json
+}
+
+body:json {
+  {
+    "position": "CENTRAL",
+    "membershipType": "MENSALISTA",
+    "active": true
+  }
+}
+
+tests {
+  test("athlete attributes are updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().membershipType).to.equal("MENSALISTA");
+  });
+}

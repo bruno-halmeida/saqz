@@ -1,0 +1,29 @@
+meta {
+  name: Update Own Athlete Profile
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{backendUrl}}/api/groups/{{groupId}}/athletes/me
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  content-type: application/json
+}
+
+body:json {
+  {
+    "position": "PONTA"
+  }
+}
+
+tests {
+  test("own position is updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().position).to.equal("PONTA");
+  });
+}

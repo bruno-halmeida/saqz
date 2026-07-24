@@ -1,8 +1,10 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.testing.startAndAwaitJdbc
+import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
+import br.com.saqz.access.domain.PhoneNumber
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -178,6 +180,87 @@ class JdbcSessionRepositoryIntegrationTest {
 
         assertEquals(ids[0], ids[1])
         assertEquals(1, count("SELECT count(*) FROM access_users WHERE firebase_subject = 'subject-concurrent'"))
+    }
+
+    @Test
+    fun `phone is null until the profile is completed`() {
+        val session = repository.upsertAndLoad(command("subject-no-phone"))
+
+        assertEquals(null, session.user.phone)
+    }
+
+    @Test
+    fun `updateProfile persists phone and reloads it on the next session`() {
+        repository.upsertAndLoad(command("subject-phone"))
+
+        val updated = repository.updateProfile(
+            ProfileCompletion("subject-phone", PhoneNumber.from("+5511911112222"), null),
+        )!!
+        val reloaded = repository.upsertAndLoad(command("subject-phone"))
+
+        assertEquals(PhoneNumber.from("+5511911112222"), updated.user.phone)
+        assertEquals(PhoneNumber.from("+5511911112222"), reloaded.user.phone)
+        assertEquals(updated.user.id, reloaded.user.id)
+    }
+
+    @Test
+    fun `updateProfile does not change the display name when none is supplied`() {
+        repository.upsertAndLoad(command("subject-keep-name"))
+
+        val updated = repository.updateProfile(
+            ProfileCompletion("subject-keep-name", PhoneNumber.from("+5511911112222"), null),
+        )!!
+
+        assertEquals("Person Name", updated.user.displayName.value)
+    }
+
+    @Test
+    fun `updateProfile overwrites the display name when supplied`() {
+        repository.upsertAndLoad(command("subject-rename"))
+
+        val updated = repository.updateProfile(
+            ProfileCompletion("subject-rename", PhoneNumber.from("+5511911112222"), AccessName.from("Renamed Person")),
+        )!!
+
+        assertEquals("Renamed Person", updated.user.displayName.value)
+    }
+
+    @Test
+    fun `repeat updateProfile with the same phone is an idempotent overwrite`() {
+        repository.upsertAndLoad(command("subject-repeat"))
+
+        repository.updateProfile(ProfileCompletion("subject-repeat", PhoneNumber.from("+5511911112222"), null))
+        repository.updateProfile(ProfileCompletion("subject-repeat", PhoneNumber.from("+5511911112222"), null))
+
+        assertEquals(1, count("SELECT count(*) FROM access_users WHERE firebase_subject = 'subject-repeat'"))
+        assertEquals(
+            "+5511911112222",
+            text("SELECT phone FROM access_users WHERE firebase_subject = 'subject-repeat'"),
+        )
+    }
+
+    @Test
+    fun `updateProfile preserves existing memberships`() {
+        val owner = repository.upsertAndLoad(command("profile-owner"))
+        val member = repository.upsertAndLoad(command("profile-member"))
+        val group = insertGroup(owner.user.id, "Profile Group")
+        insertMembership(group, member.user.id, "ADMIN")
+
+        val updated = repository.updateProfile(
+            ProfileCompletion("profile-member", PhoneNumber.from("+5511911112222"), null),
+        )!!
+
+        assertEquals(listOf(group), updated.memberships.map { it.groupId })
+        assertEquals("ADMIN", updated.memberships.single().role)
+    }
+
+    @Test
+    fun `updateProfile returns null for a subject with no bootstrapped account`() {
+        val result = repository.updateProfile(
+            ProfileCompletion("subject-never-bootstrapped", PhoneNumber.from("+5511911112222"), null),
+        )
+
+        assertEquals(null, result)
     }
 
     private fun command(subject: String) =

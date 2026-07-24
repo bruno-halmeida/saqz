@@ -134,6 +134,11 @@ class AccessRouteViewModelTest {
     private class FakeSessionGateway : SessionGateway {
         val calls = mutableListOf<CompletableDeferred<SaqzResult<AccessSession, AccessError>>>()
 
+        override suspend fun completeProfile(
+            phone: String,
+            displayName: String?,
+        ): SaqzResult<AccessSession, AccessError> = error("not used")
+
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             val deferred = CompletableDeferred<SaqzResult<AccessSession, AccessError>>()
             calls += deferred

@@ -1,0 +1,22 @@
+meta {
+  name: Read Own Athlete Profile
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{backendUrl}}/api/athletes/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+tests {
+  test("own profile with memberships is returned", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().memberships).to.be.an("array");
+  });
+}

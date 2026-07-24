@@ -43,6 +43,14 @@ sealed interface SessionAccessState {
 
     data object BootstrapError : SessionAccessState
 
+    data class CompletingPhone(
+        val session: AccessSession,
+        val phone: String = "",
+        val isLoading: Boolean = false,
+        val error: AuthUiError? = null,
+        val invalidPhone: Boolean = false,
+    ) : SessionAccessState
+
     data class Ready(val session: AccessSession) : SessionAccessState
 }
 
@@ -56,6 +64,10 @@ sealed interface SessionIntent {
     data class UpdateName(val value: String) : SessionIntent
 
     data object CompleteName : SessionIntent
+
+    data class UpdatePhone(val value: String) : SessionIntent
+
+    data object CompletePhone : SessionIntent
 
     data object RetryBootstrap : SessionIntent
 
@@ -83,6 +95,8 @@ class SessionAccessStateMachine(
             SessionIntent.ResendVerification -> resendVerification()
             is SessionIntent.UpdateName -> updateName(intent.value)
             SessionIntent.CompleteName -> completeName()
+            is SessionIntent.UpdatePhone -> updatePhone(intent.value)
+            SessionIntent.CompletePhone -> completePhone()
             SessionIntent.RetryBootstrap -> retryBootstrap()
             SessionIntent.Logout -> logout()
         }
@@ -137,6 +151,43 @@ class SessionAccessStateMachine(
                 is AuthResult.Success -> forceRefreshAndBootstrap(result.user)
             }
         })
+    }
+
+    private fun updatePhone(value: String) {
+        val current = mutableState.value as? SessionAccessState.CompletingPhone ?: return
+        if (!current.isLoading) mutableState.value = current.copy(phone = value, error = null, invalidPhone = false)
+    }
+
+    private fun completePhone() {
+        val current = mutableState.value as? SessionAccessState.CompletingPhone ?: return
+        if (current.isLoading) return
+        val phone = normalizedBrMobilePhone(current.phone)
+        if (phone == null) {
+            mutableState.value = current.copy(invalidPhone = true)
+            return
+        }
+        mutableState.value = current.copy(isLoading = true, error = null, invalidPhone = false)
+        scope.launch {
+            mutableState.value = when (val result = session.completeProfile(phone)) {
+                is SaqzResult.Success -> readyOrPhoneGate(result.value)
+                is SaqzResult.Failure -> when (val error = result.error) {
+                    is AccessError.Validation -> current.copy(isLoading = false, invalidPhone = true)
+                    is AccessError.DataFailure -> current.copy(
+                        isLoading = false,
+                        error = when (error.error) {
+                            br.com.saqz.domain.DataError.Connectivity,
+                            br.com.saqz.domain.DataError.Timeout,
+                            -> AuthUiError.NETWORK_UNAVAILABLE
+                            else -> AuthUiError.UNKNOWN
+                        },
+                    )
+                    AccessError.EmailNotVerified,
+                    AccessError.Unauthenticated,
+                    AccessError.Forbidden,
+                    -> current.copy(isLoading = false, error = AuthUiError.UNKNOWN)
+                }
+            }
+        }
     }
 
     private fun retryBootstrap() {
@@ -206,7 +257,7 @@ class SessionAccessStateMachine(
         mutableState.value = SessionAccessState.Bootstrapping
         scope.launch {
             mutableState.value = when (val result = session.bootstrap()) {
-                is SaqzResult.Success -> SessionAccessState.Ready(result.value)
+                is SaqzResult.Success -> readyOrPhoneGate(result.value)
                 is SaqzResult.Failure -> when (result.error) {
                     AccessError.EmailNotVerified -> {
                         val unverified = user.copy(emailVerified = false)
@@ -222,6 +273,10 @@ class SessionAccessStateMachine(
             }
         }
     }
+
+    private fun readyOrPhoneGate(session: AccessSession): SessionAccessState =
+        if (session.user.phoneRequired) SessionAccessState.CompletingPhone(session)
+        else SessionAccessState.Ready(session)
 
     private fun authCallback(block: (AuthResult) -> Unit) = object : AuthCallback {
         override fun complete(result: AuthResult) = block(result)

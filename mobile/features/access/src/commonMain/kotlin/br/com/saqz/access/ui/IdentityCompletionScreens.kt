@@ -35,6 +35,8 @@ import br.com.saqz.designsystem.text.asString
 import br.com.saqz.access.presentation.isValidEmail
 import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
 import br.com.saqz.access.presentation.namecompletion.NameCompletionState
+import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionIntent
+import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionState
 import br.com.saqz.access.presentation.passwordreset.PasswordResetIntent
 import br.com.saqz.access.presentation.passwordreset.PasswordResetState
 import br.com.saqz.access.presentation.verification.VerificationIntent
@@ -49,6 +51,11 @@ import br.com.saqz.access.resources.name_invalid
 import br.com.saqz.access.resources.name_label
 import br.com.saqz.access.resources.name_submit
 import br.com.saqz.access.resources.name_title
+import br.com.saqz.access.resources.phone_body
+import br.com.saqz.access.resources.phone_invalid
+import br.com.saqz.access.resources.phone_label
+import br.com.saqz.access.resources.phone_submit
+import br.com.saqz.access.resources.phone_title
 import br.com.saqz.access.resources.material_mail
 import br.com.saqz.access.resources.material_shield_lock
 import br.com.saqz.access.resources.registration_email_invalid
@@ -79,6 +86,7 @@ internal object IdentityTags {
     const val Verify = "identity-verify"
     const val Resend = "identity-resend"
     const val NameSubmit = "identity-name-submit"
+    const val PhoneSubmit = "identity-phone-submit"
     const val ResetSubmit = "identity-reset-submit"
     const val ResetBack = "identity-reset-back"
 }
@@ -134,6 +142,32 @@ fun NameCompletionScreen(
         onClick = { onIntent(NameCompletionIntent.Complete) },
         loading = state.isLoading,
         modifier = Modifier.fillMaxWidth().testTag(IdentityTags.NameSubmit),
+    )
+}
+
+@Composable
+fun PhoneCompletionScreen(
+    state: PhoneCompletionState,
+    onIntent: (PhoneCompletionIntent) -> Unit,
+) = IdentityColumn {
+    IdentityHeading(stringResource(Res.string.phone_title))
+    Text(stringResource(Res.string.phone_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
+    SaqzInput(
+        value = TextFieldValue(state.phone),
+        onValueChange = { onIntent(PhoneCompletionIntent.UpdatePhone(it.text)) },
+        label = stringResource(Res.string.phone_label),
+        kind = SaqzInputKind.Phone,
+        errorText = if (state.invalidPhone) stringResource(Res.string.phone_invalid) else null,
+        enabled = !state.isLoading,
+    )
+    state.error?.let {
+        Text(it.message().asString(), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+    }
+    SaqzButton(
+        label = stringResource(Res.string.phone_submit),
+        onClick = { onIntent(PhoneCompletionIntent.Complete) },
+        loading = state.isLoading,
+        modifier = Modifier.fillMaxWidth().testTag(IdentityTags.PhoneSubmit),
     )
 }
 

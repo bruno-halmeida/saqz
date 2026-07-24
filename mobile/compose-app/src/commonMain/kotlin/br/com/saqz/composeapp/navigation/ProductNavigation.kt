@@ -65,12 +65,17 @@ import br.com.saqz.groups.presentation.route.GroupHomeRouteViewModel
 import br.com.saqz.groups.presentation.route.GroupInviteRouteEffect
 import br.com.saqz.groups.presentation.route.GroupInviteRouteIntent
 import br.com.saqz.groups.presentation.route.GroupInviteRouteViewModel
+import br.com.saqz.groups.presentation.athlete.AthleteRosterViewModel
+import br.com.saqz.groups.presentation.athlete.OwnAthleteProfileViewModel
 import br.com.saqz.groups.presentation.route.GroupSelectionRouteViewModel
 import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
 import br.com.saqz.groups.presentation.setup.GroupSetupEffect
 import br.com.saqz.groups.presentation.setup.GroupSetupInput
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import br.com.saqz.groups.ui.athlete.AthleteRosterScreen
+import br.com.saqz.groups.ui.athlete.OwnAthleteProfileSection
+import br.com.saqz.groups.ui.athlete.PositionOnboardingHost
 import br.com.saqz.groups.ui.games.detail.GameDetailScreen
 import br.com.saqz.groups.ui.route.FinancePlaceholderRoot
 import br.com.saqz.groups.ui.route.GroupHomeRoot
@@ -300,6 +305,9 @@ internal fun ProductNavigation(
         // (rotation/recreation tests count this tag and assert catalog never leaks).
         modifier = modifier.testTag("authenticated-access-destination"),
     )
+    if (mode == NavigationMode.AUTHENTICATED) {
+        PositionOnboardingHost(koinViewModel())
+    }
 }
 
 /**
@@ -364,10 +372,27 @@ private fun GroupsEntryContent(
         }
 
         GroupsRoute.ProfileCompletion -> PlaceholderEntry(GroupContentPlaceholderMode.PROFILE_COMPLETION, session)
-        GroupsRoute.People -> PlaceholderEntry(GroupContentPlaceholderMode.PEOPLE, session)
+        GroupsRoute.People -> {
+            val rosterViewModel = koinViewModel<AthleteRosterViewModel>()
+            val rosterState by rosterViewModel.state.collectAsState()
+            val canManage = state.administration.actions.canManageRoles
+            AthleteRosterScreen(
+                state = rosterState,
+                canManage = canManage,
+                onIntent = rosterViewModel::onIntent,
+            )
+        }
         GroupsRoute.Games -> PlaceholderEntry(GroupContentPlaceholderMode.GAMES, session)
         GroupsRoute.Notices -> PlaceholderEntry(GroupContentPlaceholderMode.NOTICES, session)
-        GroupsRoute.More -> PlaceholderEntry(GroupContentPlaceholderMode.MORE, session)
+        GroupsRoute.More -> PlaceholderEntry(
+            GroupContentPlaceholderMode.MORE,
+            session,
+            athleteProfile = {
+                val profileViewModel = koinViewModel<OwnAthleteProfileViewModel>()
+                val profileState by profileViewModel.state.collectAsState()
+                OwnAthleteProfileSection(state = profileState, onIntent = profileViewModel::onIntent)
+            },
+        )
 
         is GroupsRoute.GameDetail -> {
             val selected = state.administration.group?.group
@@ -469,7 +494,11 @@ private fun GroupsEntryContent(
 }
 
 @Composable
-private fun PlaceholderEntry(mode: GroupContentPlaceholderMode, session: NavigationSession) {
+private fun PlaceholderEntry(
+    mode: GroupContentPlaceholderMode,
+    session: NavigationSession,
+    athleteProfile: (@Composable () -> Unit)? = null,
+) {
     val viewModel = koinViewModel<GroupContentPlaceholderRouteViewModel>(
         key = "group-placeholder-$mode",
         parameters = { parametersOf(mode) },
@@ -481,7 +510,7 @@ private fun PlaceholderEntry(mode: GroupContentPlaceholderMode, session: Navigat
             canManageFinance = viewModel.state.value.access.financeVisibility == GroupFinanceVisibility.ORGANIZER,
         )
     }
-    GroupPlaceholderRoot(viewModel, mode, onBack = { session.goBack() })
+    GroupPlaceholderRoot(viewModel, mode, onBack = { session.goBack() }, athleteProfile = athleteProfile)
 }
 
 /** CreateGroup entry: existing GroupSetupViewModel + the photo-upload bridge, entry-scoped. */

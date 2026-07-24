@@ -48,13 +48,14 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.painterResource
 
-enum class SaqzInputKind { Text, Email, Password }
+enum class SaqzInputKind { Text, Email, Password, Phone }
 
 internal fun keyboardTypeFor(kind: SaqzInputKind): KeyboardType =
     when (kind) {
         SaqzInputKind.Text -> KeyboardType.Text
         SaqzInputKind.Email -> KeyboardType.Email
         SaqzInputKind.Password -> KeyboardType.Password
+        SaqzInputKind.Phone -> KeyboardType.Phone
     }
 
 // Password masks until revealed; the toggle only flips `revealed`, so the visual

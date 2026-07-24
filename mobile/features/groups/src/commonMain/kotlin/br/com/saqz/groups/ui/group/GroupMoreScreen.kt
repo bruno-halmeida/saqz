@@ -32,6 +32,7 @@ fun GroupMoreScreen(
     access: GroupRouteAccess,
     onOpenPeople: () -> Unit,
     onOpenFinance: () -> Unit,
+    athleteProfile: (@Composable () -> Unit)? = null,
 ) {
     Column(
         Modifier.fillMaxSize()
@@ -60,5 +61,6 @@ fun GroupMoreScreen(
             modifier = Modifier.fillMaxWidth().testTag(GroupsNavigationTags.MoreFinance),
             variant = SaqzButtonVariant.Secondary,
         )
+        athleteProfile?.invoke()
     }
 }

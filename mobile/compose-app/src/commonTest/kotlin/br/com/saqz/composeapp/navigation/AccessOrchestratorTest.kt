@@ -118,6 +118,7 @@ class AccessOrchestratorTest {
 
     private object ReadySessionGateway : SessionGateway {
         override suspend fun bootstrap() = SaqzResult.Success(readySession)
+        override suspend fun completeProfile(phone: String, displayName: String?) = SaqzResult.Success(readySession)
     }
 
     private object SelectedGroupGateway : GroupGateway {

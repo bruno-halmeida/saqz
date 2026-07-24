@@ -212,8 +212,8 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
         """
         const val SAVE = """
             INSERT INTO game_attendance
-                (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version)
-            VALUES (:game,:group,:member,:status,:sequence,:responded,:updated,:version)
+                (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name)
+            VALUES (:game,:group,:member,:status,:sequence,:responded,:updated,:version,(SELECT display_name FROM access_users WHERE id=:member))
             ON CONFLICT (game_id,member_user_id) DO UPDATE SET
                 status=EXCLUDED.status,waitlist_sequence=EXCLUDED.waitlist_sequence,
                 updated_at=EXCLUDED.updated_at,version=EXCLUDED.version

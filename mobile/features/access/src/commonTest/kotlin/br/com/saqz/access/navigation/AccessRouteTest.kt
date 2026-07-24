@@ -17,13 +17,14 @@ class AccessRouteTest {
         AccessRoute.PasswordReset,
         AccessRoute.Verification,
         AccessRoute.NameCompletion,
+        AccessRoute.PhoneCompletion,
         AccessRoute.Bootstrap,
     )
 
     @Test
-    fun `route inventory contains exactly the seven specified keys`() {
-        assertEquals(7, allRoutes.size)
-        assertEquals(7, allRoutes.distinct().size)
+    fun `route inventory contains exactly the eight specified keys`() {
+        assertEquals(8, allRoutes.size)
+        assertEquals(8, allRoutes.distinct().size)
     }
 
     @Test
@@ -41,6 +42,7 @@ class AccessRouteTest {
                 AccessRoute.PasswordReset -> "PasswordReset"
                 AccessRoute.Verification -> "Verification"
                 AccessRoute.NameCompletion -> "NameCompletion"
+                AccessRoute.PhoneCompletion -> "PhoneCompletion"
                 AccessRoute.Bootstrap -> "Bootstrap"
             }
             assertTrue(label.isNotBlank())

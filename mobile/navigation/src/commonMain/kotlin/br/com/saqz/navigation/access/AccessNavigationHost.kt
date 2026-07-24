@@ -16,6 +16,7 @@ import br.com.saqz.access.presentation.route.AccessRouteViewModel
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.access.ui.NameCompletionRoot
+import br.com.saqz.access.ui.PhoneCompletionRoot
 import br.com.saqz.access.ui.PasswordResetRoot
 import br.com.saqz.access.ui.RegistrationRoot
 import br.com.saqz.access.ui.VerificationRoot
@@ -46,6 +47,7 @@ fun EntryProviderScope<NavKey>.installAccessEntries(session: SessionAccessStateM
     entry<AccessRoute.PasswordReset> { PasswordResetRoot() }
     entry<AccessRoute.Verification> { VerificationRoot() }
     entry<AccessRoute.NameCompletion> { NameCompletionRoot() }
+    entry<AccessRoute.PhoneCompletion> { PhoneCompletionRoot() }
     entry<AccessRoute.Bootstrap> {
         val bootstrapViewModel = viewModel<AccessRouteViewModel>(
             initializer = { AccessRouteViewModel(AccessRouteMode.BOOTSTRAP, session) },
@@ -105,6 +107,7 @@ private fun SessionAccessState.toAccessRoute(): AccessRoute = when (this) {
     SessionAccessState.SignedOut -> AccessRoute.Login
     is SessionAccessState.AwaitingVerification -> AccessRoute.Verification
     is SessionAccessState.CompletingName -> AccessRoute.NameCompletion
+    is SessionAccessState.CompletingPhone -> AccessRoute.PhoneCompletion
     SessionAccessState.Bootstrapping, SessionAccessState.BootstrapError -> AccessRoute.Bootstrap
     is SessionAccessState.Ready -> AccessRoute.Bootstrap
 }

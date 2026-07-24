@@ -29,7 +29,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(3, flyway.migrate().migrationsExecuted)
+        assertEquals(4, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -95,6 +95,31 @@ class AccessSchemaIntegrationTest {
     fun `display name rejects trim length and control mutations`() {
         listOf("a", " leading", "trailing ", "line\nbreak").forEachIndexed { index, name ->
             assertSqlFails { insertUser(subject = "invalid-name-$index", displayName = name) }
+        }
+    }
+
+    @Test
+    fun `phone accepts null and a normalized brazilian mobile number`() {
+        val withoutPhone = insertUser(subject = "phone-null")
+        assertEquals(null, queryString("SELECT phone FROM access_users WHERE id = '$withoutPhone'"))
+
+        val withPhone = UUID.randomUUID()
+        execute(
+            "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, phone, created_at, updated_at) " +
+                "VALUES ('$withPhone', 'phone-valid', true, 'Valid Name', '+5511987654321', now(), now())",
+        )
+        assertEquals("+5511987654321", queryString("SELECT phone FROM access_users WHERE id = '$withPhone'"))
+    }
+
+    @Test
+    fun `phone rejects malformed values`() {
+        listOf("11987654321", "+1234567890123", "+55123", "+5511987654321a", "+551134567890").forEach { phone ->
+            assertSqlFails {
+                execute(
+                    "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, phone, created_at, updated_at) " +
+                        "VALUES ('${UUID.randomUUID()}', 'phone-invalid-$phone', true, 'Valid Name', '$phone', now(), now())",
+                )
+            }
         }
     }
 
@@ -258,7 +283,7 @@ class AccessSchemaIntegrationTest {
             }
         }
 
-    private fun queryString(sql: String): String =
+    private fun queryString(sql: String): String? =
         connection().use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery(sql).use { result ->

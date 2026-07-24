@@ -33,5 +33,8 @@ sealed interface AccessRoute : NavKey {
     data object NameCompletion : AccessRoute
 
     @Serializable
+    data object PhoneCompletion : AccessRoute
+
+    @Serializable
     data object Bootstrap : AccessRoute
 }

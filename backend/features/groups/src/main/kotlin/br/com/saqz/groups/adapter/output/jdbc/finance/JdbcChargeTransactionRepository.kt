@@ -24,9 +24,10 @@ class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRe
         pending.forEach{eventId->event(find(eventId)?:error("cancelled charge lost"),ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)}
         jdbc.sql("UPDATE group_charges SET review_required=true,changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status IN ('PAID','WAIVED') AND NOT review_required").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
     }
-    override fun activeMemberIds(groupId:UUID):Set<UUID>?{
+    override fun members(groupId:UUID):GroupMembers?{
         val exists=jdbc.sql("SELECT count(*) FROM access_groups WHERE id=:group").param("group",groupId).query(Int::class.java).single()>0;if(!exists)return null
-        return jdbc.sql("SELECT user_id FROM group_memberships WHERE group_id=:group").param("group",groupId).query(UUID::class.java).list().filterNotNull().toSet()
+        val rows=jdbc.sql("SELECT user_id,active FROM group_memberships WHERE group_id=:group").param("group",groupId).query{rs,_->rs.getObject("user_id",UUID::class.java) to rs.getBoolean("active")}.list()
+        return GroupMembers(rows.map{it.first}.toSet(),rows.filter{it.second}.map{it.first}.toSet())
     }
     override fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant):Charge{
         val id=UUID.randomUUID();val inserted=jdbc.sql(INSERT_MONTHLY).param("id",id).param("group",command.groupId).param("member",memberId).param("month",command.month.atDay(1)).param("amount",command.amountCents).param("due",command.dueDate).param("actor",command.actorId).param("now",Timestamp.from(now)).update()
@@ -41,7 +42,7 @@ class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRe
     private fun map(rs:ResultSet,@Suppress("UNUSED_PARAMETER") row:Int)=Charge(rs.getObject("id",UUID::class.java),rs.getObject("group_id",UUID::class.java),rs.getObject("member_user_id",UUID::class.java),rs.getObject("game_id",UUID::class.java)?.let(ChargeIdentity::Game)?:ChargeIdentity.Monthly(YearMonth.from(rs.getObject("billing_month",java.time.LocalDate::class.java))),rs.getLong("amount_cents"),rs.getObject("due_date",java.time.LocalDate::class.java),ChargeStatus.valueOf(rs.getString("status")),rs.getLong("version"),rs.getBoolean("review_required"))
     private companion object{
         const val SELECT="SELECT id,group_id,member_user_id,game_id,billing_month,amount_cents,due_date,status,version,review_required FROM group_charges"
-        const val INSERT_GAME="""INSERT INTO group_charges (id,group_id,member_user_id,kind,game_id,amount_cents,due_date,status,created_by_user_id,changed_by_user_id,created_at,updated_at) VALUES (:id,:group,:member,'GAME',:game,:amount,:due,'PENDING',:actor,:actor,:now,:now) ON CONFLICT (group_id,game_id,member_user_id) WHERE kind='GAME' DO NOTHING"""
-        const val INSERT_MONTHLY="""INSERT INTO group_charges (id,group_id,member_user_id,kind,billing_month,amount_cents,due_date,status,created_by_user_id,changed_by_user_id,created_at,updated_at) VALUES (:id,:group,:member,'MONTHLY',:month,:amount,:due,'PENDING',:actor,:actor,:now,:now) ON CONFLICT (group_id,billing_month,member_user_id) WHERE kind='MONTHLY' DO NOTHING"""
+        const val INSERT_GAME="""INSERT INTO group_charges (id,group_id,member_user_id,kind,game_id,amount_cents,due_date,status,created_by_user_id,changed_by_user_id,created_at,updated_at,member_display_name) VALUES (:id,:group,:member,'GAME',:game,:amount,:due,'PENDING',:actor,:actor,:now,:now,(SELECT display_name FROM access_users WHERE id=:member)) ON CONFLICT (group_id,game_id,member_user_id) WHERE kind='GAME' DO NOTHING"""
+        const val INSERT_MONTHLY="""INSERT INTO group_charges (id,group_id,member_user_id,kind,billing_month,amount_cents,due_date,status,created_by_user_id,changed_by_user_id,created_at,updated_at,member_display_name) VALUES (:id,:group,:member,'MONTHLY',:month,:amount,:due,'PENDING',:actor,:actor,:now,:now,(SELECT display_name FROM access_users WHERE id=:member)) ON CONFLICT (group_id,billing_month,member_user_id) WHERE kind='MONTHLY' DO NOTHING"""
     }
 }

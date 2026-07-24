@@ -16,14 +16,25 @@ import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.RetrySafety
 import br.com.saqz.network.retryTransport
+import br.com.saqz.network.NetworkRequest
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Serializable
 internal data class SessionUserDto(
     val id: String,
     val email: String?,
     val displayName: String,
+    val phone: String? = null,
+    val phoneRequired: Boolean = false,
+)
+
+@Serializable
+internal data class CompleteProfileRequestDto(
+    val phone: String,
+    val displayName: String? = null,
 )
 
 @Serializable
@@ -41,11 +52,22 @@ internal data class SessionDto(
 
 class KtorSessionGateway(
     private val network: AuthenticatedNetworkClient,
+    private val json: Json = Json { explicitNulls = false },
 ) : SessionGateway {
     override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> =
         retryTransport(RetrySafety.Never) {
             network.execute(HttpMethod.Put, "api/session", SessionDto.serializer())
         }.toAccessResult()
+
+    override suspend fun completeProfile(
+        phone: String,
+        displayName: String?,
+    ): SaqzResult<AccessSession, AccessError> = network.execute(
+        HttpMethod.Patch,
+        "api/session/profile",
+        SessionDto.serializer(),
+        NetworkRequest(json.encodeToString(CompleteProfileRequestDto(phone, displayName))),
+    ).toAccessResult()
 }
 
 private fun NetworkResult<SessionDto>.toAccessResult(): SaqzResult<AccessSession, AccessError> = when (this) {
@@ -60,7 +82,7 @@ private fun SessionDto.toAccessSession(): SaqzResult<AccessSession, AccessError>
     }
     return SaqzResult.Success(
         AccessSession(
-            user = AccessUser(user.id, user.email, user.displayName),
+            user = AccessUser(user.id, user.email, user.displayName, user.phone, user.phoneRequired),
             memberships = memberships.map {
                 AccessMembership(
                     groupId = GroupId(it.groupId),

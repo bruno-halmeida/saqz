@@ -155,13 +155,14 @@ class JdbcAttendanceShareSnapshotIntegrationTest {
         execute("UPDATE access_users SET display_name = '$displayName' WHERE id = '$member'")
         connection().use { connection ->
             connection.prepareStatement(
-                "INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version) VALUES (?, ?, ?, ?, ?, now(), now(), 1)",
+                "INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version, member_display_name) VALUES (?, ?, ?, ?, ?, now(), now(), 1, ?)",
             ).use { statement ->
                 statement.setObject(1, game)
                 statement.setObject(2, group)
                 statement.setObject(3, member)
                 statement.setString(4, status)
                 statement.setObject(5, waitlistSequence)
+                statement.setString(6, displayName)
                 statement.executeUpdate()
             }
         }

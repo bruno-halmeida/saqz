@@ -97,6 +97,7 @@ class VerificationViewModelTest {
 
     private class FakeSessionGateway : SessionGateway {
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> = error("not used")
+        override suspend fun completeProfile(phone: String, displayName: String?): SaqzResult<AccessSession, AccessError> = error("not used")
     }
 
     private class FakeAuthPort : NativeAuthPort {
