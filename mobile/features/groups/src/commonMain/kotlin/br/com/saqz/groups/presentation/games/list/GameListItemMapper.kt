@@ -1,22 +1,18 @@
 package br.com.saqz.groups.presentation.games.list
 
+import br.com.saqz.core.common.formatting.SaqzDateTimeFormatter
 import br.com.saqz.groups.domain.game.Game
+import br.com.saqz.groups.presentation.games.deviceLocalDate
+import br.com.saqz.groups.presentation.games.scheduleText
 
-internal fun Game.toGameListItem(): GameListItem = GameListItem(
+internal fun Game.toGameListItem(formatter: SaqzDateTimeFormatter): GameListItem = GameListItem(
     id = id,
     title = title,
-    dateText = localDate.toPtBrDate(),
-    timeText = localTime.take(5),
+    scheduleText = scheduleText(formatter),
+    localDateIso = deviceLocalDate(formatter),
     venueText = venue.name,
     status = status,
     availableSpots = availableSpots,
     waitlistCount = waitlistCount,
     startsAt = startsAt,
 )
-
-internal fun GameListItem.isoLocalDate(): String = dateText
-    .split('/')
-    .let { (day, month, year) -> "$year-$month-$day" }
-
-private fun String.toPtBrDate(): String = split('-')
-    .let { (year, month, day) -> "$day/$month/$year" }

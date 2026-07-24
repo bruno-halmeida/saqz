@@ -1,10 +1,12 @@
 package br.com.saqz.core.common.formatting
 
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
 class SaqzDateTimeFormatter(
-    private val timeZoneProvider: SaqzTimeZoneProvider,
+    // Default: timezone do dispositivo. Instantes são sempre exibidos no fuso de quem lê.
+    private val timeZoneProvider: SaqzTimeZoneProvider = SaqzTimeZoneProvider { TimeZone.currentSystemDefault() },
 ) {
     fun formatDate(instant: Instant): String {
         val dateTime = instant.toLocalDateTime(timeZoneProvider.timeZone())
