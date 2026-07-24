@@ -246,7 +246,7 @@ private fun InviteFeedback(state: InviteToolState, onRetry: () -> Unit) {
     )
 }
 
-private val previewInviteActions = GroupActions(true, true, true)
+private val previewInviteActions = GroupActions(true, true, true, true)
 
 @Preview
 @Composable
