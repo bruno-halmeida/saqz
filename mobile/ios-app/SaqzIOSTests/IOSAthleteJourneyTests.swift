@@ -226,8 +226,9 @@ final class IOSAthleteJourneyTests: XCTestCase {
             let selection = GroupSelectionStateMachine(
                 localState: invites.local, groups: FakeGroupGateway(role: redeemRole), scope: scope.scope
             )
-            // Mirrors GroupsModule wiring: a redeemed invite selects the returned group.
-            invites.relay.handler = { selection.onIntent(intent: GroupSelectionIntentSelect(groupId: $0)) }
+            // Mirrors GroupsModule wiring: a redeemed invite selects the returned group
+            // through SelectJoined (server-confirmed join bypasses the stale-membership guard).
+            invites.relay.handler = { selection.onIntent(intent: GroupSelectionIntentSelectJoined(groupId: $0)) }
             selection.onIntent(intent: GroupSelectionIntentReconcile(memberships: [
                 GroupSelectionMembership(groupId: JourneyData.groupId, groupName: "Grupo Vôlei", role: redeemRole)
             ]))

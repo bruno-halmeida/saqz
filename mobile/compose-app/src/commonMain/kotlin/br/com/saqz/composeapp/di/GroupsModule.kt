@@ -65,12 +65,12 @@ internal val groupsPresentationModule = module {
     singleOf(::GroupSelectionStateMachine)
     single {
         GroupAdministrationStateMachine(get(), get(), get()) { groupId ->
-            get<GroupSelectionStateMachine>().onIntent(GroupSelectionIntent.Select(groupId))
+            get<GroupSelectionStateMachine>().onIntent(GroupSelectionIntent.SelectJoined(groupId))
         }
     }
     single {
         DeferredInviteStateMachine(get(), get(), get(), get()) { groupId ->
-            get<GroupSelectionStateMachine>().onIntent(GroupSelectionIntent.Select(groupId))
+            get<GroupSelectionStateMachine>().onIntent(GroupSelectionIntent.SelectJoined(groupId))
         }
     }
     single { AttendanceDestinationStore() }

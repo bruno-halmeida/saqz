@@ -75,3 +75,26 @@ with VUL-7.
   `GroupAdministrationStateMachineTest` (common) and
   `IOSAthleteJourneyTests` (native seam). Lesson: client route gating must
   name the backend action it mirrors, not borrow a stricter neighbor flag.
+
+## T14 Android Journey Follow-up (VUL-5, 2026-07-24)
+
+Android end-to-end journey coverage added in `AndroidAthleteJourneyTest`
+(real MainActivity + Koin graph + Ktor gateways against a scripted loopback
+API): phone-completion gate once and never again (ATH-01), pending invite
+surviving the gate and redeeming only after completion, position onboarding
+shown once / skip without request / no re-show on re-redeem (ATH-02), and
+roster entry points + management controls per role with pt-BR labels only
+(ATH-03/04). `connectedDevDebugAndroidTest` green locally (API 30 emulator,
+60/60). iOS journeys land under VUL-6 (section above); aggregate closeout is
+VUL-7.
+
+- B6 | 2026-07-24 — The journeys exposed three navigation defects, fixed at
+  the root with regression tests: `GroupSelectionIntent.Select`'s
+  stale-membership guard silently dropped server-confirmed joins (redeem,
+  creation) → new `SelectJoined` intent; `NavigationSession.selectedTab`
+  was a plain var, so tab switches only rendered after an unrelated
+  recomposition → snapshot-backed; `clearGroupScope` ran after
+  `reconcileGroupSelection`, resetting the freshly reconciled GroupHome
+  root back to Selector → scope clears before the root reconcile in one
+  effect. Lesson: state-machine wiring validated only through fakes needs
+  at least one journey through the real composition.
