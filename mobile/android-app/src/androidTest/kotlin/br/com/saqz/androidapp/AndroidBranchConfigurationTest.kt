@@ -16,16 +16,17 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AndroidBranchConfigurationTest {
     @Test
+    @Suppress("DEPRECATION") // ApplicationInfoFlags/ComponentInfoFlags need API 33+; the CI gate runs API 30 (AD-010).
     fun devManifestUsesVerifiedHttpsAppLinkAndSeparateTestConfiguration() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val packageManager = context.packageManager
         val application = packageManager.getApplicationInfo(
             context.packageName,
-            PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong()),
+            PackageManager.GET_META_DATA,
         )
         val activity = packageManager.getActivityInfo(
             ComponentName(context, MainActivity::class.java),
-            PackageManager.ComponentInfoFlags.of(PackageManager.GET_META_DATA.toLong()),
+            PackageManager.GET_META_DATA,
         )
         val appLink = Intent(
             Intent.ACTION_VIEW,

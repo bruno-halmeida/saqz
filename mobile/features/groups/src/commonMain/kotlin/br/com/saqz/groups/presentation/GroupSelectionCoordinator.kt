@@ -33,6 +33,13 @@ sealed interface GroupSelectionIntent {
 
     data class Select(val groupId: String) : GroupSelectionIntent
 
+    /**
+     * Selection of a membership the server just confirmed (invite redeem, group creation)
+     * but that predates the next session reconcile, so [Select]'s stale-membership guard
+     * must not drop it.
+     */
+    data class SelectJoined(val groupId: String) : GroupSelectionIntent
+
     data object Retry : GroupSelectionIntent
 }
 
@@ -56,6 +63,7 @@ class GroupSelectionStateMachine(
         when (intent) {
             is GroupSelectionIntent.Reconcile -> reconcile(intent.memberships)
             is GroupSelectionIntent.Select -> select(intent.groupId)
+            is GroupSelectionIntent.SelectJoined -> selectInternal(intent.groupId, nextGeneration())
             GroupSelectionIntent.Retry -> retry()
         }
     }
