@@ -8,84 +8,134 @@ fail() {
     exit 1
 }
 
-"$repository_root/scripts/check-credentials"
-"$repository_root/scripts/check-scope"
-"$repository_root/scripts/check-bruno"
+# Escopos (VUL-23): sem argumento o gate roda completo, byte-idêntico ao
+# comportamento histórico — é o contrato de check-all e do uso local. Os escopos
+# existem para o CI de PR rodar só a fatia do workspace alterado; o instrumentado
+# vive em full-ui-gate.yml (nightly + dispatch), fora do caminho de PR.
+scope=all
+case "${1:-}" in
+    '') scope=all ;;
+    --backend) scope=backend ;;
+    --mobile-jvm) scope=mobile-jvm ;;
+    --instrumented) scope=instrumented ;;
+    *)
+        printf 'usage: %s [--backend|--mobile-jvm|--instrumented]\n' "$0" >&2
+        exit 2
+        ;;
+esac
 
-"$repository_root/backend/gradlew" -p "$repository_root/backend" \
-    :shared-kernel:check \
-    :features:identity:test \
-    :features:identity:emulatorTest \
-    :features:access:test \
-    :features:access:integrationTest \
-    :features:groups:test \
-    :features:groups:integrationTest \
-    :bootstrap:test \
-    :bootstrap:emulatorTest \
-    :architecture-tests:test \
-    --console=plain
+mobile_jvm_tasks=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest'
+connected_task=':android-app:connectedDevDebugAndroidTest'
 
-backend_discovered_tests=$(
-    find "$repository_root/backend" -type f -name '*.xml' -path '*/test-results/*' \
-        -exec cat {} + 2>/dev/null |
-        grep -oE 'tests="[0-9]+"' |
-        grep -oE '[0-9]+' |
-        awk '{ sum += $1 } END { print sum + 0 }'
-)
+run_credentials_and_scope() {
+    "$repository_root/scripts/check-credentials"
+    "$repository_root/scripts/check-scope"
+}
 
-[ "$backend_discovered_tests" -gt 0 ] 2>/dev/null ||
-    fail "backend suites reported BUILD SUCCESS with zero tests discovered"
+run_backend() {
+    "$repository_root/scripts/check-bruno"
 
-if ! command -v adb >/dev/null 2>&1; then
-    fail "adb is required for Android instrumented tests"
-fi
+    "$repository_root/backend/gradlew" -p "$repository_root/backend" \
+        :shared-kernel:check \
+        :features:identity:test \
+        :features:identity:emulatorTest \
+        :features:access:test \
+        :features:access:integrationTest \
+        :features:groups:test \
+        :features:groups:integrationTest \
+        :bootstrap:test \
+        :bootstrap:emulatorTest \
+        :architecture-tests:test \
+        --console=plain
 
-if ! adb devices | grep -Eq '^[^[:space:]]+[[:space:]]+device$'; then
-    fail "Android emulator/device is required for connectedDevDebugAndroidTest"
-fi
+    backend_discovered_tests=$(
+        find "$repository_root/backend" -type f -name '*.xml' -path '*/test-results/*' \
+            -exec cat {} + 2>/dev/null |
+            grep -oE 'tests="[0-9]+"' |
+            grep -oE '[0-9]+' |
+            awk '{ sum += $1 } END { print sum + 0 }'
+    )
 
-"$repository_root/scripts/check-mobile-boundaries"
-"$repository_root/scripts/check-design-tokens"
+    [ "$backend_discovered_tests" -gt 0 ] 2>/dev/null ||
+        fail "backend suites reported BUILD SUCCESS with zero tests discovered"
+}
 
-"$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
-    :core:common:allTests \
-    :core:design-system:allTests \
-    :core:design-system:bundleAndroidMainAar \
-    :core:domain:allTests \
-    :core:network:allTests \
-    :features:access:domain:allTests \
-    :features:access:data:allTests \
-    :features:access:compileAndroidMain \
-    :features:access:allTests \
-    :features:groups:domain:allTests \
-    :features:groups:data:allTests \
-    :features:groups:compileAndroidMain \
-    :features:groups:allTests \
-    :compose-app:allTests \
-    detektAll \
-    :android-app:testDevDebugUnitTest \
-    :android-app:connectedDevDebugAndroidTest \
-    --console=plain
+require_android_device() {
+    if ! command -v adb >/dev/null 2>&1; then
+        fail "adb is required for Android instrumented tests"
+    fi
 
-design_system_aar="$repository_root/mobile/core/design-system/build/outputs/aar/design-system.aar"
-preview_resource='assets/composeResources/br.com.saqz.designsystem.resources/drawable/preflight_sentinel.xml'
+    if ! adb devices | grep -Eq '^[^[:space:]]+[[:space:]]+device$'; then
+        fail "Android emulator/device is required for connectedDevDebugAndroidTest"
+    fi
+}
 
-[ -f "$design_system_aar" ] ||
-    fail "design-system Android AAR was not produced"
+run_mobile_static() {
+    "$repository_root/scripts/check-mobile-boundaries"
+    "$repository_root/scripts/check-design-tokens"
+}
 
-unzip -Z1 "$design_system_aar" | grep -Fqx "$preview_resource" ||
-    fail "design-system Android AAR is missing Compose resources required by Preview"
+run_mobile_gradle() {
+    # A lista de tasks é intencionalmente word-split.
+    # shellcheck disable=SC2086
+    "$repository_root/mobile/gradlew" -p "$repository_root/mobile" \
+        $1 \
+        --console=plain
+}
 
-discovered_tests=$(
-    find "$repository_root/mobile" -type f -name '*.xml' \
-        \( -path '*/test-results/*' -o -path '*/androidTest-results/*' \) \
-        -exec cat {} + 2>/dev/null |
-        grep -oE 'tests="[0-9]+"' |
-        grep -oE '[0-9]+' |
-        awk '{ sum += $1 } END { print sum + 0 }'
-)
+check_design_system_aar() {
+    design_system_aar="$repository_root/mobile/core/design-system/build/outputs/aar/design-system.aar"
+    preview_resource='assets/composeResources/br.com.saqz.designsystem.resources/drawable/preflight_sentinel.xml'
 
-[ "$discovered_tests" -gt 0 ] 2>/dev/null ||
-    fail "mobile suites reported BUILD SUCCESS with zero tests discovered"
+    [ -f "$design_system_aar" ] ||
+        fail "design-system Android AAR was not produced"
 
-printf 'ok - complete Kotlin and Android gate\n'
+    unzip -Z1 "$design_system_aar" | grep -Fqx "$preview_resource" ||
+        fail "design-system Android AAR is missing Compose resources required by Preview"
+}
+
+check_mobile_discovered_tests() {
+    discovered_tests=$(
+        find "$repository_root/mobile" -type f -name '*.xml' \
+            \( -path '*/test-results/*' -o -path '*/androidTest-results/*' \) \
+            -exec cat {} + 2>/dev/null |
+            grep -oE 'tests="[0-9]+"' |
+            grep -oE '[0-9]+' |
+            awk '{ sum += $1 } END { print sum + 0 }'
+    )
+
+    [ "$discovered_tests" -gt 0 ] 2>/dev/null ||
+        fail "mobile suites reported BUILD SUCCESS with zero tests discovered"
+}
+
+case "$scope" in
+    all)
+        run_credentials_and_scope
+        run_backend
+        require_android_device
+        run_mobile_static
+        run_mobile_gradle "$mobile_jvm_tasks $connected_task"
+        check_design_system_aar
+        check_mobile_discovered_tests
+        printf 'ok - complete Kotlin and Android gate\n'
+        ;;
+    backend)
+        run_credentials_and_scope
+        run_backend
+        printf 'ok - backend gate scope\n'
+        ;;
+    mobile-jvm)
+        run_credentials_and_scope
+        run_mobile_static
+        run_mobile_gradle "$mobile_jvm_tasks"
+        check_design_system_aar
+        check_mobile_discovered_tests
+        printf 'ok - mobile JVM gate scope\n'
+        ;;
+    instrumented)
+        require_android_device
+        run_mobile_gradle "$connected_task"
+        check_mobile_discovered_tests
+        printf 'ok - Android instrumented gate scope\n'
+        ;;
+esac

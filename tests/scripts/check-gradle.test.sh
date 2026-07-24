@@ -334,4 +334,84 @@ fail_case groups-integration-failure '' env FAIL_TASK=:features:groups:integrati
 fail_case groups-mobile-compile-failure '' env FAIL_TASK=:features:groups:compileAndroidMain
 fail_case groups-mobile-tests-failure '' env FAIL_TASK=:features:groups:allTests
 
-[ "$count" -eq 51 ]
+# --- VUL-23: escopos por workspace -----------------------------------------
+# Sem argumento o gate roda completo (casos acima). Cada escopo roda só a fatia
+# do seu workspace, com inventário exato — nada de backend em PR mobile, nada
+# de emulador fora de full-ui-gate.yml.
+
+run_scope() {
+    dir=$1
+    shift
+    make_repo "$dir"
+    (
+        cd "$dir/repo"
+        LOG_FILE="$PWD/invocations.log" PATH="$PWD/bin:$PATH" scripts/check-gradle "$@"
+    ) >/dev/null
+    sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
+        "$dir/repo/invocations.log" >"$dir/actual.log"
+}
+
+# backendScopeInventory: --backend roda estáticos + backend, e nada de mobile/adb.
+backend_scope="$scratch_root/backend-scope"
+run_scope "$backend_scope" --backend
+cat >"$backend_scope/expected.log" <<'EOF'
+credentials
+scope
+bruno
+backend -p REPO/backend :shared-kernel:check :features:identity:test :features:identity:emulatorTest :features:access:test :features:access:integrationTest :features:groups:test :features:groups:integrationTest :bootstrap:test :bootstrap:emulatorTest :architecture-tests:test --console=plain
+EOF
+diff -u "$backend_scope/expected.log" "$backend_scope/actual.log"
+count=$((count + 1)); printf 'ok %d - backendScopeInventory\n' "$count"
+
+# mobileJvmScopeInventory: --mobile-jvm roda estáticos mobile + suites JVM,
+# sem adb, sem backend, sem connectedDevDebugAndroidTest.
+mobile_scope="$scratch_root/mobile-jvm-scope"
+run_scope "$mobile_scope" --mobile-jvm
+cat >"$mobile_scope/expected.log" <<'EOF'
+credentials
+scope
+mobile-boundaries
+design-tokens
+mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest --console=plain
+EOF
+diff -u "$mobile_scope/expected.log" "$mobile_scope/actual.log"
+count=$((count + 1)); printf 'ok %d - mobileJvmScopeInventory\n' "$count"
+
+# instrumentedScopeInventory: --instrumented roda só adb + connected.
+instrumented_scope="$scratch_root/instrumented-scope"
+run_scope "$instrumented_scope" --instrumented
+cat >"$instrumented_scope/expected.log" <<'EOF'
+adb devices
+mobile -p REPO/mobile :android-app:connectedDevDebugAndroidTest --console=plain
+EOF
+diff -u "$instrumented_scope/expected.log" "$instrumented_scope/actual.log"
+count=$((count + 1)); printf 'ok %d - instrumentedScopeInventory\n' "$count"
+
+# instrumentedDeviceMissingFails: --instrumented sem device é fatal.
+inst_fail="$scratch_root/instrumented-no-device"
+make_repo "$inst_fail"
+if (
+    cd "$inst_fail/repo"
+    LOG_FILE="$PWD/invocations.log" PATH="$PWD/bin:$PATH" NO_ANDROID_DEVICE=1 scripts/check-gradle --instrumented
+) >"$inst_fail/stdout" 2>"$inst_fail/stderr"; then
+    printf 'expected failure for instrumentedDeviceMissingFails\n' >&2
+    exit 1
+fi
+grep -q 'emulator/device is required' "$inst_fail/stderr"
+count=$((count + 1)); printf 'ok %d - instrumentedDeviceMissingFails\n' "$count"
+
+# unknownScopeArgFails: argumento desconhecido é erro de uso, exit 2.
+usage_dir="$scratch_root/unknown-scope"
+make_repo "$usage_dir"
+set +e
+(
+    cd "$usage_dir/repo"
+    LOG_FILE="$PWD/invocations.log" PATH="$PWD/bin:$PATH" scripts/check-gradle --nope
+) >"$usage_dir/stdout" 2>"$usage_dir/stderr"
+usage_status=$?
+set -e
+[ "$usage_status" -eq 2 ] || { printf 'unknownScopeArgFails: expected exit 2, got %d\n' "$usage_status" >&2; exit 1; }
+grep -q 'usage:' "$usage_dir/stderr"
+count=$((count + 1)); printf 'ok %d - unknownScopeArgFails\n' "$count"
+
+[ "$count" -eq 56 ]
