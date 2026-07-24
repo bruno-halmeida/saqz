@@ -1,5 +1,6 @@
 package br.com.saqz.groups.domain.attendance
 
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
 
@@ -16,6 +17,7 @@ data class AttendanceDecisionContext(
     val currentStatus: AttendanceStatus?,
     val source: AttendanceSource,
     val reason: String? = null,
+    val membershipType: AthleteMembershipType,
 )
 
 enum class AttendanceDenial {
@@ -80,8 +82,14 @@ object AttendanceTransitionPolicy {
     private fun confirmationTarget(context: AttendanceDecisionContext): AttendanceStatus = when (context.currentStatus) {
         AttendanceStatus.CONFIRMED -> AttendanceStatus.CONFIRMED
         AttendanceStatus.WAITLISTED -> AttendanceStatus.WAITLISTED
-        AttendanceStatus.DECLINED, null ->
-            if (context.confirmedCount < context.capacity) AttendanceStatus.CONFIRMED else AttendanceStatus.WAITLISTED
+        AttendanceStatus.DECLINED, null -> when {
+            // O avulso nunca toma vaga por conta própria: entra na espera e só é confirmado por
+            // promoção do sistema (FIFO) ou por decisão do organizador.
+            context.source == AttendanceSource.SELF && context.membershipType == AthleteMembershipType.AVULSO ->
+                AttendanceStatus.WAITLISTED
+            context.confirmedCount < context.capacity -> AttendanceStatus.CONFIRMED
+            else -> AttendanceStatus.WAITLISTED
+        }
     }
 
     private fun validateOrganizerReason(raw: String?): String? {

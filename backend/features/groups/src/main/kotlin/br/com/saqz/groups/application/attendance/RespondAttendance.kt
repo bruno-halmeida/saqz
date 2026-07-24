@@ -46,6 +46,7 @@ class RespondAttendance(
                 aggregate.current?.status,
                 source,
                 reason,
+                aggregate.membershipType,
             ),
             intent,
         )) {

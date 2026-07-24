@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.attendance
 
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.finance.charge.*
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
@@ -192,13 +193,15 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) : AttendanceComman
             current,
             rs.getObject("game_fee_cents", Long::class.javaObjectType),
             rs.getObject("local_date", java.time.LocalDate::class.java),
+            AthleteMembershipType.valueOf(rs.getString("membership_type")),
         )
     }
 
     private companion object {
         const val AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
-                   g.game_fee_cents,g.local_date,target.user_id AS target_user_id,:actor::uuid AS actor_id,
+                   g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
+                   :actor::uuid AS actor_id,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
                    a.updated_at AS attendance_updated_at,a.version AS attendance_version,
