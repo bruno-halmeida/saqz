@@ -242,9 +242,9 @@ class MembershipInviteScreensTest {
     private companion object {
         const val firstUrl = "https://join.saqz.app/a/opaque-first"
         const val secondUrl = "https://join.saqz.app/a/opaque-second"
-        val ownerActions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true)
-        val adminActions = GroupActions(canEditSettings = true, canManageRoles = false, canManageInvite = true)
-        val athleteActions = GroupActions(canEditSettings = false, canManageRoles = false, canManageInvite = false)
+        val ownerActions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true, canManageAthletes = true)
+        val adminActions = GroupActions(canEditSettings = true, canManageRoles = false, canManageInvite = true, canManageAthletes = true)
+        val athleteActions = GroupActions(canEditSettings = false, canManageRoles = false, canManageInvite = false, canManageAthletes = false)
         val state = GroupAdministrationState(
             actions = ownerActions,
             memberships = listOf(

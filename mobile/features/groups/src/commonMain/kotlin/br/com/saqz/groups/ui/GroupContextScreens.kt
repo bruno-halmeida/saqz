@@ -124,7 +124,7 @@ private val previewGroupState = GroupAdministrationState(
         Group("preview-group", "Futebol de terça", "America/Sao_Paulo", 1, GroupRole.OWNER),
         br.com.saqz.groups.domain.group.GroupVersionToken("preview-etag"),
     ),
-    actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true),
+    actions = GroupActions(canEditSettings = true, canManageRoles = true, canManageInvite = true, canManageAthletes = true),
 )
 
 @Preview

@@ -1,5 +1,8 @@
 package br.com.saqz.navigation
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.groups.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.GroupSelectionState
@@ -45,7 +48,10 @@ class NavigationSession(
 
     private var currentGroupId: String? = null
 
-    var selectedTab: ProductTab = initialTab
+    // Snapshot-backed so hosts recompose on tab switches (the stacks already are, via
+    // NavBackStack); a plain var left the UI on the previous tab until an unrelated
+    // recomposition happened to re-read it.
+    var selectedTab: ProductTab by mutableStateOf(initialTab)
         private set
 
     private val activeStack: MutableList<NavKey>

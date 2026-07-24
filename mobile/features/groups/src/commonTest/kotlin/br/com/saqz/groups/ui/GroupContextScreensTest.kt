@@ -74,6 +74,6 @@ class GroupContextScreensTest {
                 br.com.saqz.groups.domain.group
                     .GroupVersionToken("etag"),
             )
-        val owner = GroupAdministrationState(group = group, actions = GroupActions(true, true, true))
+        val owner = GroupAdministrationState(group = group, actions = GroupActions(true, true, true, true))
     }
 }
