@@ -89,7 +89,7 @@ class VerificationViewModelTest {
     private fun TestScope.awaitingFixture(): Fixture {
         val auth = FakeAuthPort()
         val machine = SessionAccessStateMachine(auth, FakeLocalState(), FakeSessionGateway(), backgroundScope)
-        machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
         return Fixture(VerificationViewModel(machine), auth)
     }
 

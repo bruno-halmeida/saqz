@@ -63,11 +63,17 @@ class LoginScreenTest {
         onNodeWithText("Organize seu grupo.", substring = true).assertExists()
         onNodeWithText("Jogue junto.", substring = true).assertExists()
         onNodeWithText("Entre na sua conta e mantenha sua galera sempre alinhada.").assertExists()
-        onNodeWithText("Esqueci minha senha").assertExists()
         onNodeWithText("ou continue com").assertExists()
         onNodeWithText("Entrar com Google").assertExists()
-        onNodeWithText("Ainda não tem uma conta?").assertExists()
-        onNodeWithText("Criar conta").assertExists()
+    }
+
+    // VUL-35: registration and password reset are gone; Google is the only account-creation
+    // path left, so the login surface must not offer a link with nowhere to go.
+    @Test fun `registration and password reset links are absent`() = runComposeUiTest {
+        content()
+        onNodeWithText("Criar conta").assertDoesNotExist()
+        onNodeWithText("Ainda não tem uma conta?").assertDoesNotExist()
+        onNodeWithText("Esqueci minha senha").assertDoesNotExist()
     }
 
     @Test fun `phone apple and facebook remain outside the login surface`() = runComposeUiTest {
@@ -83,18 +89,6 @@ class LoginScreenTest {
         onNodeWithTag(LoginTags.Password).assertHeightIsAtLeast(48.dp)
         onNodeWithTag(LoginTags.Submit).assertHeightIsAtLeast(48.dp)
         onNodeWithTag(LoginTags.Google).assertHeightIsAtLeast(48.dp)
-    }
-
-    @Test fun `registration action is reachable`() = runComposeUiTest {
-        var intent: LoginIntent? = null; content(onIntent = { intent = it })
-        onNodeWithText("Criar conta").performClick()
-        assertEquals(LoginIntent.ShowRegistration, intent)
-    }
-
-    @Test fun `password reset action is reachable`() = runComposeUiTest {
-        var intent: LoginIntent? = null; content(onIntent = { intent = it })
-        onNodeWithText("Esqueci minha senha").performClick()
-        assertEquals(LoginIntent.ShowPasswordReset, intent)
     }
 
     @Test fun `loading disables all submit actions`() = runComposeUiTest {
@@ -130,8 +124,8 @@ class LoginScreenTest {
                 }
             }
         }
-        onNodeWithText("Criar conta").performScrollTo().assertExists()
-        onNodeWithText("Esqueci minha senha").performScrollTo().assertExists()
+        onNodeWithTag(LoginTags.Submit).performScrollTo().assertExists()
+        onNodeWithTag(LoginTags.Google).performScrollTo().assertExists()
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.content(

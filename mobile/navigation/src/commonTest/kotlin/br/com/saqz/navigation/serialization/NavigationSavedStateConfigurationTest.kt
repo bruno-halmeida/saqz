@@ -31,8 +31,6 @@ class NavigationSavedStateConfigurationTest {
     private val allKeys: List<NavKey> = listOf(
         AccessRoute.Starting,
         AccessRoute.Login,
-        AccessRoute.Registration,
-        AccessRoute.PasswordReset,
         AccessRoute.Verification,
         AccessRoute.NameCompletion,
         AccessRoute.Bootstrap,
@@ -58,7 +56,7 @@ class NavigationSavedStateConfigurationTest {
 
     @Test
     fun `every registered key round-trips to an equal instance`() {
-        assertEquals(25, allKeys.size)
+        assertEquals(23, allKeys.size)
         allKeys.forEach { key -> assertEquals(key, roundTrip(key)) }
     }
 

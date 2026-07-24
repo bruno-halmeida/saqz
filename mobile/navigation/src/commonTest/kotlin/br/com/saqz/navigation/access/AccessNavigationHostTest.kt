@@ -15,7 +15,6 @@ import br.com.saqz.access.domain.session.AccessError
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.navigation.AccessRoute
-import br.com.saqz.access.presentation.AuthScreen
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.domain.SaqzResult
@@ -42,15 +41,14 @@ class AccessNavigationHostTest {
     )
 
     @Test
-    fun installsAllSevenAccessRoutesAsDistinctEntries() {
+    fun installsEveryAccessRouteAsADistinctEntry() {
         val provider = entryProvider<NavKey> { installAccessEntries(fakeSession()) }
         val keys: List<NavKey> = listOf(
             AccessRoute.Starting,
             AccessRoute.Login,
-            AccessRoute.Registration,
-            AccessRoute.PasswordReset,
             AccessRoute.Verification,
             AccessRoute.NameCompletion,
+            AccessRoute.PhoneCompletion,
             AccessRoute.Bootstrap,
         )
 
@@ -60,75 +58,41 @@ class AccessNavigationHostTest {
     }
 
     @Test
-    fun signedOutAtLoginCanonicalizesToSingleLoginRoot() {
+    fun signedOutCanonicalizesToSingleLoginRoot() {
         val stack = mutableListOf<NavKey>(AccessRoute.Starting)
 
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.LOGIN)
-
-        assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
-    }
-
-    @Test
-    fun signedOutAtRegistrationPushesOnTopOfLogin() {
-        val stack = mutableListOf<NavKey>(AccessRoute.Login)
-
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.REGISTRATION)
-
-        assertEquals(listOf<NavKey>(AccessRoute.Login, AccessRoute.Registration), stack)
-    }
-
-    @Test
-    fun signedOutAtPasswordResetPushesOnTopOfLogin() {
-        val stack = mutableListOf<NavKey>(AccessRoute.Login)
-
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.PASSWORD_RESET)
-
-        assertEquals(listOf<NavKey>(AccessRoute.Login, AccessRoute.PasswordReset), stack)
-    }
-
-    @Test
-    fun backFromRegistrationResolvesToLogin() {
-        // ACCESSNAV-02: the TopBar/system back handler pops the last entry; the
-        // auth screen change that follows re-canonicalizes to the single Login root.
-        val stack = mutableListOf<NavKey>(AccessRoute.Login, AccessRoute.Registration)
-        stack.removeAt(stack.lastIndex)
-
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.LOGIN)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
 
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }
 
     @Test
     fun reconciliationIsIdempotentWhenStackAlreadyMatches() {
-        val stack = mutableListOf<NavKey>(AccessRoute.Login, AccessRoute.Registration)
+        val stack = mutableListOf<NavKey>(AccessRoute.Login)
         val reference = stack
 
-        reconcileAccessStack(stack, SessionAccessState.SignedOut, AuthScreen.REGISTRATION)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
 
         assertTrue(reference === stack, "no-op must not replace the stack instance")
-        assertEquals(listOf<NavKey>(AccessRoute.Login, AccessRoute.Registration), stack)
+        assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }
 
     @Test
     fun otherSessionStatesCanonicalizeToTheirSingleMatchingRoute() {
-        val awaitingVerification = mutableListOf<NavKey>(AccessRoute.Login, AccessRoute.Registration)
-        reconcileAccessStack(
-            awaitingVerification,
-            SessionAccessState.AwaitingVerification(unverifiedUser()),
-            AuthScreen.LOGIN,
-        )
+        val awaitingVerification = mutableListOf<NavKey>(AccessRoute.Login)
+        reconcileAccessStack(awaitingVerification, SessionAccessState.AwaitingVerification(unverifiedUser()))
         assertEquals(listOf<NavKey>(AccessRoute.Verification), awaitingVerification)
 
         val completingName = mutableListOf<NavKey>(AccessRoute.Login)
-        reconcileAccessStack(completingName, SessionAccessState.CompletingName(unverifiedUser()), AuthScreen.LOGIN)
+        reconcileAccessStack(completingName, SessionAccessState.CompletingName(unverifiedUser()))
         assertEquals(listOf<NavKey>(AccessRoute.NameCompletion), completingName)
 
         val bootstrapping = mutableListOf<NavKey>(AccessRoute.Login)
-        reconcileAccessStack(bootstrapping, SessionAccessState.Bootstrapping, AuthScreen.LOGIN)
+        reconcileAccessStack(bootstrapping, SessionAccessState.Bootstrapping)
         assertEquals(listOf<NavKey>(AccessRoute.Bootstrap), bootstrapping)
 
         val bootstrapError = mutableListOf<NavKey>(AccessRoute.Bootstrap)
-        reconcileAccessStack(bootstrapError, SessionAccessState.BootstrapError, AuthScreen.LOGIN)
+        reconcileAccessStack(bootstrapError, SessionAccessState.BootstrapError)
         assertEquals(listOf<NavKey>(AccessRoute.Bootstrap), bootstrapError)
     }
 
