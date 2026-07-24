@@ -5,7 +5,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
-import br.com.saqz.composeapp.catalog.SaqzCatalogScreen
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.domain.athlete.AthleteFinancialStatus
@@ -79,9 +78,6 @@ class SaqzScreenshotTest {
         compose.setContent { SaqzTheme { content() } }
         compose.onRoot().captureRoboImage("screenshots/$name.png")
     }
-
-    @Test
-    fun catalogo() = capture("catalogo") { SaqzCatalogScreen() }
 
     @Test
     fun login() = capture("login") {
