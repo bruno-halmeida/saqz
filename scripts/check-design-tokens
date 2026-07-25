@@ -14,8 +14,9 @@ fail() {
 # which is an accepted ceiling of this check). When you remove raw values,
 # lower the matching ceiling here so the gate keeps the progress.
 # 258 -> 66 em 2026-07-24 (VUL-30): a apresentação de groups saiu com 192 dp cruas.
-# 66 -> 32 em 2026-07-24 (VUL-36): as telas de groups saíram nas ondas C e o que
-# entrou do :core:design-system apagado (SaqzButton/SaqzInput) não repôs a diferença.
+# 66 -> 24 em 2026-07-24 (VUL-37): pós-onda C todo o orçamento restante é do LoginScreen.kt.
+# 24 -> 32 em 2026-07-24 (VUL-36): SaqzButton/SaqzInput vieram do :core:design-system
+# apagado e trouxeram para dentro de features/ as dp cruas que já tinham lá.
 raw_dp_ceiling=32
 raw_color_ceiling=2
 
@@ -31,10 +32,10 @@ raw_dp_count=$(feature_common_main | xargs grep -Eoh '[0-9]+\.dp' 2>/dev/null | 
 raw_color_count=$(feature_common_main | xargs grep -Eh 'Color\(0x' 2>/dev/null | wc -l | tr -d ' ')
 
 [ "$raw_dp_count" -le "$raw_dp_ceiling" ] ||
-    fail "raw dp literals in mobile/features commonMain grew to $raw_dp_count (ceiling $raw_dp_ceiling); use SaqzTheme.metrics instead of hardcoded dp"
+    fail "raw dp literals in mobile/features commonMain grew to $raw_dp_count (ceiling $raw_dp_ceiling); extraia a métrica para o tema da jornada em vez de fixar dp"
 
 [ "$raw_color_count" -le "$raw_color_ceiling" ] ||
-    fail "raw Color(0x...) literals in mobile/features commonMain grew to $raw_color_count (ceiling $raw_color_ceiling); use SaqzTheme.colors instead"
+    fail "raw Color(0x...) literals in mobile/features commonMain grew to $raw_color_count (ceiling $raw_color_ceiling); extraia a cor para o tema da jornada em vez de fixar hex"
 
 [ "$raw_dp_count" -eq "$raw_dp_ceiling" ] ||
     printf 'note: raw dp count is %s, below the ceiling of %s — lower raw_dp_ceiling in scripts/check-design-tokens to lock the progress\n' "$raw_dp_count" "$raw_dp_ceiling"

@@ -125,6 +125,14 @@ fail_case retired-frontend-workspace 'retired frontend workspace' sh -c \
 pass_case_with allow-nested-agents-doc sh -c \
     "mkdir -p mobile && printf '# AGENTS\n\nGateway, not Repository.\n' >mobile/AGENTS.md"
 
+# VUL-37: specs e AGENTS.md raiz viraram documents do Linear (VUL-19). Antes o scan só
+# os isentava — nada barrava a reintrodução silenciosa.
+fail_case reintroduced-specs-directory 'retired root governance path' sh -c \
+    "mkdir -p .specs && printf '# STATE\n' >.specs/STATE.md"
+
+fail_case reintroduced-root-agents-doc 'retired root governance path' sh -c \
+    "printf '# AGENTS\n' >AGENTS.md"
+
 # --- Fundação mobile aprovada: positivos ---
 
 pass_case_with allow-core-common-module sh -c \
@@ -209,4 +217,4 @@ fail_case co-owner-capability 'co-owner capability' sh -c \
 fail_case tracked-secret-path 'tracked secret path' sh -c \
     "mkdir -p .secrets && printf '{}\n' >.secrets/service-account.json && git add -f .secrets/service-account.json"
 
-[ "$count" -eq 37 ]
+[ "$count" -eq 39 ]

@@ -18,7 +18,7 @@ tracked_files() {
 }
 
 tracked_prod_files() {
-    tracked_files | grep -Ev '(^\.specs/|^(.*/)?AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/(test|androidTest|commonTest|iosTest|nativeTest)/|/SaqzIOSTests/|/SaqzIOSUITests/|/detekt-baseline\.xml$)' || true
+    tracked_files | grep -Ev '(^(.*/)?AGENTS\.md$|^docs/|^README\.md$|^scripts/|^tests/|/src/(test|androidTest|commonTest|iosTest|nativeTest)/|/SaqzIOSTests/|/SaqzIOSUITests/|/detekt-baseline\.xml$)' || true
 }
 
 tracked_client_prod_files() {
@@ -70,6 +70,12 @@ build_files=$(tracked_build_files)
 
 reject_paths 'retired frontend workspace found' '^frontend/'
 
+# VUL-19 migrou as specs e o AGENTS.md raiz para documents do Linear. Antes o scan
+# apenas os *isentava*, o que deixava a reintrodução silenciosa passar; agora o
+# caminho é proibido. `mobile/AGENTS.md` (aninhado) continua permitido.
+reject_paths 'retired root governance path found (.specs/ or root AGENTS.md)' \
+    '^(\.specs/|AGENTS\.md$)'
+
 reject_matches 'unsupported persistence technology found' \
     'liquibase|jooq|exposed|r2dbc|jakarta\.persistence|javax\.persistence|org\.hibernate|com\.h2database|sqlite' \
     "$prod_files"
@@ -81,7 +87,7 @@ reject_matches_outside 'persistence artifact outside approved backend feature fo
 
 reject_matches_outside 'auth flow outside approved mobile surface found' \
     'login|sign[ -]?up|password[ -]?reset|Google[ -]?Sign[ -]?In|logout|user[ -]?sync|onboarding|invitation|role[ -]?authorization' \
-    '^(mobile/(features/(access|groups)|core/network|compose-app|android-app|ios-app/SaqzIOS|navigation)/)' \
+    '^(mobile/(features/(access|groups)|core/network|compose-app|android-app|ios-app/SaqzIOS)/)' \
     "$client_prod_files"
 
 reject_matches 'co-owner capability found' \
