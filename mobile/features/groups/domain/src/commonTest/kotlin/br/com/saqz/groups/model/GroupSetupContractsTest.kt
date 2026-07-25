@@ -1,11 +1,9 @@
 package br.com.saqz.groups.model
 
-import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupDraftFailure
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
-import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -13,20 +11,8 @@ import kotlin.test.assertNull
 
 class GroupSetupContractsTest {
     @Test
-    fun `system timezone provider returns a validated timezone value`() {
-        var result: GroupSystemTimeZoneResult? = null
-
-        DefaultGroupSystemTimeZonePort().detect { result = it }
-
-        val available = assertIs<GroupSystemTimeZoneResult.Available>(result)
-        assertIs<GroupTimeZone.ParseResult.Valid>(GroupTimeZone.parse(available.value.id))
-    }
-
-    @Test
-    fun `invalid timezone becomes a typed failure instead of raw text`() {
-        val result = GroupTimeZone.parse("Mars/Olympus")
-
-        assertEquals(GroupTimeZone.ParseResult.Invalid, result)
+    fun `timezone value object preserves the exact identifier`() {
+        assertEquals(GroupTimeZone("America/Sao_Paulo"), GroupTimeZone("America/Sao_Paulo"))
     }
 
     @Test

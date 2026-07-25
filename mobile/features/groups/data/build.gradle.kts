@@ -17,6 +17,9 @@ kotlin {
             implementation(project(":core:domain"))
             implementation(project(":core:network"))
             implementation(libs.ktor.client.core)
+            // DefaultGroupSystemTimeZonePort + validação IANA (VUL-39): capacidade de plataforma
+            // mora aqui, nunca no domínio.
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {

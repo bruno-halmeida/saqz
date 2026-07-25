@@ -1,7 +1,5 @@
 package br.com.saqz.groups.model
 
-import kotlinx.datetime.TimeZone
-
 enum class GroupModality { COURT_VOLLEYBALL, BEACH_VOLLEYBALL, FOOTVOLLEY }
 
 enum class GroupComposition { WOMEN, MEN, MIXED }
@@ -61,18 +59,12 @@ data class GroupSetupForm(
     )
 }
 
-class GroupTimeZone private constructor(val id: String) {
+// Só o valor e o contrato de parse. Quem confere o id contra a base IANA é
+// GroupTimeZones em :features:groups:data — o domínio não carrega kotlinx-datetime.
+class GroupTimeZone(val id: String) {
     sealed interface ParseResult {
         data class Valid(val value: GroupTimeZone) : ParseResult
         data object Invalid : ParseResult
-    }
-
-    companion object {
-        fun parse(raw: String): ParseResult = runCatching { TimeZone.of(raw) }
-            .fold(
-                onSuccess = { ParseResult.Valid(GroupTimeZone(it.id)) },
-                onFailure = { ParseResult.Invalid },
-            )
     }
 
     override fun equals(other: Any?): Boolean = other is GroupTimeZone && id == other.id
