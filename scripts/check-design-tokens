@@ -14,11 +14,17 @@ fail() {
 # which is an accepted ceiling of this check). When you remove raw values,
 # lower the matching ceiling here so the gate keeps the progress.
 # 258 -> 66 em 2026-07-24 (VUL-30): a apresentação de groups saiu com 192 dp cruas.
-raw_dp_ceiling=66
+# 66 -> 32 em 2026-07-24 (VUL-36): as telas de groups saíram nas ondas C e o que
+# entrou do :core:design-system apagado (SaqzButton/SaqzInput) não repôs a diferença.
+raw_dp_ceiling=32
 raw_color_ceiling=2
 
+# O registro de tokens (access/ui/theme) é onde dp e hex são a definição, não uma
+# violação — é ele que as telas devem consumir. Excluído da varredura desde que o
+# :core:design-system foi apagado e o registro passou a morar dentro da feature (VUL-36).
 feature_common_main() {
-    find "$repository_root/mobile/features" -path '*/src/commonMain/*' -name '*.kt' -not -path '*/build/*'
+    find "$repository_root/mobile/features" -path '*/src/commonMain/*' -name '*.kt' \
+        -not -path '*/build/*' -not -path '*/access/ui/theme/*'
 }
 
 raw_dp_count=$(feature_common_main | xargs grep -Eoh '[0-9]+\.dp' 2>/dev/null | wc -l | tr -d ' ')

@@ -8,8 +8,8 @@ count=0
 
 SOURCE_SHA=0c732546309e7143f60203472c368a3cebbb3a53721f142898724023aa33a473
 svg_rel=landing-page/assets/saqz-logo.svg
-wordmark_rel=mobile/core/design-system/src/commonMain/composeResources/drawable/saqz_wordmark.xml
-symbol_rel=mobile/core/design-system/src/commonMain/composeResources/drawable/saqz_symbol.xml
+wordmark_rel=mobile/features/access/src/commonMain/composeResources/drawable/saqz_wordmark.xml
+symbol_rel=mobile/features/access/src/commonMain/composeResources/drawable/saqz_symbol.xml
 prov_rel=mobile/brand/PROVENANCE.md
 
 fail() {

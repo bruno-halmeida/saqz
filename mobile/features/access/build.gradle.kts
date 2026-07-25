@@ -24,7 +24,6 @@ kotlin {
             api(project(":features:access:domain"))
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
-            implementation(project(":core:design-system"))
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material:material:1.11.1")
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
@@ -48,6 +47,9 @@ kotlin {
 }
 
 compose.resources {
+    // Público porque as fontes e drawables de marca herdados do design system
+    // apagado (VUL-36) precisam ser lidos pelos testes instrumentados do android-app.
+    publicResClass = true
     packageOfResClass = "br.com.saqz.access.resources"
     generateResClass = always
 }

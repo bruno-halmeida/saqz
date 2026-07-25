@@ -12,7 +12,7 @@ import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_invalid_credentials
-import br.com.saqz.designsystem.text.UiText
+import br.com.saqz.access.presentation.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

@@ -106,7 +106,7 @@ reject_matches 'web ui target found' \
     'wasmJs|(^|[^A-Za-z.])js[[:space:]]*[({]|org\.jetbrains\.compose\.web' \
     "$build_files"
 
-extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|design-system|domain|network)/|^mobile/features/(access|groups)/' || true)
+extra_ui_paths=$(tracked_files | grep -E '^mobile/(core|features)/' | grep -Ev '^mobile/core/(common|domain|network)/|^mobile/features/(access|groups)/' || true)
 [ -z "$extra_ui_paths" ] || {
     printf '%s\n' "$extra_ui_paths" >&2
     fail 'extra client UI source path found'

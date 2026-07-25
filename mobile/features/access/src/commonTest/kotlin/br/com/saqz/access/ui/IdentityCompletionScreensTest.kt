@@ -13,7 +13,7 @@ import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
 import br.com.saqz.access.presentation.namecompletion.NameCompletionState
 import br.com.saqz.access.presentation.verification.VerificationIntent
 import br.com.saqz.access.presentation.verification.VerificationState
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -3,8 +3,8 @@ package br.com.saqz.composeapp
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.designsystem.theme.SaqzMotionPolicy
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.SaqzMotionPolicy
+import br.com.saqz.access.ui.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

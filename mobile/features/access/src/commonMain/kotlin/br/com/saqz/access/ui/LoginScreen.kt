@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.designsystem.text.asString
+import br.com.saqz.access.presentation.asString
 import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.Res
@@ -68,14 +68,9 @@ import br.com.saqz.access.resources.material_arrow_forward
 import br.com.saqz.access.resources.material_lock
 import br.com.saqz.access.resources.material_mail
 import br.com.saqz.access.resources.material_sports_volleyball
+import br.com.saqz.access.resources.saqz_lettering
 import br.com.saqz.access.resources.saqz_symbol_foreground
-import br.com.saqz.designsystem.component.SaqzButton
-import br.com.saqz.designsystem.component.SaqzButtonVariant
-import br.com.saqz.designsystem.component.SaqzInput
-import br.com.saqz.designsystem.component.SaqzInputKind
-import br.com.saqz.designsystem.resources.Res as DesignRes
-import br.com.saqz.designsystem.resources.saqz_lettering
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.SaqzTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -119,7 +114,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(14.dp))
             Image(
-                painter = painterResource(DesignRes.drawable.saqz_lettering),
+                painter = painterResource(Res.drawable.saqz_lettering),
                 contentDescription = stringResource(Res.string.access_brand),
                 modifier = Modifier.size(width = 108.dp, height = 32.dp),
             )

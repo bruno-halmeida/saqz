@@ -67,10 +67,10 @@ SH
 set -eu
 printf 'mobile %s\n' "$*" >>"$LOG_FILE"
 mobile_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-aar_dir="$mobile_dir/core/design-system/build/outputs/aar"
+aar_dir="$mobile_dir/features/access/build/outputs/aar"
 results_dir="$mobile_dir/build/test-results/stub"
 mkdir -p "$aar_dir" "$results_dir"
-: >"$aar_dir/design-system.aar"
+: >"$aar_dir/access.aar"
 tests_attr=1
 [ "${ZERO_TESTS:-0}" = 0 ] || tests_attr=0
 printf '<testsuite tests="%s"></testsuite>\n' "$tests_attr" >"$results_dir/TEST-stub.xml"
@@ -89,7 +89,7 @@ SH
 #!/bin/sh
 set -eu
 [ "${MISSING_PREVIEW_RESOURCE:-0}" = 0 ] || exit 0
-printf '%s\n' 'assets/composeResources/br.com.saqz.designsystem.resources/drawable/preflight_sentinel.xml'
+printf '%s\n' 'assets/composeResources/br.com.saqz.access.resources/drawable/saqz_lettering.xml'
 SH
     cat >"$target/repo/bin/adb" <<'SH'
 #!/bin/sh
@@ -149,7 +149,7 @@ backend -p REPO/backend :shared-kernel:check :features:identity:test :features:i
 adb devices
 mobile-boundaries
 design-tokens
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
+mobile -p REPO/mobile :core:common:allTests :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:access:bundleAndroidMainAar :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest --console=plain
 EOF
 sed -E 's#-p [^ ]+/backend#-p REPO/backend#g; s#-p [^ ]+/mobile#-p REPO/mobile#g' \
     "$dir/repo/invocations.log" >"$dir/actual.log"
@@ -194,7 +194,7 @@ make_repo "$happy"
 ) >/dev/null
 happy_log="$happy/repo/invocations.log"
 
-required_suites=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
+required_suites=':core:common:allTests :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:access:bundleAndroidMainAar :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest :android-app:connectedDevDebugAndroidTest'
 
 # exactInventory: the mobile invocation lists exactly the required suites.
 [ "$(mobile_line "$happy_log")" = "$required_suites" ] || {
@@ -324,7 +324,7 @@ esac
 count=$((count + 1)); printf 'ok %d - backendGroupsInventory\n' "$count"
 
 case " $(mobile_line "$happy_log") " in
-    *' :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests '*) ;;
+    *' :features:access:allTests :features:access:bundleAndroidMainAar :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests '*) ;;
     *) printf 'mobile Groups inventory missing or out of order\n' >&2; exit 1 ;;
 esac
 count=$((count + 1)); printf 'ok %d - mobileGroupsInventory\n' "$count"
@@ -372,7 +372,7 @@ credentials
 scope
 mobile-boundaries
 design-tokens
-mobile -p REPO/mobile :core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest --console=plain
+mobile -p REPO/mobile :core:common:allTests :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:access:bundleAndroidMainAar :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest --console=plain
 EOF
 diff -u "$mobile_scope/expected.log" "$mobile_scope/actual.log"
 count=$((count + 1)); printf 'ok %d - mobileJvmScopeInventory\n' "$count"

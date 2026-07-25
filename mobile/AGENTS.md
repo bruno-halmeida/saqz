@@ -50,7 +50,6 @@ Cinco regras que não se negociam:
 :core:domain                    ← SaqzResult, SaqzError, DataError, value types (GroupId)
 :core:data                      ← HttpClient factory, safe-call, transporte, token storage
 :core:presentation              ← UiText, ObserveAsEvents, utilidades de UI compartilhadas
-:core:design-system             ← SaqzTheme (tokens), componentes Saqz*, tipografia
 :features:<x>:domain            ← modelos, comandos, erros, interfaces de gateway
 :features:<x>:data              ← Ktor<X>Gateway, DTOs de transporte, mappers
 :features:<x>:presentation      ← ViewModels MVI + Composables (ui/) + ports
@@ -68,7 +67,7 @@ financeiro).
 |---|---|
 | `<x>:domain` | **só** `:core:domain` |
 | `<x>:data` | `<x>:domain`, `:core:domain`, `:core:data` |
-| `<x>:presentation` | `<x>:domain`, `:core:domain`, `:core:presentation`, `:core:design-system` |
+| `<x>:presentation` | `<x>:domain`, `:core:domain`, `:core:presentation` |
 | `:compose-app` | tudo — único módulo que enxerga `:features:*:data` |
 
 Nenhum módulo de feature depende de outro, de `:navigation`, ou importa `androidx.navigation3.*`.
@@ -242,7 +241,10 @@ Regras:
 
 - **Tokens, sempre.** `SaqzTheme.colors/typography/metrics/motion`. `12.dp` e `Color(0xFF...)` em
   feature são bloqueados por gate com teto (`scripts/check-design-tokens`).
-- **Componentes `Saqz*`** antes de Material cru. Algo novo e reusável vai para `:core:design-system`.
+- **Componentes `Saqz*`** antes de Material cru. Não existe mais um módulo de design system:
+  o que sobrou vive em `features:access/ui` (`SaqzTheme`, `SaqzButton`, `SaqzInput`,
+  `SaqzLoadingState`) e o novo nasce componente a componente na jornada que o exigir —
+  o segundo uso concreto é que justifica extrair.
 - **`testTag` via `object <Tela>Tags`** com constantes — testes de UI e journeys dependem disso.
 - **Nada de `remember` para estado de aplicação.** Só estado de composição (`LazyListState`,
   `PagerState`). `derivedStateOf` só quando a derivação parte desse estado; se dá para derivar no

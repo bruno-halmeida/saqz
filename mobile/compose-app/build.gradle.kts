@@ -39,7 +39,6 @@ kotlin {
             implementation(project(":features:access:data"))
             implementation(project(":core:common"))
             implementation(project(":core:domain"))
-            implementation(project(":core:design-system"))
             implementation(project(":core:network"))
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material:material:1.11.1")

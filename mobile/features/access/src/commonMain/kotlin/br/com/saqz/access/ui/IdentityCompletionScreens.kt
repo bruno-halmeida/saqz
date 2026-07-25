@@ -16,7 +16,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.access.presentation.message
-import br.com.saqz.designsystem.text.asString
+import br.com.saqz.access.presentation.asString
 import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
 import br.com.saqz.access.presentation.namecompletion.NameCompletionState
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionIntent
@@ -43,11 +43,7 @@ import br.com.saqz.access.resources.verification_confirm
 import br.com.saqz.access.resources.verification_resend
 import br.com.saqz.access.resources.verification_sent
 import br.com.saqz.access.resources.verification_title
-import br.com.saqz.designsystem.component.SaqzButton
-import br.com.saqz.designsystem.component.SaqzButtonVariant
-import br.com.saqz.designsystem.component.SaqzInput
-import br.com.saqz.designsystem.component.SaqzInputKind
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.SaqzTheme
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 

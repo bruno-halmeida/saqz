@@ -24,7 +24,7 @@ case "${1:-}" in
         ;;
 esac
 
-mobile_jvm_tasks=':core:common:allTests :core:design-system:allTests :core:design-system:bundleAndroidMainAar :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest'
+mobile_jvm_tasks=':core:common:allTests :core:domain:allTests :core:network:allTests :features:access:domain:allTests :features:access:data:allTests :features:access:compileAndroidMain :features:access:allTests :features:access:bundleAndroidMainAar :features:groups:domain:allTests :features:groups:data:allTests :features:groups:compileAndroidMain :features:groups:allTests :compose-app:allTests detektAll :android-app:testDevDebugUnitTest'
 connected_task=':android-app:connectedDevDebugAndroidTest'
 
 run_credentials_and_scope() {
@@ -83,15 +83,15 @@ run_mobile_gradle() {
         --console=plain
 }
 
-check_design_system_aar() {
-    design_system_aar="$repository_root/mobile/core/design-system/build/outputs/aar/design-system.aar"
-    preview_resource='assets/composeResources/br.com.saqz.designsystem.resources/drawable/preflight_sentinel.xml'
+check_access_aar() {
+    access_aar="$repository_root/mobile/features/access/build/outputs/aar/access.aar"
+    preview_resource='assets/composeResources/br.com.saqz.access.resources/drawable/saqz_lettering.xml'
 
-    [ -f "$design_system_aar" ] ||
-        fail "design-system Android AAR was not produced"
+    [ -f "$access_aar" ] ||
+        fail "access Android AAR was not produced"
 
-    unzip -Z1 "$design_system_aar" | grep -Fqx "$preview_resource" ||
-        fail "design-system Android AAR is missing Compose resources required by Preview"
+    unzip -Z1 "$access_aar" | grep -Fqx "$preview_resource" ||
+        fail "access Android AAR is missing Compose resources required by Preview"
 }
 
 check_mobile_discovered_tests() {
@@ -115,7 +115,7 @@ case "$scope" in
         require_android_device
         run_mobile_static
         run_mobile_gradle "$mobile_jvm_tasks $connected_task"
-        check_design_system_aar
+        check_access_aar
         check_mobile_discovered_tests
         printf 'ok - complete Kotlin and Android gate\n'
         ;;
@@ -128,7 +128,7 @@ case "$scope" in
         run_credentials_and_scope
         run_mobile_static
         run_mobile_gradle "$mobile_jvm_tasks"
-        check_design_system_aar
+        check_access_aar
         check_mobile_discovered_tests
         printf 'ok - mobile JVM gate scope\n'
         ;;

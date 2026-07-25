@@ -16,8 +16,8 @@ import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PhoneCompletionRoot
 import br.com.saqz.access.ui.VerificationRoot
+import br.com.saqz.access.ui.SaqzLoadingState
 import br.com.saqz.composeapp.shell.SaqzAppShell
-import br.com.saqz.designsystem.component.SaqzLoadingState
 
 // Legacy observable contract carried over from the product host: exactly one active
 // destination host in the tree (rotation/recreation tests count this tag).

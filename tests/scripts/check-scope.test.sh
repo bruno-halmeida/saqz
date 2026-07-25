@@ -130,8 +130,8 @@ pass_case_with allow-nested-agents-doc sh -c \
 pass_case_with allow-core-common-module sh -c \
     "mkdir -p mobile/core/common/src/commonMain/kotlin/br/com/saqz/core/common/state && printf 'package br.com.saqz.core.common.state\n\nsealed interface SaqzUiState\n' >mobile/core/common/src/commonMain/kotlin/br/com/saqz/core/common/state/SaqzUiState.kt && printf 'plugins { id(\"saqz.kmp-compose-library\") }\n' >mobile/core/common/build.gradle.kts"
 
-pass_case_with allow-design-system-and-navigation sh -c \
-    "mkdir -p mobile/core/design-system/src/commonMain/kotlin/br/com/saqz/designsystem/component && printf 'package br.com.saqz.designsystem.component\n\nfun SaqzButton() = Unit\n' >mobile/core/design-system/src/commonMain/kotlin/br/com/saqz/designsystem/component/SaqzButton.kt && printf '\nandroidx-navigation-compose = { module = \"org.jetbrains.androidx.navigation:navigation-compose\", version = \"2.9.2\" }\n' >>mobile/gradle/libs.versions.toml"
+pass_case_with allow-access-ui-and-navigation sh -c \
+    "mkdir -p mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/ui && printf 'package br.com.saqz.access.ui\n\nfun SaqzButton() = Unit\n' >mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/ui/SaqzButton.kt && printf '\nandroidx-navigation-compose = { module = \"org.jetbrains.androidx.navigation:navigation-compose\", version = \"2.9.2\" }\n' >>mobile/gradle/libs.versions.toml"
 
 # --- Categorias proibidas: negativos ---
 

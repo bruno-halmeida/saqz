@@ -1,7 +1,7 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.runtime.Immutable
-import br.com.saqz.designsystem.theme.SaqzAccessibilityPreferences
+import br.com.saqz.access.ui.theme.SaqzAccessibilityPreferences
 
 // The accessibility boundary between the native launcher and the app root: two primitive
 // booleans, nothing else. The startup-state seam died with the legacy Home/Catalog shell
