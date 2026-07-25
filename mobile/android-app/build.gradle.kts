@@ -176,7 +176,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(project(":features:access"))
-    androidTestImplementation(project(":features:groups"))
+    androidTestImplementation(project(":features:groups:domain"))
     androidTestImplementation(libs.bundles.compose)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

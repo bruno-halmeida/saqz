@@ -1,3 +1,5 @@
+// Poucos arquivos por desenho: existe para manter Ktor fora de :features:access (Compose) e de
+// :features:access:domain, conforme AD-030. Justificativa exigida pelo critério do VUL-39.
 plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.multiplatform)

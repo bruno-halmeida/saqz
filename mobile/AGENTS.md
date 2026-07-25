@@ -37,15 +37,19 @@ domínio, dados, rede e as integrações nativas. Depois do login o usuário cai
 :features:access            ← login + verificação de sessão: presentation/, ui/, navigation/
 :features:access:domain     ← AccessSession, ports nativos de acesso
 :features:access:data       ← KtorSessionGateway
-:features:groups            ← contratos e ports nativos de grupo (sem apresentação)
-:features:groups:domain     ← agregados: grupo, atleta, jogo, presença, financeiro, foto
+:features:groups:domain     ← agregados (grupo, atleta, jogo, presença, financeiro, foto)
+                              + contratos e ports nativos de grupo
 :features:groups:data       ← Ktor*Gateway de cada agregado
 :compose-app                ← composition root: Koin, NavDisplay, shell vazio, ports nativos
 :android-app  /  ios-app    ← entrypoints de plataforma
 ```
 
-**Não existe `:navigation`.** O módulo raiz de `groups` **não tem apresentação** — guarda só
-contratos e ports; o domínio e os gateways estão intactos, esperando as jornadas novas.
+**Não existe `:navigation`.** **Não existe mais o módulo raiz `:features:groups`** (VUL-39): as
+portas nativas e os contratos de draft viraram `br.com.saqz.groups.port` / `.model` dentro de
+`:features:groups:domain` — são contrato de domínio, não mereciam módulo Gradle próprio. Os
+pacotes não mudaram, então os adapters Android/iOS continuam resolvendo os mesmos nomes.
+`groups` segue **sem apresentação**; o domínio e os gateways estão intactos, esperando as
+jornadas novas.
 
 ### Regras de dependência (hoje sem gate)
 

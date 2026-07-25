@@ -22,7 +22,6 @@ kotlin {
             isStatic = true
             export(project(":features:access"))
             export(project(":features:access:domain"))
-            export(project(":features:groups"))
             export(project(":features:groups:domain"))
         }
     }
@@ -31,7 +30,6 @@ kotlin {
         commonMain.dependencies {
             api(project(":features:access"))
             api(project(":features:access:domain"))
-            api(project(":features:groups"))
             api(project(":features:groups:domain"))
             implementation(project(":features:access:data"))
             implementation(project(":core:common"))

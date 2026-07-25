@@ -13,6 +13,9 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core:domain"))
+            // Herdado do antigo módulo raiz :features:groups (VUL-39): GroupSetupContracts/Ports
+            // detectam o fuso do sistema.
+            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

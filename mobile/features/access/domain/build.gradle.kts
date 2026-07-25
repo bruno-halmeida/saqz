@@ -1,3 +1,6 @@
+// Poucos arquivos por desenho: a fronteira presentation → domain ← data do AD-030 vale mesmo
+// com o access reduzido ao login. É também a superfície pura exportada ao framework iOS.
+// Justificativa exigida pelo critério do VUL-39.
 plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.multiplatform)
