@@ -28,8 +28,9 @@ internal const val SaqzShellContentTag = "saqz-shell-content"
  * It exists so the session gate has somewhere to land once bootstrap reaches `Ready`, and
  * carries the one action that still crosses back to the gate: logout.
  *
- * ponytail: no ViewModel — the shell owns no state (AGENTS.md §15, "tela sem estado
- * próprio não ganha ViewModel"). Product screens land here from C2 onward.
+ * ponytail: no ViewModel — the shell owns no state (AD-031: "ViewModel só quando há
+ * estado assíncrono, persistência ou comportamento real"). Product screens land here
+ * from C2 onward.
  */
 @Composable
 internal fun SaqzAppShell(onLogout: () -> Unit, modifier: Modifier = Modifier) {

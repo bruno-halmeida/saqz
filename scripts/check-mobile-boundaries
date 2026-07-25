@@ -15,6 +15,15 @@ tracked_mobile_files() {
     done
 }
 
+# features - nomes de feature descobertos no disco, um por linha. VUL-37: a lista era
+# hardcoded no par access/groups e o cross-check assumia que as duas tinham
+# apresentação. Pós-onda C só `access` tem `ui/`; o módulo raiz de `groups` guarda
+# contratos e ports nativos. Descobrir a lista mantém o gate correto para qualquer
+# número de features e dispensa reescrita quando uma nasce ou morre.
+features() {
+    find "$mobile_root/features" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
+}
+
 # extract_common_main FILE - print the body of the commonMain.dependencies { ... }
 # block. The repository's build files never nest braces inside that block, so a
 # marker-to-first-closing-brace scan is sufficient and avoids a full Groovy/KTS parser.
@@ -26,9 +35,9 @@ extract_common_main() {
     ' "$1"
 }
 
-# domain_only_allowlist FILE - every non-blank dependency line must be exactly the
-# shared-kernel dependency; anything else (Compose, Koin, Ktor, serialization, the
-# other feature, its own data/presentation) is rejected by construction.
+# check_domain_allowlist LABEL FILE - every non-blank dependency line must be exactly the
+# shared-kernel dependency; anything else (Compose, Koin, Ktor, serialization, a sibling
+# feature, its own data/presentation) is rejected by construction.
 check_domain_allowlist() {
     module_label=$1
     file=$2
@@ -54,35 +63,33 @@ check_denylist() {
     }
 }
 
-check_presentation_build() {
+# reject_sibling_feature_projects FILE LABEL FEATURE - nenhuma feature depende de outra,
+# seja pela raiz, pelo domain ou pelo data da vizinha.
+reject_sibling_feature_projects() {
+    file=$1
+    label=$2
+    feature=$3
+    for other in $(features); do
+        [ "$other" = "$feature" ] && continue
+        check_denylist "$file" "$label" "\":features:$other[\":]"
+    done
+}
+
+check_feature_root_build() {
     feature=$1
-    other=$2
     file="$mobile_root/features/$feature/build.gradle.kts"
     check_denylist "$file" "presentation depends on its own data module" "\":features:$feature:data\""
     check_denylist "$file" "presentation depends on core:network" '":core:network"'
     check_denylist "$file" "presentation depends on Ktor" 'io\.ktor|libs\.ktor'
-    check_denylist "$file" "presentation depends on the other feature" "\":features:$other"
+    reject_sibling_feature_projects "$file" "presentation depends on the other feature" "$feature"
 }
 
 check_data_build() {
     feature=$1
-    other=$2
     file="$mobile_root/features/$feature/data/build.gradle.kts"
     check_denylist "$file" "data module depends on its own presentation module" "\":features:$feature\"\\)"
-    check_denylist "$file" "data module depends on the other feature" "\":features:$other"
+    reject_sibling_feature_projects "$file" "data module depends on the other feature" "$feature"
 }
-
-# --- Gradle dependency allowlists -------------------------------------------
-
-check_domain_allowlist 'core' "$mobile_root/core/domain/build.gradle.kts"
-check_domain_allowlist 'access' "$mobile_root/features/access/domain/build.gradle.kts"
-check_domain_allowlist 'groups' "$mobile_root/features/groups/domain/build.gradle.kts"
-
-check_presentation_build access groups
-check_presentation_build groups access
-
-check_data_build access groups
-check_data_build groups access
 
 # --- Source import scans ----------------------------------------------------
 
@@ -100,46 +107,55 @@ reject_source_imports() {
     }
 }
 
-# Presentation: reject data/network/serialization imports and the other feature.
-reject_source_imports 'access presentation imports its own data layer' \
-    '^mobile/features/access/src/' 'import br\.com\.saqz\.access\.data\.'
-reject_source_imports 'access presentation imports core network' \
-    '^mobile/features/access/src/' 'import br\.com\.saqz\.network\.'
-reject_source_imports 'access presentation imports the serialization transport engine' \
-    '^mobile/features/access/src/(commonMain|androidMain|iosMain|appleMain|nativeMain)/' 'import kotlinx\.serialization\.json'
-reject_source_imports 'access presentation imports the Groups feature' \
-    '^mobile/features/access/src/' 'import br\.com\.saqz\.groups\.'
+# reject_sibling_feature_imports LABEL DIR_PATTERN FEATURE - o pacote de cada feature é
+# `br.com.saqz.<feature>`, então a lista de vizinhas sai da mesma descoberta de disco.
+reject_sibling_feature_imports() {
+    label=$1
+    dir_pattern=$2
+    feature=$3
+    for other in $(features); do
+        [ "$other" = "$feature" ] && continue
+        reject_source_imports "$label" "$dir_pattern" "import br\\.com\\.saqz\\.$other\\."
+    done
+}
 
-reject_source_imports 'groups presentation imports its own data layer' \
-    '^mobile/features/groups/src/' 'import br\.com\.saqz\.groups\.data\.'
-reject_source_imports 'groups presentation imports core network' \
-    '^mobile/features/groups/src/' 'import br\.com\.saqz\.network\.'
-reject_source_imports 'groups presentation imports the serialization transport engine' \
-    '^mobile/features/groups/src/(commonMain|androidMain|iosMain|appleMain|nativeMain)/' 'import kotlinx\.serialization\.json'
-reject_source_imports 'groups presentation imports the Access feature' \
-    '^mobile/features/groups/src/' 'import br\.com\.saqz\.access\.'
+# --- Shared kernel ----------------------------------------------------------
 
-# Domain: reject framework imports and the other feature.
+check_domain_allowlist 'core' "$mobile_root/core/domain/build.gradle.kts"
 reject_source_imports 'core domain imports a framework' \
     '^mobile/core/domain/src/' 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
-reject_source_imports 'access domain imports a framework' \
-    '^mobile/features/access/domain/src/' 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
-reject_source_imports 'access domain imports the Groups feature' \
-    '^mobile/features/access/domain/src/' 'import br\.com\.saqz\.groups\.'
-reject_source_imports 'groups domain imports a framework' \
-    '^mobile/features/groups/domain/src/' 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
-reject_source_imports 'groups domain imports the Access feature' \
-    '^mobile/features/groups/domain/src/' 'import br\.com\.saqz\.access\.'
 
-# Data: reject presentation imports and the other feature.
-reject_source_imports 'access data imports Access presentation' \
-    '^mobile/features/access/data/src/' 'import br\.com\.saqz\.access\.(presentation|ui)\.'
-reject_source_imports 'access data imports the Groups feature' \
-    '^mobile/features/access/data/src/' 'import br\.com\.saqz\.groups\.'
-reject_source_imports 'groups data imports Groups presentation' \
-    '^mobile/features/groups/data/src/' 'import br\.com\.saqz\.groups\.(presentation|ui)\.'
-reject_source_imports 'groups data imports the Access feature' \
-    '^mobile/features/groups/data/src/' 'import br\.com\.saqz\.access\.'
+# --- Per-feature boundaries -------------------------------------------------
+
+for feature in $(features); do
+    check_domain_allowlist "$feature" "$mobile_root/features/$feature/domain/build.gradle.kts"
+    check_feature_root_build "$feature"
+    check_data_build "$feature"
+
+    # Módulo raiz (apresentação onde ela existe, contratos e ports onde não): rejeita a
+    # própria camada de dados, a rede, o motor de serialização e as vizinhas.
+    reject_source_imports "$feature presentation imports its own data layer" \
+        "^mobile/features/$feature/src/" "import br\\.com\\.saqz\\.$feature\\.data\\."
+    reject_source_imports "$feature presentation imports core network" \
+        "^mobile/features/$feature/src/" 'import br\.com\.saqz\.network\.'
+    reject_source_imports "$feature presentation imports the serialization transport engine" \
+        "^mobile/features/$feature/src/(commonMain|androidMain|iosMain|appleMain|nativeMain)/" \
+        'import kotlinx\.serialization\.json'
+    reject_sibling_feature_imports "$feature presentation imports the other feature" \
+        "^mobile/features/$feature/src/" "$feature"
+
+    # Domain: puro. Sem framework, sem vizinha.
+    reject_source_imports "$feature domain imports a framework" \
+        "^mobile/features/$feature/domain/src/" 'import (androidx\.|org\.koin\.|io\.ktor\.|kotlinx\.serialization)'
+    reject_sibling_feature_imports "$feature domain imports the other feature" \
+        "^mobile/features/$feature/domain/src/" "$feature"
+
+    # Data: não sobe para apresentação, não atravessa para a vizinha.
+    reject_source_imports "$feature data imports its own presentation" \
+        "^mobile/features/$feature/data/src/" "import br\\.com\\.saqz\\.$feature\\.(presentation|ui)\\."
+    reject_sibling_feature_imports "$feature data imports the other feature" \
+        "^mobile/features/$feature/data/src/" "$feature"
+done
 
 # --- Compatibility adapter markers ------------------------------------------
 
