@@ -232,7 +232,8 @@ final class IOSSetupDraftAdapter: GroupDraftStorePort {
         case .unsupportedSchema: done(GroupDraftReadResultFailure(reason: .unsupportedSchema))
         }
     }
-    // ponytail: the `done__`/`done_`/`done___` labels are K/N's ObjC overload mangling; the header is the source of truth.
+    // Os rótulos `done__`/`done_`/`done___` são o mangling de overload do exportador
+    // ObjC do Kotlin/Native. O header gerado do SaqzMobile é a fonte da verdade.
     func write(draft: GroupSetupDraft, done__ done: @escaping (any GroupDraftWriteResult) -> Void) { done(store.writeSetup(draft) ? GroupDraftWriteResultSuccess.shared : GroupDraftWriteResultFailure(reason: .unavailable)) }
     func clear(key: GroupDraftKey, commandKey: String, done: @escaping (any GroupDraftWriteResult) -> Void) { done(store.clearSetup(key, commandKey: commandKey) ? GroupDraftWriteResultSuccess.shared : GroupDraftWriteResultFailure(reason: .unavailable)) }
 }
