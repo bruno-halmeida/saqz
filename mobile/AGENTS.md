@@ -29,7 +29,8 @@ ui  ────────────►  presentation  ───────
 Cinco regras que não se negociam:
 
 1. **`domain` é puro.** Sem Compose, sem Ktor, sem Koin, sem Android. Só Kotlin + `:core:domain`.
-   Verificado por script (`scripts/check-mobile-boundaries`), não por disciplina.
+   Hoje isso depende de disciplina: o gate que verificava (`scripts/check-mobile-boundaries`)
+   foi removido junto com a CI antiga e ainda não tem substituto.
 2. **`presentation` nunca importa `data`.** Depende da *interface* do gateway, que mora em
    `domain`. A implementação chega por Koin.
 3. **Features não se conhecem.** `groups` não importa `access`. O compartilhado desce para
@@ -241,7 +242,8 @@ fun GamesScreen(state: GamesScreenState, onIntent: (GamesScreenIntent) -> Unit, 
 Regras:
 
 - **Tokens, sempre.** `SaqzTheme.colors/typography/metrics/motion`. `12.dp` e `Color(0xFF...)` em
-  feature são bloqueados por gate com teto (`scripts/check-design-tokens`).
+  feature são proibidos por convenção — o gate com teto (`scripts/check-design-tokens`) foi
+  removido com a CI antiga e ainda não tem substituto.
 - **Componentes `Saqz*`** antes de Material cru. Algo novo e reusável vai para `:core:design-system`.
 - **`testTag` via `object <Tela>Tags`** com constantes — testes de UI e journeys dependem disso.
 - **Nada de `remember` para estado de aplicação.** Só estado de composição (`LazyListState`,
@@ -437,15 +439,21 @@ interações com `composeTestRule`, cada função devolvendo `this` para encadea
 
 ## 12. Gates antes de abrir PR
 
+A CI antiga (`scripts/` + workflows de gate) foi removida para ser redesenhada do zero.
+Até a nova existir, rode as tasks direto:
+
 ```sh
-scripts/check-gradle          # backend + mobile + detekt + instrumentado
+mobile/gradlew -p mobile detektAll                        # lint
+mobile/gradlew -p mobile :android-app:testDevDebugUnitTest # testes que rodam na JVM
+mobile/gradlew -p mobile :android-app:connectedDevDebugAndroidTest # precisa de emulador
 ```
 
-Encadeia, entre outros: `check-mobile-boundaries` (dependências entre módulos),
-`check-design-tokens` (teto de dp/cor cru), `allTests` de todos os módulos, `detektAll`,
-`connectedDevDebugAndroidTest`, e falha se alguma suíte reportar zero teste descoberto.
-
 Local: JDK 21, `DOCKER_HOST` do Colima, emulador `Saqz_API_30` ligado.
+
+Atenção ao redesenhar: `allTests` é NO-SOURCE em todos os módulos `core/*` e `features/*`,
+porque o plugin `com.android.kotlin.multiplatform.library` desabilita host tests por padrão
+e nenhum módulo faz opt-in com `withHostTest { }`. Os ~133 arquivos de `commonTest` só rodam
+como `iosSimulatorArm64Test`, em macOS.
 Detekt usa **baseline por módulo**: dívida antiga congelada, código novo falha. Não regenere
 baseline para calar erro seu.
 
