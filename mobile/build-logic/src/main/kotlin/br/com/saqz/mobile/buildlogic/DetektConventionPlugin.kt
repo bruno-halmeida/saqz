@@ -24,8 +24,7 @@ class DetektConventionPlugin : Plugin<Project> {
             pluginManager.apply("io.gitlab.arturbosch.detekt")
 
             // Regras de idioma Compose (modifiers, remember, naming de composables).
-            // 0.4.x é a última linha compatível com detekt 1.23; 0.5+ exige detekt 2.0.
-            dependencies.add("detektPlugins", "io.nlopez.compose.rules:detekt:0.4.28")
+            dependencies.add("detektPlugins", libs.library("compose-rules-detekt"))
 
             extensions.configure(DetektExtension::class.java) {
                 buildUponDefaultConfig = true

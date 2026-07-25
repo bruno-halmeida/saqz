@@ -2,21 +2,14 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
+    id("saqz.kmp-library")
     id("saqz.detekt")
 }
 
 kotlin {
-    jvmToolchain(21)
-
     android {
         namespace = "br.com.saqz.features.groups.data"
-        compileSdk = libs.versions.compile.sdk.get().toInt()
-        minSdk = libs.versions.min.sdk.get().toInt()
     }
-
-    iosArm64()
-    iosSimulatorArm64()
-    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain.dependencies {

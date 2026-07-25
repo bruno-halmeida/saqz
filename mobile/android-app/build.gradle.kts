@@ -70,12 +70,9 @@ val prodApiBaseUrl = environmentProperty(
 
 android {
     namespace = "br.com.saqz.androidapp"
-    compileSdk = libs.versions.compile.sdk.get().toInt()
 
     defaultConfig {
         applicationId = "app.saqz"
-        minSdk = libs.versions.min.sdk.get().toInt()
-        targetSdk = libs.versions.compile.sdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -173,19 +170,15 @@ dependencies {
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(project(":features:access"))
     testImplementation(project(":core:domain"))
-    testImplementation("org.jetbrains.compose.components:components-resources:1.11.1")
-    testImplementation("org.jetbrains.compose.material:material:1.11.1")
-    testImplementation("org.jetbrains.compose.foundation:foundation:1.11.1")
+    testImplementation(libs.bundles.compose)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(project(":features:access"))
     androidTestImplementation(project(":features:groups"))
-    androidTestImplementation("org.jetbrains.compose.components:components-resources:1.11.1")
-    androidTestImplementation("org.jetbrains.compose.material:material:1.11.1")
-    androidTestImplementation("org.jetbrains.compose.foundation:foundation:1.11.1")
-    debugImplementation("androidx.compose.ui:ui-test-manifest:1.11.2")
+    androidTestImplementation(libs.bundles.compose)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 fun firebaseAndroidConfig(

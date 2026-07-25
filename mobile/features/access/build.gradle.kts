@@ -11,25 +11,14 @@ plugins {
 kotlin {
     android {
         namespace = "br.com.saqz.access.feature"
-        compileSdk = libs.versions.compile.sdk.get().toInt()
-        minSdk = libs.versions.min.sdk.get().toInt()
     }
-
-    iosArm64()
-    iosSimulatorArm64()
-    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain.dependencies {
             api(project(":features:access:domain"))
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
-            implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
-            implementation("org.jetbrains.compose.material:material:1.11.1")
-            implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
-            implementation("org.jetbrains.compose.components:components-resources:1.11.1")
+            implementation(libs.bundles.compose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.lifecycle.viewmodel.compose)
@@ -40,7 +29,7 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
-            implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
+            implementation(libs.compose.ui.test)
             implementation(libs.kotlinx.serialization.json)
         }
     }
