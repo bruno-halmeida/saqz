@@ -21,5 +21,7 @@ Os drawables vetoriais da marca são derivados, sem redesenho, do SVG da landing
   preserva o `fill-rule="evenodd"` original.
 - Nenhum path é redesenhado, rasterizado ou recolorido, e nenhum asset é buscado
   em runtime.
-- O verificador `tests/scripts/check-mobile-brand-assets.test.sh` reprova qualquer
-  divergência de hash da fonte, viewBox, pathData, cor ou output ausente.
+- O verificador `tests/scripts/check-mobile-brand-assets.test.sh` foi removido com a
+  CI antiga. O SHA-256 da fonte era
+  `0c732546309e7143f60203472c368a3cebbb3a53721f142898724023aa33a473`; use-o ao
+  reconstruir o gate de divergência (hash da fonte, viewBox, pathData, cor, output ausente).

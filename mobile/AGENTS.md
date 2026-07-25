@@ -14,8 +14,8 @@ e este arquivo é o bug.
 
 As decisões vivas moram no Linear, não no repositório: **[Architecture Decisions (ADs) — estado
 vivo](https://linear.app/vulkz/document/architecture-decisions-ads-estado-vivo-f94c40811c16)**.
-Não existe mais `.specs/` nem `AGENTS.md` na raiz — `scripts/check-scope` bloqueia a reintrodução
-dos dois.
+Não existe mais `.specs/` nem `AGENTS.md` na raiz. O gate que bloqueava a reintrodução dos dois
+(`scripts/check-scope`) foi removido com a CI antiga e ainda não tem substituto.
 
 ### O que o reset fez
 
@@ -47,7 +47,7 @@ domínio, dados, rede e as integrações nativas. Depois do login o usuário cai
 **Não existe `:navigation`.** O módulo raiz de `groups` **não tem apresentação** — guarda só
 contratos e ports; o domínio e os gateways estão intactos, esperando as jornadas novas.
 
-### Regras de dependência (aplicadas por gate)
+### Regras de dependência (hoje sem gate)
 
 | De | Pode depender de |
 |---|---|
@@ -56,8 +56,9 @@ contratos e ports; o domínio e os gateways estão intactos, esperando as jornad
 | `<x>` (raiz) | `<x>:domain`, `:core:domain`, `:core:common`, Compose, Nav3 runtime |
 | `:compose-app` | tudo — único módulo que enxerga `:features:*:data` |
 
-Nenhuma feature depende de outra. `scripts/check-mobile-boundaries` descobre a lista de features no
-disco e cruza todas contra todas — feature nova entra no gate sem editar o script.
+Nenhuma feature depende de outra. O gate que verificava isso (`scripts/check-mobile-boundaries`,
+que descobria as features no disco e cruzava todas contra todas) foi removido com a CI antiga.
+Até existir substituto, a tabela acima depende de disciplina.
 
 Version catalog (`gradle/libs.versions.toml`) para **toda** versão. Config não-trivial vira
 convention plugin em `:build-logic` (`saqz.kmp-compose-library`, `saqz.android-application`,
@@ -192,8 +193,9 @@ Regras que continuam:
   interativo, `null` no decorativo.
 - **`@Preview` por Screen**, com dado realista.
 - **Strings em PT-BR** via `composeResources`.
-- `scripts/check-design-tokens` mantém um **teto** de `dp` e `Color(0x…)` crus em
-  `mobile/features/*/src/commonMain`. O teto só desce; código novo não sobe o número.
+- `dp` e `Color(0x…)` crus em `mobile/features/*/src/commonMain` são proibidos por convenção. O
+  gate com teto (`scripts/check-design-tokens`) foi removido com a CI antiga; o último teto medido
+  era 258 `dp` crus e 2 cores cruas, útil como ponto de partida ao reconstruir.
 
 ---
 
@@ -310,16 +312,22 @@ caminho triste. `SavedStateHandle` se instancia direto, sem mock.
 
 ## 11. Gates antes de abrir PR
 
+A CI antiga (`scripts/` + workflows de gate) foi removida para ser redesenhada do zero. Até a nova
+existir, rode as tasks direto:
+
 ```sh
-scripts/check-gradle          # backend + mobile + detekt + instrumentado
-scripts/test-scripts          # suíte dos próprios scripts — obrigatória se você mexeu em scripts/
+mobile/gradlew -p mobile detektAll                                  # lint
+mobile/gradlew -p mobile :android-app:testDevDebugUnitTest          # testes que rodam na JVM
+mobile/gradlew -p mobile :android-app:connectedDevDebugAndroidTest  # precisa de emulador
 ```
 
-`check-gradle` encadeia, entre outros: `check-credentials`, `check-scope`,
-`check-mobile-boundaries`, `check-design-tokens`, `allTests` de todos os módulos, `detektAll`,
-`connectedDevDebugAndroidTest`, e falha se alguma suíte reportar zero teste descoberto.
-
 Local: JDK 21, `DOCKER_HOST` do Colima, emulador `Saqz_API_30` ligado.
+
+Atenção ao redesenhar: `allTests` é NO-SOURCE em todos os módulos `core/*` e `features/*`, porque o
+plugin `com.android.kotlin.multiplatform.library` desabilita host tests por padrão e nenhum módulo
+faz opt-in com `withHostTest { }`. Os arquivos de `commonTest` só rodam como
+`iosSimulatorArm64Test`, em macOS — num runner Linux a suíte inteira de `core/*` e `features/*`
+passa sem executar nada.
 
 Detekt usa **baseline por módulo**: dívida antiga congelada, código novo falha. **Não regenere
 baseline para calar erro seu.** Quando a regeneração é legítima (o código baselinado foi apagado),

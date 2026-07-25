@@ -5,26 +5,24 @@ de jogos, presença, escalação e cobrança mensal dos membros. O app é feito 
 Compose Multiplatform (Android e iOS), com um backend Kotlin/Spring Boot como
 fonte autoritativa dos dados e uma landing page estática para pré-lançamento.
 
-O monorepo tem workspaces independentes — `mobile/`, `backend/` e a landing —
-cada um com seus próprios gates de CI.
+O monorepo tem workspaces independentes — `mobile/`, `backend/` e a landing.
 
 ## Como rodar
 
-- JDK 21 (`scripts/check-ios` usa `SAQZ_JAVA_HOME` para apontar o JDK certo).
+- JDK 21.
 - Docker via Colima, com `DOCKER_HOST` configurado — os testes de integração
   do backend sobem PostgreSQL via Testcontainers.
 - Node para o `firebase-tools` usado pelo ambiente de dev local.
 
-Gates locais em `scripts/`:
-
 ```bash
-./scripts/check-all      # todos os gates
-./scripts/check-gradle   # build + testes JVM/Android (pesado, precisa de emulador)
-./scripts/check-ios      # build + testes iOS
+backend/gradlew -p backend check      # build + testes do backend
+mobile/gradlew -p mobile detektAll    # lint do mobile
 ```
 
-Veja os demais scripts em `scripts/` para gates específicos (design tokens,
-boundaries, credenciais, etc.).
+> **CI em reconstrução.** Os gates de shell em `scripts/` e os workflows de gate
+> foram removidos para serem redesenhados do zero. Só `deploy-pages.yml`
+> permanece. Até a nova CI existir, nada é verificado automaticamente em PR —
+> nem boundaries de módulo, nem design tokens, nem varredura de credenciais.
 
 ## Specs e tasks
 
