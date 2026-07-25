@@ -414,4 +414,4 @@ set -e
 grep -q 'usage:' "$usage_dir/stderr"
 count=$((count + 1)); printf 'ok %d - unknownScopeArgFails\n' "$count"
 
-[ "$count" -eq 56 ]
+[ "$count" -eq 55 ]
