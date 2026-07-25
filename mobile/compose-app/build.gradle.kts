@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+
 plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose)
@@ -11,16 +13,11 @@ plugins {
 kotlin {
     android {
         namespace = "br.com.saqz.composeapp"
-        compileSdk = libs.versions.compile.sdk.get().toInt()
-        minSdk = libs.versions.min.sdk.get().toInt()
     }
 
-    iosArm64()
-    iosSimulatorArm64()
-    applyDefaultHierarchyTemplate()
-
-    listOf(iosArm64(), iosSimulatorArm64()).forEach {
-        it.binaries.framework {
+    // Os targets iOS vêm do saqz.kmp-library; aqui só o framework que eles publicam.
+    targets.withType<KotlinNativeTarget>().configureEach {
+        binaries.framework {
             baseName = "SaqzMobile"
             isStatic = true
             export(project(":features:access"))
@@ -40,13 +37,8 @@ kotlin {
             implementation(project(":core:common"))
             implementation(project(":core:domain"))
             implementation(project(":core:network"))
-            implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
-            implementation("org.jetbrains.compose.material:material:1.11.1")
-            implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui-backhandler:1.11.1")
-            implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
-            implementation("org.jetbrains.compose.components:components-resources:1.11.1")
+            implementation(libs.bundles.compose)
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.navigation3.runtime)
             implementation(libs.navigation3.ui)
             implementation(libs.lifecycle.viewmodel.compose)
@@ -61,7 +53,7 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.ktor.client.mock)
             implementation(libs.kotlinx.coroutines.test)
-            implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
+            implementation(libs.compose.ui.test)
             implementation(libs.koin.test)
         }
     }
