@@ -78,8 +78,8 @@ pass_case clean-repository
 
 inject_dependency_case presentation-to-data-edge \
     'presentation depends on its own data module' \
-    mobile/features/groups/build.gradle.kts \
-    'implementation(project(\":features:groups:data\"))'
+    mobile/features/access/build.gradle.kts \
+    'implementation(project(\":features:access:data\"))'
 
 inject_dependency_case presentation-to-network-edge \
     'presentation depends on core:network' \
@@ -111,12 +111,14 @@ inject_dependency_case data-to-presentation-edge \
     mobile/features/groups/data/build.gradle.kts \
     'implementation(project(\":features:groups\"))'
 
-inject_dependency_case access-to-groups-edge \
+# Ambas as direções: o cross-check sai de um loop sobre as features descobertas no
+# disco (VUL-37), então tem de ser simétrico sem nomear nenhum par.
+inject_dependency_case cross-feature-edge-from-access \
     'presentation depends on the other feature' \
     mobile/features/access/build.gradle.kts \
     'implementation(project(\":features:groups\"))'
 
-inject_dependency_case groups-to-access-edge \
+inject_dependency_case cross-feature-edge-from-groups \
     'presentation depends on the other feature' \
     mobile/features/groups/build.gradle.kts \
     'implementation(project(\":features:access\"))'
@@ -132,4 +134,9 @@ fail_case compatibility-adapter-path 'compatibility adapter path found' sh -c \
 fail_case presentation-json-engine-import 'access presentation imports the serialization transport engine' sh -c \
     "mkdir -p mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/leak && printf 'package br.com.saqz.access.leak\n\nimport kotlinx.serialization.json.Json\n' >mobile/features/access/src/commonMain/kotlin/br/com/saqz/access/leak/JsonLeak.kt"
 
-[ "$count" -eq 13 ]
+# A feature nasce no disco e já entra no gate sem editar o script — é isto que a
+# descoberta por `find` compra sobre a lista hardcoded que existia antes do VUL-37.
+fail_case discovered-feature-covered 'presentation depends on core:network' sh -c \
+    "mkdir -p mobile/features/games && printf 'kotlin {\n    sourceSets {\n        commonMain.dependencies {\n            implementation(project(\":core:network\"))\n        }\n    }\n}\n' >mobile/features/games/build.gradle.kts"
+
+[ "$count" -eq 14 ]
