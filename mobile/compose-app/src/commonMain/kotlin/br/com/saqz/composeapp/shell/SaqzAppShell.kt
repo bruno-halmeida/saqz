@@ -17,8 +17,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.shell_logout
 import br.com.saqz.composeapp.resources.shell_signed_in
-import br.com.saqz.designsystem.component.SaqzButton
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.SaqzButton
+import br.com.saqz.access.ui.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
 internal const val SaqzShellContentTag = "saqz-shell-content"

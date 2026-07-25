@@ -19,7 +19,7 @@ class ResourcePreflightTest {
             Text(stringResource(ResourcePreflight.sentinelString))
         }
 
-        onNodeWithText("Preflight Sentinel").assertIsDisplayed()
+        onNodeWithText("Saqz").assertIsDisplayed()
     }
 
     @Test

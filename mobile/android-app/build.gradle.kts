@@ -95,7 +95,7 @@ android {
         // Package the pinned Inter OFL license into the test APK so the
         // instrumented checksum test verifies the same file kept for attribution.
         getByName("androidTest").assets.srcDir(
-            rootProject.file("core/design-system/THIRD_PARTY_LICENSES"),
+            rootProject.file("features/access/THIRD_PARTY_LICENSES"),
         )
     }
 
@@ -171,7 +171,7 @@ dependencies {
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.compose.ui.test.junit4)
-    testImplementation(project(":core:design-system"))
+    testImplementation(project(":features:access"))
     testImplementation(project(":core:domain"))
     testImplementation("org.jetbrains.compose.components:components-resources:1.11.1")
     testImplementation("org.jetbrains.compose.material:material:1.11.1")
@@ -180,7 +180,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.compose.ui.test.junit4)
-    androidTestImplementation(project(":core:design-system"))
+    androidTestImplementation(project(":features:access"))
     androidTestImplementation(project(":features:groups"))
     androidTestImplementation("org.jetbrains.compose.components:components-resources:1.11.1")
     androidTestImplementation("org.jetbrains.compose.material:material:1.11.1")

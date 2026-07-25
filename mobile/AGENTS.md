@@ -26,12 +26,6 @@ domínio, dados, rede e as integrações nativas. Depois do login o usuário cai
 - **AD-030** (fronteiras `presentation → domain ← data`) foi **mantido** — o reset não mexeu nas
   fronteiras de compilação.
 
-> **Nota de transição.** Este texto descreve o estado alvo pós-[VUL-36](https://linear.app/vulkz/issue/VUL-36):
-> sem `:core:design-system`, com o mínimo visual inlinado em `features/access`. Enquanto essa PR não
-> pousar, `:core:design-system` ainda existe no grafo e `features/access` ainda importa
-> `br.com.saqz.designsystem.*`. A regra do §5 (componente nasce na jornada) já vale para código
-> novo.
-
 ---
 
 ## 1. Módulos

@@ -6,8 +6,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import br.com.saqz.designsystem.resources.Res
-import br.com.saqz.designsystem.resources.preflight_sentinel
+import br.com.saqz.access.resources.Res
+import br.com.saqz.access.resources.access_brand
+import br.com.saqz.access.resources.saqz_lettering
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.junit.Rule
@@ -20,17 +21,17 @@ class ResourcePackagingTest {
     @Test
     fun apkRendersSentinelString() {
         composeRule.setContent {
-            Text(stringResource(Res.string.preflight_sentinel))
+            Text(stringResource(Res.string.access_brand))
         }
 
-        composeRule.onNodeWithText("Preflight Sentinel").assertIsDisplayed()
+        composeRule.onNodeWithText("Saqz").assertIsDisplayed()
     }
 
     @Test
     fun apkRendersSentinelDrawable() {
         composeRule.setContent {
             Image(
-                painter = painterResource(Res.drawable.preflight_sentinel),
+                painter = painterResource(Res.drawable.saqz_lettering),
                 contentDescription = "apk-sentinel",
             )
         }

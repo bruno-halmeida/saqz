@@ -34,6 +34,9 @@
     <string name="phone_submit">Continuar</string>
     <string name="bootstrap_error">Nao foi possivel carregar sua conta</string>
     <string name="action_retry">Tentar novamente</string>
+    <string name="state_loading">Carregando</string>
+    <string name="action_show_password">Mostrar senha</string>
+    <string name="action_hide_password">Ocultar senha</string>
     <string name="groups_empty">Voce ainda nao participa de um grupo</string>
     <string name="groups_select">Escolha um grupo</string>
     <string name="groups_create">Criar grupo</string>

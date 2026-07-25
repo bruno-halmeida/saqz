@@ -9,9 +9,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.action_retry
 import br.com.saqz.access.resources.bootstrap_error
-import br.com.saqz.designsystem.component.SaqzButton
-import br.com.saqz.designsystem.component.SaqzLoadingState
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

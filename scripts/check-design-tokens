@@ -15,11 +15,17 @@ fail() {
 # lower the matching ceiling here so the gate keeps the progress.
 # 258 -> 66 em 2026-07-24 (VUL-30): a apresentação de groups saiu com 192 dp cruas.
 # 66 -> 24 em 2026-07-24 (VUL-37): pós-onda C todo o orçamento restante é do LoginScreen.kt.
-raw_dp_ceiling=24
+# 24 -> 32 em 2026-07-24 (VUL-36): SaqzButton/SaqzInput vieram do :core:design-system
+# apagado e trouxeram para dentro de features/ as dp cruas que já tinham lá.
+raw_dp_ceiling=32
 raw_color_ceiling=2
 
+# O registro de tokens (access/ui/theme) é onde dp e hex são a definição, não uma
+# violação — é ele que as telas devem consumir. Excluído da varredura desde que o
+# :core:design-system foi apagado e o registro passou a morar dentro da feature (VUL-36).
 feature_common_main() {
-    find "$repository_root/mobile/features" -path '*/src/commonMain/*' -name '*.kt' -not -path '*/build/*'
+    find "$repository_root/mobile/features" -path '*/src/commonMain/*' -name '*.kt' \
+        -not -path '*/build/*' -not -path '*/access/ui/theme/*'
 }
 
 raw_dp_count=$(feature_common_main | xargs grep -Eoh '[0-9]+\.dp' 2>/dev/null | wc -l | tr -d ' ')

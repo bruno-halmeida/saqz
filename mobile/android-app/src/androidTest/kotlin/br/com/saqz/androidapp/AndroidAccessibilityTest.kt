@@ -13,8 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
-import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.designsystem.theme.saqzFontFamily
+import br.com.saqz.access.ui.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.saqzFontFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

@@ -25,8 +25,8 @@ import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_invalid_credentials
-import br.com.saqz.designsystem.text.UiText
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.presentation.UiText
+import br.com.saqz.access.ui.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

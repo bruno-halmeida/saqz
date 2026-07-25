@@ -47,14 +47,14 @@ final class LaunchContractTests: XCTestCase {
         let symbol = mobileRoot.appendingPathComponent(
             "ios-app/SaqzIOS/Assets.xcassets/LaunchSymbol.imageset/saqz-symbol.svg"
         )
-        let designSystemSymbol = mobileRoot.appendingPathComponent(
-            "core/design-system/src/commonMain/composeResources/drawable/saqz_symbol.xml"
+        let brandSymbol = mobileRoot.appendingPathComponent(
+            "features/access/src/commonMain/composeResources/drawable/saqz_symbol.xml"
         )
         let symbolPaths = pathData(in: try String(contentsOf: symbol, encoding: .utf8))
-        let designSystemPaths = pathData(in: try String(contentsOf: designSystemSymbol, encoding: .utf8))
+        let brandPaths = pathData(in: try String(contentsOf: brandSymbol, encoding: .utf8))
         // The launch symbol reuses the exact mobile brand path data, derived and never redrawn.
-        XCTAssertEqual(designSystemPaths.count, 3)
-        for path in designSystemPaths {
+        XCTAssertEqual(brandPaths.count, 3)
+        for path in brandPaths {
             XCTAssertTrue(symbolPaths.contains(path), "launch symbol must reuse the mobile brand path data")
         }
     }

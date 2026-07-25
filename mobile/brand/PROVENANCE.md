@@ -12,8 +12,8 @@ Os drawables vetoriais da marca são derivados, sem redesenho, do SVG da landing
 
 | Arquivo | viewBox | Conteúdo |
 | --- | --- | --- |
-| `mobile/core/design-system/src/commonMain/composeResources/drawable/saqz_wordmark.xml` | `0 0 1200 360` | Wordmark completo: os três paths do SVG, pathData e cores idênticos. |
-| `mobile/core/design-system/src/commonMain/composeResources/drawable/saqz_symbol.xml` | `0 0 360 360` | Símbolo quadrado: mesmos paths, recortados pelo viewBox `360x360`. |
+| `mobile/features/access/src/commonMain/composeResources/drawable/saqz_wordmark.xml` | `0 0 1200 360` | Wordmark completo: os três paths do SVG, pathData e cores idênticos. |
+| `mobile/features/access/src/commonMain/composeResources/drawable/saqz_symbol.xml` | `0 0 360 360` | Símbolo quadrado: mesmos paths, recortados pelo viewBox `360x360`. |
 
 ## Regras
 
