@@ -232,7 +232,9 @@ final class IOSSetupDraftAdapter: GroupDraftStorePort {
         case .unsupportedSchema: done(GroupDraftReadResultFailure(reason: .unsupportedSchema))
         }
     }
-    func write(draft: GroupSetupDraft, done: @escaping (any GroupDraftWriteResult) -> Void) { done(store.writeSetup(draft) ? GroupDraftWriteResultSuccess.shared : GroupDraftWriteResultFailure(reason: .unavailable)) }
+    // Os rótulos `done__`/`done_`/`done___` são o mangling de overload do exportador
+    // ObjC do Kotlin/Native. O header gerado do SaqzMobile é a fonte da verdade.
+    func write(draft: GroupSetupDraft, done__ done: @escaping (any GroupDraftWriteResult) -> Void) { done(store.writeSetup(draft) ? GroupDraftWriteResultSuccess.shared : GroupDraftWriteResultFailure(reason: .unavailable)) }
     func clear(key: GroupDraftKey, commandKey: String, done: @escaping (any GroupDraftWriteResult) -> Void) { done(store.clearSetup(key, commandKey: commandKey) ? GroupDraftWriteResultSuccess.shared : GroupDraftWriteResultFailure(reason: .unavailable)) }
 }
 
@@ -242,7 +244,7 @@ final class IOSGameDraftAdapter: GameDraftStorePort {
     func read(groupId: String, resourceId: String?, done: @escaping (any GameDraftReadResult) -> Void) {
         switch store.readGame(groupID: groupId, resourceID: resourceId) { case .success(let value): done(GameDraftReadResultSuccess(draft: value)); case .missing: done(GameDraftReadResultSuccess(draft: nil)); default: done(GameDraftReadResultFailure.shared) }
     }
-    func write(draft: GameEditorDraft, done___: @escaping (any GameDraftWriteResult) -> Void) { done___(store.writeGame(draft) ? GameDraftWriteResultSuccess.shared : GameDraftWriteResultFailure.shared) }
+    func write(draft: GameEditorDraft, done_ done: @escaping (any GameDraftWriteResult) -> Void) { done(store.writeGame(draft) ? GameDraftWriteResultSuccess.shared : GameDraftWriteResultFailure.shared) }
     func clear(groupId: String, resourceId: String?, commandKey: String, done: @escaping (any GameDraftWriteResult) -> Void) { done(store.clearGame(groupID: groupId, resourceID: resourceId, commandKey: commandKey) ? GameDraftWriteResultSuccess.shared : GameDraftWriteResultFailure.shared) }
 }
 
@@ -250,7 +252,7 @@ final class IOSMonthlyDraftAdapter: MonthlyChargeDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
     func read(groupId: String, done: @escaping (any MonthlyDraftReadResult) -> Void) { switch store.readMonthly(groupID: groupId) { case .success(let value): done(MonthlyDraftReadResultSuccess(draft: value)); case .missing: done(MonthlyDraftReadResultSuccess(draft: nil)); default: done(MonthlyDraftReadResultFailure.shared) } }
-    func write(draft: MonthlyChargeDraft, done_: @escaping (any MonthlyDraftWriteResult) -> Void) { done_(store.writeMonthly(draft) ? MonthlyDraftWriteResultSuccess.shared : MonthlyDraftWriteResultFailure.shared) }
+    func write(draft: MonthlyChargeDraft, done___ done: @escaping (any MonthlyDraftWriteResult) -> Void) { done(store.writeMonthly(draft) ? MonthlyDraftWriteResultSuccess.shared : MonthlyDraftWriteResultFailure.shared) }
     func clear(groupId: String, commandKey: String, done: @escaping (any MonthlyDraftWriteResult) -> Void) { done(store.clearMonthly(groupID: groupId, commandKey: commandKey) ? MonthlyDraftWriteResultSuccess.shared : MonthlyDraftWriteResultFailure.shared) }
 }
 
@@ -258,7 +260,7 @@ final class IOSExpenseDraftAdapter: ExpenseDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
     func read(groupId: String, expenseId: String?, done: @escaping (any ExpenseDraftReadResult) -> Void) { switch store.readExpense(groupID: groupId, resourceID: expenseId) { case .success(let value): done(ExpenseDraftReadResultSuccess(draft: value)); case .missing: done(ExpenseDraftReadResultSuccess(draft: nil)); default: done(ExpenseDraftReadResultFailure.shared) } }
-    func write(draft: ExpenseDraft, done__: @escaping (any ExpenseDraftWriteResult) -> Void) { done__(store.writeExpense(draft) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
+    func write(draft: ExpenseDraft, done: @escaping (any ExpenseDraftWriteResult) -> Void) { done(store.writeExpense(draft) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
     func clear(groupId: String, expenseId: String?, commandKey: String, done: @escaping (any ExpenseDraftWriteResult) -> Void) { done(store.clearExpense(groupID: groupId, resourceID: expenseId, commandKey: commandKey) ? ExpenseDraftWriteResultSuccess.shared : ExpenseDraftWriteResultFailure.shared) }
 }
 
