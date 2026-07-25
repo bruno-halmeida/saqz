@@ -34,8 +34,6 @@ private val commonModules = listOf(
     accessDataModule,
     accessInvalidationModule,
     accessPresentationModule,
-    groupsDataModule,
-    groupsPresentationModule,
     composePresentationModule,
 )
 

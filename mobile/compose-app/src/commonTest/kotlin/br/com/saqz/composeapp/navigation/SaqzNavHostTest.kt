@@ -1,106 +1,102 @@
 package br.com.saqz.composeapp.navigation
 
-import androidx.compose.ui.test.ComposeUiTest
-import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.runComposeUiTest
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.rememberNavBackStack
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.domain.port.NativeUser
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessUser
+import br.com.saqz.access.navigation.AccessRoute
+import br.com.saqz.access.presentation.SessionAccessState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-@OptIn(ExperimentalTestApi::class)
+/**
+ * The C1 session gate: every [SessionAccessState] resolves to exactly one destination, and
+ * `Ready` is the only one that reaches the shell. Exhaustive by construction — a new state
+ * fails `toDestination`'s `when` at compile time and shows up missing here.
+ */
 class SaqzNavHostTest {
 
-    private fun runNav(block: ComposeUiTest.(NavBackStack<NavKey>) -> Unit) =
-        runComposeUiTest {
-            lateinit var backStack: NavBackStack<NavKey>
-            setContent {
-                SaqzTheme {
-                    backStack = rememberNavBackStack(saqzLocalNavConfiguration, SaqzDestination.Home)
-                    SaqzNavHost(backStack = backStack)
-                }
-            }
-            waitForIdle()
-            block(backStack)
-        }
+    private fun stackFor(session: SessionAccessState): List<NavKey> =
+        mutableListOf<NavKey>(AccessRoute.Starting)
+            .also { reconcileAccessStack(it, session) }
 
     @Test
-    fun startsAtHome() = runNav { nav ->
-        assertEquals(SaqzDestination.Home, nav.last(), "start destination must be Home")
+    fun signedOutRoutesToLogin() {
+        assertEquals(listOf(AccessRoute.Login), stackFor(SessionAccessState.SignedOut))
     }
 
     @Test
-    fun exploreOpensCatalog() = runNav { nav ->
-        onNodeWithText("Explorar componentes").performClick()
-        waitForIdle()
-        assertEquals(SaqzDestination.Catalog, nav.last(), "explore action must open Catalog")
+    fun awaitingVerificationRoutesToVerification() {
+        assertEquals(
+            listOf(AccessRoute.Verification),
+            stackFor(SessionAccessState.AwaitingVerification(user)),
+        )
     }
 
     @Test
-    fun backReturnsHome() = runNav { nav ->
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-        waitForIdle()
-        runOnIdle { nav.popTopLevel() }
-        waitForIdle()
-        assertEquals(SaqzDestination.Home, nav.last(), "back from Catalog must return to Home")
+    fun completingNameRoutesToNameCompletion() {
+        assertEquals(
+            listOf(AccessRoute.NameCompletion),
+            stackFor(SessionAccessState.CompletingName(user)),
+        )
     }
 
     @Test
-    fun homeReselectionIsIdempotent() = runNav { nav ->
-        val before = nav.size
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Home) }
-        waitForIdle()
-        assertEquals(SaqzDestination.Home, nav.last())
-        assertEquals(before, nav.size, "reselecting Home must not add an entry")
+    fun completingPhoneRoutesToPhoneCompletion() {
+        assertEquals(
+            listOf(AccessRoute.PhoneCompletion),
+            stackFor(SessionAccessState.CompletingPhone(session)),
+        )
     }
 
     @Test
-    fun catalogReselectionIsIdempotent() = runNav { nav ->
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-        waitForIdle()
-        val before = nav.size
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-        waitForIdle()
-        assertEquals(SaqzDestination.Catalog, nav.last())
-        assertEquals(before, nav.size, "reselecting Catalog must not add an entry")
+    fun bootstrapStatesRouteToBootstrap() {
+        assertEquals(listOf(AccessRoute.Bootstrap), stackFor(SessionAccessState.Bootstrapping))
+        assertEquals(listOf(AccessRoute.Bootstrap), stackFor(SessionAccessState.BootstrapError))
     }
 
     @Test
-    fun repeatedSequenceHasNoDuplicates() = runNav { nav ->
-        repeat(3) {
-            runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-            waitForIdle()
-            runOnIdle { nav.navigateTopLevel(SaqzDestination.Home) }
-            waitForIdle()
-        }
-        // Back at Home with a single live destination entry — no accumulation.
-        assertEquals(SaqzDestination.Home, nav.last())
-        assertEquals(1, nav.size, "repeated navigation must keep one live entry")
+    fun readyRoutesToTheEmptyShell() {
+        assertEquals(listOf(SaqzShellDestination), stackFor(SessionAccessState.Ready(session)))
+    }
+
+    // VUL-35: registration and password reset are gone, so signed-out has no sub-route
+    // left to stack on top of Login -- the access stack is never deeper than one entry.
+    @Test
+    fun everySessionStateResolvesToASingleEntry() {
+        listOf(
+            SessionAccessState.SignedOut,
+            SessionAccessState.AwaitingVerification(user),
+            SessionAccessState.CompletingName(user),
+            SessionAccessState.CompletingPhone(session),
+            SessionAccessState.Bootstrapping,
+            SessionAccessState.BootstrapError,
+            SessionAccessState.Ready(session),
+        ).forEach { state -> assertEquals(1, stackFor(state).size) }
     }
 
     @Test
-    fun restoreReturnsSelectedDestination() = runNav { nav ->
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-        waitForIdle()
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Home) }
-        waitForIdle()
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-        waitForIdle()
-        assertEquals(SaqzDestination.Catalog, nav.last(), "reselecting must return the Catalog destination")
+    fun reconcilingAnAlreadyMatchingStackIsANoOp() {
+        val stack = mutableListOf<NavKey>(AccessRoute.Login)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
+        assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }
 
-    @Test
-    fun reachableDestinationsAreExactlyHomeAndCatalog() = runNav { nav ->
-        runOnIdle { nav.navigateTopLevel(SaqzDestination.Catalog) }
-        waitForIdle()
-        assertEquals<Set<NavKey>>(
-            setOf(SaqzDestination.Home, SaqzDestination.Catalog),
-            nav.toSet(),
-            "local graph must contain exactly Home and Catalog",
+    private companion object {
+        val user = NativeUser(
+            subject = "user-1",
+            email = "atleta@example.test",
+            emailVerified = true,
+            displayName = "Atleta",
+        )
+        val session = AccessSession(
+            user = AccessUser(
+                id = "user-1",
+                email = "atleta@example.test",
+                displayName = "Atleta",
+            ),
+            memberships = emptyList(),
         )
     }
 }

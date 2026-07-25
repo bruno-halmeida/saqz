@@ -6,6 +6,18 @@ import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
+private val idLines = Regex("<ID>.*?</ID>")
+
+private fun baselineDocument(ids: List<String>) = buildString {
+    appendLine("""<?xml version="1.0" ?>""")
+    appendLine("<SmellBaseline>")
+    appendLine("  <ManuallySuppressedIssues/>")
+    appendLine("  <CurrentIssues>")
+    ids.forEach { id -> appendLine("    $id") }
+    appendLine("  </CurrentIssues>")
+    appendLine("</SmellBaseline>")
+}
+
 class DetektConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
@@ -28,8 +40,20 @@ class DetektConventionPlugin : Plugin<Project> {
                 }
             }
 
+            // Um baseline parcial por source set. Antes todas as ~12 tasks escreviam
+            // direto em `detekt-baseline.xml` e detekt não faz merge: a última a rodar
+            // sobrescrevia as outras, então `detektBaselineAll` devolvia um baseline
+            // quase vazio e o `detektAll` seguinte ficava vermelho (VUL-37).
+            val partialBaselines = layout.buildDirectory.dir("detekt-baselines")
+            val moduleBaseline = file("detekt-baseline.xml")
+
             tasks.withType(DetektCreateBaselineTask::class.java).configureEach {
-                baseline.set(file("detekt-baseline.xml"))
+                if (name == "detektBaseline") {
+                    // Contrato `--baseline` do detekt: alvo único, sem source set.
+                    baseline.set(moduleBaseline)
+                } else {
+                    baseline.set(partialBaselines.map { dir -> dir.file("$name.xml") })
+                }
             }
 
             // Código gerado (accessors de resources do CMP) não é nosso para corrigir.
@@ -51,6 +75,22 @@ class DetektConventionPlugin : Plugin<Project> {
                 val baselineTasks = tasks.withType(DetektCreateBaselineTask::class.java)
                     .matching { it.name != "detektBaseline" }
                 dependsOn(baselineTasks)
+                doLast {
+                    // Une os parciais num baseline por módulo. Copia a linha <ID> crua
+                    // para preservar o escape XML que o detekt já aplicou.
+                    // ponytail: parcial de source set que deixou de existir só sai com
+                    // `clean`; se o grafo KMP mudar de targets, limpe antes de regerar.
+                    val ids = (partialBaselines.get().asFile.listFiles() ?: emptyArray())
+                        .filter { partial -> partial.extension == "xml" }
+                        .flatMap { partial -> idLines.findAll(partial.readText()).map { it.value } }
+                        .distinct()
+                        .sorted()
+                    if (ids.isEmpty()) {
+                        moduleBaseline.delete()
+                    } else {
+                        moduleBaseline.writeText(baselineDocument(ids))
+                    }
+                }
             }
         }
     }

@@ -27,7 +27,7 @@ fun MainViewController(
     if (NSProcessInfo.processInfo.arguments.contains("-saqzResourcePreflight")) {
         ResourcePreflightScreen()
     } else {
-        accessibilityController.Content(dependencies)
+        accessibilityController.Content()
     }
     }
 }

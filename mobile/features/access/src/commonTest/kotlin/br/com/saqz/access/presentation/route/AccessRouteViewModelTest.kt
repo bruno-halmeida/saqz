@@ -64,7 +64,7 @@ class AccessRouteViewModelTest {
             )
             val viewModel = AccessRouteViewModel(AccessRouteMode.STARTING, machine)
 
-            machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverifiedUser)))
+            machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverifiedUser)))
             runCurrent()
 
             assertEquals(AccessRouteState.Starting, viewModel.state.value)

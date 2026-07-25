@@ -9,7 +9,6 @@ import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_provider
 import br.com.saqz.access.resources.auth_error_unknown
 import br.com.saqz.access.resources.auth_error_weak_password
-import br.com.saqz.designsystem.text.UiText
 
 fun AuthUiError.message(): UiText = when (this) {
     AuthUiError.INVALID_CREDENTIALS -> UiText.Res(Res.string.auth_error_invalid_credentials)

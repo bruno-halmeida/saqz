@@ -66,7 +66,7 @@ class SessionAccessStateMachineTest {
     @Test
     fun `already verified reload keeps unverified account blocked`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
         fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Success(unverified))
@@ -79,7 +79,7 @@ class SessionAccessStateMachineTest {
     @Test
     fun `verified reload forces token refresh`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
         fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Success(verified))
@@ -90,7 +90,7 @@ class SessionAccessStateMachineTest {
     @Test
     fun `forced token success continues bootstrap`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
         fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Success(verified))
@@ -104,7 +104,7 @@ class SessionAccessStateMachineTest {
     @Test
     fun `reload failure ends loading without bootstrap`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
         fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
@@ -118,7 +118,7 @@ class SessionAccessStateMachineTest {
     @Test
     fun `resend verification maps provider feedback without bootstrap`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
         fixture.machine.onIntent(SessionIntent.ResendVerification)
         fixture.auth.completeOperation(OperationResult.Success)
@@ -258,7 +258,7 @@ class SessionAccessStateMachineTest {
     @Test
     fun `duplicate verification confirmation is single flight`() = runTest {
         val fixture = fixture(this)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.VerificationRequired(unverified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
 
         fixture.machine.onIntent(SessionIntent.ConfirmVerification)
         fixture.machine.onIntent(SessionIntent.ConfirmVerification)

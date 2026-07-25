@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.designsystem.text.asString
+import br.com.saqz.access.presentation.asString
 import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.Res
@@ -61,25 +61,16 @@ import br.com.saqz.access.resources.login_google
 import br.com.saqz.access.resources.login_headline_emphasis
 import br.com.saqz.access.resources.login_headline_first
 import br.com.saqz.access.resources.login_headline_second
-import br.com.saqz.access.resources.login_no_account
 import br.com.saqz.access.resources.login_password
-import br.com.saqz.access.resources.login_register
-import br.com.saqz.access.resources.login_reset
 import br.com.saqz.access.resources.login_submit
 import br.com.saqz.access.resources.login_supporting_text
 import br.com.saqz.access.resources.material_arrow_forward
-import br.com.saqz.access.resources.material_chevron_right
 import br.com.saqz.access.resources.material_lock
 import br.com.saqz.access.resources.material_mail
 import br.com.saqz.access.resources.material_sports_volleyball
+import br.com.saqz.access.resources.saqz_lettering
 import br.com.saqz.access.resources.saqz_symbol_foreground
-import br.com.saqz.designsystem.component.SaqzButton
-import br.com.saqz.designsystem.component.SaqzButtonVariant
-import br.com.saqz.designsystem.component.SaqzInput
-import br.com.saqz.designsystem.component.SaqzInputKind
-import br.com.saqz.designsystem.resources.Res as DesignRes
-import br.com.saqz.designsystem.resources.saqz_lettering
-import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.access.ui.theme.SaqzTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -123,7 +114,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(14.dp))
             Image(
-                painter = painterResource(DesignRes.drawable.saqz_lettering),
+                painter = painterResource(Res.drawable.saqz_lettering),
                 contentDescription = stringResource(Res.string.access_brand),
                 modifier = Modifier.size(width = 108.dp, height = 32.dp),
             )
@@ -179,19 +170,7 @@ fun LoginScreen(
                 leadingContent = { MaterialIcon(Res.drawable.material_lock, colors.primary) },
                 modifier = Modifier.testTag(LoginTags.Password),
             )
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                SaqzButton(
-                    label = stringResource(Res.string.login_reset),
-                    onClick = { onIntent(LoginIntent.ShowPasswordReset) },
-                    variant = SaqzButtonVariant.Ghost,
-                    enabled = !state.isLoading,
-                    labelStyle = SaqzTheme.typography.navigation.copy(
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                )
-            }
+            Spacer(Modifier.height(metrics.grid))
             state.error?.let { error ->
                 Text(
                     text = error.asString(),
@@ -214,31 +193,6 @@ fun LoginScreen(
                 label = stringResource(Res.string.login_google),
                 onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
                 enabled = !state.isLoading,
-            )
-            Spacer(Modifier.weight(0.5f))
-            Text(
-                text = stringResource(Res.string.login_no_account),
-                style = SaqzTheme.typography.caption,
-                color = colors.textSecondary,
-                textAlign = TextAlign.Center,
-            )
-            SaqzButton(
-                label = stringResource(Res.string.login_register),
-                onClick = { onIntent(LoginIntent.ShowRegistration) },
-                variant = SaqzButtonVariant.Ghost,
-                enabled = !state.isLoading,
-                labelStyle = SaqzTheme.typography.caption.copy(
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-                trailingContent = { color ->
-                    MaterialIcon(
-                        resource = Res.drawable.material_chevron_right,
-                        color = color,
-                        size = 16.dp,
-                    )
-                },
             )
         }
     }

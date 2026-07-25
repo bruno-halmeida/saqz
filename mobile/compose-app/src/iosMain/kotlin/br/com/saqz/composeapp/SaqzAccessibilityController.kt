@@ -18,9 +18,8 @@ class SaqzAccessibilityController {
     }
 
     @Composable
-    internal fun Content(dependencies: SaqzPlatformDependencies) {
+    internal fun Content() {
         SaqzApp(
-            dependencies = dependencies,
             reduceMotion = reduceMotion,
             reduceTransparency = reduceTransparency,
         )

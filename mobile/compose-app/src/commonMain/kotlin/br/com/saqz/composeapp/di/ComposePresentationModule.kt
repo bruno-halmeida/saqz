@@ -1,120 +1,27 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.composeapp.navigation.AccessOrchestrator
-import br.com.saqz.composeapp.navigation.AccessViewModel
-import br.com.saqz.composeapp.navigation.RequestIdGenerator
-import br.com.saqz.composeapp.navigation.UuidV4RequestIdGenerator
 import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.namecompletion.NameCompletionViewModel
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
-import br.com.saqz.groups.presentation.athlete.AthleteRosterViewModel
-import br.com.saqz.groups.presentation.athlete.OwnAthleteProfileViewModel
-import br.com.saqz.groups.presentation.athlete.PositionOnboardingViewModel
-import br.com.saqz.access.presentation.passwordreset.PasswordResetViewModel
-import br.com.saqz.access.presentation.registration.RegistrationViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
-import br.com.saqz.groups.domain.group.GroupRole
-import br.com.saqz.groups.presentation.games.detail.GameDetailViewModel
-import br.com.saqz.groups.presentation.InviteToolStateMachine
-import br.com.saqz.groups.presentation.route.FinancePlaceholderRouteViewModel
-import br.com.saqz.groups.presentation.route.GroupAdministrationRouteViewModel
-import br.com.saqz.groups.presentation.route.GroupContentPlaceholderRouteViewModel
-import br.com.saqz.groups.presentation.route.GroupHomeRouteViewModel
-import br.com.saqz.groups.presentation.route.GroupInviteRouteViewModel
-import br.com.saqz.groups.presentation.route.GroupSelectionRouteViewModel
-import br.com.saqz.groups.presentation.setup.GroupCommandKeyFactory
-import br.com.saqz.groups.presentation.setup.GroupSetupInput
-import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
-import kotlinx.coroutines.CoroutineScope
-import org.koin.core.parameter.parametersOf
-import org.koin.core.module.dsl.viewModel
+import br.com.saqz.composeapp.navigation.AccessOrchestrator
+import br.com.saqz.composeapp.navigation.AccessRuntimeContract
+import br.com.saqz.composeapp.navigation.AccessViewModel
+import org.koin.core.module.dsl.bind
+import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
-internal data class GroupSetupViewModelParameters(
-    val input: GroupSetupInput,
-    val commandKeys: GroupCommandKeyFactory,
-)
-
-internal data class GameDetailViewModelParameters(
-    val groupId: String,
-    val gameId: String,
-    val role: GroupRole,
-)
-
+/**
+ * C1: the app-shell presentation graph is now the session gate plus the access screens.
+ * The orchestrator is a `factory` because it owns the auth-observation subscription that
+ * [AccessViewModel] cancels in `onCleared`.
+ */
 internal val composePresentationModule = module {
-    single<RequestIdGenerator> { UuidV4RequestIdGenerator() }
-    factory { parameters ->
-        InviteToolStateMachine(
-            roles = get(),
-            groupId = {
-                get<br.com.saqz.groups.presentation.GroupAdministrationStateMachine>()
-                    .state.value.group?.group?.id?.value
-            },
-            scope = parameters.get<CoroutineScope>(),
-        )
-    }
-    factory { parameters ->
-        AccessOrchestrator(
-            auth = get(),
-            localAccessState = get(),
-            groupProfileGateway = get(),
-            groupPhotoGateway = get(),
-            sessionInvalidator = get(),
-            authentication = get(),
-            session = get(),
-            selection = get(),
-            administration = get(),
-            inviteTools = get { parametersOf(parameters.get<CoroutineScope>()) },
-            invites = get(),
-            attendanceLinks = get(),
-            attendanceDestinations = get(),
-            requestIds = get(),
-            scope = parameters.get<CoroutineScope>(),
-        )
-    }
-    viewModel {
-        AccessViewModel { scope ->
-            get<AccessOrchestrator> { parametersOf(scope) }
-        }
-    }
-    // Route-adapter ViewModels (T11-T15): resolved per NavEntry through the entry's
-    // ViewModelStoreOwner, projecting the shared singleton state machines.
-    viewModel { GroupSelectionRouteViewModel(get()) }
-    viewModel { parameters -> GroupHomeRouteViewModel(get(), parameters.get()) }
-    viewModel { parameters -> GroupContentPlaceholderRouteViewModel(parameters.get(), get()) }
-    viewModel { parameters -> GroupAdministrationRouteViewModel(parameters.get(), get()) }
-    viewModel { GroupInviteRouteViewModel { scope -> get { parametersOf(scope) } } }
-    viewModel { parameters -> FinancePlaceholderRouteViewModel(parameters.get()) }
+    factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
+    viewModelOf(::AccessViewModel)
     viewModelOf(::LoginViewModel)
-    viewModelOf(::RegistrationViewModel)
-    viewModelOf(::PasswordResetViewModel)
     viewModelOf(::VerificationViewModel)
     viewModelOf(::NameCompletionViewModel)
     viewModelOf(::PhoneCompletionViewModel)
-    viewModelOf(::PositionOnboardingViewModel)
-    viewModelOf(::AthleteRosterViewModel)
-    viewModelOf(::OwnAthleteProfileViewModel)
-    viewModel { parameters ->
-        val input = parameters.get<GroupSetupViewModelParameters>()
-        GroupSetupViewModel(
-            input = input.input,
-            gateway = get(),
-            timeZones = get(),
-            drafts = get(),
-            commandKeys = input.commandKeys,
-        )
-    }
-    viewModel { parameters ->
-        val input = parameters.get<GameDetailViewModelParameters>()
-        GameDetailViewModel(
-            gateway = get(),
-            groupId = input.groupId,
-            gameId = input.gameId,
-            role = input.role,
-            attendanceGateway = get(),
-            attendanceShareGateway = get(),
-            savedStateHandle = get(),
-        )
-    }
 }

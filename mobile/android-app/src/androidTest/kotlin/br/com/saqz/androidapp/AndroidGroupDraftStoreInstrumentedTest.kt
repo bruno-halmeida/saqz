@@ -5,8 +5,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
 import br.com.saqz.groups.domain.finance.ExpenseCategory
-import br.com.saqz.groups.presentation.finance.charges.*
-import br.com.saqz.groups.presentation.finance.expenses.*
+import br.com.saqz.groups.model.*
+import br.com.saqz.groups.port.*
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith

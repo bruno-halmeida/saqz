@@ -48,9 +48,10 @@ final class SaqzIOSUITests: XCTestCase {
         // A signed-out cold start hands straight to the Compose auth root.
         XCTAssertTrue(loginHeadline(in: app).waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Entrar com Google"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Início"].exists)
-        XCTAssertFalse(app.staticTexts["Componentes"].exists)
-        XCTAssertFalse(app.staticTexts["Explorar componentes"].exists)
+        // O conteúdo protegido é o shell autenticado — Início/Componentes/catálogo já não
+        // existem em composable nenhum, então negá-los deixou de provar qualquer coisa.
+        XCTAssertFalse(app.staticTexts["Você está conectado."].exists)
+        XCTAssertFalse(app.buttons["Sair"].exists)
     }
 
     func testComposeAuthenticationActionsAreAccessibleFromOneSemanticsTree() {

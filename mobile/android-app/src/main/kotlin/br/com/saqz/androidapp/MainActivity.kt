@@ -22,7 +22,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         model.attach(this)
-        setContent { SaqzApp(model.dependencies) }
+        // model init loads the platform dependencies into Koin; SaqzApp resolves from there.
+        setContent { SaqzApp() }
     }
 
     override fun onStart() {
@@ -46,7 +47,6 @@ internal class MainActivityModel(
     init {
         loadSaqzPlatformDependencies(composition.dependencies)
     }
-    val dependencies = composition.dependencies
     private var coldStarted = false
 
     fun attach(value: Activity) {

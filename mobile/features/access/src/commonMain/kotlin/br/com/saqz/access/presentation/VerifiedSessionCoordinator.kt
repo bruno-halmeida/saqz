@@ -89,7 +89,6 @@ class SessionAccessStateMachine(
         when (intent) {
             is SessionIntent.Accept -> when (val transition = intent.transition) {
                 is AuthTransition.Authenticated -> routeIdentity(transition.user)
-                is AuthTransition.VerificationRequired -> awaitVerification(transition.user)
             }
             SessionIntent.ConfirmVerification -> confirmVerification()
             SessionIntent.ResendVerification -> resendVerification()

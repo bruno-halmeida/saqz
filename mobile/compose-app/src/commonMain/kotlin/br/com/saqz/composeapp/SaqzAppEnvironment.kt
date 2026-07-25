@@ -1,15 +1,13 @@
 package br.com.saqz.composeapp
 
 import androidx.compose.runtime.Immutable
-import br.com.saqz.core.common.state.SaqzUiState
-import br.com.saqz.designsystem.theme.SaqzAccessibilityPreferences
+import br.com.saqz.access.ui.theme.SaqzAccessibilityPreferences
 
-// Test seam for the app root: the startup state that drives the shell's state host plus the two
-// primitive accessibility booleans. The native boundary only ever supplies the two booleans;
-// startupState defaults to Content(Unit), so no core SaqzUiState type crosses into native code.
+// The accessibility boundary between the native launcher and the app root: two primitive
+// booleans, nothing else. The startup-state seam died with the legacy Home/Catalog shell
+// (C1) — the session gate is the only thing that decides what the app shows now.
 @Immutable
 internal data class SaqzAppEnvironment(
-    val startupState: SaqzUiState<Unit> = SaqzUiState.Content(Unit),
     val reduceMotion: Boolean = false,
     val reduceTransparency: Boolean = false,
 )

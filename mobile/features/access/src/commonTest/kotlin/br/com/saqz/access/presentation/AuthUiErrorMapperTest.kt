@@ -9,7 +9,6 @@ import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_provider
 import br.com.saqz.access.resources.auth_error_unknown
 import br.com.saqz.access.resources.auth_error_weak_password
-import br.com.saqz.designsystem.text.UiText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
