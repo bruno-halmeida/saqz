@@ -1,0 +1,45 @@
+{
+  "colors": {
+    "background": "#F5F5F7",
+    "surface": "#FFFFFF",
+    "surfaceSoft": "#F4F8FB",
+    "primary": "#0638DF",
+    "primaryPressed": "#052BB3",
+    "onPrimary": "#FFFFFF",
+    "accent": "#C7F300",
+    "textPrimary": "#0E1738",
+    "textSecondary": "#667085",
+    "textPlaceholder": "#98A2B3",
+    "border": "#D8DDE8",
+    "success": "#17B26A",
+    "warning": "#F5A623",
+    "errorForeground": "#E5484D",
+    "disabledSurface": "#C9CED8",
+    "disabledForeground": "#7A8291"
+  },
+  "metrics": {
+    "grid": 8,
+    "subGrid": 4,
+    "horizontalPadding": 16,
+    "blockGap": 12,
+    "sectionGap": 24,
+    "sectionVerticalPadding": 48,
+    "inputRadius": 10,
+    "cardRadius": 12,
+    "blockRadius": 20,
+    "sheetRadius": 28,
+    "bottomNavHeight": 76,
+    "minimumTouchTarget": 48
+  },
+  "typography": {
+    "headline": { "size": 32, "weight": 700, "lineHeight": 36, "tracking": -0.03 },
+    "title": { "size": 22, "weight": 700, "lineHeight": 27, "tracking": -0.02 },
+    "subtitle": { "size": 18, "weight": 600, "lineHeight": 23, "tracking": 0.0 },
+    "body": { "size": 16, "weight": 400, "lineHeight": 23, "tracking": 0.0 },
+    "support": { "size": 14, "weight": 400, "lineHeight": 20, "tracking": 0.0 },
+    "label": { "size": 15, "weight": 600, "lineHeight": 18, "tracking": 0.0 },
+    "caption": { "size": 12, "weight": 400, "lineHeight": 16, "tracking": 0.0 },
+    "eyebrow": { "size": 12, "weight": 600, "lineHeight": 16, "tracking": 0.08 },
+    "navigation": { "size": 11, "weight": 600, "lineHeight": 14, "tracking": 0.0 }
+  }
+}

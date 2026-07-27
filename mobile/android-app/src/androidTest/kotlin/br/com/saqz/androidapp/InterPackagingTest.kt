@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontWeight
 import androidx.test.platform.app.InstrumentationRegistry
 import br.com.saqz.access.resources.Res
-import br.com.saqz.access.ui.theme.saqzFontFamily
+import br.com.saqz.designsystem.theme.saqzFontFamily
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Rule

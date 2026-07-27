@@ -1,13 +1,61 @@
 package br.com.saqz.androidapp
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
-import br.com.saqz.access.ui.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzAttendance
+import br.com.saqz.designsystem.SaqzAttendanceSelector
+import br.com.saqz.designsystem.SaqzAvatarStack
+import br.com.saqz.designsystem.SaqzBottomNav
+import br.com.saqz.designsystem.SaqzBottomSheet
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonSize
+import br.com.saqz.designsystem.SaqzButtonVariant
+import br.com.saqz.designsystem.SaqzCard
+import br.com.saqz.designsystem.SaqzCardTone
+import br.com.saqz.designsystem.SaqzChipTone
+import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzDivider
+import br.com.saqz.designsystem.SaqzEmptyState
+import br.com.saqz.designsystem.SaqzGameSummaryCard
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIconButton
+import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzInput
+import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.SaqzMemberRow
+import br.com.saqz.designsystem.SaqzNavItem
+import br.com.saqz.designsystem.SaqzOfflineBanner
+import br.com.saqz.designsystem.SaqzProgressBar
+import br.com.saqz.designsystem.SaqzSectionHeader
+import br.com.saqz.designsystem.SaqzSegmented
+import br.com.saqz.designsystem.SaqzSkeleton
+import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.designsystem.SaqzStatusChip
+import br.com.saqz.designsystem.SaqzStepper
+import br.com.saqz.designsystem.SaqzSwitch
+import br.com.saqz.designsystem.SaqzToast
+import br.com.saqz.designsystem.SaqzToastText
+import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.ui.text.input.TextFieldValue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,11 +88,196 @@ class SaqzScreenshotTest {
 
     private fun capture(name: String, content: @Composable () -> Unit) {
         compose.setContent { SaqzTheme { content() } }
+        // Deixa transições terminarem antes do obturador: golden estável entre runs.
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
         compose.onRoot().captureRoboImage("screenshots/$name.png")
+    }
+
+    // Página do catálogo: fundo canvas, margem de 16 e o gap de bloco entre peças.
+    private fun gallery(name: String, content: @Composable ColumnScope.() -> Unit) = capture(name) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
     }
 
     @Test
     fun login() = capture("login") {
         LoginScreen(state = LoginState(email = "ana@saqz.app"), onIntent = {})
     }
+
+    @Test
+    fun buttons() = gallery("ds-acoes") {
+        SaqzButton("Confirmar presença", onClick = {}, fullWidth = true)
+        SaqzButton("Editar", onClick = {}, variant = SaqzButtonVariant.Secondary, fullWidth = true)
+        SaqzButton("Excluir grupo", onClick = {}, variant = SaqzButtonVariant.Danger, fullWidth = true)
+        SaqzButton("Cancelar", onClick = {}, variant = SaqzButtonVariant.Ghost, fullWidth = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzButton("Criar jogo", onClick = {}, size = SaqzButtonSize.Sm)
+            SaqzButton("Criando grupo", onClick = {}, loading = true)
+            SaqzButton("Criar grupo", onClick = {}, enabled = false)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzIconButton({}, "Voltar") { SaqzIcon(SaqzIcons.ChevronLeft) }
+            SaqzIconButton({}, "Notificações", dot = true) { SaqzIcon(SaqzIcons.Bell) }
+            SaqzIconButton({}, "Buscar", soft = true) { SaqzIcon(SaqzIcons.Search) }
+            SaqzIconButton({}, "Adicionar", soft = true) { SaqzIcon(SaqzIcons.Plus) }
+        }
+    }
+
+    @Test
+    fun forms() = gallery("ds-formularios") {
+        SaqzInput(TextFieldValue("ana@saqz.app"), {}, label = "E-mail", kind = SaqzInputKind.Email)
+        SaqzInput(TextFieldValue(""), {}, label = "Local", placeholder = "CERET — Quadra 2")
+        SaqzInput(TextFieldValue("segredo"), {}, label = "Senha", kind = SaqzInputKind.Password)
+        SaqzInput(TextFieldValue("ana"), {}, label = "E-mail", errorText = "Informe um e-mail válido")
+        SaqzAttendanceSelector(value = SaqzAttendance.Going, onSelect = {})
+        SaqzAttendanceSelector(value = null, onSelect = {})
+        SaqzSwitch(checked = true, onCheckedChange = {}, label = "Jogo toda semana")
+        SaqzStepper(value = 12, onValueChange = {}, min = 4, max = 24, label = "Vagas")
+        SaqzSegmented(listOf("Masculino", "Feminino", "Misto"), selected = 2, onSelect = {})
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzChoiceChip("Todos · 26", selected = true, onClick = {})
+            SaqzChoiceChip("Admins · 2", selected = false, onClick = {})
+            SaqzChoiceChip("Pendentes · 2", selected = false, onClick = {})
+        }
+    }
+
+    @Test
+    fun data() = gallery("ds-dados") {
+        SaqzGameSummaryCard(
+            eyebrow = "PRÓXIMO JOGO",
+            title = "Ter, 28/07 · 19h30",
+            venue = "CERET — Quadra 2",
+            address = "Tatuapé, São Paulo",
+            going = 12,
+            maybe = 3,
+            out = 2,
+        ) {
+            SaqzButton("Confirmar presença", onClick = {}, fullWidth = true)
+        }
+        SaqzCard {
+            SaqzSectionHeader(title = "Confirmados", action = "Ver todos", onAction = {})
+            SaqzAvatarStack(listOf("Lucas Pereira", "Bruna Silva", "Tiago Moraes", "A", "B", "C"))
+        }
+        SaqzCard(padded = false) {
+            SaqzMemberRow(
+                "Lucas Pereira",
+                meta = "Mensalista · desde 2024",
+                trailing = { SaqzStatusChip("Admin", tone = SaqzChipTone.Brand) },
+            )
+            SaqzDivider()
+            SaqzMemberRow(
+                "Bruna Silva",
+                meta = "Avulsa",
+                trailing = { SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary) },
+            )
+        }
+        SaqzCard(tone = SaqzCardTone.Soft) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SaqzStatusChip("Pendente", tone = SaqzChipTone.Warning, dot = true)
+                SaqzStatusChip("Vou", tone = SaqzChipTone.Success, dot = true)
+                SaqzStatusChip("Talvez", tone = SaqzChipTone.Accent)
+                SaqzStatusChip("Não vou", tone = SaqzChipTone.Error)
+                SaqzStatusChip("Reserva", tone = SaqzChipTone.Neutral)
+            }
+        }
+    }
+
+    @Test
+    fun feedback() = gallery("ds-feedback") {
+        SaqzToast(visible = true, onDismiss = {}) {
+            SaqzToastText("Presença confirmada. Bom jogo!")
+        }
+        SaqzOfflineBanner()
+        SaqzProgressBar(value = 0.4f)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SaqzSpinner(size = 16.dp)
+            SaqzSpinner(size = 20.dp)
+            SaqzSpinner(size = 30.dp)
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SaqzSkeleton(width = 40.dp, height = 40.dp, circle = true)
+            SaqzSkeleton(width = 180.dp, height = 14.dp)
+        }
+        SaqzSkeleton(height = 72.dp, radius = 12.dp)
+        SaqzEmptyState(
+            title = "Nenhum jogo marcado",
+            description = "Crie o próximo jogo e a galera recebe o convite na hora.",
+            icon = { SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.textSecondary, size = 32.dp) },
+            action = "Criar jogo",
+            onAction = {},
+        )
+    }
+
+    @Test
+    fun navigation() = capture("ds-navegacao") {
+        Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+            Column {
+                SaqzTopAppBar(
+                    title = "Configurações do grupo",
+                    onBack = {},
+                    actions = {
+                        SaqzIconButton({}, "Notificações", dot = true) { SaqzIcon(SaqzIcons.Bell) }
+                    },
+                )
+                Text(
+                    "conteúdo da tela",
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            SaqzBottomNav(
+                items = listOf(
+                    SaqzNavItem("home", "Início", SaqzIcons.Check),
+                    SaqzNavItem("games", "Jogos", SaqzIcons.Plus),
+                    SaqzNavItem("people", "Galera", SaqzIcons.Search),
+                    SaqzNavItem("me", "Perfil", SaqzIcons.Bell),
+                ),
+                activeId = "games",
+                onSelect = {},
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            )
+        }
+    }
+
+    @Test
+    fun sheet() = capture("ds-sheet") {
+        Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+            SaqzBottomSheet(
+                open = true,
+                onClose = {},
+                title = "Sair da conta?",
+                description = "Você volta para a tela de entrada e precisa entrar de novo.",
+                splitFooter = {
+                    SaqzButton(
+                        "Cancelar",
+                        onClick = {},
+                        variant = SaqzButtonVariant.Secondary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SaqzButton(
+                        "Confirmar saída",
+                        onClick = {},
+                        variant = SaqzButtonVariant.Danger,
+                        modifier = Modifier.weight(1f),
+                    )
+                },
+                content = {},
+            )
+        }
+    }
+
 }

@@ -1,0 +1,13 @@
+<resources>
+    <string name="state_loading">Carregando</string>
+    <string name="action_show_password">Mostrar senha</string>
+    <string name="action_hide_password">Ocultar senha</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_back">Voltar</string>
+    <string name="action_decrease">Diminuir</string>
+    <string name="action_increase">Aumentar</string>
+    <string name="attendance_going">Vou</string>
+    <string name="attendance_maybe">Talvez</string>
+    <string name="attendance_out">Não vou</string>
+    <string name="offline_queued">Sua resposta está na fila. Enviamos quando a internet voltar.</string>
+</resources>

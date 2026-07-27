@@ -67,10 +67,15 @@ import br.com.saqz.access.resources.login_supporting_text
 import br.com.saqz.access.resources.material_arrow_forward
 import br.com.saqz.access.resources.material_lock
 import br.com.saqz.access.resources.material_mail
-import br.com.saqz.access.resources.material_sports_volleyball
 import br.com.saqz.access.resources.saqz_lettering
 import br.com.saqz.access.resources.saqz_symbol_foreground
-import br.com.saqz.access.ui.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonVariant
+import br.com.saqz.designsystem.SaqzInput
+import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.resources.Res as DesignSystemRes
+import br.com.saqz.designsystem.resources.material_sports_volleyball
+import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -129,7 +134,7 @@ fun LoginScreen(
                     append(stringResource(Res.string.login_headline_emphasis))
                     pop()
                 },
-                style = SaqzTheme.typography.lead.copy(
+                style = SaqzTheme.typography.title.copy(
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 ),
@@ -138,7 +143,7 @@ fun LoginScreen(
             Spacer(Modifier.height(metrics.grid))
             Text(
                 text = stringResource(Res.string.login_supporting_text),
-                style = SaqzTheme.typography.navigation.copy(
+                style = SaqzTheme.typography.caption.copy(
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
                 ),
@@ -174,7 +179,7 @@ fun LoginScreen(
             state.error?.let { error ->
                 Text(
                     text = error.asString(),
-                    style = SaqzTheme.typography.caption,
+                    style = SaqzTheme.typography.support,
                     color = colors.errorForeground,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(bottom = metrics.grid),
@@ -202,7 +207,7 @@ fun LoginScreen(
 internal fun BoxScope.AccessBackdrop() {
     val colors = SaqzTheme.colors
     Image(
-        painter = painterResource(Res.drawable.material_sports_volleyball),
+        painter = painterResource(DesignSystemRes.drawable.material_sports_volleyball),
         contentDescription = null,
         colorFilter = ColorFilter.tint(colors.primary),
         modifier = Modifier
@@ -258,7 +263,7 @@ private fun LoginPrimaryAction(label: String, onClick: () -> Unit, enabled: Bool
         onClick = onClick,
         enabled = enabled,
         loading = loading,
-        labelStyle = SaqzTheme.typography.caption.copy(
+        labelStyle = SaqzTheme.typography.support.copy(
             fontSize = 14.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight.Medium,
@@ -284,9 +289,9 @@ private fun LoginDivider(label: String) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.weight(1f).height(1.dp).background(SaqzTheme.colors.hairline))
-        Text(label, style = SaqzTheme.typography.navigation, color = SaqzTheme.colors.textSecondary)
-        Box(Modifier.weight(1f).height(1.dp).background(SaqzTheme.colors.hairline))
+        Box(Modifier.weight(1f).height(1.dp).background(SaqzTheme.colors.border))
+        Text(label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+        Box(Modifier.weight(1f).height(1.dp).background(SaqzTheme.colors.border))
     }
 }
 
@@ -297,7 +302,7 @@ private fun GoogleAction(label: String, onClick: () -> Unit, enabled: Boolean) {
         onClick = onClick,
         variant = SaqzButtonVariant.Secondary,
         enabled = enabled,
-        labelStyle = SaqzTheme.typography.navigation.copy(
+        labelStyle = SaqzTheme.typography.caption.copy(
             fontSize = 13.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight.Medium,

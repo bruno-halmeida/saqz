@@ -23,6 +23,7 @@ rootProject.name = "saqz-mobile"
 
 includeBuild("build-logic")
 include(":core:common")
+include(":core:design-system")
 include(":core:domain")
 include(":core:network")
 include(":features:access")

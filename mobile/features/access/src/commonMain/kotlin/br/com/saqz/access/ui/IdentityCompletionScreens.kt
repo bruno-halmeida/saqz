@@ -15,8 +15,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.message
 import br.com.saqz.access.presentation.asString
+import br.com.saqz.access.presentation.message
 import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
 import br.com.saqz.access.presentation.namecompletion.NameCompletionState
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionIntent
@@ -43,7 +43,11 @@ import br.com.saqz.access.resources.verification_confirm
 import br.com.saqz.access.resources.verification_resend
 import br.com.saqz.access.resources.verification_sent
 import br.com.saqz.access.resources.verification_title
-import br.com.saqz.access.ui.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonVariant
+import br.com.saqz.designsystem.SaqzInput
+import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -62,12 +66,12 @@ fun VerificationScreen(
 ) = IdentityColumn(modifier) {
     IdentityHeading(stringResource(Res.string.verification_title))
     Text(stringResource(Res.string.verification_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
-    Text(state.email, style = SaqzTheme.typography.bodyStrong, color = SaqzTheme.colors.textPrimary)
+    Text(state.email, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textPrimary)
     if (state.verificationSent) {
-        Text(stringResource(Res.string.verification_sent), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.accent)
+        Text(stringResource(Res.string.verification_sent), style = SaqzTheme.typography.support, color = SaqzTheme.colors.accent)
     }
     state.error?.let {
-        Text(it.message().asString(), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(it.message().asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.verification_confirm),
@@ -100,7 +104,7 @@ fun NameCompletionScreen(
         enabled = !state.isLoading,
     )
     state.error?.let {
-        Text(it.message().asString(), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(it.message().asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.name_submit),
@@ -127,7 +131,7 @@ fun PhoneCompletionScreen(
         enabled = !state.isLoading,
     )
     state.error?.let {
-        Text(it.message().asString(), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.errorForeground)
+        Text(it.message().asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
     }
     SaqzButton(
         label = stringResource(Res.string.phone_submit),
@@ -152,7 +156,7 @@ private fun IdentityColumn(modifier: Modifier = Modifier, content: @Composable (
 
 @Composable
 private fun IdentityHeading(text: String) {
-    Text(text, style = SaqzTheme.typography.lead, color = SaqzTheme.colors.textPrimary)
+    Text(text, style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
 }
 
 @Preview

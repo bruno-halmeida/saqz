@@ -22,6 +22,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":features:access:domain"))
+            api(project(":core:design-system"))
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
