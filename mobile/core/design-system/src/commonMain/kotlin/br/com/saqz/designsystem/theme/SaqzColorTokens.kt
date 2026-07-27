@@ -8,7 +8,8 @@ import androidx.compose.ui.graphics.Color
 // system não mantém três cinzas para o mesmo traço de 1px.
 //
 // `scrim` e `chrome` são os dois tokens com alfa, e por isso ficam fora do
-// contrato em ui-contract.json, que guarda hex opaco.
+// contrato em ui-contract.json, que guarda hex opaco. `scrim` é o `--scrim` do
+// export; `chrome` (branco a 96%) é nosso, o export não tem equivalente.
 //
 // ponytail: os fills translúcidos do colors.css (--brand-fill-08/11, --lime-fill-32,
 // --error-fill-10) ficam fora até um componente precisar deles; hoje ninguém pinta

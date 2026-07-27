@@ -19,6 +19,13 @@ repositório. Export novo → substitua os arquivos e reconcilie o `ui-contract.
 | `metrics` — alturas de componente | `_ds_bundle.js` (CSS dos componentes, não é token CSS) |
 | `motion` | `_ds_bundle.js` |
 
+**Antes de reconciliar um export novo, leia o bloco `_exceptions` do `ui-contract.json`.**
+Nem todo valor do contrato sai do export: `minimumTouchTarget` é override de acessibilidade
+(o export pede 44), `sectionVerticalPadding` não existe em CSS nenhum, e há mais três casos.
+Cada um está listado lá com o valor do export ao lado e o motivo. Sobrescrever em massa
+rebaixa o piso de acessibilidade sem ninguém perceber — que é exatamente o acidente que a
+lista existe para evitar. Fora dessa lista, o contrato pode ser reconciliado direto.
+
 ## Números que só existem no `_ds_bundle.js`
 
 O bundle não está versionado (88 KB de JS compilado). As linhas citadas são do export acima.
