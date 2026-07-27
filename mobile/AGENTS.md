@@ -177,10 +177,19 @@ fun LoginRoot(viewModel: LoginViewModel = koinViewModel()) {
 A camada intermediária `ScreenState`/`ScreenIntent` do texto antigo **não existe mais** — o Screen
 recebe o State do ViewModel direto. Estado puramente visual mora em `remember` no próprio Screen.
 
-**Não existe design system compartilhado (AD-031).** Componente nasce **dentro da jornada que o
-usa** e só sobe para um módulo compartilhado no **segundo uso concreto** — nunca antes, nunca "para
-padronizar". Extrair no primeiro uso foi exatamente o que produziu o design system que o reset
-apagou.
+**O design system compartilhado é o export oficial, e nada além dele (AD-031, revisto em
+2026-07-27).** `:core:design-system` existe porque o kit de handoff do cliente **já entregou um
+design system pronto** — tokens, 14 primitivos e uma implementação Compose de referência —, não
+porque alguém extraiu componentes de uma tela. O `_ds_manifest.json` do export é a fronteira:
+
+- o que está no manifesto **mora no módulo compartilhado** desde o primeiro uso, porque não é
+  generalização nossa, é entrega do cliente;
+- o que **não** está nasce **dentro da jornada que o usa** e só sobe no **segundo uso concreto** —
+  nunca antes, nunca "para padronizar".
+
+A segunda regra é a original e continua valendo na íntegra: extrair no primeiro uso foi exatamente o
+que produziu o design system que o reset apagou. O que mudou foi só a origem — antes o módulo
+compartilhado era invenção nossa, agora ele é o desenho que recebemos.
 
 Regras que continuam:
 
@@ -377,8 +386,10 @@ Nomeia o teto e o caminho de upgrade, e é colhível por `/ponytail-debt`.
 ```
 
 **O que "lazy" significa aqui.** Depois do AD-031 a preguiça vale mais largo do que antes: não há
-estrutura obrigatória por rota, não há design system para alimentar, não há módulo de navegação para
-registrar destino. Um `Composable` puro é resposta completa para uma tela sem estado.
+estrutura obrigatória por rota e não há módulo de navegação para registrar destino. Um `Composable`
+puro é resposta completa para uma tela sem estado. O design system compartilhado existe, mas ele se
+**consome**, não se alimenta: componente novo só entra em `:core:design-system` se estiver no export
+oficial — fora disso, nasce na jornada.
 
 O que a preguiça **não** dissolve — e o gate confirma:
 
