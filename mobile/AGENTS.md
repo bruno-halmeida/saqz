@@ -179,13 +179,20 @@ recebe o State do ViewModel direto. Estado puramente visual mora em `remember` n
 
 **O design system compartilhado é o export oficial, e nada além dele (AD-031, revisto em
 2026-07-27).** `:core:design-system` existe porque o kit de handoff do cliente **já entregou um
-design system pronto** — tokens, 14 primitivos e uma implementação Compose de referência —, não
-porque alguém extraiu componentes de uma tela. O `_ds_manifest.json` do export é a fronteira:
+design system pronto** — tokens, componentes e uma implementação Compose de referência —, não
+porque alguém extraiu componentes de uma tela. O **fluxo 10 do export** ("Componentes comuns") é a
+fronteira:
 
-- o que está no manifesto **mora no módulo compartilhado** desde o primeiro uso, porque não é
-  generalização nossa, é entrega do cliente;
-- o que **não** está nasce **dentro da jornada que o usa** e só sobe no **segundo uso concreto** —
-  nunca antes, nunca "para padronizar".
+- o que o fluxo 10 lista **mora no módulo compartilhado** desde o primeiro uso, porque não é
+  generalização nossa: é o inventário do que o próprio design diz que se repete nas telas — os 14
+  primitivos do `_ds_manifest.json` **mais** as peças que o fluxo marca como "a criar" (Switch,
+  Stepper, Segmented, chips, Avatar, Skeleton, Spinner, Progress, banner offline, divisória);
+- o que **não** está no fluxo 10 nasce **dentro da jornada que o usa** e só sobe no **segundo uso
+  concreto** — nunca antes, nunca "para padronizar".
+
+A fronteira é o fluxo 10 e não o `_ds_manifest.json` porque a etiqueta "a criar" do fluxo significa
+*"aparece nas telas mas ainda não virou componente no design"* — é repetição documentada, não
+ausência de decisão. O manifesto é um recorte do que já foi empacotado, não do que existe.
 
 A segunda regra é a original e continua valendo na íntegra: extrair no primeiro uso foi exatamente o
 que produziu o design system que o reset apagou. O que mudou foi só a origem — antes o módulo
