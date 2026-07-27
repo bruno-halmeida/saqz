@@ -4,7 +4,7 @@
     "colors": "design-tokens/colors.css",
     "typography": "design-tokens/typography.css (escala --m-*)",
     "metrics": "design-tokens/spacing.css + design-tokens/radius.css; alturas de componente no _ds_bundle.js",
-    "motion": "_ds_bundle.js — press l.617/l.25, duração do press l.615, sheet l.438, toast l.1071",
+    "motion": "_ds_bundle.js — press l.617/l.25, duração do press l.615, sheet l.438, switch l.1395/l.1406, toast l.1071; thumbDurationMillis vem de 'Fluxo 10 Componentes.dc.html' l.523 (segThumb), o único lugar onde o segmented tem transição",
     "readme": "design-tokens/README.md — linha do bundle de cada número que não está nos CSS",
     "excecoes": "_exceptions abaixo — tudo que NÃO sai do export está listado lá, com o valor do export ao lado"
   },
@@ -24,11 +24,6 @@
       "export": "só --text-eyebrow-track: 0.08em, e da escala web (--text-*), não da mobile (--m-*)",
       "nosso": "12 / 600 / 16 / 0.08",
       "motivo": "O export não tem --m-eyebrow-*. Tamanho, peso e entrelinha espelham o caption (12/16) com peso 600; só o tracking é do export."
-    },
-    "motion.thumbDurationMillis": {
-      "export": "180 — transição do knob do switch no bundle (l.1406, 'left .18s ease')",
-      "nosso": "280",
-      "motivo": "Tuning do módulo, anterior ao export, e o VUL-44 não tinha mandato para mexer. Divergência real: vale reconciliar num ticket próprio, com olho no thumb do segmented."
     },
     "motion.opacityFeedbackDurationMillis": {
       "export": "não existe — o export não anima opacidade no press (só scrim .22s l.433 e toast .16s l.577)",
@@ -97,6 +92,7 @@
     "opacityFeedbackDurationMillis": 120,
     "sheetDurationMillis": 320,
     "thumbDurationMillis": 280,
+    "switchDurationMillis": 180,
     "toastDwellMillis": 2600
   }
 }

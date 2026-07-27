@@ -17,11 +17,11 @@ repositório. Export novo → substitua os arquivos e reconcilie o `ui-contract.
 | `metrics` — espaçamento e nav | `spacing.css` |
 | `metrics` — raios | `radius.css` |
 | `metrics` — alturas de componente | `_ds_bundle.js` (CSS dos componentes, não é token CSS) |
-| `motion` | `_ds_bundle.js` |
+| `motion` | `_ds_bundle.js`, menos o `thumbDurationMillis` (ver abaixo) |
 
 **Antes de reconciliar um export novo, leia o bloco `_exceptions` do `ui-contract.json`.**
 Nem todo valor do contrato sai do export: `minimumTouchTarget` é override de acessibilidade
-(o export pede 44), `sectionVerticalPadding` não existe em CSS nenhum, e há mais três casos.
+(o export pede 44), `sectionVerticalPadding` não existe em CSS nenhum, e há mais dois casos.
 Cada um está listado lá com o valor do export ao lado e o motivo. Sobrescrever em massa
 rebaixa o piso de acessibilidade sem ninguém perceber — que é exatamente o acidente que a
 lista existe para evitar. Fora dessa lista, o contrato pode ser reconciliado direto.
@@ -37,7 +37,18 @@ O bundle não está versionado (88 KB de JS compilado). As linhas citadas são d
 | switch 52×30, knob 24, inset 3 | 1384–1403 — `CreateGroupScreen.jsx`, `role="switch"` |
 | `pressOffset` 1dp | 25 — `.saqz-btn--primary:active{transform:translateY(1px) …}` |
 | `pressScale` .98 | 617 — `.saqz-attend__btn:active{transform:scale(.98)}` |
+| `switchDurationMillis` 180 + `switchEasing` | 1395 e 1406 — `background .18s ease` e `left .18s ease` |
+| `sheetDurationMillis` 320 | 438 — `.saqz-sheet{transition:transform .32s cubic-bezier(.22,1,.36,1)}` |
 | `toastDwellMillis` 2600 | 1071 — `setTimeout(() => setToast(""), 2600)` |
+
+O `thumbDurationMillis` (280 + curva enfática) é o único que não está no bundle: o segmented
+só ganha transição na página renderizável, `Fluxo 10 Componentes.dc.html` l.523 —
+`segThumb`, `transition: "left .28s cubic-bezier(.22,1,.36,1)"`.
+
+**Switch e segmented não compartilham movimento.** O export dá `.18s ease` ao switch e `.28s`
+enfático ao thumb do segmented; são componentes diferentes com movimentos diferentes, e por
+isso são dois pares de token. Unificar num `thumbDuration` só parece limpeza e é regressão —
+`SaqzMotionPolicyTest.switchAndSegmentedDoNotShareMovement` existe para barrar isso.
 
 O botão do bundle fecha em `scale(.995)`; o design system adota o `.98` do seletor de presença
 para os dois, porque `.995` não é perceptível em tela de telefone e o mesmo press vale para todo
