@@ -20,6 +20,7 @@ kotlin {
         binaries.framework {
             baseName = "SaqzMobile"
             isStatic = true
+            export(project(":core:design-system"))
             export(project(":features:access"))
             export(project(":features:access:domain"))
             export(project(":features:groups"))
@@ -29,6 +30,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(project(":core:design-system"))
             api(project(":features:access"))
             api(project(":features:access:domain"))
             api(project(":features:groups"))

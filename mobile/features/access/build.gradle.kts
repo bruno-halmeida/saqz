@@ -16,6 +16,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":features:access:domain"))
+            api(project(":core:design-system"))
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)

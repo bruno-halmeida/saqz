@@ -1,0 +1,178 @@
+package br.com.saqz.designsystem
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.resources.Res
+import br.com.saqz.designsystem.resources.offline_queued
+import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
+
+/**
+ * 10m — nada aqui é erro: é a tela dizendo que ainda não há conteúdo, com uma
+ * saída. [action] é o rótulo do botão; sem [onAction] o estado é só informativo.
+ */
+@Composable
+fun SaqzEmptyState(
+    title: String,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    icon: (@Composable () -> Unit)? = null,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    Column(
+        modifier = modifier.fillMaxWidth().padding(metrics.sectionGap),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
+        icon?.invoke()
+        Text(
+            text = title,
+            style = SaqzTheme.typography.subtitle,
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center,
+        )
+        if (description != null) {
+            Text(
+                text = description,
+                style = SaqzTheme.typography.support,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center,
+            )
+        }
+        if (action != null && onAction != null) {
+            SaqzButton(label = action, onClick = onAction)
+        }
+    }
+}
+
+/**
+ * 10m — navy, uma ação no máximo, some sozinho depois de [SaqzMotionPolicy.toastDwellMillis]
+ * com um deslize de 12dp. Quem chama recebe [onDismiss] e desliga [visible].
+ */
+@Composable
+fun SaqzToast(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val colors = SaqzTheme.colors
+    val motion = SaqzTheme.motion
+    val slide = with(LocalDensity.current) { 12.dp.roundToPx() }
+
+    // rememberUpdatedState: o efeito não reinicia a cada recomposição, então precisa
+    // ler o callback mais recente em vez do que existia quando o timer começou.
+    val dismiss by rememberUpdatedState(onDismiss)
+    LaunchedEffect(visible) {
+        if (visible) {
+            delay(motion.toastDwellMillis.toLong())
+            dismiss()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(tween(motion.sheetDurationMillis, easing = motion.emphasized)) +
+            slideInVertically(tween(motion.sheetDurationMillis, easing = motion.emphasized)) { slide },
+        exit = fadeOut(tween(motion.sheetDurationMillis, easing = motion.emphasized)) +
+            slideOutVertically(tween(motion.sheetDurationMillis, easing = motion.emphasized)) { slide },
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.textPrimary, RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+                .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+        ) {
+            content()
+        }
+    }
+}
+
+// Texto do toast no tom certo — evita cada tela redescobrir que o fundo é navy.
+@Composable
+fun SaqzToastText(text: String, modifier: Modifier = Modifier) = Text(
+    text = text,
+    style = SaqzTheme.typography.support,
+    color = SaqzTheme.colors.surface,
+    modifier = modifier,
+)
+
+/**
+ * 10o — a faixa de fila offline. O texto padrão é o do design system; a tela só
+ * troca se tiver algo mais específico a dizer.
+ */
+@Composable
+fun SaqzOfflineBanner(
+    modifier: Modifier = Modifier,
+    message: String = stringResource(Res.string.offline_queued),
+) {
+    val colors = SaqzTheme.colors
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.warning.copy(alpha = 0.12f), RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+            .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(Modifier.size(8.dp).background(colors.warning, CircleShape))
+        Text(text = message, style = SaqzTheme.typography.support, color = colors.textPrimary)
+    }
+}
+
+@Preview
+@Composable
+private fun SaqzEmptyStatePreview() = SaqzTheme {
+    SaqzPreviewGrid {
+        SaqzEmptyState(
+            title = "Nenhum jogo marcado",
+            description = "Crie o próximo jogo e a galera recebe o convite na hora.",
+            icon = { SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.textSecondary, size = 32.dp) },
+            action = "Criar jogo",
+            onAction = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun SaqzToastPreview() = SaqzTheme {
+    SaqzPreviewGrid {
+        SaqzToast(visible = true, onDismiss = {}) {
+            SaqzToastText("Presença confirmada. Bom jogo!")
+        }
+        SaqzOfflineBanner()
+    }
+}

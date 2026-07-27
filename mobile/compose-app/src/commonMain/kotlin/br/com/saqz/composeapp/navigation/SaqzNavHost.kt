@@ -16,7 +16,7 @@ import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.access.ui.NameCompletionRoot
 import br.com.saqz.access.ui.PhoneCompletionRoot
 import br.com.saqz.access.ui.VerificationRoot
-import br.com.saqz.access.ui.SaqzLoadingState
+import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.composeapp.shell.SaqzAppShell
 
 // Legacy observable contract carried over from the product host: exactly one active
@@ -49,7 +49,7 @@ internal fun SaqzNavHost(
         backStack = backStack,
         onBack = {},
         entryProvider = entryProvider {
-            entry<AccessRoute.Starting> { SaqzLoadingState() }
+            entry<AccessRoute.Starting> { SaqzSpinner() }
             entry<AccessRoute.Login> { LoginRoot() }
             entry<AccessRoute.Verification> { VerificationRoot() }
             entry<AccessRoute.NameCompletion> { NameCompletionRoot() }

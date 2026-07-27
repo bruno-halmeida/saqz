@@ -7,7 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.access.ui.theme.SaqzTheme
+import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

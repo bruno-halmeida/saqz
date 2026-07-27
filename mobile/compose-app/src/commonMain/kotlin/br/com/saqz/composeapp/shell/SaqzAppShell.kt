@@ -17,8 +17,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.shell_logout
 import br.com.saqz.composeapp.resources.shell_signed_in
-import br.com.saqz.access.ui.SaqzButton
-import br.com.saqz.access.ui.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
 internal const val SaqzShellContentTag = "saqz-shell-content"
@@ -50,7 +50,7 @@ internal fun SaqzAppShell(onLogout: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = stringResource(Res.string.shell_signed_in),
-            style = SaqzTheme.typography.displayMedium,
+            style = SaqzTheme.typography.headline,
             color = SaqzTheme.colors.textPrimary,
         )
         SaqzButton(
