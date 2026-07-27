@@ -1,0 +1,13 @@
+:root {
+  --radius-input: 10px;
+  --radius-card: 12px;
+  --radius-large: 20px;   /* Compose "large" shape */
+  --radius-sheet: 28px;   /* Bottom sheet top corners */
+  --radius-pill: 999px;   /* Buttons, chips, nav indicator */
+
+  /* Shadows — discreet and rare in Saqz. */
+  --shadow-none: none;
+  --shadow-device: 0 24px 70px rgba(14, 23, 56, 0.14);   /* Phone frame / large float */
+  --shadow-sheet: 0 -12px 40px rgba(14, 23, 56, 0.12);   /* Bottom sheet lift */
+  --shadow-toast: 0 12px 40px rgba(14, 23, 56, 0.20);
+}

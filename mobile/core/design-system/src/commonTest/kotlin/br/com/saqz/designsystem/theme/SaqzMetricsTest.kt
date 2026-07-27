@@ -28,6 +28,12 @@ class SaqzMetricsTest {
         "sheetRadius" to metrics.sheetRadius,
         "bottomNavHeight" to metrics.bottomNavHeight,
         "minimumTouchTarget" to metrics.minimumTouchTarget,
+        "buttonHeight" to metrics.buttonHeight,
+        "iconButtonSize" to metrics.iconButtonSize,
+        "switchTrackWidth" to metrics.switchTrackWidth,
+        "switchTrackHeight" to metrics.switchTrackHeight,
+        "switchThumbSize" to metrics.switchThumbSize,
+        "switchThumbInset" to metrics.switchThumbInset,
     )
 
     private suspend fun contractMetrics(): Map<String, Float> {
@@ -65,5 +71,20 @@ class SaqzMetricsTest {
     @Test
     fun minimumTouchTargetIs48Dp() {
         assertEquals(48.dp, metrics.minimumTouchTarget)
+    }
+
+    @Test
+    fun buttonClearsTheAccessibilityFloor() {
+        // O botão do export tem 52: acima do piso de 48, e é assim que fica.
+        assertTrue(
+            metrics.buttonHeight >= metrics.minimumTouchTarget,
+            "buttonHeight ${metrics.buttonHeight} abaixo do piso ${metrics.minimumTouchTarget}",
+        )
+    }
+
+    @Test
+    fun switchThumbFitsTheTrack() {
+        // 3 + 24 + 3 = 30. Se alguém mexer num dos três sem mexer nos outros, quebra aqui.
+        assertEquals(metrics.switchTrackHeight, metrics.switchThumbSize + metrics.switchThumbInset * 2)
     }
 }

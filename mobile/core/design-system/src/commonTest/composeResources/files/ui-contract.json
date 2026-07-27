@@ -1,4 +1,12 @@
 {
+  "_source": {
+    "export": "_ds/saqz-design-system-48df716a-8e90-4870-8746-6c7d11f3458a",
+    "colors": "design-tokens/colors.css",
+    "typography": "design-tokens/typography.css (escala --m-*)",
+    "metrics": "design-tokens/spacing.css + design-tokens/radius.css; alturas de componente no _ds_bundle.js",
+    "motion": "_ds_bundle.js — press l.617/l.25, duração do press l.615, sheet l.438, toast l.1071; thumbDurationMillis é tuning do módulo (o bundle usa .18s no switch)",
+    "readme": "design-tokens/README.md — linha do bundle de cada número que não está nos CSS"
+  },
   "colors": {
     "background": "#F5F5F7",
     "surface": "#FFFFFF",
@@ -29,7 +37,13 @@
     "blockRadius": 20,
     "sheetRadius": 28,
     "bottomNavHeight": 76,
-    "minimumTouchTarget": 48
+    "minimumTouchTarget": 48,
+    "buttonHeight": 52,
+    "iconButtonSize": 44,
+    "switchTrackWidth": 52,
+    "switchTrackHeight": 30,
+    "switchThumbSize": 24,
+    "switchThumbInset": 3
   },
   "typography": {
     "headline": { "size": 32, "weight": 700, "lineHeight": 36, "tracking": -0.03 },
@@ -41,5 +55,14 @@
     "caption": { "size": 12, "weight": 400, "lineHeight": 16, "tracking": 0.0 },
     "eyebrow": { "size": 12, "weight": 600, "lineHeight": 16, "tracking": 0.08 },
     "navigation": { "size": 11, "weight": 600, "lineHeight": 14, "tracking": 0.0 }
+  },
+  "motion": {
+    "pressScale": 0.98,
+    "pressOffset": 1,
+    "pressDurationMillis": 120,
+    "opacityFeedbackDurationMillis": 120,
+    "sheetDurationMillis": 320,
+    "thumbDurationMillis": 280,
+    "toastDwellMillis": 2600
   }
 }

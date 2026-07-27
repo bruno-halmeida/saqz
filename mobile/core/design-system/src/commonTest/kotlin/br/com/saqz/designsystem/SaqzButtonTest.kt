@@ -84,8 +84,8 @@ class SaqzButtonTest {
     }
 
     @Test
-    fun pressScaleIs095() {
-        assertEquals(0.95f, saqzPressScale(pressed = true, motion = SaqzMotionPolicy.Normal))
+    fun pressScaleIs098() {
+        assertEquals(0.98f, saqzPressScale(pressed = true, motion = SaqzMotionPolicy.Normal))
         assertEquals(1f, saqzPressScale(pressed = false, motion = SaqzMotionPolicy.Normal))
     }
 

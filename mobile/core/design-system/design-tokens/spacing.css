@@ -1,0 +1,17 @@
+:root {
+  /* 4dp base grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Layout conventions */
+  --page-margin: 16px;      /* Mobile side margin */
+  --section-gap: 24px;      /* Gap between sections (24–32) */
+  --block-gap: 12px;        /* Internal gap inside a block */
+  --touch-min: 44px;        /* Minimum touch target */
+  --bottom-nav-height: 76px;
+}
