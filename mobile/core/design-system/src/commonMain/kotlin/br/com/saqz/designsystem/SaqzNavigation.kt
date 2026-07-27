@@ -91,6 +91,7 @@ data class SaqzNavItem(val id: String, val label: String, val icon: ImageVector)
  * ponytail: sem o blur de 18px do mock — `Modifier.blur` borra o próprio conteúdo,
  * não o que passa atrás, e backdrop blur real só existe do Android 31 pra cima.
  * Branco a 96% entrega a mesma leitura; o blur volta com uma lib se alguém pedir.
+ * Sob Reduce Transparency o token `chrome` já chega opaco.
  */
 @Composable
 fun SaqzBottomNav(
@@ -104,7 +105,7 @@ fun SaqzBottomNav(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface.copy(alpha = 0.96f))
+            .background(colors.chrome)
             .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border))

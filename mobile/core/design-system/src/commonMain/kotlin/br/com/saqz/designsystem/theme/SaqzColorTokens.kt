@@ -5,6 +5,9 @@ import androidx.compose.ui.graphics.Color
 
 // Paleta do fluxo 10a. Uma única cor de linha (`border`) atende card, input e
 // divisória — o design system não mantém três cinzas para o mesmo traço de 1px.
+//
+// `scrim` e `chrome` são os dois tokens com alfa, e por isso ficam fora do
+// contrato em ui-contract.json, que guarda hex opaco.
 @Immutable
 data class SaqzColorTokens(
     val background: Color,
@@ -24,6 +27,7 @@ data class SaqzColorTokens(
     val disabledSurface: Color,
     val disabledForeground: Color,
     val scrim: Color,
+    val chrome: Color,
 ) {
     companion object {
         val Light = SaqzColorTokens(
@@ -44,6 +48,7 @@ data class SaqzColorTokens(
             disabledSurface = Color(0xFFC9CED8),
             disabledForeground = Color(0xFF7A8291),
             scrim = Color(0xFF0E1738).copy(alpha = 0.46f),
+            chrome = Color(0xFFFFFFFF).copy(alpha = 0.96f),
         )
     }
 }

@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,7 +45,9 @@ private val SwitchThumbSize = 26.dp
 
 /**
  * 10h — trilho pílula com polegar branco. Com [label], a linha inteira é o alvo
- * de toque e o TalkBack anuncia um único switch.
+ * de toque e o TalkBack anuncia um único switch. Sem [label], [contentDescription]
+ * passa a ser obrigatório: um switch sem nome só anuncia o estado, nunca o que
+ * ele controla.
  */
 @Composable
 fun SaqzSwitch(
@@ -51,6 +55,7 @@ fun SaqzSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     label: String? = null,
+    contentDescription: String? = null,
     enabled: Boolean = true,
 ) {
     val colors = SaqzTheme.colors
@@ -95,7 +100,12 @@ fun SaqzSwitch(
     }
 
     if (label == null) {
-        Box(modifier = modifier.then(toggle)) { control() }
+        val name = requireNotNull(contentDescription) {
+            "SaqzSwitch sem label precisa de contentDescription"
+        }
+        Box(
+            modifier = modifier.then(toggle).semantics { this.contentDescription = name },
+        ) { control() }
     } else {
         Row(
             modifier = modifier

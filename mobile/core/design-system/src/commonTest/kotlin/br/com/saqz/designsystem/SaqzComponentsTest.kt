@@ -78,10 +78,29 @@ class SaqzComponentsTest {
     fun switchReflectsTheHoistedState() = runComposeUiTest {
         setContent {
             SaqzTheme {
-                SaqzSwitch(checked = true, onCheckedChange = {}, modifier = Modifier.testTag("switch"))
+                SaqzSwitch(
+                    checked = true,
+                    onCheckedChange = {},
+                    contentDescription = "Notificações do grupo",
+                    modifier = Modifier.testTag("switch"),
+                )
             }
         }
         onNodeWithTag("switch").assertIsOn()
+    }
+
+    @Test
+    fun switchWithoutLabelDemandsAName() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzSwitch(
+                    checked = false,
+                    onCheckedChange = {},
+                    contentDescription = "Notificações do grupo",
+                )
+            }
+        }
+        onNodeWithContentDescription("Notificações do grupo").assertExists()
     }
 
     @Test

@@ -32,7 +32,11 @@ fun SaqzTheme(
     preferences: SaqzAccessibilityPreferences = SaqzAccessibilityPreferences(),
     content: @Composable () -> Unit,
 ) {
-    val colors = SaqzColorTokens.Light
+    // Reduce Transparency chega do iOS por SaqzAccessibilityPreferences: o chrome
+    // translúcido vira superfície opaca em vez de cada componente decidir sozinho.
+    val colors = SaqzColorTokens.Light.let {
+        if (preferences.reduceTransparency) it.copy(chrome = it.surface) else it
+    }
     val metrics = SaqzMetrics.Default
     val motion = if (preferences.reduceMotion) SaqzMotionPolicy.Reduced else SaqzMotionPolicy.Normal
     val typography = SaqzTypography.Default.withFontFamily(saqzFontFamily())
