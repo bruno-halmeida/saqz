@@ -83,14 +83,23 @@ import org.robolectric.annotation.GraphicsMode
 )
 class SaqzScreenshotTest {
 
+    private companion object {
+        // Fase do obturador. Transições de entrada (sheet 320ms, toast) já
+        // terminaram, e o arco do CircularProgressIndicator indeterminado está
+        // aberto — o ciclo dele é de 1332ms.
+        const val SHUTTER_MILLIS = 600L
+    }
+
     @get:Rule
     val compose = createComposeRule()
 
     private fun capture(name: String, content: @Composable () -> Unit) {
+        // autoAdvance desligado: o relógio só anda quando eu mando, então o quadro
+        // capturado é sempre o mesmo. Com ele ligado, o indeterminado é fotografado
+        // no início do ciclo — varredura ~0 — e o spinner vira um ponto.
+        compose.mainClock.autoAdvance = false
         compose.setContent { SaqzTheme { content() } }
-        // Deixa transições terminarem antes do obturador: golden estável entre runs.
-        compose.mainClock.advanceTimeBy(1_000)
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(SHUTTER_MILLIS)
         compose.onRoot().captureRoboImage("screenshots/$name.png")
     }
 
@@ -196,6 +205,7 @@ class SaqzScreenshotTest {
         }
         SaqzOfflineBanner()
         SaqzProgressBar(value = 0.4f)
+        SaqzProgressBar()
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -241,10 +251,10 @@ class SaqzScreenshotTest {
             }
             SaqzBottomNav(
                 items = listOf(
-                    SaqzNavItem("home", "Início", SaqzIcons.Check),
-                    SaqzNavItem("games", "Jogos", SaqzIcons.Plus),
-                    SaqzNavItem("people", "Galera", SaqzIcons.Search),
-                    SaqzNavItem("me", "Perfil", SaqzIcons.Bell),
+                    SaqzNavItem("home", "Início", SaqzIcons.Home),
+                    SaqzNavItem("games", "Jogos", SaqzIcons.Calendar),
+                    SaqzNavItem("people", "Grupos", SaqzIcons.Users),
+                    SaqzNavItem("me", "Perfil", SaqzIcons.User),
                 ),
                 activeId = "games",
                 onSelect = {},

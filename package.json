@@ -1,0 +1,14 @@
+{
+  "name": "saqz",
+  "private": true,
+  "description": "Ferramentas Node do monorepo Saqz. O browser padrão é o Lightpanda.",
+  "scripts": {
+    "browser": "${LIGHTPANDA_EXECUTABLE_PATH:-$HOME/.cache/lightpanda-node/lightpanda} serve --host 127.0.0.1 --port 9222"
+  },
+  "devDependencies": {
+    "@lightpanda/browser": "^1.2.0"
+  },
+  "allowScripts": {
+    "@lightpanda/browser@1.2.0": true
+  }
+}
