@@ -19,6 +19,33 @@ backend/gradlew -p backend check      # build + testes do backend
 mobile/gradlew -p mobile detektAll    # lint do mobile
 ```
 
+## Browser
+
+[Lightpanda](https://lightpanda.io/docs/quickstart) é o browser padrão do
+repositório — headless, compatível com CDP. `npm ci` baixa o binário em
+`~/.cache/lightpanda-node/lightpanda`.
+
+```bash
+npm run browser                 # servidor CDP em ws://127.0.0.1:9222
+```
+
+Puppeteer/Playwright conectam via `puppeteer-core`/`playwright-core` nesse
+endpoint (`connect({ browserWSEndpoint })` / `chromium.connectOverCDP()`), sem
+baixar Chromium. Para agentes, `.mcp.json` registra o MCP server do Lightpanda —
+use-o no lugar do Chrome para navegação, DOM e teste de página.
+
+**Lightpanda não pinta.** Ele automatiza DOM e JS, mas não tem engine de layout
+visual: `lightpanda --help` oferece `agent · fetch · mcp · run · serve · version`
+e nenhum comando de screenshot. Para captura de pixel — comparar um render
+contra o design, por exemplo — use Chrome headless direto:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --disable-gpu --hide-scrollbars \
+  --screenshot=out.png --window-size=1440,4200 --virtual-time-budget=20000 \
+  http://127.0.0.1:PORTA/pagina.html
+```
+
 > **CI em reconstrução.** Os gates de shell em `scripts/` e os workflows de gate
 > foram removidos para serem redesenhados do zero. Só `deploy-pages.yml`
 > permanece. Até a nova CI existir, nada é verificado automaticamente em PR —

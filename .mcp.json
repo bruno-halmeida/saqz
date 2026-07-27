@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lightpanda": {
+      "command": "${HOME}/.cache/lightpanda-node/lightpanda",
+      "args": ["mcp"]
+    }
+  }
+}
