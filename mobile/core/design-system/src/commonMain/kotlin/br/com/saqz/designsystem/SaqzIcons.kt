@@ -119,9 +119,11 @@ object SaqzIcons {
 
     val Close = saqzStrokeIcon("Close", "M6 6l12 12M18 6 6 18")
 
-    // Único glifo com traço mais grosso no export — é o "+" de ação.
+    // O export desenha o "+" de ação com traço 2,2 — é o único glifo dele que
+    // foge do 1,8. `Minus` não existe no export: o stepper de lá é HTML solto.
+    // Pareamos os dois em 2,2 porque no stepper eles ficam lado a lado, e o
+    // render mostra os dois com o mesmo peso — 1,8 no menos quebraria o par.
     val Plus = saqzStrokeIcon("Plus", "M12 5v14M5 12h14", strokeWidth = 2.2f)
-
     val Minus = saqzStrokeIcon("Minus", "M5 12h14", strokeWidth = 2.2f)
 
     val Check = saqzStrokeIcon("Check", "M20 6 9 17l-5-5")
