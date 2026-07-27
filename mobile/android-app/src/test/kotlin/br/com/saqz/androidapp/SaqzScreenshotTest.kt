@@ -241,10 +241,10 @@ class SaqzScreenshotTest {
             }
             SaqzBottomNav(
                 items = listOf(
-                    SaqzNavItem("home", "Início", SaqzIcons.Check),
-                    SaqzNavItem("games", "Jogos", SaqzIcons.Plus),
-                    SaqzNavItem("people", "Galera", SaqzIcons.Search),
-                    SaqzNavItem("me", "Perfil", SaqzIcons.Bell),
+                    SaqzNavItem("home", "Início", SaqzIcons.Home),
+                    SaqzNavItem("games", "Jogos", SaqzIcons.Calendar),
+                    SaqzNavItem("people", "Grupos", SaqzIcons.Users),
+                    SaqzNavItem("me", "Perfil", SaqzIcons.User),
                 ),
                 activeId = "games",
                 onSelect = {},
