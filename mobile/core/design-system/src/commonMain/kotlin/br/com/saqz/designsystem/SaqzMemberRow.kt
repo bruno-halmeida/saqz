@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -18,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,7 +25,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 /**
@@ -42,15 +41,32 @@ fun saqzInitials(name: String): String {
     }
 }
 
+// A tipografia do avatar acompanha o diâmetro; é a única escala do design system que
+// não sai da tabela, porque 30/40/44 são 3 tamanhos. O "+N" da pilha usa a mesma
+// proporção das iniciais vizinhas — no 10k os quatro círculos são `font:700 10.5px`.
+private const val AvatarTextRatio = 0.36f
+
+// Sobreposição do 10k: `margin-left:-8px` fixo, e não uma fração do diâmetro.
+private val AvatarStackOverlap = 8.dp
+
 /**
- * 10k — círculo ice com as iniciais. [photo] substitui as iniciais quando o app
- * tem a foto; o design system não carrega imagem de rede por conta própria.
+ * 10k — círculo ice com as iniciais e o anel de 1px (`box-shadow:inset 0 0 0 1px`
+ * do export, que encosta por dentro e não muda o diâmetro). [photo] substitui as
+ * iniciais quando o app tem a foto; o design system não carrega imagem de rede por
+ * conta própria.
+ *
+ * [background] e [initialsColor] existem porque o export pinta o mesmo círculo de
+ * dois jeitos: avulso é ice com iniciais navy, dentro do `SaqzMemberRow` é ice com
+ * iniciais azuis (`.saqz-memberrow__avatar{color:var(--saqz-blue)}`) e na pilha é
+ * branco com iniciais navy — o fundo branco é o que separa um avatar do vizinho.
  */
 @Composable
 fun SaqzAvatar(
     name: String,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
+    background: Color = SaqzTheme.colors.surfaceSoft,
+    initialsColor: Color = SaqzTheme.colors.textPrimary,
     photo: (@Composable () -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
@@ -58,7 +74,8 @@ fun SaqzAvatar(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(colors.surfaceSoft, CircleShape),
+            .background(background, CircleShape)
+            .border(1.dp, colors.border, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         if (photo != null) {
@@ -66,19 +83,19 @@ fun SaqzAvatar(
         } else {
             Text(
                 text = saqzInitials(name),
-                // A tipografia do avatar acompanha o diâmetro; é a única escala do
-                // design system que não sai da tabela, porque 30/40/44 são 3 tamanhos.
-                fontSize = (size.value * 0.36f).sp,
-                lineHeight = (size.value * 0.36f).sp,
+                fontSize = (size.value * AvatarTextRatio).sp,
+                lineHeight = (size.value * AvatarTextRatio).sp,
                 fontWeight = FontWeight.SemiBold,
-                color = colors.primary,
+                color = initialsColor,
             )
         }
     }
 }
 
 /**
- * 10k — pilha sobreposta. Acima de [max] avatares, o excedente vira "+N".
+ * 10k — pilha sobreposta. Acima de [max] avatares, o excedente vira "+N" em azul
+ * sólido: é ele que diz "tem mais gente aqui", então é o círculo mais forte da
+ * pilha, não o mais apagado.
  */
 @Composable
 fun SaqzAvatarStack(
@@ -90,33 +107,27 @@ fun SaqzAvatarStack(
     val colors = SaqzTheme.colors
     val shown = names.take(max)
     val overflow = names.size - shown.size
-    val overlap = size / 4
-    Row(horizontalArrangement = Arrangement.spacedBy(-overlap), modifier = modifier) {
-        // z decrescente: quem vem antes fica por cima, senão o vizinho da direita
-        // cobre justo a metade das iniciais.
-        shown.forEachIndexed { index, name ->
-            SaqzAvatar(
-                name = name,
-                size = size,
-                modifier = Modifier
-                    .zIndex((shown.size - index).toFloat())
-                    .border(2.dp, colors.surface, CircleShape),
-            )
+    Row(horizontalArrangement = Arrangement.spacedBy(-AvatarStackOverlap), modifier = modifier) {
+        // Sem zIndex: a ordem de pintura é a do Row, que é a do DOM no export —
+        // cada círculo cobre a borda esquerda do anterior e o "+N" fica inteiro.
+        shown.forEach { name ->
+            SaqzAvatar(name = name, size = size, background = colors.surface)
         }
         if (overflow > 0) {
             Box(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(colors.surfaceSoft, CircleShape)
-                    .border(2.dp, colors.surface, CircleShape),
+                    // Sem anel: no export só os círculos brancos têm o inset de 1px.
+                    .background(colors.primary, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = "+$overflow",
-                    fontSize = (size.value * 0.32f).sp,
+                    fontSize = (size.value * AvatarTextRatio).sp,
+                    lineHeight = (size.value * AvatarTextRatio).sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.textSecondary,
+                    color = colors.onPrimary,
                 )
             }
         }
@@ -149,7 +160,7 @@ fun SaqzMemberRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = name, photo = photo)
+        SaqzAvatar(name = name, initialsColor = colors.primary, photo = photo)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = name,
@@ -183,11 +194,15 @@ private fun SaqzAvatarPreview() = SaqzTheme {
             SaqzAvatar("Lucas Pereira", size = 30.dp)
             SaqzAvatar("Bruna Silva", size = 40.dp)
             SaqzAvatar("Tiago", size = 44.dp)
+            SaqzAvatar("Camila Alves", size = 44.dp) {
+                Box(modifier = Modifier.size(44.dp).background(SaqzTheme.colors.accent))
+            }
         }
+        // Com e sem excedente: o "+N" azul só aparece quando a lista passa de `max`.
         SaqzAvatarStack(
             names = listOf("Lucas Pereira", "Bruna Silva", "Tiago Moraes", "A", "B", "C", "D", "E", "F"),
-            modifier = Modifier.offset(x = 0.dp),
         )
+        SaqzAvatarStack(names = listOf("Lucas Pereira", "Bruna Silva"))
     }
 }
 
