@@ -209,9 +209,22 @@ class SaqzScreenshotTest {
         SaqzAttendanceSelector(value = SaqzAttendance.Out, onSelect = {})
         SaqzAttendanceSelector(value = null, onSelect = {})
         SaqzAttendanceSelector(value = SaqzAttendance.Maybe, onSelect = {}, enabled = false)
+    }
+
+    // Cena própria para os quatro controles do 10h (SaqzControls.kt): dentro de
+    // `ds-formularios` os estados de limite do stepper empurravam segmented e chips
+    // para fora do quadro — e estado fora do quadro não está sendo conferido.
+    @Test
+    fun controls() = gallery("ds-controles") {
         SaqzSwitch(checked = true, onCheckedChange = {}, label = "Jogo toda semana")
+        SaqzSwitch(checked = false, onCheckedChange = {}, label = "Avisar por push")
+        SaqzSwitch(checked = false, onCheckedChange = {}, label = "Bloqueado", enabled = false)
         SaqzStepper(value = 12, onValueChange = {}, min = 4, max = 24, label = "Vagas")
+        // Os dois limites: sem eles o ± desabilitado nunca aparece na foto.
+        SaqzStepper(value = 4, onValueChange = {}, min = 4, max = 24, label = "No mínimo")
+        SaqzStepper(value = 24, onValueChange = {}, min = 4, max = 24, label = "No máximo")
         SaqzSegmented(listOf("Masculino", "Feminino", "Misto"), selected = 2, onSelect = {})
+        SaqzSegmented(listOf("Semanal", "Avulso"), selected = 0, onSelect = {})
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SaqzChoiceChip("Todos · 26", selected = true, onClick = {})
             SaqzChoiceChip("Admins · 2", selected = false, onClick = {})
