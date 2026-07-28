@@ -9,6 +9,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -161,7 +163,9 @@ class SaqzComponentsTest {
             }
         }
         onNodeWithText("Sair da conta?").assertExists()
-        onNodeWithContentDescription("Fechar").performClick()
+        // Desde o VUL-58 duas saídas se chamam "Fechar": o scrim, que vem antes do painel
+        // na árvore, e o botão do cabeçalho. Este teste é o do scrim.
+        onAllNodesWithContentDescription("Fechar").onFirst().performClick()
         waitForIdle()
         assertTrue(closed)
     }

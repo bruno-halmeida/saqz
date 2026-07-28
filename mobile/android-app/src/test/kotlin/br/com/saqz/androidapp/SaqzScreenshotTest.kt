@@ -411,6 +411,9 @@ class SaqzScreenshotTest {
         }
     }
 
+    // Um sheet ocupa a tela inteira, então cada variante é uma cena: as três abaixo cobrem
+    // o cabeçalho com fechar e as duas divisórias, o rodapé de um botão só e o painel sem
+    // cabeçalho — que é o único caso em que o export omite o botão e a divisória de cima.
     @Test
     fun sheet() = capture("ds-sheet") {
         Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -419,6 +422,13 @@ class SaqzScreenshotTest {
                 onClose = {},
                 title = "Sair da conta?",
                 description = "Você volta para a tela de entrada e precisa entrar de novo.",
+                content = {
+                    Text(
+                        "Os jogos marcados continuam lá quando você voltar.",
+                        style = SaqzTheme.typography.body,
+                        color = SaqzTheme.colors.textSecondary,
+                    )
+                },
                 splitFooter = {
                     SaqzButton(
                         "Cancelar",
@@ -433,8 +443,37 @@ class SaqzScreenshotTest {
                         modifier = Modifier.weight(1f),
                     )
                 },
-                content = {},
             )
+        }
+    }
+
+    @Test
+    fun sheetSingleFooter() = capture("ds-sheet-rodape-simples") {
+        Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+            SaqzBottomSheet(
+                open = true,
+                onClose = {},
+                title = "Convidar para o grupo",
+                description = "Quem receber o link entra direto na lista de atletas.",
+                content = {
+                    SaqzInput(
+                        value = TextFieldValue("saqz.app/g/quarta-19h"),
+                        onValueChange = {},
+                        label = "Link do convite",
+                    )
+                },
+                footer = { SaqzButton("Copiar link", onClick = {}, fullWidth = true) },
+            )
+        }
+    }
+
+    @Test
+    fun sheetWithoutHeader() = capture("ds-sheet-sem-cabecalho") {
+        Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+            SaqzBottomSheet(open = true, onClose = {}) {
+                SaqzMemberRow(name = "Lucas Pereira", meta = "Organizador")
+                SaqzMemberRow(name = "Bruna Silva", meta = "Atleta")
+            }
         }
     }
 
