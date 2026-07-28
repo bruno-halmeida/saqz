@@ -1,15 +1,106 @@
 <resources>
     <string name="access_brand">Saqz</string>
+
+    <!--
+        VUL-84 — as 11 telas do fluxo 1, PT-BR literal do export.
+
+        Duas convenções, ambas ditadas pelo desenho:
+        * a quebra de linha dos títulos é fixa no desenho, não consequência da largura, e
+          por isso mora no `\n` do próprio texto. `AccessHeader(title, emphasis)` recebe o
+          título com a quebra e o destaque azul separado; título terminado em quebra não
+          ganha espaço à frente do destaque;
+        * o `›` dos links é o caractere, não um ícone.
+
+        Onde o export marca negrito no meio da frase, a frase é uma chave só e a tela
+        aplica o `SpanStyle` no trecho — negrito é ênfase, não string separada.
+    -->
+
+    <!-- 1a · entrar -->
     <string name="login_title">Entrar</string>
     <string name="login_headline_first">Organize seu grupo.</string>
     <string name="login_headline_second">Jogue</string>
     <string name="login_headline_emphasis">junto.</string>
     <string name="login_supporting_text">Entre na sua conta e mantenha sua galera sempre alinhada.</string>
-    <string name="login_continue_with">ou continue com</string>
     <string name="login_email">E-mail</string>
+    <string name="login_email_placeholder">ana@exemplo.com</string>
     <string name="login_password">Senha</string>
+    <string name="login_forgot_password">Esqueci minha senha</string>
     <string name="login_submit">Entrar</string>
+    <string name="login_continue_with">ou continue com</string>
     <string name="login_google">Entrar com Google</string>
+    <string name="login_signup_prompt">Ainda não tem uma conta?</string>
+    <string name="login_signup_link">Criar conta ›</string>
+
+    <!-- 1i · entrar, recusado -->
+    <string name="login_error_credentials">E-mail ou senha incorretos. Confira os dados e tente de novo.</string>
+    <string name="login_error_email_invalid">Digite um e-mail válido.</string>
+    <string name="login_error_password">A senha não confere.</string>
+    <string name="login_error_attempts">Errou %1$d de 5 tentativas. Depois disso, a conta é bloqueada por 15 min.</string>
+
+    <!-- 1b · criar conta -->
+    <string name="register_headline">Bora organizar\nsua</string>
+    <string name="register_headline_emphasis">galera.</string>
+    <string name="register_supporting_text">Crie sua conta em menos de um minuto.</string>
+    <string name="register_name_placeholder">Seu nome</string>
+    <string name="register_email_placeholder">ana@exemplo.com</string>
+    <string name="register_phone_placeholder">(11) 99999-0000</string>
+    <string name="register_password_placeholder">Crie uma senha</string>
+    <string name="register_submit">Criar conta</string>
+    <string name="register_signin_link">Já tem uma conta? Entrar ›</string>
+    <string name="register_terms">Ao criar sua conta, você concorda com os Termos de uso e a Política de privacidade.</string>
+
+    <!-- 1j · criar conta, recusado -->
+    <string name="register_error_summary">Revise %1$d campos para criar sua conta.</string>
+    <string name="register_error_name">Diga como a galera te chama.</string>
+    <string name="register_error_email_taken">Esse e-mail já tem conta no Saqz. Entrar?</string>
+    <string name="register_error_phone">Telefone incompleto. Use DDD + 9 dígitos.</string>
+    <string name="register_error_password">Use no mínimo 8 caracteres.</string>
+
+    <!-- 1c · concluir cadastro -->
+    <string name="identity_add_photo">Adicionar foto</string>
+    <string name="identity_headline">Quase</string>
+    <string name="identity_headline_emphasis">lá!</string>
+    <string name="identity_supporting_text">Confirme seu nome e adicione um telefone para a galera te encontrar.</string>
+    <string name="identity_phone_privacy">Seu telefone fica visível só para os grupos que você participa.</string>
+    <string name="identity_submit">Concluir cadastro</string>
+
+    <!-- 1d · esqueci a senha -->
+    <string name="forgot_headline">Esqueceu a senha?\n</string>
+    <string name="forgot_headline_emphasis">Sem stress.</string>
+    <string name="forgot_supporting_text">Digite seu e-mail e enviamos um código para você criar uma nova senha.</string>
+    <string name="forgot_submit">Enviar código</string>
+
+    <!-- 1e · código, e o 1f (reenviado) e o 1k (recusado) sobre a mesma tela -->
+    <string name="reset_code_headline">Digite o\n</string>
+    <string name="reset_code_headline_emphasis">código.</string>
+    <string name="reset_code_supporting_text">Enviamos um código de 4 dígitos para %1$s.</string>
+    <string name="reset_code_resend_countdown">Não chegou? Reenviar código · %1$s</string>
+    <string name="reset_code_submit">Verificar código</string>
+    <string name="reset_code_resent">Enviamos um novo código para o seu e-mail.</string>
+    <string name="reset_code_resend_wait">Reenviar novamente em %1$s</string>
+    <string name="reset_code_error_invalid">Código incorreto. Restam %1$d tentativas.</string>
+    <string name="reset_code_error_expired">Esse código expirou. Peça um novo para continuar.</string>
+    <string name="reset_code_resend">Reenviar código</string>
+
+    <!-- 1g · nova senha -->
+    <string name="new_password_headline">Crie uma\n</string>
+    <string name="new_password_headline_emphasis">nova senha.</string>
+    <string name="new_password_supporting_text">Código confirmado. Agora escolha uma senha nova e segura.</string>
+    <string name="new_password_field">Nova senha</string>
+    <string name="new_password_confirm_field">Confirmar nova senha</string>
+    <string name="new_password_submit">Salvar nova senha</string>
+
+    <!-- 1h · senha alterada -->
+    <string name="password_changed_headline">Senha</string>
+    <string name="password_changed_headline_emphasis">alterada!</string>
+    <string name="password_changed_supporting_text">Tudo certo. Use a nova senha para entrar e voltar pra sua galera.</string>
+    <string name="password_changed_submit">Entrar agora</string>
+
+    <!-- Repetidos entre telas, uma chave só: o 1d e o 1e trazem o mesmo link de volta ao
+         login, e o 1b e o 1g o mesmo mínimo de caracteres. -->
+    <string name="access_signin_link">Lembrou a senha? Entrar ›</string>
+    <string name="access_password_hint">Mínimo de 8 caracteres.</string>
+
     <string name="auth_error_invalid_credentials">E-mail ou senha invalidos</string>
     <string name="auth_error_email_in_use">Este e-mail ja esta em uso</string>
     <string name="auth_error_weak_password">Escolha uma senha mais forte</string>
@@ -22,16 +113,6 @@
     <string name="verification_confirm">Ja verifiquei</string>
     <string name="verification_resend">Reenviar e-mail</string>
     <string name="verification_sent">E-mail enviado. Aguarde antes de reenviar</string>
-    <string name="name_title">Complete seu perfil</string>
-    <string name="name_body">Informe o nome que aparecera no seu grupo</string>
-    <string name="name_label">Nome</string>
-    <string name="name_invalid">Informe um nome entre 2 e 80 caracteres</string>
-    <string name="name_submit">Continuar</string>
-    <string name="phone_title">Qual seu telefone?</string>
-    <string name="phone_body">Usamos seu celular para contato do grupo</string>
-    <string name="phone_label">Celular</string>
-    <string name="phone_invalid">Informe um celular valido com DDD, ex: (11) 98765-4321</string>
-    <string name="phone_submit">Continuar</string>
     <string name="bootstrap_error">Nao foi possivel carregar sua conta</string>
     <string name="action_retry">Tentar novamente</string>
     <string name="groups_empty">Voce ainda nao participa de um grupo</string>

@@ -13,30 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
-import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.designsystem.asString
 import br.com.saqz.access.presentation.message
-import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
-import br.com.saqz.access.presentation.namecompletion.NameCompletionState
-import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionIntent
-import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionState
 import br.com.saqz.access.presentation.verification.VerificationIntent
 import br.com.saqz.access.presentation.verification.VerificationState
 import br.com.saqz.access.resources.Res
-import br.com.saqz.access.resources.auth_error_method_conflict
-import br.com.saqz.access.resources.auth_error_network
-import br.com.saqz.access.resources.auth_error_provider
-import br.com.saqz.access.resources.auth_error_unknown
-import br.com.saqz.access.resources.name_body
-import br.com.saqz.access.resources.name_invalid
-import br.com.saqz.access.resources.name_label
-import br.com.saqz.access.resources.name_submit
-import br.com.saqz.access.resources.name_title
-import br.com.saqz.access.resources.phone_body
-import br.com.saqz.access.resources.phone_invalid
-import br.com.saqz.access.resources.phone_label
-import br.com.saqz.access.resources.phone_submit
-import br.com.saqz.access.resources.phone_title
 import br.com.saqz.access.resources.verification_body
 import br.com.saqz.access.resources.verification_confirm
 import br.com.saqz.access.resources.verification_resend
@@ -44,17 +24,21 @@ import br.com.saqz.access.resources.verification_sent
 import br.com.saqz.access.resources.verification_title
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
-import br.com.saqz.designsystem.SaqzInput
-import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * O que sobrou da tela de verificação de e-mail: órfã desde o VUL-84 — nenhuma rota a
+ * alcança e a [VerificationViewModel] que a alimentava ficou inerte. O VUL-91 apaga o
+ * conjunto quando entregar a faixa de e-mail não confirmado que o substitui.
+ *
+ * As telas de nome e telefone que dividiam este arquivo saíram no VUL-84: o export as une
+ * na 1c, e o estado que as alimentava virou `SessionAccessState.CompletingIdentity`.
+ */
 internal object IdentityTags {
     const val Verify = "identity-verify"
     const val Resend = "identity-resend"
-    const val NameSubmit = "identity-name-submit"
-    const val PhoneSubmit = "identity-phone-submit"
 }
 
 @Composable
@@ -88,59 +72,6 @@ fun VerificationScreen(
 }
 
 @Composable
-fun NameCompletionScreen(
-    state: NameCompletionState,
-    onIntent: (NameCompletionIntent) -> Unit,
-    modifier: Modifier = Modifier,
-) = IdentityColumn(modifier) {
-    IdentityHeading(stringResource(Res.string.name_title))
-    Text(stringResource(Res.string.name_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
-    SaqzInput(
-        value = state.name,
-        onValueChange = { onIntent(NameCompletionIntent.UpdateName(it)) },
-        label = stringResource(Res.string.name_label),
-        errorText = if (state.invalidName) stringResource(Res.string.name_invalid) else null,
-        enabled = !state.isLoading,
-    )
-    state.error?.let {
-        Text(it.message().asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
-    }
-    SaqzButton(
-        label = stringResource(Res.string.name_submit),
-        onClick = { onIntent(NameCompletionIntent.Complete) },
-        loading = state.isLoading,
-        modifier = Modifier.fillMaxWidth().testTag(IdentityTags.NameSubmit),
-    )
-}
-
-@Composable
-fun PhoneCompletionScreen(
-    state: PhoneCompletionState,
-    onIntent: (PhoneCompletionIntent) -> Unit,
-    modifier: Modifier = Modifier,
-) = IdentityColumn(modifier) {
-    IdentityHeading(stringResource(Res.string.phone_title))
-    Text(stringResource(Res.string.phone_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
-    SaqzInput(
-        value = state.phone,
-        onValueChange = { onIntent(PhoneCompletionIntent.UpdatePhone(it)) },
-        label = stringResource(Res.string.phone_label),
-        kind = SaqzInputKind.Phone,
-        errorText = if (state.invalidPhone) stringResource(Res.string.phone_invalid) else null,
-        enabled = !state.isLoading,
-    )
-    state.error?.let {
-        Text(it.message().asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
-    }
-    SaqzButton(
-        label = stringResource(Res.string.phone_submit),
-        onClick = { onIntent(PhoneCompletionIntent.Complete) },
-        loading = state.isLoading,
-        modifier = Modifier.fillMaxWidth().testTag(IdentityTags.PhoneSubmit),
-    )
-}
-
-@Composable
 private fun IdentityColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -162,10 +93,4 @@ private fun IdentityHeading(text: String) {
 @Composable
 private fun VerificationScreenPreview() = SaqzTheme {
     VerificationScreen(VerificationState(email = "ana@exemplo.com", verificationSent = true), {})
-}
-
-@Preview
-@Composable
-private fun NameCompletionScreenPreview() = SaqzTheme {
-    NameCompletionScreen(NameCompletionState(name = "Ana"), {})
 }

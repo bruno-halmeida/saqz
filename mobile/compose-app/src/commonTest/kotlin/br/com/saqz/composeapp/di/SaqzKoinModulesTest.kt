@@ -14,7 +14,6 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeSharePort
-import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
@@ -23,13 +22,10 @@ import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.port.ValueResult
 import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.domain.session.SessionInvalidator as AccessSessionInvalidator
-import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
-import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.login.LoginViewModel
-import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
 import br.com.saqz.composeapp.navigation.AccessRuntimeContract
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.groups.domain.photo.GroupPhotoCrop
@@ -199,7 +195,6 @@ class SaqzKoinModulesTest {
         koin.get<AccessRuntimeContract>()
         koin.get<AccessViewModel>()
         koin.get<LoginViewModel>()
-        koin.get<PhoneCompletionViewModel>()
 
         app.close()
     }
@@ -236,15 +231,11 @@ class SaqzKoinModulesTest {
             )
         }
         val koin = app.koin
+        // Resolver a maquina basta para registrar o invalidador; nao ha intent aqui de
+        // proposito. Desde o VUL-84 o `Accept` ja dispara um bootstrap proprio, no escopo
+        // de Dispatchers.Default do modulo, e ele correria em paralelo com a chamada
+        // abaixo — dois 401 e duas saidas para contar.
         val session = koin.get<SessionAccessStateMachine>()
-        session.onIntent(
-            SessionIntent.Accept(
-                AuthTransition.Authenticated(
-                    NativeUser(subject = "user-1", email = "person@example.com", displayName = "Person", emailVerified = false),
-                ),
-            ),
-        )
-        assertIs<SessionAccessState.AwaitingVerification>(session.state.value)
 
         // Any authenticated call is enough: the invalidator lives in the network client,
         // not in the gateway. Bootstrap is the one the reset keeps.

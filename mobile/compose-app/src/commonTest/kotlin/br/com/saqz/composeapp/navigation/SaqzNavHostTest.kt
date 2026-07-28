@@ -1,7 +1,6 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.navigation3.runtime.NavKey
-import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
@@ -10,9 +9,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The C1 session gate: every [SessionAccessState] resolves to exactly one destination, and
- * `Ready` is the only one that reaches the shell. Exhaustive by construction — a new state
- * fails `toDestination`'s `when` at compile time and shows up missing here.
+ * O portão de sessão: cada [SessionAccessState] resolve para exatamente um destino, e só o
+ * `Ready` alcança o shell. Exaustivo por construção — um estado novo reprova o `when` de
+ * `toDestination` em tempo de compilação e aparece faltando aqui.
  */
 class SaqzNavHostTest {
 
@@ -26,26 +25,10 @@ class SaqzNavHostTest {
     }
 
     @Test
-    fun awaitingVerificationRoutesToVerification() {
+    fun completingIdentityRoutesToTheMergedScreen() {
         assertEquals(
-            listOf(AccessRoute.Verification),
-            stackFor(SessionAccessState.AwaitingVerification(user)),
-        )
-    }
-
-    @Test
-    fun completingNameRoutesToNameCompletion() {
-        assertEquals(
-            listOf(AccessRoute.NameCompletion),
-            stackFor(SessionAccessState.CompletingName(user)),
-        )
-    }
-
-    @Test
-    fun completingPhoneRoutesToPhoneCompletion() {
-        assertEquals(
-            listOf(AccessRoute.PhoneCompletion),
-            stackFor(SessionAccessState.CompletingPhone(session)),
+            listOf(AccessRoute.IdentityCompletion),
+            stackFor(SessionAccessState.CompletingIdentity(session)),
         )
     }
 
@@ -60,15 +43,13 @@ class SaqzNavHostTest {
         assertEquals(listOf(SaqzShellDestination), stackFor(SessionAccessState.Ready(session)))
     }
 
-    // VUL-35: registration and password reset are gone, so signed-out has no sub-route
-    // left to stack on top of Login -- the access stack is never deeper than one entry.
+    // O portão canonicaliza para uma entrada só: a profundidade que o VUL-84 devolve ao
+    // fluxo 1 é da navegação da pessoa, não de um estado de sessão.
     @Test
     fun everySessionStateResolvesToASingleEntry() {
         listOf(
             SessionAccessState.SignedOut,
-            SessionAccessState.AwaitingVerification(user),
-            SessionAccessState.CompletingName(user),
-            SessionAccessState.CompletingPhone(session),
+            SessionAccessState.CompletingIdentity(session),
             SessionAccessState.Bootstrapping,
             SessionAccessState.BootstrapError,
             SessionAccessState.Ready(session),
@@ -83,13 +64,23 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }
 
-    private companion object {
-        val user = NativeUser(
-            subject = "user-1",
-            email = "atleta@example.test",
-            emailVerified = true,
-            displayName = "Atleta",
+    // VUL-84: enquanto a sessão não muda, a reconciliação não corre — é o que deixa o
+    // percurso 1a → 1d → 1e → 1g → 1h de pé. Quando ela corre, o portão vence: o estado
+    // novo desfaz o que a pessoa empilhou, porque o destino dele é outro.
+    @Test
+    fun aSessionChangeCollapsesTheStackTheUserBuilt() {
+        val stack = mutableListOf<NavKey>(
+            AccessRoute.Login,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
         )
+
+        reconcileAccessStack(stack, SessionAccessState.Ready(session))
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+    }
+
+    private companion object {
         val session = AccessSession(
             user = AccessUser(
                 id = "user-1",

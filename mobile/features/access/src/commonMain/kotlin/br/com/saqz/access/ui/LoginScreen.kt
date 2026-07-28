@@ -3,6 +3,7 @@ package br.com.saqz.access.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -56,11 +57,14 @@ import br.com.saqz.access.resources.auth_error_weak_password
 import br.com.saqz.access.resources.google_g
 import br.com.saqz.access.resources.login_continue_with
 import br.com.saqz.access.resources.login_email
+import br.com.saqz.access.resources.login_forgot_password
 import br.com.saqz.access.resources.login_google
 import br.com.saqz.access.resources.login_headline_emphasis
 import br.com.saqz.access.resources.login_headline_first
 import br.com.saqz.access.resources.login_headline_second
 import br.com.saqz.access.resources.login_password
+import br.com.saqz.access.resources.login_signup_link
+import br.com.saqz.access.resources.login_signup_prompt
 import br.com.saqz.access.resources.login_submit
 import br.com.saqz.access.resources.login_supporting_text
 import br.com.saqz.access.resources.material_arrow_forward
@@ -85,12 +89,21 @@ internal object LoginTags {
     const val Password = "login-password"
     const val Submit = "login-submit"
     const val Google = "login-google"
+    const val ForgotPassword = "login-forgot-password"
+    const val CreateAccount = "login-create-account"
 }
 
+/**
+ * VUL-84 devolve à 1a as duas saídas que o export desenha e que o reset tinha tirado por
+ * não haver destino: "Esqueci minha senha" (1d) e "Criar conta ›" (1b). São links crus —
+ * quem entrega a 1a de verdade os veste.
+ */
 @Composable
 fun LoginScreen(
     state: LoginState,
     onIntent: (LoginIntent) -> Unit,
+    onCreateAccount: () -> Unit,
+    onForgotPassword: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -175,6 +188,16 @@ fun LoginScreen(
                 modifier = Modifier.testTag(LoginTags.Password),
             )
             Spacer(Modifier.height(metrics.grid))
+            Text(
+                text = stringResource(Res.string.login_forgot_password),
+                style = SaqzTheme.typography.caption,
+                color = colors.primary,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clickable(onClick = onForgotPassword)
+                    .testTag(LoginTags.ForgotPassword),
+            )
+            Spacer(Modifier.height(metrics.grid))
             state.error?.let { error ->
                 Text(
                     text = error.asString(),
@@ -198,6 +221,25 @@ fun LoginScreen(
                 onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
                 enabled = !state.isLoading,
             )
+            Spacer(Modifier.height(18.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.login_signup_prompt),
+                    style = SaqzTheme.typography.caption,
+                    color = colors.textSecondary,
+                )
+                Text(
+                    text = stringResource(Res.string.login_signup_link),
+                    style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+                    color = colors.primary,
+                    modifier = Modifier
+                        .clickable(onClick = onCreateAccount)
+                        .testTag(LoginTags.CreateAccount),
+                )
+            }
         }
     }
 }
@@ -367,5 +409,5 @@ private fun GoogleIcon(modifier: Modifier = Modifier) {
 )
 @Composable
 private fun LoginScreenPreview() = SaqzTheme {
-    LoginScreen(LoginState(email = "ana@exemplo.com"), {})
+    LoginScreen(LoginState(email = "ana@exemplo.com"), {}, {}, {})
 }

@@ -1,19 +1,16 @@
 package br.com.saqz.access.presentation
 
-import br.com.saqz.access.domain.port.AuthCallback
-import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
-import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ProfilePhotoResult
 import br.com.saqz.access.domain.port.ResultCallback
-import br.com.saqz.access.domain.port.TokenCallback
-import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.session.AccessError
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.domain.session.SessionInvalidator
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,50 +21,47 @@ import kotlinx.coroutines.launch
 sealed interface SessionAccessState {
     data object SignedOut : SessionAccessState
 
-    data class AwaitingVerification(
-        val user: NativeUser,
-        val isLoading: Boolean = false,
-        val error: AuthUiError? = null,
-        val verificationSent: Boolean = false,
-    ) : SessionAccessState
-
-    data class CompletingName(
-        val user: NativeUser,
+    /**
+     * A tela 1c: nome, telefone e foto no mesmo estado, porque o export os junta numa tela
+     * só. Substitui o par `CompletingName`/`CompletingPhone` — o primeiro corria antes do
+     * bootstrap contra o provedor nativo, o segundo depois contra o backend; agora há um
+     * portão só, depois do bootstrap, e um `completeProfile` só, que já aceita os dois.
+     */
+    data class CompletingIdentity(
+        val session: AccessSession,
         val name: String = "",
+        val phone: String = "",
+        val photo: ProfilePhotoResult.Selected? = null,
         val isLoading: Boolean = false,
         val error: AuthUiError? = null,
         val invalidName: Boolean = false,
+        val invalidPhone: Boolean = false,
     ) : SessionAccessState
 
     data object Bootstrapping : SessionAccessState
 
     data object BootstrapError : SessionAccessState
 
-    data class CompletingPhone(
-        val session: AccessSession,
-        val phone: String = "",
-        val isLoading: Boolean = false,
-        val error: AuthUiError? = null,
-        val invalidPhone: Boolean = false,
-    ) : SessionAccessState
-
     data class Ready(val session: AccessSession) : SessionAccessState
 }
+
+/**
+ * O sinal que o VUL-76 trouxe do backend até `AccessUser`, exposto onde a faixa de e-mail
+ * não confirmado (VUL-91) o lê. Derivado em vez de copiado: um campo repetido no [Ready]
+ * poderia divergir da sessão que o próprio [Ready] carrega.
+ */
+val SessionAccessState.Ready.emailVerified: Boolean get() = session.user.emailVerified
 
 sealed interface SessionIntent {
     data class Accept(val transition: AuthTransition) : SessionIntent
 
-    data object ConfirmVerification : SessionIntent
-
-    data object ResendVerification : SessionIntent
-
     data class UpdateName(val value: String) : SessionIntent
-
-    data object CompleteName : SessionIntent
 
     data class UpdatePhone(val value: String) : SessionIntent
 
-    data object CompletePhone : SessionIntent
+    data class UpdatePhoto(val value: ProfilePhotoResult.Selected?) : SessionIntent
+
+    data object CompleteIdentity : SessionIntent
 
     data object RetryBootstrap : SessionIntent
 
@@ -90,96 +84,40 @@ class SessionAccessStateMachine(
             is SessionIntent.Accept -> when (val transition = intent.transition) {
                 is AuthTransition.Authenticated -> routeIdentity(transition.user)
             }
-            SessionIntent.ConfirmVerification -> confirmVerification()
-            SessionIntent.ResendVerification -> resendVerification()
-            is SessionIntent.UpdateName -> updateName(intent.value)
-            SessionIntent.CompleteName -> completeName()
-            is SessionIntent.UpdatePhone -> updatePhone(intent.value)
-            SessionIntent.CompletePhone -> completePhone()
+            is SessionIntent.UpdateName -> updateIdentity { copy(name = intent.value, invalidName = false) }
+            is SessionIntent.UpdatePhone -> updateIdentity { copy(phone = intent.value, invalidPhone = false) }
+            is SessionIntent.UpdatePhoto -> updateIdentity { copy(photo = intent.value) }
+            SessionIntent.CompleteIdentity -> completeIdentity()
             SessionIntent.RetryBootstrap -> retryBootstrap()
             SessionIntent.Logout -> logout()
         }
     }
 
-    private fun confirmVerification() {
-        val current = mutableState.value as? SessionAccessState.AwaitingVerification ?: return
-        if (current.isLoading) return
-        mutableState.value = current.copy(isLoading = true, error = null, verificationSent = false)
-        auth.reloadUser(authCallback { result ->
-            when (result) {
-                AuthResult.Cancelled -> awaitVerification(current.user)
-                is AuthResult.Failure -> verificationFailure(current.user, result.code)
-                is AuthResult.Success -> {
-                    if (result.user.emailVerified) forceRefreshAndBootstrap(result.user)
-                    else awaitVerification(result.user)
-                }
-            }
-        })
+    private fun updateIdentity(edit: SessionAccessState.CompletingIdentity.() -> SessionAccessState.CompletingIdentity) {
+        val current = mutableState.value as? SessionAccessState.CompletingIdentity ?: return
+        if (!current.isLoading) mutableState.value = current.edit().copy(error = null)
     }
 
-    private fun resendVerification() {
-        val current = mutableState.value as? SessionAccessState.AwaitingVerification ?: return
-        if (current.isLoading) return
-        mutableState.value = current.copy(isLoading = true, error = null, verificationSent = false)
-        auth.sendVerification(resultCallback { result ->
-            mutableState.value = when (result) {
-                OperationResult.Success -> current.copy(verificationSent = true)
-                is OperationResult.Failure -> current.copy(error = result.code.toUiError())
-            }
-        })
-    }
-
-    private fun updateName(value: String) {
-        val current = mutableState.value as? SessionAccessState.CompletingName ?: return
-        if (!current.isLoading) mutableState.value = current.copy(name = value, error = null, invalidName = false)
-    }
-
-    private fun completeName() {
-        val current = mutableState.value as? SessionAccessState.CompletingName ?: return
+    /**
+     * A foto escolhida fica no estado e não sobe aqui: o envio é HTTP multipart e ainda não
+     * há gateway para ele. Quem entrega a 1c completa liga o upload nesta transição.
+     */
+    private fun completeIdentity() {
+        val current = mutableState.value as? SessionAccessState.CompletingIdentity ?: return
         if (current.isLoading) return
         val name = normalizedDisplayName(current.name)
-        if (name == null) {
-            mutableState.value = current.copy(invalidName = true)
-            return
-        }
-        mutableState.value = current.copy(isLoading = true, error = null, invalidName = false)
-        auth.updateDisplayName(name, authCallback { result ->
-            when (result) {
-                AuthResult.Cancelled -> mutableState.value = current.copy(name = name)
-                is AuthResult.Failure -> mutableState.value = current.copy(name = name, error = result.code.toUiError())
-                is AuthResult.Success -> forceRefreshAndBootstrap(result.user)
-            }
-        })
-    }
-
-    private fun updatePhone(value: String) {
-        val current = mutableState.value as? SessionAccessState.CompletingPhone ?: return
-        if (!current.isLoading) mutableState.value = current.copy(phone = value, error = null, invalidPhone = false)
-    }
-
-    private fun completePhone() {
-        val current = mutableState.value as? SessionAccessState.CompletingPhone ?: return
-        if (current.isLoading) return
         val phone = normalizedBrMobilePhone(current.phone)
-        if (phone == null) {
-            mutableState.value = current.copy(invalidPhone = true)
+        if (name == null || phone == null) {
+            mutableState.value = current.copy(invalidName = name == null, invalidPhone = phone == null)
             return
         }
-        mutableState.value = current.copy(isLoading = true, error = null, invalidPhone = false)
+        mutableState.value = current.copy(isLoading = true, error = null, invalidName = false, invalidPhone = false)
         scope.launch {
-            mutableState.value = when (val result = session.completeProfile(phone)) {
-                is SaqzResult.Success -> readyOrPhoneGate(result.value)
+            mutableState.value = when (val result = session.completeProfile(phone, name)) {
+                is SaqzResult.Success -> readyOrIdentityGate(result.value)
                 is SaqzResult.Failure -> when (val error = result.error) {
                     is AccessError.Validation -> current.copy(isLoading = false, invalidPhone = true)
-                    is AccessError.DataFailure -> current.copy(
-                        isLoading = false,
-                        error = when (error.error) {
-                            br.com.saqz.domain.DataError.Connectivity,
-                            br.com.saqz.domain.DataError.Timeout,
-                            -> AuthUiError.NETWORK_UNAVAILABLE
-                            else -> AuthUiError.UNKNOWN
-                        },
-                    )
+                    is AccessError.DataFailure -> current.copy(isLoading = false, error = error.error.toUiError())
                     AccessError.EmailNotVerified,
                     AccessError.Unauthenticated,
                     AccessError.Forbidden,
@@ -211,78 +149,48 @@ class SessionAccessStateMachine(
 
     override fun invalidate() = onIntent(SessionIntent.Logout)
 
-    private fun routeIdentity(user: NativeUser) {
-        currentUser = user
-        when {
-            !user.emailVerified -> awaitVerification(user)
-            normalizedDisplayName(user.displayName.orEmpty()) == null -> {
-                mutableState.value = SessionAccessState.CompletingName(user)
-            }
-            else -> bootstrap(user)
-        }
-    }
-
-    private fun awaitVerification(user: NativeUser) {
-        currentUser = user
-        mutableState.value = SessionAccessState.AwaitingVerification(user)
-    }
-
-    private fun verificationFailure(user: NativeUser, code: NativeFailureCode) {
-        mutableState.value = SessionAccessState.AwaitingVerification(user, error = code.toUiError())
-    }
-
-    private fun forceRefreshAndBootstrap(user: NativeUser) {
-        currentUser = user
-        auth.idToken(true, object : TokenCallback {
-            override fun complete(result: TokenResult) {
-                when (result) {
-                    is TokenResult.Failure -> identityFailure(user, result.code)
-                    is TokenResult.Success -> routeIdentity(user)
-                }
-            }
-        })
-    }
-
-    private fun identityFailure(user: NativeUser, code: NativeFailureCode) {
-        mutableState.value = if (normalizedDisplayName(user.displayName.orEmpty()) == null) {
-            SessionAccessState.CompletingName(user, error = code.toUiError())
-        } else {
-            SessionAccessState.AwaitingVerification(user, error = code.toUiError())
-        }
-    }
+    /**
+     * Autenticou, carrega a sessão. A trava de e-mail que ficava aqui saiu do backend no
+     * VUL-76 e sai do app com ela: quem não confirmou entra e vê a faixa, em vez de parar
+     * numa tela. Sem essa trava também não há claim nova para buscar, então o
+     * `idToken(forceRefresh = true)` que precedia o bootstrap deixou de ter motivo.
+     */
+    private fun routeIdentity(user: NativeUser) = bootstrap(user)
 
     private fun bootstrap(user: NativeUser) {
         currentUser = user
         mutableState.value = SessionAccessState.Bootstrapping
         scope.launch {
             mutableState.value = when (val result = session.bootstrap()) {
-                is SaqzResult.Success -> readyOrPhoneGate(result.value)
-                is SaqzResult.Failure -> when (result.error) {
-                    AccessError.EmailNotVerified -> {
-                        val unverified = user.copy(emailVerified = false)
-                        currentUser = unverified
-                        SessionAccessState.AwaitingVerification(unverified)
-                    }
-                    AccessError.Unauthenticated,
-                    AccessError.Forbidden,
-                    is AccessError.Validation,
-                    is AccessError.DataFailure,
-                    -> SessionAccessState.BootstrapError
-                }
+                is SaqzResult.Success -> readyOrIdentityGate(result.value)
+                is SaqzResult.Failure -> SessionAccessState.BootstrapError
             }
         }
     }
 
-    private fun readyOrPhoneGate(session: AccessSession): SessionAccessState =
-        if (session.user.phoneRequired) SessionAccessState.CompletingPhone(session)
-        else SessionAccessState.Ready(session)
-
-    private fun authCallback(block: (AuthResult) -> Unit) = object : AuthCallback {
-        override fun complete(result: AuthResult) = block(result)
-    }
+    /**
+     * O portão único da 1c, agora sobre a sessão do backend e não sobre o usuário do
+     * provedor: falta telefone ou falta nome utilizável, a pessoa completa o perfil; senão
+     * está pronta. Os campos já entram preenchidos com o que o backend sabe — a 1c pede
+     * para *confirmar* o nome, não para digitá-lo do zero.
+     */
+    private fun readyOrIdentityGate(session: AccessSession): SessionAccessState =
+        if (session.user.phoneRequired || normalizedDisplayName(session.user.displayName) == null) {
+            SessionAccessState.CompletingIdentity(
+                session = session,
+                name = session.user.displayName,
+                phone = session.user.phone.orEmpty(),
+            )
+        } else {
+            SessionAccessState.Ready(session)
+        }
 
     private fun resultCallback(block: (OperationResult) -> Unit) = object : ResultCallback {
         override fun complete(result: OperationResult) = block(result)
     }
 }
 
+private fun DataError.toUiError(): AuthUiError = when (this) {
+    DataError.Connectivity, DataError.Timeout -> AuthUiError.NETWORK_UNAVAILABLE
+    else -> AuthUiError.UNKNOWN
+}
