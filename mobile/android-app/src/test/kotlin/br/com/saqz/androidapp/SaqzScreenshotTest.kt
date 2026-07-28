@@ -266,6 +266,10 @@ class SaqzScreenshotTest {
             SaqzIcon(SaqzIcons.Plus)
             SaqzIcon(SaqzIcons.Minus)
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SaqzIcon(SaqzIcons.CreditCard)
+            SaqzIcon(SaqzIcons.MessageSquare)
+        }
     }
 
     @Test

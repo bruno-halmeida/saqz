@@ -21,6 +21,7 @@ import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.CircleAlert
 import com.composables.icons.lucide.Clock
+import com.composables.icons.lucide.CreditCard
 import com.composables.icons.lucide.Eye
 import com.composables.icons.lucide.EyeOff
 import com.composables.icons.lucide.House
@@ -29,6 +30,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Mail
 import com.composables.icons.lucide.MapPin
 import com.composables.icons.lucide.Megaphone
+import com.composables.icons.lucide.MessageSquare
 import com.composables.icons.lucide.Minus
 import com.composables.icons.lucide.Phone
 import com.composables.icons.lucide.Plus
@@ -79,6 +81,8 @@ object SaqzIcons {
     val Camera = Lucide.Camera
     val CircleAlert = Lucide.CircleAlert
     val Clock = Lucide.Clock
+    val CreditCard = Lucide.CreditCard
+    val MessageSquare = Lucide.MessageSquare
 }
 
 @Composable
@@ -127,6 +131,8 @@ private fun SaqzIconsPreview() = SaqzTheme {
             SaqzIcon(SaqzIcons.Camera)
             SaqzIcon(SaqzIcons.CircleAlert)
             SaqzIcon(SaqzIcons.Clock)
+            SaqzIcon(SaqzIcons.CreditCard)
+            SaqzIcon(SaqzIcons.MessageSquare)
         }
     }
 }
