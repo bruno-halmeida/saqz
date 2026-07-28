@@ -190,6 +190,16 @@ private fun GroupScheduleWithoutRecurrencePreview() = SaqzTheme {
 
 @Preview
 @Composable
+private fun GroupScheduleWithoutGamesPreview() = SaqzTheme {
+    GroupScheduleScreen(
+        state = previewScheduleState.copy(upcoming = emptyList()),
+        onIntent = {},
+        onBack = {},
+    )
+}
+
+@Preview
+@Composable
 private fun GroupSchedulePausedPreview() = SaqzTheme {
     GroupScheduleScreen(state = previewScheduleState.copy(isPaused = true), onIntent = {}, onBack = {})
 }

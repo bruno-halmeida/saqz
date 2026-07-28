@@ -43,6 +43,15 @@ class GroupScheduleScreenshotTest {
     // Sem recorrência para o card de pausa caber na tela: com as pílulas de slot ele fica
     // abaixo da dobra e o estado "Retomar a agenda" não apareceria na captura.
     @Test
+    fun withoutUpcomingGames() = capture("group-schedule-sem-jogos") {
+        GroupScheduleScreen(
+            state = previewScheduleState.copy(upcoming = emptyList()),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    @Test
     fun paused() = capture("group-schedule-pausada") {
         GroupScheduleScreen(
             state = previewScheduleState.copy(recurring = false, slots = emptyList(), isPaused = true),

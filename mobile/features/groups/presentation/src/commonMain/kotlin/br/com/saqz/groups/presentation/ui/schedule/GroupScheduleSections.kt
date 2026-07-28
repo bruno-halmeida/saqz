@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.em
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzDivider
+import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzStatusChip
@@ -40,6 +41,7 @@ import br.com.saqz.groups.resources.group_schedule_upcoming
 import br.com.saqz.groups.resources.group_setup_confirmation_lead_hint
 import br.com.saqz.groups.resources.group_setup_confirmation_lead_label
 import br.com.saqz.groups.resources.group_setup_duration_label
+import br.com.saqz.groups.resources.groups_no_game
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -112,9 +114,15 @@ internal fun GroupUpcomingGamesSection(
         SaqzSectionHeader(title = stringResource(Res.string.group_schedule_upcoming))
         // Card flush: as linhas encostam na borda e a divisória vai de ponta a ponta.
         SaqzCard(padded = false) {
-            games.forEachIndexed { index, game ->
-                if (index > 0) SaqzDivider()
-                GroupUpcomingGameRow(game = game, onClick = { onOpenGame(game.id) })
+            if (games.isEmpty()) {
+                // Sem isto o card fica sem filho nenhum e colapsa numa borda solta embaixo
+                // do cabeçalho. Grupo sem jogo marcado é caso comum, não erro.
+                SaqzEmptyState(title = stringResource(Res.string.groups_no_game))
+            } else {
+                games.forEachIndexed { index, game ->
+                    if (index > 0) SaqzDivider()
+                    GroupUpcomingGameRow(game = game, onClick = { onOpenGame(game.id) })
+                }
             }
         }
     }
