@@ -201,7 +201,7 @@ private val sampleMembers = listOf(
     MemberUi("marina", "Marina Freitas", "Líbero · mensalista", false, false, "27 jogos · 95% de presença"),
 )
 
-private val sampleState = GroupMembersState(
+internal val previewMembersState = GroupMembersState(
     isLoading = false,
     totalCount = 26,
     adminCount = 2,
@@ -218,14 +218,14 @@ private val sampleState = GroupMembersState(
 @Preview(name = "2k — lista com pedidos", widthDp = 390, heightDp = 844)
 @Composable
 private fun GroupMembersScreenPreview() = SaqzTheme {
-    GroupMembersScreen(state = sampleState, onIntent = {}, onBack = {})
+    GroupMembersScreen(state = previewMembersState, onIntent = {}, onBack = {})
 }
 
 @Preview(name = "2k — sheet de membro comum", widthDp = 390, heightDp = 844)
 @Composable
 private fun GroupMembersMemberSheetPreview() = SaqzTheme {
     GroupMembersScreen(
-        state = sampleState.copy(selected = sampleMembers.first()),
+        state = previewMembersState.copy(selected = sampleMembers.first()),
         onIntent = {},
         onBack = {},
     )
@@ -235,7 +235,7 @@ private fun GroupMembersMemberSheetPreview() = SaqzTheme {
 @Composable
 private fun GroupMembersAdminSheetPreview() = SaqzTheme {
     GroupMembersScreen(
-        state = sampleState.copy(selected = sampleAdmins.last()),
+        state = previewMembersState.copy(selected = sampleAdmins.last()),
         onIntent = {},
         onBack = {},
     )

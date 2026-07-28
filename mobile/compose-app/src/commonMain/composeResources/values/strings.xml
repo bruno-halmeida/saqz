@@ -2,6 +2,10 @@
     <string name="shell_signed_in">Você está conectado.</string>
     <string name="shell_logout">Sair</string>
     <string name="shell_open_catalog">Catálogo do design system</string>
+    <string name="shell_nav_home">Início</string>
+    <string name="shell_nav_games">Jogos</string>
+    <string name="shell_nav_groups">Grupos</string>
+    <string name="shell_nav_profile">Perfil</string>
     <string name="catalog_title">Catálogo do design system</string>
     <string name="catalog_section_foundations">Fundamentos</string>
     <string name="catalog_section_actions">Ações</string>

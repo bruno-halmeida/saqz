@@ -35,6 +35,7 @@ kotlin {
             api(project(":features:access:domain"))
             api(project(":features:groups"))
             api(project(":features:groups:domain"))
+            implementation(project(":features:groups:presentation"))
             implementation(project(":features:access:data"))
             implementation(project(":core:common"))
             implementation(project(":core:domain"))
