@@ -2,6 +2,7 @@ package br.com.saqz.androidapp
 
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +18,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -27,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
+import br.com.saqz.access.ui.SaqzCodeInput
 import br.com.saqz.access.ui.SaqzInlineAlert
 import br.com.saqz.access.ui.SaqzInlineAlertTone
 import br.com.saqz.designsystem.SaqzAttendance
@@ -136,6 +142,43 @@ class SaqzScreenshotTest {
     @Test
     fun login() = capture("login") {
         LoginScreen(state = LoginState(email = "ana@saqz.app"), onIntent = {})
+    }
+
+    // VUL-77: a fileira do código das telas 1e/1f/1k. Cena de jornada, e não do catálogo
+    // — o componente mora em `:features:access` (AD-031), e catálogo do design system só
+    // mostra peça do design system. Fundo branco porque é o do frame do fluxo 1.
+    //
+    // O foco é pedido de verdade porque é ele que acende a caixa da vez: sem pedir, o print
+    // sairia com quatro caixas iguais e a borda azul, o halo e o cursor de 2×26 nunca
+    // apareceriam.
+    @Test
+    fun accessCodeInput() = capture("acesso-codigo") {
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.surface)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SaqzCodeInput(
+                "",
+                {},
+                label = "Código de verificação",
+                modifier = Modifier.focusGroup().focusRequester(focus),
+            )
+            SaqzCodeInput("", {}, label = "Código de verificação")
+            SaqzCodeInput("13", {}, label = "Código de verificação")
+            SaqzCodeInput("1359", {}, label = "Código de verificação")
+            SaqzCodeInput(
+                "1359",
+                {},
+                label = "Código de verificação",
+                errorText = "Código incorreto. Restam 2 tentativas.",
+            )
+            SaqzCodeInput("1359", {}, label = "Código de verificação", enabled = false)
+        }
     }
 
     @Test
