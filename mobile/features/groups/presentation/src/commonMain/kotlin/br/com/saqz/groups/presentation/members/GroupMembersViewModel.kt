@@ -10,6 +10,12 @@ import br.com.saqz.core.common.mvi.MviViewModel
  * `GroupMembershipGateway` for ligado, [initialState] vira um Flow coletado no `init` e
  * as mutações abaixo passam a chamar o gateway antes de reprojetar; nenhuma tela muda.
  * Teto: sem gateway, a mudança otimista é a única — nada reverte se o servidor recusar.
+ *
+ * ponytail: **quem constrói esta ViewModel precisa passar um [initialState] com dado
+ * real.** O default é `GroupMembersState()`, que tem `isLoading = true` e as três listas
+ * vazias — registrar a rota com ele deixa a tela em esqueleto para sempre, porque não há
+ * nada aqui que saia do carregando por conta própria. Quem registra é o VUL-72; o teto
+ * cai quando o gateway entrar e o `init` puder virar o carregando ele mesmo.
  */
 class GroupMembersViewModel(
     private val groupId: String,
@@ -53,6 +59,10 @@ class GroupMembersViewModel(
 
     private fun perform(action: GroupMemberAction) {
         val selected = state.value.selected ?: return
+        // Intent inválido retorna cedo (AGENTS.md §4): a linha nem existe no sheet daquele
+        // papel, então pedi-la é chamada forjada — "editar jogador" para um admin ou
+        // "ver perfil" para um membro comum não emite efeito nem mexe no estado.
+        if (action !in selected.sheetActions()) return
         when (action) {
             GroupMemberAction.ViewProfile -> emit(GroupMembersEffect.OpenMemberProfile(selected.id))
             GroupMemberAction.EditMember -> emit(GroupMembersEffect.OpenMemberEditor(selected.id))

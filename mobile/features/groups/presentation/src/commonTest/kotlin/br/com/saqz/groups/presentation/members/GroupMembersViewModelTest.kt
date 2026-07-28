@@ -180,6 +180,39 @@ class GroupMembersViewModelTest {
         assertEquals(4, viewModel.state.value.totalCount)
     }
 
+    // As duas linhas que o sheet de um admin não mostra. Pedi-las é chamada forjada.
+    @Test
+    fun `an action outside the admin sheet changes nothing`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+        viewModel.onIntent(GroupMembersIntent.OpenMember("bia2"))
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.EditMember))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Promote))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals("bia2", viewModel.state.value.selected?.id)
+        // Nenhum dos dois emitiu: o primeiro efeito da fila é o da ação seguinte, válida.
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.ViewProfile))
+        assertEquals(GroupMembersEffect.OpenMemberProfile("bia2"), viewModel.effects.first())
+    }
+
+    // E as duas que o sheet de um membro comum não mostra.
+    @Test
+    fun `an action outside the common member sheet changes nothing`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+        viewModel.onIntent(GroupMembersIntent.OpenMember("thiago"))
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.ViewProfile))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Demote))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(2, viewModel.state.value.adminCount)
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.EditMember))
+        assertEquals(GroupMembersEffect.OpenMemberEditor("thiago"), viewModel.effects.first())
+    }
+
     @Test
     fun `accepting a request turns the person into a common member`() {
         val viewModel = viewModel()
