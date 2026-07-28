@@ -9,7 +9,6 @@ import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.newpassword.NewPasswordViewModel
 import br.com.saqz.access.presentation.register.RegisterViewModel
 import br.com.saqz.access.presentation.resetcode.ResetCodeViewModel
-import br.com.saqz.access.presentation.verification.VerificationViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -65,6 +64,4 @@ internal val accessPresentationModule = module {
     // não existe — nem deve existir — definição de `String` no grafo. Mesma decisão do
     // `groupsPresentationModule` (VUL-72).
     viewModel { params -> NewPasswordViewModel(params.get(), get()) }
-    // Órfã: sem rota desde o VUL-84, apagada pelo VUL-91 junto com a tela.
-    viewModelOf(::VerificationViewModel)
 }

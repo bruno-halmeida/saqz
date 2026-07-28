@@ -92,6 +92,13 @@ sealed interface SessionIntent {
 
     data object RetryBootstrap : SessionIntent
 
+    /**
+     * Volta do plano de fundo (VUL-91): é quando a pessoa acabou de tocar no link do
+     * e-mail. O provedor só atualiza `emailVerified` ao recarregar o usuário, então é aqui
+     * que a faixa do shell descobre que já pode sumir.
+     */
+    data object RefreshEmailVerification : SessionIntent
+
     data object Logout : SessionIntent
 }
 
@@ -237,6 +244,7 @@ class SessionAccessStateMachine(
             }
             SessionIntent.CompleteIdentity -> completeIdentity()
             SessionIntent.RetryBootstrap -> retryBootstrap()
+            SessionIntent.RefreshEmailVerification -> refreshEmailVerification()
             SessionIntent.Logout -> logout()
         }
     }
@@ -440,6 +448,32 @@ class SessionAccessStateMachine(
             context.copy(state = SessionAccessState.Bootstrapping)
         } ?: return
         bootstrap(started.turn())
+    }
+
+    /**
+     * Recarrega o usuário no provedor e espelha o sinal na sessão que o [Ready] carrega —
+     * é o que faz a faixa do VUL-91 sumir sozinha, sem a pessoa tocar em nada.
+     *
+     * Só age com faixa na tela: fora de [SessionAccessState.Ready], ou com o e-mail já
+     * confirmado, não há o que recarregar e a volta do plano de fundo não custa nada.
+     *
+     * ponytail: não refaz o bootstrap. O backend lê `email_verified` do mesmo token e se
+     * acerta no próximo `PUT /api/session`; nada além da faixa depende do valor persistido,
+     * e a faixa não bloqueia nada (é o ponto do ticket). Refaça o bootstrap aqui no dia em
+     * que alguma decisão do app depender do campo do backend.
+     */
+    private fun refreshEmailVerification() {
+        val current = mutableState.value as? SessionAccessState.Ready ?: return
+        if (current.emailVerified) return
+        auth.reloadUser(authCallback { result ->
+            if (result !is AuthResult.Success || !result.user.emailVerified) return@authCallback
+            // O estado é relido no callback: o reload é assíncrono e a sessão pode ter
+            // caído (logout, invalidação) enquanto ele voltava.
+            val ready = mutableState.value as? SessionAccessState.Ready ?: return@authCallback
+            mutableState.value = SessionAccessState.Ready(
+                ready.session.copy(user = ready.session.user.copy(emailVerified = true)),
+            )
+        })
     }
 
     private fun logout() {

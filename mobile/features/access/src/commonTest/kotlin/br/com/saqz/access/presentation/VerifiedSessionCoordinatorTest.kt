@@ -84,6 +84,59 @@ class SessionAccessStateMachineTest {
         assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
     }
 
+    // ---- a volta do plano de fundo faz a faixa sumir sozinha (VUL-91) ----
+
+    @Test
+    fun `returning from the background clears the unverified signal once the provider confirms`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+        assertEquals(1, fixture.auth.reloadCalls)
+        fixture.auth.completeAuth(AuthResult.Success(verified))
+
+        assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
+    }
+
+    @Test
+    fun `a reload that still comes back unverified keeps the banner up`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+        fixture.auth.completeAuth(AuthResult.Success(unverified))
+
+        assertFalse(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
+    }
+
+    // Sem faixa não há o que recarregar: a volta do plano de fundo é frequente e o provedor
+    // cobra rede por reload.
+    @Test
+    fun `refreshing does not touch the provider when the email is already confirmed`() = runTest {
+        val confirmed = session.copy(user = session.user.copy(emailVerified = true))
+        val fixture = fixture(this, SaqzResult.Success(confirmed))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+
+        assertEquals(0, fixture.auth.reloadCalls)
+    }
+
+    @Test
+    fun `refreshing outside a ready session does nothing`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Unknown)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+        assertEquals(0, fixture.auth.reloadCalls)
+    }
+
     // ---- o portão pré-bootstrap: o nome é pré-condição do backend ----
 
     // A regressão que o `BootstrapSession` produzia: ele recusa a identidade sem nome

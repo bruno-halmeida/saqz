@@ -20,6 +20,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.access.presentation.emailVerified
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
@@ -28,6 +30,7 @@ import br.com.saqz.access.ui.NewPasswordRoot
 import br.com.saqz.access.ui.PasswordChangedScreen
 import br.com.saqz.access.ui.RegisterRoot
 import br.com.saqz.access.ui.ResetCodeRoot
+import br.com.saqz.composeapp.shell.EmailVerificationBanner
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
@@ -155,6 +158,18 @@ internal fun SaqzNavHost(
                 SaqzAppShell(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                     catalogEnabled = catalogEnabled,
+                    banner = {
+                        // A faixa do VUL-91 só existe com e-mail por confirmar, e some
+                        // sozinha quando a sessão disser que confirmou.
+                        val ready = state.session as? SessionAccessState.Ready
+                        if (ready != null && !ready.emailVerified) {
+                            EmailVerificationBanner(
+                                onRefresh = {
+                                    onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
+                                },
+                            )
+                        }
+                    },
                     groupsTab = {
                         // A aba Grupos é o 2n. `GroupsRoute.List` não vira `entry` porque
                         // seria um segundo host da mesma tela — e a barra do 10q fica sob

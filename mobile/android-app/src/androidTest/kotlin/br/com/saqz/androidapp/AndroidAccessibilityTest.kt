@@ -49,7 +49,9 @@ class AndroidAccessibilityTest {
     fun talkBackOrderMatchesSemantics() {
         composeRule.setContent {
             SaqzTheme {
-                LoginScreen(LoginState(), onIntent = {})
+                // As duas saídas da 1a chegaram com a tela de verdade; aqui são inertes,
+                // porque o teste mede a ordem do TalkBack, não a navegação.
+                LoginScreen(LoginState(), onIntent = {}, onCreateAccount = {}, onForgotPassword = {})
             }
         }
         composeRule.waitForIdle()
