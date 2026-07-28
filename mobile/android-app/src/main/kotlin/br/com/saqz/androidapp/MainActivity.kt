@@ -23,7 +23,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         model.attach(this)
         // model init loads the platform dependencies into Koin; SaqzApp resolves from there.
-        setContent { SaqzApp() }
+        //
+        // ponytail: `reduceTransparency` fica no padrão `false`. O Android não publica
+        // equivalente ao Reduce Transparency da Apple — `HIGH_TEXT_CONTRAST_ENABLED` é
+        // sobre texto, não sobre translucidez, e inventar sinal é pior que não ter.
+        // Teto: no dia em que existir um ajuste de translucidez, ele entra aqui do lado.
+        setContent { SaqzApp(reduceMotion = rememberReduceMotion()) }
     }
 
     override fun onStart() {
