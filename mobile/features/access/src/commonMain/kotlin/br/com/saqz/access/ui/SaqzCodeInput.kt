@@ -1,4 +1,4 @@
-package br.com.saqz.designsystem
+package br.com.saqz.access.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -160,9 +161,17 @@ private fun SaqzCodeBox(
     radius: Dp,
 ) {
     val colors = SaqzTheme.colors
-    // Mesma regra de acento do SaqzInput: travado não anuncia foco nem erro, erro ganha do
-    // foco. O export dá 11% ao halo azul e 10% ao vermelho — são dois números, não um.
-    val accent = colors.inputAccent(enabled = enabled, wrong = wrong, focused = active)
+    // Mesma regra de acento do SaqzInput — travado não anuncia foco nem erro, e erro ganha
+    // do foco —, escrita de novo porque as funções de lá (`inputAccent`, `inputContent`) são
+    // `internal` do design system e não atravessam a fronteira de módulo. O `!enabled` vem
+    // primeiro, e não como guarda em cada consumidor, para o halo vermelho não sobreviver no
+    // travado + erro. O export dá 11% ao halo azul e 10% ao vermelho: são dois números.
+    val accent = when {
+        !enabled -> null
+        wrong -> colors.errorForeground
+        active -> colors.primary
+        else -> null
+    }
     val line = accent ?: colors.border
     val glow = accent?.copy(alpha = if (wrong) 0.10f else 0.11f) ?: Color.Transparent
 
@@ -196,7 +205,11 @@ private fun SaqzCodeBox(
                     lineHeight = DigitSize,
                     fontWeight = FontWeight(700),
                 ),
-                color = if (wrong && enabled) colors.errorForeground else colors.inputContent(enabled),
+                color = when {
+                    !enabled -> colors.disabledForeground
+                    wrong -> colors.errorForeground
+                    else -> colors.textPrimary
+                },
             )
             // ponytail: cursor parado, sem piscar — é o que o mockup mostra, e animação
             // infinita aqui só serviria para tirar o determinismo dos screenshots.
@@ -209,10 +222,13 @@ private fun SaqzCodeBox(
     }
 }
 
-@Preview
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
 @Composable
 private fun SaqzCodeInputPreview() = SaqzTheme {
-    SaqzPreviewGrid {
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         SaqzCodeInput("", {}, label = "Código de verificação")
         SaqzCodeInput("13", {}, label = "Código de verificação")
         SaqzCodeInput("1359", {}, label = "Código de verificação")

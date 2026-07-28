@@ -1,4 +1,4 @@
-package br.com.saqz.designsystem
+package br.com.saqz.access.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

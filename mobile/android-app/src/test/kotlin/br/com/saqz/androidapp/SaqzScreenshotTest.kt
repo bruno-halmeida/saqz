@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
+import br.com.saqz.access.ui.SaqzCodeInput
 import br.com.saqz.designsystem.SaqzAttendance
 import br.com.saqz.designsystem.SaqzAttendanceSelector
 import br.com.saqz.designsystem.SaqzAvatar
@@ -41,7 +42,6 @@ import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
-import br.com.saqz.designsystem.SaqzCodeInput
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzChoiceChip
 import br.com.saqz.designsystem.SaqzDivider
@@ -139,6 +139,43 @@ class SaqzScreenshotTest {
         LoginScreen(state = LoginState(email = "ana@saqz.app"), onIntent = {})
     }
 
+    // VUL-77: a fileira do código das telas 1e/1f/1k. Cena de jornada, e não do catálogo
+    // — o componente mora em `:features:access` (AD-031), e catálogo do design system só
+    // mostra peça do design system. Fundo branco porque é o do frame do fluxo 1.
+    //
+    // O foco é pedido de verdade porque é ele que acende a caixa da vez: sem pedir, o print
+    // sairia com quatro caixas iguais e a borda azul, o halo e o cursor de 2×26 nunca
+    // apareceriam.
+    @Test
+    fun accessCodeInput() = capture("acesso-codigo") {
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.surface)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SaqzCodeInput(
+                "",
+                {},
+                label = "Código de verificação",
+                modifier = Modifier.focusGroup().focusRequester(focus),
+            )
+            SaqzCodeInput("", {}, label = "Código de verificação")
+            SaqzCodeInput("13", {}, label = "Código de verificação")
+            SaqzCodeInput("1359", {}, label = "Código de verificação")
+            SaqzCodeInput(
+                "1359",
+                {},
+                label = "Código de verificação",
+                errorText = "Código incorreto. Restam 2 tentativas.",
+            )
+            SaqzCodeInput("1359", {}, label = "Código de verificação", enabled = false)
+        }
+    }
+
     @Test
     fun buttons() = gallery("ds-acoes") {
         SaqzButton("Confirmar presença", onClick = {}, fullWidth = true)
@@ -224,31 +261,6 @@ class SaqzScreenshotTest {
             SaqzIcon(SaqzIcons.Plus)
             SaqzIcon(SaqzIcons.Minus)
         }
-    }
-
-    // A fileira do código do fluxo 1. O foco é pedido de verdade porque é ele que acende a
-    // caixa da vez: sem pedir, o print sairia com quatro caixas iguais e a borda azul, o
-    // halo e o cursor de 2×26 nunca apareceriam.
-    @Test
-    fun codeInput() = gallery("ds-codigo") {
-        val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
-        SaqzCodeInput(
-            "",
-            {},
-            label = "Código de verificação",
-            modifier = Modifier.focusGroup().focusRequester(focus),
-        )
-        SaqzCodeInput("", {}, label = "Código de verificação")
-        SaqzCodeInput("13", {}, label = "Código de verificação")
-        SaqzCodeInput("1359", {}, label = "Código de verificação")
-        SaqzCodeInput(
-            "1359",
-            {},
-            label = "Código de verificação",
-            errorText = "Código incorreto. Restam 2 tentativas.",
-        )
-        SaqzCodeInput("1359", {}, label = "Código de verificação", enabled = false)
     }
 
     @Test
