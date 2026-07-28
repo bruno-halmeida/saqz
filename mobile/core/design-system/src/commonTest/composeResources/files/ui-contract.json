@@ -1,4 +1,41 @@
 {
+  "_source": {
+    "export": "_ds/saqz-design-system-48df716a-8e90-4870-8746-6c7d11f3458a",
+    "colors": "design-tokens/colors.css",
+    "typography": "design-tokens/typography.css (escala --m-*)",
+    "metrics": "design-tokens/spacing.css + design-tokens/radius.css; alturas de componente no _ds_bundle.js",
+    "motion": "_ds_bundle.js — press l.617/l.25, duração do press l.615, sheet l.438, switch l.1395/l.1406, toast l.1071; thumbDurationMillis vem de 'Fluxo 10 Componentes.dc.html' l.523 (segThumb), o único lugar onde o segmented tem transição",
+    "readme": "design-tokens/README.md — linha do bundle de cada número que não está nos CSS",
+    "excecoes": "_exceptions abaixo — tudo que NÃO sai do export está listado lá, com o valor do export ao lado"
+  },
+  "_exceptions": {
+    "_nota": "Valores que divergem do export ou não existem nele. Reconciliar um export novo NÃO é sobrescrever estes: cada um tem motivo. Valor do export que mudar aqui exige decisão humana, não substituição automática. Toda chave fora desta lista sai do export e pode ser reconciliada direto.",
+    "metrics.minimumTouchTarget": {
+      "export": "44 — spacing.css, --touch-min: 44px",
+      "nosso": "48",
+      "motivo": "Piso de acessibilidade do Android (Material: 48dp). O design system não abaixa acessibilidade para casar com o export. O 44 do export não sumiu: virou iconButtonSize, que é o alvo onde o desenho manda."
+    },
+    "metrics.sectionVerticalPadding": {
+      "export": "não existe — nenhum CSS nem o bundle declaram esse espaçamento",
+      "nosso": "48",
+      "motivo": "Respiro vertical de seção medido nas telas do fluxo 10, não token do export. Múltiplo de 4 e alinhado à grade. Export novo não tem o que dizer sobre ele."
+    },
+    "typography.eyebrow": {
+      "export": "só --text-eyebrow-track: 0.08em, e da escala web (--text-*), não da mobile (--m-*)",
+      "nosso": "12 / 600 / 16 / 0.08",
+      "motivo": "O export não tem --m-eyebrow-*. Tamanho, peso e entrelinha espelham o caption (12/16) com peso 600; só o tracking é do export."
+    },
+    "motion.opacityFeedbackDurationMillis": {
+      "export": "não existe — o export não anima opacidade no press (só scrim .22s l.433 e toast .16s l.577)",
+      "nosso": "120",
+      "motivo": "Casado com pressDurationMillis para escala e opacidade terminarem juntas. É o feedback que sobra quando o usuário pede movimento reduzido."
+    },
+    "motion.pressScale": {
+      "export": "duas respostas — .98 no seletor de presença (l.617) e .995 no botão (l.25)",
+      "nosso": "0.98",
+      "motivo": "Um press só para todo alvo primário; .995 não é perceptível em tela de telefone. Não 'corrija' para .995 lendo só o seletor do botão."
+    }
+  },
   "colors": {
     "background": "#F5F5F7",
     "surface": "#FFFFFF",
@@ -29,7 +66,13 @@
     "blockRadius": 20,
     "sheetRadius": 28,
     "bottomNavHeight": 76,
-    "minimumTouchTarget": 48
+    "minimumTouchTarget": 48,
+    "buttonHeight": 52,
+    "iconButtonSize": 44,
+    "switchTrackWidth": 52,
+    "switchTrackHeight": 30,
+    "switchThumbSize": 24,
+    "switchThumbInset": 3
   },
   "typography": {
     "headline": { "size": 32, "weight": 700, "lineHeight": 36, "tracking": -0.03 },
@@ -41,5 +84,15 @@
     "caption": { "size": 12, "weight": 400, "lineHeight": 16, "tracking": 0.0 },
     "eyebrow": { "size": 12, "weight": 600, "lineHeight": 16, "tracking": 0.08 },
     "navigation": { "size": 11, "weight": 600, "lineHeight": 14, "tracking": 0.0 }
+  },
+  "motion": {
+    "pressScale": 0.98,
+    "pressOffset": 1,
+    "pressDurationMillis": 120,
+    "opacityFeedbackDurationMillis": 120,
+    "sheetDurationMillis": 320,
+    "thumbDurationMillis": 280,
+    "switchDurationMillis": 180,
+    "toastDwellMillis": 2600
   }
 }

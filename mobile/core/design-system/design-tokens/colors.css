@@ -1,0 +1,44 @@
+:root {
+  /* ---- Brand ---- */
+  --saqz-blue: #0638DF;          /* Marca, CTA, estado ativo */
+  --saqz-blue-pressed: #052BB3;  /* Estado :active/pressed do azul */
+  --saqz-blue-tint: #F4F8FB;     /* Superfície azulada suave (= ice) */
+  --saqz-lime: #C7F300;          /* Microacento, energia */
+  --saqz-navy: #0E1738;          /* Títulos e texto principal */
+
+  /* ---- Surfaces ---- */
+  --saqz-white: #FFFFFF;         /* Superfície de card */
+  --saqz-canvas: #F5F5F7;        /* Fundo geral do app */
+  --saqz-ice: #F4F8FB;           /* Superfície suave / avatar bg */
+
+  /* ---- Lines & secondary text ---- */
+  --saqz-border: #D8DDE8;        /* Divisores e contornos */
+  --saqz-muted: #667085;         /* Texto secundário */
+  --saqz-placeholder: #98A2B3;   /* Placeholder de input */
+  --saqz-disabled-bg: #C9CED8;   /* Fundo de botão desabilitado */
+  --saqz-disabled-fg: #7A8291;   /* Texto de botão desabilitado */
+
+  /* ---- Feedback ---- */
+  --saqz-success: #17B26A;
+  --saqz-warning: #F5A623;
+  --saqz-error: #E5484D;
+
+  /* ---- Semantic aliases ---- */
+  --color-brand: var(--saqz-blue);
+  --color-accent: var(--saqz-lime);
+  --text-strong: var(--saqz-navy);
+  --text-body: var(--saqz-navy);
+  --text-muted: var(--saqz-muted);
+  --text-on-brand: var(--saqz-white);
+  --surface-page: var(--saqz-canvas);
+  --surface-card: var(--saqz-white);
+  --surface-soft: var(--saqz-ice);
+  --border-default: var(--saqz-border);
+
+  /* Translucent brand fills used for chips / focus rings */
+  --brand-fill-08: rgba(6, 56, 223, 0.08);
+  --brand-fill-11: rgba(6, 56, 223, 0.11);
+  --lime-fill-32: rgba(199, 243, 0, 0.32);
+  --error-fill-10: rgba(229, 72, 77, 0.10);
+  --scrim: rgba(14, 23, 56, 0.46);
+}

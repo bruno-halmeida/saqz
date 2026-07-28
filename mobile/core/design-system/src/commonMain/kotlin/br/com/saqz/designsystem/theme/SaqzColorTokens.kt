@@ -3,11 +3,17 @@ package br.com.saqz.designsystem.theme
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
-// Paleta do fluxo 10a. Uma única cor de linha (`border`) atende card, input e
-// divisória — o design system não mantém três cinzas para o mesmo traço de 1px.
+// Paleta do fluxo 10a, conferida hex a hex contra design-tokens/colors.css do export
+// oficial. Uma única cor de linha (`border`) atende card, input e divisória — o design
+// system não mantém três cinzas para o mesmo traço de 1px.
 //
 // `scrim` e `chrome` são os dois tokens com alfa, e por isso ficam fora do
-// contrato em ui-contract.json, que guarda hex opaco.
+// contrato em ui-contract.json, que guarda hex opaco. `scrim` é o `--scrim` do
+// export; `chrome` (branco a 96%) é nosso, o export não tem equivalente.
+//
+// ponytail: os fills translúcidos do colors.css (--brand-fill-08/11, --lime-fill-32,
+// --error-fill-10) ficam fora até um componente precisar deles; hoje ninguém pinta
+// anel de foco ou chip com alfa.
 @Immutable
 data class SaqzColorTokens(
     val background: Color,
