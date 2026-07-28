@@ -37,6 +37,8 @@ class SaqzIconsTest {
         "Camera" to Pair(SaqzIcons.Camera, "camera"),
         "CircleAlert" to Pair(SaqzIcons.CircleAlert, "circle-alert"),
         "Clock" to Pair(SaqzIcons.Clock, "clock"),
+        "CreditCard" to Pair(SaqzIcons.CreditCard, "credit-card"),
+        "MessageSquare" to Pair(SaqzIcons.MessageSquare, "message-square"),
     )
 
     @Test
