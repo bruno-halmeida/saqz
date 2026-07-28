@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -128,25 +129,66 @@ class SaqzScreenshotTest {
         SaqzButton("Cancelar", onClick = {}, variant = SaqzButtonVariant.Ghost, fullWidth = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SaqzButton("Criar jogo", onClick = {}, size = SaqzButtonSize.Sm)
-            SaqzButton("Criando grupo", onClick = {}, loading = true)
             SaqzButton("Criar grupo", onClick = {}, enabled = false)
         }
+        // Ícone da frente e loading em largura cheia: são as duas linhas que o export
+        // desenha assim, e num Row de três o desabilitado quebrava o rótulo em duas.
+        SaqzButton(
+            "Criar próximo jogo",
+            onClick = {},
+            fullWidth = true,
+            leadingContent = { SaqzIcon(SaqzIcons.Plus, tint = it) },
+        )
+        SaqzButton("Criando grupo", onClick = {}, loading = true, fullWidth = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SaqzIconButton({}, "Voltar") { SaqzIcon(SaqzIcons.ChevronLeft) }
             SaqzIconButton({}, "Notificações", dot = true) { SaqzIcon(SaqzIcons.Bell) }
             SaqzIconButton({}, "Buscar", soft = true) { SaqzIcon(SaqzIcons.Search) }
-            SaqzIconButton({}, "Adicionar", soft = true) { SaqzIcon(SaqzIcons.Plus) }
+            SaqzIconButton({}, "Adicionar", filled = true) {
+                SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.onPrimary)
+            }
+            SaqzIconButton({}, "Excluir", enabled = false) {
+                SaqzIcon(SaqzIcons.Trash, tint = SaqzTheme.colors.disabledForeground)
+            }
         }
     }
 
     @Test
     fun forms() = gallery("ds-formularios") {
-        SaqzInput(TextFieldValue("ana@saqz.app"), {}, label = "E-mail", kind = SaqzInputKind.Email)
-        SaqzInput(TextFieldValue(""), {}, label = "Local", placeholder = "CERET — Quadra 2")
-        SaqzInput(TextFieldValue("segredo"), {}, label = "Senha", kind = SaqzInputKind.Password)
-        SaqzInput(TextFieldValue("ana"), {}, label = "E-mail", errorText = "Informe um e-mail válido")
+        // O ícone da frente é do chamador (`leadingContent`), então sem ele na cena o
+        // slot não estava sendo conferido — e é ele que o export mostra em três dos
+        // quatro campos do 10f.
+        SaqzInput(
+            TextFieldValue("ana@saqz.app"),
+            {},
+            label = "E-mail",
+            kind = SaqzInputKind.Email,
+            leadingContent = { SaqzIcon(SaqzIcons.Mail, tint = SaqzTheme.colors.primary) },
+        )
+        SaqzInput(
+            TextFieldValue("segredo"),
+            {},
+            label = "Senha",
+            kind = SaqzInputKind.Password,
+            leadingContent = { SaqzIcon(SaqzIcons.Lock, tint = SaqzTheme.colors.primary) },
+        )
+        SaqzInput(
+            TextFieldValue(""),
+            {},
+            label = "Endereço da quadra",
+            placeholder = "R. Canuto Abreu, s/n",
+            errorText = "Não encontramos esse endereço. Confira a rua e o bairro.",
+            leadingContent = { SaqzIcon(SaqzIcons.Pin, tint = SaqzTheme.colors.primary) },
+        )
+        SaqzInput(TextFieldValue("CERET-8K2P"), {}, label = "Código do grupo")
+        // Os três preenchimentos sólidos, a linha em repouso e a desabilitada. A última
+        // é a que faltava: o contraste de 1,01:1 do VUL-45 passou justamente por não
+        // estar em nenhuma cena.
         SaqzAttendanceSelector(value = SaqzAttendance.Going, onSelect = {})
+        SaqzAttendanceSelector(value = SaqzAttendance.Maybe, onSelect = {})
+        SaqzAttendanceSelector(value = SaqzAttendance.Out, onSelect = {})
         SaqzAttendanceSelector(value = null, onSelect = {})
+        SaqzAttendanceSelector(value = SaqzAttendance.Maybe, onSelect = {}, enabled = false)
         SaqzSwitch(checked = true, onCheckedChange = {}, label = "Jogo toda semana")
         SaqzStepper(value = 12, onValueChange = {}, min = 4, max = 24, label = "Vagas")
         SaqzSegmented(listOf("Masculino", "Feminino", "Misto"), selected = 2, onSelect = {})
@@ -188,12 +230,17 @@ class SaqzScreenshotTest {
             )
         }
         SaqzCard(tone = SaqzCardTone.Soft) {
+            // Os seis tons, na mesma peça e na mesma nomenclatura do 10j. Em uma linha
+            // só o último chip saía cortado pela margem — duas linhas mostram todos.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SaqzStatusChip("Pendente", tone = SaqzChipTone.Warning, dot = true)
+                SaqzStatusChip("Pendente", tone = SaqzChipTone.Neutral)
+                SaqzStatusChip("Admin", tone = SaqzChipTone.Brand)
+                SaqzStatusChip("Mensalista", tone = SaqzChipTone.Accent)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SaqzStatusChip("Vou", tone = SaqzChipTone.Success, dot = true)
-                SaqzStatusChip("Talvez", tone = SaqzChipTone.Accent)
-                SaqzStatusChip("Não vou", tone = SaqzChipTone.Error)
-                SaqzStatusChip("Reserva", tone = SaqzChipTone.Neutral)
+                SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning, dot = true)
+                SaqzStatusChip("Não vou", tone = SaqzChipTone.Error, dot = true)
             }
         }
     }
@@ -213,6 +260,13 @@ class SaqzScreenshotTest {
             SaqzSpinner(size = 16.dp)
             SaqzSpinner(size = 20.dp)
             SaqzSpinner(size = 30.dp)
+            // "sobre azul" do 10o: `onDark` só existe para este fundo, e fora dele o
+            // spinner branco some no canvas — sem a caixa azul não dá para conferir.
+            Box(
+                modifier = Modifier.background(SaqzTheme.colors.primary, CircleShape).padding(8.dp),
+            ) {
+                SaqzSpinner(size = 30.dp, onDark = true)
+            }
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
