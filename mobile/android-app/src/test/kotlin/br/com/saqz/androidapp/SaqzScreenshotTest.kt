@@ -299,6 +299,20 @@ class SaqzScreenshotTest {
                         SaqzIconButton({}, "Notificações", dot = true) { SaqzIcon(SaqzIcons.Bell) }
                     },
                 )
+                // A outra ramificação do 10p: sem voltar, com a marca. Sem ela o print não
+                // mostra que só o chevron é azul — o resto da barra continua navy.
+                SaqzTopAppBar(
+                    logo = {
+                        Text(
+                            "saqz",
+                            style = SaqzTheme.typography.title,
+                            color = SaqzTheme.colors.primary,
+                        )
+                    },
+                    actions = {
+                        SaqzIconButton({}, "Buscar") { SaqzIcon(SaqzIcons.Search) }
+                    },
+                )
                 Text(
                     "conteúdo da tela",
                     style = SaqzTheme.typography.support,
