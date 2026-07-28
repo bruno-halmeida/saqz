@@ -5,11 +5,16 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.presentation.ui.components.SlotDraft
 
 /**
+ * [groupId] é o `GroupsRoute.Schedule.groupId`: identifica a agenda que a tela edita e é
+ * o alvo do load e do save quando o gateway entrar. Chega por parâmetro de Koin, vindo do
+ * Root — assim registrar a rota (VUL-72) não precisa mexer neste arquivo.
+ *
  * ponytail: a tela não carrega dado — o estado inicial chega pelo construtor. Quando o
  * gateway de agenda entrar, este parâmetro vira um `Flow` coletado no `init` e nenhuma
  * tela muda.
  */
 internal class GroupScheduleViewModel(
+    val groupId: String,
     initialState: GroupScheduleState = GroupScheduleState(),
 ) : MviViewModel<GroupScheduleState, GroupScheduleIntent, GroupScheduleEffect>(initialState) {
 

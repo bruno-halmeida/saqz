@@ -84,6 +84,7 @@ class GroupScheduleViewModelTest {
             durationMinutes = 120,
         )
         val viewModel = GroupScheduleViewModel(
+            GROUP_ID,
             GroupScheduleState(isLoading = false, slots = listOf(slot, second)),
         )
 
@@ -109,7 +110,7 @@ class GroupScheduleViewModelTest {
     fun saveWhileLoadingIsRejected() {
         // Salvar durante o skeleton emitiria `Saved`, e o Root fecha a tela com isso —
         // o usuário sairia achando que gravou.
-        val viewModel = GroupScheduleViewModel(GroupScheduleState())
+        val viewModel = GroupScheduleViewModel(GROUP_ID, GroupScheduleState())
 
         viewModel.onIntent(GroupScheduleIntent.Save)
 
@@ -126,6 +127,7 @@ class GroupScheduleViewModelTest {
     }
 
     private fun viewModel() = GroupScheduleViewModel(
+        GROUP_ID,
         GroupScheduleState(isLoading = false, slots = listOf(slot)),
     )
 
@@ -134,4 +136,8 @@ class GroupScheduleViewModelTest {
         startTime = "19:30",
         durationMinutes = 120,
     )
+
+    private companion object {
+        const val GROUP_ID = "group-1"
+    }
 }
