@@ -30,6 +30,11 @@
       "nosso": "120",
       "motivo": "Casado com pressDurationMillis para escala e opacidade terminarem juntas. É o feedback que sobra quando o usuário pede movimento reduzido."
     },
+    "colors.warningForeground": {
+      "export": "#B26B00 — literal em `.saqz-chip--warning` no _ds_bundle.js l.393; NÃO existe em colors.css",
+      "nosso": "#B26B00",
+      "motivo": "Mesmo valor do export, mas listado aqui porque a fonte é o bundle e não colors.css: uma reconciliação que só releia colors.css não vai achar esta chave e não deve apagá-la. Existe porque --saqz-warning sobre o próprio âmbar a 14% dá 1,9:1; o export escurece o texto e mantém o fundo."
+    },
     "motion.pressScale": {
       "export": "duas respostas — .98 no seletor de presença (l.617) e .995 no botão (l.25)",
       "nosso": "0.98",
@@ -50,6 +55,7 @@
     "border": "#D8DDE8",
     "success": "#17B26A",
     "warning": "#F5A623",
+    "warningForeground": "#B26B00",
     "errorForeground": "#E5484D",
     "disabledSurface": "#C9CED8",
     "disabledForeground": "#7A8291"

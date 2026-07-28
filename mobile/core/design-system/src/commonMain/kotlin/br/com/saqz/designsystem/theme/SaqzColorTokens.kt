@@ -11,9 +11,14 @@ import androidx.compose.ui.graphics.Color
 // contrato em ui-contract.json, que guarda hex opaco. `scrim` é o `--scrim` do
 // export; `chrome` (branco a 96%) é nosso, o export não tem equivalente.
 //
+// `warningForeground` é o único hex que não sai de colors.css: o export o escreve
+// literal em `.saqz-chip--warning` (_ds_bundle.js l.393), porque o âmbar da paleta
+// sobre o próprio âmbar a 14% dá 1,9:1 e some. Está anotado em _exceptions do
+// contrato para nenhuma reconciliação futura tentar buscá-lo em colors.css.
+//
 // ponytail: os fills translúcidos do colors.css (--brand-fill-08/11, --lime-fill-32,
-// --error-fill-10) ficam fora até um componente precisar deles; hoje ninguém pinta
-// anel de foco ou chip com alfa.
+// --error-fill-10) ficam fora até um componente precisar deles; hoje o chip resolve o
+// alfa a partir da cor sólida, no próprio componente.
 @Immutable
 data class SaqzColorTokens(
     val background: Color,
@@ -29,6 +34,7 @@ data class SaqzColorTokens(
     val border: Color,
     val success: Color,
     val warning: Color,
+    val warningForeground: Color,
     val errorForeground: Color,
     val disabledSurface: Color,
     val disabledForeground: Color,
@@ -50,6 +56,7 @@ data class SaqzColorTokens(
             border = Color(0xFFD8DDE8),
             success = Color(0xFF17B26A),
             warning = Color(0xFFF5A623),
+            warningForeground = Color(0xFFB26B00),
             errorForeground = Color(0xFFE5484D),
             disabledSurface = Color(0xFFC9CED8),
             disabledForeground = Color(0xFF7A8291),

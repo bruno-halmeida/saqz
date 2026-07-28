@@ -276,10 +276,22 @@ class SaqzScreenshotTest {
         SaqzCard(tone = SaqzCardTone.Soft) {
             // Os seis tons, na mesma peça e na mesma nomenclatura do 10j. Em uma linha
             // só o último chip saía cortado pela margem — duas linhas mostram todos.
+            // As duas primeiras linhas são sem ponto, as duas últimas com: o ponto acende
+            // no primeiro plano, então cada tom tem dois estados para conferir.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SaqzStatusChip("Pendente", tone = SaqzChipTone.Neutral)
                 SaqzStatusChip("Admin", tone = SaqzChipTone.Brand)
                 SaqzStatusChip("Mensalista", tone = SaqzChipTone.Accent)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SaqzStatusChip("Vou", tone = SaqzChipTone.Success)
+                SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning)
+                SaqzStatusChip("Não vou", tone = SaqzChipTone.Error)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SaqzStatusChip("Pendente", tone = SaqzChipTone.Neutral, dot = true)
+                SaqzStatusChip("Admin", tone = SaqzChipTone.Brand, dot = true)
+                SaqzStatusChip("Mensalista", tone = SaqzChipTone.Accent, dot = true)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SaqzStatusChip("Vou", tone = SaqzChipTone.Success, dot = true)
