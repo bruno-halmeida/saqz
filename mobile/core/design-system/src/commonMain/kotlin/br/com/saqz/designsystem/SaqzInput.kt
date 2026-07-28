@@ -1,6 +1,5 @@
 package br.com.saqz.designsystem
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -28,9 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -43,10 +39,7 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_hide_password
 import br.com.saqz.designsystem.resources.action_show_password
-import br.com.saqz.designsystem.resources.material_visibility
-import br.com.saqz.designsystem.resources.material_visibility_off
 import br.com.saqz.designsystem.theme.SaqzTheme
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 enum class SaqzInputKind { Text, Email, Password, Phone }
@@ -202,13 +195,10 @@ private fun PasswordToggle(revealed: Boolean, onToggle: () -> Unit) {
             .semantics { contentDescription = toggleLabel },
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(
-                if (revealed) Res.drawable.material_visibility_off else Res.drawable.material_visibility,
-            ),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(SaqzTheme.colors.textSecondary),
-            modifier = Modifier.size(20.dp).clearAndSetSemantics {},
+        SaqzIcon(
+            icon = if (revealed) SaqzIcons.EyeOff else SaqzIcons.Eye,
+            tint = SaqzTheme.colors.textSecondary,
+            size = 20.dp,
         )
     }
 }
