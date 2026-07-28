@@ -3,6 +3,7 @@ package br.com.saqz.androidapp
 import android.content.ContentResolver
 import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.designsystem.theme.SaqzAccessibilityPreferences
@@ -68,6 +69,29 @@ class AndroidReduceMotionTest {
         assertEquals(0, motion.sheetDurationMillis)
         assertEquals(0, motion.thumbDurationMillis)
         assertEquals(0, motion.switchDurationMillis)
+    }
+
+    @Test
+    fun ajusteLigadoNaFrestaEntreALeituraInicialEOObserverEhRecuperado() {
+        // Achado do Codex no PR #51. O `DisposableEffect` só é aplicado quando a composição
+        // termina, então o `remember` abaixo roda **depois** da leitura inicial e **antes**
+        // do registro do observer: é a fresta. A notificação do sistema sai sem ninguém do
+        // outro lado e se perde — só a releitura pós-registro recupera o ajuste.
+        lateinit var motion: SaqzMotionPolicy
+        compose.setContent {
+            val reduceMotion = rememberReduceMotion()
+            remember {
+                val uri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
+                Settings.Global.putFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+                resolver.notifyChange(uri, null)
+            }
+            SaqzTheme(SaqzAccessibilityPreferences(reduceMotion = reduceMotion)) {
+                motion = SaqzTheme.motion
+            }
+        }
+        compose.waitForIdle()
+
+        assertEquals(SaqzMotionPolicy.Reduced, motion)
     }
 
     private fun motionUnderSetting(): SaqzMotionPolicy {

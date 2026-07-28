@@ -41,6 +41,12 @@ internal fun rememberReduceMotion(): Boolean {
         AnimationScaleKeys.forEach {
             resolver.registerContentObserver(Settings.Global.getUriFor(it), false, observer)
         }
+        // Releitura **depois** de assinar. Entre o valor inicial lá de cima e este registro
+        // existe uma fresta em que a notificação do sistema não tem quem a receba: quem
+        // virasse o ajuste ali ficaria com o estado velho até a mudança seguinte — o app
+        // animando com "Remover animações" ligado, que é o defeito que este arquivo conserta.
+        // Assinar antes e reler depois fecha os dois lados da fresta.
+        reduceMotion = resolver.animationsDisabled()
         onDispose { resolver.unregisterContentObserver(observer) }
     }
     return reduceMotion
