@@ -46,6 +46,6 @@ GoogleService-Info.plist
 .worktrees/
 
 # Evidência visual: os PNGs vivem na branch órfã `screenshots`, nunca na main.
-# `recordRoborazziDevDebug` regrava o catálogo inteiro — versionar aqui é
+# As tasks `recordRoborazzi*` regravam catálogos inteiros — versionar aqui é
 # conflito binário garantido entre PRs paralelos.
-mobile/android-app/screenshots/
+mobile/**/screenshots/
