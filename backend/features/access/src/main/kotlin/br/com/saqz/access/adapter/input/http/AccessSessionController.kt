@@ -5,6 +5,7 @@ import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.CompleteSessionProfileResult
 import br.com.saqz.access.application.session.SessionView
+import br.com.saqz.access.application.session.hasVerifiedEmail
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -55,7 +56,7 @@ class AccessSessionController(
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            is BootstrapSessionResult.Success -> result.session.toResponse(identity.emailVerified == true)
+            is BootstrapSessionResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
 
     @PatchMapping("/api/session/profile")
@@ -70,7 +71,7 @@ class AccessSessionController(
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
-            is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.emailVerified == true)
+            is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
 }
 

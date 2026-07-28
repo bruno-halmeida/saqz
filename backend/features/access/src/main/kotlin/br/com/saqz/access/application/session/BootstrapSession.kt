@@ -14,6 +14,7 @@ class BootstrapSession(
             SessionUpsert(
                 subject = identity.subject,
                 email = identity.email,
+                emailVerified = identity.hasVerifiedEmail(),
                 displayName = displayName,
             ),
         )

@@ -2,6 +2,7 @@ package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
+import br.com.saqz.sharedkernel.RequestIdentity
 import java.util.UUID
 
 data class UserAccount(
@@ -26,8 +27,15 @@ data class SessionView(
 data class SessionUpsert(
     val subject: String,
     val email: String?,
+    val emailVerified: Boolean,
     val displayName: AccessName,
 )
+
+/**
+ * Ausência do claim conta como não confirmado: tanto a coluna `email_verified`
+ * quanto o campo da resposta são não-nulos.
+ */
+fun RequestIdentity.hasVerifiedEmail(): Boolean = emailVerified == true
 
 data class ProfileCompletion(
     val subject: String,
