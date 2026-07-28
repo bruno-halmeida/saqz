@@ -9,12 +9,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -282,6 +284,27 @@ class SaqzInputTest {
     }
 
     private fun Double.format() = (this * 100).toInt() / 100.0
+
+    // VUL-90: o "Confirmar nova senha" do 1g não tem olho. O que precisa ficar de pé é
+    // que tirar o olho **não** tira a máscara — um campo de confirmação legível seria
+    // regressão de segurança disfarçada de detalhe de desenho.
+    @Test
+    fun passwordWithoutRevealKeepsTheMask() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzInput(
+                    value = "segredo",
+                    onValueChange = {},
+                    label = "Confirmar nova senha",
+                    kind = SaqzInputKind.Password,
+                    revealable = false,
+                    modifier = Modifier.testTag("input"),
+                )
+            }
+        }
+        onAllNodesWithContentDescription("Mostrar senha").assertCountEquals(0)
+        onNode(hasSetTextAction(), useUnmergedTree = true).assertTextEquals("•••••••")
+    }
 
     @Test
     fun toggleTargetIs48Dp() = runComposeUiTest {

@@ -57,6 +57,7 @@ class SaqzFluxo1ContractTest {
                 "gapDosCampos",
                 "caixaDeCodigo",
                 "alertaInline",
+                "senhaAlterada",
                 "entrada",
             ),
             groups,
@@ -81,6 +82,7 @@ class SaqzFluxo1ContractTest {
         assertEquals(26f, f.group("padding").number("horizontal"))
         assertEquals(13.5f, f.group("alertaInline").number("textoSize"))
         assertEquals(1.8f, f.group("voltar").number("chevronStroke"))
+        assertEquals(2.6f, f.group("senhaAlterada").number("checkStroke"))
         assertEquals(750f, f.group("titulo").number("weight"))
     }
 
@@ -120,7 +122,20 @@ class SaqzFluxo1ContractTest {
             token("errorForeground"),
             f.group("caixaDeCodigo").group("erro").text("corDaBorda").uppercase(),
         )
+        // O círculo do 1h é o próprio `--saqz-success` tintado: o export o escreve em
+        // rgba, então o que se confere é que os três canais são os do token — tintar o
+        // verde errado a 12% passaria despercebido a olho.
+        assertEquals(token("success"), f.group("senhaAlterada").text("fundo").rgbaToHex())
     }
+
+    // "rgba(23,178,106,.12)" -> "#17B26A". Só o que o contrato precisa: três canais
+    // decimais e um alfa que o chamador aplica por token.
+    private fun String.rgbaToHex(): String = substringAfter('(').substringBefore(')')
+        .split(',')
+        .take(3)
+        .joinToString("", prefix = "#") { channel ->
+            channel.trim().toInt().toString(16).uppercase().padStart(2, '0')
+        }
 
     @Test
     fun waveLayersAreClosedPaths() = runTest {

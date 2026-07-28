@@ -24,6 +24,8 @@ import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
+import br.com.saqz.access.ui.NewPasswordRoot
+import br.com.saqz.access.ui.PasswordChangedScreen
 import br.com.saqz.access.ui.RegisterRoot
 import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
@@ -124,13 +126,24 @@ internal fun SaqzNavHost(
                     },
                 )
             }
-            entry<AccessRoute.NewPassword> {
-                AccessSkeleton("NewPassword", "PasswordChanged" to { backStack.add(AccessRoute.PasswordChanged) })
+            entry<AccessRoute.NewPassword> { route ->
+                NewPasswordRoot(
+                    token = route.token,
+                    onBack = pop,
+                    onFinish = { backStack.add(AccessRoute.PasswordChanged) },
+                    // Ticket morto pede o código de novo, e o 1e é exatamente a entrada
+                    // anterior — é para ela reaparecer intacta que a rota do 1g carrega o
+                    // e-mail. Empilhar um `ResetCode` novo deixaria dois na pilha.
+                    onRestartCode = pop,
+                )
             }
             entry<AccessRoute.PasswordChanged> {
                 // Senha trocada não tem volta para o formulário que a trocou: o "Entrar
                 // agora" recomeça o stack no login.
-                AccessSkeleton("PasswordChanged", "Login" to { backStack.resetTo(AccessRoute.Login) })
+                PasswordChangedScreen(
+                    onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                    onBack = pop,
+                )
             }
             entry<AccessRoute.Bootstrap> {
                 BootstrapAccessScreen(

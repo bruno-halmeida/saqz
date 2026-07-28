@@ -6,6 +6,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.forgotpassword.ForgotPasswordViewModel
 import br.com.saqz.access.presentation.identitycompletion.IdentityCompletionViewModel
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.newpassword.NewPasswordViewModel
 import br.com.saqz.access.presentation.register.RegisterViewModel
 import br.com.saqz.access.presentation.resetcode.ResetCodeViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
@@ -60,6 +61,10 @@ internal val accessPresentationModule = module {
     // `viewModel { params -> }` e não `viewModelOf`: o e-mail vem da rota `ResetCode`, e
     // não do grafo — resolver e-mail por DI seria inventar um singleton de argumento.
     viewModel { params -> ResetCodeViewModel(params.get(), get()) }
+    // `viewModel { params }` e não `viewModelOf`: o token do 1g é argumento de rota, e
+    // não existe — nem deve existir — definição de `String` no grafo. Mesma decisão do
+    // `groupsPresentationModule` (VUL-72).
+    viewModel { params -> NewPasswordViewModel(params.get(), get()) }
     // Órfã: sem rota desde o VUL-84, apagada pelo VUL-91 junto com a tela.
     viewModelOf(::VerificationViewModel)
 }
