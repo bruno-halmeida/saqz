@@ -29,6 +29,7 @@ import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class LoginScreenTest {
@@ -67,13 +68,28 @@ class LoginScreenTest {
         onNodeWithText("Entrar com Google").assertExists()
     }
 
-    // VUL-35: registration and password reset are gone; Google is the only account-creation
-    // path left, so the login surface must not offer a link with nowhere to go.
-    @Test fun `registration and password reset links are absent`() = runComposeUiTest {
+    // O VUL-35 exigia a ausência destes links, porque o reset tinha tirado os destinos.
+    // O VUL-84 os devolve: `Register` (1b) e `ForgotPassword` (1d) existem de novo, e o
+    // export desenha as duas saídas na 1a.
+    @Test fun `registration and password reset links are offered again`() = runComposeUiTest {
         content()
-        onNodeWithText("Criar conta").assertDoesNotExist()
-        onNodeWithText("Ainda não tem uma conta?").assertDoesNotExist()
-        onNodeWithText("Esqueci minha senha").assertDoesNotExist()
+        onNodeWithText("Esqueci minha senha").assertExists()
+        onNodeWithText("Ainda não tem uma conta?").assertExists()
+        onNodeWithText("Criar conta \u203A").assertExists()
+    }
+
+    @Test fun `forgot password link leaves for the reset flow`() = runComposeUiTest {
+        var left = false
+        content(onForgotPassword = { left = true })
+        onNodeWithTag(LoginTags.ForgotPassword).performClick()
+        assertTrue(left)
+    }
+
+    @Test fun `create account link leaves for registration`() = runComposeUiTest {
+        var left = false
+        content(onCreateAccount = { left = true })
+        onNodeWithTag(LoginTags.CreateAccount).performClick()
+        assertTrue(left)
     }
 
     @Test fun `phone apple and facebook remain outside the login surface`() = runComposeUiTest {
@@ -119,7 +135,7 @@ class LoginScreenTest {
             SaqzTheme {
                 CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
                     Box(Modifier.size(280.dp, 320.dp)) {
-                        LoginScreen(LoginState(), {})
+                        LoginScreen(LoginState(), {}, {}, {})
                     }
                 }
             }
@@ -131,9 +147,11 @@ class LoginScreenTest {
     private fun androidx.compose.ui.test.ComposeUiTest.content(
         state: LoginState = LoginState(),
         onIntent: (LoginIntent) -> Unit = {},
+        onCreateAccount: () -> Unit = {},
+        onForgotPassword: () -> Unit = {},
     ) = setContent {
         SaqzTheme {
-            LoginScreen(state, onIntent)
+            LoginScreen(state, onIntent, onCreateAccount, onForgotPassword)
         }
     }
 }

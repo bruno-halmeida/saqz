@@ -4,8 +4,8 @@ import androidx.compose.runtime.Immutable
 
 /**
  * Distinguishes the two Access routes that have no dedicated per-route
- * ViewModel (Login, Verification, NameCompletion and PhoneCompletion were
- * already extracted). Each Navigation Compose 3 entry supplies its own
+ * ViewModel — as duas sem tela do export, `Starting` e `Bootstrap`. Cada uma
+ * das nove rotas restantes tem a sua. Each Navigation Compose 3 entry supplies its own
  * [AccessRouteViewModel] instance with the mode matching its route
  * (ACCESSNAV-01, LIFE-01).
  */

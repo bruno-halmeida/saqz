@@ -2,21 +2,22 @@ package br.com.saqz.access.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
-import br.com.saqz.access.presentation.namecompletion.NameCompletionState
 import br.com.saqz.access.presentation.verification.VerificationIntent
 import br.com.saqz.access.presentation.verification.VerificationState
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/**
+ * Só a tela de verificação sobrou aqui (VUL-84): nome e telefone se fundiram na 1c e as
+ * duas telas antigas saíram com o estado que as alimentava. Esta continua coberta enquanto
+ * existir — o VUL-91 apaga tela e teste juntos.
+ */
 @OptIn(ExperimentalTestApi::class)
 class IdentityCompletionScreensTest {
     @Test fun `verification identifies pending email`() = runComposeUiTest {
@@ -53,37 +54,8 @@ class IdentityCompletionScreensTest {
         onNodeWithText("Verifique sua conexao e tente novamente").assertExists()
     }
 
-    @Test fun `name input emits controlled value`() = runComposeUiTest {
-        var intent: NameCompletionIntent? = null; name(onIntent = { intent = it })
-        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performTextInput("Person Name")
-        assertEquals(NameCompletionIntent.UpdateName("Person Name"), intent)
-    }
-
-    @Test fun `invalid name exposes associated error`() = runComposeUiTest {
-        name(NameCompletionState(invalidName = true))
-        onNodeWithText("Informe um nome entre 2 e 80 caracteres").assertExists()
-    }
-
-    @Test fun `name completion invokes submit`() = runComposeUiTest {
-        var intent: NameCompletionIntent? = null
-        name(NameCompletionState(name = "Person Name"), onIntent = { intent = it })
-        onNodeWithTag(IdentityTags.NameSubmit).performClick()
-        assertEquals(NameCompletionIntent.Complete, intent)
-    }
-
-    @Test fun `name loading disables field and submit`() = runComposeUiTest {
-        name(NameCompletionState(isLoading = true))
-        onNodeWithTag(IdentityTags.NameSubmit).assertIsNotEnabled()
-    }
-
     private fun androidx.compose.ui.test.ComposeUiTest.verification(
         state: VerificationState = VerificationState(email = "person@example.test"),
         onIntent: (VerificationIntent) -> Unit = {},
     ) = setContent { SaqzTheme { VerificationScreen(state, onIntent) } }
-
-    private fun androidx.compose.ui.test.ComposeUiTest.name(
-        state: NameCompletionState = NameCompletionState(),
-        onIntent: (NameCompletionIntent) -> Unit = {},
-    ) = setContent { SaqzTheme { NameCompletionScreen(state, onIntent) } }
-
 }

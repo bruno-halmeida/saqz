@@ -1,10 +1,19 @@
 package br.com.saqz.composeapp.navigation
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSerializable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -13,11 +22,8 @@ import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.LoginRoot
-import br.com.saqz.access.ui.NameCompletionRoot
-import br.com.saqz.access.ui.PhoneCompletionRoot
-import br.com.saqz.access.ui.VerificationRoot
-import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.composeapp.shell.SaqzAppShell
+import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -36,10 +42,21 @@ internal const val SaqzDestinationHostTag = "authenticated-access-destination"
  * screens and the group screens are feature-owned Roots (each resolves its own ViewModel
  * through Koin); the only app-owned destination is the shell.
  *
- * A UI ainda não navega **abaixo** do shell: [reconcileAccessStack] deriva a base do stack
- * do estado de sessão autoritativo. Acima dela, quem empilha são as lambdas que cada `Root`
- * recebe — navegação entre features é callback (AGENTS.md §6), e o `Root` não conhece
- * `NavDisplay`.
+ * O stack tem profundidade dos dois lados da sessão, e por motivos diferentes:
+ *
+ * - **acima da base**, as rotas de grupo empilham sobre o shell (VUL-72). Quem empilha são
+ *   as lambdas que cada `Root` recebe — navegação entre features é callback (AGENTS.md §6),
+ *   e o `Root` não conhece `NavDisplay`;
+ * - **no lado deslogado**, as seis telas do fluxo 1 que a pessoa alcança clicando (1b a 1h)
+ *   empilham sobre o login (VUL-84).
+ *
+ * [reconcileAccessStack] deriva a **base** do stack do estado de sessão autoritativo, e é
+ * onde as duas profundidades se conciliam: ele nunca reescreve o que a pessoa empilhou por
+ * cima de uma base correta. O voltar desfaz.
+ *
+ * As rotas do fluxo 1 ainda são andaimes: um `Text` com o nome da rota e os links para as
+ * próximas. Os sete tickets de tela da onda 5 trocam cada `AccessSkeleton` pelo seu Root,
+ * uma linha por ticket.
  */
 @Composable
 internal fun SaqzNavHost(
@@ -52,21 +69,55 @@ internal fun SaqzNavHost(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
 ) {
+    // A primeira passagem depois de uma recriação do host não é transição de sessão: o
+    // `LaunchedEffect` roda de novo com o mesmo `SignedOut` de sempre, e canonicalizar ali
+    // jogaria fora o stack que acabou de ser restaurado — girar o aparelho no meio do 1b, ou
+    // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
+    val restoring = remember { booleanArrayOf(true) }
     LaunchedEffect(state.session) {
-        reconcileAccessStack(backStack, state.session)
+        reconcileAccessStack(backStack, state.session, restoring = restoring[0])
+        restoring[0] = false
     }
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     NavDisplay(
         backStack = backStack,
-        // O `NavDisplay` só habilita o back quando há entrada anterior, então isto nunca
-        // esvazia a base que o gate garante.
+        // O `NavDisplay` só habilita o back quando há entrada anterior
+        // (`isBackEnabled = scene.previousEntries.isNotEmpty()`, NavDisplay.kt:557 do
+        // navigation3-ui 1.1.1), então isto nunca esvazia a base que o gate garante — é o
+        // mesmo corpo do `onBack` padrão da própria biblioteca.
         onBack = pop,
         entryProvider = entryProvider {
             entry<AccessRoute.Starting> { SaqzSpinner() }
-            entry<AccessRoute.Login> { LoginRoot() }
-            entry<AccessRoute.Verification> { VerificationRoot() }
-            entry<AccessRoute.NameCompletion> { NameCompletionRoot() }
-            entry<AccessRoute.PhoneCompletion> { PhoneCompletionRoot() }
+            entry<AccessRoute.Login> {
+                LoginRoot(
+                    onCreateAccount = { backStack.add(AccessRoute.Register) },
+                    onForgotPassword = { backStack.add(AccessRoute.ForgotPassword) },
+                )
+            }
+            entry<AccessRoute.Register> {
+                AccessSkeleton("Register", "IdentityCompletion" to { backStack.add(AccessRoute.IdentityCompletion) })
+            }
+            entry<AccessRoute.IdentityCompletion> { AccessSkeleton("IdentityCompletion") }
+            entry<AccessRoute.ForgotPassword> {
+                AccessSkeleton(
+                    "ForgotPassword",
+                    "ResetCode" to { backStack.add(AccessRoute.ResetCode(SkeletonEmail)) },
+                )
+            }
+            entry<AccessRoute.ResetCode> { route ->
+                AccessSkeleton(
+                    "ResetCode",
+                    "NewPassword" to { backStack.add(AccessRoute.NewPassword(route.email, SkeletonToken)) },
+                )
+            }
+            entry<AccessRoute.NewPassword> {
+                AccessSkeleton("NewPassword", "PasswordChanged" to { backStack.add(AccessRoute.PasswordChanged) })
+            }
+            entry<AccessRoute.PasswordChanged> {
+                // Senha trocada não tem volta para o formulário que a trocou: o "Entrar
+                // agora" recomeça o stack no login.
+                AccessSkeleton("PasswordChanged", "Login" to { backStack.resetTo(AccessRoute.Login) })
+            }
             entry<AccessRoute.Bootstrap> {
                 BootstrapAccessScreen(
                     state = state.session,
@@ -131,6 +182,29 @@ internal fun SaqzNavHost(
     )
 }
 
+// Valores de andaime: a 1d ainda não coleta e-mail e a 1e ainda não troca código por
+// ticket, mas as rotas já carregam os dois, então o percurso precisa de algo para levar.
+private const val SkeletonEmail = "ana@exemplo.com"
+private const val SkeletonToken = "token-de-andaime"
+
+/** Uma tela feia: o nome da rota e um link por saída. */
+@Composable
+private fun AccessSkeleton(name: String, vararg next: Pair<String, () -> Unit>) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp).testTag("skeleton-$name"),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(name)
+        next.forEach { (label, go) -> Text("→ $label", modifier = Modifier.clickable(onClick = go)) }
+    }
+}
+
+private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
+    clear()
+    add(route)
+}
+
 /**
  * O `2a`/`2i`: as duas rotas do formulário compartilham a mesma ligação, porque o modo já
  * carrega a diferença. Os cinco efeitos saem por callback (AGENTS.md §6) e cada um é
@@ -180,18 +254,34 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
 }
 
 /**
- * O gate de acesso. Fora de `Ready` ele **canonicaliza**: cada `SessionAccessState`
- * colapsa o stack para o seu destino único, e é isso que impede tela autenticada de
- * aparecer sem sessão — não pode afrouxar.
+ * O gate de acesso, garantindo a **base** do stack em dois casos e **canonicalizando** no
+ * resto.
  *
- * Com `Ready` ele garante só a **base**. Antes do VUL-72 o stack tinha exatamente uma
- * entrada e `Ready` reescrevia tudo; com as rotas de grupo empilháveis, reescrever
- * zeraria a navegação a cada emissão de estado de sessão — e a sessão emite mais de uma
- * vez. Sair de `Ready` volta a colapsar, então logout continua limpando o stack inteiro.
+ * Garante só a base quando a profundidade acima dela é navegação legítima da pessoa, e são
+ * dois caminhos independentes que chegam à mesma regra:
+ *
+ * - `Ready` (VUL-72), porque as rotas de grupo empilham sobre o shell. Antes o stack tinha
+ *   exatamente uma entrada e `Ready` reescrevia tudo; com elas empilháveis, reescrever
+ *   zeraria a navegação a cada emissão de estado de sessão — e a sessão emite mais de uma vez;
+ * - [restoring] (VUL-84), a primeira passagem depois de uma recriação do host, que **não** é
+ *   transição — é o mesmo estado de sempre chegando de novo. Sem isso, girar o aparelho no
+ *   meio do 1b, ou voltar do app de e-mail durante o 1e, jogaria a pessoa de volta ao login.
+ *
+ * Nos dois, "base correta" é a raiz do stack bater com o destino. O que **não** nasce sob
+ * ele cai de qualquer forma: o `[Starting]` de um início a frio, ou um stack restaurado de
+ * uma sessão que já morreu.
+ *
+ * Fora deles, canonicaliza: cada `SessionAccessState` colapsa o stack para o seu destino
+ * único. É isso que impede tela autenticada de aparecer sem sessão e o que faz o logout
+ * limpar o stack inteiro — não pode afrouxar.
  */
-internal fun reconcileAccessStack(stack: MutableList<NavKey>, session: SessionAccessState) {
+internal fun reconcileAccessStack(
+    stack: MutableList<NavKey>,
+    session: SessionAccessState,
+    restoring: Boolean = false,
+) {
     val destination = session.toDestination()
-    if (session is SessionAccessState.Ready) {
+    if (session is SessionAccessState.Ready || restoring) {
         if (stack.firstOrNull() != destination) {
             stack.clear()
             stack.add(destination)
@@ -207,9 +297,7 @@ internal fun reconcileAccessStack(stack: MutableList<NavKey>, session: SessionAc
 
 private fun SessionAccessState.toDestination(): NavKey = when (this) {
     SessionAccessState.SignedOut -> AccessRoute.Login
-    is SessionAccessState.AwaitingVerification -> AccessRoute.Verification
-    is SessionAccessState.CompletingName -> AccessRoute.NameCompletion
-    is SessionAccessState.CompletingPhone -> AccessRoute.PhoneCompletion
+    is SessionAccessState.CompletingIdentity -> AccessRoute.IdentityCompletion
     SessionAccessState.Bootstrapping, SessionAccessState.BootstrapError -> AccessRoute.Bootstrap
     is SessionAccessState.Ready -> SaqzShellDestination
 }

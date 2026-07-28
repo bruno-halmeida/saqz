@@ -25,9 +25,12 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
         polymorphic(NavKey::class) {
             subclass(AccessRoute.Starting::class, AccessRoute.Starting.serializer())
             subclass(AccessRoute.Login::class, AccessRoute.Login.serializer())
-            subclass(AccessRoute.Verification::class, AccessRoute.Verification.serializer())
-            subclass(AccessRoute.NameCompletion::class, AccessRoute.NameCompletion.serializer())
-            subclass(AccessRoute.PhoneCompletion::class, AccessRoute.PhoneCompletion.serializer())
+            subclass(AccessRoute.Register::class, AccessRoute.Register.serializer())
+            subclass(AccessRoute.IdentityCompletion::class, AccessRoute.IdentityCompletion.serializer())
+            subclass(AccessRoute.ForgotPassword::class, AccessRoute.ForgotPassword.serializer())
+            subclass(AccessRoute.ResetCode::class, AccessRoute.ResetCode.serializer())
+            subclass(AccessRoute.NewPassword::class, AccessRoute.NewPassword.serializer())
+            subclass(AccessRoute.PasswordChanged::class, AccessRoute.PasswordChanged.serializer())
             subclass(AccessRoute.Bootstrap::class, AccessRoute.Bootstrap.serializer())
             subclass(SaqzShellDestination::class, SaqzShellDestination.serializer())
             // As rotas de grupo entram no VUL-72: agora que o stack tem profundidade, é
@@ -47,7 +50,8 @@ internal fun defaultAccessBackStack(): NavBackStack<NavKey> = NavBackStack(Acces
 /**
  * Tolerant restore (VUL-35). A retained Android task can hold a back stack encoded by an
  * older build whose entries no longer exist: `Registration`/`PasswordReset` from this slice,
- * and every `GroupsRoute`/`ProductRoute` since C1 cut the registered key set from 23 to 9.
+ * every `GroupsRoute`/`ProductRoute` since C1, e agora `Verification`, `NameCompletion` e
+ * `PhoneCompletion`, que o VUL-84 tirou do conjunto de chaves.
  * Polymorphic decoding of an unregistered key throws inside the back stack restore, which
  * runs *before* [reconcileAccessStack] can canonicalize the stack — the app would fail to
  * reopen from Recents with no way out.

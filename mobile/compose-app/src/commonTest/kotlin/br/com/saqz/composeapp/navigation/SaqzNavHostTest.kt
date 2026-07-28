@@ -1,7 +1,6 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.navigation3.runtime.NavKey
-import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
@@ -15,8 +14,10 @@ import kotlin.test.assertEquals
  * que alcança o shell. Exaustivo por construção — um estado novo reprova o `when` de
  * `toDestination` em tempo de compilação e aparece faltando aqui.
  *
- * A partir do VUL-72 o stack tem profundidade: `Ready` garante só a **base**, e todo estado
- * não-`Ready` continua colapsando. Os três casos que o ticket exige estão no fim do arquivo.
+ * O stack tem profundidade nos dois lados da sessão, e o gate garante só a **base** nos dois
+ * casos em que ela é legítima: acima do shell, com as rotas de grupo (VUL-72); e no lado
+ * deslogado, na primeira passagem depois de uma recriação do host (VUL-84). Fora deles todo
+ * estado continua colapsando. Os casos de cada um estão no fim do arquivo.
  */
 class SaqzNavHostTest {
 
@@ -30,26 +31,10 @@ class SaqzNavHostTest {
     }
 
     @Test
-    fun awaitingVerificationRoutesToVerification() {
+    fun completingIdentityRoutesToTheMergedScreen() {
         assertEquals(
-            listOf(AccessRoute.Verification),
-            stackFor(SessionAccessState.AwaitingVerification(user)),
-        )
-    }
-
-    @Test
-    fun completingNameRoutesToNameCompletion() {
-        assertEquals(
-            listOf(AccessRoute.NameCompletion),
-            stackFor(SessionAccessState.CompletingName(user)),
-        )
-    }
-
-    @Test
-    fun completingPhoneRoutesToPhoneCompletion() {
-        assertEquals(
-            listOf(AccessRoute.PhoneCompletion),
-            stackFor(SessionAccessState.CompletingPhone(session)),
+            listOf(AccessRoute.IdentityCompletion),
+            stackFor(SessionAccessState.CompletingIdentity(session)),
         )
     }
 
@@ -65,14 +50,14 @@ class SaqzNavHostTest {
     }
 
     // VUL-72: fora de `Ready` o gate continua colapsando -- é ele que impede tela
-    // autenticada de aparecer sem sessão, e afrouxar isso quebraria o login.
+    // autenticada de aparecer sem sessão, e afrouxar isso quebraria o login. A profundidade
+    // que o VUL-84 devolve ao fluxo 1 é navegação da pessoa, não estado de sessão, e não
+    // afrouxa isto: só a primeira passagem depois da recriação do host é tolerante.
     @Test
     fun everyStateBeforeReadyCollapsesToASingleEntry() {
         listOf(
             SessionAccessState.SignedOut,
-            SessionAccessState.AwaitingVerification(user),
-            SessionAccessState.CompletingName(user),
-            SessionAccessState.CompletingPhone(session),
+            SessionAccessState.CompletingIdentity(session),
             SessionAccessState.Bootstrapping,
             SessionAccessState.BootstrapError,
         ).forEach { state ->
@@ -122,6 +107,21 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
     }
 
+    // VUL-84, o mesmo de cima com o fluxo 1 empilhado: a base errada cai inteira, não só a
+    // entrada de baixo. Autenticar no meio de uma recuperação de senha vai para o shell.
+    @Test
+    fun readyReplacesADeepAccessStackWithTheShell() {
+        val stack = mutableListOf<NavKey>(
+            AccessRoute.Login,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+        )
+
+        reconcileAccessStack(stack, SessionAccessState.Ready(session))
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+    }
+
     // VUL-72 (b): sair da sessão limpa tudo, inclusive o que estava empilhado.
     @Test
     fun signingOutFromADeepStackClearsItBackToLogin() {
@@ -134,13 +134,52 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }
 
-    private companion object {
-        val user = NativeUser(
-            subject = "user-1",
-            email = "atleta@example.test",
-            emailVerified = true,
-            displayName = "Atleta",
+    // Recriar o host roda o efeito de novo com o mesmo `SignedOut`, e isso não é transição:
+    // girar o aparelho no meio do 1b, ou voltar do app de e-mail durante o 1e, não pode
+    // devolver a pessoa ao login.
+    @Test
+    fun aRestoredStackSurvivesTheFirstPass() {
+        val restored = mutableListOf<NavKey>(
+            AccessRoute.Login,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
         )
+
+        reconcileAccessStack(restored, SessionAccessState.SignedOut, restoring = true)
+
+        assertEquals(
+            listOf<NavKey>(
+                AccessRoute.Login,
+                AccessRoute.ForgotPassword,
+                AccessRoute.ResetCode("ana@exemplo.com"),
+            ),
+            restored,
+        )
+    }
+
+    // A tolerância acima é só para o stack que já nasce sob o destino da sessão. Um início
+    // a frio começa em `Starting`, e ficar ali seria abrir o app num spinner eterno.
+    @Test
+    fun aColdStartIsStillCanonicalizedOnTheFirstPass() {
+        val cold = mutableListOf<NavKey>(AccessRoute.Starting)
+
+        reconcileAccessStack(cold, SessionAccessState.SignedOut, restoring = true)
+
+        assertEquals(listOf<NavKey>(AccessRoute.Login), cold)
+    }
+
+    // E o stack restaurado de uma sessão que não existe mais também cai: a raiz não bate
+    // com o destino, então a canonicalização acontece mesmo na primeira passagem.
+    @Test
+    fun aRestoredStackFromADeadSessionIsCanonicalized() {
+        val stale = mutableListOf<NavKey>(SaqzShellDestination, GroupsRoute.Details("ceret"))
+
+        reconcileAccessStack(stale, SessionAccessState.SignedOut, restoring = true)
+
+        assertEquals(listOf<NavKey>(AccessRoute.Login), stale)
+    }
+
+    private companion object {
         val session = AccessSession(
             user = AccessUser(
                 id = "user-1",
