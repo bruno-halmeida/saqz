@@ -1,15 +1,18 @@
 package br.com.saqz.access.presentation
 
 import br.com.saqz.access.domain.port.AuthCallback
+import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.AuthStateListener
 import br.com.saqz.access.domain.port.Cancelable
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ProfilePhotoResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
+import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.session.AccessError
 import br.com.saqz.access.domain.session.AccessSession
@@ -46,13 +49,14 @@ class SessionAccessStateMachineTest {
     }
 
     @Test
-    fun `authentication no longer force refreshes the token before bootstrap`() = runTest {
+    fun `a named identity bootstraps without touching the provider`() = runTest {
         val fixture = fixture(this)
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
         assertTrue(fixture.auth.tokenCalls.isEmpty())
+        assertTrue(fixture.auth.nameUpdates.isEmpty())
         assertEquals(0, fixture.auth.reloadCalls)
     }
 
@@ -79,7 +83,113 @@ class SessionAccessStateMachineTest {
         assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
     }
 
-    // ---- o portão único da 1c ----
+    // ---- o portão pré-bootstrap: o nome é pré-condição do backend ----
+
+    // A regressão que o `BootstrapSession` produzia: ele recusa a identidade sem nome
+    // utilizável antes de tocar o repositório, então quem entra por um provedor sem nome
+    // nunca recebe sessão. Pedir o nome só depois do bootstrap prendia a pessoa no erro.
+    @Test
+    fun `an identity without a display name reaches identity completion instead of the error`() = runTest {
+        val fixture = fixture(this)
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertNull(state.session)
+        assertEquals(0, fixture.session.calls)
+    }
+
+    @Test
+    fun `a blank display name is treated as missing`() = runTest {
+        val fixture = fixture(this)
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = " "))))
+        runCurrent()
+
+        assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals(0, fixture.session.calls)
+    }
+
+    @Test
+    fun `claiming the name raises it to the provider before bootstrapping`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Success(phoneRequiredSession))
+
+        fixture.claimIdentity(name = "Pessoa Nova")
+        runCurrent()
+
+        assertEquals(listOf("Pessoa Nova"), fixture.auth.nameUpdates)
+        // Token renovado à força: o bootstrap lê o nome da identidade do token, não do corpo.
+        assertEquals(listOf(true), fixture.auth.tokenCalls)
+        assertEquals(1, fixture.session.calls)
+    }
+
+    // O telefone digitado antes do bootstrap não pode se perder no caminho: ele espera a
+    // sessão existir e sobe assim que ela existe, sem a pessoa passar pela 1c duas vezes.
+    @Test
+    fun `the phone typed before bootstrap is submitted once the session exists`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Success(phoneRequiredSession))
+
+        fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
+        fixture.session.profileResult = SaqzResult.Success(session)
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Pessoa Nova"), fixture.session.profileCalls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    @Test
+    fun `a bootstrap failure after the claim keeps the typed identity for the retry`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+        fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
+        runCurrent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+
+        fixture.session.result = SaqzResult.Success(phoneRequiredSession)
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Pessoa Nova"), fixture.session.profileCalls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // Falhou o `completeProfile` logo depois do bootstrap? A 1c reaparece já **com** sessão:
+    // dali em diante o caminho é o normal, e um segundo envio não repete o nome no provedor.
+    @Test
+    fun `a refused profile after the claim returns to identity completion with a session`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Success(phoneRequiredSession))
+        fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals(phoneRequiredSession, state.session)
+        assertEquals("Pessoa Nova", state.name)
+        // Os campos voltam normalizados, que é o que subiu. As duas normalizações são
+        // idempotentes, então reenviar dali manda exatamente o mesmo.
+        assertEquals("+5511999990000", state.phone)
+        assertEquals("+5511999990000", normalizedBrMobilePhone(state.phone))
+        assertFalse(state.isLoading)
+    }
+
+    @Test
+    fun `a provider refusal of the name stays on the screen`() = runTest {
+        val fixture = namelessFixture()
+        fixture.machine.onIntent(SessionIntent.UpdateName("Pessoa Nova"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals(AuthUiError.NETWORK_UNAVAILABLE, state.error)
+        assertFalse(state.isLoading)
+        assertEquals(0, fixture.session.calls)
+    }
+
+    // ---- o portão pós-bootstrap: só o telefone ----
 
     @Test
     fun `a session missing the phone opens identity completion`() = runTest {
@@ -89,19 +199,9 @@ class SessionAccessStateMachineTest {
         runCurrent()
 
         val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals(phoneRequiredSession, state.session)
         assertEquals("Person Name", state.name)
         assertEquals("", state.phone)
-    }
-
-    @Test
-    fun `a session missing a usable name opens identity completion`() = runTest {
-        val nameless = SaqzResult.Success(session.copy(user = session.user.copy(displayName = " ")))
-        val fixture = fixture(this, nameless)
-
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
-        runCurrent()
-
-        assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
     }
 
     @Test
@@ -124,11 +224,13 @@ class SessionAccessStateMachineTest {
         fixture.machine.onIntent(SessionIntent.UpdateName("Outra Pessoa"))
         fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
         fixture.machine.onIntent(SessionIntent.CompleteIdentity)
-        fixture.session.result = SaqzResult.Success(session)
+        fixture.session.profileResult = SaqzResult.Success(session)
         runCurrent()
 
         assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Outra Pessoa"), fixture.session.profileCalls)
         assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        // Com sessão na mão o nome vai no corpo do PATCH: nada a atualizar no provedor.
+        assertTrue(fixture.auth.nameUpdates.isEmpty())
     }
 
     @Test
@@ -188,7 +290,7 @@ class SessionAccessStateMachineTest {
     fun `a connectivity failure on completion is retryable in place`() = runTest {
         val fixture = identityFixture()
         fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
-        fixture.session.result = SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity))
 
         fixture.machine.onIntent(SessionIntent.CompleteIdentity)
         runCurrent()
@@ -210,6 +312,46 @@ class SessionAccessStateMachineTest {
         val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
         assertFalse(state.invalidPhone)
         assertNull(state.error)
+    }
+
+    // ---- a recusa do backend cai no campo que ela nomeia ----
+
+    @Test
+    fun `a name refused by the backend lands on the name field`() = runTest {
+        val state = refusedBy(mapOf("displayName" to listOf("must be between 2 and 80 characters")))
+
+        assertTrue(state.invalidName)
+        assertFalse(state.invalidPhone)
+        assertNull(state.error)
+    }
+
+    @Test
+    fun `a phone refused by the backend lands on the phone field`() = runTest {
+        val state = refusedBy(mapOf("phone" to listOf("must be a valid Brazilian mobile number")))
+
+        assertTrue(state.invalidPhone)
+        assertFalse(state.invalidName)
+    }
+
+    @Test
+    fun `both fields refused at once are both marked`() = runTest {
+        val state = refusedBy(
+            mapOf("displayName" to listOf("invalid"), "phone" to listOf("invalid")),
+        )
+
+        assertTrue(state.invalidName)
+        assertTrue(state.invalidPhone)
+    }
+
+    // Recusa que não nomeia campo conhecido não pode sumir: sem isso a tela ficaria sem
+    // erro nenhum, e o botão pareceria não ter feito nada.
+    @Test
+    fun `a refusal naming no known field falls back to a visible error`() = runTest {
+        val state = refusedBy(mapOf("timezone" to listOf("unexpected")))
+
+        assertFalse(state.invalidName)
+        assertFalse(state.invalidPhone)
+        assertEquals(AuthUiError.UNKNOWN, state.error)
     }
 
     // ---- bootstrap ----
@@ -292,6 +434,22 @@ class SessionAccessStateMachineTest {
         assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
     }
 
+    // Sair no meio da 1c descarta o que foi digitado: a próxima pessoa a entrar neste
+    // aparelho não pode herdar o telefone da anterior.
+    @Test
+    fun `logout drops the identity pending before bootstrap`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+        fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.result = SaqzResult.Success(phoneRequiredSession)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
     @Test
     fun `session invalidation uses the same local logout path`() = runTest {
         val fixture = fixture(this)
@@ -316,7 +474,7 @@ class SessionAccessStateMachineTest {
         return Fixture(SessionAccessStateMachine(auth, local, gateway, scope), auth, local, gateway)
     }
 
-    /** Parado na 1c: o backend pediu telefone, e o nome já veio preenchido. */
+    /** Parado na 1c **com** sessão: o backend pediu o telefone e o nome já veio preenchido. */
     private fun TestScope.identityFixture(): Fixture {
         val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
@@ -325,9 +483,49 @@ class SessionAccessStateMachineTest {
         return fixture
     }
 
+    /** Parado na 1c **sem** sessão: o provedor não deu nome, então o bootstrap nem correu. */
+    private fun TestScope.namelessFixture(
+        result: SaqzResult<AccessSession, AccessError> = SaqzResult.Success(session),
+    ): Fixture {
+        val fixture = fixture(this, result)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
+        assertNull(assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value).session)
+        return fixture
+    }
+
+    /** Preenche a 1c pré-bootstrap e leva o provedor até o ponto em que o bootstrap dispara. */
+    private fun Fixture.claimIdentity(name: String = "Person Name", phone: String = "(11) 99999-0000") {
+        machine.onIntent(SessionIntent.UpdateName(name))
+        machine.onIntent(SessionIntent.UpdatePhone(phone))
+        machine.onIntent(SessionIntent.CompleteIdentity)
+        auth.completeAuth(AuthResult.Success(verified.copy(displayName = name)))
+        auth.completeToken(TokenResult.Success("fresh-token"))
+    }
+
+    /** A 1c com sessão levando uma recusa por campo do backend. */
+    private fun TestScope.refusedBy(fields: Map<String, List<String>>): SessionAccessState.CompletingIdentity {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileResult = SaqzResult.Failure(
+            AccessError.Validation(ValidationDetails(globalMessages = emptyList(), fieldMessages = fields)),
+        )
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        return assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+    }
+
     private class FakeSessionGateway(var result: SaqzResult<AccessSession, AccessError>) : SessionGateway {
         var calls = 0
         val profileCalls = mutableListOf<Pair<String, String?>>()
+
+        /**
+         * O caminho pré-bootstrap encadeia `bootstrap` e `completeProfile` na mesma volta,
+         * então os dois precisam responder separado — senão uma recusa do perfil chega ao
+         * bootstrap e o teste mede outra coisa. Nulo herda o [result].
+         */
+        var profileResult: SaqzResult<AccessSession, AccessError>? = null
 
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             calls += 1
@@ -339,20 +537,25 @@ class SessionAccessStateMachineTest {
             displayName: String?,
         ): SaqzResult<AccessSession, AccessError> {
             profileCalls += phone to displayName
-            return result
+            return profileResult ?: result
         }
     }
 
     private class FakeAuthPort : NativeAuthPort {
         val tokenCalls = mutableListOf<Boolean>()
+        val nameUpdates = mutableListOf<String>()
         var reloadCalls = 0
         var signOutCalls = 0
+        private var authCallback: AuthCallback? = null
+        private var tokenCallback: TokenCallback? = null
 
-        override fun reloadUser(done: AuthCallback) { reloadCalls += 1 }
-        override fun updateDisplayName(name: String, done: AuthCallback) = Unit
+        override fun reloadUser(done: AuthCallback) { reloadCalls += 1; authCallback = done }
+        override fun updateDisplayName(name: String, done: AuthCallback) { nameUpdates += name; authCallback = done }
         override fun sendVerification(done: ResultCallback) = Unit
-        override fun idToken(forceRefresh: Boolean, done: TokenCallback) { tokenCalls += forceRefresh }
+        override fun idToken(forceRefresh: Boolean, done: TokenCallback) { tokenCalls += forceRefresh; tokenCallback = done }
         override fun signOut(done: ResultCallback) { signOutCalls += 1; done.complete(OperationResult.Success) }
+        fun completeAuth(result: AuthResult) = authCallback!!.complete(result)
+        fun completeToken(result: TokenResult) = tokenCallback!!.complete(result)
         override fun observe(listener: AuthStateListener): Cancelable = object : Cancelable { override fun cancel() = Unit }
         override fun createAccount(name: String, email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithPassword(email: String, password: String, done: AuthCallback) = Unit

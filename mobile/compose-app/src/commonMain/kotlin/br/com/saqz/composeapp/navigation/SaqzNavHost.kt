@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +54,14 @@ internal fun SaqzNavHost(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
 ) {
+    // A primeira passagem depois de uma recriação do host não é transição de sessão: o
+    // `LaunchedEffect` roda de novo com o mesmo `SignedOut` de sempre, e canonicalizar ali
+    // jogaria fora o stack que acabou de ser restaurado — girar o aparelho no meio do 1b, ou
+    // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
+    val restoring = remember { booleanArrayOf(true) }
     LaunchedEffect(state.session) {
-        reconcileAccessStack(backStack, state.session)
+        reconcileAccessStack(backStack, state.session, restoring = restoring[0])
+        restoring[0] = false
     }
     NavDisplay(
         backStack = backStack,
@@ -140,12 +147,23 @@ private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
  *
  * Entre mudanças o stack é da pessoa: é assim que o percurso 1a → 1d → 1e → 1g → 1h
  * sobrevive, sem que o portão de sessão precise conhecer a navegação de dentro do fluxo.
+ *
+ * [restoring] marca a primeira passagem depois de uma recriação do host, que **não** é
+ * transição de sessão — é o mesmo estado de sempre chegando de novo. Ali um stack que já
+ * nasce sob o destino da sessão é o que a pessoa deixou aberto e fica como está; o que não
+ * nasce sob ele (o `[Starting]` de um início a frio, ou um stack de uma sessão que morreu)
+ * ainda é canonicalizado, senão o app abriria no destino errado.
  */
-internal fun reconcileAccessStack(stack: MutableList<NavKey>, session: SessionAccessState) {
-    val target: List<NavKey> = listOf(session.toDestination())
-    if (stack != target) {
+internal fun reconcileAccessStack(
+    stack: MutableList<NavKey>,
+    session: SessionAccessState,
+    restoring: Boolean = false,
+) {
+    val target = session.toDestination()
+    if (restoring && stack.firstOrNull() == target) return
+    if (stack != listOf(target)) {
         stack.clear()
-        stack.addAll(target)
+        stack.add(target)
     }
 }
 

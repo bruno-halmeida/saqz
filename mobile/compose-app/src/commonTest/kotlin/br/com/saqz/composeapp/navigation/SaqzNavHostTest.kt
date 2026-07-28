@@ -80,6 +80,51 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
     }
 
+    // Recriar o host roda o efeito de novo com o mesmo `SignedOut`, e isso não é transição:
+    // girar o aparelho no meio do 1b, ou voltar do app de e-mail durante o 1e, não pode
+    // devolver a pessoa ao login.
+    @Test
+    fun aRestoredStackSurvivesTheFirstPass() {
+        val restored = mutableListOf<NavKey>(
+            AccessRoute.Login,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+        )
+
+        reconcileAccessStack(restored, SessionAccessState.SignedOut, restoring = true)
+
+        assertEquals(
+            listOf<NavKey>(
+                AccessRoute.Login,
+                AccessRoute.ForgotPassword,
+                AccessRoute.ResetCode("ana@exemplo.com"),
+            ),
+            restored,
+        )
+    }
+
+    // A tolerância acima é só para o stack que já nasce sob o destino da sessão. Um início
+    // a frio começa em `Starting`, e ficar ali seria abrir o app num spinner eterno.
+    @Test
+    fun aColdStartIsStillCanonicalizedOnTheFirstPass() {
+        val cold = mutableListOf<NavKey>(AccessRoute.Starting)
+
+        reconcileAccessStack(cold, SessionAccessState.SignedOut, restoring = true)
+
+        assertEquals(listOf<NavKey>(AccessRoute.Login), cold)
+    }
+
+    // E o stack restaurado de uma sessão que não existe mais também cai: a raiz não bate
+    // com o destino, então a canonicalização acontece mesmo na primeira passagem.
+    @Test
+    fun aRestoredStackFromADeadSessionIsCanonicalized() {
+        val stale = mutableListOf<NavKey>(SaqzShellDestination)
+
+        reconcileAccessStack(stale, SessionAccessState.SignedOut, restoring = true)
+
+        assertEquals(listOf<NavKey>(AccessRoute.Login), stale)
+    }
+
     private companion object {
         val session = AccessSession(
             user = AccessUser(
