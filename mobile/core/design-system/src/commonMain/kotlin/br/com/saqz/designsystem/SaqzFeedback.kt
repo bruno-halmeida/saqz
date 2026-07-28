@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.offline_queued
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.designsystem.theme.saqzShadow
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
@@ -125,10 +126,14 @@ fun SaqzToast(
         exit = fadeOut(tween(motion.sheetDurationMillis, easing = motion.emphasized)) +
             slideOutVertically(tween(motion.sheetDurationMillis, easing = motion.emphasized)) { slide },
     ) {
+        // `--shadow-toast`, o par do sheet: 12dp para BAIXO. É o que separa a barra navy
+        // do conteúdo por cima do qual ela aparece.
+        val shape = RoundedCornerShape(SaqzTheme.metrics.cardRadius)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.textPrimary, RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+                .saqzShadow(SaqzTheme.shadows.toast, shape)
+                .background(colors.textPrimary, shape)
                 .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),

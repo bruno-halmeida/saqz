@@ -16,11 +16,12 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class SaqzThemeTest {
     @Test
-    fun exposesFourRegistries() = runComposeUiTest {
+    fun exposesEveryRegistry() = runComposeUiTest {
         lateinit var colors: SaqzColorTokens
         lateinit var metrics: SaqzMetrics
         lateinit var typography: SaqzTypography
         lateinit var motion: SaqzMotionPolicy
+        lateinit var shadows: SaqzShadows
         lateinit var family: FontFamily
         setContent {
             SaqzTheme {
@@ -28,12 +29,14 @@ class SaqzThemeTest {
                 metrics = SaqzTheme.metrics
                 typography = SaqzTheme.typography
                 motion = SaqzTheme.motion
+                shadows = SaqzTheme.shadows
                 family = saqzFontFamily()
             }
         }
         assertEquals(SaqzColorTokens.Light, colors)
         assertEquals(SaqzMetrics.Default, metrics)
         assertEquals(SaqzMotionPolicy.Normal, motion)
+        assertEquals(SaqzShadows.Default, shadows)
         assertEquals(SaqzTypography.Default.body.fontSize, typography.body.fontSize)
         assertEquals(family, typography.body.fontFamily)
     }
@@ -118,15 +121,18 @@ class SaqzThemeTest {
         lateinit var metrics: SaqzMetrics
         lateinit var typography: SaqzTypography
         lateinit var motion: SaqzMotionPolicy
+        lateinit var shadows: SaqzShadows
         setContent {
             colors = SaqzTheme.colors
             metrics = SaqzTheme.metrics
             typography = SaqzTheme.typography
             motion = SaqzTheme.motion
+            shadows = SaqzTheme.shadows
         }
         assertEquals(SaqzColorTokens.Light, colors)
         assertEquals(SaqzMetrics.Default, metrics)
         assertEquals(SaqzTypography.Default, typography)
         assertEquals(SaqzMotionPolicy.Normal, motion)
+        assertEquals(SaqzShadows.Default, shadows)
     }
 }

@@ -25,6 +25,12 @@ object SaqzTheme {
         @Composable @ReadOnlyComposable get() = LocalSaqzTypography.current
     val motion: SaqzMotionPolicy
         @Composable @ReadOnlyComposable get() = LocalSaqzMotion.current
+    // ponytail: constante, sem CompositionLocal. Sombra não varia com a subárvore — os
+    // outros quatro variam (o `motion` troca com reduceMotion, o `chrome` das cores com
+    // reduceTransparency), e é isso que justifica o local. Promover a local é o mesmo
+    // trabalho no dia em que o tema escuro precisar de uma sombra diferente.
+    val shadows: SaqzShadows
+        @Composable @ReadOnlyComposable get() = SaqzShadows.Default
 }
 
 @Composable

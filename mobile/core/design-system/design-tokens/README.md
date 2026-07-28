@@ -16,6 +16,7 @@ repositório. Export novo → substitua os arquivos e reconcilie o `ui-contract.
 | `typography` | `typography.css`, escala `--m-*` (a escala mobile; a `--text-*` é da web) |
 | `metrics` — espaçamento e nav | `spacing.css` |
 | `metrics` — raios | `radius.css` |
+| `shadows` | `radius.css` — o bloco `--shadow-*` mora lá, junto dos raios |
 | `metrics` — alturas de componente | `_ds_bundle.js` (CSS dos componentes, não é token CSS) |
 | `motion` | `_ds_bundle.js`, menos o `thumbDurationMillis` (ver abaixo) |
 

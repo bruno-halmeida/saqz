@@ -4,6 +4,7 @@
     "colors": "design-tokens/colors.css",
     "typography": "design-tokens/typography.css (escala --m-*)",
     "metrics": "design-tokens/spacing.css + design-tokens/radius.css; alturas de componente no _ds_bundle.js",
+    "shadows": "design-tokens/radius.css — --shadow-sheet e --shadow-toast (o bloco de sombra mora no radius.css do export)",
     "motion": "_ds_bundle.js — press l.617/l.25, duração do press l.615, sheet l.438, switch l.1395/l.1406, toast l.1071; thumbDurationMillis vem de 'Fluxo 10 Componentes.dc.html' l.523 (segThumb), o único lugar onde o segmented tem transição",
     "readme": "design-tokens/README.md — linha do bundle de cada número que não está nos CSS",
     "excecoes": "_exceptions abaixo — tudo que NÃO sai do export está listado lá, com o valor do export ao lado"
@@ -79,6 +80,10 @@
     "switchTrackHeight": 30,
     "switchThumbSize": 24,
     "switchThumbInset": 3
+  },
+  "shadows": {
+    "sheet": { "offsetX": 0, "offsetY": -12, "blur": 40, "color": "#0E1738", "alpha": 0.12 },
+    "toast": { "offsetX": 0, "offsetY": 12, "blur": 40, "color": "#0E1738", "alpha": 0.2 }
   },
   "typography": {
     "headline": { "size": 32, "weight": 700, "lineHeight": 36, "tracking": -0.03 },
