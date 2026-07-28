@@ -68,7 +68,10 @@ import org.robolectric.annotation.GraphicsMode
  * Screenshots de tela em JVM (Roborazzi + Robolectric) — sem emulador.
  *
  * Gravar:   ./gradlew :android-app:recordRoborazziDevDebug
- * Saída:    android-app/screenshots/
+ * Saída:    android-app/screenshots/ — ignorada pelo git. Os PNGs vivem na branch
+ *           órfã `screenshots`; o PR embute o raw. Seção 11 do AGENTS.md.
+ *
+ * A task regrava **todas** as cenas deste arquivo, não só a que você mexeu.
  *
  * ponytail: sem verify/CI por enquanto — só o loop visual. Gate de regressão
  * visual entra quando os goldens estabilizarem.
