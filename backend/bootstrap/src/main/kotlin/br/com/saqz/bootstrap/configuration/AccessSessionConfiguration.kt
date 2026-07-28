@@ -21,6 +21,7 @@ import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementReposit
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
 import br.com.saqz.groups.adapter.output.link.BranchInviteLinkFactory
@@ -89,6 +90,7 @@ import org.springframework.context.annotation.Configuration
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
 import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.springframework.mail.javamail.JavaMailSender
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
@@ -131,6 +133,10 @@ class AccessSessionConfiguration {
     @Bean
     fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
         AccessSessionController(useCase, profile)
+
+    @Bean
+    fun verificationCodeMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =
+        VerificationCodeMailer(sender, from)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)

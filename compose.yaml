@@ -18,6 +18,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/saqz
       SPRING_DATASOURCE_USERNAME: saqz
       SPRING_DATASOURCE_PASSWORD: saqz-local-dev-only
+      SAQZ_MAIL_HOST: mailpit
+      SAQZ_MAIL_STARTTLS: "false"
     secrets:
       - firebase-admin
     healthcheck:
@@ -30,6 +32,14 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  # SMTP local: nada sai da máquina, a caixa de entrada abre em http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${SAQZ_MAILPIT_UI_PORT:-8025}:8025"
     security_opt:
       - no-new-privileges:true
 
