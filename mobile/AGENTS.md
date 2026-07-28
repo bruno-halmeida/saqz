@@ -326,6 +326,14 @@ JUnit4 aparece em `:android-app` (instrumentado e Roborazzi) e nas suítes visua
 | Visual integrado | `android-app/src/test` | Roborazzi para telas e jornadas montadas |
 | Visual de componente | `<feature>:presentation/src/androidHostTest` | Roborazzi local ao módulo — **olhe os PNGs** antes de entregar UI |
 
+**Teste de Compose que mora em `commonTest` roda no iOS, nunca na JVM.** `runComposeUiTest` exige o
+runner do Robolectric, e esse runner é `@RunWith` de JUnit4 — anotação JVM-only, impossível em
+`commonTest`, que também compila para iOS. Na JVM sem o runner, todo `runComposeUiTest` estoura
+`NullPointerException` em `Build.FINGERPRINT`. Por isso o gate dessas suítes é
+`iosSimulatorArm64Test`, e a compilação `androidHostTest` de `:features:groups:presentation` carrega
+**só** a suíte de captura (VUL-100). Se você precisa de Robolectric, o arquivo vai para
+`androidHostTest` com `@RunWith(RobolectricTestRunner::class)`, não para `commonTest`.
+
 **Fake > mock, sempre.** Fake é implementação em memória da interface, com um `var shouldFail` para o
 caminho triste. `SavedStateHandle` se instancia direto, sem mock.
 
@@ -349,9 +357,14 @@ Atenção ao redesenhar: `allTests` é NO-SOURCE nos módulos `core/*` e `featur
 host tests, porque o plugin `com.android.kotlin.multiplatform.library` os desabilita por padrão.
 `:features:groups:presentation` é a exceção deliberada: faz opt-in com `withHostTest { }` para manter
 as capturas dos componentes compartilhados junto de quem os possui; seu comando dedicado acima é
-parte do gate visual e não é alcançado por `:android-app:testDevDebugUnitTest`. Fora dessa exceção,
-os arquivos de `commonTest` só rodam como `iosSimulatorArm64Test`, em macOS — num runner Linux essas
-suítes passam sem executar nada.
+parte do gate visual e não é alcançado por `:android-app:testDevDebugUnitTest`. Os arquivos de
+`commonTest` só rodam como `iosSimulatorArm64Test`, em macOS — num runner Linux essas suítes passam
+sem executar nada. **Isso vale também dentro dessa exceção:** a hierarquia padrão do KMP faria
+`androidHostTest` depender de `commonTest` e recompilá-lo na JVM, onde todo `runComposeUiTest`
+reprova (§10), então o `build.gradle.kts` do módulo restringe a compilação de host test à suíte de
+captura (VUL-100). `testAndroidHostTest` ali executa exatamente as suítes `androidHostTest` — se
+ficar vermelho, é falha real. Quem declarar `withHostTest { }` num módulo novo herda o mesmo
+problema e precisa da mesma restrição.
 
 Detekt usa **baseline por módulo**: dívida antiga congelada, código novo falha. **Não regenere
 baseline para calar erro seu.** Quando a regeneração é legítima (o código baselinado foi apagado),

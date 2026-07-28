@@ -47,6 +47,23 @@ kotlin {
     }
 }
 
+// VUL-100: `withHostTest { }` existe neste módulo por um motivo só — a suíte de captura
+// Roborazzi do VUL-66. Mas a hierarquia padrão do KMP faz `androidHostTest` depender de
+// `commonTest`, então o opt-in arrastava os `commonTest` para uma execução JVM que eles não
+// pedem: lá todo `runComposeUiTest` estoura `NullPointerException` em `Build.FINGERPRINT`,
+// porque exige o runner do Robolectric. Declarar esse runner para o `commonTest` é impossível
+// — é `@RunWith` de JUnit4, anotação JVM-only, e `commonTest` também compila para iOS.
+// O gate de `commonTest` é `iosSimulatorArm64Test`, onde as mesmas suítes passam.
+// Logo, a compilação de host test carrega só a suíte de captura. `isIncludeAndroidResources`
+// continua ligado: é ele que faz o Roborazzi rodar.
+// O `afterEvaluate` é necessário: fora dele o KGP volta a somar os dirs de `commonTest` depois
+// deste bloco e o `setSource` não surte efeito.
+afterEvaluate {
+    tasks.named("compileAndroidHostTest", org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool::class) {
+        setSource(kotlin.sourceSets.getByName("androidHostTest").kotlin)
+    }
+}
+
 compose.resources {
     packageOfResClass = "br.com.saqz.groups.resources"
     generateResClass = always
