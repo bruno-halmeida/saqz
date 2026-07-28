@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_close
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.designsystem.theme.saqzShadow
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -60,9 +61,9 @@ import org.jetbrains.compose.resources.stringResource
  * último filho de um Box que ocupa a tela. Sem Dialog, o mesmo código serve
  * Android e iOS sem depender do que cada plataforma faz com uma janela extra.
  *
- * ponytail: sem a sombra `--shadow-sheet` (`0 -12px 40px rgba(14,23,56,.12)`) — não há
- * token de sombra em `SaqzMetrics`/`SaqzColorTokens` e o VUL-58 proíbe cravar o número
- * aqui. Entra quando o VUL-44 versionar `--shadow-sheet` e `--shadow-toast`.
+ * A sombra é `--shadow-sheet`: 12dp para CIMA, e é ela que faz o painel parecer subindo
+ * da borda de baixo em vez de flutuando sobre ela. Cai sobre o scrim, então é discreta de
+ * propósito — no export também é.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -118,10 +119,12 @@ fun SaqzBottomSheet(
             enter = slideInVertically(slideSpec) { it },
             exit = slideOutVertically(slideSpec) { it },
         ) {
+            val shape = RoundedCornerShape(topStart = metrics.sheetRadius, topEnd = metrics.sheetRadius)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = metrics.sheetRadius, topEnd = metrics.sheetRadius))
+                    .saqzShadow(SaqzTheme.shadows.sheet, shape)
+                    .clip(shape)
                     .background(colors.surface)
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {

@@ -15,6 +15,7 @@ internal val LocalSaqzColors = staticCompositionLocalOf { SaqzColorTokens.Light 
 internal val LocalSaqzMetrics = staticCompositionLocalOf { SaqzMetrics.Default }
 internal val LocalSaqzTypography = staticCompositionLocalOf { SaqzTypography.Default }
 internal val LocalSaqzMotion = staticCompositionLocalOf { SaqzMotionPolicy.Normal }
+internal val LocalSaqzShadows = staticCompositionLocalOf { SaqzShadows.Default }
 
 object SaqzTheme {
     val colors: SaqzColorTokens
@@ -25,6 +26,8 @@ object SaqzTheme {
         @Composable @ReadOnlyComposable get() = LocalSaqzTypography.current
     val motion: SaqzMotionPolicy
         @Composable @ReadOnlyComposable get() = LocalSaqzMotion.current
+    val shadows: SaqzShadows
+        @Composable @ReadOnlyComposable get() = LocalSaqzShadows.current
 }
 
 @Composable
@@ -45,6 +48,7 @@ fun SaqzTheme(
         LocalSaqzMetrics provides metrics,
         LocalSaqzTypography provides typography,
         LocalSaqzMotion provides motion,
+        LocalSaqzShadows provides SaqzShadows.Default,
     ) {
         MaterialTheme(
             colors = colors.toMaterialColors(),
