@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +37,9 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * 10m — nada aqui é erro: é a tela dizendo que ainda não há conteúdo, com uma
  * saída. [action] é o rótulo do botão; sem [onAction] o estado é só informativo.
+ *
+ * O [icon] é slot, mas o badge circular em volta é do componente: `.saqz-empty__icon`
+ * no `_ds_bundle.js` é um círculo de 64px em ice, e nenhuma tela deveria redescobrir isso.
  */
 @Composable
 fun SaqzEmptyState(
@@ -53,7 +57,13 @@ fun SaqzEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        icon?.invoke()
+        if (icon != null) {
+            Box(
+                modifier = Modifier.size(EMPTY_STATE_BADGE).background(colors.surfaceSoft, CircleShape),
+                contentAlignment = Alignment.Center,
+                content = { icon() },
+            )
+        }
         Text(
             text = title,
             style = SaqzTheme.typography.subtitle,
@@ -130,8 +140,10 @@ fun SaqzToastText(text: String, modifier: Modifier = Modifier) = Text(
 )
 
 /**
- * 10o — a faixa de fila offline. O texto padrão é o do design system; a tela só
- * troca se tiver algo mais específico a dizer.
+ * 10o — a faixa de fila offline, na mesma linguagem do toast: navy, texto branco,
+ * raio de card. O spinner à esquerda é o ponto: a resposta está *na fila*, é trabalho
+ * pendente, não um aviso parado. O texto padrão é o do design system; a tela só troca
+ * se tiver algo mais específico a dizer.
  */
 @Composable
 fun SaqzOfflineBanner(
@@ -142,24 +154,34 @@ fun SaqzOfflineBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.warning.copy(alpha = 0.12f), RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+            .background(colors.textPrimary, RoundedCornerShape(SaqzTheme.metrics.cardRadius))
             .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(Modifier.size(8.dp).background(colors.warning, CircleShape))
-        Text(text = message, style = SaqzTheme.typography.support, color = colors.textPrimary)
+        // Indicador local em vez de SaqzSpinner: ele só escolhe entre primary e onPrimary,
+        // e nenhum dos dois é o lime que o export pede em cima do navy. Sem contentDescription
+        // porque o texto ao lado já anuncia o estado — o spinner aqui é decorativo.
+        CircularProgressIndicator(
+            color = colors.accent,
+            strokeWidth = 2.dp,
+            modifier = Modifier.size(16.dp),
+        )
+        SaqzToastText(message, modifier = Modifier.weight(1f))
     }
 }
+
+// Badge do EmptyState: 64px em `.saqz-empty__icon` do export.
+private val EMPTY_STATE_BADGE = 64.dp
 
 @Preview
 @Composable
 private fun SaqzEmptyStatePreview() = SaqzTheme {
     SaqzPreviewGrid {
         SaqzEmptyState(
-            title = "Nenhum jogo marcado",
-            description = "Crie o próximo jogo e a galera recebe o convite na hora.",
-            icon = { SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.textSecondary, size = 32.dp) },
+            title = "Nenhum jogo marcado por enquanto.",
+            description = "Quando a galera marcar, ele aparece aqui.",
+            icon = { SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.primary, size = 30.dp) },
             action = "Criar jogo",
             onAction = {},
         )
@@ -173,6 +195,14 @@ private fun SaqzToastPreview() = SaqzTheme {
         SaqzToast(visible = true, onDismiss = {}) {
             SaqzToastText("Presença confirmada. Bom jogo!")
         }
+    }
+}
+
+@Preview
+@Composable
+private fun SaqzOfflineBannerPreview() = SaqzTheme {
+    SaqzPreviewGrid {
         SaqzOfflineBanner()
+        SaqzOfflineBanner(message = "Sem internet. A foto sobe quando a conexão voltar.")
     }
 }
