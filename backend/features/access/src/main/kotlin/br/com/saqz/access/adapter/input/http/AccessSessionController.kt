@@ -23,6 +23,7 @@ data class SessionUserResponse(
     val phone: String?,
     val phoneRequired: Boolean,
     val emailVerified: Boolean,
+    val photoUrl: String?,
 )
 
 data class SessionMembershipResponse(
@@ -83,6 +84,9 @@ private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionRespon
         phone = user.phone?.value,
         phoneRequired = user.phone == null,
         emailVerified = emailVerified,
+        // A versao vai na URL para o cliente nao servir a foto antiga do cache
+        // depois de uma troca.
+        photoUrl = user.photoVersion?.let { "$USER_PHOTO_PATH?v=$it" },
     ),
     memberships = memberships.map {
         SessionMembershipResponse(

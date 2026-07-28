@@ -29,7 +29,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(5, flyway.migrate().migrationsExecuted)
+        assertEquals(6, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -41,7 +41,7 @@ class AccessSchemaIntegrationTest {
     fun clearData() {
         execute(
             "TRUNCATE group_regular_slots, group_venues, group_invites, group_memberships, access_groups, " +
-                "invite_redemption_limits, access_users CASCADE",
+                "invite_redemption_limits, access_user_photos, access_users CASCADE",
         )
     }
 
@@ -57,6 +57,7 @@ class AccessSchemaIntegrationTest {
                 "group_regular_slots",
                 "invite_redemption_limits",
                 "group_photos",
+                "access_user_photos",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +

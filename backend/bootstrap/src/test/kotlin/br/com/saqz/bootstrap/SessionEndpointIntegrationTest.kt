@@ -223,6 +223,18 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
+    fun `session response photoUrl is null when the account has no photo`() {
+        assertTrue(json(putSession())["user"]["photoUrl"].isNull)
+    }
+
+    @Test
+    fun `session response photoUrl carries the stored photo version`() {
+        repository.photoVersion = 3
+
+        assertEquals("/api/session/photo?v=3", json(putSession())["user"]["photoUrl"].stringValue())
+    }
+
+    @Test
     fun `session response phoneRequired is true when no phone is on file`() {
         val body = json(putSession())
 
@@ -399,6 +411,7 @@ class SessionEndpointIntegrationTest {
         private val phones = mutableMapOf<String, PhoneNumber>()
         private val names = mutableMapOf<String, AccessName>()
         var memberships: List<SessionMembership> = emptyList()
+        var photoVersion: Long? = null
         var failure: RuntimeException? = null
 
         fun reset() {
@@ -408,6 +421,7 @@ class SessionEndpointIntegrationTest {
             phones.clear()
             names.clear()
             memberships = emptyList()
+            photoVersion = null
             failure = null
         }
 
@@ -417,7 +431,14 @@ class SessionEndpointIntegrationTest {
             val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
             names[command.subject] = command.displayName
             return SessionView(
-                UserAccount(id, command.subject, command.email, command.displayName, phones[command.subject]),
+                UserAccount(
+                    id,
+                    command.subject,
+                    command.email,
+                    command.displayName,
+                    phones[command.subject],
+                    photoVersion,
+                ),
                 memberships,
             )
         }
