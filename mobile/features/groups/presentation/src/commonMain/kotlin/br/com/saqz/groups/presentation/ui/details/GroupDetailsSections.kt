@@ -11,14 +11,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
@@ -39,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzAvatarStack
 import br.com.saqz.designsystem.SaqzButton
@@ -323,13 +320,13 @@ internal fun GroupAttendanceStats(
         }
         Row(
             // IntrinsicSize.Min é o que dá altura aos traços verticais: sem isso o
-            // fillMaxHeight() deles resolve para zero dentro da Row.
+            // fillMaxHeight() dentro do SaqzDivider resolve para zero na Row.
             modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         ) {
             GroupAttendanceStat(attendance.going, stringResource(Res.string.group_details_going), colors.success)
-            GroupStatSeparator()
+            SaqzDivider(vertical = true)
             GroupAttendanceStat(attendance.maybe, stringResource(Res.string.group_details_maybe), colors.warning)
-            GroupStatSeparator()
+            SaqzDivider(vertical = true)
             GroupAttendanceStat(
                 value = attendance.pending,
                 label = stringResource(Res.string.group_details_pending),
@@ -362,18 +359,6 @@ private fun RowScope.GroupAttendanceStat(value: Int, label: String, color: Color
     )
     Text(text = label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
 }
-
-// A divisória vertical de 1px. O `SaqzDivider` só faz a horizontal, e o
-// `SaqzGameSummaryCard` guarda uma cópia privada disso com a nota "sobe para SaqzCard.kt
-// no dia em que um segundo componente precisar dela" — este é o segundo, e a promoção
-// está no VUL-97. Até lá, local.
-@Composable
-private fun GroupStatSeparator() = Box(
-    modifier = Modifier
-        .width(1.dp)
-        .fillMaxHeight()
-        .background(SaqzTheme.colors.border),
-)
 
 /** `2f` — a linha do caixa, que abre o fluxo 5. */
 @Composable
