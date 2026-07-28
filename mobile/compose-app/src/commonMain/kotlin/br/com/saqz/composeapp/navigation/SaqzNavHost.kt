@@ -41,6 +41,7 @@ internal fun SaqzNavHost(
         configuration = saqzLocalNavConfiguration,
     ) { defaultAccessBackStack() },
     modifier: Modifier = Modifier,
+    catalogEnabled: Boolean = false,
 ) {
     LaunchedEffect(state.session) {
         reconcileAccessStack(backStack, state.session)
@@ -61,7 +62,10 @@ internal fun SaqzNavHost(
                 )
             }
             entry<SaqzShellDestination> {
-                SaqzAppShell(onLogout = { onIntent(AccessIntent.ConfirmLogout) })
+                SaqzAppShell(
+                    onLogout = { onIntent(AccessIntent.ConfirmLogout) },
+                    catalogEnabled = catalogEnabled,
+                )
             }
         },
         modifier = modifier.testTag(SaqzDestinationHostTag),
