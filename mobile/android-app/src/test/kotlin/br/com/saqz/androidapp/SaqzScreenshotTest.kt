@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +22,7 @@ import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.designsystem.SaqzAttendance
 import br.com.saqz.designsystem.SaqzAttendanceSelector
+import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzAvatarStack
 import br.com.saqz.designsystem.SaqzBottomNav
 import br.com.saqz.designsystem.SaqzBottomSheet
@@ -232,7 +234,22 @@ class SaqzScreenshotTest {
         }
         SaqzCard {
             SaqzSectionHeader(title = "Confirmados", action = "Ver todos", onAction = {})
+            // Os três tamanhos avulsos do 10k (iniciais navy sobre ice) e o avatar com
+            // foto, que é onde o anel de 1px encosta na imagem.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SaqzAvatar("Lucas Pereira", size = 30.dp)
+                SaqzAvatar("Bruna Silva", size = 40.dp)
+                SaqzAvatar("Tiago Moraes", size = 44.dp)
+                SaqzAvatar("Camila Alves", size = 44.dp) {
+                    Box(modifier = Modifier.size(44.dp).background(SaqzTheme.colors.accent))
+                }
+            }
+            // Pilha com e sem excedente: o "+N" azul só existe acima de `max`.
             SaqzAvatarStack(listOf("Lucas Pereira", "Bruna Silva", "Tiago Moraes", "A", "B", "C"))
+            SaqzAvatarStack(listOf("Lucas Pereira", "Bruna Silva"))
         }
         SaqzCard(padded = false) {
             SaqzMemberRow(
@@ -244,6 +261,15 @@ class SaqzScreenshotTest {
             SaqzMemberRow(
                 "Bruna Silva",
                 meta = "Avulsa",
+                trailing = { SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary) },
+            )
+            SaqzDivider()
+            // Com foto: as iniciais azuis do MemberRow saem de cena, o anel fica.
+            SaqzMemberRow(
+                "Camila Alves",
+                meta = "Levantadora · avulso",
+                photo = { Box(modifier = Modifier.size(40.dp).background(SaqzTheme.colors.accent)) },
+                onClick = {},
                 trailing = { SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary) },
             )
         }
