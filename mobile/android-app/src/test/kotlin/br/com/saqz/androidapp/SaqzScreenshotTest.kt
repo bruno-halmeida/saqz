@@ -160,7 +160,14 @@ class SaqzScreenshotTest {
 
     @Test
     fun login() = capture("login") {
-        LoginScreen(state = LoginState(email = "ana@saqz.app"), onIntent = {})
+        // As duas saídas que o VUL-84 devolveu à 1a são obrigatórias na assinatura; a cena
+        // é estática, então vão vazias. Sem elas este arquivo não compila desde aquele merge.
+        LoginScreen(
+            state = LoginState(email = "ana@saqz.app"),
+            onIntent = {},
+            onCreateAccount = {},
+            onForgotPassword = {},
+        )
     }
 
     // VUL-79: o chrome das 11 telas do fluxo 1 — onda, marca e cabeçalho. As duas cenas
