@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 2n · Lista de grupos; 2o · primeiro acesso -->
+    <string name="groups_title">Grupos</string>
+    <string name="groups_summary">%1$d grupos · %2$d pedindo confirmação</string>
+    <string name="groups_summary_one">%1$d grupo · %2$d pedindo confirmação</string>
+    <string name="groups_confirm">Confirme</string>
+    <string name="groups_role_admin">Admin</string>
+    <string name="groups_attendance_going">Vou</string>
+    <string name="groups_no_game">Nenhum jogo marcado por enquanto.</string>
+    <string name="groups_invite_title">Convite recebido</string>
+    <string name="groups_invite_from">%1$s te convidou</string>
+    <string name="groups_invite_accept">Entrar</string>
+    <string name="groups_invite_decline">Recusar</string>
+    <string name="groups_empty_title">Você ainda não participa de nenhum grupo</string>
+    <string name="groups_empty_body">Crie o seu ou entre com o código que a galera te mandou.</string>
+    <string name="groups_empty_create">Criar grupo</string>
+    <string name="groups_empty_join">Entrar com código</string>
+
+    <!-- Rótulos transversais dos contratos de GroupSetupForm -->
+    <string name="group_modality_court_volleyball">Vôlei de quadra</string>
+    <string name="group_modality_beach_volleyball">Vôlei de areia</string>
+    <string name="group_modality_footvolley">Futevôlei</string>
+    <string name="group_composition_women">Feminino</string>
+    <string name="group_composition_men">Masculino</string>
+    <string name="group_composition_mixed">Misto</string>
+    <string name="group_level_beginner">Iniciante</string>
+    <string name="group_level_intermediate">Intermediário</string>
+    <string name="group_level_advanced">Avançado</string>
+    <string name="group_level_mixed_levels">Níveis mistos</string>
+    <string name="group_level_custom">Personalizada</string>
+    <string name="group_play_style_six_zero">6-0</string>
+    <string name="group_play_style_four_two">4-2</string>
+    <string name="group_play_style_five_one">5-1</string>
+    <string name="group_play_style_custom">Personalizado</string>
+    <string name="group_weekday_sunday">Domingo</string>
+    <string name="group_weekday_monday">Segunda</string>
+    <string name="group_weekday_tuesday">Terça</string>
+    <string name="group_weekday_wednesday">Quarta</string>
+    <string name="group_weekday_thursday">Quinta</string>
+    <string name="group_weekday_friday">Sexta</string>
+    <string name="group_weekday_saturday">Sábado</string>
+    <string name="group_weekday_short_sunday">Dom</string>
+    <string name="group_weekday_short_monday">Seg</string>
+    <string name="group_weekday_short_tuesday">Ter</string>
+    <string name="group_weekday_short_wednesday">Qua</string>
+    <string name="group_weekday_short_thursday">Qui</string>
+    <string name="group_weekday_short_friday">Sex</string>
+    <string name="group_weekday_short_saturday">Sáb</string>
+
+    <!-- 2a, 2b, 2g e 2i · criação, edição e validação -->
+    <string name="group_setup_create_title">Criar grupo</string>
+    <string name="group_setup_edit_title">Editar grupo</string>
+    <string name="group_setup_create_action">Criar grupo</string>
+    <string name="group_setup_save_action">Salvar alterações</string>
+    <string name="group_setup_photo_label">Foto do grupo</string>
+    <string name="group_setup_photo_hint">Opcional. Aparece na lista e nos convites.</string>
+    <string name="group_setup_photo_edit_hint">Toque para trocar a imagem.</string>
+    <string name="group_setup_photo_added">Foto adicionada</string>
+    <string name="group_setup_name_label">Nome do grupo</string>
+    <string name="group_setup_name_hint">Ex.: Vôlei do CERET</string>
+    <string name="group_setup_modality_label">Modalidade</string>
+    <string name="group_setup_modality_hint">Escolha o tipo de jogo do grupo.</string>
+    <string name="group_setup_composition_label">Público</string>
+    <string name="group_setup_composition_hint">Como os times se formam.</string>
+    <string name="group_setup_level_label">Categoria</string>
+    <string name="group_setup_level_hint">Escolha o nível do grupo.</string>
+    <string name="group_setup_custom_level_hint">Ex.: Recreativo, Competitivo…</string>
+    <string name="group_setup_play_style_label">Sistema de jogo</string>
+    <string name="group_setup_play_style_hint">Só para vôlei de quadra.</string>
+    <string name="group_setup_play_style_not_applicable">Sistema de jogo (6-0 / 5-1) não se aplica ao vôlei de areia.</string>
+    <string name="group_setup_description_label">Descrição</string>
+    <string name="group_setup_description_hint">Fale sobre o grupo, regras, nível esperado… (opcional)</string>
+    <string name="group_setup_capacity_label">Máx. de jogadores por jogo</string>
+    <string name="group_setup_capacity_hint">Acima disso entra na reserva.</string>
+    <string name="group_setup_capacity_beach_hint">Dupla ou quarteto na areia.</string>
+    <string name="group_setup_duration_label">Duração do jogo</string>
+    <string name="group_setup_confirmation_lead_label">Confirmar presença até</string>
+    <string name="group_setup_confirmation_lead_hint">Quanto tempo antes do jogo as confirmações encerram.</string>
+    <string name="group_setup_venue_name_label">Nome da quadra</string>
+    <string name="group_setup_venue_name_hint">Ex.: CERET — Quadra 2</string>
+    <string name="group_setup_venue_address_label">Endereço da quadra</string>
+    <string name="group_setup_venue_address_hint">R. Canuto Abreu, s/n · Tatuapé</string>
+    <string name="group_setup_recurrence_label">Jogo recorrente</string>
+    <string name="group_setup_recurrence_hint">Mesmos dias e horários toda semana.</string>
+    <string name="group_setup_recurring_off">Sem recorrência: você marca cada jogo manualmente, quando quiser.</string>
+    <string name="group_setup_add_slot">Adicionar dia e horário</string>
+    <string name="group_setup_remove_slot">Remover dia e horário</string>
+    <string name="group_setup_delete_action">Excluir grupo</string>
+    <string name="group_setup_cancel_action">Cancelar</string>
+
+    <string name="group_duration_one_hour">1h</string>
+    <string name="group_duration_one_hour_thirty">1h30</string>
+    <string name="group_duration_two_hours">2h</string>
+    <string name="group_duration_two_hours_thirty">2h30</string>
+    <string name="group_duration_minutes">%1$d min</string>
+    <string name="group_lead_three_hours">3h antes</string>
+    <string name="group_lead_six_hours">6h antes</string>
+    <string name="group_lead_twelve_hours">12h antes</string>
+    <string name="group_lead_twenty_four_hours">24h antes</string>
+    <string name="group_lead_minutes">%1$d min antes</string>
+
+    <string name="group_setup_error_banner">Faltam %1$d informações para criar o grupo. Elas estão marcadas abaixo.</string>
+    <string name="group_setup_error_banner_one">Falta %1$d informação para criar o grupo. Ela está marcada abaixo.</string>
+    <string name="group_setup_error_name">O grupo precisa de um nome.</string>
+    <string name="group_setup_error_modality">Escolha a modalidade do grupo.</string>
+    <string name="group_setup_error_composition">Escolha o público do grupo.</string>
+    <string name="group_setup_error_level">Escolha a categoria do grupo.</string>
+    <string name="group_setup_error_custom_level">Dê um nome para a categoria personalizada.</string>
+    <string name="group_setup_error_play_style">Escolha o sistema de jogo.</string>
+    <string name="group_setup_error_capacity">O grupo precisa de pelo menos 2 jogadores.</string>
+    <string name="group_setup_error_capacity_hint">Mínimo de 2 jogadores.</string>
+    <string name="group_setup_error_duration">Escolha a duração do jogo.</string>
+    <string name="group_setup_error_confirmation_lead">Escolha até quando confirmar presença.</string>
+    <string name="group_setup_error_slot">Adicione ao menos um dia e horário.</string>
+    <string name="group_setup_error_venue_name">Informe o nome da quadra.</string>
+    <string name="group_setup_error_venue_address">Não encontramos esse endereço. Confira a rua e o bairro.</string>
+
+    <!-- 2h · estados de sistema -->
+    <string name="group_system_title">Estados de sistema</string>
+    <string name="group_system_offline_title">Sem conexão</string>
+    <string name="group_system_offline">Você está sem conexão. Vamos enviar sua resposta quando a internet voltar.</string>
+    <string name="group_system_save_failure_title">Falha ao salvar</string>
+    <string name="group_system_save_failure">Não foi possível criar o grupo</string>
+    <string name="group_system_save_failure_body">Suas informações continuam salvas aqui. Tente novamente.</string>
+    <string name="group_system_retry">Tentar de novo</string>
+    <string name="group_system_save_draft">Salvar rascunho</string>
+    <string name="group_system_sending_title">Enviando</string>
+    <string name="group_system_creating">Criando grupo…</string>
+    <string name="group_system_session_expired_title">Sessão expirada</string>
+    <string name="group_system_session_expired">Sua sessão expirou</string>
+    <string name="group_system_session_expired_body">Entre de novo para continuar.</string>
+    <string name="group_system_toast_title">Toast de erro</string>
+    <string name="group_system_toast">Não foi possível atualizar sua presença.</string>
+    <string name="group_system_try">Tentar</string>
+
+    <!-- 2c · picker -->
+    <string name="group_slot_title">Dia e horário</string>
+    <string name="group_slot_weekday">Dia da semana</string>
+    <string name="group_slot_time">Horário</string>
+    <string name="group_slot_save">Salvar</string>
+
+    <!-- 2d · revisão -->
+    <string name="group_review_title">Revisar grupo</string>
+    <string name="group_review_players">%1$d jogadores</string>
+    <string name="group_review_modality">Modalidade</string>
+    <string name="group_review_composition">Público</string>
+    <string name="group_review_level">Categoria</string>
+    <string name="group_review_play_style">Sistema de jogo</string>
+    <string name="group_review_capacity">Máx. por jogo</string>
+    <string name="group_review_duration">Duração</string>
+    <string name="group_review_confirmation_lead">Confirmar até</string>
+    <string name="group_review_weekly_schedule">Agenda semanal</string>
+    <string name="group_review_create">Criar grupo</string>
+    <string name="group_review_edit">Editar informações</string>
+
+    <!-- 2j · exclusão -->
+    <string name="group_delete_title">Excluir o %1$s?</string>
+    <string name="group_delete_body">Os %1$d membros perdem o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.</string>
+    <string name="group_delete_confirm">Excluir grupo</string>
+    <string name="group_delete_cancel">Cancelar</string>
+
+    <!-- 2e e 2f · detalhe -->
+    <string name="group_details_members_count">%1$d membros</string>
+    <string name="group_details_admin">Admin</string>
+    <string name="group_details_next_game">Próximo jogo</string>
+    <string name="group_details_next_game_day">Próximo jogo · %1$s</string>
+    <string name="group_details_confirmation_closes">Encerra %1$s</string>
+    <string name="group_details_confirmed_count">%1$d de %2$d confirmados</string>
+    <string name="group_details_confirm_attendance">Confirmar presença</string>
+    <string name="group_details_view_game">Ver jogo</string>
+    <string name="group_details_create_next_game">Criar próximo jogo</string>
+    <string name="group_details_edit_group">Editar grupo</string>
+    <string name="group_details_going_count">%1$d vão</string>
+    <string name="group_details_maybe_count">%1$d talvez</string>
+    <string name="group_details_pending_count">%1$d pendentes</string>
+    <string name="group_details_going">Vão</string>
+    <string name="group_details_maybe">Talvez</string>
+    <string name="group_details_pending">Pendentes</string>
+    <string name="group_details_notify_pending">Avisar quem falta confirmar</string>
+    <string name="group_details_venue_map">Ver no mapa</string>
+    <string name="group_details_venue_edit">Editar</string>
+    <string name="group_details_notices">Avisos</string>
+    <string name="group_details_cash">Caixa</string>
+    <string name="group_details_schedule">Agenda</string>
+    <string name="group_details_chat">Chat</string>
+    <string name="group_details_recent_notice">Aviso recente</string>
+    <string name="group_details_members">Membros</string>
+    <string name="group_details_view_all">Ver todos</string>
+    <string name="group_details_invite">Convidar mais gente</string>
+    <string name="group_details_invite_hint">Compartilhe o convite e complete a galera.</string>
+    <string name="group_details_leave">Sair do grupo</string>
+    <string name="group_details_group_cash">Caixa do grupo</string>
+    <string name="group_details_cash_summary">Saldo %1$s · %2$d mensalidades em aberto</string>
+    <string name="group_details_manage">Gerenciar</string>
+    <string name="group_details_manage_members">Membros e permissões</string>
+    <string name="group_details_manage_schedule">Agenda e recorrência</string>
+    <string name="group_details_invite_link">Convidar por link</string>
+
+    <!-- 2k e 2l · membros e ações -->
+    <string name="group_members_title">Membros e permissões</string>
+    <string name="group_members_search">Buscar membro</string>
+    <string name="group_members_filter_all">Todos · %1$d</string>
+    <string name="group_members_filter_admins">Admins · %1$d</string>
+    <string name="group_members_filter_pending">Pendentes · %1$d</string>
+    <string name="group_members_join_requests">Pedidos para entrar</string>
+    <string name="group_members_pending_section">Pendentes</string>
+    <string name="group_members_admins">Administradores</string>
+    <string name="group_members_members">Membros</string>
+    <string name="group_members_showing">Mostrando %1$d de %2$d membros</string>
+    <string name="group_members_invite">Convidar mais gente</string>
+    <string name="group_members_you">você</string>
+    <string name="group_members_admin">Admin</string>
+    <string name="group_members_pending">Pendente</string>
+    <string name="group_member_joined_by_code">Entrou pelo código · %1$s</string>
+    <string name="group_member_joined_by_link">Entrou pelo link · %1$s</string>
+    <string name="group_member_created_group">Criou o grupo</string>
+    <string name="group_member_position_libero">Líbero</string>
+    <string name="group_member_position_outside_hitter">Ponteira</string>
+    <string name="group_member_position_middle_blocker">Central</string>
+    <string name="group_member_position_opposite">Oposto</string>
+    <string name="group_member_position_setter">Levantadora</string>
+    <string name="group_member_membership_monthly">Mensalista</string>
+    <string name="group_member_membership_single_game">Avulso</string>
+    <string name="group_member_attendance_going">Vou</string>
+    <string name="group_member_attendance_maybe">Talvez</string>
+    <string name="group_member_stats">%1$d jogos · %2$d%% de presença</string>
+    <string name="group_member_edit">Editar jogador</string>
+    <string name="group_member_edit_hint">Posição, mensalidade e permissões</string>
+    <string name="group_member_make_admin">Tornar admin</string>
+    <string name="group_member_make_admin_hint">Pode criar jogos e avisar a galera</string>
+    <string name="group_member_view_profile">Ver perfil</string>
+    <string name="group_member_remove_admin">Remover admin</string>
+    <string name="group_member_remove_admin_hint">Volta a ser membro comum</string>
+    <string name="group_member_remove">Remover do grupo</string>
+    <string name="group_member_cancel">Cancelar</string>
+
+    <!-- 2m · agenda -->
+    <string name="group_schedule_title">Agenda e recorrência</string>
+    <string name="group_schedule_upcoming">Próximos jogos</string>
+    <string name="group_schedule_published">Publicado</string>
+    <string name="group_schedule_scheduled">Agendado</string>
+    <string name="group_schedule_pause">Pausar a agenda por um tempo</string>
+    <string name="group_schedule_save">Salvar alterações</string>
+</resources>
