@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.di
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.access.data.session.KtorSessionGateway
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
@@ -61,6 +62,12 @@ import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.MonthlyDraftReadResult
 import br.com.saqz.groups.port.MonthlyDraftWriteResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
+import br.com.saqz.groups.presentation.di.groupsPresentationModule
+import br.com.saqz.groups.presentation.list.GroupListViewModel
+import br.com.saqz.groups.presentation.members.GroupMembersViewModel
+import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
@@ -76,6 +83,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlinx.coroutines.test.runTest
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
@@ -197,6 +205,49 @@ class SaqzKoinModulesTest {
         koin.get<AccessViewModel>()
         koin.get<LoginViewModel>()
         koin.get<PhoneCompletionViewModel>()
+
+        app.close()
+    }
+
+    /**
+     * VUL-72: junto do grafo do app, as telas de grupo resolvem **com os argumentos que a
+     * rota passa** — o `groupId` de `GroupsRoute.Details`/`Members` e o `GroupSetupMode` de
+     * `Create`/`Edit` —, não com um mock qualquer.
+     *
+     * O `SavedStateHandle` do formulário é a única coisa que o teste fornece à mão: em app
+     * ele vem do `CreationExtras` do `NavEntry`, pelo `AndroidParametersHolder` do Koin, e
+     * nunca esteve no grafo. Sem `ViewModelStoreOwner` aqui, ele entra pelo `parametersOf`
+     * — o que se verifica é a definição, não a origem do handle.
+     *
+     * A quinta, `GroupScheduleViewModel`, é `internal` ao módulo dela (o `State` carrega o
+     * `SlotDraft`, também `internal`), então este módulo não consegue nomeá-la. As cinco
+     * juntas, incluindo o esqueleto de cada uma, estão em `GroupsPresentationModuleTest`,
+     * dentro de `:features:groups:presentation`.
+     */
+    @Test
+    fun groupsPresentationModuleResolvesWithTheRouteArguments() {
+        val app = koinApplication {
+            modules(
+                configFixturesModule,
+                nativePortsFixtureModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+                accessPresentationModule,
+                composePresentationModule,
+                groupsPresentationModule(sampleContent = true),
+            )
+        }
+        val koin = app.koin
+
+        koin.get<GroupListViewModel>()
+        koin.get<GroupSetupViewModel> { parametersOf(GroupSetupMode.Create, SavedStateHandle()) }
+        koin.get<GroupSetupViewModel> {
+            parametersOf(GroupSetupMode.Edit("ceret"), SavedStateHandle())
+        }
+        koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
+        koin.get<GroupMembersViewModel> { parametersOf("ceret") }
 
         app.close()
     }

@@ -6,13 +6,17 @@ import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The C1 session gate: every [SessionAccessState] resolves to exactly one destination, and
- * `Ready` is the only one that reaches the shell. Exhaustive by construction — a new state
- * fails `toDestination`'s `when` at compile time and shows up missing here.
+ * O gate de sessão: cada [SessionAccessState] resolve para um destino, e `Ready` é o único
+ * que alcança o shell. Exaustivo por construção — um estado novo reprova o `when` de
+ * `toDestination` em tempo de compilação e aparece faltando aqui.
+ *
+ * A partir do VUL-72 o stack tem profundidade: `Ready` garante só a **base**, e todo estado
+ * não-`Ready` continua colapsando. Os três casos que o ticket exige estão no fim do arquivo.
  */
 class SaqzNavHostTest {
 
@@ -60,10 +64,10 @@ class SaqzNavHostTest {
         assertEquals(listOf(SaqzShellDestination), stackFor(SessionAccessState.Ready(session)))
     }
 
-    // VUL-35: registration and password reset are gone, so signed-out has no sub-route
-    // left to stack on top of Login -- the access stack is never deeper than one entry.
+    // VUL-72: fora de `Ready` o gate continua colapsando -- é ele que impede tela
+    // autenticada de aparecer sem sessão, e afrouxar isso quebraria o login.
     @Test
-    fun everySessionStateResolvesToASingleEntry() {
+    fun everyStateBeforeReadyCollapsesToASingleEntry() {
         listOf(
             SessionAccessState.SignedOut,
             SessionAccessState.AwaitingVerification(user),
@@ -71,14 +75,61 @@ class SaqzNavHostTest {
             SessionAccessState.CompletingPhone(session),
             SessionAccessState.Bootstrapping,
             SessionAccessState.BootstrapError,
-            SessionAccessState.Ready(session),
-        ).forEach { state -> assertEquals(1, stackFor(state).size) }
+        ).forEach { state ->
+            val stack = mutableListOf<NavKey>(SaqzShellDestination, GroupsRoute.Details("ceret"))
+            reconcileAccessStack(stack, state)
+            assertEquals(1, stack.size, "$state deveria colapsar o stack")
+        }
     }
 
     @Test
     fun reconcilingAnAlreadyMatchingStackIsANoOp() {
         val stack = mutableListOf<NavKey>(AccessRoute.Login)
         reconcileAccessStack(stack, SessionAccessState.SignedOut)
+        reconcileAccessStack(stack, SessionAccessState.SignedOut)
+        assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
+    }
+
+    // VUL-72 (a): com `Ready` o gate garante só a base. A sessão emite mais de uma vez, e
+    // antes disto cada emissão zerava a navegação de volta para o shell.
+    @Test
+    fun repeatedReadyKeepsTheStackedGroupRoutes() {
+        val ready = SessionAccessState.Ready(session)
+        val stack = mutableListOf<NavKey>(SaqzShellDestination)
+        reconcileAccessStack(stack, ready)
+        stack += GroupsRoute.Details("ceret")
+        stack += GroupsRoute.Members("ceret")
+
+        reconcileAccessStack(stack, ready)
+        reconcileAccessStack(stack, ready)
+
+        assertEquals(
+            listOf<NavKey>(
+                SaqzShellDestination,
+                GroupsRoute.Details("ceret"),
+                GroupsRoute.Members("ceret"),
+            ),
+            stack,
+        )
+    }
+
+    // VUL-72: `Ready` ainda corrige uma base errada -- chegar autenticado sobre a pilha de
+    // acesso continua levando ao shell.
+    @Test
+    fun readyReplacesAnAccessStackWithTheShell() {
+        val stack = mutableListOf<NavKey>(AccessRoute.Login)
+        reconcileAccessStack(stack, SessionAccessState.Ready(session))
+        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+    }
+
+    // VUL-72 (b): sair da sessão limpa tudo, inclusive o que estava empilhado.
+    @Test
+    fun signingOutFromADeepStackClearsItBackToLogin() {
+        val stack = mutableListOf<NavKey>(
+            SaqzShellDestination,
+            GroupsRoute.Details("ceret"),
+            GroupsRoute.Schedule("ceret"),
+        )
         reconcileAccessStack(stack, SessionAccessState.SignedOut)
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
     }

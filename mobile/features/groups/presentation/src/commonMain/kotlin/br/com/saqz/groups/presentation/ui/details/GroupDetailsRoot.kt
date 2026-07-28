@@ -14,7 +14,7 @@ import org.koin.core.parameter.parametersOf
  * (AGENTS.md §6). [onEffect] é o callback único; quem o liga é o ticket de navegação.
  */
 @Composable
-internal fun GroupDetailsRoot(
+fun GroupDetailsRoot(
     groupId: String,
     onBack: () -> Unit,
     onEffect: (GroupDetailsEffect) -> Unit,

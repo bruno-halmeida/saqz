@@ -13,7 +13,9 @@ import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.presentation.di.groupsPresentationModule
 import br.com.saqz.network.NetworkConfig
+import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.toNetworkEnvironment
 import org.koin.core.context.startKoin
 import org.koin.core.context.loadKoinModules
@@ -24,7 +26,7 @@ import org.koin.dsl.module
 import org.koin.mp.KoinPlatformTools
 import kotlin.native.HiddenFromObjC
 
-private var platformModule: Module? = null
+private var platformModules: List<Module> = emptyList()
 private object SaqzKoinMarker
 private val markerModule = module { single { SaqzKoinMarker } }
 private val commonModules = listOf(
@@ -63,15 +65,23 @@ internal fun startSaqzKoin(dependencies: SaqzPlatformDependencies) {
 @HiddenFromObjC
 fun loadSaqzPlatformDependencies(dependencies: SaqzPlatformDependencies) {
     checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before loading platform dependencies" }
-    platformModule?.let { previous ->
-        unloadKoinModules(commonModules + previous)
+    if (platformModules.isNotEmpty()) {
+        unloadKoinModules(commonModules + platformModules)
         loadKoinModules(commonModules)
     }
-    platformModule = platformBindingsModule(dependencies).also(::loadKoinModules)
+    // O grafo de grupos entra aqui, e não em `commonModules`, porque depende do ambiente:
+    // é ele que decide com que estado inicial as cinco telas abrem (VUL-72, ver
+    // `groupsPresentationModule`). A regra é a mesma que já liga o catálogo do design
+    // system — o flavor prod manda "prod" e não recebe as cenas de amostra.
+    val environment = dependencies.environment.toNetworkEnvironment()
+    platformModules = listOf(
+        platformBindingsModule(dependencies),
+        groupsPresentationModule(sampleContent = environment == NetworkEnvironment.Dev),
+    ).also(::loadKoinModules)
 }
 
 internal fun stopSaqzKoin() {
-    platformModule = null
+    platformModules = emptyList()
     stopKoin()
 }
 

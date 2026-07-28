@@ -380,12 +380,7 @@ internal fun GroupCashboxRow(
             horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // TODO(design system): o export usa `credit-card` no caixa e o SaqzIcons não
-            // mapeia esse conceito; a Lucide entra no design system como `implementation`,
-            // então a feature não pode alcançá-la. O cadeado é provisório — cofre é a
-            // leitura menos errada entre os 24 glifos que existem, e não repete a seta do
-            // chevron. VUL-98.
-            GroupIconCircle(SaqzIcons.Lock)
+            GroupIconCircle(SaqzIcons.CreditCard)
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = label, style = SaqzTheme.typography.label, color = colors.textPrimary)
                 Text(
@@ -414,10 +409,8 @@ internal fun GroupShortcutTiles(
         tag = GroupDetailsTags.ShortcutNotices,
         onClick = { onIntent(GroupDetailsIntent.OpenNotices) },
     )
-    // Dois azulejos com glifo provisório, mesma causa do caixa acima: `credit-card` e
-    // `message-square` não estão no SaqzIcons e a Lucide não atravessa o módulo (VUL-98).
     GroupShortcutTile(
-        icon = SaqzIcons.Lock,
+        icon = SaqzIcons.CreditCard,
         label = stringResource(Res.string.group_details_cash),
         tag = GroupDetailsTags.ShortcutCashbox,
         onClick = { onIntent(GroupDetailsIntent.OpenCashbox) },
@@ -429,7 +422,7 @@ internal fun GroupShortcutTiles(
         onClick = { onIntent(GroupDetailsIntent.OpenSchedule) },
     )
     GroupShortcutTile(
-        icon = SaqzIcons.Mail,
+        icon = SaqzIcons.MessageSquare,
         label = stringResource(Res.string.group_details_chat),
         tag = GroupDetailsTags.ShortcutChat,
         onClick = { onIntent(GroupDetailsIntent.OpenChat) },
