@@ -15,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.composeapp.catalog.SaqzCatalogScreen
@@ -51,6 +53,7 @@ internal const val SaqzShellCatalogTag = "saqz-shell-catalog"
  * É estado de composição, que o AGENTS.md permite em `remember`. Vira destino de
  * verdade no dia em que o stack tiver profundidade real.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun SaqzAppShell(
     onLogout: () -> Unit,
@@ -58,6 +61,10 @@ internal fun SaqzAppShell(
     catalogEnabled: Boolean = false,
 ) {
     var catalogOpen by remember { mutableStateOf(false) }
+    // Uma saída, dois gatilhos: a seta da barra e o back do sistema (botão no Android,
+    // gesto no iOS) chamam o mesmo fechamento. Sem isto o back agiria no shell por baixo
+    // — ou sairia do app — com o catálogo ainda na tela.
+    BackHandler(enabled = catalogEnabled && catalogOpen) { catalogOpen = false }
     if (catalogEnabled && catalogOpen) {
         SaqzCatalogScreen(onBack = { catalogOpen = false }, modifier = modifier)
         return

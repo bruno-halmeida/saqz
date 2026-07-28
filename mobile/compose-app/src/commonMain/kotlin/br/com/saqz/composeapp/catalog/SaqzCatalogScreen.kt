@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -117,6 +118,10 @@ object SaqzCatalogTags {
  *
  * As cenas vêm de `SaqzScreenshotTest`; o que muda é que cada controle tem estado.
  *
+ * Pública, e não `internal`, porque a captura de review (`CatalogShotTest` em
+ * `:android-app`) compõe a tela de outro módulo. Quem decide se ela é alcançável é o
+ * [br.com.saqz.composeapp.shell.SaqzAppShell], que só mostra a entrada em dev.
+ *
  * ponytail: a moldura (título e nome das seções) vem de `composeResources`; o texto
  * *dentro* de cada espécime é literal, como já era no screenshot test. É fixture de
  * amostra copiada do export — não é cópia de produto que alguém vá traduzir —, e
@@ -128,7 +133,7 @@ object SaqzCatalogTags {
  * e a animação em curso. Vira `LazyColumn` no dia em que doer o scroll.
  */
 @Composable
-internal fun SaqzCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun SaqzCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
     var sheetOpen by remember { mutableStateOf(false) }
     Box(
@@ -232,9 +237,13 @@ private fun ColumnScope.FoundationSpecimens() {
         "disabledSurface" to colors.disabledSurface,
         "chrome" to colors.chrome,
     )
-    swatches.chunked(4).forEach { row ->
+    val perRow = 4
+    swatches.chunked(perRow).forEach { row ->
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             row.forEach { (name, color) -> ColorSwatch(name = name, color = color, modifier = Modifier.weight(1f)) }
+            // Sem os vazios, a última fila incompleta esticaria os swatches e a amostra
+            // mentiria sobre o tamanho.
+            repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
     SaqzDivider()
