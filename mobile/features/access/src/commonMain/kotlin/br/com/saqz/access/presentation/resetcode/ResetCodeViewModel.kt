@@ -1,0 +1,176 @@
+package br.com.saqz.access.presentation.resetcode
+
+import androidx.lifecycle.viewModelScope
+import br.com.saqz.access.domain.passwordreset.PasswordResetError
+import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
+import br.com.saqz.access.resources.Res
+import br.com.saqz.access.resources.auth_error_network
+import br.com.saqz.access.resources.auth_error_unknown
+import br.com.saqz.access.ui.SAQZ_CODE_LENGTH
+import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.designsystem.UiText
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
+
+/**
+ * As telas 1e, 1f e 1k do export.
+ *
+ * **O contador guarda o instante de expiração, não os segundos restantes.** Sair para o
+ * app de e-mail e voltar é o percurso normal desta tela, e é o caso que quebra um
+ * contador que decrementa: ele reiniciaria do zero (se morresse com o Composable) ou
+ * congelaria no valor de quando saiu (se o tique parasse). Aqui cada tique só deriva a
+ * diferença até [deadlineMillis], então qualquer buraco no tempo — Doze, app em segundo
+ * plano, tique atrasado — se conserta sozinho no tique seguinte.
+ *
+ * [elapsedMillis] é o relógio monotônico injetável: em produção é o do sistema, no teste
+ * é o do `TestScheduler`, que é o que permite exercer 60 segundos sem esperar 60
+ * segundos. Monotônico, e não data de parede, porque só a diferença importa e mudança de
+ * fuso ou de relógio não pode encurtar a janela.
+ *
+ * ponytail: sem `SavedStateHandle`. Morte de processo devolve um contador cheio de 60s,
+ * que é conservador — atrasa o reenvio, nunca o antecipa —, e o que ela não pode fazer é
+ * liberar o reenvio antes do servidor. Persistir o instante entra quando alguém provar
+ * que a espera extra incomoda.
+ */
+class ResetCodeViewModel(
+    email: String,
+    private val gateway: PasswordResetGateway,
+    private val elapsedMillis: () -> Long = monotonicElapsedMillis(),
+) : MviViewModel<ResetCodeState, ResetCodeIntent, ResetCodeEffect>(ResetCodeState(email = email)) {
+
+    private var deadlineMillis = 0L
+    private var ticker: Job? = null
+
+    init {
+        // Chegar aqui é ter acabado de pedir o código na 1d: a janela já está correndo.
+        restartCountdown(RESET_CODE_RESEND_SECONDS)
+    }
+
+    override fun onIntent(intent: ResetCodeIntent) {
+        when (intent) {
+            is ResetCodeIntent.UpdateCode -> update { it.copy(code = intent.value) }
+            ResetCodeIntent.Verify -> verify()
+            ResetCodeIntent.Resend -> resend()
+        }
+    }
+
+    private fun verify() {
+        val current = state.value
+        // Intent inválido volta cedo (AGENTS.md §4): código incompleto não vira requisição.
+        if (current.busy || current.code.length < SAQZ_CODE_LENGTH) return
+        update { it.copy(verifying = true, failure = null) }
+        viewModelScope.launch {
+            when (val result = gateway.verifyCode(current.email, current.code)) {
+                is SaqzResult.Success -> {
+                    update { it.copy(verifying = false) }
+                    emit(ResetCodeEffect.OpenNewPassword(current.email, result.value.token))
+                }
+                is SaqzResult.Failure -> onVerifyFailure(result.error)
+            }
+        }
+    }
+
+    private fun onVerifyFailure(error: PasswordResetError) {
+        update { current ->
+            when (error) {
+                // Os dígitos ficam: o mockup do 1k mostra "1 3 5 9" nas caixas vermelhas,
+                // e limpar o campo obrigaria a redigitar o que talvez esteja quase certo.
+                is PasswordResetError.CodeInvalid ->
+                    current.copy(verifying = false, remainingAttempts = error.remainingAttempts, expired = false)
+                PasswordResetError.CodeExpired ->
+                    current.copy(verifying = false, expired = true, remainingAttempts = null)
+                // O teto de tentativas mata o código do mesmo jeito que o relógio, e a
+                // saída é a mesma: pedir outro. Por isso desenha como o expirado — o
+                // fluxo não tem string própria para o teto.
+                PasswordResetError.AttemptLimit ->
+                    current.copy(verifying = false, expired = true, remainingAttempts = null)
+                is PasswordResetError.RateLimited -> current.copy(verifying = false)
+                else -> current.copy(verifying = false, failure = error.message())
+            }
+        }
+        // O servidor mandou esperar: o contador passa a valer a janela dele, não a nossa.
+        if (error is PasswordResetError.RateLimited) restartCountdown(error.retryAfterSeconds)
+    }
+
+    private fun resend() {
+        if (!state.value.canResend) return
+        val email = state.value.email
+        update { it.copy(resending = true, failure = null) }
+        viewModelScope.launch {
+            when (val result = gateway.requestCode(email)) {
+                is SaqzResult.Success -> {
+                    // O código velho morreu junto com o envio novo: as caixas voltam
+                    // vazias, como o 1f desenha, e as recusas do anterior somem com ele.
+                    update {
+                        it.copy(
+                            resending = false,
+                            resent = true,
+                            code = "",
+                            remainingAttempts = null,
+                            expired = false,
+                        )
+                    }
+                    restartCountdown(RESET_CODE_RESEND_SECONDS)
+                }
+                is SaqzResult.Failure -> onResendFailure(result.error)
+            }
+        }
+    }
+
+    private fun onResendFailure(error: PasswordResetError) {
+        if (error is PasswordResetError.RateLimited) {
+            // Pedido cedo demais: nada de alerta, o contador já é a explicação.
+            update { it.copy(resending = false) }
+            restartCountdown(error.retryAfterSeconds)
+            return
+        }
+        update { it.copy(resending = false, failure = error.message()) }
+    }
+
+    private fun restartCountdown(seconds: Int) {
+        val window = seconds.coerceAtLeast(0)
+        deadlineMillis = elapsedMillis() + window * MILLIS_PER_SECOND
+        update { it.copy(resendSeconds = window) }
+        ticker?.cancel()
+        if (window == 0) return
+        ticker = viewModelScope.launch {
+            while (true) {
+                delay(MILLIS_PER_SECOND)
+                val remaining = remainingSeconds()
+                update { it.copy(resendSeconds = remaining) }
+                if (remaining == 0) break
+            }
+        }
+    }
+
+    // Arredonda para cima: um segundo que ainda não terminou é um segundo que a pessoa
+    // ainda espera, e é assim que o contador do export mostra 0:59 no primeiro tique.
+    private fun remainingSeconds(): Int {
+        val left = deadlineMillis - elapsedMillis()
+        if (left <= 0) return 0
+        return ((left + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND).toInt()
+    }
+}
+
+private const val MILLIS_PER_SECOND = 1000L
+
+private fun PasswordResetError.message(): UiText = when (this) {
+    is PasswordResetError.DataFailure -> when (error) {
+        DataError.Connectivity, DataError.Timeout -> UiText.Res(Res.string.auth_error_network)
+        else -> UiText.Res(Res.string.auth_error_unknown)
+    }
+    else -> UiText.Res(Res.string.auth_error_unknown)
+}
+
+/**
+ * O relógio de produção. Fica fora da classe porque é o valor padrão do construtor, e
+ * cada instância precisa da própria origem.
+ */
+private fun monotonicElapsedMillis(): () -> Long {
+    val start = TimeSource.Monotonic.markNow()
+    return { start.elapsedNow().inWholeMilliseconds }
+}
