@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -426,6 +428,29 @@ class SaqzScreenshotTest {
                 SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning, dot = true)
                 SaqzStatusChip("Não vou", tone = SaqzChipTone.Error, dot = true)
             }
+        }
+    }
+
+    // Cena própria em vez de mais um bloco no `data()`: aquela função já estoura o
+    // LongMethod por uma linha, e crescer violação alheia não é acrescentar cena.
+    @Test
+    fun dividers() = gallery("ds-divisorias") {
+        // As duas orientações da divisória na mesma peça: horizontal separando faixas e
+        // vertical separando colunas de largura igual. A vertical some sem erro nenhum se a
+        // Row não tiver altura própria, e é disso que esta cena é testemunha.
+        SaqzCard {
+            SaqzDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Vão", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+                SaqzDivider(vertical = true)
+                Text("Talvez", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+                SaqzDivider(vertical = true)
+                Text("Pendentes", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            }
+            SaqzDivider()
         }
     }
 
