@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.saqz.access.presentation.asString
+import br.com.saqz.designsystem.asString
 import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.Res

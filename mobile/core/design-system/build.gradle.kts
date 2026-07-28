@@ -30,6 +30,8 @@ kotlin {
             // implementation, não api: o back do sheet é assunto interno do componente,
             // ninguém precisa do BackHandler para consumir o design system.
             implementation(libs.compose.ui.backhandler)
+            // LocalLifecycleOwner vive neste artefato e é necessário ao ObserveAsEvents.
+            implementation(libs.lifecycle.runtime.compose)
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
             // implementation, não api: a Lucide entra só como fonte dos glifos.
             // O que sai daqui é `ImageVector`, e quem consome não importa `Lucide`.

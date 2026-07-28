@@ -7,6 +7,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.uitext_probe_greeting
+import br.com.saqz.designsystem.UiText
+import br.com.saqz.designsystem.asString
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class)
