@@ -116,13 +116,21 @@ sealed interface ProfilePhotoResult {
     data object Failed : ProfilePhotoResult
 }
 
+interface ProfilePhotoCallback {
+    fun complete(result: ProfilePhotoResult)
+}
+
 /**
  * Escolher e recodificar imagem é capacidade de plataforma, não conceito de grupo: os
  * adapters desta porta delegam para as mesmas implementações que `:features:groups` usa
  * (`AndroidPhotoSelectionAdapter`/`AndroidPhotoEncoder` e `SaqzIOS/GroupsPhoto/`), sem
  * cópia. O envio em si vai por HTTP, não por aqui.
+ *
+ * O `Cancelable` é quem desiste da escolha ainda aberta — a tela morreu, o escopo caiu —
+ * para o adapter apagar o arquivo temporário. Desistência da pessoa é
+ * `ProfilePhotoResult.Cancelled`, que ainda chega pelo callback.
  */
 interface NativeProfilePhotoPort {
-    suspend fun chooseCamera(): ProfilePhotoResult
-    suspend fun chooseLibrary(): ProfilePhotoResult
+    fun chooseCamera(done: ProfilePhotoCallback): Cancelable
+    fun chooseLibrary(done: ProfilePhotoCallback): Cancelable
 }

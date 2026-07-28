@@ -112,6 +112,19 @@ class NativeAccessPortsTest {
         assertFails { ProfilePhotoResult.Selected(byteArrayOf(1), " ") }
     }
 
+    @Test fun `profile photo port answers by callback without a coroutine and hands back a cancelable`() {
+        val adapters = ExternalAdapters()
+        var received: ProfilePhotoResult? = null
+        val callback = object : ProfilePhotoCallback {
+            override fun complete(result: ProfilePhotoResult) { received = result }
+        }
+
+        val cancelable = adapters.chooseLibrary(callback)
+        cancelable.cancel()
+
+        assertEquals(ProfilePhotoResult.Selected(byteArrayOf(1), "image/jpeg"), received)
+    }
+
     private fun ignoringResult() = object : ResultCallback { override fun complete(result: OperationResult) = Unit }
     private fun valueCallback(block: (ValueResult) -> Unit) = object : ValueCallback { override fun complete(result: ValueResult) = block(result) }
 
@@ -155,8 +168,16 @@ class NativeAccessPortsTest {
         override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(null))
         override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
         override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
-        override suspend fun chooseCamera() = ProfilePhotoResult.Cancelled
-        override suspend fun chooseLibrary() = ProfilePhotoResult.Selected(byteArrayOf(1), "image/jpeg")
+        override fun chooseCamera(done: ProfilePhotoCallback): Cancelable {
+            done.complete(ProfilePhotoResult.Cancelled)
+            return noOpCancelable()
+        }
+
+        override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable {
+            done.complete(ProfilePhotoResult.Selected(byteArrayOf(1), "image/jpeg"))
+            return noOpCancelable()
+        }
+
         private fun noOpCancelable() = object : Cancelable { override fun cancel() = Unit }
     }
 }
