@@ -25,19 +25,27 @@ class GroupSetupViewModel(
     override fun onIntent(intent: GroupSetupIntent) {
         when (intent) {
             is GroupSetupIntent.UpdateName ->
-                onTextChange(KeyName, intent.value) { copy(name = it) }
+                onTextChange(KeyName, intent.value, GroupTextLimits.NameMax) { copy(name = it) }
 
             is GroupSetupIntent.UpdateDescription ->
-                onTextChange(KeyDescription, intent.value) { copy(description = it) }
+                onTextChange(KeyDescription, intent.value, GroupTextLimits.DescriptionMax) {
+                    copy(description = it)
+                }
 
             is GroupSetupIntent.UpdateCustomLevel ->
-                onTextChange(KeyCustomLevel, intent.value) { copy(customLevel = it) }
+                onTextChange(KeyCustomLevel, intent.value, GroupTextLimits.CustomLevelMax) {
+                    copy(customLevel = it)
+                }
 
             is GroupSetupIntent.UpdateVenueName ->
-                onTextChange(KeyVenueName, intent.value) { value -> withVenue { copy(name = value) } }
+                onTextChange(KeyVenueName, intent.value, GroupTextLimits.VenueNameMax) { value ->
+                    withVenue { copy(name = value) }
+                }
 
             is GroupSetupIntent.UpdateVenueAddress ->
-                onTextChange(KeyVenueAddress, intent.value) { value -> withVenue { copy(address = value) } }
+                onTextChange(KeyVenueAddress, intent.value, GroupTextLimits.VenueAddressMax) { value ->
+                    withVenue { copy(address = value) }
+                }
 
             is GroupSetupIntent.SelectModality -> onFormChange { copy(modality = intent.value) }
             is GroupSetupIntent.SelectComposition -> onFormChange { copy(composition = intent.value) }
@@ -154,9 +162,21 @@ class GroupSetupViewModel(
         current.copy(recurring = recurring).revalidated()
     }
 
-    private fun onTextChange(key: String, value: String, edit: GroupSetupForm.(String) -> GroupSetupForm) {
-        savedState[key] = value
-        onFormChange { edit(value) }
+    /**
+     * O teto do backend é aplicado **na entrada**, não como mensagem de erro: o campo
+     * simplesmente para de crescer. Cortar aqui, e não em cada `onValueChange`, é o que
+     * garante que nenhum caminho — tecla, colagem, restauração de rascunho — deixe o
+     * estado passar do limite, e é o mesmo ponto que grava no `SavedStateHandle`.
+     */
+    private fun onTextChange(
+        key: String,
+        value: String,
+        maxLength: Int,
+        edit: GroupSetupForm.(String) -> GroupSetupForm,
+    ) {
+        val capped = value.take(maxLength)
+        savedState[key] = capped
+        onFormChange { edit(capped) }
     }
 
     private fun onFormChange(transform: GroupSetupForm.() -> GroupSetupForm) = update { current ->

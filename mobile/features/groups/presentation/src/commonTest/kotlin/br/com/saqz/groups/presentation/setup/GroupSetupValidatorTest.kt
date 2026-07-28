@@ -41,6 +41,35 @@ class GroupSetupValidatorTest {
         assertEquals(setOf(GroupSetupError.CompositionRequired), errors)
     }
 
+    // Fronteiras dos mínimos do `GroupProfileDefaultsValidator`: um caractere abaixo
+    // reprova, o mínimo exato passa. Máximo não é erro, é teto de digitação — o corte
+    // está no `GroupSetupViewModelTest`.
+    @Test
+    fun `nome de grupo abaixo do minimo do backend reprova`() {
+        assertEquals(setOf(GroupSetupError.NameRequired), validate(state { copy(name = "A") }))
+        assertTrue(validate(state { copy(name = "AB") }).isEmpty())
+    }
+
+    @Test
+    fun `categoria personalizada abaixo do minimo reprova`() {
+        val short = state { copy(level = GroupLevel.CUSTOM, customLevel = "R") }
+        val exact = state { copy(level = GroupLevel.CUSTOM, customLevel = "Re") }
+
+        assertEquals(setOf(GroupSetupError.CustomLevelRequired), validate(short))
+        assertTrue(validate(exact).isEmpty())
+    }
+
+    @Test
+    fun `nome e endereco da quadra abaixo do minimo reprovam`() {
+        val shortName = state { copy(defaultVenue = GroupVenueForm(name = "C", address = "R. Canuto")) }
+        val shortAddress = state { copy(defaultVenue = GroupVenueForm(name = "CERET", address = "R. C")) }
+        val exact = state { copy(defaultVenue = GroupVenueForm(name = "CE", address = "R. Ca")) }
+
+        assertEquals(setOf(GroupSetupError.VenueNameRequired), validate(shortName))
+        assertEquals(setOf(GroupSetupError.VenueAddressNotFound), validate(shortAddress))
+        assertTrue(validate(exact).isEmpty())
+    }
+
     @Test
     fun `categoria personalizada exige nome proprio`() {
         val errors = validate(state { copy(level = GroupLevel.CUSTOM, customLevel = null) })

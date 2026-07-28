@@ -230,6 +230,43 @@ class GroupSetupViewModelTest {
         assertEquals(GroupModality.COURT_VOLLEYBALL, viewModel.state.value.form.modality)
     }
 
+    /**
+     * Teto de digitação: o estado para no máximo do backend em vez de deixar digitar e
+     * reprovar depois. Fronteira nos dois lados — o máximo exato entra inteiro, um
+     * caractere além é cortado.
+     */
+    @Test
+    fun `o texto para no maximo do backend`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle()
+        val viewModel = viewModel(savedState = handle)
+
+        viewModel.onIntent(GroupSetupIntent.UpdateName("N".repeat(GroupTextLimits.NameMax)))
+        runCurrent()
+        assertEquals(GroupTextLimits.NameMax, viewModel.state.value.form.name.length)
+
+        viewModel.onIntent(GroupSetupIntent.UpdateName("N".repeat(GroupTextLimits.NameMax + 1)))
+        viewModel.onIntent(
+            GroupSetupIntent.UpdateDescription("D".repeat(GroupTextLimits.DescriptionMax + 1)),
+        )
+        viewModel.onIntent(
+            GroupSetupIntent.UpdateCustomLevel("C".repeat(GroupTextLimits.CustomLevelMax + 1)),
+        )
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueName("Q".repeat(GroupTextLimits.VenueNameMax + 1)))
+        viewModel.onIntent(
+            GroupSetupIntent.UpdateVenueAddress("E".repeat(GroupTextLimits.VenueAddressMax + 1)),
+        )
+        runCurrent()
+
+        val form = viewModel.state.value.form
+        assertEquals(GroupTextLimits.NameMax, form.name.length)
+        assertEquals(GroupTextLimits.DescriptionMax, form.description?.length)
+        assertEquals(GroupTextLimits.CustomLevelMax, form.customLevel?.length)
+        assertEquals(GroupTextLimits.VenueNameMax, form.defaultVenue?.name?.length)
+        assertEquals(GroupTextLimits.VenueAddressMax, form.defaultVenue?.address?.length)
+        // O que foi cortado também não vaza para o process death.
+        assertEquals(GroupTextLimits.NameMax, handle.get<String>("group-setup-name")?.length)
+    }
+
     /** Quadra vazia não é quadra: o backend recusa `defaultVenue` com campos em branco. */
     @Test
     fun `apagar os dois campos da quadra devolve a quadra a nulo`() = runTest(mainDispatcher) {
