@@ -17,6 +17,11 @@ class ResourceCatalogTest {
         Res.string.attendance_going to "Vou",
         Res.string.attendance_maybe to "Talvez",
         Res.string.attendance_out to "Não vou",
+        // Contagem do grupo × resposta de quem lê: "Não vão" e "Não vou" são rótulos
+        // diferentes, e o par abaixo existe para impedir que voltem a se confundir.
+        Res.string.game_stat_going to "Confirmados",
+        Res.string.game_stat_maybe to "Talvez",
+        Res.string.game_stat_out to "Não vão",
     )
 
     @Test

@@ -9,5 +9,10 @@
     <string name="attendance_going">Vou</string>
     <string name="attendance_maybe">Talvez</string>
     <string name="attendance_out">Não vou</string>
+    <!-- Contagem do grupo, 3ª pessoa do plural. Não confundir com attendance_*, que é a
+         resposta de quem lê ("Não vou" × "Não vão"). -->
+    <string name="game_stat_going">Confirmados</string>
+    <string name="game_stat_maybe">Talvez</string>
+    <string name="game_stat_out">Não vão</string>
     <string name="offline_queued">Sua resposta está na fila. Enviamos quando a internet voltar.</string>
 </resources>
