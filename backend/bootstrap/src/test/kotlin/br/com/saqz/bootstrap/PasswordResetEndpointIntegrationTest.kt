@@ -1,6 +1,9 @@
 package br.com.saqz.bootstrap
 
+import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.access.application.passwordreset.PasswordAccounts
+import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
+import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
 import com.icegreen.greenmail.util.GreenMail
 import com.icegreen.greenmail.util.ServerSetup
 import org.junit.jupiter.api.AfterAll
@@ -53,11 +56,15 @@ class PasswordResetEndpointIntegrationTest {
 
     private val client: HttpClient = HttpClient.newHttpClient()
 
+    @Autowired private lateinit var notifier: FailableNotifier
+
     @BeforeEach
     fun reset() {
-        JdbcTemplate(dataSource).execute("TRUNCATE password_reset_codes, password_reset_ip_limits")
+        JdbcTemplate(dataSource).execute("TRUNCATE password_reset_codes, password_reset_rate_limits")
         smtp.purgeEmailFromAllMailboxes()
         clock.reset()
+        notifier.failing = false
+        accounts.unavailable = false
         accounts.passwords.clear()
         accounts.passwords["atleta@saqz.test"] = "senha-antiga"
     }
@@ -103,6 +110,39 @@ class PasswordResetEndpointIntegrationTest {
 
         assertEquals(existente.statusCode(), inexistente.statusCode())
         assertEquals(existente.body(), inexistente.body())
+    }
+
+    /**
+     * Durante instabilidade de SMTP, conta existente estourava em 500 e inexistente
+     * respondia 202 — a diferença dizia exatamente quem tem conta no Saqz, que é o que
+     * o "sempre 202" existe para impedir.
+     */
+    @Test
+    fun `falha de entrega nao denuncia quem tem conta`() {
+        notifier.failing = true
+
+        val existente = request("atleta@saqz.test")
+        val inexistente = request("ninguem@saqz.test")
+
+        assertEquals(202, existente.statusCode(), existente.body())
+        assertEquals(existente.statusCode(), inexistente.statusCode())
+        assertEquals(existente.body(), inexistente.body())
+    }
+
+    @Test
+    fun `provedor de identidade fora do ar responde indisponibilidade, nao 202`() {
+        accounts.unavailable = true
+
+        assertProblem(request("atleta@saqz.test"), 503, "IDENTITY_PROVIDER_UNAVAILABLE")
+    }
+
+    @Test
+    fun `provedor fora do ar na confirmacao nao mente que o token e invalido`() {
+        request("atleta@saqz.test")
+        val token = json(verify("atleta@saqz.test", deliveredCode()))["token"].stringValue()
+        accounts.unavailable = true
+
+        assertProblem(confirm(token, "senha-nova-forte"), 503, "IDENTITY_PROVIDER_UNAVAILABLE")
     }
 
     @Test
@@ -270,14 +310,30 @@ class PasswordResetEndpointIntegrationTest {
     class PasswordResetTestConfiguration {
         @Bean @Primary fun fakePasswordAccounts() = FakePasswordAccounts()
         @Bean @Primary fun movableClock() = MovableClock()
+        @Bean @Primary fun failableNotifier(mailer: VerificationCodeMailer) = FailableNotifier(mailer)
+    }
+
+    /** Entrega de verdade pelo GreenMail, com um interruptor para simular SMTP fora do ar. */
+    class FailableNotifier(private val mailer: VerificationCodeMailer) : ResetCodeNotifier {
+        var failing = false
+
+        override fun send(recipient: String, code: String, validity: Duration) {
+            if (failing) throw IllegalStateException("SMTP fora do ar")
+            mailer.send(recipient, code, validity)
+        }
     }
 
     class FakePasswordAccounts : PasswordAccounts {
         val passwords = mutableMapOf<String, String>()
+        var unavailable = false
 
-        override fun exists(email: String) = email in passwords
+        override fun exists(email: String): Boolean {
+            if (unavailable) throw PasswordAccountsUnavailable()
+            return email in passwords
+        }
 
         override fun updatePassword(email: String, newPassword: String): Boolean {
+            if (unavailable) throw PasswordAccountsUnavailable()
             if (email !in passwords) return false
             passwords[email] = newPassword
             return true
@@ -323,6 +379,7 @@ class PasswordResetEndpointIntegrationTest {
             registry.add("spring.datasource.password", postgres::getPassword)
             registry.add("saqz.firebase.emulator.enabled") { "true" }
             registry.add("saqz.branch.domain") { "https://join.test" }
+            registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
             registry.add("spring.mail.host") { "127.0.0.1" }
             registry.add("spring.mail.port") { smtp.smtp.port }
             // O GreenMail não anuncia STARTTLS; o que a exigência protege está no

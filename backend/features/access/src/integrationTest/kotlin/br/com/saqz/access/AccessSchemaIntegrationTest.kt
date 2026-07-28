@@ -41,7 +41,7 @@ class AccessSchemaIntegrationTest {
     fun clearData() {
         execute(
             "TRUNCATE group_regular_slots, group_venues, group_invites, group_memberships, access_groups, " +
-                "invite_redemption_limits, password_reset_codes, password_reset_ip_limits, access_users CASCADE",
+                "invite_redemption_limits, password_reset_codes, password_reset_rate_limits, access_users CASCADE",
         )
     }
 
@@ -58,7 +58,7 @@ class AccessSchemaIntegrationTest {
                 "invite_redemption_limits",
                 "group_photos",
                 "password_reset_codes",
-                "password_reset_ip_limits",
+                "password_reset_rate_limits",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +
@@ -258,12 +258,6 @@ class AccessSchemaIntegrationTest {
         assertSqlFails { execute(tokenUpdate("um@saqz.test", digestBytes = 16)) }
         assertSqlFails {
             execute(
-                "UPDATE password_reset_codes SET token_digest = ${digestLiteral(32, 'c')} " +
-                    "WHERE email = 'um@saqz.test'",
-            )
-        }
-        assertSqlFails {
-            execute(
                 "UPDATE password_reset_codes SET token_expires_at = created_at + interval '5 minutes' " +
                     "WHERE email = 'um@saqz.test'",
             )
@@ -272,12 +266,35 @@ class AccessSchemaIntegrationTest {
         assertSqlFails { execute(tokenUpdate("dois@saqz.test")) }
     }
 
+    /**
+     * A invariante que impede o código de sobreviver ao token: emitir o token apaga o
+     * código, então uma linha nunca carrega os dois nem fica sem nenhum.
+     */
     @Test
-    fun `password reset ip counter never goes negative`() {
-        execute("INSERT INTO password_reset_ip_limits VALUES ('10.0.0.1', now(), 1)")
+    fun `password reset row holds either a code or a token, never both nor neither`() {
+        insertResetCode(email = "estado@saqz.test")
 
-        execute("UPDATE password_reset_ip_limits SET request_count = 0 WHERE ip = '10.0.0.1'")
-        assertSqlFails { execute("UPDATE password_reset_ip_limits SET request_count = -1 WHERE ip = '10.0.0.1'") }
+        assertSqlFails {
+            execute(
+                "UPDATE password_reset_codes SET token_digest = ${digestLiteral(32, 'c')}, " +
+                    "token_expires_at = created_at + interval '5 minutes' WHERE email = 'estado@saqz.test'",
+            )
+        }
+        assertSqlFails {
+            execute("UPDATE password_reset_codes SET code_digest = NULL WHERE email = 'estado@saqz.test'")
+        }
+        execute(tokenUpdate("estado@saqz.test"))
+        assertEquals(null, queryString("SELECT code_digest FROM password_reset_codes WHERE email = 'estado@saqz.test'"))
+    }
+
+    @Test
+    fun `password reset rate limit counter never goes negative`() {
+        execute("INSERT INTO password_reset_rate_limits VALUES ('request:10.0.0.1', now(), 1)")
+
+        execute("UPDATE password_reset_rate_limits SET request_count = 0 WHERE bucket = 'request:10.0.0.1'")
+        assertSqlFails {
+            execute("UPDATE password_reset_rate_limits SET request_count = -1 WHERE bucket = 'request:10.0.0.1'")
+        }
     }
 
     @Test
@@ -344,9 +361,10 @@ class AccessSchemaIntegrationTest {
         )
     }
 
+    /** Emitir o token apaga o código na mesma escrita, como o adapter faz. */
     private fun tokenUpdate(email: String, digestBytes: Int = 32) =
         "UPDATE password_reset_codes SET token_digest = ${digestLiteral(digestBytes, 'b')}, " +
-            "token_expires_at = created_at + interval '5 minutes' WHERE email = '$email'"
+            "token_expires_at = created_at + interval '5 minutes', code_digest = NULL WHERE email = '$email'"
 
     private fun execute(sql: String) {
         connection().use { connection -> connection.createStatement().use { it.execute(sql) } }

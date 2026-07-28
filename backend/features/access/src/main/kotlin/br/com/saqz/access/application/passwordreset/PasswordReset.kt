@@ -21,6 +21,8 @@ sealed interface VerifyCodeResult {
     data object Expired : VerifyCodeResult
 
     data object AttemptLimit : VerifyCodeResult
+
+    data class RateLimited(val retryAfterSeconds: Int) : VerifyCodeResult
 }
 
 sealed interface ConfirmResetResult {
@@ -34,20 +36,22 @@ sealed interface ConfirmResetResult {
 /**
  * Recuperação de senha por código de quatro dígitos. Quatro dígitos são dez mil
  * combinações, então cada defesa aqui é o que separa isso de força bruta em minutos:
- * validade curta, teto de tentativas, janela de reenvio e limite por IP.
+ * validade curta, teto de tentativas contado atomicamente, janela de reenvio e limite
+ * por IP nos dois passos que aceitam palpite.
  */
 class PasswordReset(
     private val repository: PasswordResetRepository,
     private val accounts: PasswordAccounts,
     private val notifier: ResetCodeNotifier,
     private val secrets: ResetSecrets,
+    private val hasher: ResetSecretHasher,
     private val clock: Clock,
 ) {
     fun request(rawEmail: String, ip: String): RequestCodeResult {
         val now = clock.instant()
-        val window = repository.recordIpRequest(ip, now, now.minus(IP_WINDOW))
+        val window = repository.recordRateLimit("request:$ip", now, now.minus(RATE_LIMIT_WINDOW))
         if (window.count > MAX_REQUESTS_PER_IP) {
-            return RequestCodeResult.RateLimited(secondsUntil(now, window.startedAt.plus(IP_WINDOW)))
+            return RequestCodeResult.RateLimited(secondsUntil(now, window.startedAt.plus(RATE_LIMIT_WINDOW)))
         }
 
         // E-mail malformado consome a cota do IP e sai como aceito: responder diferente
@@ -56,7 +60,7 @@ class PasswordReset(
 
         val code = secrets.code()
         val outcome = repository.replaceCode(
-            StoredResetCode(email, ResetDigest.ofCode(email, code), 0, now, now.plus(VALIDITY)),
+            NewResetCode(email, hasher.ofCode(email, code), now, now.plus(VALIDITY)),
             now.minus(RESEND_WINDOW),
         )
         if (outcome is ReplaceCodeOutcome.TooSoon) {
@@ -66,33 +70,42 @@ class PasswordReset(
         }
 
         // A linha é gravada exista a conta ou não: é ela que segura a janela de reenvio,
-        // e uma janela que só existe para quem tem conta seria o oráculo de volta.
-        if (accounts.exists(email)) notifier.send(email, code, VALIDITY)
+        // e uma janela que só existisse para quem tem conta seria o oráculo de volta.
+        if (accounts.exists(email)) deliver(email, code)
         return RequestCodeResult.Accepted
     }
 
-    fun verify(rawEmail: String, rawCode: String): VerifyCodeResult {
+    fun verify(rawEmail: String, rawCode: String, ip: String): VerifyCodeResult {
         val now = clock.instant()
-        val email = normalize(rawEmail) ?: return VerifyCodeResult.Expired
-        val stored = repository.findByEmail(email) ?: return VerifyCodeResult.Expired
-        if (!now.isBefore(stored.expiresAt)) {
-            repository.delete(email)
-            return VerifyCodeResult.Expired
+        val window = repository.recordRateLimit("verify:$ip", now, now.minus(RATE_LIMIT_WINDOW))
+        if (window.count > MAX_VERIFICATIONS_PER_IP) {
+            return VerifyCodeResult.RateLimited(secondsUntil(now, window.startedAt.plus(RATE_LIMIT_WINDOW)))
         }
 
-        if (!ResetDigest.ofCode(email, rawCode).matches(stored.codeDigest)) {
-            val attempts = stored.attempts + 1
-            if (attempts >= MAX_ATTEMPTS) {
-                repository.delete(email)
+        val email = normalize(rawEmail) ?: return VerifyCodeResult.Expired
+        val outcome = repository.consumeAttempt(email, now, MAX_ATTEMPTS) ?: return VerifyCodeResult.Expired
+        if (outcome is AttemptOutcome.Exhausted) {
+            repository.retireCode(email)
+            return VerifyCodeResult.AttemptLimit
+        }
+
+        val consumed = outcome as AttemptOutcome.Consumed
+        if (!hasher.ofCode(email, rawCode).matches(consumed.codeDigest)) {
+            if (consumed.attempts >= MAX_ATTEMPTS) {
+                repository.retireCode(email)
                 return VerifyCodeResult.AttemptLimit
             }
-            repository.recordAttempt(email, attempts)
-            return VerifyCodeResult.InvalidCode(MAX_ATTEMPTS - attempts)
+            return VerifyCodeResult.InvalidCode(MAX_ATTEMPTS - consumed.attempts)
         }
 
+        // Emitir o token apaga o código na mesma escrita. Quem perdeu a corrida não
+        // ganha um segundo token que sobrescreveria o primeiro.
         val token = secrets.token()
-        repository.issueToken(email, ResetDigest.ofToken(token), now.plus(TOKEN_VALIDITY))
-        return VerifyCodeResult.Success(token, TOKEN_VALIDITY)
+        return if (repository.issueToken(email, hasher.ofToken(token), now.plus(TOKEN_VALIDITY))) {
+            VerifyCodeResult.Success(token, TOKEN_VALIDITY)
+        } else {
+            VerifyCodeResult.Expired
+        }
     }
 
     fun confirm(rawToken: String, newPassword: String): ConfirmResetResult {
@@ -100,15 +113,29 @@ class PasswordReset(
             return ConfirmResetResult.WeakPassword
         }
 
-        // Consumir antes de trocar é o que garante uso único. Se a troca falhar, o
-        // token já morreu e a pessoa pede outro código — melhor do que deixá-lo vivo.
-        val email = repository.consumeToken(ResetDigest.ofToken(rawToken), clock.instant())
+        // Consumir antes de trocar é o que garante uso único. Se o provedor estiver
+        // fora, a exceção sobe como indisponibilidade em vez de virar "token inválido".
+        val email = repository.consumeToken(hasher.ofToken(rawToken), clock.instant())
             ?: return ConfirmResetResult.InvalidToken
 
         return if (accounts.updatePassword(email, newPassword)) {
             ConfirmResetResult.Success
         } else {
             ConfirmResetResult.InvalidToken
+        }
+    }
+
+    /**
+     * Falha de entrega não pode mudar a resposta: conta existente que estourasse no SMTP
+     * viraria 500 enquanto a inexistente devolve 202, e a diferença diria exatamente quem
+     * tem conta no Saqz. Quem registra a falha é o adapter, que tem log.
+     */
+    private fun deliver(email: String, code: String) {
+        try {
+            notifier.send(email, code, VALIDITY)
+        } catch (_: Exception) {
+            // ponytail: silêncio deliberado; o alarme de SMTP fora do ar é do log do adapter
+            // e do health check, não da resposta deste endpoint.
         }
     }
 
@@ -124,9 +151,10 @@ class PasswordReset(
         val VALIDITY: Duration = Duration.ofMinutes(10)
         val TOKEN_VALIDITY: Duration = Duration.ofMinutes(5)
         val RESEND_WINDOW: Duration = Duration.ofSeconds(60)
-        val IP_WINDOW: Duration = Duration.ofMinutes(10)
+        val RATE_LIMIT_WINDOW: Duration = Duration.ofMinutes(10)
         const val MAX_ATTEMPTS = 5
         const val MAX_REQUESTS_PER_IP = 10
+        const val MAX_VERIFICATIONS_PER_IP = 30
         const val MIN_PASSWORD_LENGTH = 8
         const val MAX_PASSWORD_LENGTH = 128
         private const val MAX_EMAIL_LENGTH = 320

@@ -12,6 +12,7 @@ import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
 import br.com.saqz.access.adapter.input.http.PasswordResetRateLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetTokenInvalidException
 import br.com.saqz.access.adapter.input.http.WeakPasswordException
+import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
@@ -121,6 +122,12 @@ class SafeExceptionHandler(
     @ExceptionHandler(PasswordResetTokenInvalidException::class)
     fun passwordResetTokenInvalid(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 410, ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
+    }
+
+    /** Provedor de identidade fora do ar não é conta inexistente nem token inválido. */
+    @ExceptionHandler(PasswordAccountsUnavailable::class)
+    fun passwordAccountsUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
     }
 
     @ExceptionHandler(WeakPasswordException::class)

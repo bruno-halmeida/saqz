@@ -6,17 +6,24 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * O teto sob concorrência não se prova aqui: um repositório de mentira sempre é
+ * atômico. Quem prova é o `JdbcPasswordResetRepositoryIntegrationTest`, com threads
+ * de verdade contra o Postgres.
+ */
 class PasswordResetTest {
-    private val start: Instant = Instant.parse("2026-07-28T12:00:00Z")
-    private val clock = MovableClock(start)
+    private val clock = MovableClock(Instant.parse("2026-07-28T12:00:00Z"))
     private val repository = InMemoryPasswordResetRepository()
     private val accounts = FakePasswordAccounts(mutableMapOf("atleta@saqz.test" to "senha-antiga"))
     private val notifier = RecordingNotifier()
     private val secrets = FixedSecrets()
-    private val useCase = PasswordReset(repository, accounts, notifier, secrets, clock)
+    private val hasher = ResetSecretHasher("segredo-de-teste-com-trinta-e-dois")
+    private val useCase = PasswordReset(repository, accounts, notifier, secrets, hasher, clock)
 
     @Test
     fun `envia o codigo para quem tem conta`() {
@@ -41,16 +48,35 @@ class PasswordResetTest {
     }
 
     @Test
-    fun `guarda o hash e nunca o numero`() {
+    fun `guarda o digest e nunca o numero`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
 
         val stored = repository.codes.getValue("atleta@saqz.test")
-        assertTrue(stored.codeDigest.matches(ResetDigest.ofCode("atleta@saqz.test", "1234")))
+        assertTrue(stored.codeDigest!!.matches(hasher.ofCode("atleta@saqz.test", "1234")))
         assertEquals("ResetDigest([REDACTED])", stored.codeDigest.toString())
         assertNotEquals(
-            ResetDigest.ofCode("outro@saqz.test", "1234").toByteArray().toList(),
+            hasher.ofCode("outro@saqz.test", "1234").toByteArray().toList(),
             stored.codeDigest.toByteArray().toList(),
         )
+    }
+
+    @Test
+    fun `o digest depende do segredo do servidor, nao so do conteudo do banco`() {
+        val outro = ResetSecretHasher("outro-segredo-com-trinta-e-dois-c")
+
+        assertNotEquals(
+            hasher.ofCode("atleta@saqz.test", "1234").toByteArray().toList(),
+            outro.ofCode("atleta@saqz.test", "1234").toByteArray().toList(),
+        )
+        assertNotEquals(
+            hasher.ofToken("token-secreto").toByteArray().toList(),
+            outro.ofToken("token-secreto").toByteArray().toList(),
+        )
+    }
+
+    @Test
+    fun `segredo curto demais nao monta o hasher`() {
+        assertFailsWith<IllegalArgumentException> { ResetSecretHasher("curto") }
     }
 
     @Test
@@ -61,6 +87,24 @@ class PasswordResetTest {
 
         assertTrue(repository.codes.isEmpty())
         assertTrue(notifier.sent.isEmpty())
+    }
+
+    @Test
+    fun `falha de entrega responde igual a e-mail inexistente`() {
+        notifier.failure = IllegalStateException("SMTP fora do ar")
+
+        val existente = useCase.request("atleta@saqz.test", "10.0.0.1")
+        val inexistente = useCase.request("ninguem@saqz.test", "10.0.0.2")
+
+        assertEquals(RequestCodeResult.Accepted, existente)
+        assertEquals(RequestCodeResult.Accepted, inexistente)
+    }
+
+    @Test
+    fun `provedor de identidade fora do ar sobe como indisponibilidade`() {
+        accounts.unavailable = true
+
+        assertFailsWith<PasswordAccountsUnavailable> { useCase.request("atleta@saqz.test", "10.0.0.1") }
     }
 
     @Test
@@ -91,8 +135,8 @@ class PasswordResetTest {
         secrets.nextCode = "9999"
         useCase.request("atleta@saqz.test", "10.0.0.1")
 
-        assertEquals(VerifyCodeResult.InvalidCode(4), useCase.verify("atleta@saqz.test", "1234"))
-        assertTrue(useCase.verify("atleta@saqz.test", "9999") is VerifyCodeResult.Success)
+        assertEquals(VerifyCodeResult.InvalidCode(4), verify("1234"))
+        assertTrue(verify("9999") is VerifyCodeResult.Success)
     }
 
     @Test
@@ -109,32 +153,49 @@ class PasswordResetTest {
     }
 
     @Test
+    fun `limita verificacoes por IP`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+
+        repeat(PasswordReset.MAX_VERIFICATIONS_PER_IP) { verify("0000") }
+
+        assertEquals(VerifyCodeResult.RateLimited(600), verify("0000"))
+    }
+
+    @Test
+    fun `o balde do pedido e o da verificacao nao se consomem`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        repeat(PasswordReset.MAX_VERIFICATIONS_PER_IP) { verify("0000") }
+
+        clock.advance(Duration.ofSeconds(60))
+
+        assertEquals(RequestCodeResult.Accepted, useCase.request("atleta@saqz.test", "10.0.0.1"))
+    }
+
+    @Test
     fun `troca o codigo por um token de curta duracao`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
 
-        val result = useCase.verify("atleta@saqz.test", "1234")
-
-        assertEquals(VerifyCodeResult.Success("token-secreto", Duration.ofMinutes(5)), result)
+        assertEquals(VerifyCodeResult.Success("token-secreto", Duration.ofMinutes(5)), verify("1234"))
     }
 
     @Test
     fun `codigo errado devolve quantas tentativas restam`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
 
-        assertEquals(VerifyCodeResult.InvalidCode(4), useCase.verify("atleta@saqz.test", "0000"))
-        assertEquals(VerifyCodeResult.InvalidCode(3), useCase.verify("atleta@saqz.test", "0001"))
-        assertEquals(VerifyCodeResult.InvalidCode(2), useCase.verify("atleta@saqz.test", "0002"))
-        assertEquals(VerifyCodeResult.InvalidCode(1), useCase.verify("atleta@saqz.test", "0003"))
+        assertEquals(VerifyCodeResult.InvalidCode(4), verify("0000"))
+        assertEquals(VerifyCodeResult.InvalidCode(3), verify("0001"))
+        assertEquals(VerifyCodeResult.InvalidCode(2), verify("0002"))
+        assertEquals(VerifyCodeResult.InvalidCode(1), verify("0003"))
     }
 
     @Test
     fun `a quinta tentativa errada mata o codigo`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
-        repeat(4) { useCase.verify("atleta@saqz.test", "000$it") }
+        repeat(4) { verify("000$it") }
 
-        assertEquals(VerifyCodeResult.AttemptLimit, useCase.verify("atleta@saqz.test", "0009"))
+        assertEquals(VerifyCodeResult.AttemptLimit, verify("0009"))
         assertTrue(repository.codes.isEmpty())
-        assertEquals(VerifyCodeResult.Expired, useCase.verify("atleta@saqz.test", "1234"))
+        assertEquals(VerifyCodeResult.Expired, verify("1234"))
     }
 
     @Test
@@ -143,8 +204,7 @@ class PasswordResetTest {
 
         clock.advance(Duration.ofMinutes(10))
 
-        assertEquals(VerifyCodeResult.Expired, useCase.verify("atleta@saqz.test", "1234"))
-        assertTrue(repository.codes.isEmpty())
+        assertEquals(VerifyCodeResult.Expired, verify("1234"))
     }
 
     @Test
@@ -153,19 +213,49 @@ class PasswordResetTest {
 
         clock.advance(Duration.ofMinutes(10).minusSeconds(1))
 
-        assertTrue(useCase.verify("atleta@saqz.test", "1234") is VerifyCodeResult.Success)
+        assertTrue(verify("1234") is VerifyCodeResult.Success)
     }
 
     @Test
     fun `verificar e-mail sem codigo responde expirado sem dizer se a conta existe`() {
-        assertEquals(VerifyCodeResult.Expired, useCase.verify("atleta@saqz.test", "1234"))
-        assertEquals(VerifyCodeResult.Expired, useCase.verify("ninguem@saqz.test", "1234"))
+        assertEquals(VerifyCodeResult.Expired, verify("1234"))
+        assertEquals(VerifyCodeResult.Expired, useCase.verify("ninguem@saqz.test", "1234", "10.0.0.1"))
+    }
+
+    @Test
+    fun `emitir o token apaga o codigo`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        assertTrue(verify("1234") is VerifyCodeResult.Success)
+
+        assertEquals(VerifyCodeResult.Expired, verify("1234"))
+        assertNull(repository.codes.getValue("atleta@saqz.test").codeDigest)
+    }
+
+    @Test
+    fun `tentativas erradas depois do token nao apagam o token emitido`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        val token = (verify("1234") as VerifyCodeResult.Success).token
+
+        repeat(PasswordReset.MAX_ATTEMPTS + 1) { assertEquals(VerifyCodeResult.Expired, verify("000$it")) }
+
+        assertEquals(ConfirmResetResult.Success, useCase.confirm(token, "senha-nova-forte"))
+    }
+
+    @Test
+    fun `o mesmo codigo nao emite um segundo token por cima do primeiro`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        val first = (verify("1234") as VerifyCodeResult.Success).token
+        secrets.nextToken = "token-do-segundo"
+
+        assertEquals(VerifyCodeResult.Expired, verify("1234"))
+        assertEquals(ConfirmResetResult.InvalidToken, useCase.confirm("token-do-segundo", "senha-nova-forte"))
+        assertEquals(ConfirmResetResult.Success, useCase.confirm(first, "senha-nova-forte"))
     }
 
     @Test
     fun `troca a senha e invalida codigo e token`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
-        val token = (useCase.verify("atleta@saqz.test", "1234") as VerifyCodeResult.Success).token
+        val token = (verify("1234") as VerifyCodeResult.Success).token
 
         assertEquals(ConfirmResetResult.Success, useCase.confirm(token, "senha-nova-forte"))
         assertEquals("senha-nova-forte", accounts.passwords.getValue("atleta@saqz.test"))
@@ -176,7 +266,7 @@ class PasswordResetTest {
     @Test
     fun `token expirado nao troca a senha`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
-        val token = (useCase.verify("atleta@saqz.test", "1234") as VerifyCodeResult.Success).token
+        val token = (verify("1234") as VerifyCodeResult.Success).token
 
         clock.advance(Duration.ofMinutes(5))
 
@@ -190,9 +280,18 @@ class PasswordResetTest {
     }
 
     @Test
+    fun `provedor fora do ar na confirmacao nao vira token invalido`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        val token = (verify("1234") as VerifyCodeResult.Success).token
+        accounts.unavailable = true
+
+        assertFailsWith<PasswordAccountsUnavailable> { useCase.confirm(token, "senha-nova-forte") }
+    }
+
+    @Test
     fun `senha curta demais e recusada antes de consumir o token`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
-        val token = (useCase.verify("atleta@saqz.test", "1234") as VerifyCodeResult.Success).token
+        val token = (verify("1234") as VerifyCodeResult.Success).token
 
         assertEquals(ConfirmResetResult.WeakPassword, useCase.confirm(token, "1234567"))
         assertEquals(ConfirmResetResult.WeakPassword, useCase.confirm(token, "a".repeat(129)))
@@ -207,6 +306,8 @@ class PasswordResetTest {
         assertTrue(generated.all { it.length == 4 && it.all(Char::isDigit) }, generated.first())
         assertTrue(generated.toSet().size > 1)
     }
+
+    private fun verify(code: String) = useCase.verify("atleta@saqz.test", code, "10.0.0.1")
 
     private class MovableClock(private var now: Instant) : Clock() {
         fun advance(amount: Duration) {
@@ -225,66 +326,86 @@ class PasswordResetTest {
 
     private class RecordingNotifier : ResetCodeNotifier {
         val sent = mutableListOf<Triple<String, String, Duration>>()
+        var failure: RuntimeException? = null
 
         override fun send(recipient: String, code: String, validity: Duration) {
+            failure?.let { throw it }
             sent += Triple(recipient, code, validity)
         }
     }
 
     private class FakePasswordAccounts(val passwords: MutableMap<String, String>) : PasswordAccounts {
-        override fun exists(email: String) = email in passwords
+        var unavailable = false
+
+        override fun exists(email: String): Boolean {
+            if (unavailable) throw PasswordAccountsUnavailable()
+            return email in passwords
+        }
 
         override fun updatePassword(email: String, newPassword: String): Boolean {
+            if (unavailable) throw PasswordAccountsUnavailable()
             if (email !in passwords) return false
             passwords[email] = newPassword
             return true
         }
     }
 
-    /** Espelha o adapter JDBC: a chave é o e-mail, então gravar sobrescreve o código anterior. */
-    private class InMemoryPasswordResetRepository : PasswordResetRepository {
-        val codes = mutableMapOf<String, StoredResetCode>()
-        private val tokens = mutableMapOf<String, Pair<ResetDigest, Instant>>()
-        private val ips = mutableMapOf<String, IpRequestWindow>()
+    class StoredCode(
+        val codeDigest: ResetDigest?,
+        val attempts: Int,
+        val createdAt: Instant,
+        val expiresAt: Instant,
+        val tokenDigest: ResetDigest? = null,
+        val tokenExpiresAt: Instant? = null,
+    )
 
-        override fun recordIpRequest(ip: String, now: Instant, windowFloor: Instant): IpRequestWindow {
-            val current = ips[ip]?.takeIf { it.startedAt.isAfter(windowFloor) } ?: IpRequestWindow(now, 0)
-            return IpRequestWindow(current.startedAt, current.count + 1).also { ips[ip] = it }
+    /** Espelha o adapter JDBC: código e token são mutuamente exclusivos na mesma linha. */
+    private class InMemoryPasswordResetRepository : PasswordResetRepository {
+        val codes = mutableMapOf<String, StoredCode>()
+        private val buckets = mutableMapOf<String, RateLimitWindow>()
+
+        override fun recordRateLimit(bucket: String, now: Instant, windowFloor: Instant): RateLimitWindow {
+            val current = buckets[bucket]?.takeIf { it.startedAt.isAfter(windowFloor) } ?: RateLimitWindow(now, 0)
+            return RateLimitWindow(current.startedAt, current.count + 1).also { buckets[bucket] = it }
         }
 
-        override fun replaceCode(code: StoredResetCode, resendFloor: Instant): ReplaceCodeOutcome {
+        override fun replaceCode(code: NewResetCode, resendFloor: Instant): ReplaceCodeOutcome {
             val current = codes[code.email]
             if (current != null && current.createdAt.isAfter(resendFloor)) {
                 return ReplaceCodeOutcome.TooSoon(current.createdAt)
             }
-            codes[code.email] = code
-            tokens.remove(code.email)
+            codes[code.email] = StoredCode(code.codeDigest, 0, code.createdAt, code.expiresAt)
             return ReplaceCodeOutcome.Replaced
         }
 
-        override fun findByEmail(email: String): StoredResetCode? = codes[email]
+        override fun consumeAttempt(email: String, now: Instant, ceiling: Int): AttemptOutcome? {
+            val stored = codes[email] ?: return null
+            val digest = stored.codeDigest
+            if (digest == null || !now.isBefore(stored.expiresAt)) return null
+            if (stored.attempts >= ceiling) return AttemptOutcome.Exhausted
 
-        override fun recordAttempt(email: String, attempts: Int) {
-            codes[email] = codes.getValue(email).copy(attempts = attempts)
+            val bumped = stored.attempts + 1
+            codes[email] = StoredCode(digest, bumped, stored.createdAt, stored.expiresAt)
+            return AttemptOutcome.Consumed(digest, bumped)
         }
 
-        override fun issueToken(email: String, tokenDigest: ResetDigest, expiresAt: Instant) {
-            tokens[email] = tokenDigest to expiresAt
+        override fun issueToken(email: String, tokenDigest: ResetDigest, expiresAt: Instant): Boolean {
+            val stored = codes[email] ?: return false
+            if (stored.codeDigest == null) return false
+            codes[email] = StoredCode(null, stored.attempts, stored.createdAt, stored.expiresAt, tokenDigest, expiresAt)
+            return true
+        }
+
+        override fun retireCode(email: String) {
+            if (codes[email]?.codeDigest != null) codes.remove(email)
         }
 
         override fun consumeToken(tokenDigest: ResetDigest, now: Instant): String? {
-            val email = tokens.entries
-                .firstOrNull { it.value.first.matches(tokenDigest) && it.value.second.isAfter(now) }
-                ?.key
-                ?: return null
-            tokens.remove(email)
-            codes.remove(email)
-            return email
-        }
-
-        override fun delete(email: String) {
-            codes.remove(email)
-            tokens.remove(email)
+            val entry = codes.entries.firstOrNull { (_, stored) ->
+                stored.tokenDigest?.matches(tokenDigest) == true && stored.tokenExpiresAt?.isAfter(now) == true
+            } ?: return null
+            codes.remove(entry.key)
+            return entry.key
         }
     }
 }

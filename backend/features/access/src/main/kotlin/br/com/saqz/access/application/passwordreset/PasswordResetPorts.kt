@@ -6,11 +6,13 @@ import java.security.SecureRandom
 import java.time.Duration
 import java.time.Instant
 import java.util.Base64
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 /**
- * Digest SHA-256 de código ou token. O número de quatro dígitos nunca é persistido,
- * e a comparação é em tempo constante — sair no primeiro byte diferente vazaria o
- * código pelo tempo de resposta.
+ * Digest de código ou token. O número de quatro dígitos nunca é persistido, e a
+ * comparação é em tempo constante — sair no primeiro byte diferente vazaria o código
+ * pelo tempo de resposta.
  */
 class ResetDigest private constructor(private val bytes: ByteArray) {
     fun toByteArray(): ByteArray = bytes.copyOf()
@@ -24,27 +26,49 @@ class ResetDigest private constructor(private val bytes: ByteArray) {
             require(bytes.size == 32) { "Reset digest must contain 32 bytes" }
             return ResetDigest(bytes.copyOf())
         }
-
-        /** O e-mail entra no digest para que a mesma tabela arco-íris não sirva a duas contas. */
-        fun ofCode(email: String, code: String): ResetDigest = sha256("$email:$code")
-
-        fun ofToken(token: String): ResetDigest = sha256(token)
-
-        private fun sha256(value: String): ResetDigest = from(
-            MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8)),
-        )
     }
 }
 
-data class StoredResetCode(
+/**
+ * HMAC-SHA256 com chave de servidor. Hash puro não serve aqui: quatro dígitos são dez
+ * mil possibilidades, e quem tivesse leitura do banco inverteria um SHA-256 em
+ * milissegundos. Com a chave fora do banco, o dump sozinho não vale nada.
+ *
+ * O e-mail continua dentro da mensagem para que a mesma tabela não sirva a duas contas.
+ */
+class ResetSecretHasher(secret: String) {
+    init {
+        require(secret.length >= MIN_SECRET_LENGTH) {
+            "Password reset secret must have at least $MIN_SECRET_LENGTH characters"
+        }
+    }
+
+    private val key = SecretKeySpec(secret.toByteArray(StandardCharsets.UTF_8), ALGORITHM)
+
+    fun ofCode(email: String, code: String): ResetDigest = mac("codigo:$email:$code")
+
+    fun ofToken(token: String): ResetDigest = mac("token:$token")
+
+    private fun mac(message: String): ResetDigest = ResetDigest.from(
+        Mac.getInstance(ALGORITHM)
+            .apply { init(key) }
+            .doFinal(message.toByteArray(StandardCharsets.UTF_8)),
+    )
+
+    private companion object {
+        const val ALGORITHM = "HmacSHA256"
+        const val MIN_SECRET_LENGTH = 32
+    }
+}
+
+data class NewResetCode(
     val email: String,
     val codeDigest: ResetDigest,
-    val attempts: Int,
     val createdAt: Instant,
     val expiresAt: Instant,
 )
 
-data class IpRequestWindow(val startedAt: Instant, val count: Int)
+data class RateLimitWindow(val startedAt: Instant, val count: Int)
 
 sealed interface ReplaceCodeOutcome {
     data object Replaced : ReplaceCodeOutcome
@@ -52,30 +76,55 @@ sealed interface ReplaceCodeOutcome {
     data class TooSoon(val previousCreatedAt: Instant) : ReplaceCodeOutcome
 }
 
+sealed interface AttemptOutcome {
+    /** A tentativa foi contada; [attempts] é o valor resultante, não o lido antes. */
+    data class Consumed(val codeDigest: ResetDigest, val attempts: Int) : AttemptOutcome
+
+    /** O código existe mas já gastou o teto de tentativas. */
+    data object Exhausted : AttemptOutcome
+}
+
 interface PasswordResetRepository {
-    /** Conta o pedido e devolve a janela vigente do IP, reiniciando-a se começou antes de [windowFloor]. */
-    fun recordIpRequest(ip: String, now: Instant, windowFloor: Instant): IpRequestWindow
+    /** Conta o acesso e devolve a janela vigente do balde, reiniciando-a se começou antes de [windowFloor]. */
+    fun recordRateLimit(bucket: String, now: Instant, windowFloor: Instant): RateLimitWindow
 
     /** Substitui o código do e-mail, mas só se o vigente foi criado até [resendFloor]. */
-    fun replaceCode(code: StoredResetCode, resendFloor: Instant): ReplaceCodeOutcome
+    fun replaceCode(code: NewResetCode, resendFloor: Instant): ReplaceCodeOutcome
 
-    fun findByEmail(email: String): StoredResetCode?
+    /**
+     * Incrementa a tentativa e devolve o estado resultante num **único statement**.
+     *
+     * Ler o contador, comparar o digest e só então gravar deixaria mil palpites
+     * simultâneos enxergarem zero e gravarem um — o teto simplesmente não existiria
+     * sob concorrência. Aqui cada chamada concorrente recebe o seu próprio valor.
+     *
+     * `null` quando não há código verificável: inexistente, expirado, ou já trocado
+     * por um token.
+     */
+    fun consumeAttempt(email: String, now: Instant, ceiling: Int): AttemptOutcome?
 
-    fun recordAttempt(email: String, attempts: Int)
+    /**
+     * Troca o código pelo token no mesmo UPDATE, condicionado a ainda haver código.
+     * `false` quando outra requisição chegou primeiro.
+     */
+    fun issueToken(email: String, tokenDigest: ResetDigest, expiresAt: Instant): Boolean
 
-    fun issueToken(email: String, tokenDigest: ResetDigest, expiresAt: Instant)
+    /** Apaga a linha do código estourado, sem tocar em linha que já carrega token. */
+    fun retireCode(email: String)
 
-    /** Apaga a linha e devolve o e-mail: o token vale uma vez só, e o código morre com ele. */
+    /** Apaga a linha e devolve o e-mail: o token vale uma vez só. */
     fun consumeToken(tokenDigest: ResetDigest, now: Instant): String?
-
-    fun delete(email: String)
 }
+
+/** Sinaliza que o provedor de identidade não respondeu — distinto de conta inexistente. */
+class PasswordAccountsUnavailable(cause: Throwable? = null) : RuntimeException(cause)
 
 /** Contas do provedor de identidade. Quem implementa fala com o Firebase Admin SDK. */
 interface PasswordAccounts {
+    /** @throws PasswordAccountsUnavailable quando o provedor falha por qualquer outro motivo. */
     fun exists(email: String): Boolean
 
-    /** `false` quando não há conta com este e-mail. */
+    /** `false` somente quando não há conta com este e-mail. */
     fun updatePassword(email: String, newPassword: String): Boolean
 }
 

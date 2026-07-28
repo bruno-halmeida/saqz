@@ -50,9 +50,9 @@ class WeakPasswordException : RuntimeException()
 class PasswordResetController(
     private val passwordReset: PasswordReset,
 ) {
-    // ponytail: o limite por IP usa o `remoteAddr`; se um proxy entrar na frente da API,
-    // é aqui que passa a valer o `X-Forwarded-For` — e só com a lista de proxies confiáveis,
-    // senão o cabeçalho vira o próprio jeito de furar o limite.
+    // ponytail: os dois limites por IP usam o `remoteAddr`; se um proxy entrar na frente da
+    // API, é aqui que passa a valer o `X-Forwarded-For` — e só com a lista de proxies
+    // confiáveis, senão o cabeçalho vira o próprio jeito de furar o limite.
     @PostMapping("/api/password-reset/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
     fun request(@RequestBody body: PasswordResetRequestBody, request: HttpServletRequest) {
@@ -64,11 +64,18 @@ class PasswordResetController(
     }
 
     @PostMapping("/api/password-reset/verify")
-    fun verify(@RequestBody body: PasswordResetVerifyBody): PasswordResetTokenResponse =
-        when (val result = passwordReset.verify(body.email.orEmpty(), body.code.orEmpty())) {
+    fun verify(
+        @RequestBody body: PasswordResetVerifyBody,
+        request: HttpServletRequest,
+    ): PasswordResetTokenResponse =
+        when (
+            val result =
+                passwordReset.verify(body.email.orEmpty(), body.code.orEmpty(), request.remoteAddr.orEmpty())
+        ) {
             is VerifyCodeResult.InvalidCode -> throw PasswordResetCodeInvalidException(result.remainingAttempts)
             VerifyCodeResult.Expired -> throw PasswordResetCodeExpiredException()
             VerifyCodeResult.AttemptLimit -> throw PasswordResetAttemptLimitException()
+            is VerifyCodeResult.RateLimited -> throw PasswordResetRateLimitException(result.retryAfterSeconds)
             is VerifyCodeResult.Success -> PasswordResetTokenResponse(result.token, result.validity.toSeconds())
         }
 
