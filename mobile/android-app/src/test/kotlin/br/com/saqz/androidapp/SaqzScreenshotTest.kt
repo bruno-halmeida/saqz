@@ -215,6 +215,17 @@ class SaqzScreenshotTest {
         ) {
             SaqzButton("Confirmar presença", onClick = {}, fullWidth = true)
         }
+        // O local sem endereço e o card sem local nenhum: os dois estados que o pin
+        // e a coluna do VUL-57 mudam e que a cena cheia não mostrava.
+        SaqzGameSummaryCard(
+            eyebrow = "PRÓXIMO JOGO",
+            title = "Ter, 28/07 · 19h30",
+            venue = "CERET — Quadra 2",
+            going = 12,
+            maybe = 3,
+            out = 2,
+        )
+        SaqzGameSummaryCard(eyebrow = "PRÓXIMO JOGO", title = "Sem jogo marcado")
         SaqzCard {
             SaqzSectionHeader(title = "Confirmados", action = "Ver todos", onAction = {})
             SaqzAvatarStack(listOf("Lucas Pereira", "Bruna Silva", "Tiago Moraes", "A", "B", "C"))
