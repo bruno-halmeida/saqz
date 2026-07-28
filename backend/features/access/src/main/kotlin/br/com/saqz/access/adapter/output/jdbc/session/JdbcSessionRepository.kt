@@ -23,11 +23,11 @@ class JdbcSessionRepository(
             INSERT INTO access_users (
                 id, firebase_subject, email, email_verified, display_name, created_at, updated_at
             ) VALUES (
-                :id, :subject, :email, true, :displayName, now(), now()
+                :id, :subject, :email, :emailVerified, :displayName, now(), now()
             )
             ON CONFLICT (firebase_subject) DO UPDATE SET
                 email = EXCLUDED.email,
-                email_verified = true,
+                email_verified = EXCLUDED.email_verified,
                 display_name = EXCLUDED.display_name,
                 updated_at = now()
             RETURNING id, phone
@@ -36,6 +36,7 @@ class JdbcSessionRepository(
             .param("id", UUID.randomUUID())
             .param("subject", command.subject)
             .param("email", command.email)
+            .param("emailVerified", command.emailVerified)
             .param("displayName", command.displayName.value)
             .query { result, _ -> result.getObject("id", UUID::class.java) to result.getString("phone") }
             .single()
