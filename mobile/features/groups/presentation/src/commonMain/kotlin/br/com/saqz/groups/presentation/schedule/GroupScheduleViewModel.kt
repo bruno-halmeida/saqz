@@ -34,7 +34,17 @@ internal class GroupScheduleViewModel(
 
             GroupScheduleIntent.ConfirmSlot -> confirmSlot()
             GroupScheduleIntent.DismissSlotSheet -> update { it.copy(slotSheet = null) }
-            is GroupScheduleIntent.SelectDuration -> update { it.copy(durationMinutes = intent.minutes) }
+            is GroupScheduleIntent.SelectDuration -> update {
+                // A duração é do grupo, mas o `GroupRegularSlotForm` a guarda por slot: sem
+                // espelhar aqui, os slots já criados ficariam com o valor velho e salvar
+                // persistiria estado inconsistente.
+                // ponytail: um valor para todos. Se o produto pedir duração por slot, a
+                // escolha sobe para o picker e este espelhamento sai.
+                it.copy(
+                    durationMinutes = intent.minutes,
+                    slots = it.slots.map { slot -> slot.copy(durationMinutes = intent.minutes) },
+                )
+            }
             is GroupScheduleIntent.SelectConfirmationLead -> update {
                 it.copy(confirmationLeadMinutes = intent.minutes)
             }

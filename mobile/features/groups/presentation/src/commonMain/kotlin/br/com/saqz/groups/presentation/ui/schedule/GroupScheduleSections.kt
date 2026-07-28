@@ -34,6 +34,7 @@ import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_schedule_pause
 import br.com.saqz.groups.resources.group_schedule_published
+import br.com.saqz.groups.resources.group_schedule_resume
 import br.com.saqz.groups.resources.group_schedule_scheduled
 import br.com.saqz.groups.resources.group_schedule_upcoming
 import br.com.saqz.groups.resources.group_setup_confirmation_lead_hint
@@ -185,9 +186,9 @@ internal fun GroupPauseScheduleCard(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // TODO(VUL-66): falta `group_schedule_resume` no strings.xml — comentado no ticket
-    //  da fundação, que é dono do arquivo. Literal até a string existir.
-    val label = if (isPaused) "Retomar a agenda" else stringResource(Res.string.group_schedule_pause)
+    val label = stringResource(
+        if (isPaused) Res.string.group_schedule_resume else Res.string.group_schedule_pause,
+    )
     SaqzCard(
         modifier = modifier
             .clip(RoundedCornerShape(SaqzTheme.metrics.cardRadius))

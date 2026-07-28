@@ -77,6 +77,24 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
+    fun durationReachesEverySlotAlreadyCreated() {
+        val second = GroupRegularSlotForm(
+            weekday = GroupWeekday.THURSDAY,
+            startTime = "20:00",
+            durationMinutes = 120,
+        )
+        val viewModel = GroupScheduleViewModel(
+            GroupScheduleState(isLoading = false, slots = listOf(slot, second)),
+        )
+
+        viewModel.onIntent(GroupScheduleIntent.SelectDuration(90))
+
+        // A duração é do grupo; o form a guarda por slot. Salvar com slots em 120 e o
+        // grupo em 90 persistiria estado inconsistente.
+        assertEquals(listOf(90, 90), viewModel.state.value.slots.map { it.durationMinutes })
+    }
+
+    @Test
     fun pauseAndResumeFlipTheSameFlag() {
         val viewModel = viewModel()
 
