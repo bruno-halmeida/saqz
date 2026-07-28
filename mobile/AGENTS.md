@@ -37,15 +37,17 @@ domínio, dados, rede e as integrações nativas. Depois do login o usuário cai
 :features:access            ← login + verificação de sessão: presentation/, ui/, navigation/
 :features:access:domain     ← AccessSession, ports nativos de acesso
 :features:access:data       ← KtorSessionGateway
-:features:groups            ← contratos e ports nativos de grupo (sem apresentação)
+:features:groups            ← contratos, formulários e ports nativos de grupo
 :features:groups:domain     ← agregados: grupo, atleta, jogo, presença, financeiro, foto
 :features:groups:data       ← Ktor*Gateway de cada agregado
+:features:groups:presentation ← rotas e apresentação compartilhada da jornada de grupos
 :compose-app                ← composition root: Koin, NavDisplay, shell vazio, ports nativos
 :android-app  /  ios-app    ← entrypoints de plataforma
 ```
 
-**Não existe `:navigation`.** O módulo raiz de `groups` **não tem apresentação** — guarda só
-contratos e ports; o domínio e os gateways estão intactos, esperando as jornadas novas.
+São **13 módulos Gradle**. **Não existe `:navigation`.** O módulo raiz de `groups` guarda contratos,
+formulários e ports; a apresentação da jornada vive em `:features:groups:presentation`. O domínio e
+os gateways permanecem intactos.
 
 ### Regras de dependência (hoje sem gate)
 
@@ -54,6 +56,7 @@ contratos e ports; o domínio e os gateways estão intactos, esperando as jornad
 | `<x>:domain` | **só** `:core:domain` |
 | `<x>:data` | `<x>:domain`, `:core:domain`, `:core:network` |
 | `<x>` (raiz) | `<x>:domain`, `:core:domain`, `:core:common`, Compose, Nav3 runtime |
+| `<x>:presentation` | `<x>:domain`, `<x>` (raiz), `:core:common`, `:core:design-system`, Compose, Nav3 runtime |
 | `:compose-app` | tudo — único módulo que enxerga `:features:*:data` |
 
 Nenhuma feature depende de outra. O gate que verificava isso (`scripts/check-mobile-boundaries`,
@@ -394,6 +397,7 @@ Duas armadilhas de comando, ambas já custaram tempo real:
 | Mapper | extensão privada | `GameTransport.toDomain()` |
 | ViewModel | `<Tela>ViewModel` | `LoginViewModel` |
 | MVI | `<Tela>Contract.kt` com State/Intent/Effect | `LoginContract.kt` |
+| UI model | sufixo `Ui` | `GroupMemberUi` |
 | Composables | `<Tela>Root` + `<Tela>Screen` | `LoginRoot`, `LoginScreen` |
 | Test tags | `object <Tela>Tags` | `LoginTags.Email` |
 | Port | `<Capacidade>Port` | `GroupDraftStorePort` |
