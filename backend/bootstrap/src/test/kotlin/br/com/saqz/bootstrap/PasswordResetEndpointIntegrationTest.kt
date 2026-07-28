@@ -25,6 +25,7 @@ import org.testcontainers.utility.DockerImageName
 import tools.jackson.databind.ObjectMapper
 import java.net.URI
 import java.net.http.HttpClient
+import java.sql.DriverManager
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Clock
@@ -361,7 +362,22 @@ class PasswordResetEndpointIntegrationTest {
     }
 
     companion object {
-        private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine")).apply { start() }
+        /**
+         * Esperar a porta aceitar JDBC não é zelo: o container sobe com a porta já
+         * mapeada antes de o Postgres aceitar TCP, e o Flyway do `accessFlyway` conecta
+         * na subida do contexto. Sem a espera, a suíte inteira reprova com "Connection
+         * refused" — mesma razão do `startAndAwaitJdbc` do módulo access.
+         */
+        private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine")).apply {
+            start()
+            val deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos()
+            var ready = false
+            while (!ready && System.nanoTime() < deadline) {
+                ready = runCatching { DriverManager.getConnection(jdbcUrl, username, password).use { } }.isSuccess
+                if (!ready) Thread.sleep(100)
+            }
+            check(ready) { "PostgreSQL port did not become JDBC-ready" }
+        }
         private val smtp = GreenMail(ServerSetup(0, "127.0.0.1", ServerSetup.PROTOCOL_SMTP)).apply { start() }
 
         @JvmStatic
