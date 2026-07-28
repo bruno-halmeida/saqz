@@ -32,11 +32,16 @@ enum class SaqzAttendance { Going, Maybe, Out }
 
 // "Talvez" é um dos três lugares em que o lime aparece (10a); os outros dois são o
 // indicador do nav e o ponto de aviso.
-internal fun SaqzColorTokens.attendanceAccent(intent: SaqzAttendance): Color = when (intent) {
-    SaqzAttendance.Going -> success
+internal fun SaqzColorTokens.attendanceFill(intent: SaqzAttendance): Color = when (intent) {
+    SaqzAttendance.Going -> primary
     SaqzAttendance.Maybe -> accent
     SaqzAttendance.Out -> errorForeground
 }
+
+// Sobre o lime o texto continua navy — branco não passa contraste nele. É a única
+// das três intenções em que a cor de conteúdo muda.
+internal fun SaqzColorTokens.attendanceOnFill(intent: SaqzAttendance): Color =
+    if (intent == SaqzAttendance.Maybe) textPrimary else onPrimary
 
 /**
  * 10g — os três estados de presença, um alvo por opção. A resposta é otimista:
@@ -62,7 +67,8 @@ fun SaqzAttendanceSelector(
         options.forEach { intent ->
             AttendanceOption(
                 label = labels.getValue(intent),
-                accent = SaqzTheme.colors.attendanceAccent(intent),
+                fill = SaqzTheme.colors.attendanceFill(intent),
+                onFill = SaqzTheme.colors.attendanceOnFill(intent),
                 selected = value == intent,
                 enabled = enabled,
                 onSelect = { onSelect(intent) },
@@ -75,7 +81,8 @@ fun SaqzAttendanceSelector(
 @Composable
 private fun AttendanceOption(
     label: String,
-    accent: Color,
+    fill: Color,
+    onFill: Color,
     selected: Boolean,
     enabled: Boolean,
     onSelect: () -> Unit,
@@ -87,15 +94,15 @@ private fun AttendanceOption(
         style = SaqzTheme.typography.label,
         color = when {
             !enabled -> colors.disabledForeground
-            selected -> colors.textPrimary
-            else -> colors.textSecondary
+            selected -> onFill
+            else -> colors.textPrimary
         },
         textAlign = TextAlign.Center,
         modifier = modifier
             .heightIn(min = SaqzTheme.metrics.minimumTouchTarget)
             .clip(CircleShape)
-            .background(if (selected) accent.copy(alpha = 0.18f) else colors.surface, CircleShape)
-            .border(1.dp, if (selected) accent else colors.border, CircleShape)
+            .background(if (selected) fill else colors.surface, CircleShape)
+            .border(1.dp, if (selected) fill else colors.border, CircleShape)
             .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect)
             .padding(vertical = 14.dp),
     )
