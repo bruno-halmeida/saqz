@@ -30,7 +30,7 @@ class BootstrapSessionTest {
 
         assertEquals(BootstrapSessionResult.Success(view), result)
         assertEquals(
-            listOf(SessionUpsert("subject-1", "person@example.test", AccessName.from("Person Name"))),
+            listOf(SessionUpsert("subject-1", "person@example.test", true, AccessName.from("Person Name"))),
             repository.commands,
         )
     }
@@ -44,13 +44,18 @@ class BootstrapSessionTest {
     }
 
     @Test
-    fun `false email verification is rejected before write`() {
-        assertBlocked(identity(emailVerified = false), BootstrapSessionResult.EmailNotVerified)
+    fun `false email verification still writes mirrors and returns the session`() {
+        assertBootstrapped(identity(emailVerified = false), persistedVerification = false)
     }
 
     @Test
-    fun `missing email verification is rejected before write`() {
-        assertBlocked(identity(emailVerified = null), BootstrapSessionResult.EmailNotVerified)
+    fun `missing email verification is written as unconfirmed`() {
+        assertBootstrapped(identity(emailVerified = null), persistedVerification = false)
+    }
+
+    @Test
+    fun `true email verification is written as confirmed`() {
+        assertBootstrapped(identity(emailVerified = true), persistedVerification = true)
     }
 
     @Test
@@ -135,6 +140,23 @@ class BootstrapSessionTest {
 
         assertSame(expected, BootstrapSession(repository).execute(identity))
         assertTrue(repository.commands.isEmpty())
+    }
+
+    private fun assertBootstrapped(identity: RequestIdentity, persistedVerification: Boolean) {
+        val repository = RecordingSessionRepository(view)
+
+        assertEquals(BootstrapSessionResult.Success(view), BootstrapSession(repository).execute(identity))
+        assertEquals(
+            listOf(
+                SessionUpsert(
+                    "subject-1",
+                    "person@example.test",
+                    persistedVerification,
+                    AccessName.from("Person Name"),
+                ),
+            ),
+            repository.commands,
+        )
     }
 
     private class RecordingSessionRepository(

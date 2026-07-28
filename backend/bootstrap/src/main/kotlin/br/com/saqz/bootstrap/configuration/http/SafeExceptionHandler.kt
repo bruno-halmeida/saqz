@@ -1,7 +1,6 @@
 package br.com.saqz.bootstrap.configuration.http
 
 import br.com.saqz.groups.adapter.input.http.AccessForbiddenException
-import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException as AccessEmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
@@ -14,7 +13,6 @@ import br.com.saqz.groups.adapter.input.http.AttendanceLinkInvalidOrExpiredExcep
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkUnavailableException
 import br.com.saqz.groups.adapter.input.http.VersionConflictException
 import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
-import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
 import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
@@ -36,11 +34,6 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 class SafeExceptionHandler(
     private val problemWriter: ApiProblemWriter,
 ) {
-    @ExceptionHandler(EmailNotVerifiedException::class, AccessEmailNotVerifiedException::class)
-    fun emailNotVerified(request: HttpServletRequest, response: HttpServletResponse) {
-        problemWriter.write(request, response, 403, ErrorCode.EMAIL_NOT_VERIFIED)
-    }
-
     @ExceptionHandler(InvalidDisplayNameException::class, AccessInvalidDisplayNameException::class)
     fun invalidDisplayName(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(

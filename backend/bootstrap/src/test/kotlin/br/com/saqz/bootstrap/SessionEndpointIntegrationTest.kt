@@ -67,6 +67,7 @@ class SessionEndpointIntegrationTest {
         assertEquals(200, response.statusCode())
         assertEquals("session@example.test", body["user"]["email"].stringValue())
         assertEquals("Session Person", body["user"]["displayName"].stringValue())
+        assertTrue(body["user"]["emailVerified"].booleanValue())
         assertTrue(body["memberships"].isEmpty)
     }
 
@@ -97,23 +98,38 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `false email verification returns 403 without write`() {
+    fun `false email verification returns the session flagged as unverified`() {
         verifier.principal = identity(emailVerified = false)
 
         val response = putSession()
+        val body = json(response)
 
-        assertProblem(response, 403, "EMAIL_NOT_VERIFIED")
-        assertTrue(repository.commands.isEmpty())
+        assertEquals(200, response.statusCode())
+        assertFalse(body["user"]["emailVerified"].booleanValue())
+        assertEquals("Session Person", body["user"]["displayName"].stringValue())
+        assertEquals(1, repository.commands.size)
     }
 
     @Test
-    fun `missing email verification returns 403 without write`() {
+    fun `missing email verification claim returns the session flagged as unverified`() {
         verifier.principal = identity(emailVerified = null)
 
         val response = putSession()
 
-        assertProblem(response, 403, "EMAIL_NOT_VERIFIED")
-        assertTrue(repository.commands.isEmpty())
+        assertEquals(200, response.statusCode())
+        assertFalse(json(response)["user"]["emailVerified"].booleanValue())
+        assertEquals(1, repository.commands.size)
+    }
+
+    @Test
+    fun `unverified account still completes its profile and keeps the unverified flag`() {
+        verifier.principal = identity(emailVerified = false)
+        putSession()
+
+        val body = json(patchProfile("""{"phone":"+5511911112222"}"""))
+
+        assertEquals("+5511911112222", body["user"]["phone"].stringValue())
+        assertFalse(body["user"]["emailVerified"].booleanValue())
     }
 
     @Test
@@ -197,11 +213,12 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `unverified problem correlation header equals body correlation ID`() {
-        verifier.principal = identity(emailVerified = false)
+    fun `rejected problem correlation header equals body correlation ID`() {
+        verifier.principal = identity(displayName = null)
 
         val response = putSession()
 
+        assertProblem(response, 400, "VALIDATION_FAILED")
         assertEquals(correlationId(response), correlationHeader(response))
     }
 

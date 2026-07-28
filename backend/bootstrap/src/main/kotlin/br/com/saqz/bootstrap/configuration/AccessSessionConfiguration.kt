@@ -21,6 +21,7 @@ import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementReposit
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
 import br.com.saqz.groups.adapter.output.link.BranchInviteLinkFactory
@@ -79,7 +80,6 @@ import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.groups.domain.GroupAccessPolicy
-import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -89,6 +89,7 @@ import org.springframework.context.annotation.Configuration
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
 import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.springframework.mail.javamail.JavaMailSender
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
@@ -119,7 +120,6 @@ class AccessSessionConfiguration {
     @Bean
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
         when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.EmailNotVerified -> throw EmailNotVerifiedException()
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             is BootstrapSessionResult.Success -> result.session.user.id
         }
@@ -131,6 +131,10 @@ class AccessSessionConfiguration {
     @Bean
     fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
         AccessSessionController(useCase, profile)
+
+    @Bean
+    fun verificationCodeMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =
+        VerificationCodeMailer(sender, from)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)

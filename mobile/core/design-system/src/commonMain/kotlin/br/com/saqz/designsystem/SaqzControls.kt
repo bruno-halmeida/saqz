@@ -22,6 +22,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
+import androidx.compose.material.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -314,6 +316,8 @@ fun SaqzSegmented(
  * **preenchimento azul com rótulo branco** e sem borda; o não selecionado é branco com
  * borda e rótulo navy. Tinta translúcida de 8% é o chip de *status*
  * (`.saqz-chip--brand`), outro componente.
+ * [compact] preserva um alvo de toque acessível, reduzindo tipografia e respiro
+ * horizontal para fileiras densas como os sete dias da semana.
  */
 @Composable
 fun SaqzChoiceChip(
@@ -321,22 +325,70 @@ fun SaqzChoiceChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
-    Text(
-        text = label,
-        style = SaqzTheme.typography.support.copy(
-            fontWeight = if (selected) FontWeight(700) else FontWeight(600),
-        ),
-        color = if (selected) colors.onPrimary else colors.textPrimary,
-        modifier = modifier
-            .clip(CircleShape)
-            .background(if (selected) colors.primary else colors.surface, CircleShape)
-            .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
-    )
+    val metrics = SaqzTheme.metrics
+    if (compact) {
+        Box(
+            modifier = modifier
+                .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .minimumInteractiveComponentSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            // ponytail: o chip compacto e o IconButton medem 44 no export. Reusamos
+            // `iconButtonSize` só por essa coincidência; se divergirem, nasce uma
+            // métrica própria do chip sem alterar a área interativa externa de 48dp.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(metrics.iconButtonSize)
+                    .clip(CircleShape)
+                    .background(if (selected) colors.primary else colors.surface, CircleShape)
+                    .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                ChoiceChipLabel(label = label, selected = selected, compact = true)
+            }
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .clip(CircleShape)
+                .background(if (selected) colors.primary else colors.surface, CircleShape)
+                .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
+                .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .padding(horizontal = 14.dp, vertical = 9.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            ChoiceChipLabel(label = label, selected = selected, compact = false)
+        }
+    }
 }
+
+object SaqzChoiceChipDefaults {
+    // Fluxo 2, célula 2c: `display:flex;gap:7px` na fileira dos sete dias.
+    val CompactSpacing = 7.dp
+}
+
+@Composable
+private fun ChoiceChipLabel(
+    label: String,
+    selected: Boolean,
+    compact: Boolean,
+) = Text(
+    text = label,
+    style = SaqzTheme.typography.support.copy(
+        fontSize = if (compact) 13.sp else SaqzTheme.typography.support.fontSize,
+        fontWeight = if (selected || compact) FontWeight(700) else FontWeight(600),
+    ),
+    color = if (selected) SaqzTheme.colors.onPrimary else SaqzTheme.colors.textPrimary,
+    maxLines = 1,
+    overflow = TextOverflow.Clip,
+    softWrap = false,
+    textAlign = TextAlign.Center,
+)
 
 @Preview
 @Composable
@@ -368,6 +420,20 @@ private fun SaqzSegmentedPreview() = SaqzTheme {
             SaqzChoiceChip("Todos · 26", selected = true, onClick = {})
             SaqzChoiceChip("Admins · 2", selected = false, onClick = {})
             SaqzChoiceChip("Pendentes · 2", selected = false, onClick = {})
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
+        ) {
+            listOf("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb").forEachIndexed { index, day ->
+                SaqzChoiceChip(
+                    label = day,
+                    selected = index == 2,
+                    onClick = {},
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
