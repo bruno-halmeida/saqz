@@ -61,8 +61,10 @@ fun SaqzTopAppBar(
         horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
         if (onBack != null) {
+            // `.saqz-topbar__back` sobrescreve o navy do `.saqz-topbar` e do `.saqz-iconbtn`
+            // com `color:var(--saqz-blue)`: o azul é o que separa o voltar do título.
             SaqzIconButton(onClick = onBack, contentDescription = stringResource(Res.string.action_back)) {
-                SaqzIcon(SaqzIcons.ChevronLeft)
+                SaqzIcon(SaqzIcons.ChevronLeft, tint = colors.primary)
             }
         }
         Box(modifier = Modifier.weight(1f).padding(horizontal = metrics.subGrid)) {
@@ -144,12 +146,6 @@ private fun NavTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
-        Box(
-            Modifier
-                .width(20.dp)
-                .height(3.dp)
-                .background(if (selected) colors.accent else Color.Transparent, CircleShape),
-        )
         SaqzIcon(
             icon = item.icon,
             tint = if (selected) colors.primary else colors.textSecondary,
@@ -160,6 +156,14 @@ private fun NavTab(
             style = SaqzTheme.typography.navigation,
             color = if (selected) colors.primary else colors.textSecondary,
             maxLines = 1,
+        )
+        // Último filho no `.saqz-bottomnav__item`: o lime sublinha o rótulo, não encima o
+        // ícone. Reserva os 3dp mesmo inativo para a aba não pular ao ser selecionada.
+        Box(
+            Modifier
+                .width(18.dp)
+                .height(3.dp)
+                .background(if (selected) colors.accent else Color.Transparent, CircleShape),
         )
     }
 }
@@ -194,10 +198,10 @@ private fun SaqzBottomNavPreview() = SaqzTheme {
     Box(Modifier.fillMaxWidth().background(SaqzTheme.colors.background).padding(top = 24.dp)) {
         SaqzBottomNav(
             items = listOf(
-                SaqzNavItem("home", "Início", SaqzIcons.Check),
-                SaqzNavItem("games", "Jogos", SaqzIcons.Plus),
-                SaqzNavItem("people", "Galera", SaqzIcons.Search),
-                SaqzNavItem("me", "Perfil", SaqzIcons.Bell),
+                SaqzNavItem("home", "Início", SaqzIcons.Home),
+                SaqzNavItem("games", "Jogos", SaqzIcons.Calendar),
+                SaqzNavItem("people", "Galera", SaqzIcons.Users),
+                SaqzNavItem("me", "Perfil", SaqzIcons.User),
             ),
             activeId = "games",
             onSelect = {},
