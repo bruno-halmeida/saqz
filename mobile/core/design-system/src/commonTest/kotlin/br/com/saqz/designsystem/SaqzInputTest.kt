@@ -1,5 +1,8 @@
 package br.com.saqz.designsystem
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -55,6 +58,36 @@ class SaqzInputTest {
         waitForIdle()
         assertTrue(callbackFired, "onValueChange is wired")
         onNode(hasSetTextAction(), useUnmergedTree = true).assertTextEquals("fixo")
+    }
+
+    // O VUL-99: com a sobrecarga de TextFieldValue, o chamador constrói
+    // `TextFieldValue(state.campo)` dentro da composição, e cada recomposição chega com
+    // `selection = TextRange(0,0)` — o cursor volta ao início e a segunda tecla entra
+    // antes da primeira ("vai" vira "iva"). A sobrecarga de String deixa a seleção com o
+    // BasicTextField, que a mantém através da recomposição.
+    @Test
+    fun selectionSurvivesRecomposition() = runComposeUiTest {
+        // Estado hasteado como o de uma ViewModel: cada tecla recompõe o campo.
+        var text by mutableStateOf("")
+        setContent {
+            SaqzTheme {
+                SaqzInput(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = "Nome",
+                    modifier = Modifier.testTag("input"),
+                )
+            }
+        }
+        val field = onNode(hasSetTextAction(), useUnmergedTree = true)
+        field.performTextInput("va")
+        waitForIdle()
+        field.performTextInput("i")
+        waitForIdle()
+        assertEquals("vai", text, "a tecla nova entra no fim, não no começo")
+        val selection = field.fetchSemanticsNode().config
+            .getOrElseNullable(SemanticsProperties.TextSelectionRange) { null }
+        assertEquals(TextRange(3), selection, "o cursor fica no fim depois da recomposição")
     }
 
     @Test

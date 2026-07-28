@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -92,6 +93,75 @@ internal fun SaqzColorTokens.inputAccent(enabled: Boolean, wrong: Boolean, focus
         else -> null
     }
 
+/**
+ * Campo de texto do design system. **Esta é a sobrecarga padrão.**
+ *
+ * O `BasicTextField` de `String` administra a seleção internamente, então o cursor
+ * sobrevive à recomposição mesmo com o texto vindo da ViewModel a cada frame — que é
+ * o defeito que a sobrecarga de [TextFieldValue] produz quando o chamador constrói o
+ * valor dentro da composição (VUL-99).
+ *
+ * Use a sobrecarga de [TextFieldValue] **só** quando a tela move o cursor de propósito
+ * (máscara que reposiciona, seleção programática, colar com seleção).
+ */
+@Composable
+fun SaqzInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    kind: SaqzInputKind = SaqzInputKind.Text,
+    helperText: String? = null,
+    errorText: String? = null,
+    invalid: Boolean = false,
+    enabled: Boolean = true,
+    inlineLabel: Boolean = false,
+    borderColor: Color? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
+    placeholder: String? = null,
+    keyboardType: KeyboardType = keyboardTypeFor(kind),
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    showLabel: Boolean = true,
+) = SaqzInputFrame(
+    isEmpty = value.isEmpty(),
+    label = label,
+    modifier = modifier,
+    kind = kind,
+    helperText = helperText,
+    errorText = errorText,
+    invalid = invalid,
+    enabled = enabled,
+    inlineLabel = inlineLabel,
+    borderColor = borderColor,
+    leadingContent = leadingContent,
+    trailingContent = trailingContent,
+    placeholder = placeholder,
+    showLabel = showLabel,
+) { fieldModifier, textStyle, transformation ->
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        singleLine = singleLine,
+        minLines = minLines,
+        visualTransformation = transformation,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        textStyle = textStyle,
+        modifier = fieldModifier,
+    )
+}
+
+/**
+ * Sobrecarga para quem controla a seleção. Só use quando a tela **move o cursor de
+ * propósito**; nesse caso o [TextFieldValue] tem de viver na ViewModel ou num
+ * `rememberSaveable` do chamador.
+ *
+ * Construir `TextFieldValue(state.campo)` dentro da composição zera a seleção a cada
+ * recomposição — o cursor volta ao início a cada tecla. Para o caso comum, use a
+ * sobrecarga de [String].
+ */
 @Composable
 fun SaqzInput(
     value: TextFieldValue,
@@ -112,12 +182,61 @@ fun SaqzInput(
     singleLine: Boolean = true,
     minLines: Int = 1,
     showLabel: Boolean = true,
+) = SaqzInputFrame(
+    isEmpty = value.text.isEmpty(),
+    label = label,
+    modifier = modifier,
+    kind = kind,
+    helperText = helperText,
+    errorText = errorText,
+    invalid = invalid,
+    enabled = enabled,
+    inlineLabel = inlineLabel,
+    borderColor = borderColor,
+    leadingContent = leadingContent,
+    trailingContent = trailingContent,
+    placeholder = placeholder,
+    showLabel = showLabel,
+) { fieldModifier, textStyle, transformation ->
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        singleLine = singleLine,
+        minLines = minLines,
+        visualTransformation = transformation,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        textStyle = textStyle,
+        modifier = fieldModifier,
+    )
+}
+
+// Rótulo, moldura, foco, olho da senha e slot de mensagem — tudo que não é o campo em si.
+// As duas sobrecargas compartilham este corpo e diferem só no `BasicTextField` que entregam
+// no slot, porque é o tipo do valor que decide quem administra a seleção.
+@Composable
+private fun SaqzInputFrame(
+    isEmpty: Boolean,
+    label: String,
+    kind: SaqzInputKind,
+    helperText: String?,
+    errorText: String?,
+    invalid: Boolean,
+    enabled: Boolean,
+    inlineLabel: Boolean,
+    borderColor: Color?,
+    leadingContent: (@Composable () -> Unit)?,
+    trailingContent: (@Composable () -> Unit)?,
+    placeholder: String?,
+    showLabel: Boolean,
+    modifier: Modifier = Modifier,
+    field: @Composable (Modifier, TextStyle, VisualTransformation) -> Unit,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val shape = RoundedCornerShape(metrics.inputRadius)
     // `revealed` governs only the visual transformation; the field value is never
-    // copied here, it stays owned by the caller-provided TextFieldValue.
+    // copied here, it stays owned by the caller.
     var revealed by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
     val message = errorText ?: helperText
@@ -168,29 +287,23 @@ fun SaqzInput(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                if (value.text.isEmpty() && (placeholder != null || inlineLabel)) {
+                if (isEmpty && (placeholder != null || inlineLabel)) {
                     Text(
                         text = placeholder ?: label,
                         style = SaqzTheme.typography.body,
                         color = if (enabled) colors.textPlaceholder else colors.disabledForeground,
                     )
                 }
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    enabled = enabled,
-                    singleLine = singleLine,
-                    minLines = minLines,
-                    visualTransformation = visualTransformationFor(kind, revealed),
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                    textStyle = SaqzTheme.typography.body.copy(color = content),
-                    modifier = Modifier
+                field(
+                    Modifier
                         .fillMaxWidth()
                         .onFocusChanged { focused = it.isFocused }
                         .semantics {
                             contentDescription = label
                             if (errorText != null) error(errorText)
                         },
+                    SaqzTheme.typography.body.copy(color = content),
+                    visualTransformationFor(kind, revealed),
                 )
             }
             if (kind == SaqzInputKind.Password) {
@@ -247,12 +360,12 @@ private fun PasswordToggle(revealed: Boolean, onToggle: () -> Unit) {
 @Composable
 private fun SaqzInputPreview() = SaqzTheme {
     SaqzPreviewGrid {
-        SaqzInput(TextFieldValue("nome@exemplo.com"), {}, label = "E-mail", kind = SaqzInputKind.Email)
-        SaqzInput(TextFieldValue(""), {}, label = "Local", placeholder = "CERET — Quadra 2")
-        SaqzInput(TextFieldValue("123"), {}, label = "Senha", kind = SaqzInputKind.Password)
-        SaqzInput(TextFieldValue("ana"), {}, label = "E-mail", errorText = "Informe um e-mail válido")
-        SaqzInput(TextFieldValue("Fixo"), {}, label = "Grupo", enabled = false, helperText = "Não editável")
-        SaqzInput(TextFieldValue(""), {}, label = "Quadra", enabled = false, placeholder = "A definir")
-        SaqzInput(TextFieldValue("ana"), {}, label = "E-mail", enabled = false, errorText = "Não confirmado")
+        SaqzInput("nome@exemplo.com", {}, label = "E-mail", kind = SaqzInputKind.Email)
+        SaqzInput("", {}, label = "Local", placeholder = "CERET — Quadra 2")
+        SaqzInput("123", {}, label = "Senha", kind = SaqzInputKind.Password)
+        SaqzInput("ana", {}, label = "E-mail", errorText = "Informe um e-mail válido")
+        SaqzInput("Fixo", {}, label = "Grupo", enabled = false, helperText = "Não editável")
+        SaqzInput("", {}, label = "Quadra", enabled = false, placeholder = "A definir")
+        SaqzInput("ana", {}, label = "E-mail", enabled = false, errorText = "Não confirmado")
     }
 }

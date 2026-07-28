@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.composeapp.resources.Res
@@ -324,10 +323,10 @@ private fun ColumnScope.ActionSpecimens() {
 
 @Composable
 private fun ColumnScope.FormSpecimens() {
-    var email by remember { mutableStateOf(TextFieldValue("ana@saqz.app")) }
-    var venue by remember { mutableStateOf(TextFieldValue("")) }
-    var password by remember { mutableStateOf(TextFieldValue("segredo")) }
-    var invalid by remember { mutableStateOf(TextFieldValue("ana")) }
+    var email by remember { mutableStateOf("ana@saqz.app") }
+    var venue by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("segredo") }
+    var invalid by remember { mutableStateOf("ana") }
     var attendance by remember { mutableStateOf<SaqzAttendance?>(SaqzAttendance.Going) }
     var pending by remember { mutableStateOf<SaqzAttendance?>(null) }
     var weekly by remember { mutableStateOf(true) }
