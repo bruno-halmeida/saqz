@@ -213,6 +213,49 @@ class GroupMembersViewModelTest {
         assertEquals(GroupMembersEffect.OpenMemberEditor("thiago"), viewModel.effects.first())
     }
 
+    /**
+     * O caso do 2k: "Todos · 26" e "Mostrando 5 de 24 membros". Os totais são do grupo,
+     * as linhas são o que veio carregado — projetar não pode encolher um no outro.
+     */
+    @Test
+    fun `supplied totals survive the projection of a partial page`() {
+        val viewModel = GroupMembersViewModel(
+            groupId = "group-1",
+            initialState = GroupMembersState(
+                isLoading = false,
+                totalCount = 26,
+                adminCount = 2,
+                pendingCount = 2,
+                admins = listOf(member("bia", admin = true), member("bia2", admin = true)),
+                members = listOf(member("thiago"), member("camila"), member("pedro"), member("marina")),
+            ),
+        )
+
+        val state = viewModel.state.value
+        assertEquals(26, state.totalCount)
+        assertEquals(2, state.adminCount)
+        assertEquals(2, state.pendingCount)
+        assertEquals(24, state.memberCount)
+        // O que veio carregado, e só isso, é o que a projeção mede.
+        assertEquals(4, state.shownCount)
+        assertEquals(4, state.members.size)
+    }
+
+    @Test
+    fun `deciding a request still awaiting review changes nothing`() {
+        val viewModel = viewModel()
+        val before = viewModel.state.value
+
+        // "rafael" mostra só o chip "Pendente" no 2k — não tem botão para decidir.
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("rafael"))
+        viewModel.onIntent(GroupMembersIntent.DeclineRequest("rafael"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(listOf("julia", "rafael"), viewModel.state.value.joinRequests.map { it.id })
+        assertEquals(2, viewModel.state.value.pendingCount)
+        assertEquals(4, viewModel.state.value.totalCount)
+    }
+
     @Test
     fun `accepting a request turns the person into a common member`() {
         val viewModel = viewModel()
@@ -230,12 +273,13 @@ class GroupMembersViewModelTest {
     fun `declining a request drops it without adding a member`() {
         val viewModel = viewModel()
 
-        viewModel.onIntent(GroupMembersIntent.DeclineRequest("rafael"))
+        viewModel.onIntent(GroupMembersIntent.DeclineRequest("julia"))
 
         val state = viewModel.state.value
-        assertEquals(listOf("julia"), state.joinRequests.map { it.id })
+        assertEquals(listOf("rafael"), state.joinRequests.map { it.id })
         assertEquals(2, state.members.size)
         assertEquals(4, state.totalCount)
+        assertEquals(1, state.pendingCount)
     }
 
     @Test
@@ -272,6 +316,10 @@ class GroupMembersViewModelTest {
         groupId = "group-1",
         initialState = GroupMembersState(
             isLoading = false,
+            // Totais do grupo, fornecidos por quem constrói — não derivados das linhas.
+            totalCount = 4,
+            adminCount = 2,
+            pendingCount = 2,
             joinRequests = listOf(
                 JoinRequestUi("julia", "Julia Martins", "Entrou pelo código · há 2h", awaitingReview = false),
                 JoinRequestUi("rafael", "Rafael Costa", "Entrou pelo link · ontem", awaitingReview = true),

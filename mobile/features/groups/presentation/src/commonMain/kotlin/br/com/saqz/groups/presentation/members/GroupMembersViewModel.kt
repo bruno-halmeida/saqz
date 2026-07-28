@@ -68,7 +68,7 @@ class GroupMembersViewModel(
             GroupMemberAction.EditMember -> emit(GroupMembersEffect.OpenMemberEditor(selected.id))
             GroupMemberAction.Promote -> setAdmin(selected.id, admin = true)
             GroupMemberAction.Demote -> setAdmin(selected.id, admin = false)
-            GroupMemberAction.Remove -> roster = roster.filterNot { it.id == selected.id }
+            GroupMemberAction.Remove -> remove(selected)
         }
         update { it.copy(selected = null) }
         project()
@@ -77,10 +77,21 @@ class GroupMembersViewModel(
     /** Otimista: a linha troca de seção antes de qualquer confirmação. */
     private fun setAdmin(memberId: String, admin: Boolean) {
         roster = roster.map { if (it.id == memberId) it.copy(isAdmin = admin) else it }
+        update { it.copy(adminCount = it.adminCount + if (admin) 1 else -1) }
+    }
+
+    private fun remove(member: MemberUi) {
+        roster = roster.filterNot { it.id == member.id }
+        update {
+            it.copy(
+                totalCount = it.totalCount - 1,
+                adminCount = if (member.isAdmin) it.adminCount - 1 else it.adminCount,
+            )
+        }
     }
 
     private fun accept(requestId: String) {
-        val request = requests.firstOrNull { it.id == requestId } ?: return
+        val request = decidable(requestId) ?: return
         requests = requests - request
         // ponytail: o aceito entra com o que o pedido já mostrava. O gateway devolverá
         // posição e mensalidade reais e substituirá esta linha; até lá, `stats` vazio é
@@ -93,22 +104,38 @@ class GroupMembersViewModel(
             isSelf = false,
             stats = "",
         )
+        update { it.copy(totalCount = it.totalCount + 1, pendingCount = it.pendingCount - 1) }
         project()
     }
 
     private fun decline(requestId: String) {
-        val request = requests.firstOrNull { it.id == requestId } ?: return
+        val request = decidable(requestId) ?: return
         requests = requests - request
+        update { it.copy(pendingCount = it.pendingCount - 1) }
         project()
     }
 
     /**
-     * Recorta a lista completa em três seções conforme busca e filtro. As contagens das
-     * pílulas ficam sempre inteiras: elas dizem quanta gente existe, não quanta sobrou
-     * do recorte.
+     * Pedido que ainda espera triagem não tem botão nenhum no 2k — mostra só o chip
+     * "Pendente". Decidi-lo é intent inválido e retorna cedo (AGENTS.md §4), como a ação
+     * fora do papel no sheet.
+     */
+    private fun decidable(requestId: String): JoinRequestUi? =
+        requests.firstOrNull { it.id == requestId }?.takeIf { !it.awaitingReview }
+
+    /**
+     * Recorta em três seções, conforme busca e filtro, as linhas que a tela tem em mãos.
+     *
+     * **As contagens não saem daqui.** No 2k as pílulas dizem "Todos · 26" e o rodapé diz
+     * "Mostrando 5 de 24 membros": 26 e 24 são o grupo inteiro, 5 é o que veio carregado.
+     * Recalcular os totais a partir das linhas visíveis faria um grupo de 26 com 6 linhas
+     * carregadas anunciar "Todos · 6" e "Mostrando 4 de 4" — o rodapé perderia justamente
+     * a informação que ele existe para dar. Os totais vêm de quem constrói o estado e só
+     * se movem pelo delta de uma decisão (promover, remover, aceitar, recusar).
      *
      * ponytail: busca e filtro em memória, sobre a lista que a tela já tem. Passar de
-     * algumas centenas de membros, filtrar no servidor.
+     * algumas centenas de membros, filtrar no servidor — e aí os totais continuam sendo
+     * os do servidor, que é exatamente o que esta separação já assume.
      */
     private fun project() = update { state ->
         val query = state.query.trim()
@@ -118,9 +145,6 @@ class GroupMembersViewModel(
         val members = people.filterNot { it.isAdmin }
         val showsPeople = state.filter != GroupMembersFilter.Pending
         state.copy(
-            totalCount = roster.size,
-            adminCount = roster.count { it.isAdmin },
-            pendingCount = requests.size,
             joinRequests = if (state.filter == GroupMembersFilter.Admins) emptyList() else pending,
             admins = if (showsPeople) admins else emptyList(),
             members = if (state.filter == GroupMembersFilter.All) members else emptyList(),
