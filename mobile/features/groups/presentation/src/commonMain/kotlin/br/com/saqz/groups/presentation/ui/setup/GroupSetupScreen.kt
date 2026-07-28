@@ -48,6 +48,7 @@ import br.com.saqz.groups.resources.group_setup_error_custom_level
 import br.com.saqz.groups.resources.group_setup_error_modality
 import br.com.saqz.groups.resources.group_setup_error_name
 import br.com.saqz.groups.resources.group_setup_error_venue_address
+import br.com.saqz.groups.resources.group_setup_error_venue_name
 import br.com.saqz.groups.resources.group_setup_save_action
 import br.com.saqz.groups.resources.group_system_creating
 import br.com.saqz.groups.resources.group_system_offline
@@ -218,6 +219,10 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
     GroupVenueSection(
         name = form.defaultVenue?.name.orEmpty(),
         address = form.defaultVenue?.address.orEmpty(),
+        nameError = state.errorText(
+            GroupSetupError.VenueNameRequired,
+            Res.string.group_setup_error_venue_name,
+        ),
         addressError = state.errorText(
             GroupSetupError.VenueAddressNotFound,
             Res.string.group_setup_error_venue_address,

@@ -17,6 +17,7 @@ enum class GroupSetupError {
     CustomLevelRequired,
     CapacityTooLow,
     SlotsRequired,
+    VenueNameRequired,
     VenueAddressNotFound,
 }
 
@@ -40,11 +41,15 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
             if (it < GroupSetupDefaults.MinCapacity) add(GroupSetupError.CapacityTooLow)
         }
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
+        // A quadra inteira é opcional, mas pela metade não existe: o
+        // `GroupProfileDefaultsValidator.validateVenue` do backend exige nome **e**
+        // endereço sempre que `defaultVenue` vem preenchido. A ViewModel devolve a
+        // quadra a `null` quando os dois campos ficam vazios, então aqui só sobra o
+        // preenchimento parcial.
+        if (venue != null && venue.name.isEmpty()) add(GroupSetupError.VenueNameRequired)
         // ponytail: sem geocodificação, "não encontramos esse endereço" é a ausência do
-        // endereço de uma quadra que já tem nome. A checagem real nasce junto do
-        // gateway de local, que é quem sabe resolver a rua.
-        if (venue != null && venue.name.isNotEmpty() && venue.address.isEmpty()) {
-            add(GroupSetupError.VenueAddressNotFound)
-        }
+        // endereço de uma quadra que já começou a ser preenchida. A checagem real nasce
+        // junto do gateway de local, que é quem sabe resolver a rua.
+        if (venue != null && venue.address.isEmpty()) add(GroupSetupError.VenueAddressNotFound)
     }
 }

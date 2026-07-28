@@ -230,6 +230,33 @@ class GroupSetupViewModelTest {
         assertEquals(GroupModality.COURT_VOLLEYBALL, viewModel.state.value.form.modality)
     }
 
+    /** Quadra vazia não é quadra: o backend recusa `defaultVenue` com campos em branco. */
+    @Test
+    fun `apagar os dois campos da quadra devolve a quadra a nulo`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(form = completeForm.copy(defaultVenue = null))
+
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueName("CERET"))
+        runCurrent()
+        assertEquals("CERET", viewModel.state.value.form.defaultVenue?.name)
+
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueName(""))
+        runCurrent()
+
+        assertNull(viewModel.state.value.form.defaultVenue)
+    }
+
+    @Test
+    fun `quadra pela metade continua existindo para ser acusada`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(form = completeForm.copy(defaultVenue = null))
+
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueAddress("R. Canuto Abreu, s/n"))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals("R. Canuto Abreu, s/n", viewModel.state.value.form.defaultVenue?.address)
+        assertEquals(setOf(GroupSetupError.VenueNameRequired), viewModel.state.value.errors)
+    }
+
     @Test
     fun `salvar rascunho emite o efeito e limpa a falha`() = runTest(mainDispatcher) {
         val viewModel = viewModel(saveFailed = true)

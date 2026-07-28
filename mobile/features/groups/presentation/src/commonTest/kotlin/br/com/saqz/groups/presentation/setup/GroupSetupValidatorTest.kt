@@ -93,7 +93,16 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `sem quadra nenhuma nao ha erro de endereco`() {
+    fun `quadra com endereco e sem nome acusa nome`() {
+        val errors = validate(
+            state { copy(defaultVenue = GroupVenueForm(name = " ", address = "R. Canuto Abreu, s/n")) },
+        )
+
+        assertEquals(setOf(GroupSetupError.VenueNameRequired), errors)
+    }
+
+    @Test
+    fun `sem quadra nenhuma nao ha erro de quadra`() {
         val errors = validate(state { copy(defaultVenue = null) })
 
         assertTrue(errors.isEmpty())
@@ -106,7 +115,9 @@ class GroupSetupValidatorTest {
                 mode = GroupSetupMode.Create,
                 form = GroupSetupForm(
                     level = GroupLevel.CUSTOM,
-                    defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = ""),
+                    // Quadra em branco só chega aqui vinda de fora: a ViewModel devolve
+                    // a `null` o que o usuário esvazia. O validador tem de ser total.
+                    defaultVenue = GroupVenueForm(name = "", address = ""),
                     defaultCapacity = 1,
                 ),
                 recurring = true,

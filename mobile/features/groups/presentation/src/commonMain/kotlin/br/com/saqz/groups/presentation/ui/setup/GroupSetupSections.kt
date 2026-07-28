@@ -417,6 +417,7 @@ internal fun GroupConfirmationLeadSection(
 internal fun GroupVenueSection(
     name: String,
     address: String,
+    nameError: String?,
     addressError: String?,
     onNameChange: (String) -> Unit,
     onAddressChange: (String) -> Unit,
@@ -431,6 +432,7 @@ internal fun GroupVenueSection(
             label = nameLabel,
             showLabel = false,
             placeholder = stringResource(Res.string.group_setup_venue_name_hint),
+            errorText = nameError,
             modifier = Modifier.testTag(GroupSetupTags.VenueName),
         )
         Text(

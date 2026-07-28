@@ -133,6 +133,7 @@ class GroupSetupStatesScreenshotTest {
             GroupVenueSection(
                 name = venue?.name.orEmpty(),
                 address = if (withAddressError) "" else venue?.address.orEmpty(),
+                nameError = null,
                 addressError = if (withAddressError) {
                     stringResource(Res.string.group_setup_error_venue_address)
                 } else {

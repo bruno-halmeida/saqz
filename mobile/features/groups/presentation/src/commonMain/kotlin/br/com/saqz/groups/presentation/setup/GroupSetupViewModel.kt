@@ -170,8 +170,16 @@ private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupF
 /** Erro já mostrado some assim que o campo é corrigido; antes do primeiro submit, nada valida. */
 private fun GroupSetupState.revalidated() = if (errors.isEmpty()) this else copy(errors = validate(this))
 
-private fun GroupSetupForm.withVenue(transform: GroupVenueForm.() -> GroupVenueForm) =
-    copy(defaultVenue = (defaultVenue ?: EmptyVenue).transform())
+/**
+ * Quadra pela metade o backend recusa, e quadra vazia não é quadra: digitar um caractere
+ * e apagar não pode deixar para trás um `GroupVenueForm` de dois campos em branco, que
+ * seria enviado como local existente e voltaria como erro de validação.
+ */
+private fun GroupSetupForm.withVenue(transform: GroupVenueForm.() -> GroupVenueForm): GroupSetupForm {
+    val venue = (defaultVenue ?: EmptyVenue).transform()
+    val blank = venue.name.isBlank() && venue.address.isBlank() && venue.court.isNullOrBlank()
+    return copy(defaultVenue = venue.takeUnless { blank })
+}
 
 private fun GroupRegularSlotForm.toDraft(): GroupSlotDraft {
     val parts = startTime.split(':')
