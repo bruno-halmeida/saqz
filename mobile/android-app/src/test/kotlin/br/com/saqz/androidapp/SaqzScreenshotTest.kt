@@ -20,6 +20,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -27,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -121,6 +127,10 @@ class SaqzScreenshotTest {
         // terminaram, e o arco do CircularProgressIndicator indeterminado está
         // aberto — o ciclo dele é de 1332ms.
         const val SHUTTER_MILLIS = 600L
+
+        // Fase em que o cursor de texto está aceso: o ciclo é 500ms aceso / 500ms apagado
+        // contado da última tecla, e aos 600ms do obturador padrão ele já apagou.
+        const val CURSOR_SHUTTER_MILLIS = 300L
     }
 
     @get:Rule
@@ -472,6 +482,40 @@ class SaqzScreenshotTest {
             enabled = false,
             errorText = "Não confirmado. Só o administrador reenvia.",
         )
+    }
+
+    // A única cena com digitação de verdade. As de cima nascem com valor pronto, e é
+    // justamente aí que o VUL-99 se escondia: o cursor no início só aparece depois da
+    // segunda tecla, num campo que recompõe a cada letra. Aqui o estado é hasteado como
+    // o de uma ViewModel e o texto entra tecla a tecla.
+    @Test
+    fun typedField() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            SaqzTheme {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SaqzTheme.colors.background)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    var text by remember { mutableStateOf("") }
+                    SaqzInput(
+                        value = text,
+                        onValueChange = { text = it },
+                        label = "Nome do grupo",
+                        helperText = "Aparece para quem receber o convite.",
+                    )
+                }
+            }
+        }
+        compose.onNode(hasSetTextAction()).performTextInput("Vôlei do CERET")
+        // Obturador a 300ms, e não nos 600ms das outras cenas: o cursor pisca 500 aceso /
+        // 500 apagado a partir da última tecla, então neste quadro ele está aceso — é ele,
+        // no fim do texto, que a cena confere.
+        compose.mainClock.advanceTimeBy(CURSOR_SHUTTER_MILLIS)
+        compose.onRoot().captureRoboImage("screenshots/ds-campo-digitado.png")
     }
 
     // Cena própria pelo mesmo motivo de `ds-controles`: com o sexto campo do VUL-63 o

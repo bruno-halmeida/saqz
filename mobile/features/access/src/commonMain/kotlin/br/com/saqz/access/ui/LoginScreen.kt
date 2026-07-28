@@ -37,7 +37,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -153,8 +152,8 @@ fun LoginScreen(
             )
             Spacer(Modifier.height(30.dp))
             SaqzInput(
-                value = TextFieldValue(state.email),
-                onValueChange = { onIntent(LoginIntent.UpdateEmail(it.text)) },
+                value = state.email,
+                onValueChange = { onIntent(LoginIntent.UpdateEmail(it)) },
                 label = stringResource(Res.string.login_email),
                 kind = SaqzInputKind.Email,
                 enabled = !state.isLoading,
@@ -165,8 +164,8 @@ fun LoginScreen(
             )
             Spacer(Modifier.height(10.dp))
             SaqzInput(
-                value = TextFieldValue(state.password),
-                onValueChange = { onIntent(LoginIntent.UpdatePassword(it.text)) },
+                value = state.password,
+                onValueChange = { onIntent(LoginIntent.UpdatePassword(it)) },
                 label = stringResource(Res.string.login_password),
                 kind = SaqzInputKind.Password,
                 enabled = !state.isLoading,

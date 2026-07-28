@@ -12,7 +12,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.presentation.AuthUiError
 import br.com.saqz.designsystem.asString
@@ -97,8 +96,8 @@ fun NameCompletionScreen(
     IdentityHeading(stringResource(Res.string.name_title))
     Text(stringResource(Res.string.name_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     SaqzInput(
-        value = TextFieldValue(state.name),
-        onValueChange = { onIntent(NameCompletionIntent.UpdateName(it.text)) },
+        value = state.name,
+        onValueChange = { onIntent(NameCompletionIntent.UpdateName(it)) },
         label = stringResource(Res.string.name_label),
         errorText = if (state.invalidName) stringResource(Res.string.name_invalid) else null,
         enabled = !state.isLoading,
@@ -123,8 +122,8 @@ fun PhoneCompletionScreen(
     IdentityHeading(stringResource(Res.string.phone_title))
     Text(stringResource(Res.string.phone_body), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     SaqzInput(
-        value = TextFieldValue(state.phone),
-        onValueChange = { onIntent(PhoneCompletionIntent.UpdatePhone(it.text)) },
+        value = state.phone,
+        onValueChange = { onIntent(PhoneCompletionIntent.UpdatePhone(it)) },
         label = stringResource(Res.string.phone_label),
         kind = SaqzInputKind.Phone,
         errorText = if (state.invalidPhone) stringResource(Res.string.phone_invalid) else null,
