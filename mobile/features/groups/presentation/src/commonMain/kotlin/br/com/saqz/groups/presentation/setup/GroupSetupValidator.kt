@@ -3,19 +3,20 @@ package br.com.saqz.groups.presentation.setup
 import br.com.saqz.groups.model.GroupLevel
 
 /**
- * Os cinco campos que o `2g` marca em vermelho, mais os dois que o gateway exige.
+ * Os cinco campos que o `2g` marca em vermelho, mais três que só o backend exige.
  *
- * `ModalityRequired` e `CompositionRequired` não estão no desenho do `2g`, mas
- * `KtorGroupGateway.toRequest` faz `requireNotNull(form.modality)` e
- * `requireNotNull(form.composition)`: sem eles a revisão deixaria confirmar um comando
- * que estoura na camada de dados. Os demais campos do DTO são nulos-aceitos.
+ * `ModalityRequired` e `CompositionRequired` não estão no desenho, mas
+ * `KtorGroupGateway.toRequest` faz `requireNotNull` nos dois: sem eles a revisão deixaria
+ * confirmar um comando que estoura na camada de dados. `VenueNameRequired` veio da mesma
+ * conferência, um nível abaixo — `GroupProfileDefaultsValidator.validateVenue` exige nome
+ * **e** endereço sempre que a quadra vem preenchida.
  */
 enum class GroupSetupError {
     NameRequired,
     ModalityRequired,
     CompositionRequired,
     CustomLevelRequired,
-    CapacityTooLow,
+    CapacityOutOfRange,
     SlotsRequired,
     VenueNameRequired,
     VenueAddressNotFound,
@@ -70,10 +71,14 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
         if ((form.level == GroupLevel.CUSTOM && customLevel == null) || customLevelTooShort) {
             add(GroupSetupError.CustomLevelRequired)
         }
-        // `defaultCapacity` é nulo-aceito no DTO: ausência não é erro, valor abaixo de
-        // dois é (o `2g` pinta o 1 em vermelho). A tela mostra o padrão quando é nulo.
+        // `defaultCapacity` é nulo-aceito no DTO: ausência não é erro (a tela mostra o
+        // padrão), fora da faixa é. O intervalo é o `validateRange(defaultCapacity, 2, 100)`
+        // do backend — o teto entra aqui porque estado carregado de fora não passa pelo
+        // stepper, que é quem impede a tela de produzir mais de 100.
         form.defaultCapacity?.let {
-            if (it < GroupSetupDefaults.MinCapacity) add(GroupSetupError.CapacityTooLow)
+            if (it !in GroupSetupDefaults.MinCapacity..GroupSetupDefaults.MaxCapacity) {
+                add(GroupSetupError.CapacityOutOfRange)
+            }
         }
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
         // A quadra inteira é opcional, mas pela metade não existe: o

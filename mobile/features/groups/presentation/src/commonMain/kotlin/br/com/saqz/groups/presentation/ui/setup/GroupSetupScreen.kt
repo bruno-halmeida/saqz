@@ -205,7 +205,7 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
     GroupCapacitySection(
         capacity = form.defaultCapacity ?: GroupSetupDefaults.Capacity,
         isBeach = form.modality == GroupModality.BEACH_VOLLEYBALL,
-        hasError = GroupSetupError.CapacityTooLow in state.errors,
+        hasError = GroupSetupError.CapacityOutOfRange in state.errors,
         onChange = { onIntent(GroupSetupIntent.UpdateCapacity(it)) },
     )
     GroupDurationSection(

@@ -282,6 +282,48 @@ class GroupSetupViewModelTest {
         assertNull(viewModel.state.value.form.defaultVenue)
     }
 
+    /** `court` vem do grupo carregado e não tem campo: sozinho não segura a quadra viva. */
+    @Test
+    fun `apagar os campos visiveis apaga a quadra mesmo com complemento salvo`() =
+        runTest(mainDispatcher) {
+            val viewModel = viewModel(
+                form = completeForm.copy(
+                    defaultVenue = GroupVenueForm(
+                        id = "venue-1",
+                        name = "CERET — Quadra 2",
+                        address = "R. Canuto Abreu, s/n",
+                        court = "Quadra 2",
+                    ),
+                ),
+            )
+
+            viewModel.onIntent(GroupSetupIntent.UpdateVenueName(""))
+            viewModel.onIntent(GroupSetupIntent.UpdateVenueAddress(""))
+            viewModel.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            assertNull(viewModel.state.value.form.defaultVenue)
+            assertNull(viewModel.state.value.venueForCommand)
+            // E sem quadra não há erro de quadra: o usuário consegue sair do formulário.
+            assertTrue(viewModel.state.value.errors.isEmpty())
+        }
+
+    /** A volta do process death tem de reproduzir o que estava na tela, não um objeto vazio. */
+    @Test
+    fun `quadra apagada antes da morte do processo volta nula`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle(
+            mapOf("group-setup-venue-name" to "", "group-setup-venue-address" to ""),
+        )
+
+        val viewModel = viewModel(savedState = handle)
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertNull(viewModel.state.value.form.defaultVenue)
+        assertNull(viewModel.state.value.venueForCommand)
+        assertTrue(viewModel.state.value.errors.isEmpty())
+    }
+
     @Test
     fun `quadra pela metade continua existindo para ser acusada`() = runTest(mainDispatcher) {
         val viewModel = viewModel(form = completeForm.copy(defaultVenue = null))

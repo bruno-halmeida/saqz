@@ -7,6 +7,7 @@ import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
 
 /** `2a` cria e `2i` edita: mesma tela, mesmos doze cards, modos diferentes. */
@@ -42,7 +43,9 @@ data class GroupSlotDraft(
 )
 
 object GroupSetupDefaults {
+    // `validateRange(defaultCapacity, 2, 100)` — GroupProfileDefaults.kt:121 do backend.
     const val MinCapacity = 2
+    const val MaxCapacity = 100
     const val Capacity = 12
     const val DurationMinutes = 120
     const val ConfirmationLeadMinutes = 360
@@ -95,7 +98,25 @@ data class GroupSetupState(
      */
     val slotsForCommand: List<GroupRegularSlotForm> =
         if (recurring) form.regularSlots else emptyList()
+
+    /** Terceiro ponto da mesma regra de [orNullWhenCleared]: o que o comando leva. */
+    val venueForCommand: GroupVenueForm? = form.defaultVenue?.orNullWhenCleared()
 }
+
+/**
+ * **A regra da quadra nula, uma só, para os três pontos que decidem isso**: ao alterar um
+ * campo, ao restaurar do `SavedStateHandle` e ao montar o comando. O backend trata
+ * `defaultVenue` como opcional-mas-completo — se vier, exige nome e endereço —, então
+ * meia quadra não pode existir.
+ *
+ * A decisão olha **só os campos editáveis nesta tela**, nome e endereço. `court` e `id`
+ * são dados do backend sem campo aqui: mantê-los vivos depois que o usuário apagou os
+ * dois campos visíveis prenderia a tela numa quadra que ele acha que apagou, acusando
+ * nome e endereço em branco sem lhe dar como corrigir. Perder o `court` herdado é o
+ * preço, e é menor.
+ */
+internal fun GroupVenueForm.orNullWhenCleared(): GroupVenueForm? =
+    takeUnless { name.isBlank() && address.isBlank() }
 
 sealed interface GroupSetupIntent {
     data class UpdateName(val value: String) : GroupSetupIntent

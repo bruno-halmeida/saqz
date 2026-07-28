@@ -359,13 +359,21 @@ internal fun GroupCapacitySection(
         SaqzStepper(
             value = capacity,
             onValueChange = onChange,
+            // O teto é do backend (`2..100`), como o dos campos de texto: entra como
+            // limite de entrada, não como mensagem de erro depois do envio.
             min = GroupSetupDefaults.MinCapacity,
+            max = GroupSetupDefaults.MaxCapacity,
             label = stringResource(Res.string.group_setup_capacity_label),
             modifier = Modifier.testTag(GroupSetupTags.Capacity),
         )
         Text(
+            // "Mínimo de 2 jogadores." só serve para o piso. O teto (100) não tem
+            // mensagem no catálogo e o stepper impede a tela de produzi-lo: estado
+            // carregado acima de 100 fica vermelho com a dica normal, até existir string.
             text = when {
-                hasError -> stringResource(Res.string.group_setup_error_capacity_hint)
+                hasError && capacity < GroupSetupDefaults.MinCapacity ->
+                    stringResource(Res.string.group_setup_error_capacity_hint)
+
                 isBeach -> stringResource(Res.string.group_setup_capacity_beach_hint)
                 else -> stringResource(Res.string.group_setup_capacity_hint)
             },

@@ -84,12 +84,30 @@ class GroupSetupValidatorTest {
         assertTrue(errors.isEmpty())
     }
 
+    /** `validateRange(defaultCapacity, 2, 100)` do backend, nas duas fronteiras. */
     @Test
-    fun `capacidade abaixo de dois acusa erro`() {
+    fun `capacidade fora da faixa do backend acusa erro`() {
         assertEquals(
-            setOf(GroupSetupError.CapacityTooLow),
-            validate(state { copy(defaultCapacity = 1) }),
+            setOf(GroupSetupError.CapacityOutOfRange),
+            validate(state { copy(defaultCapacity = GroupSetupDefaults.MinCapacity - 1) }),
         )
+        assertEquals(
+            setOf(GroupSetupError.CapacityOutOfRange),
+            validate(state { copy(defaultCapacity = GroupSetupDefaults.MaxCapacity + 1) }),
+        )
+        assertTrue(validate(state { copy(defaultCapacity = GroupSetupDefaults.MinCapacity) }).isEmpty())
+        assertTrue(validate(state { copy(defaultCapacity = GroupSetupDefaults.MaxCapacity) }).isEmpty())
+    }
+
+    /**
+     * As opções de antecedência (3h, 6h, 12h, 24h) e de duração (1h a 2h30) cabem nas
+     * faixas do backend — `0..10080` e `15..480` —, então não há erro a validar: a tela
+     * não tem como produzir valor fora delas.
+     */
+    @Test
+    fun `as opcoes de antecedencia e duracao cabem nas faixas do backend`() {
+        assertTrue(GroupSetupDefaults.ConfirmationLeadOptions.all { it in 0..10_080 })
+        assertTrue(GroupSetupDefaults.DurationOptions.all { it in 15..480 })
     }
 
     /** O DTO aceita capacidade nula; quem não escolheu não errou, sai o padrão da tela. */
