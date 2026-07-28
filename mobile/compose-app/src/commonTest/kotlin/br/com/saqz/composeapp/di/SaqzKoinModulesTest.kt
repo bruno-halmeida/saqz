@@ -27,6 +27,7 @@ import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.register.RegisterViewModel
 import br.com.saqz.access.presentation.resetcode.ResetCodeViewModel
 import br.com.saqz.composeapp.AccessRuntimeDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
@@ -214,6 +215,7 @@ class SaqzKoinModulesTest {
         koin.get<AccessRuntimeContract>()
         koin.get<AccessViewModel>()
         koin.get<LoginViewModel>()
+        koin.get<RegisterViewModel>()
 
         app.close()
     }

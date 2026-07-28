@@ -6,6 +6,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.forgotpassword.ForgotPasswordViewModel
 import br.com.saqz.access.presentation.identitycompletion.IdentityCompletionViewModel
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.register.RegisterViewModel
 import br.com.saqz.access.presentation.resetcode.ResetCodeViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +46,13 @@ internal val accessPresentationModule = module {
     viewModelOf(::LoginViewModel)
     viewModelOf(::ForgotPasswordViewModel)
     viewModelOf(::IdentityCompletionViewModel)
+    // A 1b entrega a sessão pelo mesmo caminho que o `AuthenticationStateMachine` acima —
+    // por isso a lambda repetida, e não `viewModelOf`.
+    viewModel {
+        RegisterViewModel(get(), get()) { transition ->
+            get<SessionAccessStateMachine>().onIntent(SessionIntent.Accept(transition))
+        }
+    }
     // `viewModel { params -> }` e não `viewModelOf`: o e-mail vem da rota `ResetCode`, e
     // não do grafo — resolver e-mail por DI seria inventar um singleton de argumento.
     viewModel { params -> ResetCodeViewModel(params.get(), get()) }

@@ -1,0 +1,137 @@
+package br.com.saqz.access.ui
+
+import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.runComposeUiTest
+import br.com.saqz.access.presentation.register.RegisterIntent
+import br.com.saqz.access.presentation.register.RegisterState
+import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+
+@OptIn(ExperimentalTestApi::class)
+class RegisterScreenTest {
+
+    // Quatro campos, na ordem do export, cada um reportando o seu próprio intent. A tela é
+    // sem estado, então o campo volta a vazio depois de cada tecla — o que interessa é o
+    // primeiro intent, e é ele que diz se um campo foi ligado ao intent do vizinho.
+    @Test fun `the four fields report their own value`() = runComposeUiTest {
+        val intents = mutableListOf<RegisterIntent>()
+        content(onIntent = intents::add)
+        val fields = onAllNodes(hasSetTextAction(), useUnmergedTree = true)
+        assertEquals(4, fields.fetchSemanticsNodes().size)
+        fields[0].performTextInput("A")
+        fields[1].performTextInput("B")
+        fields[2].performTextInput("1")
+        fields[3].performTextInput("C")
+        assertEquals(
+            listOf<RegisterIntent>(
+                RegisterIntent.UpdateName("A"),
+                RegisterIntent.UpdateEmail("B"),
+                RegisterIntent.UpdatePhone("1"),
+                RegisterIntent.UpdatePassword("C"),
+            ),
+            intents.filter { it.typedValue != "" },
+        )
+    }
+
+    private val RegisterIntent.typedValue: String?
+        get() = when (this) {
+            is RegisterIntent.UpdateName -> value
+            is RegisterIntent.UpdateEmail -> value
+            is RegisterIntent.UpdatePhone -> value
+            is RegisterIntent.UpdatePassword -> value
+            else -> null
+        }
+
+    @Test fun `the primary action submits`() = runComposeUiTest {
+        var intent: RegisterIntent? = null
+        content(onIntent = { intent = it })
+        onNodeWithTag(RegisterTags.Submit).performScrollTo().performClick()
+        assertEquals(RegisterIntent.Submit, intent)
+    }
+
+    // 1b: subtítulo presente, helper da senha presente, nenhum alerta.
+    @Test fun `the quiet screen shows the subtitle and the password hint`() = runComposeUiTest {
+        content()
+        onNodeWithText("Crie sua conta em menos de um minuto.").assertExists()
+        onNodeWithTag(RegisterTags.PasswordHint).assertExists()
+        onNodeWithTag(RegisterTags.Alert).assertDoesNotExist()
+    }
+
+    // 1j: o alerta ocupa o lugar do subtítulo, e a contagem é a dos campos acesos — não o
+    // "3" literal do mockup, que desenha quatro campos errados.
+    @Test fun `the refused screen swaps the subtitle for a counted alert`() = runComposeUiTest {
+        content(state = refused())
+        onNodeWithText("Crie sua conta em menos de um minuto.").assertDoesNotExist()
+        onNodeWithText("Revise 4 campos para criar sua conta.").assertExists()
+        onNodeWithTag(RegisterTags.PasswordHint).assertDoesNotExist()
+    }
+
+    @Test fun `the alert counts only what is lit`() = runComposeUiTest {
+        content(state = RegisterState(invalidPhone = true))
+        onNodeWithText("Revise 1 campos para criar sua conta.").assertExists()
+    }
+
+    // A pergunta do e-mail duplicado tem de ter resposta: a linha inteira leva à 1a.
+    @Test fun `the taken email message answers its own question`() = runComposeUiTest {
+        var intent: RegisterIntent? = null
+        content(state = RegisterState(emailTaken = true), onIntent = { intent = it })
+        onNodeWithTag(RegisterTags.EmailTaken).assertHasClickAction().performScrollTo().performClick()
+        assertEquals(RegisterIntent.SignInWithTakenEmail, intent)
+    }
+
+    @Test fun `the footer link goes to the login without carrying anything`() = runComposeUiTest {
+        var signedIn = false
+        var intent: RegisterIntent? = null
+        content(onIntent = { intent = it }, onSignIn = { signedIn = true })
+        onNodeWithTag(RegisterTags.SignIn).performScrollTo().performClick()
+        assertEquals(true, signedIn)
+        assertNull(intent)
+    }
+
+    @Test fun `the back button pops`() = runComposeUiTest {
+        var back = false
+        content(onBack = { back = true })
+        onNodeWithTag(RegisterTags.Back).performClick()
+        assertEquals(true, back)
+    }
+
+    // O negrito do alerta sai da própria frase formatada, e não de um literal em PT-BR.
+    @Test fun `the summary emphasis stops after the counted noun`() {
+        assertEquals(
+            "Revise 12 campos",
+            registerSummaryEmphasis("Revise 12 campos para criar sua conta.", 12),
+        )
+        assertNull(registerSummaryEmphasis("frase sem numero nenhum", 3))
+    }
+
+    private fun refused() = RegisterState(
+        email = "rafa@galera.com",
+        phone = "(11) 9999",
+        password = "12345",
+        invalidName = true,
+        emailTaken = true,
+        invalidPhone = true,
+        invalidPassword = true,
+    )
+
+    private fun ComposeUiTest.content(
+        state: RegisterState = RegisterState(),
+        onIntent: (RegisterIntent) -> Unit = {},
+        onBack: () -> Unit = {},
+        onSignIn: () -> Unit = {},
+    ) = setContent {
+        SaqzTheme {
+            RegisterScreen(state = state, onIntent = onIntent, onBack = onBack, onSignIn = onSignIn)
+        }
+    }
+}
