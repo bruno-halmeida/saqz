@@ -24,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,7 +61,9 @@ internal data class SaqzButtonColors(
 internal fun SaqzColorTokens.buttonColors(variant: SaqzButtonVariant): SaqzButtonColors =
     when (variant) {
         SaqzButtonVariant.Primary -> SaqzButtonColors(primary, onPrimary, border = null)
-        SaqzButtonVariant.Secondary -> SaqzButtonColors(surface, primary, border = border)
+        // Linha azul, não cinza: `.saqz-btn--secondary` do export é
+        // `border-color:var(--saqz-blue)` sobre branco, com o rótulo no mesmo azul.
+        SaqzButtonVariant.Secondary -> SaqzButtonColors(surface, primary, border = primary)
         SaqzButtonVariant.Danger -> SaqzButtonColors(errorForeground, onPrimary, border = null)
         SaqzButtonVariant.Ghost -> SaqzButtonColors(Color.Transparent, primary, border = null)
     }
@@ -74,9 +75,10 @@ internal fun saqzPressScale(pressed: Boolean, motion: SaqzMotionPolicy): Float =
 
 // ponytail: live press feedback is published to a custom semantics key because the
 // suite runs on iosSimulatorArm64Test, which has no screenshot capture — this is the
-// only way a black-box test can observe scale/opacity feedback on press.
+// only way a black-box test can observe scale/opacity/offset feedback on press.
+// `offsetY` viaja em dp crus porque o teste não tem Density para converter px.
 @Immutable
-internal data class SaqzPressFeedback(val scale: Float, val alpha: Float)
+internal data class SaqzPressFeedback(val scale: Float, val alpha: Float, val offsetY: Float)
 
 internal val SaqzPressFeedbackKey = SemanticsPropertyKey<SaqzPressFeedback>("SaqzPressFeedback")
 internal var SemanticsPropertyReceiver.saqzPressFeedback by SaqzPressFeedbackKey
@@ -105,9 +107,10 @@ fun SaqzButton(
     val resolved = colors.buttonColors(variant)
     val active = enabled && !loading
 
-    // ponytail: Sm fica nos 44dp do mock em vez dos 48 do token — é a variante
-    // secundária, e o alvo continua acima do mínimo da WCAG. Md carrega os 48.
-    val minHeight = if (size == SaqzButtonSize.Sm) 44.dp else metrics.minimumTouchTarget
+    // Alturas do export: `.saqz-btn--md{min-height:52px}` e `.saqz-btn--sm{min-height:44px}`.
+    // ponytail: Sm reusa `iconButtonSize` porque 44 é literalmente o mesmo número que o
+    // export dá aos dois; se algum dia divergirem, nasce um `buttonHeightSm` no VUL-44.
+    val minHeight = if (size == SaqzButtonSize.Sm) metrics.iconButtonSize else metrics.buttonHeight
     val horizontalPadding = if (size == SaqzButtonSize.Sm) 16.dp else 20.dp
     val defaultStyle =
         if (size == SaqzButtonSize.Sm) SaqzTheme.typography.support.copy(fontWeight = SaqzTheme.typography.label.fontWeight)
@@ -125,10 +128,25 @@ fun SaqzButton(
         animationSpec = tween(motion.opacityFeedbackDurationMillis),
         label = "pressAlpha",
     )
+    // `translateY(1px)` do `:active` do export, no mesmo tempo do scale. Reduced
+    // motion zera o token e o botão só perde opacidade.
+    val offsetY by animateFloatAsState(
+        targetValue = if (pressed) motion.pressOffset.value else 0f,
+        animationSpec = tween(motion.pressDurationMillis),
+        label = "pressOffset",
+    )
 
     val loadingLabel = stringResource(Res.string.state_loading)
-    val container = if (active) resolved.container else colors.disabledSurface
-    val content = if (active) contentColor ?: resolved.content else colors.disabledForeground
+    // Carregando não é desabilitado: o export pinta o botão ocupado na cor da variante
+    // com `opacity:.85`, e só o `:disabled` cai para a paleta cinza. Quem decide a cor
+    // aqui é `enabled`; `active` (que soma o loading) segue mandando no clique.
+    val container = if (enabled) resolved.container else colors.disabledSurface
+    val content = if (enabled) contentColor ?: resolved.content else colors.disabledForeground
+    val loadingDim = if (loading) 0.85f else 1f
+    // A borda acompanha `enabled` pelo mesmo motivo do container: `primary` desenha a
+    // linha azul do secondary no export, e mantê-la desabilitado deixaria contorno de
+    // botão clicável num botão que não responde.
+    val outline = if (enabled) borderColor ?: resolved.border else null
 
     Box(
         // clickable fica depois de clip/background para a área de toque respeitar a
@@ -137,19 +155,18 @@ fun SaqzButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                this.alpha = alpha
+                translationY = offsetY.dp.toPx()
+                this.alpha = alpha * loadingDim
             }
             .semantics {
-                saqzPressFeedback = SaqzPressFeedback(scale, alpha)
+                saqzPressFeedback = SaqzPressFeedback(scale, alpha, offsetY)
                 if (loading) stateDescription = loadingLabel
             }
             .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier)
             .sizeIn(minWidth = minHeight, minHeight = minHeight)
             .clip(shape)
             .background(container, shape)
-            .then(
-                (borderColor ?: resolved.border)?.let { Modifier.border(1.dp, it, shape) } ?: Modifier,
-            )
+            .then(outline?.let { Modifier.border(1.dp, it, shape) } ?: Modifier)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -160,14 +177,24 @@ fun SaqzButton(
             .padding(horizontal = horizontalPadding, vertical = metrics.subGrid),
         contentAlignment = Alignment.Center,
     ) {
-        // Label always reserves its width; loading only hides it behind the spinner
-        // (alpha 0 keeps it measured and keeps its accessible name in the tree).
+        // Carregando é `◌ Criando grupo…`: o spinner entra no lugar do ícone da frente e
+        // o rótulo continua visível. Quem chama escreve o gerúndio — o componente não
+        // conjuga nada. O botão fica mais largo que o ocioso, e é assim que o export
+        // desenha: reservar o vão do spinner desde o repouso deixaria um buraco em todo
+        // botão parado.
         Row(
-            modifier = Modifier.alpha(if (loading) 0f else 1f),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            leadingContent?.invoke(content)
+            if (loading) {
+                CircularProgressIndicator(
+                    color = content,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                leadingContent?.invoke(content)
+            }
             Text(
                 text = label,
                 color = content,
@@ -175,19 +202,21 @@ fun SaqzButton(
             )
             trailingContent?.invoke(content)
         }
-        if (loading) {
-            CircularProgressIndicator(
-                color = content,
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(20.dp),
-            )
-        }
     }
 }
 
 /**
- * 10e — alvo quadrado do tamanho do toque mínimo, o glifo desenhado em [content].
- * `soft` pinta o fundo ice; `dot` marca pendência com o ponto lime.
+ * 10e — alvo quadrado de 44 ("44×44 sempre", diz o export), o glifo desenhado em
+ * [content]. Três fundos, mutuamente exclusivos na prática: nada (transparente),
+ * `soft` (ice) e `filled` (azul sólido — o "+" de ação). `dot` marca pendência com o
+ * ponto lime, e combina com qualquer um dos três.
+ *
+ * O glifo vem do chamador com o próprio `tint`, como já acontece em `soft`: em
+ * `filled` passe `SaqzTheme.colors.onPrimary`, senão o traço navy some no azul.
+ *
+ * ponytail: o componente não recolore [content] porque `SaqzIcon` recebe `tint`
+ * explícito; se o esquecimento virar bug recorrente, o caminho é `SaqzIcon` ler uma
+ * cor de conteúdo do tema — mudança em SaqzIcons.kt, não aqui.
  */
 @Composable
 fun SaqzIconButton(
@@ -195,17 +224,25 @@ fun SaqzIconButton(
     contentDescription: String,
     modifier: Modifier = Modifier,
     soft: Boolean = false,
+    filled: Boolean = false,
     dot: Boolean = false,
     enabled: Boolean = true,
-    size: Dp = SaqzTheme.metrics.minimumTouchTarget,
+    size: Dp = SaqzTheme.metrics.iconButtonSize,
     content: @Composable () -> Unit,
 ) {
     val colors = SaqzTheme.colors
+    val background = when {
+        filled -> colors.primary
+        soft -> colors.surfaceSoft
+        else -> null
+    }
+    // Duas caixas de propósito: o desenho do export manda no círculo (44dp), o piso de
+    // acessibilidade manda no alvo (48dp). O toque e a semântica vivem na caixa externa,
+    // o clip, o fundo e o glifo na interna — encolher o alvo para casar com o visual é
+    // regressão, e igualar o visual ao alvo é desobedecer o design.
     Box(
         modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .then(if (soft) Modifier.background(colors.surfaceSoft, CircleShape) else Modifier)
+            .sizeIn(minWidth = SaqzTheme.metrics.minimumTouchTarget, minHeight = SaqzTheme.metrics.minimumTouchTarget)
             .clickable(
                 enabled = enabled,
                 onClickLabel = contentDescription,
@@ -215,15 +252,26 @@ fun SaqzIconButton(
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        Box(modifier = Modifier.clearAndSetSemantics {}) { content() }
-        if (dot) {
+        // O ponto se ancora no círculo visual, não no alvo de toque: preso à caixa de 48
+        // ele descolaria da borda do desenho por 2dp de cada lado.
+        Box(modifier = Modifier.size(size)) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-10).dp, y = 10.dp)
-                    .size(8.dp)
-                    .background(colors.accent, CircleShape),
-            )
+                    .matchParentSize()
+                    .clip(CircleShape)
+                    .then(background?.let { Modifier.background(it, CircleShape) } ?: Modifier)
+                    .clearAndSetSemantics {},
+                contentAlignment = Alignment.Center,
+            ) { content() }
+            if (dot) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-8).dp, y = 8.dp)
+                        .size(8.dp)
+                        .background(colors.accent, CircleShape),
+                )
+            }
         }
     }
 }
@@ -237,7 +285,7 @@ private fun SaqzButtonPreview() = SaqzTheme {
         SaqzButton(label = "Excluir grupo", onClick = {}, variant = SaqzButtonVariant.Danger)
         SaqzButton(label = "Cancelar", onClick = {}, variant = SaqzButtonVariant.Ghost)
         SaqzButton(label = "Criar jogo", onClick = {}, size = SaqzButtonSize.Sm)
-        SaqzButton(label = "Criando grupo", onClick = {}, loading = true, fullWidth = true)
+        SaqzButton(label = "Criando grupo…", onClick = {}, loading = true, fullWidth = true)
         SaqzButton(label = "Criar grupo", onClick = {}, enabled = false, fullWidth = true)
     }
 }
@@ -253,6 +301,9 @@ private fun SaqzIconButtonPreview() = SaqzTheme {
             }
             SaqzIconButton(onClick = {}, contentDescription = "Buscar", soft = true) {
                 SaqzIcon(SaqzIcons.Search)
+            }
+            SaqzIconButton(onClick = {}, contentDescription = "Criar jogo", filled = true) {
+                SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.onPrimary)
             }
         }
     }
