@@ -239,10 +239,16 @@ class SaqzButtonTest {
                 ) { SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.onPrimary) }
             }
         }
-        // O fundo azul não come nem o nome acessível nem os 44×44 que o export exige.
+        // O alvo é o piso de acessibilidade (48), não o desenho (44): o círculo do export
+        // continua com 44, mas quem recebe o toque é a caixa em volta. Encolher isto para
+        // `iconButtonSize` reintroduz o alvo de 44 que o review do #33 pegou.
         val bounds = onNodeWithTag("fab").getUnclippedBoundsInRoot()
-        assertEquals(SaqzMetrics.Default.iconButtonSize, bounds.width)
-        assertEquals(SaqzMetrics.Default.iconButtonSize, bounds.height)
+        assertEquals(SaqzMetrics.Default.minimumTouchTarget, bounds.width)
+        assertEquals(SaqzMetrics.Default.minimumTouchTarget, bounds.height)
+        assertTrue(
+            SaqzMetrics.Default.iconButtonSize < SaqzMetrics.Default.minimumTouchTarget,
+            "o desenho é menor que o alvo — se empatarem, este teste deixa de provar algo",
+        )
         onNodeWithContentDescription("Criar jogo").assertExists()
         onNodeWithTag("fab").performClick()
         waitForIdle()

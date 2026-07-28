@@ -143,6 +143,10 @@ fun SaqzButton(
     val container = if (enabled) resolved.container else colors.disabledSurface
     val content = if (enabled) contentColor ?: resolved.content else colors.disabledForeground
     val loadingDim = if (loading) 0.85f else 1f
+    // A borda acompanha `enabled` pelo mesmo motivo do container: `primary` desenha a
+    // linha azul do secondary no export, e mantê-la desabilitado deixaria contorno de
+    // botão clicável num botão que não responde.
+    val outline = if (enabled) borderColor ?: resolved.border else null
 
     Box(
         // clickable fica depois de clip/background para a área de toque respeitar a
@@ -162,9 +166,7 @@ fun SaqzButton(
             .sizeIn(minWidth = minHeight, minHeight = minHeight)
             .clip(shape)
             .background(container, shape)
-            .then(
-                (borderColor ?: resolved.border)?.let { Modifier.border(1.dp, it, shape) } ?: Modifier,
-            )
+            .then(outline?.let { Modifier.border(1.dp, it, shape) } ?: Modifier)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -234,11 +236,13 @@ fun SaqzIconButton(
         soft -> colors.surfaceSoft
         else -> null
     }
+    // Duas caixas de propósito: o desenho do export manda no círculo (44dp), o piso de
+    // acessibilidade manda no alvo (48dp). O toque e a semântica vivem na caixa externa,
+    // o clip, o fundo e o glifo na interna — encolher o alvo para casar com o visual é
+    // regressão, e igualar o visual ao alvo é desobedecer o design.
     Box(
         modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .then(background?.let { Modifier.background(it, CircleShape) } ?: Modifier)
+            .sizeIn(minWidth = SaqzTheme.metrics.minimumTouchTarget, minHeight = SaqzTheme.metrics.minimumTouchTarget)
             .clickable(
                 enabled = enabled,
                 onClickLabel = contentDescription,
@@ -248,15 +252,26 @@ fun SaqzIconButton(
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        Box(modifier = Modifier.clearAndSetSemantics {}) { content() }
-        if (dot) {
+        // O ponto se ancora no círculo visual, não no alvo de toque: preso à caixa de 48
+        // ele descolaria da borda do desenho por 2dp de cada lado.
+        Box(modifier = Modifier.size(size)) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-10).dp, y = 10.dp)
-                    .size(8.dp)
-                    .background(colors.accent, CircleShape),
-            )
+                    .matchParentSize()
+                    .clip(CircleShape)
+                    .then(background?.let { Modifier.background(it, CircleShape) } ?: Modifier)
+                    .clearAndSetSemantics {},
+                contentAlignment = Alignment.Center,
+            ) { content() }
+            if (dot) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-8).dp, y = 8.dp)
+                        .size(8.dp)
+                        .background(colors.accent, CircleShape),
+                )
+            }
         }
     }
 }
