@@ -7,7 +7,6 @@ class BootstrapSession(
     private val repository: SessionRepository,
 ) {
     fun execute(identity: RequestIdentity): BootstrapSessionResult {
-        if (identity.emailVerified != true) return BootstrapSessionResult.EmailNotVerified
         val displayName = identity.displayName
             ?.let { runCatching { AccessName.from(it) }.getOrNull() }
             ?: return BootstrapSessionResult.InvalidDisplayName

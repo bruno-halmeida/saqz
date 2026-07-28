@@ -44,13 +44,13 @@ class BootstrapSessionTest {
     }
 
     @Test
-    fun `false email verification is rejected before write`() {
-        assertBlocked(identity(emailVerified = false), BootstrapSessionResult.EmailNotVerified)
+    fun `false email verification still writes mirrors and returns the session`() {
+        assertBootstrapped(identity(emailVerified = false))
     }
 
     @Test
-    fun `missing email verification is rejected before write`() {
-        assertBlocked(identity(emailVerified = null), BootstrapSessionResult.EmailNotVerified)
+    fun `missing email verification still writes mirrors and returns the session`() {
+        assertBootstrapped(identity(emailVerified = null))
     }
 
     @Test
@@ -135,6 +135,16 @@ class BootstrapSessionTest {
 
         assertSame(expected, BootstrapSession(repository).execute(identity))
         assertTrue(repository.commands.isEmpty())
+    }
+
+    private fun assertBootstrapped(identity: RequestIdentity) {
+        val repository = RecordingSessionRepository(view)
+
+        assertEquals(BootstrapSessionResult.Success(view), BootstrapSession(repository).execute(identity))
+        assertEquals(
+            listOf(SessionUpsert("subject-1", "person@example.test", AccessName.from("Person Name"))),
+            repository.commands,
+        )
     }
 
     private class RecordingSessionRepository(

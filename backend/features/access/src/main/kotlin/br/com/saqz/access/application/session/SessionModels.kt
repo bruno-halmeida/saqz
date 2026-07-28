@@ -38,8 +38,6 @@ data class ProfileCompletion(
 sealed interface BootstrapSessionResult {
     data class Success(val session: SessionView) : BootstrapSessionResult
 
-    data object EmailNotVerified : BootstrapSessionResult
-
     data object InvalidDisplayName : BootstrapSessionResult
 }
 

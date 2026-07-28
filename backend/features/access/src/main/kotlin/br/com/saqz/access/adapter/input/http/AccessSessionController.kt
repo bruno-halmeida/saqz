@@ -21,6 +21,7 @@ data class SessionUserResponse(
     val displayName: String,
     val phone: String?,
     val phoneRequired: Boolean,
+    val emailVerified: Boolean,
 )
 
 data class SessionMembershipResponse(
@@ -39,8 +40,6 @@ data class UpdateSessionProfileRequest @JsonCreator constructor(
     @JsonProperty("displayName") val displayName: String? = null,
 )
 
-class EmailNotVerifiedException : RuntimeException()
-
 class InvalidDisplayNameException : RuntimeException()
 
 class InvalidPhoneException : RuntimeException()
@@ -55,9 +54,8 @@ class AccessSessionController(
     @PutMapping("/api/session")
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
         when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.EmailNotVerified -> throw EmailNotVerifiedException()
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            is BootstrapSessionResult.Success -> result.session.toResponse()
+            is BootstrapSessionResult.Success -> result.session.toResponse(identity.emailVerified == true)
         }
 
     @PatchMapping("/api/session/profile")
@@ -72,17 +70,18 @@ class AccessSessionController(
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
-            is CompleteSessionProfileResult.Success -> result.session.toResponse()
+            is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.emailVerified == true)
         }
 }
 
-private fun SessionView.toResponse() = AccessSessionResponse(
+private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionResponse(
     user = SessionUserResponse(
         id = user.id,
         email = user.email,
         displayName = user.displayName.value,
         phone = user.phone?.value,
         phoneRequired = user.phone == null,
+        emailVerified = emailVerified,
     ),
     memberships = memberships.map {
         SessionMembershipResponse(
