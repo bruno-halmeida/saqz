@@ -58,6 +58,7 @@ internal fun GroupSlotPicker(
                     label = day.shortLabel(),
                     selected = day == draft.weekday,
                     onClick = { onDayPick(day) },
+                    compact = true,
                     modifier = Modifier.weight(1f),
                 )
             }

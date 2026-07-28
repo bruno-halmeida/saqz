@@ -311,7 +311,8 @@ Implementação registrada em Koin como qualquer outra dependência.
 ## 10. Testes
 
 `commonTest` com **`kotlin.test`** (JUnit5 é JVM-only, portanto impossível em `commonTest` de KMP).
-JUnit4 aparece só em `:android-app` (instrumentado e Roborazzi). Coroutines:
+JUnit4 aparece em `:android-app` (instrumentado e Roborazzi) e nas suítes visuais
+`androidHostTest` explicitamente declaradas por módulos de apresentação. Coroutines:
 `kotlinx-coroutines-test` + `UnconfinedTestDispatcher` com `Dispatchers.setMain()` no setup.
 
 | Alvo | Onde | Como |
@@ -322,7 +323,8 @@ JUnit4 aparece só em `:android-app` (instrumentado e Roborazzi). Coroutines:
 | Screen | `<x>/commonTest` | `ComposeTestRule` + `testTag` do objeto `Tags` |
 | Journey Android | `android-app/androidTest` | fluxo real ponta a ponta |
 | Adapter nativo iOS | `ios-app/SaqzIOSTests` | Swift, direto contra o adapter |
-| Visual | `android-app/src/test` | Roborazzi — **olhe os PNGs** antes de entregar UI |
+| Visual integrado | `android-app/src/test` | Roborazzi para telas e jornadas montadas |
+| Visual de componente | `<feature>:presentation/src/androidHostTest` | Roborazzi local ao módulo — **olhe os PNGs** antes de entregar UI |
 
 **Fake > mock, sempre.** Fake é implementação em memória da interface, com um `var shouldFail` para o
 caminho triste. `SavedStateHandle` se instancia direto, sem mock.
@@ -336,17 +338,20 @@ existir, rode as tasks direto:
 
 ```sh
 mobile/gradlew -p mobile detektAll                                  # lint
-mobile/gradlew -p mobile :android-app:testDevDebugUnitTest          # testes que rodam na JVM
+mobile/gradlew -p mobile :android-app:testDevDebugUnitTest          # testes integrados que rodam na JVM
+mobile/gradlew -p mobile :features:groups:presentation:recordRoborazziAndroidHostTest # visuais locais de Grupos
 mobile/gradlew -p mobile :android-app:connectedDevDebugAndroidTest  # precisa de emulador
 ```
 
 Local: JDK 21, `DOCKER_HOST` do Colima, emulador `Saqz_API_30` ligado.
 
-Atenção ao redesenhar: `allTests` é NO-SOURCE em todos os módulos `core/*` e `features/*`, porque o
-plugin `com.android.kotlin.multiplatform.library` desabilita host tests por padrão e nenhum módulo
-faz opt-in com `withHostTest { }`. Os arquivos de `commonTest` só rodam como
-`iosSimulatorArm64Test`, em macOS — num runner Linux a suíte inteira de `core/*` e `features/*`
-passa sem executar nada.
+Atenção ao redesenhar: `allTests` é NO-SOURCE nos módulos `core/*` e `features/*` que não declaram
+host tests, porque o plugin `com.android.kotlin.multiplatform.library` os desabilita por padrão.
+`:features:groups:presentation` é a exceção deliberada: faz opt-in com `withHostTest { }` para manter
+as capturas dos componentes compartilhados junto de quem os possui; seu comando dedicado acima é
+parte do gate visual e não é alcançado por `:android-app:testDevDebugUnitTest`. Fora dessa exceção,
+os arquivos de `commonTest` só rodam como `iosSimulatorArm64Test`, em macOS — num runner Linux essas
+suítes passam sem executar nada.
 
 Detekt usa **baseline por módulo**: dívida antiga congelada, código novo falha. **Não regenere
 baseline para calar erro seu.** Quando a regeneração é legítima (o código baselinado foi apagado),

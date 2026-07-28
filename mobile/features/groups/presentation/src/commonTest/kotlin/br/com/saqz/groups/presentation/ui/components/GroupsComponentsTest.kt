@@ -2,12 +2,14 @@ package br.com.saqz.groups.presentation.ui.components
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
@@ -100,7 +102,9 @@ class GroupsComponentsTest {
         }
 
         onNodeWithText("90min").performClick()
-        onNodeWithText("Ver no mapa").performClick()
+        onNodeWithText("Ver no mapa")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
         assertEquals(90, selected)
         assertEquals(1, venueActions)
     }

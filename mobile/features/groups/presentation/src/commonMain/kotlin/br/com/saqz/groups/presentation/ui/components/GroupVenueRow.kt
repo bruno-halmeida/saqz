@@ -2,9 +2,11 @@ package br.com.saqz.groups.presentation.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -44,16 +46,22 @@ internal fun GroupVenueRow(
                 color = SaqzTheme.colors.textSecondary,
             )
         }
-        Text(
-            text = actionLabel,
-            style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
-            color = SaqzTheme.colors.primary,
+        Box(
             modifier = Modifier.clickable(
                 onClickLabel = actionLabel,
                 role = Role.Button,
                 onClick = onAction,
-            ),
-        )
+            )
+                .heightIn(min = SaqzTheme.metrics.minimumTouchTarget)
+                .padding(horizontal = SaqzTheme.metrics.subGrid),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = actionLabel,
+                style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+                color = SaqzTheme.colors.primary,
+            )
+        }
     }
 }
 

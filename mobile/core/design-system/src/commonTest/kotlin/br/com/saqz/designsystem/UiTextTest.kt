@@ -1,14 +1,12 @@
-package br.com.saqz.access.presentation
+package br.com.saqz.designsystem
 
 import androidx.compose.material.Text
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
-import br.com.saqz.access.resources.Res
-import br.com.saqz.access.resources.uitext_probe_greeting
-import br.com.saqz.designsystem.UiText
-import br.com.saqz.designsystem.asString
+import br.com.saqz.designsystem.resources.Res
+import br.com.saqz.designsystem.resources.uitext_probe_greeting
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class)
