@@ -44,6 +44,27 @@ internal fun SaqzColorTokens.attendanceOnFill(intent: SaqzAttendance): Color =
     if (intent == SaqzAttendance.Maybe) textPrimary else onPrimary
 
 /**
+ * Cor do rótulo. `selected` vem **antes** de `!enabled` de propósito: o fundo sólido
+ * não é apagado quando o seletor trava, então cinza ali ficaria ilegível — o
+ * `disabledForeground` sobre o vermelho de "Não vou" dá 1.01:1, o rótulo some.
+ *
+ * Desabilitado aqui quer dizer "o prazo fechou, não dá mais para mudar", não "esqueça
+ * o que você respondeu": a resposta registrada segue no contraste cheio, e quem carrega
+ * o aviso de travado são as opções **não** escolhidas, que perdem o navy. Essas são
+ * componentes inativos, que a WCAG 1.4.3 isenta de mínimo de contraste; a resposta,
+ * não — ali o pill virou informação, não mais um controle.
+ */
+internal fun SaqzColorTokens.attendanceLabel(
+    intent: SaqzAttendance,
+    selected: Boolean,
+    enabled: Boolean,
+): Color = when {
+    selected -> attendanceOnFill(intent)
+    !enabled -> disabledForeground
+    else -> textPrimary
+}
+
+/**
  * 10g — os três estados de presença, um alvo por opção. A resposta é otimista:
  * quem chama troca [value] na hora e sincroniza depois.
  */
@@ -67,8 +88,7 @@ fun SaqzAttendanceSelector(
         options.forEach { intent ->
             AttendanceOption(
                 label = labels.getValue(intent),
-                fill = SaqzTheme.colors.attendanceFill(intent),
-                onFill = SaqzTheme.colors.attendanceOnFill(intent),
+                intent = intent,
                 selected = value == intent,
                 enabled = enabled,
                 onSelect = { onSelect(intent) },
@@ -81,22 +101,18 @@ fun SaqzAttendanceSelector(
 @Composable
 private fun AttendanceOption(
     label: String,
-    fill: Color,
-    onFill: Color,
+    intent: SaqzAttendance,
     selected: Boolean,
     enabled: Boolean,
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = SaqzTheme.colors
+    val fill = colors.attendanceFill(intent)
     Text(
         text = label,
         style = SaqzTheme.typography.label,
-        color = when {
-            !enabled -> colors.disabledForeground
-            selected -> onFill
-            else -> colors.textPrimary
-        },
+        color = colors.attendanceLabel(intent, selected = selected, enabled = enabled),
         textAlign = TextAlign.Center,
         modifier = modifier
             .heightIn(min = SaqzTheme.metrics.minimumTouchTarget)
@@ -116,5 +132,8 @@ private fun SaqzAttendanceSelectorPreview() = SaqzTheme {
         SaqzAttendanceSelector(value = SaqzAttendance.Going, onSelect = {})
         SaqzAttendanceSelector(value = SaqzAttendance.Maybe, onSelect = {})
         SaqzAttendanceSelector(value = SaqzAttendance.Out, onSelect = {})
+        // Prazo de confirmação encerrado com a resposta já dada: o sólido segue legível,
+        // quem recua são as opções que não dão mais para escolher.
+        SaqzAttendanceSelector(value = SaqzAttendance.Out, onSelect = {}, enabled = false)
     }
 }

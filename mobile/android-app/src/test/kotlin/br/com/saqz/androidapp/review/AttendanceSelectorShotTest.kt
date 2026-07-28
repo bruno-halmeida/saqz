@@ -58,6 +58,13 @@ class AttendanceSelectorShotTest {
                     SaqzAttendanceSelector(value = SaqzAttendance.Going, onSelect = {})
                     SaqzAttendanceSelector(value = SaqzAttendance.Maybe, onSelect = {})
                     SaqzAttendanceSelector(value = SaqzAttendance.Out, onSelect = {})
+                    // Prazo encerrado com a resposta já dada — o caso que o review do
+                    // Codex pegou: o sólido segue legível, recuam as outras duas.
+                    SaqzAttendanceSelector(
+                        value = SaqzAttendance.Out,
+                        onSelect = {},
+                        enabled = false,
+                    )
                 }
             }
         }
