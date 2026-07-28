@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
@@ -60,6 +61,10 @@ internal fun visualTransformationFor(kind: SaqzInputKind, revealed: Boolean): Vi
 // A borda de 3dp existe sempre (transparente em repouso) para o glow de foco não
 // empurrar o layout ao aparecer.
 private val FocusRingWidth = 3.dp
+
+// `.saqz-field__error{min-height:16px}` — piso do slot de mensagem, para uma linha
+// curta ocupar a mesma altura que qualquer outra.
+private val MessageMinHeight = 16.dp
 
 @Composable
 fun SaqzInput(
@@ -107,7 +112,14 @@ fun SaqzInput(
         verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
         if (showLabel && !inlineLabel) {
-            Text(text = label, style = SaqzTheme.typography.support, color = colors.textSecondary)
+            // `.saqz-field__label{font-size:14px;font-weight:600;color:var(--saqz-navy)}`.
+            // Nenhum estilo da escala é 14/600: `support` é 14/400 e `label` é 15/600.
+            // O peso vem por `copy` para não abrir token novo no meio da onda (VUL-44).
+            Text(
+                text = label,
+                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight(600)),
+                color = colors.textPrimary,
+            )
         }
         Row(
             modifier = Modifier
@@ -166,8 +178,9 @@ fun SaqzInput(
         if (message != null) {
             Text(
                 text = message,
-                style = SaqzTheme.typography.support,
+                style = SaqzTheme.typography.caption,
                 color = if (errorText != null) colors.errorForeground else colors.textSecondary,
+                modifier = Modifier.heightIn(min = MessageMinHeight),
             )
         }
     }
