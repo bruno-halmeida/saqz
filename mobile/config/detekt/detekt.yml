@@ -99,5 +99,4 @@ Compose:
       - LocalSaqzMetrics
       - LocalSaqzTypography
       - LocalSaqzMotion
-      - LocalSaqzShadows
       - LocalSaqzChrome

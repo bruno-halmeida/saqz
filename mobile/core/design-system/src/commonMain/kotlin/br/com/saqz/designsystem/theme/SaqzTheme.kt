@@ -15,7 +15,6 @@ internal val LocalSaqzColors = staticCompositionLocalOf { SaqzColorTokens.Light 
 internal val LocalSaqzMetrics = staticCompositionLocalOf { SaqzMetrics.Default }
 internal val LocalSaqzTypography = staticCompositionLocalOf { SaqzTypography.Default }
 internal val LocalSaqzMotion = staticCompositionLocalOf { SaqzMotionPolicy.Normal }
-internal val LocalSaqzShadows = staticCompositionLocalOf { SaqzShadows.Default }
 
 object SaqzTheme {
     val colors: SaqzColorTokens
@@ -26,8 +25,12 @@ object SaqzTheme {
         @Composable @ReadOnlyComposable get() = LocalSaqzTypography.current
     val motion: SaqzMotionPolicy
         @Composable @ReadOnlyComposable get() = LocalSaqzMotion.current
+    // ponytail: constante, sem CompositionLocal. Sombra não varia com a subárvore — os
+    // outros quatro variam (o `motion` troca com reduceMotion, o `chrome` das cores com
+    // reduceTransparency), e é isso que justifica o local. Promover a local é o mesmo
+    // trabalho no dia em que o tema escuro precisar de uma sombra diferente.
     val shadows: SaqzShadows
-        @Composable @ReadOnlyComposable get() = LocalSaqzShadows.current
+        @Composable @ReadOnlyComposable get() = SaqzShadows.Default
 }
 
 @Composable
@@ -48,7 +51,6 @@ fun SaqzTheme(
         LocalSaqzMetrics provides metrics,
         LocalSaqzTypography provides typography,
         LocalSaqzMotion provides motion,
-        LocalSaqzShadows provides SaqzShadows.Default,
     ) {
         MaterialTheme(
             colors = colors.toMaterialColors(),
