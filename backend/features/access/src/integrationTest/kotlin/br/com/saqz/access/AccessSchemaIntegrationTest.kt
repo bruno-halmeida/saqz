@@ -29,7 +29,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(4, flyway.migrate().migrationsExecuted)
+        assertEquals(5, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -87,8 +87,11 @@ class AccessSchemaIntegrationTest {
     }
 
     @Test
-    fun `unverified users cannot be persisted`() {
-        assertSqlFails { insertUser(subject = "unverified", verified = false) }
+    fun `unverified users are persisted with the honest flag`() {
+        val id = insertUser(subject = "unverified", verified = false)
+
+        assertEquals(0, queryInt("SELECT count(*) FROM access_users WHERE id = '$id' AND email_verified"))
+        assertEquals(1, queryInt("SELECT count(*) FROM access_users WHERE id = '$id'"))
     }
 
     @Test

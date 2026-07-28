@@ -1,7 +1,7 @@
 package br.com.saqz.access.presentation.login
 
 import androidx.compose.runtime.Immutable
-import br.com.saqz.access.presentation.UiText
+import br.com.saqz.designsystem.UiText
 
 @Immutable
 data class LoginState(

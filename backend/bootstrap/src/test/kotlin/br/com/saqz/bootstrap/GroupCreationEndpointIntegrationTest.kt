@@ -150,13 +150,13 @@ class GroupCreationEndpointIntegrationTest {
     }
 
     @Test
-    fun `unverified principal cannot create a group`() {
+    fun `unverified principal creates a group as the authenticated actor`() {
         verifier.principal = identity(emailVerified = false)
 
         val response = postGroup(UUID.randomUUID(), "Training Club", "UTC")
 
-        assertProblem(response, 403, "EMAIL_NOT_VERIFIED")
-        assertTrue(repository.commands.isEmpty())
+        assertEquals(201, response.statusCode())
+        assertEquals(GroupTestConfiguration.USER_ID, repository.commands.single().ownerUserId)
     }
 
     @Test

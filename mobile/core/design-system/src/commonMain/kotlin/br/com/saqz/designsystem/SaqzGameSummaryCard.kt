@@ -2,7 +2,6 @@ package br.com.saqz.designsystem
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +9,11 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -117,8 +114,8 @@ private fun GameLocation(venue: String, address: String?) = Row(
 
 // O pin do próprio card, não um glifo da base: traço em `primary` com o miolo em lime.
 // `SaqzIcons.Pin` (Lucide MapPin) desenharia a silhueta, mas só numa cor — e o miolo é
-// o único lugar do card onde o acento aparece. Local pelo mesmo motivo do
-// StatSeparator: sobe para SaqzIcons.kt no dia em que um segundo componente pedir.
+// o único lugar do card onde o acento aparece. Fica local até um segundo componente
+// pedir; foi assim que a divisória vertical daqui virou o `vertical` do SaqzDivider.
 private const val PIN_PATH = "M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
 private const val PIN_VIEWPORT = 24f
 
@@ -149,16 +146,16 @@ private fun AttendanceStats(going: Int, maybe: Int, out: Int) {
         SaqzDivider()
         Row(
             // IntrinsicSize.Min dá altura aos traços verticais: sem isso o
-            // fillMaxHeight() deles resolve para zero dentro da Row.
+            // fillMaxHeight() dentro do SaqzDivider resolve para zero na Row.
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .padding(vertical = 16.dp),
         ) {
             AttendanceStat(going, stringResource(Res.string.game_stat_going), colors.success)
-            StatSeparator()
+            SaqzDivider(vertical = true)
             AttendanceStat(maybe, stringResource(Res.string.game_stat_maybe), colors.warning)
-            StatSeparator()
+            SaqzDivider(vertical = true)
             AttendanceStat(out, stringResource(Res.string.game_stat_out), colors.errorForeground)
         }
         SaqzDivider()
@@ -180,16 +177,6 @@ private fun RowScope.AttendanceStat(value: Int, label: String, color: Color) = C
     )
     Text(text = label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
 }
-
-// Local de propósito: a divisória vertical só existe nesta linha, e SaqzCard.kt é de
-// outro dono. Sobe para lá no dia em que um segundo componente precisar dela.
-@Composable
-private fun StatSeparator() = Box(
-    modifier = Modifier
-        .width(1.dp)
-        .fillMaxHeight()
-        .background(SaqzTheme.colors.border),
-)
 
 @Preview
 @Composable

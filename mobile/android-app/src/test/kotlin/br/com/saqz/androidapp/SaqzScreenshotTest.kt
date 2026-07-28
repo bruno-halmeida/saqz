@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +33,8 @@ import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.access.ui.SaqzCodeInput
+import br.com.saqz.access.ui.SaqzInlineAlert
+import br.com.saqz.access.ui.SaqzInlineAlertTone
 import br.com.saqz.designsystem.SaqzAttendance
 import br.com.saqz.designsystem.SaqzAttendanceSelector
 import br.com.saqz.designsystem.SaqzAvatar
@@ -44,6 +48,7 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzChoiceChipDefaults
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzGameSummaryCard
@@ -360,6 +365,20 @@ class SaqzScreenshotTest {
             SaqzChoiceChip("Admins · 2", selected = false, onClick = {})
             SaqzChoiceChip("Pendentes · 2", selected = false, onClick = {})
         }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
+        ) {
+            listOf("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb").forEachIndexed { index, day ->
+                SaqzChoiceChip(
+                    label = day,
+                    selected = index == 2,
+                    onClick = {},
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
 
     @Test
@@ -455,6 +474,29 @@ class SaqzScreenshotTest {
         }
     }
 
+    // Cena própria em vez de mais um bloco no `data()`: aquela função já estoura o
+    // LongMethod por uma linha, e crescer violação alheia não é acrescentar cena.
+    @Test
+    fun dividers() = gallery("ds-divisorias") {
+        // As duas orientações da divisória na mesma peça: horizontal separando faixas e
+        // vertical separando colunas de largura igual. A vertical some sem erro nenhum se a
+        // Row não tiver altura própria, e é disso que esta cena é testemunha.
+        SaqzCard {
+            SaqzDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Vão", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+                SaqzDivider(vertical = true)
+                Text("Talvez", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+                SaqzDivider(vertical = true)
+                Text("Pendentes", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            }
+            SaqzDivider()
+        }
+    }
+
     @Test
     fun feedback() = gallery("ds-feedback") {
         SaqzToast(visible = true, onDismiss = {}) {
@@ -493,6 +535,42 @@ class SaqzScreenshotTest {
             action = "Criar jogo",
             onAction = {},
         )
+    }
+
+    // VUL-78: os três tons do alerta inline (1i, 1f, 1k). Cena de **fluxo 1**, e não do
+    // catálogo `ds-*`: o alerta mora em `:features:access` por AD-031, e o catálogo é
+    // do design system. Sobre o branco das telas e no padding lateral de 26 delas, que
+    // é onde o fundo tintado precisa ser lido.
+    @Test
+    fun accessInlineAlerts() = capture("acesso-alertas") {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.surface)
+                .padding(horizontal = 26.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SaqzInlineAlert(
+                text = "E-mail ou senha incorretos. Confira os dados e tente de novo.",
+                emphasis = "E-mail ou senha incorretos.",
+                tone = SaqzInlineAlertTone.Error,
+            )
+            // O 1j: o destaque não é a frase toda, e o resto continua em peso normal.
+            SaqzInlineAlert(
+                text = "Revise 3 campos para criar sua conta.",
+                emphasis = "Revise 3 campos",
+                tone = SaqzInlineAlertTone.Error,
+            )
+            SaqzInlineAlert(
+                text = "Enviamos um novo código para o seu e-mail.",
+                emphasis = "Enviamos um novo código para o seu e-mail.",
+                tone = SaqzInlineAlertTone.Success,
+            )
+            SaqzInlineAlert(
+                text = "Esse código expirou. Peça um novo para continuar.",
+                tone = SaqzInlineAlertTone.Warning,
+            )
+        }
     }
 
     @Test

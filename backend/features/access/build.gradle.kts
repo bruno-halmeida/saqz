@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":shared-kernel"))
     implementation(libs.flyway.core)
     implementation(libs.spring.jdbc)
+    implementation(libs.spring.boot.starter.mail)
     implementation("org.springframework.security:spring-security-core")
     implementation("org.springframework:spring-web")
 
@@ -20,6 +21,7 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.greenmail)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

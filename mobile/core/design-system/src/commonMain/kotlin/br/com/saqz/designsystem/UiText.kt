@@ -1,4 +1,4 @@
-package br.com.saqz.access.presentation
+package br.com.saqz.designsystem
 
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.StringResource
@@ -6,6 +6,7 @@ import org.jetbrains.compose.resources.stringResource
 
 sealed interface UiText {
     data class Res(val res: StringResource, val args: List<Any> = emptyList()) : UiText
+
     data class Raw(val value: String) : UiText
 }
 

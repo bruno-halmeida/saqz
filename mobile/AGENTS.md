@@ -37,15 +37,17 @@ domínio, dados, rede e as integrações nativas. Depois do login o usuário cai
 :features:access            ← login + verificação de sessão: presentation/, ui/, navigation/
 :features:access:domain     ← AccessSession, ports nativos de acesso
 :features:access:data       ← KtorSessionGateway
-:features:groups            ← contratos e ports nativos de grupo (sem apresentação)
+:features:groups            ← contratos, formulários e ports nativos de grupo
 :features:groups:domain     ← agregados: grupo, atleta, jogo, presença, financeiro, foto
 :features:groups:data       ← Ktor*Gateway de cada agregado
+:features:groups:presentation ← rotas e apresentação compartilhada da jornada de grupos
 :compose-app                ← composition root: Koin, NavDisplay, shell vazio, ports nativos
 :android-app  /  ios-app    ← entrypoints de plataforma
 ```
 
-**Não existe `:navigation`.** O módulo raiz de `groups` **não tem apresentação** — guarda só
-contratos e ports; o domínio e os gateways estão intactos, esperando as jornadas novas.
+São **13 módulos Gradle**. **Não existe `:navigation`.** O módulo raiz de `groups` guarda contratos,
+formulários e ports; a apresentação da jornada vive em `:features:groups:presentation`. O domínio e
+os gateways permanecem intactos.
 
 ### Regras de dependência (hoje sem gate)
 
@@ -54,6 +56,7 @@ contratos e ports; o domínio e os gateways estão intactos, esperando as jornad
 | `<x>:domain` | **só** `:core:domain` |
 | `<x>:data` | `<x>:domain`, `:core:domain`, `:core:network` |
 | `<x>` (raiz) | `<x>:domain`, `:core:domain`, `:core:common`, Compose, Nav3 runtime |
+| `<x>:presentation` | `<x>:domain`, `<x>` (raiz), `:core:common`, `:core:design-system`, Compose, Nav3 runtime |
 | `:compose-app` | tudo — único módulo que enxerga `:features:*:data` |
 
 Nenhuma feature depende de outra. O gate que verificava isso (`scripts/check-mobile-boundaries`,
@@ -308,7 +311,8 @@ Implementação registrada em Koin como qualquer outra dependência.
 ## 10. Testes
 
 `commonTest` com **`kotlin.test`** (JUnit5 é JVM-only, portanto impossível em `commonTest` de KMP).
-JUnit4 aparece só em `:android-app` (instrumentado e Roborazzi). Coroutines:
+JUnit4 aparece em `:android-app` (instrumentado e Roborazzi) e nas suítes visuais
+`androidHostTest` explicitamente declaradas por módulos de apresentação. Coroutines:
 `kotlinx-coroutines-test` + `UnconfinedTestDispatcher` com `Dispatchers.setMain()` no setup.
 
 | Alvo | Onde | Como |
@@ -319,7 +323,8 @@ JUnit4 aparece só em `:android-app` (instrumentado e Roborazzi). Coroutines:
 | Screen | `<x>/commonTest` | `ComposeTestRule` + `testTag` do objeto `Tags` |
 | Journey Android | `android-app/androidTest` | fluxo real ponta a ponta |
 | Adapter nativo iOS | `ios-app/SaqzIOSTests` | Swift, direto contra o adapter |
-| Visual | `android-app/src/test` | Roborazzi — **olhe os PNGs** antes de entregar UI |
+| Visual integrado | `android-app/src/test` | Roborazzi para telas e jornadas montadas |
+| Visual de componente | `<feature>:presentation/src/androidHostTest` | Roborazzi local ao módulo — **olhe os PNGs** antes de entregar UI |
 
 **Fake > mock, sempre.** Fake é implementação em memória da interface, com um `var shouldFail` para o
 caminho triste. `SavedStateHandle` se instancia direto, sem mock.
@@ -333,17 +338,20 @@ existir, rode as tasks direto:
 
 ```sh
 mobile/gradlew -p mobile detektAll                                  # lint
-mobile/gradlew -p mobile :android-app:testDevDebugUnitTest          # testes que rodam na JVM
+mobile/gradlew -p mobile :android-app:testDevDebugUnitTest          # testes integrados que rodam na JVM
+mobile/gradlew -p mobile :features:groups:presentation:recordRoborazziAndroidHostTest # visuais locais de Grupos
 mobile/gradlew -p mobile :android-app:connectedDevDebugAndroidTest  # precisa de emulador
 ```
 
 Local: JDK 21, `DOCKER_HOST` do Colima, emulador `Saqz_API_30` ligado.
 
-Atenção ao redesenhar: `allTests` é NO-SOURCE em todos os módulos `core/*` e `features/*`, porque o
-plugin `com.android.kotlin.multiplatform.library` desabilita host tests por padrão e nenhum módulo
-faz opt-in com `withHostTest { }`. Os arquivos de `commonTest` só rodam como
-`iosSimulatorArm64Test`, em macOS — num runner Linux a suíte inteira de `core/*` e `features/*`
-passa sem executar nada.
+Atenção ao redesenhar: `allTests` é NO-SOURCE nos módulos `core/*` e `features/*` que não declaram
+host tests, porque o plugin `com.android.kotlin.multiplatform.library` os desabilita por padrão.
+`:features:groups:presentation` é a exceção deliberada: faz opt-in com `withHostTest { }` para manter
+as capturas dos componentes compartilhados junto de quem os possui; seu comando dedicado acima é
+parte do gate visual e não é alcançado por `:android-app:testDevDebugUnitTest`. Fora dessa exceção,
+os arquivos de `commonTest` só rodam como `iosSimulatorArm64Test`, em macOS — num runner Linux essas
+suítes passam sem executar nada.
 
 Detekt usa **baseline por módulo**: dívida antiga congelada, código novo falha. **Não regenere
 baseline para calar erro seu.** Quando a regeneração é legítima (o código baselinado foi apagado),
@@ -394,6 +402,7 @@ Duas armadilhas de comando, ambas já custaram tempo real:
 | Mapper | extensão privada | `GameTransport.toDomain()` |
 | ViewModel | `<Tela>ViewModel` | `LoginViewModel` |
 | MVI | `<Tela>Contract.kt` com State/Intent/Effect | `LoginContract.kt` |
+| UI model | sufixo `Ui` | `GroupMemberUi` |
 | Composables | `<Tela>Root` + `<Tela>Screen` | `LoginRoot`, `LoginScreen` |
 | Test tags | `object <Tela>Tags` | `LoginTags.Email` |
 | Port | `<Capacidade>Port` | `GroupDraftStorePort` |

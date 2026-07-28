@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -54,6 +55,7 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzChoiceChipDefaults
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzGameSummaryCard
@@ -99,6 +101,7 @@ object SaqzCatalogTags {
     const val Stepper = "saqz-catalog-stepper"
     const val Segmented = "saqz-catalog-segmented"
     const val Chips = "saqz-catalog-chips"
+    const val CompactChips = "saqz-catalog-chips-compactos"
     const val ToastTrigger = "saqz-catalog-toast-trigger"
     const val Toast = "saqz-catalog-toast"
     const val BottomNav = "saqz-catalog-bottom-nav"
@@ -333,6 +336,7 @@ private fun ColumnScope.FormSpecimens() {
     var slots by remember { mutableIntStateOf(12) }
     var gender by remember { mutableIntStateOf(2) }
     var filter by remember { mutableIntStateOf(0) }
+    var compactDay by remember { mutableIntStateOf(2) }
 
     SaqzInput(email, { email = it }, label = "E-mail", kind = SaqzInputKind.Email)
     SaqzInput(venue, { venue = it }, label = "Local", placeholder = "CERET — Quadra 2")
@@ -374,6 +378,22 @@ private fun ColumnScope.FormSpecimens() {
             SaqzChoiceChip(label = label, selected = filter == index, onClick = { filter = index })
         }
     }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SaqzCatalogTags.CompactChips),
+        horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
+    ) {
+        listOf("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb").forEachIndexed { index, day ->
+            SaqzChoiceChip(
+                label = day,
+                selected = compactDay == index,
+                onClick = { compactDay = index },
+                compact = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }
 
 @Composable
@@ -412,6 +432,23 @@ private fun ColumnScope.DataSpecimens() {
             onClick = {},
             trailing = { SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary) },
         )
+    }
+    // As duas orientações da divisória na mesma peça: horizontal separando faixas e
+    // vertical separando colunas de largura igual. A vertical some sem erro nenhum se a Row
+    // não tiver altura própria, e é disso que esta cena é testemunha.
+    SaqzCard {
+        SaqzDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Vão", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            SaqzDivider(vertical = true)
+            Text("Talvez", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            SaqzDivider(vertical = true)
+            Text("Pendentes", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+        }
+        SaqzDivider()
     }
     SaqzCard(tone = SaqzCardTone.Soft) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
