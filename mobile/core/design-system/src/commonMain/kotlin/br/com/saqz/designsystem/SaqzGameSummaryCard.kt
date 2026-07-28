@@ -1,5 +1,6 @@
 package br.com.saqz.designsystem
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,12 +20,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,17 +61,15 @@ fun SaqzGameSummaryCard(
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
-    // A marca d'água entra DEPOIS do card: o fundo ice é opaco e engoliria a bola se
-    // ela fosse desenhada antes. O clip no raio do card corta o que passa da borda.
+    // A marca d'água entra DEPOIS do card: o fundo do card é opaco — branco agora, ice
+    // antes — e engoliria a bola se ela fosse desenhada antes. O clip no raio do card
+    // corta o que passa da borda.
     Box(modifier = modifier.clip(RoundedCornerShape(SaqzTheme.metrics.cardRadius))) {
-        SaqzCard(tone = SaqzCardTone.Soft) {
-            Text(text = eyebrow, style = SaqzTheme.typography.eyebrow, color = colors.textSecondary)
+        SaqzCard {
+            Text(text = eyebrow, style = SaqzTheme.typography.eyebrow, color = colors.primary)
             Text(text = title, style = SaqzTheme.typography.title, color = colors.textPrimary)
             if (venue != null) {
-                Text(text = venue, style = SaqzTheme.typography.body, color = colors.textPrimary)
-            }
-            if (address != null) {
-                Text(text = address, style = SaqzTheme.typography.support, color = colors.textSecondary)
+                GameLocation(venue = venue, address = address)
             }
             if (going != null || maybe != null || out != null) {
                 // O export zera o que vier nulo desde que uma das três contagens exista;
@@ -85,6 +89,51 @@ fun SaqzGameSummaryCard(
                 .alpha(0.055f)
                 .clearAndSetSemantics {},
         )
+    }
+}
+
+/**
+ * O bloco de local: pin à esquerda, `venue` e `address` numa coluna à direita, gap 10
+ * e alinhados pelo topo. O endereço só existe dentro do local, como no export — sem
+ * `venue` não há linha nenhuma.
+ */
+@Composable
+private fun GameLocation(venue: String, address: String?) = Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(10.dp),
+) {
+    LocationPin()
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(text = venue, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+        if (address != null) {
+            Text(
+                text = address,
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
+    }
+}
+
+// O pin do próprio card, não um glifo da base: traço em `primary` com o miolo em lime.
+// `SaqzIcons.Pin` (Lucide MapPin) desenharia a silhueta, mas só numa cor — e o miolo é
+// o único lugar do card onde o acento aparece. Local pelo mesmo motivo do
+// StatSeparator: sobe para SaqzIcons.kt no dia em que um segundo componente pedir.
+private const val PIN_PATH = "M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
+private const val PIN_VIEWPORT = 24f
+
+@Composable
+private fun LocationPin() {
+    val stroke = SaqzTheme.colors.primary
+    val core = SaqzTheme.colors.accent
+    val outline = remember { PathParser().parsePathString(PIN_PATH).toPath() }
+    Canvas(modifier = Modifier.size(22.dp)) {
+        // Tudo abaixo está no viewBox de 24 do SVG; o scale leva junto a espessura do traço.
+        scale(scale = size.minDimension / PIN_VIEWPORT, pivot = Offset.Zero) {
+            drawPath(outline, color = stroke, style = Stroke(width = 1.8f))
+            drawCircle(color = core, radius = 2.5f, center = Offset(12f, 10f))
+            drawCircle(color = stroke, radius = 2.5f, center = Offset(12f, 10f), style = Stroke(width = 1.2f))
+        }
     }
 }
 
@@ -157,6 +206,12 @@ private fun SaqzGameSummaryCardPreview() = SaqzTheme {
         ) {
             SaqzButton(label = "Confirmar presença", onClick = {}, fullWidth = true)
         }
+        SaqzGameSummaryCard(
+            eyebrow = "PRÓXIMO JOGO",
+            title = "Ter, 28/07 · 19h30",
+            venue = "CERET — Quadra 2",
+            modifier = Modifier.padding(top = 8.dp),
+        )
         SaqzGameSummaryCard(
             eyebrow = "PRÓXIMO JOGO",
             title = "Sem jogo marcado",
