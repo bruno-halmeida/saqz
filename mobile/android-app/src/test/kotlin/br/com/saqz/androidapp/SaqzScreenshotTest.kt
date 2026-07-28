@@ -163,6 +163,61 @@ class SaqzScreenshotTest {
                 SaqzIcon(SaqzIcons.Trash, tint = SaqzTheme.colors.disabledForeground)
             }
         }
+        // O voltar solto do fluxo 1 (`outlined`): círculo branco de 44 com linha de 1px,
+        // sem barra em volta. Sobre o canvas da galeria a borda aparece; sobre o card
+        // branco ela é a única coisa que separa o botão do fundo, e é esse o caso que o
+        // print precisa mostrar. Ao lado, o mesmo botão com a seta do primário.
+        SaqzCard {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SaqzIconButton({}, "Voltar", outlined = true) { SaqzIcon(SaqzIcons.ChevronLeft) }
+                SaqzIconButton({}, "Voltar", outlined = true, enabled = false) {
+                    SaqzIcon(SaqzIcons.ChevronLeft, tint = SaqzTheme.colors.disabledForeground)
+                }
+                SaqzIconButton({}, "Fechar", outlined = true) { SaqzIcon(SaqzIcons.Close) }
+            }
+        }
+        SaqzButton(
+            "Continuar",
+            onClick = {},
+            fullWidth = true,
+            trailingContent = { SaqzIcon(SaqzIcons.ArrowRight, tint = it, size = 20.dp) },
+        )
+    }
+
+    // Os seis glifos que o fluxo 1 acrescentou, no tamanho em que as telas os usam.
+    // Sem cena, um glifo trocado (o badge da foto virar relógio) só apareceria na tela.
+    @Test
+    fun icons() = gallery("ds-icones") {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SaqzIcon(SaqzIcons.Phone)
+            SaqzIcon(SaqzIcons.ArrowRight)
+            SaqzIcon(SaqzIcons.Camera)
+            SaqzIcon(SaqzIcons.CircleAlert, tint = SaqzTheme.colors.errorForeground)
+            SaqzIcon(SaqzIcons.Clock, tint = SaqzTheme.colors.warningForeground)
+            SaqzIcon(SaqzIcons.Check, tint = SaqzTheme.colors.success)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SaqzIcon(SaqzIcons.Home)
+            SaqzIcon(SaqzIcons.Calendar)
+            SaqzIcon(SaqzIcons.Users)
+            SaqzIcon(SaqzIcons.User)
+            SaqzIcon(SaqzIcons.Bell)
+            SaqzIcon(SaqzIcons.Search)
+            SaqzIcon(SaqzIcons.Megaphone)
+            SaqzIcon(SaqzIcons.Pin)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SaqzIcon(SaqzIcons.Mail)
+            SaqzIcon(SaqzIcons.Lock)
+            SaqzIcon(SaqzIcons.Trash)
+            SaqzIcon(SaqzIcons.Eye)
+            SaqzIcon(SaqzIcons.EyeOff)
+            SaqzIcon(SaqzIcons.ChevronLeft)
+            SaqzIcon(SaqzIcons.ChevronRight)
+            SaqzIcon(SaqzIcons.Close)
+            SaqzIcon(SaqzIcons.Plus)
+            SaqzIcon(SaqzIcons.Minus)
+        }
     }
 
     @Test

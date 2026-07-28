@@ -205,11 +205,30 @@ fun SaqzButton(
     }
 }
 
+// Fundo do alvo de 44 por variante. Sem fundo (`null`) é o repouso: o glifo sobre o que
+// estiver atrás. A ordem resolve a combinação absurda (`filled = true, outlined = true`)
+// sem precisar proibi-la em runtime.
+internal fun SaqzColorTokens.iconButtonBackground(
+    soft: Boolean,
+    filled: Boolean,
+    outlined: Boolean,
+): Color? = when {
+    filled -> primary
+    soft -> surfaceSoft
+    outlined -> surface
+    else -> null
+}
+
 /**
  * 10e — alvo quadrado de 44 ("44×44 sempre", diz o export), o glifo desenhado em
- * [content]. Três fundos, mutuamente exclusivos na prática: nada (transparente),
- * `soft` (ice) e `filled` (azul sólido — o "+" de ação). `dot` marca pendência com o
- * ponto lime, e combina com qualquer um dos três.
+ * [content]. Quatro fundos, mutuamente exclusivos na prática: nada (transparente),
+ * `soft` (ice), `filled` (azul sólido — o "+" de ação) e `outlined` (branco com a linha
+ * de 1px). `dot` marca pendência com o ponto lime, e combina com qualquer um deles.
+ *
+ * [outlined] é o voltar solto do fluxo 1: círculo branco de 44 com borda `border`, sem
+ * barra em volta, em oito das onze telas de autenticação. O glifo continua vindo do
+ * chamador, e o `tint` padrão de `SaqzIcon` já é o navy que o export pede ali — a seta
+ * azul do VUL-61 é da `SaqzTopAppBar` e só dela.
  *
  * O glifo vem do chamador com o próprio `tint`, como já acontece em `soft`: em
  * `filled` passe `SaqzTheme.colors.onPrimary`, senão o traço navy some no azul.
@@ -225,17 +244,14 @@ fun SaqzIconButton(
     modifier: Modifier = Modifier,
     soft: Boolean = false,
     filled: Boolean = false,
+    outlined: Boolean = false,
     dot: Boolean = false,
     enabled: Boolean = true,
     size: Dp = SaqzTheme.metrics.iconButtonSize,
     content: @Composable () -> Unit,
 ) {
     val colors = SaqzTheme.colors
-    val background = when {
-        filled -> colors.primary
-        soft -> colors.surfaceSoft
-        else -> null
-    }
+    val background = colors.iconButtonBackground(soft = soft, filled = filled, outlined = outlined)
     // Duas caixas de propósito: o desenho do export manda no círculo (44dp), o piso de
     // acessibilidade manda no alvo (48dp). O toque e a semântica vivem na caixa externa,
     // o clip, o fundo e o glifo na interna — encolher o alvo para casar com o visual é
@@ -260,6 +276,9 @@ fun SaqzIconButton(
                     .matchParentSize()
                     .clip(CircleShape)
                     .then(background?.let { Modifier.background(it, CircleShape) } ?: Modifier)
+                    // A linha entra depois do fundo e no mesmo círculo: `border` de 1px é o
+                    // que separa o voltar branco do fluxo 1 do canvas, também branco.
+                    .then(if (outlined) Modifier.border(1.dp, colors.border, CircleShape) else Modifier)
                     .clearAndSetSemantics {},
                 contentAlignment = Alignment.Center,
             ) { content() }
@@ -296,6 +315,9 @@ private fun SaqzIconButtonPreview() = SaqzTheme {
     SaqzPreviewGrid {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SaqzIconButton(onClick = {}, contentDescription = "Voltar") { SaqzIcon(SaqzIcons.ChevronLeft) }
+            SaqzIconButton(onClick = {}, contentDescription = "Voltar", outlined = true) {
+                SaqzIcon(SaqzIcons.ChevronLeft)
+            }
             SaqzIconButton(onClick = {}, contentDescription = "Notificações", dot = true) {
                 SaqzIcon(SaqzIcons.Bell)
             }

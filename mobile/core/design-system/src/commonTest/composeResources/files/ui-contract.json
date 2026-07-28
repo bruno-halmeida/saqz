@@ -7,6 +7,7 @@
     "shadows": "design-tokens/radius.css — --shadow-sheet e --shadow-toast (o bloco de sombra mora no radius.css do export)",
     "motion": "_ds_bundle.js — press l.617/l.25, duração do press l.615, sheet l.438, switch l.1395/l.1406, toast l.1071; thumbDurationMillis vem de 'Fluxo 10 Componentes.dc.html' l.523 (segThumb), o único lugar onde o segmented tem transição",
     "readme": "design-tokens/README.md — linha do bundle de cada número que não está nos CSS",
+    "fluxo1": "bloco `fluxo1` — números das 11 telas de autenticação, lidos do export oficial e registrados aqui pelo VUL-74 para os tickets de tela consumirem",
     "excecoes": "_exceptions abaixo — tudo que NÃO sai do export está listado lá, com o valor do export ao lado"
   },
   "_exceptions": {
@@ -40,6 +41,16 @@
       "export": "duas respostas — .98 no seletor de presença (l.617) e .995 no botão (l.25)",
       "nosso": "0.98",
       "motivo": "Um press só para todo alvo primário; .995 não é perceptível em tela de telefone. Não 'corrija' para .995 lendo só o seletor do botão."
+    },
+    "fluxo1.voltar": {
+      "export": "chevronStroke 1.8",
+      "nosso": "2 — o strokeLineWidth que a Lucide desenha em todo glifo",
+      "motivo": "Desde o VUL-54 os glifos vêm da Lucide inteiros, e a Lucide desenha tudo com stroke 2 sobre viewport 24. Reabrir o path do chevron só para afinar 0.2 é voltar à transcrição que aquele ticket apagou, e por um traço imperceptível a 44dp. O 1.8 fica registrado porque é o número do export, não porque alguém deva persegui-lo."
+    },
+    "fluxo1.alertaInline": {
+      "export": "sucesso.checkStroke 3",
+      "nosso": "2 — o strokeLineWidth que a Lucide desenha em todo glifo",
+      "motivo": "Mesma causa do fluxo1.voltar, no outro extremo: aqui o export engrossa o traço em vez de afinar. O check de 14 dentro do círculo sólido de 24 sai mais leve que o desenho. Se algum dia o contraste do check sobre o verde reprovar em revisão, a saída é um glifo próprio para este caso — não mexer no SaqzIcons.Check, que serve o app inteiro."
     }
   },
   "colors": {
@@ -95,6 +106,77 @@
     "caption": { "size": 12, "weight": 400, "lineHeight": 16, "tracking": 0.0 },
     "eyebrow": { "size": 12, "weight": 600, "lineHeight": 16, "tracking": 0.08 },
     "navigation": { "size": 11, "weight": 600, "lineHeight": 14, "tracking": 0.0 }
+  },
+  "fluxo1": {
+    "_nota": "Números do fluxo 1 (autenticação, 11 telas) tal como o export os escreve — literais, sem arredondar para a grade de 4. Diferente de colors/metrics/typography/motion, este bloco NÃO é o espelho de um registry Kotlin: é o que as telas do fluxo 1 consomem, e cada tela versiona aqui o que desenha. Onde o número já tem token vivo (voltar 44, botão 52, raio 10, gap 12, raio 12 do alerta), o SaqzFluxo1ContractTest amarra os dois — mudar o token e não mudar aqui reprova, e é essa a intenção.",
+    "_pesoSetecentosECinquenta": "titulo.weight 750 é do export e não é engano: a Inter é variável (wght 100 900). As estáticas empacotadas em androidMain param em 700 (light/regular/semibold/bold), então hoje o 750 renderiza como bold. Quem quiser o peso exato empacota a Inter variável — é troca de asset, não de token.",
+    "frame": { "largura": 390, "altura": 844, "fundo": "#FFFFFF" },
+    "padding": { "topo": 20, "topoAmplo": 36, "horizontal": 26, "base": 0 },
+    "onda": {
+      "altura": 130,
+      "viewBox": "0 0 390 130",
+      "preserveAspectRatio": "none",
+      "camada1": {
+        "path": "M0 62 C 90 14, 230 108, 390 34 L390 130 0 130Z",
+        "cor": "rgba(6,56,223,.16)"
+      },
+      "camada2": {
+        "path": "M0 96 C 120 54, 260 128, 390 72 L390 130 0 130Z",
+        "cor": "#0638DF"
+      }
+    },
+    "marcaGrande": { "tamanho": 86, "raio": 22, "simbolo": 64, "letteringAltura": 30, "gap": 10 },
+    "marcaPequena": { "tamanho": 68, "raio": 18, "simbolo": 50 },
+    "voltar": {
+      "tamanho": 44,
+      "fundo": "#FFFFFF",
+      "corDaBorda": "#D8DDE8",
+      "larguraDaBorda": 1,
+      "chevron": 22,
+      "chevronStroke": 1.8,
+      "corDoChevron": "#0E1738"
+    },
+    "titulo": { "size": 28, "sizeAmplo": 29, "lineHeight": 1.12, "tracking": -0.035, "weight": 750 },
+    "subtitulo": { "size": 14, "lineHeight": 1.5, "cor": "#667085", "maxWidthMin": 290, "maxWidthMax": 300 },
+    "campo": { "altura": 54, "alturaComErro": 74 },
+    "botaoPrimario": { "altura": 52 },
+    "gapDosCampos": { "padrao": 12, "ampliado": 14 },
+    "caixaDeCodigo": {
+      "largura": 56,
+      "altura": 60,
+      "raio": 10,
+      "gap": 12,
+      "digitoSize": 24,
+      "digitoWeight": 700,
+      "foco": { "corDaBorda": "#0638DF", "glowLargura": 3, "glowCor": "rgba(6,56,223,.11)" },
+      "erro": { "corDaBorda": "#E5484D", "corDoTexto": "#E5484D", "glowLargura": 3, "glowCor": "rgba(229,72,77,.1)" },
+      "cursor": { "largura": 2, "altura": 26, "raio": 2, "cor": "#0638DF" }
+    },
+    "alertaInline": {
+      "raio": 12,
+      "paddingVertical": 12,
+      "paddingHorizontal": 14,
+      "gap": 10,
+      "icone": 20,
+      "textoSize": 13.5,
+      "textoLineHeight": 1.45,
+      "erro": { "fundo": "rgba(229,72,77,.08)", "texto": "#a3262a" },
+      "sucesso": {
+        "fundo": "rgba(23,178,106,.1)",
+        "texto": "#0a7a47",
+        "circulo": 24,
+        "check": 14,
+        "checkStroke": 3
+      },
+      "aviso": { "fundo": "rgba(245,166,35,.12)", "texto": "#8a5a05" }
+    },
+    "entrada": {
+      "translateY": 8,
+      "easing": "cubic-bezier(.22,1,.36,1)",
+      "erroDurationMillis": 280,
+      "sucessoDurationMillis": 320,
+      "checkDurationMillis": 400
+    }
   },
   "motion": {
     "pressScale": 0.98,

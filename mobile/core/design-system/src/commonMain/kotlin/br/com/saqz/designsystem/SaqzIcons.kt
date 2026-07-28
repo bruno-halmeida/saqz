@@ -12,11 +12,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
+import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Calendar
+import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
+import com.composables.icons.lucide.CircleAlert
+import com.composables.icons.lucide.Clock
 import com.composables.icons.lucide.Eye
 import com.composables.icons.lucide.EyeOff
 import com.composables.icons.lucide.House
@@ -26,6 +30,7 @@ import com.composables.icons.lucide.Mail
 import com.composables.icons.lucide.MapPin
 import com.composables.icons.lucide.Megaphone
 import com.composables.icons.lucide.Minus
+import com.composables.icons.lucide.Phone
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.Trash
@@ -40,7 +45,14 @@ import com.composables.icons.lucide.X
  *
  * O que **é** decisão nossa e por isso continua neste arquivo: qual glifo representa
  * cada ideia do Saqz. `Pin` é `map-pin` porque local de jogo é endereço, não alfinete
- * de fixar; `Home` é `house` porque a Lucide renomeou `home` em 1.0.
+ * de fixar; `Home` é `house` porque a Lucide renomeou `home` em 1.0. Onde não há
+ * decisão a tomar, o nome é o da própria Lucide — `CircleAlert` não vira `Alert`.
+ *
+ * Todo glifo da Lucide vem com `strokeLineWidth = 2` sobre viewport 24. O fluxo 1 pede
+ * 1.8 no chevron do voltar e 3 no check do alerta de sucesso; a diferença fica, e está
+ * registrada em `_exceptions` do ui-contract.json (`fluxo1.voltar` e
+ * `fluxo1.alertaInline`). Reabrir os paths para acertar o traço é exatamente a
+ * transcrição que o VUL-54 apagou.
  */
 object SaqzIcons {
     val Home = Lucide.House
@@ -58,10 +70,15 @@ object SaqzIcons {
     val EyeOff = Lucide.EyeOff
     val ChevronRight = Lucide.ChevronRight
     val ChevronLeft = Lucide.ChevronLeft
+    val ArrowRight = Lucide.ArrowRight
     val Close = Lucide.X
     val Plus = Lucide.Plus
     val Minus = Lucide.Minus
     val Check = Lucide.Check
+    val Phone = Lucide.Phone
+    val Camera = Lucide.Camera
+    val CircleAlert = Lucide.CircleAlert
+    val Clock = Lucide.Clock
 }
 
 @Composable
@@ -101,6 +118,15 @@ private fun SaqzIconsPreview() = SaqzTheme {
             SaqzIcon(SaqzIcons.ChevronRight)
             SaqzIcon(SaqzIcons.Close)
             SaqzIcon(SaqzIcons.Plus)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SaqzIcon(SaqzIcons.Minus)
+            SaqzIcon(SaqzIcons.Check)
+            SaqzIcon(SaqzIcons.ArrowRight)
+            SaqzIcon(SaqzIcons.Phone)
+            SaqzIcon(SaqzIcons.Camera)
+            SaqzIcon(SaqzIcons.CircleAlert)
+            SaqzIcon(SaqzIcons.Clock)
         }
     }
 }
