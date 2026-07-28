@@ -20,6 +20,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: saqz-local-dev-only
       SAQZ_MAIL_HOST: mailpit
       SAQZ_MAIL_STARTTLS: "false"
+      # Chave do HMAC dos codigos de recuperacao. Sem default na aplicacao de proposito:
+      # e ela que impede um dump do banco de inverter um codigo de quatro digitos.
+      # Este valor e so de desenvolvimento; producao define o seu.
+      SAQZ_PASSWORD_RESET_SECRET: apenas-para-desenvolvimento-local-nao-use-em-producao
     secrets:
       - firebase-admin
     healthcheck:

@@ -9,6 +9,15 @@ import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
 import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.input.http.PasswordResetController
+import br.com.saqz.access.adapter.output.jdbc.passwordreset.JdbcPasswordResetRepository
+import br.com.saqz.access.application.passwordreset.PasswordAccounts
+import br.com.saqz.access.application.passwordreset.PasswordReset
+import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
+import br.com.saqz.access.application.passwordreset.ResetSecretHasher
+import br.com.saqz.access.application.passwordreset.SecureResetSecrets
+import com.google.firebase.FirebaseApp
+import org.slf4j.LoggerFactory
 import br.com.saqz.groups.adapter.output.crypto.JcaAttendanceLinkTokenGenerator
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
 import br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository
@@ -146,6 +155,51 @@ class AccessSessionConfiguration {
     @Bean
     fun verificationCodeMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =
         VerificationCodeMailer(sender, from)
+
+    @Bean
+    fun passwordResetRepository(dataSource: DataSource) = JdbcPasswordResetRepository(dataSource)
+
+    @Bean
+    fun passwordAccounts(firebaseApp: FirebaseApp): PasswordAccounts = FirebasePasswordAccounts(firebaseApp)
+
+    /**
+     * O caso de uso engole a falha de entrega para não virar oráculo de quem tem conta,
+     * então o registro do SMTP fora do ar tem que sair daqui — senão ninguém fica sabendo.
+     */
+    @Bean
+    fun resetCodeNotifier(mailer: VerificationCodeMailer) = ResetCodeNotifier { recipient, code, validity ->
+        try {
+            mailer.send(recipient, code, validity)
+        } catch (failure: Exception) {
+            LoggerFactory.getLogger(AccessSessionConfiguration::class.java)
+                .error("password_reset_mail_failed", failure)
+            throw failure
+        }
+    }
+
+    /** Bean para o teste de validade poder mover o relógio sem trocar a fiação inteira. */
+    @Bean
+    fun passwordResetClock(): Clock = Clock.systemUTC()
+
+    /**
+     * Sem default de propósito: o segredo do HMAC é o que impede um dump do banco de
+     * virar tomada de conta, então subir sem ele tem que quebrar alto, como o
+     * `saqz.branch.domain`.
+     */
+    @Bean
+    fun resetSecretHasher(@Value("\${saqz.password-reset.secret}") secret: String) = ResetSecretHasher(secret)
+
+    @Bean
+    fun passwordReset(
+        repository: JdbcPasswordResetRepository,
+        accounts: PasswordAccounts,
+        notifier: ResetCodeNotifier,
+        hasher: ResetSecretHasher,
+        clock: Clock,
+    ) = PasswordReset(repository, accounts, notifier, SecureResetSecrets(), hasher, clock)
+
+    @Bean
+    fun passwordResetController(passwordReset: PasswordReset) = PasswordResetController(passwordReset)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)
