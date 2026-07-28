@@ -21,6 +21,7 @@ data class UserPhotoImage(
     val bytes: ByteArray,
     val width: Int,
     val height: Int,
+    val sha256Digest: ByteArray,
 ) {
     val byteSize: Long get() = bytes.size.toLong()
 }
@@ -35,15 +36,19 @@ fun interface UserPhotoConversionPort {
     fun convert(declaredContentType: String, input: InputStream): UserPhotoConversion
 }
 
+/**
+ * [digest] e o SHA-256 dos bytes guardados em hexadecimal. Ele identifica o
+ * conteudo, nao a linha: bytes iguais dao validador igual e bytes diferentes dao
+ * validador diferente, em qualquer conta e depois de qualquer remocao.
+ */
 data class StoredUserPhoto(
     val bytes: ByteArray,
     val byteSize: Long,
-    val version: Long,
+    val digest: String,
 )
 
 interface UserPhotoRepository {
-    /** Grava ou substitui a foto e devolve a versao resultante. */
-    fun replace(userId: UUID, photo: UserPhotoImage): Long
+    fun replace(userId: UUID, photo: UserPhotoImage)
 
     fun remove(userId: UUID)
 

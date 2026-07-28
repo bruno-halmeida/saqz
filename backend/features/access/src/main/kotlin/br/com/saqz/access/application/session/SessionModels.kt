@@ -11,8 +11,8 @@ data class UserAccount(
     val email: String?,
     val displayName: AccessName,
     val phone: PhoneNumber? = null,
-    /** Versao da foto guardada, ou null quando a conta nao tem foto. */
-    val photoVersion: Long? = null,
+    /** Digest da foto guardada, ou null quando a conta nao tem foto. */
+    val photoDigest: String? = null,
 )
 
 data class SessionMembership(

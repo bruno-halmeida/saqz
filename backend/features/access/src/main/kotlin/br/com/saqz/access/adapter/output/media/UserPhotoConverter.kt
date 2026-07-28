@@ -6,10 +6,12 @@ import br.com.saqz.access.application.photo.UserPhotoImage
 import br.com.saqz.access.application.photo.UserPhotoRejection
 import java.awt.Color
 import java.awt.Image
+import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.security.MessageDigest
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
@@ -51,11 +53,43 @@ class UserPhotoConverter(
                     return rejected(UserPhotoRejection.DIMENSIONS_TOO_LARGE)
                 }
                 val decoded = reader.read(0) ?: return rejected(UserPhotoRejection.INVALID_IMAGE)
-                encodeJpeg(shrink(decoded))
+                encodeJpeg(shrink(orient(decoded, jpegExifOrientation(bytes))))
             } finally {
                 reader.dispose()
             }
         }
+
+    /**
+     * A recompressao descarta o EXIF, entao a rotacao tem que virar pixel aqui:
+     * sem isto metade das fotos de celular fica deitada para sempre.
+     */
+    private fun orient(source: BufferedImage, orientation: Int): BufferedImage {
+        if (orientation == UPRIGHT_ORIENTATION) return source
+        val swapsAxes = orientation >= 5
+        val width = if (swapsAxes) source.height else source.width
+        val height = if (swapsAxes) source.width else source.height
+        val target = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        val graphics = target.createGraphics()
+        try {
+            graphics.transform = orientationTransform(orientation, source.width, source.height)
+            graphics.drawImage(source, 0, 0, null)
+        } finally {
+            graphics.dispose()
+        }
+        return target
+    }
+
+    private fun orientationTransform(orientation: Int, width: Int, height: Int) = AffineTransform().apply {
+        when (orientation) {
+            2 -> { translate(width.toDouble(), 0.0); scale(-1.0, 1.0) }
+            3 -> { translate(width.toDouble(), height.toDouble()); rotate(Math.PI) }
+            4 -> { translate(0.0, height.toDouble()); scale(1.0, -1.0) }
+            5 -> { rotate(Math.PI / 2); scale(1.0, -1.0) }
+            6 -> { translate(height.toDouble(), 0.0); rotate(Math.PI / 2) }
+            7 -> { translate(height.toDouble(), width.toDouble()); rotate(3 * Math.PI / 2); scale(1.0, -1.0) }
+            8 -> { translate(0.0, width.toDouble()); rotate(-Math.PI / 2) }
+        }
+    }
 
     private fun shrink(source: BufferedImage): BufferedImage {
         val scale = minOf(1.0, targetDimension.toDouble() / maxOf(source.width, source.height))
@@ -89,7 +123,15 @@ class UserPhotoConverter(
         } finally {
             writer.dispose()
         }
-        return UserPhotoConversion.Converted(UserPhotoImage(output.toByteArray(), image.width, image.height))
+        val bytes = output.toByteArray()
+        return UserPhotoConversion.Converted(
+            UserPhotoImage(
+                bytes = bytes,
+                width = image.width,
+                height = image.height,
+                sha256Digest = MessageDigest.getInstance("SHA-256").digest(bytes),
+            ),
+        )
     }
 
     private fun readBounded(input: InputStream): ByteArray? = input.use { source ->

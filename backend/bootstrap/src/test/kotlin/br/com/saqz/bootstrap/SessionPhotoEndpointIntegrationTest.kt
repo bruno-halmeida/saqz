@@ -23,9 +23,11 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.util.HexFormat
 import java.util.UUID
 import javax.imageio.ImageIO
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -58,12 +60,12 @@ class SessionPhotoEndpointIntegrationTest {
     }
 
     @Test
-    fun `envio recomprime a foto para JPEG pequeno e devolve a ETag da versao`() {
+    fun `envio recomprime a foto para JPEG pequeno e devolve a ETag do conteudo`() {
         val response = put(largePng)
 
         assertEquals(204, response.statusCode())
-        assertEquals("\"photo-1\"", header(response, "ETag"))
         val stored = assertNotNull(photos.photo)
+        assertEquals("\"${stored.digest}\"", header(response, "ETag"))
         val decoded = assertNotNull(ImageIO.read(ByteArrayInputStream(stored.bytes)))
         assertEquals(512, decoded.width)
         assertEquals(307, decoded.height)
@@ -71,15 +73,36 @@ class SessionPhotoEndpointIntegrationTest {
     }
 
     @Test
-    fun `segundo envio substitui a foto e avanca a versao`() {
+    fun `segundo envio substitui a foto e troca a ETag`() {
         assertEquals(204, put(largePng).statusCode())
         val first = photos.photo?.bytes
+        val firstTag = header(put(largePng), "ETag")
 
         val response = put(png(40, 40))
 
         assertEquals(204, response.statusCode())
-        assertEquals("\"photo-2\"", header(response, "ETag"))
+        assertNotEquals(firstTag, header(response, "ETag"))
         assertTrue(!first.contentEquals(photos.photo?.bytes))
+    }
+
+    @Test
+    fun `envio identico repetido mantem a mesma ETag`() {
+        val first = header(put(largePng), "ETag")
+
+        assertEquals(first, header(put(largePng), "ETag"))
+    }
+
+    @Test
+    fun `apagar e reenviar outra foto nao reaproveita a ETag anterior`() {
+        val first = header(put(largePng), "ETag")
+        assertEquals(204, delete().statusCode())
+
+        val second = header(put(png(40, 40)), "ETag")
+
+        assertNotEquals(first, second)
+        // Sem isto o cache privado do navegador mandaria o validador antigo,
+        // levaria 304 e mostraria a foto anterior — de outra conta, inclusive.
+        assertEquals(200, get(first).statusCode())
     }
 
     @Test
@@ -91,15 +114,15 @@ class SessionPhotoEndpointIntegrationTest {
         assertEquals(200, response.statusCode())
         assertEquals("image/jpeg", header(response, "Content-Type"))
         assertEquals("private, no-cache", header(response, "Cache-Control"))
-        assertEquals("\"photo-1\"", header(response, "ETag"))
+        assertEquals("\"${photos.photo?.digest}\"", header(response, "ETag"))
         assertEquals(photos.photo?.bytes?.size, response.body().size)
     }
 
     @Test
     fun `If-None-Match igual devolve 304 sem bytes`() {
-        assertEquals(204, put(largePng).statusCode())
+        val etag = header(put(largePng), "ETag")
 
-        val response = get("\"photo-1\"")
+        val response = get(etag)
 
         assertEquals(304, response.statusCode())
         assertEquals(0, response.body().size)
@@ -240,10 +263,12 @@ class SessionPhotoEndpointIntegrationTest {
             photo = null
         }
 
-        override fun replace(userId: UUID, photo: UserPhotoImage): Long {
-            val version = (this.photo?.version ?: 0) + 1
-            this.photo = StoredUserPhoto(photo.bytes, photo.byteSize, version)
-            return version
+        override fun replace(userId: UUID, photo: UserPhotoImage) {
+            this.photo = StoredUserPhoto(
+                photo.bytes,
+                photo.byteSize,
+                HexFormat.of().formatHex(photo.sha256Digest),
+            )
         }
 
         override fun remove(userId: UUID) {

@@ -12,30 +12,31 @@ class JdbcUserPhotoRepository(
 ) : UserPhotoRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun replace(userId: UUID, photo: UserPhotoImage): Long = jdbc.sql(
-        """
-        INSERT INTO access_user_photos (
-            user_id, photo_bytes, byte_size, width, height, version, created_at, updated_at
-        ) VALUES (
-            :userId, :bytes, :byteSize, :width, :height, 1, now(), now()
+    override fun replace(userId: UUID, photo: UserPhotoImage) {
+        jdbc.sql(
+            """
+            INSERT INTO access_user_photos (
+                user_id, photo_bytes, byte_size, width, height, sha256_digest, created_at, updated_at
+            ) VALUES (
+                :userId, :bytes, :byteSize, :width, :height, :digest, now(), now()
+            )
+            ON CONFLICT (user_id) DO UPDATE SET
+                photo_bytes = EXCLUDED.photo_bytes,
+                byte_size = EXCLUDED.byte_size,
+                width = EXCLUDED.width,
+                height = EXCLUDED.height,
+                sha256_digest = EXCLUDED.sha256_digest,
+                updated_at = now()
+            """.trimIndent(),
         )
-        ON CONFLICT (user_id) DO UPDATE SET
-            photo_bytes = EXCLUDED.photo_bytes,
-            byte_size = EXCLUDED.byte_size,
-            width = EXCLUDED.width,
-            height = EXCLUDED.height,
-            version = access_user_photos.version + 1,
-            updated_at = now()
-        RETURNING version
-        """.trimIndent(),
-    )
-        .param("userId", userId)
-        .param("bytes", photo.bytes)
-        .param("byteSize", photo.byteSize)
-        .param("width", photo.width)
-        .param("height", photo.height)
-        .query(Long::class.java)
-        .single()
+            .param("userId", userId)
+            .param("bytes", photo.bytes)
+            .param("byteSize", photo.byteSize)
+            .param("width", photo.width)
+            .param("height", photo.height)
+            .param("digest", photo.sha256Digest)
+            .update()
+    }
 
     override fun remove(userId: UUID) {
         jdbc.sql("DELETE FROM access_user_photos WHERE user_id = :userId")
@@ -44,14 +45,18 @@ class JdbcUserPhotoRepository(
     }
 
     override fun read(userId: UUID): StoredUserPhoto? = jdbc.sql(
-        "SELECT photo_bytes, byte_size, version FROM access_user_photos WHERE user_id = :userId",
+        """
+        SELECT photo_bytes, byte_size, encode(sha256_digest, 'hex') AS digest
+        FROM access_user_photos
+        WHERE user_id = :userId
+        """.trimIndent(),
     )
         .param("userId", userId)
         .query { result, _ ->
             StoredUserPhoto(
                 bytes = result.getBytes("photo_bytes"),
                 byteSize = result.getLong("byte_size"),
-                version = result.getLong("version"),
+                digest = result.getString("digest"),
             )
         }
         .optional()

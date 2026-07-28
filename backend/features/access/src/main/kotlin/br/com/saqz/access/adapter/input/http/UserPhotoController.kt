@@ -42,7 +42,7 @@ class UserPhotoController(
         val userId = resolveUserId(identity)
         val declaredContentType = file.contentType ?: throw InvalidUserPhotoException()
         return when (val result = service.upload(userId, declaredContentType, file.inputStream)) {
-            is UploadUserPhotoResult.Success -> ResponseEntity.noContent().eTag(photoTag(result.version)).build()
+            is UploadUserPhotoResult.Success -> ResponseEntity.noContent().eTag(photoTag(result.digest)).build()
             is UploadUserPhotoResult.Rejected -> when (result.reason) {
                 UserPhotoRejection.TOO_LARGE -> throw UserPhotoTooLargeException()
                 else -> throw InvalidUserPhotoException()
@@ -56,7 +56,7 @@ class UserPhotoController(
         @RequestHeader(HttpHeaders.IF_NONE_MATCH, required = false) ifNoneMatch: String?,
     ): ResponseEntity<ByteArray> {
         val photo = service.read(resolveUserId(identity)) ?: throw UserPhotoNotFoundException()
-        val etag = photoTag(photo.version)
+        val etag = photoTag(photo.digest)
         val builder = ResponseEntity.status(if (ifNoneMatch == etag) HttpStatus.NOT_MODIFIED else HttpStatus.OK)
             .header(HttpHeaders.CACHE_CONTROL, "private, no-cache")
             .header(HttpHeaders.ETAG, etag)
@@ -81,5 +81,9 @@ class UserPhotoController(
             is BootstrapSessionResult.Success -> result.session.user.id
         }
 
-    private fun photoTag(version: Long) = "\"photo-$version\""
+    // Validador forte pelo conteudo: bytes iguais dao a mesma ETag e bytes
+    // diferentes dao ETag diferente, mesmo entre contas e depois de uma remocao.
+    // Um contador por linha reiniciaria em 1 e faria o cache privado do navegador
+    // receber 304 para a foto de outra conta nesta mesma URL.
+    private fun photoTag(digest: String) = "\"$digest\""
 }

@@ -84,9 +84,9 @@ private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionRespon
         phone = user.phone?.value,
         phoneRequired = user.phone == null,
         emailVerified = emailVerified,
-        // A versao vai na URL para o cliente nao servir a foto antiga do cache
-        // depois de uma troca.
-        photoUrl = user.photoVersion?.let { "$USER_PHOTO_PATH?v=$it" },
+        // O digest vai na URL para o cliente nao servir a foto antiga do cache
+        // depois de uma troca: contador reiniciaria em 1 depois de uma remocao.
+        photoUrl = user.photoDigest?.let { "$USER_PHOTO_PATH?v=$it" },
     ),
     memberships = memberships.map {
         SessionMembershipResponse(

@@ -228,10 +228,13 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `session response photoUrl carries the stored photo version`() {
-        repository.photoVersion = 3
+    fun `session response photoUrl carries the stored photo digest`() {
+        repository.photoDigest = "ab".repeat(32)
 
-        assertEquals("/api/session/photo?v=3", json(putSession())["user"]["photoUrl"].stringValue())
+        assertEquals(
+            "/api/session/photo?v=${"ab".repeat(32)}",
+            json(putSession())["user"]["photoUrl"].stringValue(),
+        )
     }
 
     @Test
@@ -411,7 +414,7 @@ class SessionEndpointIntegrationTest {
         private val phones = mutableMapOf<String, PhoneNumber>()
         private val names = mutableMapOf<String, AccessName>()
         var memberships: List<SessionMembership> = emptyList()
-        var photoVersion: Long? = null
+        var photoDigest: String? = null
         var failure: RuntimeException? = null
 
         fun reset() {
@@ -421,7 +424,7 @@ class SessionEndpointIntegrationTest {
             phones.clear()
             names.clear()
             memberships = emptyList()
-            photoVersion = null
+            photoDigest = null
             failure = null
         }
 
@@ -437,7 +440,7 @@ class SessionEndpointIntegrationTest {
                     command.email,
                     command.displayName,
                     phones[command.subject],
-                    photoVersion,
+                    photoDigest,
                 ),
                 memberships,
             )

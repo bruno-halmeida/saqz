@@ -48,7 +48,7 @@ class JdbcSessionRepository(
                 command.email,
                 command.displayName,
                 phone?.let(PhoneNumber::from),
-                loadPhotoVersion(userId),
+                loadPhotoDigest(userId),
             ),
             memberships = loadMemberships(userId),
         )
@@ -85,16 +85,16 @@ class JdbcSessionRepository(
                 email,
                 AccessName.from(displayName),
                 command.phone,
-                loadPhotoVersion(userId),
+                loadPhotoDigest(userId),
             ),
             memberships = loadMemberships(userId),
         )
     }
 
-    private fun loadPhotoVersion(userId: UUID): Long? =
-        jdbc.sql("SELECT version FROM access_user_photos WHERE user_id = :userId")
+    private fun loadPhotoDigest(userId: UUID): String? =
+        jdbc.sql("SELECT encode(sha256_digest, 'hex') FROM access_user_photos WHERE user_id = :userId")
             .param("userId", userId)
-            .query(Long::class.java)
+            .query(String::class.java)
             .optional()
             .orElse(null)
 
