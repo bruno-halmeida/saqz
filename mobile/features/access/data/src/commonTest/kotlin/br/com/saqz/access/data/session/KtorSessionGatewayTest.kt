@@ -28,6 +28,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class KtorSessionGatewayTest {
     @Test fun `bootstrap sends payloadless PUT to exact authenticated route`() = runTest {
@@ -55,6 +56,22 @@ class KtorSessionGatewayTest {
         assertEquals("group-1", result.memberships.single().groupId.value)
         assertEquals("Group", result.memberships.single().groupName)
         assertEquals("ADMIN", result.memberships.single().role.value)
+    }
+
+    @Test fun `bootstrap carries the verification flag and the photo url of the session`() = runTest {
+        val body = """{"user":{"id":"user-1","email":"person@example.test","displayName":"Person","emailVerified":true,"photoUrl":"/api/session/photo?v=digest"},"memberships":[]}"""
+
+        val user = fixture { sessionResponse(body) }.gateway.bootstrap().success().user
+
+        assertTrue(user.emailVerified)
+        assertEquals("/api/session/photo?v=digest", user.photoUrl)
+    }
+
+    @Test fun `absent verification flag and photo url stay unverified and empty`() = runTest {
+        val user = fixture { sessionResponse() }.gateway.bootstrap().success().user
+
+        assertFalse(user.emailVerified)
+        assertNull(user.photoUrl)
     }
 
     @Test fun `bootstrap preserves nullable email`() = runTest {

@@ -1,6 +1,8 @@
 package br.com.saqz.composeapp.di
 
+import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
+import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.AuthState
@@ -139,6 +141,7 @@ class SaqzKoinModulesTest {
         assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<AccessSessionInvalidator>())
         assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<NetworkSessionInvalidator>())
         assertIs<KtorSessionGateway>(koin.get<SessionGateway>())
+        assertIs<KtorPasswordResetGateway>(koin.get<PasswordResetGateway>())
 
         app.close()
     }
@@ -316,9 +319,6 @@ private object FakeAuthPort : NativeAuthPort {
 
     override fun reloadUser(done: AuthCallback) =
         done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
-
-    override fun sendPasswordReset(email: String, done: ResultCallback) =
-        done.complete(OperationResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
 
     override fun updateDisplayName(name: String, done: AuthCallback) =
         done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))

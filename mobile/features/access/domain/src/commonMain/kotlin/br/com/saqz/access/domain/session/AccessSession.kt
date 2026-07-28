@@ -13,6 +13,8 @@ data class AccessUser(
     val displayName: String,
     val phone: String? = null,
     val phoneRequired: Boolean = false,
+    val emailVerified: Boolean = false,
+    val photoUrl: String? = null,
 )
 
 @JvmInline

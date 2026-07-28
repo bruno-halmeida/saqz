@@ -128,7 +128,6 @@ class NameCompletionViewModelTest {
         override fun createAccount(name: String, email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithPassword(email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithGoogle(done: AuthCallback) = Unit
-        override fun sendPasswordReset(email: String, done: ResultCallback) = Unit
         override fun reloadUser(done: AuthCallback) = Unit
         override fun sendVerification(done: ResultCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) = Unit

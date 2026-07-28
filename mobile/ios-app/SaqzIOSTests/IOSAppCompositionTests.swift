@@ -98,7 +98,6 @@ final class IOSAppCompositionTests: XCTestCase {
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {}
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {}
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {}
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {}
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {}
     func idToken(forceRefresh: Bool, completion: @escaping (Result<String, IOSAuthFailure>) -> Void) {}
     func signOut(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {}
