@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
@@ -466,6 +469,53 @@ class SaqzScreenshotTest {
             )
         }
     }
+
+    // As duas cenas do achado do Codex no PR #48: com alça, cabeçalho e rodapé fixos, era
+    // o conteúdo que empurrava o rodapé para fora da tela. O rodapé visível nas duas é a
+    // prova de que o conteúdo agora rola em vez de esticar o painel.
+    @Test
+    fun sheetWithLongContent() = capture("ds-sheet-conteudo-longo") {
+        Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+            SaqzBottomSheet(
+                open = true,
+                onClose = {},
+                title = "Regras do grupo",
+                description = "Quem entra concorda com tudo isto.",
+                // 30 regras não cabem em tela nenhuma: é o caso que antes empurrava o
+                // rodapé para fora. Aqui o conteúdo é cortado no limite da rolagem.
+                content = { repeat(30) { RegraLonga(it) } },
+                footer = { SaqzButton("Aceitar e entrar", onClick = {}, fullWidth = true) },
+            )
+        }
+    }
+
+    @Test
+    fun sheetWithLargeFont() = capture("ds-sheet-fonte-ampliada") {
+        // Fonte a 2×, o pior caso de acessibilidade: o cabeçalho cresce, o rodapé cresce,
+        // e o que sobra para o conteúdo encolhe.
+        val density = LocalDensity.current
+        CompositionLocalProvider(
+            LocalDensity provides Density(density.density, fontScale = 2f),
+        ) {
+            Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+                SaqzBottomSheet(
+                    open = true,
+                    onClose = {},
+                    title = "Regras do grupo",
+                    description = "Quem entra concorda com tudo isto.",
+                    content = { repeat(12) { RegraLonga(it) } },
+                    footer = { SaqzButton("Aceitar e entrar", onClick = {}, fullWidth = true) },
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun RegraLonga(index: Int) = Text(
+        "${index + 1}. Confirme presença até a véspera; quem desmarca depois entra no fim da fila.",
+        style = SaqzTheme.typography.body,
+        color = SaqzTheme.colors.textSecondary,
+    )
 
     @Test
     fun sheetWithoutHeader() = capture("ds-sheet-sem-cabecalho") {
