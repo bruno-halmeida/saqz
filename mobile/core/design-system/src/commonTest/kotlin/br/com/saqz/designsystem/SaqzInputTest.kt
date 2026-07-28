@@ -30,6 +30,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
@@ -209,6 +210,29 @@ class SaqzInputTest {
             enabled - disabled > 5.0,
             "habilitado (${enabled.format()}:1) e desabilitado (${disabled.format()}:1) estão perto demais",
         )
+    }
+
+    // O P2 do review do #50: a linha de 1px tinha guarda de `enabled`, o halo de 3dp não,
+    // então travado + erro mantinha o glow vermelho em volta. A guarda mora na origem —
+    // linha e halo saem os dois do acento.
+    @Test
+    fun disabledWearsNoAccent() {
+        val tokens = SaqzColorTokens.Light
+        assertNull(tokens.inputAccent(enabled = false, wrong = true, focused = false))
+        assertNull(tokens.inputAccent(enabled = false, wrong = false, focused = true))
+        assertNull(tokens.inputAccent(enabled = false, wrong = true, focused = true))
+    }
+
+    @Test
+    fun enabledStillWearsErrorAndFocus() {
+        val tokens = SaqzColorTokens.Light
+        assertEquals(
+            tokens.errorForeground,
+            tokens.inputAccent(enabled = true, wrong = true, focused = true),
+            "erro tem precedência sobre foco no campo ativo",
+        )
+        assertEquals(tokens.primary, tokens.inputAccent(enabled = true, wrong = false, focused = true))
+        assertNull(tokens.inputAccent(enabled = true, wrong = false, focused = false))
     }
 
     private fun contrast(a: Color, b: Color): Double {

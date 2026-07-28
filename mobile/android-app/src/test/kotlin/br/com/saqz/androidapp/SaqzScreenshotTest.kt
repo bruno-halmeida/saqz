@@ -215,6 +215,15 @@ class SaqzScreenshotTest {
             placeholder = "A definir com o grupo",
             enabled = false,
         )
+        // Travado + erro: a combinação que faltava, e por faltar deixou o halo vermelho de
+        // 3dp passar pela revisão do #50 mesmo com a linha de 1px já travada.
+        SaqzInput(
+            TextFieldValue("ana"),
+            {},
+            label = "E-mail do convite",
+            enabled = false,
+            errorText = "Não confirmado. Só o administrador reenvia.",
+        )
     }
 
     // Cena própria pelo mesmo motivo de `ds-controles`: com o sexto campo do VUL-63 o
