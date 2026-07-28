@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -183,10 +185,17 @@ fun SaqzBottomSheet(
                     }
                     SaqzDivider()
                 }
-                // `.saqz-sheet__content{padding:16px 20px 24px}`.
+                // `.saqz-sheet__content{overflow-y:auto;padding:16px 20px 24px;flex:1 1 auto}`.
+                // As três outras faixas são fixas, então esta é a que cede: `weight(fill = false)`
+                // a limita ao que sobra sem esticar o painel quando o conteúdo é curto, e o
+                // scroll é o que impede conteúdo alto — ou fonte ampliada, ou tela baixa — de
+                // empurrar o rodapé para fora da tela, onde o `clipToBounds` o cortaria e as
+                // ações ficariam inalcançáveis.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
                         .padding(start = 20.dp, end = 20.dp, top = metrics.horizontalPadding, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
                     content = content,

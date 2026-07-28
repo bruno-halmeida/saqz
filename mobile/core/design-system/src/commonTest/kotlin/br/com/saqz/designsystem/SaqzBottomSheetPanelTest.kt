@@ -2,12 +2,17 @@ package br.com.saqz.designsystem
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +25,7 @@ import kotlin.test.assertTrue
  * aparece sozinho num sheet sem cabeçalho.
  */
 @OptIn(ExperimentalTestApi::class)
-class SaqzBottomSheetCloseTest {
+class SaqzBottomSheetPanelTest {
 
     @Test
     fun theHeaderCloseButtonClosesTheSheet() = runComposeUiTest {
@@ -60,5 +65,29 @@ class SaqzBottomSheetCloseTest {
         // Sem título nem descrição não há cabeçalho, e o export não desenha o botão fora
         // dele: sobra só o scrim. Se aparecerem dois, o botão vazou para um painel sem faixa.
         assertEquals(1, onAllNodesWithContentDescription("Fechar").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun theFooterSurvivesContentTallerThanTheSheet() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                // Recorte curto de propósito: é a tela baixa (ou a fonte ampliada) em que o
+                // conteúdo passa do painel. Sem rolagem no conteúdo, o rodapé é empurrado
+                // para fora, o `clipToBounds` o corta e as ações ficam inalcançáveis.
+                Box(Modifier.size(width = 360.dp, height = 480.dp)) {
+                    SaqzBottomSheet(
+                        open = true,
+                        onClose = {},
+                        title = "Regras do grupo",
+                        description = "Quem entra concorda com tudo isto.",
+                        footer = { SaqzButton("Aceitar e entrar", onClick = {}) },
+                    ) {
+                        repeat(30) { Text("Regra ${it + 1} do grupo") }
+                    }
+                }
+            }
+        }
+
+        onNodeWithText("Aceitar e entrar").assertIsDisplayed()
     }
 }
