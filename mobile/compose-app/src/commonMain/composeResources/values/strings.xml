@@ -1,4 +1,12 @@
 <resources>
     <string name="shell_signed_in">Você está conectado.</string>
     <string name="shell_logout">Sair</string>
+    <string name="shell_open_catalog">Catálogo do design system</string>
+    <string name="catalog_title">Catálogo do design system</string>
+    <string name="catalog_section_foundations">Fundamentos</string>
+    <string name="catalog_section_actions">Ações</string>
+    <string name="catalog_section_forms">Formulários</string>
+    <string name="catalog_section_data">Dados</string>
+    <string name="catalog_section_feedback">Feedback</string>
+    <string name="catalog_section_navigation">Navegação</string>
 </resources>

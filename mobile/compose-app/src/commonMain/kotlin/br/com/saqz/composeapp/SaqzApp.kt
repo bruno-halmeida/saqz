@@ -6,6 +6,9 @@ import androidx.compose.runtime.getValue
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.SaqzNavHost
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.network.NetworkConfig
+import br.com.saqz.network.NetworkEnvironment
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -28,8 +31,21 @@ fun SaqzApp(
     }
 }
 
+/**
+ * O catálogo do design system (VUL-51) só existe onde o app roda como dev. O ambiente já
+ * chega pela plataforma em `SaqzPlatformDependencies.environment` e vive no
+ * [NetworkConfig] do Koin — não há segunda fonte de verdade a inventar aqui, e o flavor
+ * prod manda `"prod"`, então a entrada não aparece.
+ */
 @Composable
-private fun AccessGate(viewModel: AccessViewModel = koinViewModel()) {
+private fun AccessGate(
+    viewModel: AccessViewModel = koinViewModel(),
+    config: NetworkConfig = koinInject(),
+) {
     val state by viewModel.state.collectAsState()
-    SaqzNavHost(state = state, onIntent = viewModel::onIntent)
+    SaqzNavHost(
+        state = state,
+        onIntent = viewModel::onIntent,
+        catalogEnabled = config.environment == NetworkEnvironment.Dev,
+    )
 }
