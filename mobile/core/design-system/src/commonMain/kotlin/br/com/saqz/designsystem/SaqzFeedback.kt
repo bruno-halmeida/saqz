@@ -17,15 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.LocalContentColor
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -49,7 +48,7 @@ fun SaqzEmptyState(
     title: String,
     modifier: Modifier = Modifier,
     description: String? = null,
-    icon: (@Composable () -> Unit)? = null,
+    icon: ImageVector? = null,
     action: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
@@ -61,14 +60,16 @@ fun SaqzEmptyState(
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
         if (icon != null) {
-            // O tom do glifo é do componente, não de quem chama: o export pinta o ícone do
-            // vazio em primary sempre. Deixar a cor com o chamador faria o badge existir e
-            // o desenho dentro dele variar de tela para tela.
+            // `icon` é ImageVector, não slot: o export pinta o glifo do vazio em primary
+            // sempre, e com slot o componente entregava o badge mas a cor ficava com quem
+            // chama — círculo consistente, desenho dentro variando por tela. Uma tentativa
+            // anterior via LocalContentColor não resolvia: SaqzIcon recebe `tint` explícito
+            // e nunca lê o local.
             Box(
                 modifier = Modifier.size(EMPTY_STATE_BADGE).background(colors.surfaceSoft, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                CompositionLocalProvider(LocalContentColor provides colors.primary) { icon() }
+                SaqzIcon(icon = icon, tint = colors.primary, size = EMPTY_STATE_GLYPH)
             }
         }
         Text(
@@ -185,6 +186,9 @@ fun SaqzOfflineBanner(
 // Badge do EmptyState: 64px em `.saqz-empty__icon` do export.
 private val EMPTY_STATE_BADGE = 64.dp
 
+// Glifo dentro do badge — `.saqz-empty__icon svg` do export.
+private val EMPTY_STATE_GLYPH = 28.dp
+
 @Preview
 @Composable
 private fun SaqzEmptyStatePreview() = SaqzTheme {
@@ -192,7 +196,7 @@ private fun SaqzEmptyStatePreview() = SaqzTheme {
         SaqzEmptyState(
             title = "Nenhum jogo marcado por enquanto.",
             description = "Quando a galera marcar, ele aparece aqui.",
-            icon = { SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.primary, size = 30.dp) },
+            icon = SaqzIcons.Calendar,
             action = "Criar jogo",
             onAction = {},
         )

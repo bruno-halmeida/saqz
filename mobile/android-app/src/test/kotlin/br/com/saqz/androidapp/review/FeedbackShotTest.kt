@@ -66,9 +66,7 @@ class FeedbackShotTest {
                         SaqzEmptyState(
                             title = "Nenhum jogo marcado por enquanto.",
                             description = "Quando a galera marcar, ele aparece aqui.",
-                            icon = {
-                                SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.primary, size = 30.dp)
-                            },
+                            icon = SaqzIcons.Calendar,
                             action = "Criar jogo",
                             onAction = {},
                         )

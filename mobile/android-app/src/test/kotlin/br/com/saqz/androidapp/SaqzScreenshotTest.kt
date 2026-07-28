@@ -225,7 +225,7 @@ class SaqzScreenshotTest {
         SaqzEmptyState(
             title = "Nenhum jogo marcado",
             description = "Crie o próximo jogo e a galera recebe o convite na hora.",
-            icon = { SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.textSecondary, size = 32.dp) },
+            icon = SaqzIcons.Plus,
             action = "Criar jogo",
             onAction = {},
         )
