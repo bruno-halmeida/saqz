@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -430,6 +431,23 @@ private fun ColumnScope.DataSpecimens() {
             onClick = {},
             trailing = { SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary) },
         )
+    }
+    // As duas orientações da divisória na mesma peça: horizontal separando faixas e
+    // vertical separando colunas de largura igual. A vertical some sem erro nenhum se a Row
+    // não tiver altura própria, e é disso que esta cena é testemunha.
+    SaqzCard {
+        SaqzDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Vão", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            SaqzDivider(vertical = true)
+            Text("Talvez", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            SaqzDivider(vertical = true)
+            Text("Pendentes", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+        }
+        SaqzDivider()
     }
     SaqzCard(tone = SaqzCardTone.Soft) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

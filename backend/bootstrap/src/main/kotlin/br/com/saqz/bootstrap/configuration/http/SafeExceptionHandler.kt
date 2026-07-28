@@ -5,6 +5,13 @@ import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
+import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
+import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
+import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
+import br.com.saqz.access.adapter.input.http.PasswordResetRateLimitException
+import br.com.saqz.access.adapter.input.http.PasswordResetTokenInvalidException
+import br.com.saqz.access.adapter.input.http.WeakPasswordException
+import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
@@ -16,6 +23,9 @@ import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
 import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
+import br.com.saqz.access.adapter.input.http.InvalidUserPhotoException
+import br.com.saqz.access.adapter.input.http.UserPhotoNotFoundException
+import br.com.saqz.access.adapter.input.http.UserPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
@@ -59,6 +69,72 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccountNotFoundException::class)
     fun accountNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.ACCOUNT_NOT_FOUND)
+    }
+
+    @ExceptionHandler(PasswordResetRateLimitException::class)
+    fun passwordResetRateLimit(
+        failure: PasswordResetRateLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            429,
+            ErrorCode.PASSWORD_RESET_RATE_LIMIT,
+            retryAfterSeconds = failure.retryAfterSeconds,
+        )
+    }
+
+    /**
+     * "Código incorreto. Restam 2 tentativas." e "Esse código expirou." são linhas
+     * distintas na tela 1k, então são respostas distintas aqui.
+     */
+    @ExceptionHandler(PasswordResetCodeInvalidException::class)
+    fun passwordResetCodeInvalid(
+        failure: PasswordResetCodeInvalidException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.PASSWORD_RESET_CODE_INVALID,
+            remainingAttempts = failure.remainingAttempts,
+        )
+    }
+
+    @ExceptionHandler(PasswordResetCodeExpiredException::class)
+    fun passwordResetCodeExpired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.PASSWORD_RESET_CODE_EXPIRED)
+    }
+
+    @ExceptionHandler(PasswordResetAttemptLimitException::class)
+    fun passwordResetAttemptLimit(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 429, ErrorCode.PASSWORD_RESET_ATTEMPT_LIMIT)
+    }
+
+    @ExceptionHandler(PasswordResetTokenInvalidException::class)
+    fun passwordResetTokenInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
+    }
+
+    /** Provedor de identidade fora do ar não é conta inexistente nem token inválido. */
+    @ExceptionHandler(PasswordAccountsUnavailable::class)
+    fun passwordAccountsUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
+    }
+
+    @ExceptionHandler(WeakPasswordException::class)
+    fun weakPassword(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = mapOf("novaSenha" to listOf("deve ter entre 8 e 128 caracteres")),
+        )
     }
 
     @ExceptionHandler(InvalidGroupRequestException::class)
@@ -161,18 +237,28 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 503, ErrorCode.ATTENDANCE_LINK_UNAVAILABLE)
     }
 
-    @ExceptionHandler(GroupPhotoTooLargeException::class, MaxUploadSizeExceededException::class)
+    @ExceptionHandler(
+        GroupPhotoTooLargeException::class,
+        UserPhotoTooLargeException::class,
+        MaxUploadSizeExceededException::class,
+    )
     fun photoTooLarge(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 413, ErrorCode.PHOTO_TOO_LARGE)
     }
 
     @ExceptionHandler(
         InvalidGroupPhotoException::class,
+        InvalidUserPhotoException::class,
         MissingServletRequestPartException::class,
         MultipartException::class,
     )
     fun invalidPhoto(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.PHOTO_INVALID)
+    }
+
+    @ExceptionHandler(UserPhotoNotFoundException::class)
+    fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

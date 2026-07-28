@@ -1,14 +1,19 @@
 package br.com.saqz.androidapp
 
 import android.provider.Settings
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -19,8 +24,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -30,7 +39,13 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
+import br.com.saqz.access.resources.Res as AccessRes
+import br.com.saqz.access.resources.google_g
+import br.com.saqz.access.ui.AccessBrandMark
+import br.com.saqz.access.ui.AccessHeader
+import br.com.saqz.access.ui.AccessScaffold
 import br.com.saqz.access.ui.LoginScreen
+import br.com.saqz.access.ui.SaqzCodeInput
 import br.com.saqz.access.ui.SaqzInlineAlert
 import br.com.saqz.access.ui.SaqzInlineAlertTone
 import br.com.saqz.designsystem.SaqzAttendance
@@ -74,7 +89,9 @@ import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import org.jetbrains.compose.resources.painterResource
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -144,6 +161,175 @@ class SaqzScreenshotTest {
     @Test
     fun login() = capture("login") {
         LoginScreen(state = LoginState(email = "ana@saqz.app"), onIntent = {})
+    }
+
+    // VUL-79: o chrome das 11 telas do fluxo 1 — onda, marca e cabeçalho. As duas cenas
+    // são os dois arranjos que existem: marca grande com topo de 36 e título de 29 (1a,
+    // 1i) e marca pequena com voltar e topo de 20 (as outras oito).
+    //
+    // O corpo (campos, botões, links) é do design system e está aqui **só para o print**:
+    // sem ele a foto vira uma coluna com um vazio de 400dp entre o cabeçalho e a onda, e
+    // não dá para comparar com o export. Quem constrói as telas de verdade — com estado,
+    // validação e navegação — é o VUL-85 e seguintes; o espaçamento entre os blocos
+    // também é de lá, aqui ele só compõe a cena.
+    @Test
+    fun accessChromeSpacious() = capture("acesso-chrome-amplo") {
+        AccessScaffold(spacious = true) {
+            AccessBrandMark(large = true)
+            Spacer(Modifier.height(24.dp))
+            AccessHeader(
+                title = "Organize seu grupo.\nJogue",
+                emphasis = "junto.",
+                subtitle = "Entre na sua conta e mantenha sua galera sempre alinhada.",
+                spacious = true,
+            )
+            Spacer(Modifier.height(30.dp))
+            AccessEmailField()
+            Spacer(Modifier.height(12.dp))
+            SaqzInput(
+                TextFieldValue(""),
+                {},
+                label = "Senha",
+                kind = SaqzInputKind.Password,
+                inlineLabel = true,
+                placeholder = "Senha",
+                leadingContent = { SaqzIcon(SaqzIcons.Lock, tint = SaqzTheme.colors.primary) },
+            )
+            Spacer(Modifier.height(14.dp))
+            AccessLink("Esqueci minha senha")
+            Spacer(Modifier.height(14.dp))
+            SaqzButton(
+                "Entrar",
+                onClick = {},
+                fullWidth = true,
+                trailingContent = { SaqzIcon(SaqzIcons.ArrowRight, tint = it, size = 20.dp) },
+            )
+            Spacer(Modifier.height(18.dp))
+            AccessDivider("ou continue com")
+            Spacer(Modifier.height(18.dp))
+            SaqzButton(
+                "Entrar com Google",
+                onClick = {},
+                variant = SaqzButtonVariant.Secondary,
+                fullWidth = true,
+                leadingContent = {
+                    Image(
+                        painter = painterResource(AccessRes.drawable.google_g),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                },
+            )
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "Ainda não tem uma conta?",
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            Spacer(Modifier.height(8.dp))
+            AccessLink("Criar conta ›")
+        }
+    }
+
+    @Test
+    fun accessChromeCompact() = capture("acesso-chrome-compacto") {
+        AccessScaffold {
+            SaqzIconButton({}, "Voltar", outlined = true, modifier = Modifier.align(Alignment.Start)) {
+                SaqzIcon(SaqzIcons.ChevronLeft)
+            }
+            Spacer(Modifier.height(24.dp))
+            AccessBrandMark()
+            Spacer(Modifier.height(24.dp))
+            AccessHeader(
+                title = "Esqueceu a senha?\n",
+                emphasis = "Sem stress.",
+                subtitle = "Digite seu e-mail e enviamos um código para você criar uma nova senha.",
+            )
+            Spacer(Modifier.height(30.dp))
+            AccessEmailField()
+            Spacer(Modifier.height(14.dp))
+            SaqzButton(
+                "Enviar código",
+                onClick = {},
+                fullWidth = true,
+                trailingContent = { SaqzIcon(SaqzIcons.ArrowRight, tint = it, size = 20.dp) },
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Lembrou a senha? ",
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+                AccessLink("Entrar ›")
+            }
+        }
+    }
+
+    @Composable
+    private fun AccessEmailField() = SaqzInput(
+        TextFieldValue(""),
+        {},
+        label = "E-mail",
+        kind = SaqzInputKind.Email,
+        inlineLabel = true,
+        placeholder = "ana@exemplo.com",
+        leadingContent = { SaqzIcon(SaqzIcons.Mail, tint = SaqzTheme.colors.primary) },
+    )
+
+    @Composable
+    private fun AccessLink(label: String) = Text(
+        label,
+        style = SaqzTheme.typography.support.copy(fontWeight = FontWeight(600)),
+        color = SaqzTheme.colors.primary,
+    )
+
+    @Composable
+    private fun AccessDivider(label: String) = Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SaqzDivider(Modifier.weight(1f))
+        Text(label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+        SaqzDivider(Modifier.weight(1f))
+    }
+
+    // VUL-77: a fileira do código das telas 1e/1f/1k. Cena de jornada, e não do catálogo
+    // — o componente mora em `:features:access` (AD-031), e catálogo do design system só
+    // mostra peça do design system. Fundo branco porque é o do frame do fluxo 1.
+    //
+    // O foco é pedido de verdade porque é ele que acende a caixa da vez: sem pedir, o print
+    // sairia com quatro caixas iguais e a borda azul, o halo e o cursor de 2×26 nunca
+    // apareceriam.
+    @Test
+    fun accessCodeInput() = capture("acesso-codigo") {
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.surface)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SaqzCodeInput(
+                "",
+                {},
+                label = "Código de verificação",
+                modifier = Modifier.focusGroup().focusRequester(focus),
+            )
+            SaqzCodeInput("", {}, label = "Código de verificação")
+            SaqzCodeInput("13", {}, label = "Código de verificação")
+            SaqzCodeInput("1359", {}, label = "Código de verificação")
+            SaqzCodeInput(
+                "1359",
+                {},
+                label = "Código de verificação",
+                errorText = "Código incorreto. Restam 2 tentativas.",
+            )
+            SaqzCodeInput("1359", {}, label = "Código de verificação", enabled = false)
+        }
     }
 
     @Test
@@ -470,6 +656,29 @@ class SaqzScreenshotTest {
                 SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning, dot = true)
                 SaqzStatusChip("Não vou", tone = SaqzChipTone.Error, dot = true)
             }
+        }
+    }
+
+    // Cena própria em vez de mais um bloco no `data()`: aquela função já estoura o
+    // LongMethod por uma linha, e crescer violação alheia não é acrescentar cena.
+    @Test
+    fun dividers() = gallery("ds-divisorias") {
+        // As duas orientações da divisória na mesma peça: horizontal separando faixas e
+        // vertical separando colunas de largura igual. A vertical some sem erro nenhum se a
+        // Row não tiver altura própria, e é disso que esta cena é testemunha.
+        SaqzCard {
+            SaqzDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Vão", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+                SaqzDivider(vertical = true)
+                Text("Talvez", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+                SaqzDivider(vertical = true)
+                Text("Pendentes", modifier = Modifier.weight(1f), style = SaqzTheme.typography.support)
+            }
+            SaqzDivider()
         }
     }
 

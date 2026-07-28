@@ -16,6 +16,7 @@ class ApiProblemWriter(
         code: ErrorCode? = null,
         fieldErrors: Map<String, List<String>>? = null,
         retryAfterSeconds: Int? = null,
+        remainingAttempts: Int? = null,
     ) {
         val correlationId = requestCorrelationId(request).value
         response.status = status
@@ -23,7 +24,7 @@ class ApiProblemWriter(
         if (retryAfterSeconds != null) response.setHeader("Retry-After", retryAfterSeconds.toString())
         objectMapper.writeValue(
             response.outputStream,
-            ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds),
+            ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds, remainingAttempts),
         )
     }
 }

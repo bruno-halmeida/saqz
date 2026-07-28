@@ -25,7 +25,7 @@ class IdentitySecurityConfiguration {
     fun bearerAuthenticationFilter(
         verifyRequestIdentity: VerifyRequestIdentity,
         problemWriter: ApiProblemWriter,
-    ) = BearerAuthenticationFilter(verifyRequestIdentity) { request, response, status, code ->
+    ) = BearerAuthenticationFilter(verifyRequestIdentity, ANONYMOUS_PATHS) { request, response, status, code ->
         problemWriter.write(request, response, status, code)
     }
 
@@ -40,6 +40,7 @@ class IdentitySecurityConfiguration {
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
             it.requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/password-reset/**").permitAll()
                 .anyRequest().authenticated()
         }
         .exceptionHandling {
@@ -50,4 +51,9 @@ class IdentitySecurityConfiguration {
         .addFilterBefore(bearerAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         .addFilterBefore(requestCorrelationFilter, BearerAuthenticationFilter::class.java)
         .build()
+
+    private companion object {
+        /** Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer. */
+        val ANONYMOUS_PATHS = setOf("/actuator/health", "/api/password-reset")
+    }
 }
