@@ -137,14 +137,14 @@ class AndroidAuthAdapterTest {
     }
 
     @Test
-    fun passwordResetForwardsEmail() {
+    fun verificationRequestReachesProvider() {
         val fixture = Fixture()
         var result: OperationResult? = null
 
-        fixture.adapter.sendPasswordReset("ana@example.test", resultCallback { result = it })
+        fixture.adapter.sendVerification(resultCallback { result = it })
         fixture.firebase.completeOperation(AndroidProviderResult.Success(Unit))
 
-        assertEquals(listOf("reset:ana@example.test"), fixture.firebase.calls)
+        assertEquals(listOf("verification"), fixture.firebase.calls)
         assertSame(OperationResult.Success, result)
     }
 
@@ -235,7 +235,7 @@ class AndroidAuthAdapterTest {
 
         fixture.adapter.signInWithPassword("a@example.test", "bad", authCallback { auth = it })
         fixture.firebase.completeAuth(AndroidProviderResult.Failure(AndroidProviderFailure.INVALID_CREDENTIALS))
-        fixture.adapter.sendPasswordReset("a@example.test", resultCallback { operation = it })
+        fixture.adapter.sendVerification(resultCallback { operation = it })
         fixture.firebase.completeOperation(AndroidProviderResult.Failure(AndroidProviderFailure.NETWORK))
         fixture.adapter.idToken(false, tokenCallback { token = it })
         fixture.firebase.completeToken(AndroidProviderResult.Failure(AndroidProviderFailure.UNKNOWN))
@@ -292,11 +292,6 @@ class AndroidAuthAdapterTest {
         override fun reloadUser(done: (AndroidProviderResult<AndroidProviderUser>) -> Unit) {
             calls += "reload"
             authDone = done
-        }
-
-        override fun sendPasswordReset(email: String, done: (AndroidProviderResult<Unit>) -> Unit) {
-            calls += "reset:$email"
-            operationDone = done
         }
 
         override fun updateDisplayName(name: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit) {

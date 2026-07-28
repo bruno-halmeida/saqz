@@ -73,7 +73,6 @@ internal interface AndroidFirebaseAuthClient {
     fun signInWithGoogle(idToken: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
     fun sendVerification(done: (AndroidProviderResult<Unit>) -> Unit)
     fun reloadUser(done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
-    fun sendPasswordReset(email: String, done: (AndroidProviderResult<Unit>) -> Unit)
     fun updateDisplayName(name: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
     fun idToken(forceRefresh: Boolean, done: (AndroidProviderResult<String>) -> Unit)
     fun signOut(done: (AndroidProviderResult<Unit>) -> Unit)
@@ -115,9 +114,6 @@ internal class AndroidAuthAdapter(
 
     override fun reloadUser(done: AuthCallback) =
         firebase.reloadUser { done.complete(it.toAuthResult()) }
-
-    override fun sendPasswordReset(email: String, done: ResultCallback) =
-        firebase.sendPasswordReset(email) { done.complete(it.toOperationResult()) }
 
     override fun updateDisplayName(name: String, done: AuthCallback) =
         firebase.updateDisplayName(name) { done.complete(it.toAuthResult()) }
@@ -207,10 +203,6 @@ internal class FirebaseSdkAuthClient(
                 else done(AndroidProviderResult.Success(refreshed.toProvider()))
             }
         }
-    }
-
-    override fun sendPasswordReset(email: String, done: (AndroidProviderResult<Unit>) -> Unit) {
-        auth.sendPasswordResetEmail(email).completeWithUnit(done)
     }
 
     override fun updateDisplayName(name: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit) {

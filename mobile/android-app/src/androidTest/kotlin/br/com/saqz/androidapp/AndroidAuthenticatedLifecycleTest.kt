@@ -343,9 +343,6 @@ private class LifecycleAuthPort : NativeAuthPort {
         AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE),
     )
 
-    override fun sendPasswordReset(email: String, done: ResultCallback) =
-        done.complete(OperationResult.Success)
-
     override fun updateDisplayName(name: String, done: AuthCallback) = done.complete(
         AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE),
     )

@@ -93,7 +93,6 @@ private object TestAuthPort : NativeAuthPort {
     override fun signInWithGoogle(done: AuthCallback) = unavailable(done)
     override fun sendVerification(done: ResultCallback) = unavailable(done)
     override fun reloadUser(done: AuthCallback) = unavailable(done)
-    override fun sendPasswordReset(email: String, done: ResultCallback) = unavailable(done)
     override fun updateDisplayName(name: String, done: AuthCallback) = unavailable(done)
     override fun idToken(forceRefresh: Boolean, done: TokenCallback) =
         done.complete(TokenResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))

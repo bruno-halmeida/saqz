@@ -2,6 +2,8 @@ package br.com.saqz.access.domain.port
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -101,6 +103,15 @@ class NativeAccessPortsTest {
         assertSame(OperationResult.Success, shared)
     }
 
+    @Test fun `selected profile photo compares by content and rejects empty bytes`() {
+        val photo = ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg")
+
+        assertEquals(ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg"), photo)
+        assertFalse(photo == ProfilePhotoResult.Selected(byteArrayOf(1, 2, 4), "image/jpeg"))
+        assertFails { ProfilePhotoResult.Selected(byteArrayOf(), "image/jpeg") }
+        assertFails { ProfilePhotoResult.Selected(byteArrayOf(1), " ") }
+    }
+
     private fun ignoringResult() = object : ResultCallback { override fun complete(result: OperationResult) = Unit }
     private fun valueCallback(block: (ValueResult) -> Unit) = object : ValueCallback { override fun complete(result: ValueResult) = block(result) }
 
@@ -123,14 +134,18 @@ class NativeAccessPortsTest {
         override fun writePendingInvite(value: String?, done: ResultCallback) { pending = value; done.complete(OperationResult.Success) }
     }
 
-    private class ExternalAdapters : NativeAuthPort, NativeLinkPort, LocalAccessStatePort, NativeSharePort {
+    private class ExternalAdapters :
+        NativeAuthPort,
+        NativeLinkPort,
+        LocalAccessStatePort,
+        NativeSharePort,
+        NativeProfilePhotoPort {
         override fun observe(listener: AuthStateListener) = noOpCancelable()
         override fun createAccount(name: String, email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithPassword(email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithGoogle(done: AuthCallback) = done.complete(AuthResult.Cancelled)
         override fun sendVerification(done: ResultCallback) = done.complete(OperationResult.Success)
         override fun reloadUser(done: AuthCallback) = Unit
-        override fun sendPasswordReset(email: String, done: ResultCallback) = done.complete(OperationResult.Success)
         override fun updateDisplayName(name: String, done: AuthCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) = Unit
         override fun signOut(done: ResultCallback) = done.complete(OperationResult.Success)
@@ -140,6 +155,8 @@ class NativeAccessPortsTest {
         override fun readPendingInvite(done: ValueCallback) = done.complete(ValueResult.Success(null))
         override fun writePendingInvite(value: String?, done: ResultCallback) = done.complete(OperationResult.Success)
         override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+        override suspend fun chooseCamera() = ProfilePhotoResult.Cancelled
+        override suspend fun chooseLibrary() = ProfilePhotoResult.Selected(byteArrayOf(1), "image/jpeg")
         private fun noOpCancelable() = object : Cancelable { override fun cancel() = Unit }
     }
 }

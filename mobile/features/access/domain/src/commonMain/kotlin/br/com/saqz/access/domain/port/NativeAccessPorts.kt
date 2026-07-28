@@ -78,7 +78,6 @@ interface NativeAuthPort {
     fun signInWithGoogle(done: AuthCallback)
     fun sendVerification(done: ResultCallback)
     fun reloadUser(done: AuthCallback)
-    fun sendPasswordReset(email: String, done: ResultCallback)
     fun updateDisplayName(name: String, done: AuthCallback)
     fun idToken(forceRefresh: Boolean, done: TokenCallback)
     fun signOut(done: ResultCallback)
@@ -97,4 +96,33 @@ interface LocalAccessStatePort {
 
 interface NativeSharePort {
     fun share(text: String, done: ResultCallback)
+}
+
+sealed interface ProfilePhotoResult {
+    // Bytes já recortados e recodificados pela plataforma: o envio é HTTP multipart,
+    // então o acesso não precisa do arquivo de origem nem de um handle para ele.
+    data class Selected(val bytes: ByteArray, val mediaType: String) : ProfilePhotoResult {
+        init {
+            require(bytes.isNotEmpty() && mediaType.isNotBlank())
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is Selected && bytes.contentEquals(other.bytes) && mediaType == other.mediaType
+
+        override fun hashCode(): Int = 31 * bytes.contentHashCode() + mediaType.hashCode()
+    }
+
+    data object Cancelled : ProfilePhotoResult
+    data object Failed : ProfilePhotoResult
+}
+
+/**
+ * Escolher e recodificar imagem é capacidade de plataforma, não conceito de grupo: os
+ * adapters desta porta delegam para as mesmas implementações que `:features:groups` usa
+ * (`AndroidPhotoSelectionAdapter`/`AndroidPhotoEncoder` e `SaqzIOS/GroupsPhoto/`), sem
+ * cópia. O envio em si vai por HTTP, não por aqui.
+ */
+interface NativeProfilePhotoPort {
+    suspend fun chooseCamera(): ProfilePhotoResult
+    suspend fun chooseLibrary(): ProfilePhotoResult
 }

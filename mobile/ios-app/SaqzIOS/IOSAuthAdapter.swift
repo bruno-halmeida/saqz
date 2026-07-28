@@ -46,7 +46,6 @@ protocol IOSFirebaseAuthClient: AnyObject {
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func idToken(forceRefresh: Bool, completion: @escaping (Result<String, IOSAuthFailure>) -> Void)
     func signOut(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
@@ -151,17 +150,6 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
         firebase.reloadUser { done.complete(result: $0.authResult) }
     }
 
-    func sendPasswordReset(email: String, done: ResultCallback) {
-        firebase.sendPasswordReset(email: email) { result in
-            switch result {
-            case .success, .failure(.userNotFound):
-                done.complete(result_: OperationResultSuccess.shared)
-            case .failure(let failure):
-                done.complete(result_: failure.operationResult)
-            }
-        }
-    }
-
     func updateDisplayName(name: String, done: AuthCallback) {
         firebase.updateDisplayName(name) { done.complete(result: $0.authResult) }
     }
@@ -226,10 +214,6 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
             }
             Task { @MainActor in completion(.success(IOSAuthUser(current))) }
         }
-    }
-
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
-        auth.sendPasswordReset(withEmail: email) { error in Self.complete(error: error, completion: completion) }
     }
 
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {

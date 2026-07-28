@@ -136,7 +136,6 @@ class AuthenticationStateMachineTest {
         override fun createAccount(name: String, email: String, password: String, done: AuthCallback) = Unit
         override fun sendVerification(done: ResultCallback) = Unit
         override fun reloadUser(done: AuthCallback) = Unit
-        override fun sendPasswordReset(email: String, done: ResultCallback) = Unit
         override fun updateDisplayName(name: String, done: AuthCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) = Unit
         override fun signOut(done: ResultCallback) = Unit
