@@ -351,6 +351,36 @@ rode `detektBaselineAll` no módulo: ela executa as tasks de todos os source set
 por source set em `build/detekt-baselines/` e só então funde tudo em `detekt-baseline.xml`. Módulo
 sem nenhum smell fica **sem** arquivo de baseline, de propósito.
 
+### Prints no corpo do PR
+
+**PR que mexe em componente ou tela leva os prints no corpo.** Todos os estados possíveis daquilo
+que você mudou: habilitado, desabilitado, carregando, erro, vazio, selecionado, cada variante e cada
+tom. Gere com `recordRoborazziDevDebug`, empurre os PNGs para a branch `screenshots` e embuta o raw:
+
+```markdown
+![segmented desabilitado](https://raw.githubusercontent.com/bruno-halmeida/saqz/screenshots/vul-NN/segmented-desabilitado.png)
+```
+
+`screenshots` é uma branch **órfã**, sem ancestral comum com a `main`, e **não se mergeia**. O
+`README.md` da raiz dela explica o padrão de caminho (`<ticket>/<nome>.png`) e como empurrar.
+`mobile/android-app/screenshots/` está no `.gitignore`: PR de código não toca em binário, então dois
+PRs paralelos não têm mais como conflitar em pixel.
+
+**Estado que não está na cena não está sendo conferido.** Um contraste de 1,01:1 no
+`AttendanceSelector` desabilitado atravessou revisão visual inteira porque a captura só tinha
+estados habilitados — ninguém mentiu, ninguém desatendeu; o defeito simplesmente não estava na foto.
+O VUL-43 achou mais seis estados nunca olhados pelo mesmo motivo. Se você mudou um estado, ele vai
+para a cena, mesmo que seja o quinto tom do mesmo chip.
+
+Duas armadilhas de comando, ambas já custaram tempo real:
+
+- `recordRoborazziDevDebug` **regrava o catálogo inteiro**, não só a cena que você mexeu. Com os
+  PNGs fora do git isso deixou de causar conflito, mas saiba o que o comando faz antes de olhar o
+  diff de sete arquivos e achar que quebrou alguma coisa.
+- O render da referência (Chrome headless, comando no [`README.md`](../README.md) da raiz) sai com
+  **exit 144**: ele grava o PNG e não encerra sozinho. **Não é falha.** Confira que o arquivo existe
+  e siga — perseguir esse código de saída já custou 17 minutos a um agente.
+
 ---
 
 ## 12. Convenções de nome

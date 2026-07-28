@@ -118,9 +118,10 @@ object SaqzCatalogTags {
  *
  * As cenas vêm de `SaqzScreenshotTest`; o que muda é que cada controle tem estado.
  *
- * Pública, e não `internal`, porque a captura de review (`CatalogShotTest` em
- * `:android-app`) compõe a tela de outro módulo. Quem decide se ela é alcançável é o
- * [br.com.saqz.composeapp.shell.SaqzAppShell], que só mostra a entrada em dev.
+ * Pública desde que a captura de review em `:android-app` compunha a tela daqui. Essa
+ * captura por ticket morreu com o VUL-55 — os PNGs saíram do git e cada PR leva os seus.
+ * Quem decide se a tela é alcançável é o [br.com.saqz.composeapp.shell.SaqzAppShell],
+ * que só mostra a entrada em dev.
  *
  * ponytail: a moldura (título e nome das seções) vem de `composeResources`; o texto
  * *dentro* de cada espécime é literal, como já era no screenshot test. É fixture de
