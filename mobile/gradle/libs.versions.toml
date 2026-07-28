@@ -21,6 +21,7 @@ kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.8.0"
 koin-bom = "4.2.2"
 ktor = "3.5.1"
+lucide = "1.1.0"
 lifecycle = "2.9.6"
 lifecycle-navigation3 = "2.10.0"
 min-sdk = "23"
@@ -88,6 +89,7 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+icons-lucide = { module = "com.composables:icons-lucide", version.ref = "lucide" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
