@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
@@ -63,6 +64,48 @@ class SaqzCatalogBackTest {
         onNodeWithText("Você está conectado.").assertIsDisplayed()
         onNodeWithTag(SaqzCatalogTags.Root).assertDoesNotExist()
         // O back foi consumido pelo catálogo, não repassado.
+        assertEquals(0, unhandledBacks)
+    }
+
+    /**
+     * O espécime de sheet fica *dentro* do catálogo, e o `SaqzBottomSheet` não registra o
+     * back dele (VUL-53). Sem o handler interno do catálogo, o back com o sheet aberto
+     * fecharia a tela inteira e o sheet iria embora junto, sem nunca ter sido fechado.
+     *
+     * Uma camada por back: sheet primeiro, catálogo depois.
+     */
+    @Test
+    fun theSystemBackClosesTheSheetSpecimenBeforeTheCatalog() = runComposeUiTest {
+        var unhandledBacks = 0
+        val dispatcher = NavigationEventDispatcher { unhandledBacks++ }
+        val input = TestBackInput().also(dispatcher::addInput)
+
+        setContent {
+            CompositionLocalProvider(
+                LocalCompatNavigationEventDispatcherOwner provides TestOwner(dispatcher),
+            ) {
+                SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
+            }
+        }
+        onNodeWithTag(SaqzShellCatalogTag).performClick()
+        waitForIdle()
+        onNodeWithTag(SaqzCatalogTags.SheetTrigger).performScrollTo().performClick()
+        waitForIdle()
+        onNodeWithText("Sair da conta?").assertIsDisplayed()
+
+        input.pressBack()
+        waitForIdle()
+
+        // Primeiro back: só o sheet foi embora.
+        onNodeWithText("Sair da conta?").assertDoesNotExist()
+        onNodeWithTag(SaqzCatalogTags.Root).assertIsDisplayed()
+
+        input.pressBack()
+        waitForIdle()
+
+        // Segundo back: agora sim o catálogo.
+        onNodeWithTag(SaqzCatalogTags.Root).assertDoesNotExist()
+        onNodeWithText("Você está conectado.").assertIsDisplayed()
         assertEquals(0, unhandledBacks)
     }
 

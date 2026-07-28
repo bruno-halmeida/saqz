@@ -27,7 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -132,10 +134,20 @@ object SaqzCatalogTags {
  * peças, e lazy descartaria a composição das seções fora da tela, junto com o estado
  * e a animação em curso. Vira `LazyColumn` no dia em que doer o scroll.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SaqzCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
     var sheetOpen by remember { mutableStateOf(false) }
+    // Remendo local, não solução: o `SaqzBottomSheet` não registra o back dele, então o
+    // handler de fora (o do shell) fecharia o catálogo inteiro com o espécime de sheet
+    // aberto. Este handler é o mais interno habilitado, e o mais interno consome — o
+    // primeiro back fecha o sheet, o seguinte fecha o catálogo.
+    //
+    // A causa raiz é do componente e está em VUL-53. **Este trecho sai quando o
+    // `SaqzBottomSheet` tratar o próprio back**: aí o sheet consome sozinho e o catálogo
+    // não precisa saber que ele existe.
+    BackHandler(enabled = sheetOpen) { sheetOpen = false }
     Box(
         modifier = modifier
             .fillMaxSize()
