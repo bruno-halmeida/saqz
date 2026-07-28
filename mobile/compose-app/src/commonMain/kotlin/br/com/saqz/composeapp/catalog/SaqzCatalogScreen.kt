@@ -54,6 +54,7 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzChoiceChipDefaults
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzGameSummaryCard
@@ -99,6 +100,7 @@ object SaqzCatalogTags {
     const val Stepper = "saqz-catalog-stepper"
     const val Segmented = "saqz-catalog-segmented"
     const val Chips = "saqz-catalog-chips"
+    const val CompactChips = "saqz-catalog-chips-compactos"
     const val ToastTrigger = "saqz-catalog-toast-trigger"
     const val Toast = "saqz-catalog-toast"
     const val BottomNav = "saqz-catalog-bottom-nav"
@@ -333,6 +335,7 @@ private fun ColumnScope.FormSpecimens() {
     var slots by remember { mutableIntStateOf(12) }
     var gender by remember { mutableIntStateOf(2) }
     var filter by remember { mutableIntStateOf(0) }
+    var compactDay by remember { mutableIntStateOf(2) }
 
     SaqzInput(email, { email = it }, label = "E-mail", kind = SaqzInputKind.Email)
     SaqzInput(venue, { venue = it }, label = "Local", placeholder = "CERET — Quadra 2")
@@ -372,6 +375,22 @@ private fun ColumnScope.FormSpecimens() {
     ) {
         listOf("Todos · 26", "Admins · 2", "Pendentes · 2").forEachIndexed { index, label ->
             SaqzChoiceChip(label = label, selected = filter == index, onClick = { filter = index })
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SaqzCatalogTags.CompactChips),
+        horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
+    ) {
+        listOf("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb").forEachIndexed { index, day ->
+            SaqzChoiceChip(
+                label = day,
+                selected = compactDay == index,
+                onClick = { compactDay = index },
+                compact = true,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

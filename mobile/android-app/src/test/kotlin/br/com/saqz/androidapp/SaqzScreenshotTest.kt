@@ -36,6 +36,7 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzChoiceChipDefaults
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzGameSummaryCard
@@ -232,6 +233,20 @@ class SaqzScreenshotTest {
             SaqzChoiceChip("Todos · 26", selected = true, onClick = {})
             SaqzChoiceChip("Admins · 2", selected = false, onClick = {})
             SaqzChoiceChip("Pendentes · 2", selected = false, onClick = {})
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
+        ) {
+            listOf("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb").forEachIndexed { index, day ->
+                SaqzChoiceChip(
+                    label = day,
+                    selected = index == 2,
+                    onClick = {},
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 

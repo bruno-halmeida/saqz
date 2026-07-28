@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzChoiceChipDefaults
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.ui.shortLabel
@@ -51,7 +52,7 @@ internal fun GroupSlotPicker(
         PickerLabel(stringResource(Res.string.group_slot_weekday))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
         ) {
             PICKER_WEEKDAYS.forEach { day ->
                 SaqzChoiceChip(

@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
@@ -45,6 +46,15 @@ class SaqzCatalogScreenTest {
         onNodeWithTag(SaqzCatalogTags.Switch).performScrollTo().assertIsOn().performClick()
         waitForIdle()
         onNodeWithTag(SaqzCatalogTags.Switch).assertIsOff()
+    }
+
+    @Test
+    fun theCompactChoiceChipChangesDayOnTouch() = runComposeUiTest {
+        setContent { SaqzTheme { SaqzCatalogScreen(onBack = {}) } }
+        onNodeWithTag(SaqzCatalogTags.CompactChips).performScrollTo()
+        onNodeWithText("Sáb").performClick()
+        waitForIdle()
+        onNodeWithText("Sáb").assertIsSelected()
     }
 
     @Test
