@@ -9,13 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -64,9 +64,9 @@ private const val SaqzShellGamesTab = "jogos"
  * app — e é ela que fecha a jornada `Ready → SignedOut`. Então Perfil abre o placeholder
  * que o shell já era, com o "Sair" (e, em dev, a entrada do catálogo).
  *
- * ponytail: sem ViewModel — a aba ativa é estado de composição, que o AGENTS.md §5
- * permite em `remember` (AD-031: "ViewModel só quando há estado assíncrono, persistência
- * ou comportamento real"). Vira rota de verdade quando houver mais de uma aba com tela.
+ * ponytail: sem ViewModel — a aba ativa cabe em `rememberSaveable` (AD-031: "ViewModel
+ * só quando há estado assíncrono, persistência ou comportamento real"). Vira rota de
+ * verdade quando houver mais de uma aba com tela.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -76,8 +76,16 @@ internal fun SaqzAppShell(
     catalogEnabled: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
 ) {
-    var catalogOpen by remember { mutableStateOf(false) }
-    var activeTab by remember { mutableStateOf(SaqzShellGroupsTab) }
+    // `rememberSaveable`, não `remember`: aba ativa e catálogo aberto são estado de
+    // navegação, e o AGENTS.md §5 proíbe `remember` para estado de aplicação. Com
+    // `remember` a rotação devolvia o usuário a Grupos e fechava o catálogo sozinha.
+    //
+    // Não sobem para o `NavBackStack` de propósito: trocar de aba não é empilhar destino
+    // — o back do sistema não deve desfazer a troca —, e o gate de sessão colapsa o stack
+    // fora de `Ready`, o que apagaria a aba escolhida a cada emissão. Viram rota no dia em
+    // que houver mais de uma aba com tela de verdade.
+    var catalogOpen by rememberSaveable { mutableStateOf(false) }
+    var activeTab by rememberSaveable { mutableStateOf(SaqzShellGroupsTab) }
     // Uma saída, dois gatilhos: a seta da barra e o back do sistema (botão no Android,
     // gesto no iOS) chamam o mesmo fechamento. Sem isto o back agiria no shell por baixo
     // — ou sairia do app — com o catálogo ainda na tela.
@@ -89,7 +97,18 @@ internal fun SaqzAppShell(
     Column(
         modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background),
     ) {
-        Box(modifier = Modifier.weight(1f).testTag(SaqzShellTabContentTag)) {
+        // O inset do topo é do shell, não da tela. O `MainActivity` chama
+        // `enableEdgeToEdge()`, e as telas de grupo empilhadas escapam porque começam com
+        // `SaqzTopAppBar`, que já aplica o seu `WindowInsets.statusBars`. A lista (2n) não
+        // usa barra — começa no `GroupListHeader` —, então o "Grupos" ficava sob o relógio.
+        // Resolver aqui e não lá vale para a próxima aba sem barra também. O rodapé fica
+        // com o `SaqzBottomNav`, que já trata `navigationBars`.
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .testTag(SaqzShellTabContentTag),
+        ) {
             when (activeTab) {
                 SaqzShellGroupsTab -> groupsTab()
                 else -> ShellPlaceholder(
@@ -131,9 +150,10 @@ private fun ShellPlaceholder(
 ) {
     val metrics = SaqzTheme.metrics
     Column(
+        // Sem `safeDrawing` aqui: o topo agora vem do contêiner de aba e o rodapé é do
+        // `SaqzBottomNav` — repetir os dois daria padding em dobro.
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
             .imePadding()
             .padding(horizontal = metrics.horizontalPadding)
             .testTag(SaqzShellContentTag),

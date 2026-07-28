@@ -58,6 +58,11 @@ class SaqzAppShellTest {
         assertEquals(1, logouts)
     }
 
+    // A restauração de `rememberSaveable` não tem teste automatizado aqui: o
+    // `StateRestorationTester` do Compose é `TODO()` no Kotlin/Native
+    // (`platformEncodeDecode`), e teste de Compose em `commonTest` só roda no iOS
+    // (AGENTS.md §10). Conferida por rotação no emulador Android, no VUL-72.
+
     private companion object {
         const val GroupsTab = "conteúdo-da-aba-grupos"
     }

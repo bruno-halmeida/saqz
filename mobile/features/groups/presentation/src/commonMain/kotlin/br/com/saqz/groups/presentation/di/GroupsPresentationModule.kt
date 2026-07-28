@@ -65,11 +65,14 @@ fun groupsPresentationModule(sampleContent: Boolean): Module = module {
  * a mesma que já liga o catálogo do design system (`NetworkConfig.environment == Dev`,
  * VUL-51); não se inventou fonte de verdade.
  *
+ * É `internal` para que `GroupsInitialStateTest` verifique a decisão direto, sem subir
+ * container — quem sobe container é o `SaqzKoinModulesTest`, e só ele (AGENTS.md §7).
+ *
  * ponytail: em dev todo `groupId` cai no mesmo grupo de amostra — não há de onde procurar
  * outro. Quando o `GroupGateway` entrar, este objeto some inteiro e cada ViewModel coleta
  * o seu `Flow` no `init`, com guarda de geração.
  */
-private object GroupsInitialState {
+internal object GroupsInitialState {
     fun list(sample: Boolean) =
         if (sample) GroupListSamples.filled else GroupListState(isLoading = false)
 

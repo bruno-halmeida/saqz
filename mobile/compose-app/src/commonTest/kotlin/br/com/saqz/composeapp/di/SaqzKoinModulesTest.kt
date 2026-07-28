@@ -220,9 +220,11 @@ class SaqzKoinModulesTest {
      * — o que se verifica é a definição, não a origem do handle.
      *
      * A quinta, `GroupScheduleViewModel`, é `internal` ao módulo dela (o `State` carrega o
-     * `SlotDraft`, também `internal`), então este módulo não consegue nomeá-la. As cinco
-     * juntas, incluindo o esqueleto de cada uma, estão em `GroupsPresentationModuleTest`,
-     * dentro de `:features:groups:presentation`.
+     * `SlotDraft`, também `internal`), então nenhum teste deste módulo consegue nomeá-la —
+     * e este é o único teste que pode subir container (AGENTS.md §7), então a definição
+     * dela não tem cobertura de resolução automatizada. O que existe no lugar: a construção
+     * direta em `GroupsInitialStateTest` e a passagem pela tela no emulador. Tornar a
+     * ViewModel pública só para o teste desfaria a decisão de encapsulamento do VUL-71.
      */
     @Test
     fun groupsPresentationModuleResolvesWithTheRouteArguments() {
