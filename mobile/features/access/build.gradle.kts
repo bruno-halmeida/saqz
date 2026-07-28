@@ -42,4 +42,18 @@ compose.resources {
     publicResClass = true
     packageOfResClass = "br.com.saqz.access.resources"
     generateResClass = always
+
+    // O `ui-contract.json` é a cópia versionada dos números do export e mora no
+    // `commonTest` do design system — recurso de teste, que não é publicado para quem
+    // depende do módulo. O `AccessMetricsTest` precisa dele para amarrar os literais do
+    // fluxo 1 à chave `fluxo1`, então o source set de teste desta feature ganha a pasta
+    // de lá como diretório extra: é o mesmo arquivo em disco, lido pelos dois testes.
+    // Cópia geraria duas verdades, e mover o contrato para `commonMain` embarcaria um
+    // artefato de desenvolvimento no app.
+    customDirectory(
+        sourceSetName = "commonTest",
+        directoryProvider = provider {
+            rootProject.layout.projectDirectory.dir("core/design-system/src/commonTest/composeResources")
+        },
+    )
 }
