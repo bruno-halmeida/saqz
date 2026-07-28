@@ -107,6 +107,7 @@
     <string name="group_setup_error_composition">Escolha o público do grupo.</string>
     <string name="group_setup_error_level">Escolha a categoria do grupo.</string>
     <string name="group_setup_error_custom_level">Dê um nome para a categoria personalizada.</string>
+    <string name="group_setup_error_description">A descrição precisa de pelo menos 2 caracteres.</string>
     <string name="group_setup_error_play_style">Escolha o sistema de jogo.</string>
     <string name="group_setup_error_capacity">O grupo precisa de pelo menos 2 jogadores.</string>
     <string name="group_setup_error_capacity_hint">Mínimo de 2 jogadores.</string>
