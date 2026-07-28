@@ -28,6 +28,9 @@ kotlin {
             api("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
+            // implementation, não api: a Lucide entra só como fonte dos glifos.
+            // O que sai daqui é `ImageVector`, e quem consome não importa `Lucide`.
+            implementation(libs.icons.lucide)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
