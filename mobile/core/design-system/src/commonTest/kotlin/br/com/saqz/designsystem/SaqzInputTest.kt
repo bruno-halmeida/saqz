@@ -1,6 +1,7 @@
 package br.com.saqz.designsystem
 
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -24,7 +25,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.theme.SaqzColorTokens
 import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -181,6 +184,47 @@ class SaqzInputTest {
         waitForIdle()
         onNode(hasSetTextAction(), useUnmergedTree = true).assertIsFocused()
     }
+
+    // O defeito do VUL-63: só o placeholder recuava quando `enabled = false`, e campo
+    // travado quase sempre TEM valor — então o estado normal do desabilitado era idêntico
+    // ao editável.
+    @Test
+    fun disabledFadesLabelAndValue() {
+        val tokens = SaqzColorTokens.Light
+        assertEquals(tokens.textPrimary, tokens.inputContent(enabled = true))
+        assertEquals(tokens.disabledForeground, tokens.inputContent(enabled = false))
+    }
+
+    @Test
+    fun disabledContentIsVisiblyApartFromEnabled() {
+        val tokens = SaqzColorTokens.Light
+        val disabled = contrast(tokens.inputContent(enabled = false), tokens.surface)
+        val enabled = contrast(tokens.inputContent(enabled = true), tokens.surface)
+        // Piso de 3:1 sobre o fundo: a isenção 1.4.3 cobre componente inativo, mas o texto
+        // travado ainda precisa ser lido. Teto de 4.5:1 porque o recuo é o próprio sinal —
+        // se o desabilitado empatar com o habilitado, o bug volta.
+        assertTrue(disabled >= 3.0, "texto desabilitado ficou em ${disabled.format()}:1 sobre o fundo")
+        assertTrue(disabled < 4.5, "texto desabilitado em ${disabled.format()}:1 não recua o bastante")
+        assertTrue(
+            enabled - disabled > 5.0,
+            "habilitado (${enabled.format()}:1) e desabilitado (${disabled.format()}:1) estão perto demais",
+        )
+    }
+
+    private fun contrast(a: Color, b: Color): Double {
+        val (hi, lo) = listOf(luminance(a), luminance(b)).sortedDescending()
+        return (hi + 0.05) / (lo + 0.05)
+    }
+
+    private fun luminance(color: Color) =
+        0.2126 * channel(color.red) + 0.7152 * channel(color.green) + 0.0722 * channel(color.blue)
+
+    private fun channel(value: Float): Double {
+        val c = value.toDouble()
+        return if (c <= 0.03928) c / 12.92 else ((c + 0.055) / 1.055).pow(2.4)
+    }
+
+    private fun Double.format() = (this * 100).toInt() / 100.0
 
     @Test
     fun toggleTargetIs48Dp() = runComposeUiTest {
