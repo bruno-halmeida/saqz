@@ -6,17 +6,22 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties as CoreSemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import br.com.saqz.designsystem.theme.SaqzAccessibilityPreferences
 import br.com.saqz.designsystem.theme.SaqzColorTokens
+import br.com.saqz.designsystem.theme.SaqzMetrics
 import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.math.pow
@@ -38,7 +43,9 @@ class SaqzButtonTest {
         val secondary = tokens.buttonColors(SaqzButtonVariant.Secondary)
         assertEquals(tokens.surface, secondary.container)
         assertEquals(tokens.primary, secondary.content)
-        assertEquals(tokens.border, secondary.border)
+        // Linha azul, não o cinza de card/input: `.saqz-btn--secondary` do export é
+        // `border-color:var(--saqz-blue)`.
+        assertEquals(tokens.primary, secondary.border)
 
         val danger = tokens.buttonColors(SaqzButtonVariant.Danger)
         assertEquals(tokens.errorForeground, danger.container)
@@ -157,19 +164,49 @@ class SaqzButtonTest {
         onNodeWithText("Salvar").assertExists()
     }
 
+    // Era `loadingKeepsWidth`, que comparava a largura do ocioso com a do carregando.
+    // A premissa caiu: o export desenha `◌ Criando grupo…`, spinner **ao lado** do
+    // rótulo, então o carregando é legitimamente mais largo. O que importa e continua
+    // testado é que o rótulo não é escondido atrás do spinner.
     @Test
-    fun loadingKeepsWidth() = runComposeUiTest {
+    fun loadingPutsSpinnerBesideLabel() = runComposeUiTest {
         setContent {
             SaqzTheme {
                 Column {
-                    SaqzButton("Salvar", onClick = {}, loading = false, modifier = Modifier.testTag("idle"))
-                    SaqzButton("Salvar", onClick = {}, loading = true, modifier = Modifier.testTag("busy"))
+                    SaqzButton("Salvando…", onClick = {}, loading = false, modifier = Modifier.testTag("idle"))
+                    SaqzButton("Salvando…", onClick = {}, loading = true, modifier = Modifier.testTag("busy"))
                 }
             }
         }
+        // Os dois rótulos seguem na árvore, com o mesmo texto.
+        onAllNodesWithText("Salvando…").assertCountEquals(2)
         val idle = onNodeWithTag("idle").getUnclippedBoundsInRoot().width
         val busy = onNodeWithTag("busy").getUnclippedBoundsInRoot().width
-        assertEquals(idle, busy)
+        // Ao lado, não por cima: o spinner cresce o botão. Voltar a sobrepor rótulo e
+        // spinner devolveria larguras iguais e reprovaria aqui.
+        assertTrue(busy > idle, "carregando abre espaço para o spinner: $busy contra $idle")
+    }
+
+    @Test
+    fun mdHeightComesFromToken() = runComposeUiTest {
+        setContent {
+            SaqzTheme { SaqzButton("Salvar", onClick = {}, modifier = Modifier.testTag("btn")) }
+        }
+        // 52dp do `.saqz-btn--md{min-height:52px}` do export, lido do token — não há
+        // altura de botão escrita em SaqzButton.kt.
+        assertEquals(SaqzMetrics.Default.buttonHeight, onNodeWithTag("btn").getUnclippedBoundsInRoot().height)
+    }
+
+    @Test
+    fun pressAlsoOffsetsByToken() = runComposeUiTest {
+        setContent {
+            SaqzTheme { SaqzButton("Salvar", onClick = {}, modifier = Modifier.testTag("btn")) }
+        }
+        onNodeWithTag("btn").performTouchInput { down(center) }
+        waitForIdle()
+        // `translateY(1px)` do `:active` do export, vindo de motion.pressOffset.
+        assertEquals(SaqzMotionPolicy.Normal.pressOffset.value, pressFeedback("btn").offsetY)
+        onNodeWithTag("btn").performTouchInput { up() }
     }
 
     @Test
@@ -184,8 +221,32 @@ class SaqzButtonTest {
         val feedback = pressFeedback("btn")
         // Reduced motion drops spatial scale but must keep opacity feedback.
         assertEquals(1f, feedback.scale)
+        assertEquals(0f, feedback.offsetY, "reduced motion also drops the vertical nudge")
         assertTrue(feedback.alpha < 1f, "opacity feedback kept under reduced motion")
         onNodeWithTag("btn").performTouchInput { up() }
+    }
+
+    @Test
+    fun filledIconButtonKeepsNameAndTarget() = runComposeUiTest {
+        var clicks = 0
+        setContent {
+            SaqzTheme {
+                SaqzIconButton(
+                    onClick = { clicks++ },
+                    contentDescription = "Criar jogo",
+                    filled = true,
+                    modifier = Modifier.testTag("fab"),
+                ) { SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.onPrimary) }
+            }
+        }
+        // O fundo azul não come nem o nome acessível nem os 44×44 que o export exige.
+        val bounds = onNodeWithTag("fab").getUnclippedBoundsInRoot()
+        assertEquals(SaqzMetrics.Default.iconButtonSize, bounds.width)
+        assertEquals(SaqzMetrics.Default.iconButtonSize, bounds.height)
+        onNodeWithContentDescription("Criar jogo").assertExists()
+        onNodeWithTag("fab").performClick()
+        waitForIdle()
+        assertEquals(1, clicks)
     }
 
     private fun ComposeUiTest.pressFeedback(tag: String): SaqzPressFeedback {
