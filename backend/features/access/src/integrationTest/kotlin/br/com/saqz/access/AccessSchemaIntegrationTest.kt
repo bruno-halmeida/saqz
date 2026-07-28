@@ -29,7 +29,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(4, flyway.migrate().migrationsExecuted)
+        assertEquals(5, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -41,7 +41,7 @@ class AccessSchemaIntegrationTest {
     fun clearData() {
         execute(
             "TRUNCATE group_regular_slots, group_venues, group_invites, group_memberships, access_groups, " +
-                "invite_redemption_limits, access_users CASCADE",
+                "invite_redemption_limits, password_reset_codes, password_reset_ip_limits, access_users CASCADE",
         )
     }
 
@@ -57,6 +57,8 @@ class AccessSchemaIntegrationTest {
                 "group_regular_slots",
                 "invite_redemption_limits",
                 "group_photos",
+                "password_reset_codes",
+                "password_reset_ip_limits",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +
@@ -215,6 +217,70 @@ class AccessSchemaIntegrationTest {
     }
 
     @Test
+    fun `password reset code stores a 32 byte digest under a normalized email`() {
+        insertResetCode(email = "atleta@saqz.test")
+
+        assertEquals(
+            "bytea",
+            queryString(
+                "SELECT data_type FROM information_schema.columns " +
+                    "WHERE table_name = 'password_reset_codes' AND column_name = 'code_digest'",
+            ),
+        )
+        assertSqlFails { insertResetCode(email = "Atleta@Saqz.test") }
+        assertSqlFails { insertResetCode(email = " atleta@saqz.test ") }
+        assertSqlFails { insertResetCode(email = "sem-arroba") }
+        assertSqlFails { insertResetCode(email = "curto@saqz", digestBytes = 32) }
+        assertSqlFails { insertResetCode(email = "curto@saqz.test", digestBytes = 16) }
+    }
+
+    @Test
+    fun `password reset attempts stay between zero and the ceiling of five`() {
+        insertResetCode(email = "teto@saqz.test")
+
+        execute("UPDATE password_reset_codes SET attempts = 5 WHERE email = 'teto@saqz.test'")
+        assertSqlFails { execute("UPDATE password_reset_codes SET attempts = 6 WHERE email = 'teto@saqz.test'") }
+        assertSqlFails { execute("UPDATE password_reset_codes SET attempts = -1 WHERE email = 'teto@saqz.test'") }
+    }
+
+    @Test
+    fun `password reset expiration must follow creation`() {
+        assertSqlFails { insertResetCode(email = "expira@saqz.test", validityMinutes = 0) }
+        assertSqlFails { insertResetCode(email = "expira@saqz.test", validityMinutes = -1) }
+        insertResetCode(email = "expira@saqz.test", validityMinutes = 10)
+    }
+
+    @Test
+    fun `password reset token is unique paired with its expiration and 32 bytes long`() {
+        insertResetCode(email = "um@saqz.test")
+        insertResetCode(email = "dois@saqz.test")
+
+        assertSqlFails { execute(tokenUpdate("um@saqz.test", digestBytes = 16)) }
+        assertSqlFails {
+            execute(
+                "UPDATE password_reset_codes SET token_digest = ${digestLiteral(32, 'c')} " +
+                    "WHERE email = 'um@saqz.test'",
+            )
+        }
+        assertSqlFails {
+            execute(
+                "UPDATE password_reset_codes SET token_expires_at = created_at + interval '5 minutes' " +
+                    "WHERE email = 'um@saqz.test'",
+            )
+        }
+        execute(tokenUpdate("um@saqz.test"))
+        assertSqlFails { execute(tokenUpdate("dois@saqz.test")) }
+    }
+
+    @Test
+    fun `password reset ip counter never goes negative`() {
+        execute("INSERT INTO password_reset_ip_limits VALUES ('10.0.0.1', now(), 1)")
+
+        execute("UPDATE password_reset_ip_limits SET request_count = 0 WHERE ip = '10.0.0.1'")
+        assertSqlFails { execute("UPDATE password_reset_ip_limits SET request_count = -1 WHERE ip = '10.0.0.1'") }
+    }
+
+    @Test
     fun `transaction rollback leaves no partial user mutation`() {
         val id = UUID.randomUUID()
         connection().use { connection ->
@@ -268,6 +334,19 @@ class AccessSchemaIntegrationTest {
                 "VALUES ('$groupId', decode('$digestHex', 'hex'), '$creatorId', now())",
         )
     }
+
+    private fun digestLiteral(bytes: Int, fill: Char = 'a') = "decode('${fill.toString().repeat(bytes * 2)}', 'hex')"
+
+    private fun insertResetCode(email: String, digestBytes: Int = 32, validityMinutes: Int = 10) {
+        execute(
+            "INSERT INTO password_reset_codes (email, code_digest, attempts, created_at, expires_at) VALUES " +
+                "('$email', ${digestLiteral(digestBytes)}, 0, now(), now() + interval '$validityMinutes minutes')",
+        )
+    }
+
+    private fun tokenUpdate(email: String, digestBytes: Int = 32) =
+        "UPDATE password_reset_codes SET token_digest = ${digestLiteral(digestBytes, 'b')}, " +
+            "token_expires_at = created_at + interval '5 minutes' WHERE email = '$email'"
 
     private fun execute(sql: String) {
         connection().use { connection -> connection.createStatement().use { it.execute(sql) } }

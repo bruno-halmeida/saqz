@@ -13,10 +13,11 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 class BearerAuthenticationFilter(
     private val verifyRequestIdentity: VerifyRequestIdentity,
+    private val anonymousPaths: Set<String> = setOf("/actuator/health"),
     private val writeProblem: (HttpServletRequest, HttpServletResponse, Int, ErrorCode?) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        request.requestURI == "/actuator/health"
+        anonymousPaths.any { request.requestURI == it || request.requestURI.startsWith("$it/") }
 
     override fun doFilterInternal(
         request: HttpServletRequest,

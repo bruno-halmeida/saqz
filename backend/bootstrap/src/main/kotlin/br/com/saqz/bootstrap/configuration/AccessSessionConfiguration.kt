@@ -9,6 +9,13 @@ import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
 import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.input.http.PasswordResetController
+import br.com.saqz.access.adapter.output.jdbc.passwordreset.JdbcPasswordResetRepository
+import br.com.saqz.access.application.passwordreset.PasswordAccounts
+import br.com.saqz.access.application.passwordreset.PasswordReset
+import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
+import br.com.saqz.access.application.passwordreset.SecureResetSecrets
+import com.google.firebase.FirebaseApp
 import br.com.saqz.groups.adapter.output.crypto.JcaAttendanceLinkTokenGenerator
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
 import br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository
@@ -137,6 +144,30 @@ class AccessSessionConfiguration {
     @Bean
     fun verificationCodeMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =
         VerificationCodeMailer(sender, from)
+
+    @Bean
+    fun passwordResetRepository(dataSource: DataSource) = JdbcPasswordResetRepository(dataSource)
+
+    @Bean
+    fun passwordAccounts(firebaseApp: FirebaseApp): PasswordAccounts = FirebasePasswordAccounts(firebaseApp)
+
+    @Bean
+    fun resetCodeNotifier(mailer: VerificationCodeMailer) = ResetCodeNotifier(mailer::send)
+
+    /** Bean para o teste de validade poder mover o relógio sem trocar a fiação inteira. */
+    @Bean
+    fun passwordResetClock(): Clock = Clock.systemUTC()
+
+    @Bean
+    fun passwordReset(
+        repository: JdbcPasswordResetRepository,
+        accounts: PasswordAccounts,
+        notifier: ResetCodeNotifier,
+        clock: Clock,
+    ) = PasswordReset(repository, accounts, notifier, SecureResetSecrets(), clock)
+
+    @Bean
+    fun passwordResetController(passwordReset: PasswordReset) = PasswordResetController(passwordReset)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)

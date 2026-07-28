@@ -10,4 +10,6 @@ data class ApiProblem(
     val correlationId: String,
     val fieldErrors: Map<String, List<String>>? = null,
     val retryAfterSeconds: Int? = null,
+    /** Quantas tentativas restam no código de recuperação — a tela 1k desenha o número. */
+    val remainingAttempts: Int? = null,
 )

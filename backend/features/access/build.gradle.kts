@@ -13,6 +13,8 @@ dependencies {
     implementation(libs.spring.boot.starter.mail)
     implementation("org.springframework.security:spring-security-core")
     implementation("org.springframework:spring-web")
+    // O `request` limita por IP, e o IP vem do `remoteAddr` da requisicao.
+    compileOnly("jakarta.servlet:jakarta.servlet-api")
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)

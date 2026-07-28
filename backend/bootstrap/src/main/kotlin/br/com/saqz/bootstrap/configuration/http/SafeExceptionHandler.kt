@@ -6,6 +6,12 @@ import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
+import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
+import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
+import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
+import br.com.saqz.access.adapter.input.http.PasswordResetRateLimitException
+import br.com.saqz.access.adapter.input.http.PasswordResetTokenInvalidException
+import br.com.saqz.access.adapter.input.http.WeakPasswordException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
@@ -66,6 +72,66 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccountNotFoundException::class)
     fun accountNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.ACCOUNT_NOT_FOUND)
+    }
+
+    @ExceptionHandler(PasswordResetRateLimitException::class)
+    fun passwordResetRateLimit(
+        failure: PasswordResetRateLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            429,
+            ErrorCode.PASSWORD_RESET_RATE_LIMIT,
+            retryAfterSeconds = failure.retryAfterSeconds,
+        )
+    }
+
+    /**
+     * "Código incorreto. Restam 2 tentativas." e "Esse código expirou." são linhas
+     * distintas na tela 1k, então são respostas distintas aqui.
+     */
+    @ExceptionHandler(PasswordResetCodeInvalidException::class)
+    fun passwordResetCodeInvalid(
+        failure: PasswordResetCodeInvalidException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.PASSWORD_RESET_CODE_INVALID,
+            remainingAttempts = failure.remainingAttempts,
+        )
+    }
+
+    @ExceptionHandler(PasswordResetCodeExpiredException::class)
+    fun passwordResetCodeExpired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.PASSWORD_RESET_CODE_EXPIRED)
+    }
+
+    @ExceptionHandler(PasswordResetAttemptLimitException::class)
+    fun passwordResetAttemptLimit(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 429, ErrorCode.PASSWORD_RESET_ATTEMPT_LIMIT)
+    }
+
+    @ExceptionHandler(PasswordResetTokenInvalidException::class)
+    fun passwordResetTokenInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
+    }
+
+    @ExceptionHandler(WeakPasswordException::class)
+    fun weakPassword(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = mapOf("novaSenha" to listOf("deve ter entre 8 e 128 caracteres")),
+        )
     }
 
     @ExceptionHandler(InvalidGroupRequestException::class)
