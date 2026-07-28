@@ -7,13 +7,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -61,47 +66,84 @@ internal object AccessChromeTags {
     const val Subtitle = "access-subtitle"
 }
 
-// `fluxo1` do ui-contract.json, literal — nenhum destes é token do design system, e
-// arredondar qualquer um "para a grade de 4" é o erro que o contrato tranca.
-private val WaveHeight = 130.dp
-private val HorizontalPadding = 26.dp
-private val TopPadding = 20.dp
-private val SpaciousTopPadding = 36.dp
-private val BrandLargeSize = 86.dp
-private val BrandLargeRadius = 22.dp
-private val BrandLargeSymbol = 64.dp
-private val BrandSmallSize = 68.dp
-private val BrandSmallRadius = 18.dp
-private val BrandSmallSymbol = 50.dp
-private val LetteringHeight = 30.dp
-private val LetteringGap = 10.dp
-private val SubtitleGap = 10.dp
+/** Uma curva do rodapé, nas coordenadas do viewBox de 390×130 do export. */
+internal data class AccessWaveCurve(
+    val startY: Float,
+    val control1X: Float,
+    val control1Y: Float,
+    val control2X: Float,
+    val control2Y: Float,
+    val endY: Float,
+)
 
-// O export varia o teto do subtítulo entre 290 e 300 conforme a tela; 300 é o mais
-// largo, e a quebra real vem do texto, não do teto.
-private val SubtitleMaxWidth = 300.dp
+// SPEC_DEVIATION: `dp` e `sp` crus em `features/*/src/commonMain`, que a seção 5 do
+// mobile/AGENTS.md proíbe por convenção.
+// Reason: estes números são medidas das telas do fluxo 1, não do inventário do fluxo 10,
+// e o AD-031 mantém no `:core:design-system` só o que o fluxo 10 lista — subir isto para
+// o `SaqzMetrics` compartilhado seria alimentar o design system com desenho que não é
+// dele, que foi exatamente o que o reset apagou. Sem token compartilhado, o literal é a
+// única forma de escrever a medida; o que este objeto acrescenta é um lugar único para
+// os seis tickets de tela que vêm depois e o `AccessMetricsTest`, que amarra cada valor
+// à chave `fluxo1` do ui-contract.json — a mesma amarra que o `SaqzFluxo1ContractTest`
+// faz do lado do design system. Mexer no número sem mexer no contrato reprova.
+//
+// Os literais que o VUL-77 (`SaqzCodeInput`) e o VUL-78 (`SaqzInlineAlert`) já
+// mergearam seguem soltos nos arquivos deles; mudá-los agora sairia do escopo deste
+// ticket e conflitaria com PRs em voo. Eles migram para cá quando alguém os tocar.
+internal object AccessMetrics {
+    val waveHeight = 130.dp
+    val horizontalPadding = 26.dp
+    val topPadding = 20.dp
+    val spaciousTopPadding = 36.dp
+    val brandLargeSize = 86.dp
+    val brandLargeRadius = 22.dp
+    val brandLargeSymbol = 64.dp
+    val brandSmallSize = 68.dp
+    val brandSmallRadius = 18.dp
+    val brandSmallSymbol = 50.dp
+    val letteringHeight = 30.dp
+    val letteringGap = 10.dp
 
-private const val WaveViewportWidth = 390f
-private const val WaveViewportHeight = 130f
-private const val WaveBackLayerAlpha = 0.16f
-private const val TitleSize = 28f
-private const val SpaciousTitleSize = 29f
-private const val TitleLineHeightRatio = 1.12f
-private const val TitleTracking = -0.035f
+    // O export varia o teto do subtítulo entre 290 e 300 conforme a tela; 300 é o mais
+    // largo, e a quebra real vem do texto, não do teto.
+    val subtitleMaxWidth = 300.dp
 
-// A Inter é variável (wght 100–900) e o export pede 750. As estáticas empacotadas em
-// androidMain param em 700, então hoje isto renderiza como bold — é troca de asset, não
-// de token. Está anotado em `_pesoSetecentosECinquenta` no contrato.
-private const val TitleWeight = 750
+    // O único número deste objeto que o contrato não versiona: o bloco `subtitulo` tem
+    // tamanho, entrelinha, cor e largura, mas não o afastamento do título. Vem da
+    // descrição do export ("10 abaixo do título") e por isso não entra no teste.
+    val subtitleGap = 10.dp
 
-private const val SubtitleSize = 14f
-private const val SubtitleLineHeightRatio = 1.5f
+    const val WAVE_VIEWPORT_WIDTH = 390f
+    const val WAVE_VIEWPORT_HEIGHT = 130f
+    const val WAVE_BACK_LAYER_ALPHA = 0.16f
+    val waveBack = AccessWaveCurve(62f, 90f, 14f, 230f, 108f, 34f)
+    val waveFront = AccessWaveCurve(96f, 120f, 54f, 260f, 128f, 72f)
+
+    const val TITLE_SIZE = 28f
+    const val SPACIOUS_TITLE_SIZE = 29f
+    const val TITLE_LINE_HEIGHT_RATIO = 1.12f
+    const val TITLE_TRACKING = -0.035f
+
+    // A Inter é variável (wght 100–900) e o export pede 750. As estáticas empacotadas em
+    // androidMain param em 700, então hoje isto renderiza como bold — é troca de asset,
+    // não de token. Está anotado em `_pesoSetecentosECinquenta` no contrato.
+    const val TITLE_WEIGHT = 750
+
+    const val SUBTITLE_SIZE = 14f
+    const val SUBTITLE_LINE_HEIGHT_RATIO = 1.5f
+}
 
 /**
  * A coluna que as 11 telas compartilham: fundo branco (não o canvas cinza), a onda atrás,
  * padding lateral de 26, rolagem vertical e `imePadding`.
  *
  * `spacious` é o par 1a/1i: topo de 36 em vez de 20 (e, no cabeçalho, título de 29).
+ *
+ * O topo de 20/36 do export é medido a partir do começo da área útil, não da borda
+ * física: a `MainActivity` chama `enableEdgeToEdge()` e o `SaqzNavHost` não repassa
+ * inset nenhum, então sem o recuo o voltar de 44 das telas compactas nasceria debaixo da
+ * barra de status ou do recorte da câmera. O inset vai na coluna e **não** na onda, que
+ * continua sangrando até a borda.
  *
  * O 1h — que centraliza o conteúdo com folga embaixo — monta a própria coluna sobre
  * [AccessWave]; não há slot aqui para uma tela só.
@@ -117,10 +159,13 @@ fun AccessScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = HorizontalPadding)
-                .padding(top = if (spacious) SpaciousTopPadding else TopPadding)
+                .padding(horizontal = AccessMetrics.horizontalPadding)
+                .padding(
+                    top = if (spacious) AccessMetrics.spaciousTopPadding else AccessMetrics.topPadding,
+                )
                 .testTag(AccessChromeTags.Content),
             horizontalAlignment = Alignment.CenterHorizontally,
             content = content,
@@ -141,35 +186,32 @@ fun AccessWave(modifier: Modifier = Modifier) {
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(WaveHeight)
+            .height(AccessMetrics.waveHeight)
             .testTag(AccessChromeTags.Wave),
     ) {
         // M0 62 C 90 14, 230 108, 390 34 L390 130 0 130Z — o azul da marca a 16%.
         drawPath(
-            wavePath(startY = 62f, c1x = 90f, c1y = 14f, c2x = 230f, c2y = 108f, endY = 34f),
-            color = primary.copy(alpha = WaveBackLayerAlpha),
+            wavePath(AccessMetrics.waveBack),
+            color = primary.copy(alpha = AccessMetrics.WAVE_BACK_LAYER_ALPHA),
         )
         // M0 96 C 120 54, 260 128, 390 72 L390 130 0 130Z — o azul sólido, na frente.
-        drawPath(
-            wavePath(startY = 96f, c1x = 120f, c1y = 54f, c2x = 260f, c2y = 128f, endY = 72f),
-            color = primary,
-        )
+        drawPath(wavePath(AccessMetrics.waveFront), color = primary)
     }
 }
 
-private fun DrawScope.wavePath(
-    startY: Float,
-    c1x: Float,
-    c1y: Float,
-    c2x: Float,
-    c2y: Float,
-    endY: Float,
-): Path {
-    val scaleX = size.width / WaveViewportWidth
-    val scaleY = size.height / WaveViewportHeight
+private fun DrawScope.wavePath(curve: AccessWaveCurve): Path {
+    val scaleX = size.width / AccessMetrics.WAVE_VIEWPORT_WIDTH
+    val scaleY = size.height / AccessMetrics.WAVE_VIEWPORT_HEIGHT
     return Path().apply {
-        moveTo(0f, startY * scaleY)
-        cubicTo(c1x * scaleX, c1y * scaleY, c2x * scaleX, c2y * scaleY, size.width, endY * scaleY)
+        moveTo(0f, curve.startY * scaleY)
+        cubicTo(
+            curve.control1X * scaleX,
+            curve.control1Y * scaleY,
+            curve.control2X * scaleX,
+            curve.control2Y * scaleY,
+            size.width,
+            curve.endY * scaleY,
+        )
         lineTo(size.width, size.height)
         lineTo(0f, size.height)
         close()
@@ -188,10 +230,12 @@ fun AccessBrandMark(modifier: Modifier = Modifier, large: Boolean = false) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .size(if (large) BrandLargeSize else BrandSmallSize)
+                .size(if (large) AccessMetrics.brandLargeSize else AccessMetrics.brandSmallSize)
                 .background(
                     color = SaqzTheme.colors.primary,
-                    shape = RoundedCornerShape(if (large) BrandLargeRadius else BrandSmallRadius),
+                    shape = RoundedCornerShape(
+                        if (large) AccessMetrics.brandLargeRadius else AccessMetrics.brandSmallRadius,
+                    ),
                 )
                 .testTag(AccessChromeTags.Brand),
             contentAlignment = Alignment.Center,
@@ -199,15 +243,15 @@ fun AccessBrandMark(modifier: Modifier = Modifier, large: Boolean = false) {
             Image(
                 painter = painterResource(Res.drawable.saqz_symbol_foreground),
                 contentDescription = stringResource(Res.string.access_brand),
-                modifier = Modifier.size(if (large) BrandLargeSymbol else BrandSmallSymbol),
+                modifier = Modifier.size(if (large) AccessMetrics.brandLargeSymbol else AccessMetrics.brandSmallSymbol),
             )
         }
         if (large) {
-            Spacer(Modifier.height(LetteringGap))
+            Spacer(Modifier.height(AccessMetrics.letteringGap))
             Image(
                 painter = painterResource(Res.drawable.saqz_lettering),
                 contentDescription = null,
-                modifier = Modifier.height(LetteringHeight).testTag(AccessChromeTags.Lettering),
+                modifier = Modifier.height(AccessMetrics.letteringHeight).testTag(AccessChromeTags.Lettering),
             )
         }
     }
@@ -232,7 +276,7 @@ fun AccessHeader(
     spacious: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
-    val titleSize = (if (spacious) SpaciousTitleSize else TitleSize).sp
+    val titleSize = (if (spacious) AccessMetrics.SPACIOUS_TITLE_SIZE else AccessMetrics.TITLE_SIZE).sp
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = buildAnnotatedString {
@@ -242,25 +286,25 @@ fun AccessHeader(
             },
             style = SaqzTheme.typography.title.copy(
                 fontSize = titleSize,
-                lineHeight = titleSize * TitleLineHeightRatio,
-                fontWeight = FontWeight(TitleWeight),
-                letterSpacing = TitleTracking.em,
+                lineHeight = titleSize * AccessMetrics.TITLE_LINE_HEIGHT_RATIO,
+                fontWeight = FontWeight(AccessMetrics.TITLE_WEIGHT),
+                letterSpacing = AccessMetrics.TITLE_TRACKING.em,
                 textAlign = TextAlign.Center,
             ),
             color = colors.textPrimary,
             modifier = Modifier.testTag(AccessChromeTags.Title),
         )
         if (subtitle != null) {
-            Spacer(Modifier.height(SubtitleGap))
+            Spacer(Modifier.height(AccessMetrics.subtitleGap))
             Text(
                 text = subtitle,
                 style = SaqzTheme.typography.support.copy(
-                    fontSize = SubtitleSize.sp,
-                    lineHeight = SubtitleSize.sp * SubtitleLineHeightRatio,
+                    fontSize = AccessMetrics.SUBTITLE_SIZE.sp,
+                    lineHeight = AccessMetrics.SUBTITLE_SIZE.sp * AccessMetrics.SUBTITLE_LINE_HEIGHT_RATIO,
                     textAlign = TextAlign.Center,
                 ),
                 color = colors.textSecondary,
-                modifier = Modifier.widthIn(max = SubtitleMaxWidth).testTag(AccessChromeTags.Subtitle),
+                modifier = Modifier.widthIn(max = AccessMetrics.subtitleMaxWidth).testTag(AccessChromeTags.Subtitle),
             )
         }
     }
