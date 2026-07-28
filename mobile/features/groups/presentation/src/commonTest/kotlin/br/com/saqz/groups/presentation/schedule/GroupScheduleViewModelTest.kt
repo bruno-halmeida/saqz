@@ -106,6 +106,17 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
+    fun saveWhileLoadingIsRejected() {
+        // Salvar durante o skeleton emitiria `Saved`, e o Root fecha a tela com isso —
+        // o usuário sairia achando que gravou.
+        val viewModel = GroupScheduleViewModel(GroupScheduleState())
+
+        viewModel.onIntent(GroupScheduleIntent.Save)
+
+        assertFalse(viewModel.state.value.isSaving)
+    }
+
+    @Test
     fun saveMarksSaving() {
         val viewModel = viewModel()
 

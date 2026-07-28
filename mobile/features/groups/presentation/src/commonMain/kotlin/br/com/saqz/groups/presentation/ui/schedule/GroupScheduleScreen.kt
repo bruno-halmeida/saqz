@@ -106,6 +106,9 @@ internal fun GroupScheduleScreen(
                     label = stringResource(Res.string.group_schedule_save),
                     onClick = { onIntent(GroupScheduleIntent.Save) },
                     fullWidth = true,
+                    // Nada a salvar enquanto o skeleton está na tela; a ViewModel também
+                    // recusa o intent, isto aqui só evita oferecer o toque morto.
+                    enabled = !state.isLoading,
                     loading = state.isSaving,
                     modifier = Modifier.testTag(GroupScheduleTags.Save),
                 )

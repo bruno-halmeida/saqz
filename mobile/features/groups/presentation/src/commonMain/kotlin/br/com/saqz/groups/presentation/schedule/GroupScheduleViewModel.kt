@@ -67,6 +67,9 @@ internal class GroupScheduleViewModel(
     }
 
     private fun save() {
+        // Intent inválido retorna cedo: salvar o que ainda não carregou gravaria o estado
+        // vazio e, pior, emitiria `Saved` — que fecha a tela como se tivesse dado certo.
+        if (state.value.isLoading) return
         // ponytail: o seam do gateway é aqui. Hoje `isSaving` fica marcado e o efeito sai
         // na hora; a chamada real entra no meio e limpa a flag quando responder.
         update { it.copy(isSaving = true) }
