@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -138,6 +140,55 @@ internal fun saqzSteppedValue(value: Int, step: Int, min: Int, max: Int): Int =
     (value + step).coerceIn(min, max)
 
 /**
+ * O ± do 10h é o único círculo branco com borda do export
+ * (`width:40px;height:40px;border-radius:50%;border:1px solid #D8DDE8;background:#fff`),
+ * e por isso não passa pelo [SaqzIconButton], que só conhece transparente, ice e azul —
+ * sobre o canvas o ice some. Desenho de 40 dentro do alvo de 48, como o [SaqzIconButton]
+ * já faz com 44.
+ *
+ * A borda fica na cor de linha nos dois estados: apagá-la no desabilitado devolveria o
+ * círculo invisível que o ice causava.
+ *
+ * ponytail: o 40 é dp cru porque `SaqzMetrics` não tem esse número e o arquivo é de
+ * outro ticket; se um segundo componente pedir o mesmo círculo, nasce o token.
+ */
+@Composable
+private fun SaqzStepperButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = SaqzTheme.colors
+    Box(
+        modifier = Modifier
+            .sizeIn(
+                minWidth = SaqzTheme.metrics.minimumTouchTarget,
+                minHeight = SaqzTheme.metrics.minimumTouchTarget,
+            )
+            .clickable(
+                enabled = enabled,
+                onClickLabel = contentDescription,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.surface, CircleShape)
+                .border(1.dp, colors.border, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            SaqzIcon(icon, tint = if (enabled) colors.textPrimary else colors.disabledForeground)
+        }
+    }
+}
+
+/**
  * 10h — menos, valor, mais. Os botões desligam ao encostar no limite.
  */
 @Composable
@@ -164,34 +215,35 @@ fun SaqzStepper(
                 modifier = Modifier.weight(1f),
             )
         }
-        SaqzIconButton(
-            onClick = { onValueChange(saqzSteppedValue(value, -1, min, max)) },
+        SaqzStepperButton(
+            icon = SaqzIcons.Minus,
             contentDescription = stringResource(Res.string.action_decrease),
             enabled = value > min,
-            soft = true,
-        ) {
-            SaqzIcon(SaqzIcons.Minus, tint = if (value > min) colors.textPrimary else colors.disabledForeground)
-        }
+            onClick = { onValueChange(saqzSteppedValue(value, -1, min, max)) },
+        )
         Text(
             text = value.toString(),
             style = SaqzTheme.typography.subtitle,
             color = colors.textPrimary,
             modifier = Modifier.width(32.dp),
         )
-        SaqzIconButton(
-            onClick = { onValueChange(saqzSteppedValue(value, 1, min, max)) },
+        SaqzStepperButton(
+            icon = SaqzIcons.Plus,
             contentDescription = stringResource(Res.string.action_increase),
             enabled = value < max,
-            soft = true,
-        ) {
-            SaqzIcon(SaqzIcons.Plus, tint = if (value < max) colors.textPrimary else colors.disabledForeground)
-        }
+            onClick = { onValueChange(saqzSteppedValue(value, 1, min, max)) },
+        )
     }
 }
 
 /**
  * 10h — 2 ou 3 opções curtas. O polegar **azul** desliza sob o rótulo selecionado
  * na curva enfática do design system, e o rótulo de cima vira branco.
+ *
+ * O trilho é **branco com borda**, não ice: o contêiner do export é
+ * `background:#fff;border:1px solid #D8DDE8;border-radius:999px;padding:4px`. O trecho
+ * `segBtn`/`segThumb` do bundle descreve só o botão e o polegar — quem pinta o trilho é
+ * a `div` de fora.
  */
 @Composable
 fun SaqzSegmented(
@@ -207,7 +259,8 @@ fun SaqzSegmented(
             .fillMaxWidth()
             .height(44.dp)
             .clip(CircleShape)
-            .background(colors.surfaceSoft, CircleShape)
+            .background(colors.surface, CircleShape)
+            .border(1.dp, colors.border, CircleShape)
             .padding(4.dp),
     ) {
         val slot = maxWidth / options.size.coerceAtLeast(1)
@@ -257,7 +310,10 @@ fun SaqzSegmented(
 }
 
 /**
- * 10h — chip de escolha (dias, filtros). Selecionado pinta no tom da marca.
+ * 10h — chip de escolha (dias, filtros). Mesma linguagem do segmented: selecionado é
+ * **preenchimento azul com rótulo branco** e sem borda; o não selecionado é branco com
+ * borda e rótulo navy. Tinta translúcida de 8% é o chip de *status*
+ * (`.saqz-chip--brand`), outro componente.
  */
 @Composable
 fun SaqzChoiceChip(
@@ -269,12 +325,14 @@ fun SaqzChoiceChip(
     val colors = SaqzTheme.colors
     Text(
         text = label,
-        style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-        color = if (selected) colors.primary else colors.textSecondary,
+        style = SaqzTheme.typography.support.copy(
+            fontWeight = if (selected) FontWeight(700) else FontWeight(600),
+        ),
+        color = if (selected) colors.onPrimary else colors.textPrimary,
         modifier = modifier
             .clip(CircleShape)
-            .background(if (selected) colors.primary.copy(alpha = 0.08f) else colors.surface, CircleShape)
-            .border(1.dp, if (selected) colors.primary else colors.border, CircleShape)
+            .background(if (selected) colors.primary else colors.surface, CircleShape)
+            .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
     )
@@ -296,6 +354,7 @@ private fun SaqzStepperPreview() = SaqzTheme {
     SaqzPreviewGrid {
         SaqzStepper(value = 12, onValueChange = {}, min = 4, max = 24, label = "Vagas")
         SaqzStepper(value = 4, onValueChange = {}, min = 4, max = 24, label = "No mínimo")
+        SaqzStepper(value = 24, onValueChange = {}, min = 4, max = 24, label = "No máximo")
     }
 }
 
@@ -304,6 +363,7 @@ private fun SaqzStepperPreview() = SaqzTheme {
 private fun SaqzSegmentedPreview() = SaqzTheme {
     SaqzPreviewGrid {
         SaqzSegmented(options = listOf("Masculino", "Feminino", "Misto"), selected = 2, onSelect = {})
+        SaqzSegmented(options = listOf("Semanal", "Avulso"), selected = 0, onSelect = {})
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SaqzChoiceChip("Todos · 26", selected = true, onClick = {})
             SaqzChoiceChip("Admins · 2", selected = false, onClick = {})
