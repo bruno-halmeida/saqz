@@ -1,4 +1,4 @@
-package br.com.saqz.designsystem
+package br.com.saqz.access.ui
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -12,21 +12,22 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.theme.SaqzColorTokens
 import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
-import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.float
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Os números de `fluxo1.alertaInline` e `fluxo1.entrada` do `ui-contract.json` entram
+ * aqui **literais**, e não lidos do arquivo: o contrato mora nas resources de teste de
+ * `:core:design-system` e não atravessa o limite do módulo. Quem guarda o contrato
+ * contra si mesmo continua sendo o `SaqzFluxo1ContractTest` lá — inclusive as três
+ * durações da entrada e o raio 12 amarrado a `metrics.cardRadius`. É o mesmo arranjo do
+ * `AccessChromeTest`.
+ */
 @OptIn(ExperimentalTestApi::class)
 class SaqzInlineAlertTest {
     private val tokens = SaqzColorTokens.Light
@@ -121,16 +122,10 @@ class SaqzInlineAlertTest {
     }
 
     @Test
-    fun durationsComeFromTheContract() = runTest {
-        val entrada = fluxo1().group("entrada")
-        assertEquals(
-            entrada.number("erroDurationMillis").toInt(),
-            saqzInlineAlertDurationMillis(SaqzInlineAlertTone.Error),
-        )
-        assertEquals(
-            entrada.number("sucessoDurationMillis").toInt(),
-            saqzInlineAlertDurationMillis(SaqzInlineAlertTone.Success),
-        )
+    fun durationsAreTheOnesFromTheContract() {
+        // `fluxo1.entrada`: .28s no erro, .32s no sucesso.
+        assertEquals(280, saqzInlineAlertDurationMillis(SaqzInlineAlertTone.Error))
+        assertEquals(320, saqzInlineAlertDurationMillis(SaqzInlineAlertTone.Success))
         // O aviso não tem duração própria no export e anda com o erro.
         assertEquals(
             saqzInlineAlertDurationMillis(SaqzInlineAlertTone.Error),
@@ -139,8 +134,9 @@ class SaqzInlineAlertTest {
     }
 
     @Test
-    fun reduceMotionDropsTheDisplacementOnly() = runTest {
-        assertEquals(fluxo1().group("entrada").number("translateY").dp, saqzInlineAlertOffset(SaqzMotionPolicy.Normal))
+    fun reduceMotionDropsTheDisplacementOnly() {
+        // `fluxo1.entrada.translateY` é 8.
+        assertEquals(8.dp, saqzInlineAlertOffset(SaqzMotionPolicy.Normal))
         assertEquals(0.dp, saqzInlineAlertOffset(SaqzMotionPolicy.Reduced))
         // A duração não encolhe: com Reduce Motion o que some é o deslocamento, e a
         // opacidade continua sendo o sinal de "isto é novo".
@@ -148,18 +144,18 @@ class SaqzInlineAlertTest {
     }
 
     @Test
-    fun fillsAndTextsMatchTheContract() = runTest {
-        val alerta = fluxo1().group("alertaInline")
+    fun fillsAndTextsAreTheOnesFromTheContract() {
+        // `fluxo1.alertaInline`: os três hex escurecidos e os três fundos tintados.
         val expected = mapOf(
-            SaqzInlineAlertTone.Error to Triple("erro", tokens.errorForeground, 0.08f),
-            SaqzInlineAlertTone.Success to Triple("sucesso", tokens.success, 0.10f),
-            SaqzInlineAlertTone.Warning to Triple("aviso", tokens.warning, 0.12f),
+            SaqzInlineAlertTone.Error to Triple("#a3262a", tokens.errorForeground, 0.08f),
+            SaqzInlineAlertTone.Success to Triple("#0a7a47", tokens.success, 0.10f),
+            SaqzInlineAlertTone.Warning to Triple("#8a5a05", tokens.warning, 0.12f),
         )
         for ((tone, spec) in expected) {
-            val (group, source, alpha) = spec
+            val (hex, source, alpha) = spec
             val (foreground, container) = saqzInlineAlertColors(tone, tokens)
-            assertEquals(parseHex(alerta.group(group).text("texto")), foreground, "texto do $group")
-            assertEquals(source.copy(alpha = alpha), container, "fundo do $group")
+            assertEquals(parseHex(hex), foreground, "texto do tom $tone")
+            assertEquals(source.copy(alpha = alpha), container, "fundo do tom $tone")
         }
     }
 
@@ -184,16 +180,6 @@ class SaqzInlineAlertTest {
     private fun ComposeUiTest.liveRegionOf(tag: String) =
         onNodeWithTag(tag).fetchSemanticsNode().config
             .getOrElseNullable(SemanticsProperties.LiveRegion) { null }
-
-    private suspend fun fluxo1(): JsonObject = Json.parseToJsonElement(
-        Res.readBytes("files/ui-contract.json").decodeToString(),
-    ).jsonObject.getValue("fluxo1").jsonObject
-
-    private fun JsonObject.group(name: String): JsonObject = getValue(name).jsonObject
-
-    private fun JsonObject.number(name: String): Float = getValue(name).jsonPrimitive.float
-
-    private fun JsonObject.text(name: String): String = getValue(name).jsonPrimitive.content
 
     private fun parseHex(hex: String): Color = Color(0xFF000000L or hex.removePrefix("#").toLong(16))
 

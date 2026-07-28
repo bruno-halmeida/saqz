@@ -1,10 +1,11 @@
-package br.com.saqz.designsystem
+package br.com.saqz.access.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.theme.SaqzColorTokens
 import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -39,9 +42,16 @@ enum class SaqzInlineAlertTone { Error, Success, Warning }
 
 /**
  * O aviso que fica **no fluxo do conteúdo** das telas do fluxo 1: acima dos campos, e
- * não some sozinho. Nada aqui é o [SaqzToast] (sobreposição temporária) nem o
- * [SaqzOfflineBanner] (faixa de conectividade) — quem apaga este bloco é a tela, tirando
+ * não some sozinho. Nada aqui é o `SaqzToast` (sobreposição temporária) nem o
+ * `SaqzOfflineBanner` (faixa de conectividade) — quem apaga este bloco é a tela, tirando
  * a chamada da composição.
+ *
+ * **Mora em `:features:access`, e não em `:core:design-system`, por AD-031**: um bloco
+ * persistente dentro do conteúdo não está no fluxo 10 do export — nem entre os 14
+ * primitivos do `_ds_manifest.json`, nem entre as peças que o fluxo marca como "a criar"
+ * —, então nasce na jornada que o usa e só sobe no segundo uso concreto. Hoje só o fluxo
+ * 1 o usa. Não confundir com o `outlined` do `SaqzIconButton`: lá o primitivo já era do
+ * fluxo 10 e a borda era propriedade dele, o que faz variante de componente existente.
  *
  * [emphasis] é o trecho de [text] que sai em peso forte, e existe para que nenhuma das
  * cinco telas do fluxo monte `buildAnnotatedString` por conta própria: o 1i escreve
@@ -189,11 +199,17 @@ private const val ALERT_LINE_HEIGHT = 1.45f
 private const val ALERT_DURATION_MILLIS = 280
 private const val SUCCESS_DURATION_MILLIS = 320
 
-@Preview
+@Preview(name = "Alerta inline — os três tons (1i, 1f, 1k)", widthDp = 390)
 @Composable
 private fun SaqzInlineAlertPreview() = SaqzTheme {
-    // Os três tons do 1i, 1f e 1k. Tom que não está aqui não está sendo conferido.
-    SaqzPreviewGrid {
+    // Os três tons do 1i, 1f e 1k, sobre o branco das telas do fluxo 1 e no padding
+    // lateral delas. Tom que não está aqui não está sendo conferido.
+    Column(
+        modifier = Modifier
+            .background(SaqzTheme.colors.surface)
+            .padding(horizontal = 26.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         SaqzInlineAlert(
             text = "E-mail ou senha incorretos. Confira os dados e tente de novo.",
             emphasis = "E-mail ou senha incorretos.",

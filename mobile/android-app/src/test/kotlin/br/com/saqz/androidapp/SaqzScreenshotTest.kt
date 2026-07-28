@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
+import br.com.saqz.access.ui.SaqzInlineAlert
+import br.com.saqz.access.ui.SaqzInlineAlertTone
 import br.com.saqz.designsystem.SaqzAttendance
 import br.com.saqz.designsystem.SaqzAttendanceSelector
 import br.com.saqz.designsystem.SaqzAvatar
@@ -44,8 +46,6 @@ import br.com.saqz.designsystem.SaqzGameSummaryCard
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
-import br.com.saqz.designsystem.SaqzInlineAlert
-import br.com.saqz.designsystem.SaqzInlineAlertTone
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.SaqzMemberRow
@@ -454,32 +454,40 @@ class SaqzScreenshotTest {
         )
     }
 
-    // Cena própria para os três tons do alerta inline (1i, 1f, 1k). Dentro de
-    // `ds-feedback` eles ficariam ao lado do toast e da faixa offline, que são as duas
-    // peças com que o alerta é confundido — e é justamente a diferença que o print
-    // precisa mostrar: este bloco fica no fluxo do conteúdo e não some sozinho.
+    // VUL-78: os três tons do alerta inline (1i, 1f, 1k). Cena de **fluxo 1**, e não do
+    // catálogo `ds-*`: o alerta mora em `:features:access` por AD-031, e o catálogo é
+    // do design system. Sobre o branco das telas e no padding lateral de 26 delas, que
+    // é onde o fundo tintado precisa ser lido.
     @Test
-    fun inlineAlerts() = gallery("ds-alertas") {
-        SaqzInlineAlert(
-            text = "E-mail ou senha incorretos. Confira os dados e tente de novo.",
-            emphasis = "E-mail ou senha incorretos.",
-            tone = SaqzInlineAlertTone.Error,
-        )
-        // O 1j: o destaque não é a frase toda, e o resto continua em peso normal.
-        SaqzInlineAlert(
-            text = "Revise 3 campos para criar sua conta.",
-            emphasis = "Revise 3 campos",
-            tone = SaqzInlineAlertTone.Error,
-        )
-        SaqzInlineAlert(
-            text = "Enviamos um novo código para o seu e-mail.",
-            emphasis = "Enviamos um novo código para o seu e-mail.",
-            tone = SaqzInlineAlertTone.Success,
-        )
-        SaqzInlineAlert(
-            text = "Esse código expirou. Peça um novo para continuar.",
-            tone = SaqzInlineAlertTone.Warning,
-        )
+    fun accessInlineAlerts() = capture("acesso-alertas") {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.surface)
+                .padding(horizontal = 26.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SaqzInlineAlert(
+                text = "E-mail ou senha incorretos. Confira os dados e tente de novo.",
+                emphasis = "E-mail ou senha incorretos.",
+                tone = SaqzInlineAlertTone.Error,
+            )
+            // O 1j: o destaque não é a frase toda, e o resto continua em peso normal.
+            SaqzInlineAlert(
+                text = "Revise 3 campos para criar sua conta.",
+                emphasis = "Revise 3 campos",
+                tone = SaqzInlineAlertTone.Error,
+            )
+            SaqzInlineAlert(
+                text = "Enviamos um novo código para o seu e-mail.",
+                emphasis = "Enviamos um novo código para o seu e-mail.",
+                tone = SaqzInlineAlertTone.Success,
+            )
+            SaqzInlineAlert(
+                text = "Esse código expirou. Peça um novo para continuar.",
+                tone = SaqzInlineAlertTone.Warning,
+            )
+        }
     }
 
     @Test
