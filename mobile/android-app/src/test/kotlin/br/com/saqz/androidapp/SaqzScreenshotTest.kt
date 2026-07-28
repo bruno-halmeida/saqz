@@ -44,6 +44,8 @@ import br.com.saqz.designsystem.SaqzGameSummaryCard
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzInlineAlert
+import br.com.saqz.designsystem.SaqzInlineAlertTone
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.SaqzMemberRow
@@ -449,6 +451,34 @@ class SaqzScreenshotTest {
             icon = SaqzIcons.Plus,
             action = "Criar jogo",
             onAction = {},
+        )
+    }
+
+    // Cena própria para os três tons do alerta inline (1i, 1f, 1k). Dentro de
+    // `ds-feedback` eles ficariam ao lado do toast e da faixa offline, que são as duas
+    // peças com que o alerta é confundido — e é justamente a diferença que o print
+    // precisa mostrar: este bloco fica no fluxo do conteúdo e não some sozinho.
+    @Test
+    fun inlineAlerts() = gallery("ds-alertas") {
+        SaqzInlineAlert(
+            text = "E-mail ou senha incorretos. Confira os dados e tente de novo.",
+            emphasis = "E-mail ou senha incorretos.",
+            tone = SaqzInlineAlertTone.Error,
+        )
+        // O 1j: o destaque não é a frase toda, e o resto continua em peso normal.
+        SaqzInlineAlert(
+            text = "Revise 3 campos para criar sua conta.",
+            emphasis = "Revise 3 campos",
+            tone = SaqzInlineAlertTone.Error,
+        )
+        SaqzInlineAlert(
+            text = "Enviamos um novo código para o seu e-mail.",
+            emphasis = "Enviamos um novo código para o seu e-mail.",
+            tone = SaqzInlineAlertTone.Success,
+        )
+        SaqzInlineAlert(
+            text = "Esse código expirou. Peça um novo para continuar.",
+            tone = SaqzInlineAlertTone.Warning,
         )
     }
 
