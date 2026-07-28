@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_hide_password
 import br.com.saqz.designsystem.resources.action_show_password
+import br.com.saqz.designsystem.theme.SaqzColorTokens
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
@@ -65,6 +66,31 @@ private val FocusRingWidth = 3.dp
 // `.saqz-field__error{min-height:16px}` — piso do slot de mensagem, para uma linha
 // curta ocupar a mesma altura que qualquer outra.
 private val MessageMinHeight = 16.dp
+
+// O export não tem `.saqz-input:disabled` — é lacuna de design, não divergência. A
+// única regra de desabilitado que ele escreve é a do botão secundário
+// (`.saqz-btn--secondary:disabled{background:var(--saqz-white);border-color:var(--saqz-border);
+// color:var(--saqz-disabled-fg)}`), e é ela que o campo travado espelha: fundo `surface`,
+// linha em `border`, rótulo e valor em `disabledForeground`.
+//
+// `disabledForeground` sobre `surface` dá 3.87:1 — abaixo do 4.5:1 de texto normal, e
+// deliberado: a isenção 1.4.3 do WCAG cobre componente inativo, e o recuo é justamente
+// o que distingue o campo travado do editável (17.52:1). Subir o número apagaria o sinal.
+internal fun SaqzColorTokens.inputContent(enabled: Boolean): Color =
+    if (enabled) textPrimary else disabledForeground
+
+// Acento é a cor que o campo veste para chamar atenção — a linha de 1px e o halo de 3dp
+// saem os dois daqui. `!enabled` primeiro, e não como guarda em cada consumidor: campo
+// que não aceita entrada não anuncia foco nem erro acionável, e sem a decisão na origem
+// um consumidor novo nasce sem a guarda (foi assim que o halo vermelho sobreviveu no
+// travado + erro).
+internal fun SaqzColorTokens.inputAccent(enabled: Boolean, wrong: Boolean, focused: Boolean): Color? =
+    when {
+        !enabled -> null
+        wrong -> errorForeground
+        focused -> primary
+        else -> null
+    }
 
 @Composable
 fun SaqzInput(
@@ -97,13 +123,14 @@ fun SaqzInput(
     val message = errorText ?: helperText
     val wrong = errorText != null || invalid
 
-    val accent = when {
-        wrong -> colors.errorForeground
-        focused -> colors.primary
-        else -> null
-    }
+    val accent = colors.inputAccent(enabled = enabled, wrong = wrong, focused = focused)
     val ring = accent?.copy(alpha = 0.11f) ?: Color.Transparent
-    val line = accent ?: borderColor ?: colors.border
+    // `borderColor` é override do chamador e cai no travado junto com o acento: o
+    // LoginScreen passa `primary` ao lado de `enabled = !isLoading`, então sem esta guarda
+    // o campo bloqueado durante o envio continuaria com a linha azul de campo ativo. É a
+    // mesma regra que o SaqzButton já aplica ao `borderColor` dele.
+    val line = if (enabled) accent ?: borderColor ?: colors.border else colors.border
+    val content = colors.inputContent(enabled)
 
     Column(
         modifier = modifier
@@ -118,7 +145,7 @@ fun SaqzInput(
             Text(
                 text = label,
                 style = SaqzTheme.typography.support.copy(fontWeight = FontWeight(600)),
-                color = colors.textPrimary,
+                color = content,
             )
         }
         Row(
@@ -156,7 +183,7 @@ fun SaqzInput(
                     minLines = minLines,
                     visualTransformation = visualTransformationFor(kind, revealed),
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                    textStyle = SaqzTheme.typography.body.copy(color = colors.textPrimary),
+                    textStyle = SaqzTheme.typography.body.copy(color = content),
                     modifier = Modifier
                         .fillMaxWidth()
                         .onFocusChanged { focused = it.isFocused }
@@ -225,5 +252,7 @@ private fun SaqzInputPreview() = SaqzTheme {
         SaqzInput(TextFieldValue("123"), {}, label = "Senha", kind = SaqzInputKind.Password)
         SaqzInput(TextFieldValue("ana"), {}, label = "E-mail", errorText = "Informe um e-mail válido")
         SaqzInput(TextFieldValue("Fixo"), {}, label = "Grupo", enabled = false, helperText = "Não editável")
+        SaqzInput(TextFieldValue(""), {}, label = "Quadra", enabled = false, placeholder = "A definir")
+        SaqzInput(TextFieldValue("ana"), {}, label = "E-mail", enabled = false, errorText = "Não confirmado")
     }
 }

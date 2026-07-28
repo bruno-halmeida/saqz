@@ -191,6 +191,8 @@ class SaqzScreenshotTest {
         SaqzInput(TextFieldValue("CERET-8K2P"), {}, label = "Código do grupo")
         // Apoio e desabilitado: os dois estados do slot de mensagem que a cena não tinha,
         // e é neles que o tamanho do texto de apoio aparece ao lado do de erro acima.
+        // Os dois com valor ficam vizinhos de propósito: é a comparação do VUL-63, em que
+        // o travado era indistinguível do editável.
         SaqzInput(
             TextFieldValue("Quinta, 20h"),
             {},
@@ -204,9 +206,32 @@ class SaqzScreenshotTest {
             enabled = false,
             helperText = "Só o administrador edita.",
         )
-        // Os três preenchimentos sólidos, a linha em repouso e a desabilitada. A última
-        // é a que faltava: o contraste de 1,01:1 do VUL-45 passou justamente por não
-        // estar em nenhuma cena.
+        // Desabilitado sem valor: o único estado travado que já recuava antes do VUL-63,
+        // na cena para provar que o placeholder não regrediu junto.
+        SaqzInput(
+            TextFieldValue(""),
+            {},
+            label = "Quadra",
+            placeholder = "A definir com o grupo",
+            enabled = false,
+        )
+        // Travado + erro: a combinação que faltava, e por faltar deixou o halo vermelho de
+        // 3dp passar pela revisão do #50 mesmo com a linha de 1px já travada.
+        SaqzInput(
+            TextFieldValue("ana"),
+            {},
+            label = "E-mail do convite",
+            enabled = false,
+            errorText = "Não confirmado. Só o administrador reenvia.",
+        )
+    }
+
+    // Cena própria pelo mesmo motivo de `ds-controles`: com o sexto campo do VUL-63 o
+    // seletor desabilitado saía do quadro, e estado fora do quadro não está sendo
+    // conferido — foi exatamente assim que o 1,01:1 do VUL-45 passou.
+    @Test
+    fun attendance() = gallery("ds-presenca") {
+        // Os três preenchimentos sólidos, a linha em repouso e a desabilitada.
         SaqzAttendanceSelector(value = SaqzAttendance.Going, onSelect = {})
         SaqzAttendanceSelector(value = SaqzAttendance.Maybe, onSelect = {})
         SaqzAttendanceSelector(value = SaqzAttendance.Out, onSelect = {})
