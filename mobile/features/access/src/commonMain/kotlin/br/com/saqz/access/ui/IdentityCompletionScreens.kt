@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.access.presentation.AuthUiError
-import br.com.saqz.access.presentation.asString
+import br.com.saqz.designsystem.asString
 import br.com.saqz.access.presentation.message
 import br.com.saqz.access.presentation.namecompletion.NameCompletionIntent
 import br.com.saqz.access.presentation.namecompletion.NameCompletionState
@@ -170,4 +170,3 @@ private fun VerificationScreenPreview() = SaqzTheme {
 private fun NameCompletionScreenPreview() = SaqzTheme {
     NameCompletionScreen(NameCompletionState(name = "Ana"), {})
 }
-
