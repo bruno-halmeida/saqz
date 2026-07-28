@@ -133,6 +133,10 @@ class GroupSetupViewModel(
 
     private fun onConfirmSlot() {
         val current = state.value
+        // Intent inválido retorna cedo (AGENTS.md §4). Com a folha já fechada, o índice
+        // vinha nulo, era lido como "horário novo" e o rascunho entrava de novo: dois
+        // toques rápidos em Salvar criavam o mesmo horário duas vezes.
+        val sheet = current.sheet as? GroupSetupSheet.Slot ?: return
         val draft = current.slotDraft
         val slot = GroupRegularSlotForm(
             weekday = draft.weekday,
@@ -142,7 +146,7 @@ class GroupSetupViewModel(
             // duração por horário, o campo do estado sai e o picker ganha a escolha.
             durationMinutes = current.durationMinutes,
         )
-        val index = (current.sheet as? GroupSetupSheet.Slot)?.index
+        val index = sheet.index
         val slots = current.form.regularSlots
         val updated = when {
             index == null || index !in slots.indices -> slots + slot
@@ -163,10 +167,14 @@ class GroupSetupViewModel(
     }
 
     /**
-     * O teto do backend é aplicado **na entrada**, não como mensagem de erro: o campo
-     * simplesmente para de crescer. Cortar aqui, e não em cada `onValueChange`, é o que
-     * garante que nenhum caminho — tecla, colagem, restauração de rascunho — deixe o
-     * estado passar do limite, e é o mesmo ponto que grava no `SavedStateHandle`.
+     * O teto do backend e a limpeza de caractere de controle são aplicados **na
+     * entrada**, não como mensagem de erro: o campo simplesmente para de crescer e não
+     * aceita o que o servidor recusaria. Fazer isso aqui, e não em cada `onValueChange`,
+     * é o que garante que nenhum caminho — tecla, colagem, restauração de rascunho —
+     * deixe o estado sair do contrato, e é o mesmo ponto que grava no `SavedStateHandle`.
+     *
+     * O corte conta code point, como o backend: `take` cru partiria um emoji no meio do
+     * par substituto e gravaria meio caractere.
      */
     private fun onTextChange(
         key: String,
@@ -174,7 +182,7 @@ class GroupSetupViewModel(
         maxLength: Int,
         edit: GroupSetupForm.(String) -> GroupSetupForm,
     ) {
-        val capped = value.take(maxLength)
+        val capped = value.withoutControlChars().takeCodePoints(maxLength)
         savedState[key] = capped
         onFormChange { edit(capped) }
     }

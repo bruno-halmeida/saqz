@@ -150,6 +150,48 @@ class GroupSetupViewModelTest {
         assertNull(viewModel.state.value.sheet)
     }
 
+    /** Folha fechada, intent inválido: o segundo toque em Salvar não pode duplicar. */
+    @Test
+    fun `confirmar o horario duas vezes seguidas entra uma vez so`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(form = completeForm.copy(regularSlots = emptyList()))
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null)))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals(1, viewModel.state.value.form.regularSlots.size)
+        assertNull(viewModel.state.value.sheet)
+    }
+
+    /**
+     * O backend conta code point. Um emoji tem `length` 2 e conta 1, e o corte no teto
+     * não pode partir o par substituto ao meio.
+     */
+    @Test
+    fun `o corte do teto conta code point e nao parte o emoji`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+        val ball = "🏐"
+
+        viewModel.onIntent(GroupSetupIntent.UpdateName(ball.repeat(GroupTextLimits.NameMax + 5)))
+        runCurrent()
+
+        val name = viewModel.state.value.form.name
+        assertEquals(GroupTextLimits.NameMax, name.codePointLength())
+        assertEquals(GroupTextLimits.NameMax * 2, name.length)
+        assertTrue(name.none { it.isHighSurrogate() && name.indexOf(it) == name.lastIndex })
+    }
+
+    @Test
+    fun `caractere de controle sai na digitacao`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupSetupIntent.UpdateName("Vôlei\ndo CERET"))
+        runCurrent()
+
+        assertEquals("Vôleido CERET", viewModel.state.value.form.name)
+    }
+
     @Test
     fun `abrir a folha de um horario existente carrega o rascunho`() = runTest(mainDispatcher) {
         val viewModel = viewModel()

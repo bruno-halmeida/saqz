@@ -45,6 +45,7 @@ import br.com.saqz.groups.resources.group_setup_delete_action
 import br.com.saqz.groups.resources.group_setup_edit_title
 import br.com.saqz.groups.resources.group_setup_error_composition
 import br.com.saqz.groups.resources.group_setup_error_custom_level
+import br.com.saqz.groups.resources.group_setup_error_description
 import br.com.saqz.groups.resources.group_setup_error_modality
 import br.com.saqz.groups.resources.group_setup_error_name
 import br.com.saqz.groups.resources.group_setup_error_venue_address
@@ -200,6 +201,10 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
     }
     GroupDescriptionSection(
         description = form.description,
+        errorText = state.errorText(
+            GroupSetupError.DescriptionTooShort,
+            Res.string.group_setup_error_description,
+        ),
         onChange = { onIntent(GroupSetupIntent.UpdateDescription(it)) },
     )
     GroupCapacitySection(

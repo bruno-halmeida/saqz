@@ -329,6 +329,7 @@ internal fun GroupPlayStyleSection(
 @Composable
 internal fun GroupDescriptionSection(
     description: String?,
+    errorText: String?,
     onChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -340,6 +341,7 @@ internal fun GroupDescriptionSection(
             label = label,
             showLabel = false,
             placeholder = stringResource(Res.string.group_setup_description_hint),
+            errorText = errorText,
             singleLine = false,
             minLines = DescriptionMinLines,
             modifier = Modifier.testTag(GroupSetupTags.Description),

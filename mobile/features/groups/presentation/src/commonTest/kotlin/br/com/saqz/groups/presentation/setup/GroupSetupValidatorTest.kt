@@ -70,6 +70,29 @@ class GroupSetupValidatorTest {
         assertTrue(validate(exact).isEmpty())
     }
 
+    /** O backend conta code point: um emoji é um caractere, não dois. */
+    @Test
+    fun `nome de um emoji so reprova como um caractere`() {
+        assertEquals(setOf(GroupSetupError.NameRequired), validate(state { copy(name = "🏐") }))
+        assertTrue(validate(state { copy(name = "🏐🏐") }).isEmpty())
+    }
+
+    @Test
+    fun `descricao abaixo do minimo reprova e ausente passa`() {
+        assertEquals(
+            setOf(GroupSetupError.DescriptionTooShort),
+            validate(state { copy(description = "A") }),
+        )
+        assertEquals(
+            setOf(GroupSetupError.DescriptionTooShort),
+            validate(state { copy(description = "🏐") }),
+        )
+        assertTrue(validate(state { copy(description = "Ab") }).isEmpty())
+        // Opcional: em branco vira nulo no `cleaned()` e não é erro nenhum.
+        assertTrue(validate(state { copy(description = "   ") }).isEmpty())
+        assertTrue(validate(state { copy(description = null) }).isEmpty())
+    }
+
     @Test
     fun `categoria personalizada exige nome proprio`() {
         val errors = validate(state { copy(level = GroupLevel.CUSTOM, customLevel = null) })
@@ -161,6 +184,7 @@ class GroupSetupValidatorTest {
             GroupSetupState(
                 mode = GroupSetupMode.Create,
                 form = GroupSetupForm(
+                    description = "A",
                     level = GroupLevel.CUSTOM,
                     // Quadra em branco só chega aqui vinda de fora: a ViewModel devolve
                     // a `null` o que o usuário esvazia. O validador tem de ser total.
