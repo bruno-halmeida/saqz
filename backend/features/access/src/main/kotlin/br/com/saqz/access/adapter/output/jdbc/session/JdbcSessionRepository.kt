@@ -23,11 +23,11 @@ class JdbcSessionRepository(
             INSERT INTO access_users (
                 id, firebase_subject, email, email_verified, display_name, created_at, updated_at
             ) VALUES (
-                :id, :subject, :email, true, :displayName, now(), now()
+                :id, :subject, :email, :emailVerified, :displayName, now(), now()
             )
             ON CONFLICT (firebase_subject) DO UPDATE SET
                 email = EXCLUDED.email,
-                email_verified = true,
+                email_verified = EXCLUDED.email_verified,
                 display_name = EXCLUDED.display_name,
                 updated_at = now()
             RETURNING id, phone
@@ -36,12 +36,20 @@ class JdbcSessionRepository(
             .param("id", UUID.randomUUID())
             .param("subject", command.subject)
             .param("email", command.email)
+            .param("emailVerified", command.emailVerified)
             .param("displayName", command.displayName.value)
             .query { result, _ -> result.getObject("id", UUID::class.java) to result.getString("phone") }
             .single()
 
         return SessionView(
-            user = UserAccount(userId, command.subject, command.email, command.displayName, phone?.let(PhoneNumber::from)),
+            user = UserAccount(
+                userId,
+                command.subject,
+                command.email,
+                command.displayName,
+                phone?.let(PhoneNumber::from),
+                loadPhotoDigest(userId),
+            ),
             memberships = loadMemberships(userId),
         )
     }
@@ -71,10 +79,24 @@ class JdbcSessionRepository(
             .orElse(null) ?: return null
 
         return SessionView(
-            user = UserAccount(userId, command.subject, email, AccessName.from(displayName), command.phone),
+            user = UserAccount(
+                userId,
+                command.subject,
+                email,
+                AccessName.from(displayName),
+                command.phone,
+                loadPhotoDigest(userId),
+            ),
             memberships = loadMemberships(userId),
         )
     }
+
+    private fun loadPhotoDigest(userId: UUID): String? =
+        jdbc.sql("SELECT encode(sha256_digest, 'hex') FROM access_user_photos WHERE user_id = :userId")
+            .param("userId", userId)
+            .query(String::class.java)
+            .optional()
+            .orElse(null)
 
     private fun loadMemberships(userId: UUID): List<SessionMembership> = jdbc.sql(
         """

@@ -29,7 +29,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(5, flyway.migrate().migrationsExecuted)
+        assertEquals(7, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -41,7 +41,8 @@ class AccessSchemaIntegrationTest {
     fun clearData() {
         execute(
             "TRUNCATE group_regular_slots, group_venues, group_invites, group_memberships, access_groups, " +
-                "invite_redemption_limits, password_reset_codes, password_reset_rate_limits, access_users CASCADE",
+                "invite_redemption_limits, password_reset_codes, password_reset_rate_limits, " +
+                "access_user_photos, access_users CASCADE",
         )
     }
 
@@ -59,6 +60,7 @@ class AccessSchemaIntegrationTest {
                 "group_photos",
                 "password_reset_codes",
                 "password_reset_rate_limits",
+                "access_user_photos",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +
@@ -89,8 +91,11 @@ class AccessSchemaIntegrationTest {
     }
 
     @Test
-    fun `unverified users cannot be persisted`() {
-        assertSqlFails { insertUser(subject = "unverified", verified = false) }
+    fun `unverified users are persisted with the honest flag`() {
+        val id = insertUser(subject = "unverified", verified = false)
+
+        assertEquals(0, queryInt("SELECT count(*) FROM access_users WHERE id = '$id' AND email_verified"))
+        assertEquals(1, queryInt("SELECT count(*) FROM access_users WHERE id = '$id'"))
     }
 
     @Test

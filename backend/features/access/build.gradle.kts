@@ -11,6 +11,7 @@ dependencies {
     implementation(libs.flyway.core)
     implementation(libs.spring.jdbc)
     implementation(libs.spring.boot.starter.mail)
+    implementation(libs.twelvemonkeys.imageio.webp)
     implementation("org.springframework.security:spring-security-core")
     implementation("org.springframework:spring-web")
     // O `request` limita por IP, e o IP vem do `remoteAddr` da requisicao.

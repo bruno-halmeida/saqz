@@ -1,7 +1,6 @@
 package br.com.saqz.bootstrap.configuration.http
 
 import br.com.saqz.groups.adapter.input.http.AccessForbiddenException
-import br.com.saqz.access.adapter.input.http.EmailNotVerifiedException as AccessEmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
@@ -21,10 +20,12 @@ import br.com.saqz.groups.adapter.input.http.AttendanceLinkInvalidOrExpiredExcep
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkUnavailableException
 import br.com.saqz.groups.adapter.input.http.VersionConflictException
 import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
-import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
 import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
+import br.com.saqz.access.adapter.input.http.InvalidUserPhotoException
+import br.com.saqz.access.adapter.input.http.UserPhotoNotFoundException
+import br.com.saqz.access.adapter.input.http.UserPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
@@ -43,11 +44,6 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 class SafeExceptionHandler(
     private val problemWriter: ApiProblemWriter,
 ) {
-    @ExceptionHandler(EmailNotVerifiedException::class, AccessEmailNotVerifiedException::class)
-    fun emailNotVerified(request: HttpServletRequest, response: HttpServletResponse) {
-        problemWriter.write(request, response, 403, ErrorCode.EMAIL_NOT_VERIFIED)
-    }
-
     @ExceptionHandler(InvalidDisplayNameException::class, AccessInvalidDisplayNameException::class)
     fun invalidDisplayName(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(
@@ -241,18 +237,28 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 503, ErrorCode.ATTENDANCE_LINK_UNAVAILABLE)
     }
 
-    @ExceptionHandler(GroupPhotoTooLargeException::class, MaxUploadSizeExceededException::class)
+    @ExceptionHandler(
+        GroupPhotoTooLargeException::class,
+        UserPhotoTooLargeException::class,
+        MaxUploadSizeExceededException::class,
+    )
     fun photoTooLarge(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 413, ErrorCode.PHOTO_TOO_LARGE)
     }
 
     @ExceptionHandler(
         InvalidGroupPhotoException::class,
+        InvalidUserPhotoException::class,
         MissingServletRequestPartException::class,
         MultipartException::class,
     )
     fun invalidPhoto(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.PHOTO_INVALID)
+    }
+
+    @ExceptionHandler(UserPhotoNotFoundException::class)
+    fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

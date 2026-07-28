@@ -29,6 +29,10 @@ import br.com.saqz.groups.adapter.output.media.GroupPhotoValidator
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
+import br.com.saqz.access.adapter.input.http.UserPhotoController
+import br.com.saqz.access.adapter.output.jdbc.photo.JdbcUserPhotoRepository
+import br.com.saqz.access.adapter.output.media.UserPhotoConverter
+import br.com.saqz.access.application.photo.UserPhotoService
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -89,7 +93,6 @@ import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.groups.domain.GroupAccessPolicy
-import br.com.saqz.groups.adapter.input.http.EmailNotVerifiedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -130,7 +133,6 @@ class AccessSessionConfiguration {
     @Bean
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
         when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.EmailNotVerified -> throw EmailNotVerifiedException()
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             is BootstrapSessionResult.Success -> result.session.user.id
         }
@@ -142,6 +144,13 @@ class AccessSessionConfiguration {
     @Bean
     fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
         AccessSessionController(useCase, profile)
+
+    @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
+    @Bean fun userPhotoConverter() = UserPhotoConverter()
+    @Bean fun userPhotoService(converter: UserPhotoConverter, repository: JdbcUserPhotoRepository) =
+        UserPhotoService(converter, repository)
+    @Bean fun userPhotoController(bootstrapSession: BootstrapSession, service: UserPhotoService) =
+        UserPhotoController(bootstrapSession, service)
 
     @Bean
     fun verificationCodeMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =

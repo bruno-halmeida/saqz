@@ -241,5 +241,6 @@
     <string name="group_schedule_published">Publicado</string>
     <string name="group_schedule_scheduled">Agendado</string>
     <string name="group_schedule_pause">Pausar a agenda por um tempo</string>
+    <string name="group_schedule_resume">Retomar a agenda</string>
     <string name="group_schedule_save">Salvar alterações</string>
 </resources>

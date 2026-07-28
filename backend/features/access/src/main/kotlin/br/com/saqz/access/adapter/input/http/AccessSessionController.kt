@@ -5,6 +5,7 @@ import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.CompleteSessionProfileResult
 import br.com.saqz.access.application.session.SessionView
+import br.com.saqz.access.application.session.hasVerifiedEmail
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -21,6 +22,8 @@ data class SessionUserResponse(
     val displayName: String,
     val phone: String?,
     val phoneRequired: Boolean,
+    val emailVerified: Boolean,
+    val photoUrl: String?,
 )
 
 data class SessionMembershipResponse(
@@ -39,8 +42,6 @@ data class UpdateSessionProfileRequest @JsonCreator constructor(
     @JsonProperty("displayName") val displayName: String? = null,
 )
 
-class EmailNotVerifiedException : RuntimeException()
-
 class InvalidDisplayNameException : RuntimeException()
 
 class InvalidPhoneException : RuntimeException()
@@ -55,9 +56,8 @@ class AccessSessionController(
     @PutMapping("/api/session")
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
         when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.EmailNotVerified -> throw EmailNotVerifiedException()
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            is BootstrapSessionResult.Success -> result.session.toResponse()
+            is BootstrapSessionResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
 
     @PatchMapping("/api/session/profile")
@@ -72,17 +72,21 @@ class AccessSessionController(
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
-            is CompleteSessionProfileResult.Success -> result.session.toResponse()
+            is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
 }
 
-private fun SessionView.toResponse() = AccessSessionResponse(
+private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionResponse(
     user = SessionUserResponse(
         id = user.id,
         email = user.email,
         displayName = user.displayName.value,
         phone = user.phone?.value,
         phoneRequired = user.phone == null,
+        emailVerified = emailVerified,
+        // O digest vai na URL para o cliente nao servir a foto antiga do cache
+        // depois de uma troca: contador reiniciaria em 1 depois de uma remocao.
+        photoUrl = user.photoDigest?.let { "$USER_PHOTO_PATH?v=$it" },
     ),
     memberships = memberships.map {
         SessionMembershipResponse(

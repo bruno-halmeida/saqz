@@ -71,6 +71,42 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
+    fun `unverified account is inserted with email_verified false`() {
+        val session = repository.upsertAndLoad(command("subject-unverified", emailVerified = false))
+
+        assertEquals(false, verifiedFlag(session.user.id))
+    }
+
+    @Test
+    fun `verified account is inserted with email_verified true`() {
+        val session = repository.upsertAndLoad(command("subject-verified", emailVerified = true))
+
+        assertEquals(true, verifiedFlag(session.user.id))
+    }
+
+    @Test
+    fun `confirming the email later flips the persisted flag on the same user`() {
+        val before = repository.upsertAndLoad(command("subject-confirms", emailVerified = false))
+        assertEquals(false, verifiedFlag(before.user.id))
+
+        val after = repository.upsertAndLoad(command("subject-confirms", emailVerified = true))
+
+        assertEquals(before.user.id, after.user.id)
+        assertEquals(true, verifiedFlag(after.user.id))
+    }
+
+    @Test
+    fun `an unconfirmed claim overwrites a previously verified row`() {
+        val before = repository.upsertAndLoad(command("subject-regresses", emailVerified = true))
+        assertEquals(true, verifiedFlag(before.user.id))
+
+        val after = repository.upsertAndLoad(command("subject-regresses", emailVerified = false))
+
+        assertEquals(before.user.id, after.user.id)
+        assertEquals(false, verifiedFlag(after.user.id))
+    }
+
+    @Test
     fun `equal emails with different Firebase UIDs create distinct users`() {
         val first = repository.upsertAndLoad(command("subject-one"))
         val second = repository.upsertAndLoad(command("subject-two"))
@@ -83,7 +119,7 @@ class JdbcSessionRepositoryIntegrationTest {
     fun `changed email and display name update mirrors without changing user ID`() {
         val original = repository.upsertAndLoad(command("subject-update"))
         val updated = repository.upsertAndLoad(
-            SessionUpsert("subject-update", "changed@example.test", AccessName.from("Changed Name")),
+            SessionUpsert("subject-update", "changed@example.test", true, AccessName.from("Changed Name")),
         )
 
         assertEquals(original.user.id, updated.user.id)
@@ -96,7 +132,7 @@ class JdbcSessionRepositoryIntegrationTest {
     fun `email mirror can become null without changing user ID`() {
         val original = repository.upsertAndLoad(command("subject-null-email"))
         val updated = repository.upsertAndLoad(
-            SessionUpsert("subject-null-email", null, AccessName.from("Person Name")),
+            SessionUpsert("subject-null-email", null, true, AccessName.from("Person Name")),
         )
 
         assertEquals(original.user.id, updated.user.id)
@@ -153,7 +189,7 @@ class JdbcSessionRepositoryIntegrationTest {
         insertMembership(group, member.user.id, "ADMIN")
 
         val refreshed = repository.upsertAndLoad(
-            SessionUpsert("preserve-member", "new@example.test", AccessName.from("New Name")),
+            SessionUpsert("preserve-member", "new@example.test", true, AccessName.from("New Name")),
         )
 
         assertEquals(listOf(group), refreshed.memberships.map { it.groupId })
@@ -263,8 +299,11 @@ class JdbcSessionRepositoryIntegrationTest {
         assertEquals(null, result)
     }
 
-    private fun command(subject: String) =
-        SessionUpsert(subject, "person@example.test", AccessName.from("Person Name"))
+    private fun command(subject: String, emailVerified: Boolean = true) =
+        SessionUpsert(subject, "person@example.test", emailVerified, AccessName.from("Person Name"))
+
+    private fun verifiedFlag(userId: UUID): Boolean =
+        count("SELECT count(*) FROM access_users WHERE id = '$userId' AND email_verified") == 1
 
     private fun insertGroup(ownerId: UUID, name: String): UUID {
         val id = UUID.randomUUID()

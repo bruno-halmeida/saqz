@@ -67,6 +67,7 @@ class SessionEndpointIntegrationTest {
         assertEquals(200, response.statusCode())
         assertEquals("session@example.test", body["user"]["email"].stringValue())
         assertEquals("Session Person", body["user"]["displayName"].stringValue())
+        assertTrue(body["user"]["emailVerified"].booleanValue())
         assertTrue(body["memberships"].isEmpty)
     }
 
@@ -97,23 +98,38 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `false email verification returns 403 without write`() {
+    fun `false email verification returns the session flagged as unverified`() {
         verifier.principal = identity(emailVerified = false)
 
         val response = putSession()
+        val body = json(response)
 
-        assertProblem(response, 403, "EMAIL_NOT_VERIFIED")
-        assertTrue(repository.commands.isEmpty())
+        assertEquals(200, response.statusCode())
+        assertFalse(body["user"]["emailVerified"].booleanValue())
+        assertEquals("Session Person", body["user"]["displayName"].stringValue())
+        assertEquals(1, repository.commands.size)
     }
 
     @Test
-    fun `missing email verification returns 403 without write`() {
+    fun `missing email verification claim returns the session flagged as unverified`() {
         verifier.principal = identity(emailVerified = null)
 
         val response = putSession()
 
-        assertProblem(response, 403, "EMAIL_NOT_VERIFIED")
-        assertTrue(repository.commands.isEmpty())
+        assertEquals(200, response.statusCode())
+        assertFalse(json(response)["user"]["emailVerified"].booleanValue())
+        assertEquals(1, repository.commands.size)
+    }
+
+    @Test
+    fun `unverified account still completes its profile and keeps the unverified flag`() {
+        verifier.principal = identity(emailVerified = false)
+        putSession()
+
+        val body = json(patchProfile("""{"phone":"+5511911112222"}"""))
+
+        assertEquals("+5511911112222", body["user"]["phone"].stringValue())
+        assertFalse(body["user"]["emailVerified"].booleanValue())
     }
 
     @Test
@@ -197,12 +213,28 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `unverified problem correlation header equals body correlation ID`() {
-        verifier.principal = identity(emailVerified = false)
+    fun `rejected problem correlation header equals body correlation ID`() {
+        verifier.principal = identity(displayName = null)
 
         val response = putSession()
 
+        assertProblem(response, 400, "VALIDATION_FAILED")
         assertEquals(correlationId(response), correlationHeader(response))
+    }
+
+    @Test
+    fun `session response photoUrl is null when the account has no photo`() {
+        assertTrue(json(putSession())["user"]["photoUrl"].isNull)
+    }
+
+    @Test
+    fun `session response photoUrl carries the stored photo digest`() {
+        repository.photoDigest = "ab".repeat(32)
+
+        assertEquals(
+            "/api/session/photo?v=${"ab".repeat(32)}",
+            json(putSession())["user"]["photoUrl"].stringValue(),
+        )
     }
 
     @Test
@@ -382,6 +414,7 @@ class SessionEndpointIntegrationTest {
         private val phones = mutableMapOf<String, PhoneNumber>()
         private val names = mutableMapOf<String, AccessName>()
         var memberships: List<SessionMembership> = emptyList()
+        var photoDigest: String? = null
         var failure: RuntimeException? = null
 
         fun reset() {
@@ -391,6 +424,7 @@ class SessionEndpointIntegrationTest {
             phones.clear()
             names.clear()
             memberships = emptyList()
+            photoDigest = null
             failure = null
         }
 
@@ -400,7 +434,14 @@ class SessionEndpointIntegrationTest {
             val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
             names[command.subject] = command.displayName
             return SessionView(
-                UserAccount(id, command.subject, command.email, command.displayName, phones[command.subject]),
+                UserAccount(
+                    id,
+                    command.subject,
+                    command.email,
+                    command.displayName,
+                    phones[command.subject],
+                    photoDigest,
+                ),
                 memberships,
             )
         }
