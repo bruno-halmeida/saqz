@@ -109,7 +109,14 @@ fun SaqzSectionHeader(
 }
 
 /**
- * 10j — etiqueta de estado. `dot` acende o ponto na cor do tom antes do texto.
+ * 10j — etiqueta de estado. `dot` acende o ponto na cor do primeiro plano
+ * (`background: currentColor` no export).
+ *
+ * Primeiro plano e fundo de cada tom saem da tabela abaixo, um par explícito por tom,
+ * transcrito de `.saqz-chip--*` no `_ds_bundle.js`. Não derive um do outro: a versão
+ * anterior calculava o fundo como `foreground.copy(alpha = .12f)` e isso apagou a
+ * exceção do `warning` — o único tom em que o export escreve o texto numa cor
+ * diferente da que tinge o fundo — além de arredondar os alfas de `brand` e `error`.
  */
 @Composable
 fun SaqzStatusChip(
@@ -119,18 +126,13 @@ fun SaqzStatusChip(
     dot: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
-    val foreground = when (tone) {
-        SaqzChipTone.Neutral -> colors.textSecondary
-        SaqzChipTone.Accent -> colors.textPrimary
-        SaqzChipTone.Brand -> colors.primary
-        SaqzChipTone.Success -> colors.success
-        SaqzChipTone.Warning -> colors.warning
-        SaqzChipTone.Error -> colors.errorForeground
-    }
-    val container = when (tone) {
-        SaqzChipTone.Neutral -> colors.surfaceSoft
-        SaqzChipTone.Accent -> colors.accent.copy(alpha = 0.32f)
-        else -> foreground.copy(alpha = 0.12f)
+    val (foreground, container) = when (tone) {
+        SaqzChipTone.Neutral -> colors.textSecondary to colors.surfaceSoft
+        SaqzChipTone.Accent -> colors.textPrimary to colors.accent.copy(alpha = 0.32f)
+        SaqzChipTone.Brand -> colors.primary to colors.primary.copy(alpha = 0.08f)
+        SaqzChipTone.Success -> colors.success to colors.success.copy(alpha = 0.12f)
+        SaqzChipTone.Warning -> colors.warningForeground to colors.warning.copy(alpha = 0.14f)
+        SaqzChipTone.Error -> colors.errorForeground to colors.errorForeground.copy(alpha = 0.10f)
     }
     Row(
         modifier = modifier
@@ -141,10 +143,12 @@ fun SaqzStatusChip(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (dot) {
+            // `.saqz-chip__dot{background:currentColor}` — o ponto é sempre o primeiro
+            // plano, inclusive no accent, que antes acendia em primary sem o export pedir.
             Box(
                 Modifier
                     .size(6.dp)
-                    .background(if (tone == SaqzChipTone.Accent) colors.primary else foreground, CircleShape),
+                    .background(foreground, CircleShape),
             )
         }
         Text(
@@ -178,17 +182,28 @@ private fun SaqzCardPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun SaqzStatusChipPreview() = SaqzTheme {
+    // Os seis tons nas duas formas: sem ponto e com ponto. Tom que não está aqui não
+    // está sendo conferido — foi assim que o warning ficou em 1,9:1 sem ninguém ver.
     SaqzPreviewGrid {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SaqzStatusChip("Pendente", tone = SaqzChipTone.Warning, dot = true)
+            SaqzStatusChip("Reserva", tone = SaqzChipTone.Neutral)
             SaqzStatusChip("Admin", tone = SaqzChipTone.Brand)
-            SaqzStatusChip("Mensalista", tone = SaqzChipTone.Neutral)
+            SaqzStatusChip("Mensalista", tone = SaqzChipTone.Accent)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzStatusChip("Vou", tone = SaqzChipTone.Success)
+            SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning)
+            SaqzStatusChip("Não vou", tone = SaqzChipTone.Error)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzStatusChip("Reserva", tone = SaqzChipTone.Neutral, dot = true)
+            SaqzStatusChip("Admin", tone = SaqzChipTone.Brand, dot = true)
+            SaqzStatusChip("Mensalista", tone = SaqzChipTone.Accent, dot = true)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SaqzStatusChip("Vou", tone = SaqzChipTone.Success, dot = true)
-            SaqzStatusChip("Talvez", tone = SaqzChipTone.Accent)
-            SaqzStatusChip("Não vou", tone = SaqzChipTone.Error)
-            SaqzStatusChip("Reserva", tone = SaqzChipTone.Neutral)
+            SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning, dot = true)
+            SaqzStatusChip("Não vou", tone = SaqzChipTone.Error, dot = true)
         }
     }
 }

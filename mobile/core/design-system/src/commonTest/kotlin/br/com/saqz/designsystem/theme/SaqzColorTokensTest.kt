@@ -31,6 +31,7 @@ class SaqzColorTokensTest {
         "border" to tokens.border,
         "success" to tokens.success,
         "warning" to tokens.warning,
+        "warningForeground" to tokens.warningForeground,
         "errorForeground" to tokens.errorForeground,
         "disabledSurface" to tokens.disabledSurface,
         "disabledForeground" to tokens.disabledForeground,
@@ -88,6 +89,18 @@ class SaqzColorTokensTest {
     }
 
     @Test
+    fun warningChipTextIsLegibleAndAmberIsNot() {
+        // O chip warning pinta o fundo com o âmbar da paleta a 14% (`.saqz-chip--warning`)
+        // sobre superfície branca ou ice. O par de asserções é o registro do porquê de
+        // existir um segundo âmbar: o da paleta some no próprio fundo, o escuro não.
+        for (surface in listOf(tokens.surface, tokens.surfaceSoft)) {
+            val fill = composite(tokens.warning, alpha = 0.14f, over = surface)
+            assertAtLeast(3.0, contrast(tokens.warningForeground, fill))
+            assertBelow(3.0, contrast(tokens.warning, fill))
+        }
+    }
+
+    @Test
     fun accentIsNeverText() {
         // Lime é micro-acento. O teste registra que ele NÃO passa como texto, para
         // ninguém "corrigir" a paleta transformando lime em cor de rótulo.
@@ -99,6 +112,12 @@ class SaqzColorTokensTest {
 
     private fun assertBelow(ceiling: Double, actual: Double) =
         assertTrue(actual < ceiling, "expected < $ceiling but was $actual")
+
+    private fun composite(source: Color, alpha: Float, over: Color): Color = Color(
+        red = source.red * alpha + over.red * (1 - alpha),
+        green = source.green * alpha + over.green * (1 - alpha),
+        blue = source.blue * alpha + over.blue * (1 - alpha),
+    )
 
     private fun parseHex(hex: String): Color {
         val rgb = hex.removePrefix("#").toLong(16)
