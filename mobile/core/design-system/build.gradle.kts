@@ -27,6 +27,9 @@ kotlin {
             api("org.jetbrains.compose.runtime:runtime:1.11.1")
             api("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.11.1")
+            // implementation, não api: o back do sheet é assunto interno do componente,
+            // ninguém precisa do BackHandler para consumir o design system.
+            implementation(libs.compose.ui.backhandler)
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
         }
         commonTest.dependencies {
