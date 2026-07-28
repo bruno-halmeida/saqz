@@ -33,21 +33,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.action_decrease
 import br.com.saqz.designsystem.resources.action_increase
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
-private val SwitchTrackWidth = 52.dp
-private val SwitchTrackHeight = 32.dp
-private val SwitchThumbSize = 26.dp
-
 /**
  * 10h — trilho pílula com polegar branco. Com [label], a linha inteira é o alvo
  * de toque e o TalkBack anuncia um único switch. Sem [label], [contentDescription]
  * passa a ser obrigatório: um switch sem nome só anuncia o estado, nunca o que
  * ele controla.
+ *
+ * Movimento próprio (`switchDurationMillis`/`switchEasing`): no export o switch é
+ * `.18s ease` e o segmented é `.28s` enfático. Igualar os dois é regressão.
  */
 @Composable
 fun SaqzSwitch(
@@ -67,12 +67,16 @@ fun SaqzSwitch(
             checked -> colors.primary
             else -> colors.border
         },
-        animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+        animationSpec = tween(motion.switchDurationMillis, easing = motion.switchEasing),
         label = "switchTrack",
     )
     val thumbOffset by animateDpAsState(
-        targetValue = if (checked) SwitchTrackWidth - SwitchThumbSize - 3.dp else 3.dp,
-        animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+        targetValue = if (checked) {
+            metrics.switchTrackWidth - metrics.switchThumbSize - metrics.switchThumbInset
+        } else {
+            metrics.switchThumbInset
+        },
+        animationSpec = tween(motion.switchDurationMillis, easing = motion.switchEasing),
         label = "switchThumb",
     )
 
@@ -85,7 +89,7 @@ fun SaqzSwitch(
     val control = @Composable {
         Box(
             modifier = Modifier
-                .size(SwitchTrackWidth, SwitchTrackHeight)
+                .size(metrics.switchTrackWidth, metrics.switchTrackHeight)
                 .clip(CircleShape)
                 .background(track, CircleShape),
         ) {
@@ -93,7 +97,7 @@ fun SaqzSwitch(
                 modifier = Modifier
                     .offset(x = thumbOffset)
                     .align(Alignment.CenterStart)
-                    .size(SwitchThumbSize)
+                    .size(metrics.switchThumbSize)
                     .background(colors.surface, CircleShape),
             )
         }
@@ -186,8 +190,8 @@ fun SaqzStepper(
 }
 
 /**
- * 10h — 2 ou 3 opções curtas. O polegar branco desliza sob o rótulo selecionado
- * na curva enfática do design system.
+ * 10h — 2 ou 3 opções curtas. O polegar **azul** desliza sob o rótulo selecionado
+ * na curva enfática do design system, e o rótulo de cima vira branco.
  */
 @Composable
 fun SaqzSegmented(
@@ -217,14 +221,25 @@ fun SaqzSegmented(
                 .offset(x = thumb)
                 .width(slot)
                 .height(maxHeight)
-                .background(colors.surface, CircleShape),
+                .background(colors.primary, CircleShape),
         )
         Row(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, option ->
+                // ponytail: o rótulo acompanha o thumb (280ms enfática) em vez do
+                // `.2s ease` do export — não existe token de 200ms para texto. Se a
+                // diferença aparecer, nasce um par próprio em SaqzMotionPolicy.
+                val label by animateColorAsState(
+                    targetValue = if (index == selected) colors.surface else colors.textPrimary,
+                    animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                    label = "segmentedLabel",
+                )
                 Text(
                     text = option,
-                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (index == selected) colors.textPrimary else colors.textSecondary,
+                    style = SaqzTheme.typography.support.copy(
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight(700),
+                    ),
+                    color = label,
                     modifier = Modifier
                         .weight(1f)
                         .clip(CircleShape)
