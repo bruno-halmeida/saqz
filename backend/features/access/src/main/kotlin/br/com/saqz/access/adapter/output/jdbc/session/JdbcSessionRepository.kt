@@ -42,7 +42,14 @@ class JdbcSessionRepository(
             .single()
 
         return SessionView(
-            user = UserAccount(userId, command.subject, command.email, command.displayName, phone?.let(PhoneNumber::from)),
+            user = UserAccount(
+                userId,
+                command.subject,
+                command.email,
+                command.displayName,
+                phone?.let(PhoneNumber::from),
+                loadPhotoDigest(userId),
+            ),
             memberships = loadMemberships(userId),
         )
     }
@@ -72,10 +79,24 @@ class JdbcSessionRepository(
             .orElse(null) ?: return null
 
         return SessionView(
-            user = UserAccount(userId, command.subject, email, AccessName.from(displayName), command.phone),
+            user = UserAccount(
+                userId,
+                command.subject,
+                email,
+                AccessName.from(displayName),
+                command.phone,
+                loadPhotoDigest(userId),
+            ),
             memberships = loadMemberships(userId),
         )
     }
+
+    private fun loadPhotoDigest(userId: UUID): String? =
+        jdbc.sql("SELECT encode(sha256_digest, 'hex') FROM access_user_photos WHERE user_id = :userId")
+            .param("userId", userId)
+            .query(String::class.java)
+            .optional()
+            .orElse(null)
 
     private fun loadMemberships(userId: UUID): List<SessionMembership> = jdbc.sql(
         """

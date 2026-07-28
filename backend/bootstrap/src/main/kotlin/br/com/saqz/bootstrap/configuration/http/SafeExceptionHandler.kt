@@ -16,6 +16,9 @@ import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
 import br.com.saqz.groups.adapter.input.http.GroupPhotoTooLargeException
+import br.com.saqz.access.adapter.input.http.InvalidUserPhotoException
+import br.com.saqz.access.adapter.input.http.UserPhotoNotFoundException
+import br.com.saqz.access.adapter.input.http.UserPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
@@ -161,18 +164,28 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 503, ErrorCode.ATTENDANCE_LINK_UNAVAILABLE)
     }
 
-    @ExceptionHandler(GroupPhotoTooLargeException::class, MaxUploadSizeExceededException::class)
+    @ExceptionHandler(
+        GroupPhotoTooLargeException::class,
+        UserPhotoTooLargeException::class,
+        MaxUploadSizeExceededException::class,
+    )
     fun photoTooLarge(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 413, ErrorCode.PHOTO_TOO_LARGE)
     }
 
     @ExceptionHandler(
         InvalidGroupPhotoException::class,
+        InvalidUserPhotoException::class,
         MissingServletRequestPartException::class,
         MultipartException::class,
     )
     fun invalidPhoto(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.PHOTO_INVALID)
+    }
+
+    @ExceptionHandler(UserPhotoNotFoundException::class)
+    fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

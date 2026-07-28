@@ -20,6 +20,10 @@ import br.com.saqz.groups.adapter.output.media.GroupPhotoValidator
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
+import br.com.saqz.access.adapter.input.http.UserPhotoController
+import br.com.saqz.access.adapter.output.jdbc.photo.JdbcUserPhotoRepository
+import br.com.saqz.access.adapter.output.media.UserPhotoConverter
+import br.com.saqz.access.application.photo.UserPhotoService
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -131,6 +135,13 @@ class AccessSessionConfiguration {
     @Bean
     fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
         AccessSessionController(useCase, profile)
+
+    @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
+    @Bean fun userPhotoConverter() = UserPhotoConverter()
+    @Bean fun userPhotoService(converter: UserPhotoConverter, repository: JdbcUserPhotoRepository) =
+        UserPhotoService(converter, repository)
+    @Bean fun userPhotoController(bootstrapSession: BootstrapSession, service: UserPhotoService) =
+        UserPhotoController(bootstrapSession, service)
 
     @Bean
     fun verificationCodeMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =
