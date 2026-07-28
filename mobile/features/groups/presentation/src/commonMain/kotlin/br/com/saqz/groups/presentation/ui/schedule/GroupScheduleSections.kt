@@ -26,8 +26,8 @@ import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.presentation.presentation.schedule.UpcomingGameStatus
-import br.com.saqz.groups.presentation.presentation.schedule.UpcomingGameUi
+import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
+import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
 import br.com.saqz.groups.presentation.ui.durationLabel

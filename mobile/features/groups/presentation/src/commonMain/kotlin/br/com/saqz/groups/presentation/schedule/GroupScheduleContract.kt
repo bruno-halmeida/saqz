@@ -1,4 +1,4 @@
-package br.com.saqz.groups.presentation.presentation.schedule
+package br.com.saqz.groups.presentation.schedule
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.model.GroupRegularSlotForm

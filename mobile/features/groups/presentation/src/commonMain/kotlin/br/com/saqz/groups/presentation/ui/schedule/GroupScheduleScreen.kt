@@ -21,10 +21,10 @@ import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
-import br.com.saqz.groups.presentation.presentation.schedule.GroupScheduleIntent
-import br.com.saqz.groups.presentation.presentation.schedule.GroupScheduleState
-import br.com.saqz.groups.presentation.presentation.schedule.UpcomingGameStatus
-import br.com.saqz.groups.presentation.presentation.schedule.UpcomingGameUi
+import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
+import br.com.saqz.groups.presentation.schedule.GroupScheduleState
+import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
+import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import br.com.saqz.groups.presentation.ui.components.GroupRecurrenceSection
 import br.com.saqz.groups.presentation.ui.components.GroupSlotPicker
 import br.com.saqz.groups.resources.Res

@@ -4,8 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
-import br.com.saqz.groups.presentation.presentation.schedule.GroupScheduleEffect
-import br.com.saqz.groups.presentation.presentation.schedule.GroupScheduleViewModel
+import br.com.saqz.groups.presentation.schedule.GroupScheduleEffect
+import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
