@@ -1,5 +1,6 @@
 package br.com.saqz.androidapp
 
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.designsystem.SaqzAttendance
@@ -58,6 +60,8 @@ import br.com.saqz.designsystem.SaqzSwitch
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.theme.SaqzAccessibilityPreferences
+import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -516,6 +520,71 @@ class SaqzScreenshotTest {
         style = SaqzTheme.typography.body,
         color = SaqzTheme.colors.textSecondary,
     )
+
+    // VUL-52: o ajuste "Remover animações" do Android chegando na composição. Animação
+    // parada não se fotografa — o que a foto mostra são as durações vigentes em
+    // `SaqzTheme.motion`, as mesmas que o catálogo imprime, com o sinal do sistema lido
+    // pelo `rememberReduceMotion()` de verdade. Os dois estados, um PNG cada.
+    @Test
+    fun motionComAnimacoes() = captureUnderSystemMotion("ds-motion-normal")
+
+    @Test
+    fun motionSemAnimacoes() {
+        Settings.Global.putFloat(
+            ApplicationProvider.getApplicationContext<android.app.Application>().contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            0f,
+        )
+        captureUnderSystemMotion("ds-motion-reduzido")
+    }
+
+    private fun captureUnderSystemMotion(name: String) {
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            SaqzTheme(SaqzAccessibilityPreferences(reduceMotion = rememberReduceMotion())) {
+                MotionSpecimens()
+            }
+        }
+        compose.mainClock.advanceTimeBy(SHUTTER_MILLIS)
+        compose.onRoot().captureRoboImage("screenshots/$name.png")
+    }
+
+    // Todos os campos em que `Normal` e `Reduced` divergem, mais os controles que eles
+    // animam — as peças ficam idênticas, é só o tempo que cai a zero.
+    @Composable
+    private fun MotionSpecimens() {
+        val motion = SaqzTheme.motion
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SaqzSectionHeader(
+                title = if (motion == SaqzMotionPolicy.Reduced) {
+                    "Remover animações: ligado"
+                } else {
+                    "Remover animações: desligado"
+                },
+            )
+            Text(
+                "sheet ${motion.sheetDurationMillis}ms · thumb do segmented ${motion.thumbDurationMillis}ms · " +
+                    "switch ${motion.switchDurationMillis}ms · toast ${motion.toastDwellMillis}ms",
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            Text(
+                "press: escala ${motion.pressScale} · deslocamento ${motion.pressOffset.value}dp",
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            SaqzSwitch(checked = true, onCheckedChange = {}, label = "Jogo toda semana")
+            SaqzSwitch(checked = false, onCheckedChange = {}, label = "Avisar por push")
+            SaqzSegmented(listOf("Masculino", "Feminino", "Misto"), selected = 2, onSelect = {})
+            SaqzButton("Confirmar presença", onClick = {}, fullWidth = true)
+        }
+    }
 
     @Test
     fun sheetWithoutHeader() = capture("ds-sheet-sem-cabecalho") {
