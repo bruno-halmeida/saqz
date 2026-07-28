@@ -184,6 +184,21 @@ class SaqzScreenshotTest {
             leadingContent = { SaqzIcon(SaqzIcons.Pin, tint = SaqzTheme.colors.primary) },
         )
         SaqzInput(TextFieldValue("CERET-8K2P"), {}, label = "Código do grupo")
+        // Apoio e desabilitado: os dois estados do slot de mensagem que a cena não tinha,
+        // e é neles que o tamanho do texto de apoio aparece ao lado do de erro acima.
+        SaqzInput(
+            TextFieldValue("Quinta, 20h"),
+            {},
+            label = "Horário",
+            helperText = "Todo mundo do grupo recebe o aviso.",
+        )
+        SaqzInput(
+            TextFieldValue("Vôlei do CERET"),
+            {},
+            label = "Nome do grupo",
+            enabled = false,
+            helperText = "Só o administrador edita.",
+        )
         // Os três preenchimentos sólidos, a linha em repouso e a desabilitada. A última
         // é a que faltava: o contraste de 1,01:1 do VUL-45 passou justamente por não
         // estar em nenhuma cena.
