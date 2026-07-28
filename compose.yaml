@@ -35,7 +35,10 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # SMTP local: nada sai da máquina, a caixa de entrada abre em http://localhost:8025
+  # SMTP local: nada sai da máquina, a caixa de entrada abre em http://localhost:8025.
+  # O Mailpit não faz STARTTLS, por isso o backend acima desliga TLS explicitamente
+  # (SAQZ_MAIL_STARTTLS: "false") em vez de herdar o default `true` de produção —
+  # com o default, `starttls.required` recusaria a entrega, que é o comportamento certo.
   mailpit:
     image: axllent/mailpit:latest
     ports:
