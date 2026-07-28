@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzIcon
@@ -213,8 +212,8 @@ internal fun GroupNameSection(
     val label = stringResource(Res.string.group_setup_name_label)
     GroupFormCard(title = label, modifier = modifier) {
         SaqzInput(
-            value = TextFieldValue(name),
-            onValueChange = { onChange(it.text) },
+            value = name,
+            onValueChange = onChange,
             label = label,
             showLabel = false,
             placeholder = stringResource(Res.string.group_setup_name_hint),
@@ -290,8 +289,8 @@ internal fun GroupLevelSection(
         )
         if (showsCustomLevel) {
             SaqzInput(
-                value = TextFieldValue(customLevel.orEmpty()),
-                onValueChange = { onCustomLevelChange(it.text) },
+                value = customLevel.orEmpty(),
+                onValueChange = onCustomLevelChange,
                 label = label,
                 showLabel = false,
                 placeholder = stringResource(Res.string.group_setup_custom_level_hint),
@@ -336,8 +335,8 @@ internal fun GroupDescriptionSection(
     val label = stringResource(Res.string.group_setup_description_label)
     GroupFormCard(title = label, modifier = modifier) {
         SaqzInput(
-            value = TextFieldValue(description.orEmpty()),
-            onValueChange = { onChange(it.text) },
+            value = description.orEmpty(),
+            onValueChange = onChange,
             label = label,
             showLabel = false,
             placeholder = stringResource(Res.string.group_setup_description_hint),
@@ -437,8 +436,8 @@ internal fun GroupVenueSection(
     val addressLabel = stringResource(Res.string.group_setup_venue_address_label)
     GroupFormCard(title = nameLabel, modifier = modifier) {
         SaqzInput(
-            value = TextFieldValue(name),
-            onValueChange = { onNameChange(it.text) },
+            value = name,
+            onValueChange = onNameChange,
             label = nameLabel,
             showLabel = false,
             placeholder = stringResource(Res.string.group_setup_venue_name_hint),
@@ -451,8 +450,8 @@ internal fun GroupVenueSection(
             color = SaqzTheme.colors.textPrimary,
         )
         SaqzInput(
-            value = TextFieldValue(address),
-            onValueChange = { onAddressChange(it.text) },
+            value = address,
+            onValueChange = onAddressChange,
             label = addressLabel,
             showLabel = false,
             placeholder = stringResource(Res.string.group_setup_venue_address_hint),

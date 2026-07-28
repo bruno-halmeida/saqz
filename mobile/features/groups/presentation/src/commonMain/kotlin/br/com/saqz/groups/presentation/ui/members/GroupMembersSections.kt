@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzBottomSheet
@@ -77,8 +76,8 @@ internal fun GroupMembersSearch(
 ) {
     val label = stringResource(Res.string.group_members_search)
     SaqzInput(
-        value = TextFieldValue(query),
-        onValueChange = { onQueryChange(it.text) },
+        value = query,
+        onValueChange = onQueryChange,
         label = label,
         placeholder = label,
         showLabel = false,
