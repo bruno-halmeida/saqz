@@ -11,6 +11,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation(libs.spring.boot.starter.mail)
     implementation(libs.spring.jdbc)
     implementation(libs.firebase.admin)
     implementation(libs.flyway.core)
@@ -24,6 +25,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.greenmail)
 }
 
 tasks.test {
