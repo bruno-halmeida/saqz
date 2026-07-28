@@ -103,6 +103,7 @@ class SaqzKoinModulesTest {
                 links = FakeLinkPort,
                 localAccessState = FakeLocalAccessStatePort,
                 share = FakeSharePort,
+                profilePhoto = FakeProfilePhotoPort,
                 attendanceShare = FakeAttendanceSharePort,
                 groupPhotoSelection = FakeGroupPhotoSelectionPort,
                 groupPhotoEncoder = FakeGroupPhotoEncoderPort,
@@ -344,6 +345,18 @@ private object FakeLocalAccessStatePort : LocalAccessStatePort {
 
 private object FakeSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object FakeProfilePhotoPort : br.com.saqz.access.domain.port.NativeProfilePhotoPort {
+    override fun chooseCamera(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+    override fun chooseLibrary(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+
+    private fun failed(done: br.com.saqz.access.domain.port.ProfilePhotoCallback): Cancelable {
+        done.complete(br.com.saqz.access.domain.port.ProfilePhotoResult.Failed)
+        return object : Cancelable {
+            override fun cancel() = Unit
+        }
+    }
 }
 
 private object FakeAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {

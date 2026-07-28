@@ -143,7 +143,7 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     func handleGoogleURL(_ url: URL) -> Bool { google.handle(url: url) }
 
     func sendVerification(done: ResultCallback) {
-        firebase.sendVerification { done.complete(result_: $0.operationResult) }
+        firebase.sendVerification { done.complete(result__: $0.operationResult) }
     }
 
     func reloadUser(done: AuthCallback) {
@@ -155,11 +155,11 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     }
 
     func idToken(forceRefresh: Bool, done: TokenCallback) {
-        firebase.idToken(forceRefresh: forceRefresh) { done.complete(result__: $0.tokenResult) }
+        firebase.idToken(forceRefresh: forceRefresh) { done.complete(result___: $0.tokenResult) }
     }
 
     func signOut(done: ResultCallback) {
-        firebase.signOut { done.complete(result_: $0.operationResult) }
+        firebase.signOut { done.complete(result__: $0.operationResult) }
     }
 }
 

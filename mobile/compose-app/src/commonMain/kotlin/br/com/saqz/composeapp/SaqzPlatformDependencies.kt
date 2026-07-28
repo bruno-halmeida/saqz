@@ -3,6 +3,7 @@ package br.com.saqz.composeapp
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
+import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
@@ -28,6 +29,7 @@ class SaqzPlatformDependencies(
     val links: NativeLinkPort,
     val localState: LocalAccessStatePort,
     val share: NativeSharePort,
+    val profilePhoto: NativeProfilePhotoPort,
     val attendanceShare: NativeAttendanceSharePort,
     val groupPhotos: GroupPhotoRuntimeDependencies,
     val groupLinks: NativeGroupLinkPort,

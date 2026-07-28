@@ -10,6 +10,7 @@ import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.androidapp.access.AndroidLinkAdapter
 import br.com.saqz.androidapp.access.AndroidLocalGroupStateAdapter
 import br.com.saqz.androidapp.access.AndroidLocalAccessStateAdapter
+import br.com.saqz.androidapp.access.AndroidProfilePhotoAdapter
 import br.com.saqz.androidapp.access.AndroidShareAdapter
 import br.com.saqz.androidapp.access.AndroidShareLauncher
 import br.com.saqz.androidapp.access.BranchSdkSessionClient
@@ -68,6 +69,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                 links = links,
                 localState = localState,
                 share = share,
+                profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope),
                 attendanceShare = attendanceShare,
                 groupPhotos = GroupPhotoRuntimeDependencies(
                     selection = photos.selection,

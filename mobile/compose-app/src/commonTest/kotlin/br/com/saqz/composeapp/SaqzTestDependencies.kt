@@ -10,8 +10,11 @@ import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeLinkPort
+import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ProfilePhotoCallback
+import br.com.saqz.access.domain.port.ProfilePhotoResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
@@ -68,6 +71,7 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
     links = TestLinkPort,
     localState = TestLocalAccessStatePort,
     share = TestSharePort,
+    profilePhoto = TestProfilePhotoPort,
     attendanceShare = TestAttendanceSharePort,
     groupPhotos = GroupPhotoRuntimeDependencies(
         selection = TestGroupPhotoSelectionPort,
@@ -122,6 +126,16 @@ private object TestLocalAccessStatePort : LocalAccessStatePort {
 
 private object TestSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object TestProfilePhotoPort : NativeProfilePhotoPort {
+    override fun chooseCamera(done: ProfilePhotoCallback): Cancelable = unavailable(done)
+    override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable = unavailable(done)
+
+    private fun unavailable(done: ProfilePhotoCallback): Cancelable {
+        done.complete(ProfilePhotoResult.Failed)
+        return TestCancelable
+    }
 }
 
 private object TestAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {

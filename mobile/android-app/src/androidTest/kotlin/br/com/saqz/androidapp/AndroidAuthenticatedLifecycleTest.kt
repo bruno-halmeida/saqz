@@ -25,9 +25,12 @@ import br.com.saqz.access.domain.port.InviteCodeListener
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ProfilePhotoCallback
+import br.com.saqz.access.domain.port.ProfilePhotoResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
@@ -268,6 +271,7 @@ private class LifecycleCompositionFactory(
             links = fixture.links,
             localState = fixture.local,
             share = fixture.share,
+            profilePhoto = LifecycleProfilePhotoPort,
             attendanceShare = LifecycleAttendanceSharePort,
             groupPhotos = lifecycleGroupPhotos,
             groupLinks = fixture.links,
@@ -455,6 +459,18 @@ private class LifecycleLocalState(
 
     override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) {
         done.complete(GroupOperationResult.Success)
+    }
+}
+
+private object LifecycleProfilePhotoPort : NativeProfilePhotoPort {
+    override fun chooseCamera(done: ProfilePhotoCallback) = failed(done)
+    override fun chooseLibrary(done: ProfilePhotoCallback) = failed(done)
+
+    private fun failed(done: ProfilePhotoCallback): Cancelable {
+        done.complete(ProfilePhotoResult.Failed)
+        return object : Cancelable {
+            override fun cancel() = Unit
+        }
     }
 }
 

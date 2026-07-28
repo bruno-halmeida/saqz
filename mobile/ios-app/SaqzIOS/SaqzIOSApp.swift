@@ -60,6 +60,7 @@ struct IOSAppComposition {
             links: IOSNoOpAccessLinkPort(),
             localState: localState,
             share: share,
+            profilePhoto: IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder),
             attendanceShare: attendanceShare,
             groupPhotos: GroupPhotoRuntimeDependencies(
                 selection: photos.selection,
