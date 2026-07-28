@@ -17,14 +17,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.LocalContentColor
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,11 +61,15 @@ fun SaqzEmptyState(
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
         if (icon != null) {
+            // O tom do glifo é do componente, não de quem chama: o export pinta o ícone do
+            // vazio em primary sempre. Deixar a cor com o chamador faria o badge existir e
+            // o desenho dentro dele variar de tela para tela.
             Box(
                 modifier = Modifier.size(EMPTY_STATE_BADGE).background(colors.surfaceSoft, CircleShape),
                 contentAlignment = Alignment.Center,
-                content = { icon() },
-            )
+            ) {
+                CompositionLocalProvider(LocalContentColor provides colors.primary) { icon() }
+            }
         }
         Text(
             text = title,
@@ -160,12 +167,16 @@ fun SaqzOfflineBanner(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // Indicador local em vez de SaqzSpinner: ele só escolhe entre primary e onPrimary,
-        // e nenhum dos dois é o lime que o export pede em cima do navy. Sem contentDescription
-        // porque o texto ao lado já anuncia o estado — o spinner aqui é decorativo.
+        // e nenhum dos dois é o lime que o export pede em cima do navy.
+        //
+        // `clearAndSetSemantics` não é zelo: o CircularProgressIndicator publica semântica
+        // de progresso indeterminado por conta própria, mesmo sem contentDescription. Sem
+        // limpar, o TalkBack anuncia um nó de progresso ao lado da faixa e a pessoa ouve
+        // duas coisas para um aviso só. Aqui o texto já diz tudo; o giro é decoração.
         CircularProgressIndicator(
             color = colors.accent,
             strokeWidth = 2.dp,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(16.dp).clearAndSetSemantics {},
         )
         SaqzToastText(message, modifier = Modifier.weight(1f))
     }
