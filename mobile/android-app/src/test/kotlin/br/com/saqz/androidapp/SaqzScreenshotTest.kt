@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,6 +26,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.access.presentation.login.LoginState
+import br.com.saqz.access.ui.AccessBrandMark
+import br.com.saqz.access.ui.AccessHeader
+import br.com.saqz.access.ui.AccessScaffold
 import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.designsystem.SaqzAttendance
 import br.com.saqz.designsystem.SaqzAttendanceSelector
@@ -131,6 +136,43 @@ class SaqzScreenshotTest {
     @Test
     fun login() = capture("login") {
         LoginScreen(state = LoginState(email = "ana@saqz.app"), onIntent = {})
+    }
+
+    // VUL-79: o chrome das 11 telas do fluxo 1 — onda, marca e cabeçalho. As duas cenas
+    // são os dois arranjos que existem: marca grande com topo de 36 e título de 29 (1a,
+    // 1i) e marca pequena com voltar e topo de 20 (as outras oito). O espaçamento entre
+    // marca e cabeçalho é de cada tela e chega nos tickets delas; aqui ele só compõe a
+    // cena. A onda e a marca ficam em foto para o que o export tirou: a bola de vôlei em
+    // marca d'água e o gradiente do quadrado.
+    @Test
+    fun accessChromeSpacious() = capture("acesso-chrome-amplo") {
+        AccessScaffold(spacious = true) {
+            AccessBrandMark(large = true)
+            Spacer(Modifier.height(24.dp))
+            AccessHeader(
+                title = "Organize seu grupo.\nJogue",
+                emphasis = "junto.",
+                subtitle = "Entre na sua conta e mantenha sua galera sempre alinhada.",
+                spacious = true,
+            )
+        }
+    }
+
+    @Test
+    fun accessChromeCompact() = capture("acesso-chrome-compacto") {
+        AccessScaffold {
+            SaqzIconButton({}, "Voltar", outlined = true, modifier = Modifier.align(Alignment.Start)) {
+                SaqzIcon(SaqzIcons.ChevronLeft)
+            }
+            Spacer(Modifier.height(24.dp))
+            AccessBrandMark()
+            Spacer(Modifier.height(24.dp))
+            AccessHeader(
+                title = "Esqueceu a senha?\n",
+                emphasis = "Sem stress.",
+                subtitle = "Digite seu e-mail e enviamos um código para você criar uma nova senha.",
+            )
+        }
     }
 
     @Test
