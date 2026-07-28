@@ -68,11 +68,12 @@ class SaqzCatalogBackTest {
     }
 
     /**
-     * O espécime de sheet fica *dentro* do catálogo, e o `SaqzBottomSheet` não registra o
-     * back dele (VUL-53). Sem o handler interno do catálogo, o back com o sheet aberto
-     * fecharia a tela inteira e o sheet iria embora junto, sem nunca ter sido fechado.
+     * O espécime de sheet fica *dentro* do catálogo, que por sua vez fica dentro do shell.
+     * O `SaqzBottomSheet` trata o próprio back (VUL-53), então o catálogo não precisa saber
+     * que o sheet existe: o handler mais interno habilitado consome.
      *
-     * Uma camada por back: sheet primeiro, catálogo depois.
+     * Uma camada por back: sheet primeiro, catálogo depois. Este teste é a prova de que a
+     * pilha dos três handlers desempilha na ordem certa de verdade, e não só na unidade.
      */
     @Test
     fun theSystemBackClosesTheSheetSpecimenBeforeTheCatalog() = runComposeUiTest {

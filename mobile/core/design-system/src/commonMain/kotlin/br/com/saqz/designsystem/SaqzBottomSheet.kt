@@ -26,7 +26,9 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
@@ -47,6 +49,7 @@ import org.jetbrains.compose.resources.stringResource
  * último filho de um Box que ocupa a tela. Sem Dialog, o mesmo código serve
  * Android e iOS sem depender do que cada plataforma faz com uma janela extra.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SaqzBottomSheet(
     open: Boolean,
@@ -67,6 +70,13 @@ fun SaqzBottomSheet(
         easing = motion.emphasized,
     )
     val scrimLabel = stringResource(Res.string.action_close)
+
+    // O back é a terceira saída, ao lado do scrim e do rodapé: botão no Android, gesto no
+    // iOS. Fica aqui e não em cada tela porque uma sobreposição que ignora o back deixa o
+    // back agir na tela de baixo, com o sheet ainda aberto. `enabled = open` é o que
+    // impede o componente fechado de engolir o back da tela inteira; e por estar dentro
+    // do sheet, este handler é mais interno que o da tela hospedeira e consome primeiro.
+    BackHandler(enabled = open, onBack = onClose)
 
     // clipToBounds: durante o slide o painel existe fora da tela e nada dele pode
     // pintar por cima do que está acima da sobreposição.
