@@ -152,16 +152,6 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.emailVerified, true)
     }
 
-    func testPasswordResetIsNeutralWhenFirebaseReportsMissingUser() {
-        let fixture = makeFixture()
-        fixture.firebase.passwordResetResult = .failure(.userNotFound)
-        let callback = RecordingResultCallback()
-
-        fixture.adapter.sendPasswordReset(email: "nobody@example.test", done: callback)
-
-        XCTAssertTrue(callback.result is OperationResultSuccess)
-    }
-
     func testUpdateDisplayNameReturnsUpdatedUser() {
         let fixture = makeFixture()
         fixture.firebase.updateNameResult = .success(user)
@@ -235,7 +225,6 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
     var googleResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
     var verificationResult: Result<Void, IOSAuthFailure> = .failure(.unknown)
     var reloadResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
-    var passwordResetResult: Result<Void, IOSAuthFailure> = .failure(.unknown)
     var tokenResult: Result<String, IOSAuthFailure> = .failure(.unknown)
     var signOutResult: Result<Void, IOSAuthFailure> = .failure(.unknown)
     var events: [Event] = []
@@ -267,7 +256,6 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
 
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) { completion(verificationResult) }
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) { completion(reloadResult) }
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) { completion(passwordResetResult) }
 
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         events.append(.updateDisplayName(name)); completion(updateNameResult)
@@ -308,13 +296,13 @@ private final class RecordingAuthCallback: @preconcurrency AuthCallback {
 private final class RecordingResultCallback: @preconcurrency ResultCallback {
     var result: OperationResult?
     var wasCalledOnMainThread = false
-    func complete(result_: OperationResult) { result = result_; wasCalledOnMainThread = Thread.isMainThread }
+    func complete(result__: OperationResult) { result = result__; wasCalledOnMainThread = Thread.isMainThread }
 }
 
 @MainActor
 private final class RecordingTokenCallback: @preconcurrency TokenCallback {
     var result: TokenResult?
-    func complete(result__: TokenResult) { result = result__ }
+    func complete(result___: TokenResult) { result = result___ }
 }
 
 private extension Array {

@@ -10,31 +10,31 @@ final class IOSAppCompositionTests: XCTestCase {
     func testCompositionInjectsExactAPIBaseURL() { XCTAssertEqual(makeFixture().composition.dependencies.apiBaseUrl, "http://127.0.0.1:8080") }
 
     func testCompositionInjectsExactAuthPort() {
-        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.auth as AnyObject) === fixture.composition.auth)
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.access.auth as AnyObject) === fixture.composition.auth)
     }
 
     func testCompositionInjectsExactGroupLinkPort() {
-        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.groupLinks as AnyObject) === fixture.composition.links)
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.groups.links as AnyObject) === fixture.composition.links)
     }
 
     func testCompositionInjectsExactLocalStatePort() {
-        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.localState as AnyObject) === fixture.composition.localState)
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.access.localState as AnyObject) === fixture.composition.localState)
     }
 
     func testCompositionInjectsExactGroupStatePort() {
-        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.groupState as AnyObject) === fixture.composition.groupState)
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.groups.state as AnyObject) === fixture.composition.groupState)
     }
 
     func testCompositionInjectsExactSharePort() {
-        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.share as AnyObject) === fixture.composition.share)
+        let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.access.share as AnyObject) === fixture.composition.share)
     }
 
     func testCompositionInjectsAllExactGroupDraftPorts() {
         let composition = makeFixture().composition
-        XCTAssertTrue((composition.dependencies.groupDrafts as AnyObject) === composition.drafts.setup)
-        XCTAssertTrue((composition.dependencies.gameDrafts as AnyObject) === composition.drafts.game)
-        XCTAssertTrue((composition.dependencies.monthlyChargeDrafts as AnyObject) === composition.drafts.monthly)
-        XCTAssertTrue((composition.dependencies.expenseDrafts as AnyObject) === composition.drafts.expense)
+        XCTAssertTrue((composition.dependencies.drafts.groupDrafts as AnyObject) === composition.drafts.setup)
+        XCTAssertTrue((composition.dependencies.drafts.gameDrafts as AnyObject) === composition.drafts.game)
+        XCTAssertTrue((composition.dependencies.drafts.monthlyChargeDrafts as AnyObject) === composition.drafts.monthly)
+        XCTAssertTrue((composition.dependencies.drafts.expenseDrafts as AnyObject) === composition.drafts.expense)
     }
 
     func testBranchDeferredSessionStartsExactlyOnceBeforeComposeConsumption() {
@@ -43,7 +43,7 @@ final class IOSAppCompositionTests: XCTestCase {
 
     func testDeferredInviteReceivedBeforeListenerSurvivesComposition() {
         let fixture = makeFixture(); fixture.branch.complete(["saqz_invite": Self.code])
-        let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groupLinks.start(listener_: listener)
+        let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groups.links.start(listener_: listener)
         XCTAssertEqual(listener.codes, [Self.code])
     }
 
@@ -61,8 +61,8 @@ final class IOSAppCompositionTests: XCTestCase {
 
     func testBackgroundForegroundUsesSameRetainedAdapterInstances() {
         let fixture = makeFixture(); let dependencies = fixture.composition.dependencies
-        XCTAssertTrue((dependencies.auth as AnyObject) === fixture.composition.auth)
-        XCTAssertTrue((dependencies.groupLinks as AnyObject) === fixture.composition.links)
+        XCTAssertTrue((dependencies.access.auth as AnyObject) === fixture.composition.auth)
+        XCTAssertTrue((dependencies.groups.links as AnyObject) === fixture.composition.links)
     }
 
     func testComposeControllerHasNoSyntheticUIKitAccessibilityElement() {
@@ -98,7 +98,6 @@ final class IOSAppCompositionTests: XCTestCase {
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {}
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {}
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {}
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {}
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {}
     func idToken(forceRefresh: Bool, completion: @escaping (Result<String, IOSAuthFailure>) -> Void) {}
     func signOut(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {}

@@ -116,10 +116,10 @@ private final class FakeShareLauncher: IOSShareLauncher {
 
 @MainActor
 private final class RecordingValueCallback: @preconcurrency ValueCallback {
-    var result: ValueResult?; func complete(result___: ValueResult) { result = result___ }
+    var result: ValueResult?; func complete(result____: ValueResult) { result = result____ }
 }
 
 @MainActor
 private final class RecordingResultCallback: @preconcurrency ResultCallback {
-    var result: OperationResult?; func complete(result_: OperationResult) { result = result_ }
+    var result: OperationResult?; func complete(result__: OperationResult) { result = result__ }
 }

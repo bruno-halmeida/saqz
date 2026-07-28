@@ -45,6 +45,7 @@ data class ApiProblem(
     val correlationId: String,
     val fieldErrors: Map<String, List<String>>? = null,
     val retryAfterSeconds: Int? = null,
+    val remainingAttempts: Int? = null,
 )
 
 sealed interface NetworkError {

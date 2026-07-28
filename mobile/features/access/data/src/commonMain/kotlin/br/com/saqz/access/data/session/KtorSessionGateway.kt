@@ -29,6 +29,8 @@ internal data class SessionUserDto(
     val displayName: String,
     val phone: String? = null,
     val phoneRequired: Boolean = false,
+    val emailVerified: Boolean = false,
+    val photoUrl: String? = null,
 )
 
 @Serializable
@@ -82,7 +84,15 @@ private fun SessionDto.toAccessSession(): SaqzResult<AccessSession, AccessError>
     }
     return SaqzResult.Success(
         AccessSession(
-            user = AccessUser(user.id, user.email, user.displayName, user.phone, user.phoneRequired),
+            user = AccessUser(
+                id = user.id,
+                email = user.email,
+                displayName = user.displayName,
+                phone = user.phone,
+                phoneRequired = user.phoneRequired,
+                emailVerified = user.emailVerified,
+                photoUrl = user.photoUrl,
+            ),
             memberships = memberships.map {
                 AccessMembership(
                     groupId = GroupId(it.groupId),

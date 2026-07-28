@@ -310,7 +310,6 @@ class SessionAccessStateMachineTest {
         override fun createAccount(name: String, email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithPassword(email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithGoogle(done: AuthCallback) = Unit
-        override fun sendPasswordReset(email: String, done: ResultCallback) = Unit
     }
 
     private class FakeLocalState : LocalAccessStatePort {

@@ -10,6 +10,7 @@ import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.androidapp.access.AndroidLinkAdapter
 import br.com.saqz.androidapp.access.AndroidLocalGroupStateAdapter
 import br.com.saqz.androidapp.access.AndroidLocalAccessStateAdapter
+import br.com.saqz.androidapp.access.AndroidProfilePhotoAdapter
 import br.com.saqz.androidapp.access.AndroidShareAdapter
 import br.com.saqz.androidapp.access.AndroidShareLauncher
 import br.com.saqz.androidapp.access.BranchSdkSessionClient
@@ -18,8 +19,11 @@ import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
 import br.com.saqz.androidapp.groups.attendance.share.AndroidAttendanceShareAdapter
 import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
+import br.com.saqz.composeapp.AccessRuntimeDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
+import br.com.saqz.composeapp.GroupsRuntimeDependencies
 import br.com.saqz.composeapp.SaqzPlatformDependencies
+import br.com.saqz.composeapp.di.SaqzDraftStores
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AndroidAppComposition(
@@ -64,22 +68,29 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val dependencies = SaqzPlatformDependencies(
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
-                auth = auth,
-                links = links,
-                localState = localState,
-                share = share,
-                attendanceShare = attendanceShare,
-                groupPhotos = GroupPhotoRuntimeDependencies(
-                    selection = photos.selection,
-                    encoder = photos.encoder,
-                    previews = photos.previews,
+                access = AccessRuntimeDependencies(
+                    auth = auth,
+                    links = links,
+                    localState = localState,
+                    share = share,
+                    profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope),
                 ),
-                groupLinks = links,
-                groupState = AndroidLocalGroupStateAdapter(store),
-                groupDrafts = drafts.setup,
-                gameDrafts = drafts.game,
-                monthlyChargeDrafts = drafts.monthly,
-                expenseDrafts = drafts.expense,
+                groups = GroupsRuntimeDependencies(
+                    attendanceShare = attendanceShare,
+                    photos = GroupPhotoRuntimeDependencies(
+                        selection = photos.selection,
+                        encoder = photos.encoder,
+                        previews = photos.previews,
+                    ),
+                    links = links,
+                    state = AndroidLocalGroupStateAdapter(store),
+                ),
+                drafts = SaqzDraftStores(
+                    groupDrafts = drafts.setup,
+                    gameDrafts = drafts.game,
+                    monthlyChargeDrafts = drafts.monthly,
+                    expenseDrafts = drafts.expense,
+                ),
             )
         return AndroidAppComposition(
             dependencies = dependencies,

@@ -46,7 +46,6 @@ protocol IOSFirebaseAuthClient: AnyObject {
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func idToken(forceRefresh: Bool, completion: @escaping (Result<String, IOSAuthFailure>) -> Void)
     func signOut(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
@@ -144,22 +143,11 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     func handleGoogleURL(_ url: URL) -> Bool { google.handle(url: url) }
 
     func sendVerification(done: ResultCallback) {
-        firebase.sendVerification { done.complete(result_: $0.operationResult) }
+        firebase.sendVerification { done.complete(result__: $0.operationResult) }
     }
 
     func reloadUser(done: AuthCallback) {
         firebase.reloadUser { done.complete(result: $0.authResult) }
-    }
-
-    func sendPasswordReset(email: String, done: ResultCallback) {
-        firebase.sendPasswordReset(email: email) { result in
-            switch result {
-            case .success, .failure(.userNotFound):
-                done.complete(result_: OperationResultSuccess.shared)
-            case .failure(let failure):
-                done.complete(result_: failure.operationResult)
-            }
-        }
     }
 
     func updateDisplayName(name: String, done: AuthCallback) {
@@ -167,11 +155,11 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     }
 
     func idToken(forceRefresh: Bool, done: TokenCallback) {
-        firebase.idToken(forceRefresh: forceRefresh) { done.complete(result__: $0.tokenResult) }
+        firebase.idToken(forceRefresh: forceRefresh) { done.complete(result___: $0.tokenResult) }
     }
 
     func signOut(done: ResultCallback) {
-        firebase.signOut { done.complete(result_: $0.operationResult) }
+        firebase.signOut { done.complete(result__: $0.operationResult) }
     }
 }
 
@@ -226,10 +214,6 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
             }
             Task { @MainActor in completion(.success(IOSAuthUser(current))) }
         }
-    }
-
-    func sendPasswordReset(email: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
-        auth.sendPasswordReset(withEmail: email) { error in Self.complete(error: error, completion: completion) }
     }
 
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {

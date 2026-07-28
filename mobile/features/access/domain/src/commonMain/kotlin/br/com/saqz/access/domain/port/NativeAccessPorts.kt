@@ -78,7 +78,6 @@ interface NativeAuthPort {
     fun signInWithGoogle(done: AuthCallback)
     fun sendVerification(done: ResultCallback)
     fun reloadUser(done: AuthCallback)
-    fun sendPasswordReset(email: String, done: ResultCallback)
     fun updateDisplayName(name: String, done: AuthCallback)
     fun idToken(forceRefresh: Boolean, done: TokenCallback)
     fun signOut(done: ResultCallback)
@@ -97,4 +96,41 @@ interface LocalAccessStatePort {
 
 interface NativeSharePort {
     fun share(text: String, done: ResultCallback)
+}
+
+sealed interface ProfilePhotoResult {
+    // Bytes já recortados e recodificados pela plataforma: o envio é HTTP multipart,
+    // então o acesso não precisa do arquivo de origem nem de um handle para ele.
+    data class Selected(val bytes: ByteArray, val mediaType: String) : ProfilePhotoResult {
+        init {
+            require(bytes.isNotEmpty() && mediaType.isNotBlank())
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is Selected && bytes.contentEquals(other.bytes) && mediaType == other.mediaType
+
+        override fun hashCode(): Int = 31 * bytes.contentHashCode() + mediaType.hashCode()
+    }
+
+    data object Cancelled : ProfilePhotoResult
+    data object Failed : ProfilePhotoResult
+}
+
+interface ProfilePhotoCallback {
+    fun complete(result: ProfilePhotoResult)
+}
+
+/**
+ * Escolher e recodificar imagem é capacidade de plataforma, não conceito de grupo: os
+ * adapters desta porta delegam para as mesmas implementações que `:features:groups` usa
+ * (`AndroidPhotoSelectionAdapter`/`AndroidPhotoEncoder` e `SaqzIOS/GroupsPhoto/`), sem
+ * cópia. O envio em si vai por HTTP, não por aqui.
+ *
+ * O `Cancelable` é quem desiste da escolha ainda aberta — a tela morreu, o escopo caiu —
+ * para o adapter apagar o arquivo temporário. Desistência da pessoa é
+ * `ProfilePhotoResult.Cancelled`, que ainda chega pelo callback.
+ */
+interface NativeProfilePhotoPort {
+    fun chooseCamera(done: ProfilePhotoCallback): Cancelable
+    fun chooseLibrary(done: ProfilePhotoCallback): Cancelable
 }
