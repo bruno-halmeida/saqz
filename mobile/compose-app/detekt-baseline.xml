@@ -5,7 +5,5 @@
     <ID>ComposableParamOrder:SaqzNavHost.kt$SaqzNavHost</ID>
     <ID>FunctionNaming:MainViewController.kt$fun MainViewController( accessibilityController: SaqzAccessibilityController, dependencies: SaqzPlatformDependencies, ): UIViewController</ID>
     <ID>FunctionNaming:String0.commonMain.kt$@InternalResourceApi internal fun _collectCommonMainString0Resources(map: MutableMap&lt;String, StringResource&gt;)</ID>
-    <ID>LongParameterList:SaqzNativePorts.kt$SaqzNativePorts$( val auth: NativeAuthPort, val links: NativeLinkPort, val localAccessState: LocalAccessStatePort, val share: NativeSharePort, val attendanceShare: NativeAttendanceSharePort, val groupPhotoSelection: GroupPhotoSelectionPort, val groupPhotoEncoder: GroupPhotoEncoderPort, val groupPhotoPreviews: GroupPhotoPreviewPort, val groupLinks: NativeGroupLinkPort, val localGroupState: LocalGroupStatePort, )</ID>
-    <ID>LongParameterList:SaqzPlatformDependencies.kt$SaqzPlatformDependencies$( val environment: String, val apiBaseUrl: String, val auth: NativeAuthPort, val links: NativeLinkPort, val localState: LocalAccessStatePort, val share: NativeSharePort, val attendanceShare: NativeAttendanceSharePort, val groupPhotos: GroupPhotoRuntimeDependencies, val groupLinks: NativeGroupLinkPort, val groupState: LocalGroupStatePort, val groupDrafts: GroupDraftStorePort, val gameDrafts: GameDraftStorePort, val monthlyChargeDrafts: MonthlyChargeDraftStorePort, val expenseDrafts: ExpenseDraftStorePort, )</ID>
   </CurrentIssues>
 </SmellBaseline>

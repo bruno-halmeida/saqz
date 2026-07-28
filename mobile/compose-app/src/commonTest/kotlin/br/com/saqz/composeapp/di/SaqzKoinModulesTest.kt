@@ -30,6 +30,9 @@ import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.phonecompletion.PhoneCompletionViewModel
+import br.com.saqz.composeapp.AccessRuntimeDependencies
+import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
+import br.com.saqz.composeapp.GroupsRuntimeDependencies
 import br.com.saqz.composeapp.navigation.AccessRuntimeContract
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.groups.domain.photo.GroupPhotoCrop
@@ -99,27 +102,34 @@ class SaqzKoinModulesTest {
     private val nativePortsFixtureModule = module {
         single {
             SaqzNativePorts(
-                auth = FakeAuthPort,
-                links = FakeLinkPort,
-                localAccessState = FakeLocalAccessStatePort,
-                share = FakeSharePort,
-                attendanceShare = FakeAttendanceSharePort,
-                groupPhotoSelection = FakeGroupPhotoSelectionPort,
-                groupPhotoEncoder = FakeGroupPhotoEncoderPort,
-                groupPhotoPreviews = GroupPhotoPreviewPort { null },
-                groupLinks = FakeGroupLinkPort,
-                localGroupState = FakeLocalGroupStatePort,
+                access = AccessRuntimeDependencies(
+                    auth = FakeAuthPort,
+                    links = FakeLinkPort,
+                    localState = FakeLocalAccessStatePort,
+                    share = FakeSharePort,
+                    profilePhoto = FakeProfilePhotoPort,
+                ),
+                groups = GroupsRuntimeDependencies(
+                    attendanceShare = FakeAttendanceSharePort,
+                    photos = GroupPhotoRuntimeDependencies(
+                        selection = FakeGroupPhotoSelectionPort,
+                        encoder = FakeGroupPhotoEncoderPort,
+                        previews = GroupPhotoPreviewPort { null },
+                    ),
+                    links = FakeGroupLinkPort,
+                    state = FakeLocalGroupStatePort,
+                ),
             )
         }
-        single<NativeAuthPort> { get<SaqzNativePorts>().auth }
-        single<NativeLinkPort> { get<SaqzNativePorts>().links }
-        single<LocalAccessStatePort> { get<SaqzNativePorts>().localAccessState }
-        single<NativeSharePort> { get<SaqzNativePorts>().share }
-        single<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
-        single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
-        single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
-        single<NativeGroupLinkPort> { get<SaqzNativePorts>().groupLinks }
-        single<LocalGroupStatePort> { get<SaqzNativePorts>().localGroupState }
+        single<NativeAuthPort> { get<SaqzNativePorts>().access.auth }
+        single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
+        single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
+        single<NativeSharePort> { get<SaqzNativePorts>().access.share }
+        single<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort> { get<SaqzNativePorts>().groups.attendanceShare }
+        single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groups.photos.selection }
+        single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groups.photos.encoder }
+        single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
+        single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
     }
 
     @Test
@@ -344,6 +354,18 @@ private object FakeLocalAccessStatePort : LocalAccessStatePort {
 
 private object FakeSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object FakeProfilePhotoPort : br.com.saqz.access.domain.port.NativeProfilePhotoPort {
+    override fun chooseCamera(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+    override fun chooseLibrary(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+
+    private fun failed(done: br.com.saqz.access.domain.port.ProfilePhotoCallback): Cancelable {
+        done.complete(br.com.saqz.access.domain.port.ProfilePhotoResult.Failed)
+        return object : Cancelable {
+            override fun cancel() = Unit
+        }
+    }
 }
 
 private object FakeAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {

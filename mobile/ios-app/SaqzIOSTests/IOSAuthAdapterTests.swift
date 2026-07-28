@@ -296,13 +296,13 @@ private final class RecordingAuthCallback: @preconcurrency AuthCallback {
 private final class RecordingResultCallback: @preconcurrency ResultCallback {
     var result: OperationResult?
     var wasCalledOnMainThread = false
-    func complete(result_: OperationResult) { result = result_; wasCalledOnMainThread = Thread.isMainThread }
+    func complete(result__: OperationResult) { result = result__; wasCalledOnMainThread = Thread.isMainThread }
 }
 
 @MainActor
 private final class RecordingTokenCallback: @preconcurrency TokenCallback {
     var result: TokenResult?
-    func complete(result__: TokenResult) { result = result__ }
+    func complete(result___: TokenResult) { result = result___ }
 }
 
 private extension Array {
