@@ -87,6 +87,14 @@ data class GroupSetupState(
     val isEditing: Boolean = mode is GroupSetupMode.Edit
     val showsPlayStyle: Boolean = form.modality == GroupModality.COURT_VOLLEYBALL
     val showsCustomLevel: Boolean = form.level == GroupLevel.CUSTOM
+
+    /**
+     * O que vai para o comando. `GroupSetupForm` não tem campo de recorrência e o
+     * gateway serializa `regularSlots` direto, então desligar o switch tem de recortar
+     * aqui — os horários **continuam** no formulário, e religar o switch os devolve.
+     */
+    val slotsForCommand: List<GroupRegularSlotForm> =
+        if (recurring) form.regularSlots else emptyList()
 }
 
 sealed interface GroupSetupIntent {

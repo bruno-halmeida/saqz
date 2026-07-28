@@ -77,6 +77,9 @@ class GroupSetupViewModel(
             errors.isNotEmpty() -> update { it.copy(errors = errors, saveFailed = false) }
             state.value.isEditing -> {
                 update { it.copy(isSaving = true, saveFailed = false, errors = emptySet()) }
+                // ponytail: seam do `GroupGateway.update(GroupUpdateCommand)`. Enquanto
+                // ele não existe, o sucesso é otimista: marca `isSaving` e avisa. Quando
+                // entrar, é aqui que `isSaving` cai e `saveFailed` sobe no caminho triste.
                 emit(GroupSetupEffect.Saved)
             }
             // Criar passa pela revisão (`2d`); editar salva direto (`2i`).
@@ -86,15 +89,19 @@ class GroupSetupViewModel(
 
     private fun onConfirmCreate() {
         update { it.copy(isSaving = true, saveFailed = false) }
-        // ponytail: o id sai da resposta do gateway; até lá vai vazio e quem escuta só
-        // fecha a tela. `GroupCreateCommand` já existe para quando isso ligar.
-        emit(GroupSetupEffect.Created(groupId = ""))
+        // ponytail: seam do `GroupGateway.create(GroupCreateCommand)`. O grupo ainda não
+        // existe, então **não há id para emitir** — quem cria o id é o backend, e ele
+        // volta na resposta. Até o gateway entrar, o efeito sai com id vazio e quem
+        // escuta apenas fecha a tela; nada navega para o detalhe com ele.
+        emit(GroupSetupEffect.Created(groupId = PendingGroupId))
     }
 
     private fun onConfirmDelete() {
         val mode = state.value.mode
         if (mode !is GroupSetupMode.Edit) return
         update { it.copy(isDeleting = true, sheet = null) }
+        // ponytail: seam do `GroupGateway.delete(mode.groupId)`. `isDeleting` fica ligado
+        // porque nada o resolve ainda — é o gateway que vai desligá-lo ou virar erro.
         emit(GroupSetupEffect.Deleted)
     }
 
@@ -181,6 +188,9 @@ private fun formatTime(hour: Int, minute: Int): String =
 private fun Int.pad(): String = toString().padStart(2, '0')
 
 private val EmptyVenue = GroupVenueForm(name = "", address = "")
+
+/** Id que o backend ainda não deu. Ver `onConfirmCreate`. */
+private const val PendingGroupId = ""
 
 // Process death: só o texto digitado. Enum, pílula e switch são baratos de repicar.
 private const val KeyName = "group-setup-name"

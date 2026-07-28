@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.setup
 
+import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupRegularSlotForm
@@ -24,6 +25,22 @@ class GroupSetupValidatorTest {
         assertEquals(setOf(GroupSetupError.NameRequired), errors)
     }
 
+    // Os dois campos que `KtorGroupGateway.toRequest` abre com `requireNotNull`: sem
+    // erro aqui, dava para confirmar na revisão um comando que estoura em `data`.
+    @Test
+    fun `modalidade ausente acusa erro`() {
+        val errors = validate(state { copy(modality = null) })
+
+        assertEquals(setOf(GroupSetupError.ModalityRequired), errors)
+    }
+
+    @Test
+    fun `publico ausente acusa erro`() {
+        val errors = validate(state { copy(composition = null) })
+
+        assertEquals(setOf(GroupSetupError.CompositionRequired), errors)
+    }
+
     @Test
     fun `categoria personalizada exige nome proprio`() {
         val errors = validate(state { copy(level = GroupLevel.CUSTOM, customLevel = null) })
@@ -39,15 +56,17 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `capacidade abaixo de dois e capacidade ausente sao o mesmo erro`() {
+    fun `capacidade abaixo de dois acusa erro`() {
         assertEquals(
             setOf(GroupSetupError.CapacityTooLow),
             validate(state { copy(defaultCapacity = 1) }),
         )
-        assertEquals(
-            setOf(GroupSetupError.CapacityTooLow),
-            validate(state { copy(defaultCapacity = null) }),
-        )
+    }
+
+    /** O DTO aceita capacidade nula; quem não escolheu não errou, sai o padrão da tela. */
+    @Test
+    fun `capacidade ausente nao acusa erro`() {
+        assertTrue(validate(state { copy(defaultCapacity = null) }).isEmpty())
     }
 
     @Test
@@ -81,13 +100,14 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `formulario vazio acusa os cinco campos do 2g`() {
+    fun `formulario vazio acusa todos os campos exigidos`() {
         val errors = validate(
             GroupSetupState(
                 mode = GroupSetupMode.Create,
                 form = GroupSetupForm(
                     level = GroupLevel.CUSTOM,
                     defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = ""),
+                    defaultCapacity = 1,
                 ),
                 recurring = true,
             ),
@@ -108,6 +128,7 @@ class GroupSetupValidatorTest {
     private val validForm = GroupSetupForm(
         name = "Vôlei do CERET",
         modality = GroupModality.COURT_VOLLEYBALL,
+        composition = GroupComposition.MIXED,
         level = GroupLevel.INTERMEDIATE,
         defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = "R. Canuto Abreu, s/n"),
         regularSlots = listOf(

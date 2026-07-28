@@ -95,6 +95,14 @@ private val CompositionOptions = listOf(
 // modelo e entram aqui quando o desenho os mostrar.
 private val PlayStyleOptions = listOf(GroupPlayStyle.SIX_ZERO, GroupPlayStyle.FIVE_ONE)
 
+/**
+ * `SaqzSegmented` não conhece "sem seleção": posiciona o polegar por índice. Com `-1` a
+ * tampa arredondada do polegar ainda assoma na borda esquerda do trilho; `-2` o tira
+ * inteiro do campo de visão para qualquer número de opções. O certo é um `selected: Int?`
+ * no componente — vira ticket do design system, não se conserta aqui dentro.
+ */
+private const val NoSegmentedSelection = -2
+
 private const val HairlineDivisor = 4
 private const val ErrorRingAlpha = 0.1f
 private const val ErrorSurfaceAlpha = 0.06f
@@ -219,6 +227,7 @@ internal fun GroupNameSection(
 @Composable
 internal fun GroupModalitySection(
     modality: GroupModality?,
+    errorText: String?,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -227,8 +236,10 @@ internal fun GroupModalitySection(
             value = modality?.label(),
             placeholder = stringResource(Res.string.group_setup_modality_hint),
             onClick = onOpen,
+            isError = errorText != null,
             modifier = Modifier.testTag(GroupSetupTags.Modality),
         )
+        GroupFieldError(errorText)
         // `2b`: na areia o card explica por que o sistema de jogo sumiu.
         if (modality == GroupModality.BEACH_VOLLEYBALL) {
             GroupNoteBlock(stringResource(Res.string.group_setup_play_style_not_applicable))
@@ -239,6 +250,7 @@ internal fun GroupModalitySection(
 @Composable
 internal fun GroupCompositionSection(
     composition: GroupComposition?,
+    errorText: String?,
     onSelect: (GroupComposition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -249,10 +261,12 @@ internal fun GroupCompositionSection(
     ) {
         SaqzSegmented(
             options = CompositionOptions.map { it.label() },
-            selected = CompositionOptions.indexOf(composition).coerceAtLeast(0),
+            // Coagir para 0 faria a tela afirmar "Masculino" sobre um valor que não existe.
+            selected = CompositionOptions.indexOfOrNone(composition),
             onSelect = { onSelect(CompositionOptions[it]) },
             modifier = Modifier.testTag(GroupSetupTags.Composition),
         )
+        GroupFieldError(errorText)
     }
 }
 
@@ -301,7 +315,11 @@ internal fun GroupPlayStyleSection(
     ) {
         SaqzSegmented(
             options = PlayStyleOptions.map { it.label() },
-            selected = PlayStyleOptions.indexOf(playStyle).coerceAtLeast(0),
+            // 4-2 e personalizado existem no modelo e não no trilho, então o valor salvo
+            // pode não estar entre as opções: o trilho fica sem seleção. Coagir para 0
+            // pintaria 6-0 sobre um grupo salvo em 4-2 — e o primeiro toque gravaria a
+            // mentira por cima do dado real.
+            selected = PlayStyleOptions.indexOfOrNone(playStyle),
             onSelect = { onSelect(PlayStyleOptions[it]) },
             modifier = Modifier.testTag(GroupSetupTags.PlayStyle),
         )
@@ -479,6 +497,7 @@ private fun GroupSelectRow(
     placeholder: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isError: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -490,7 +509,11 @@ private fun GroupSelectRow(
             .heightIn(min = metrics.buttonHeight)
             .clip(shape)
             .background(colors.surface, shape)
-            .hairline(colors.border, metrics.inputRadius, metrics.subGrid / HairlineDivisor)
+            .hairline(
+                if (isError) colors.errorForeground else colors.border,
+                metrics.inputRadius,
+                metrics.subGrid / HairlineDivisor,
+            )
             .clickable(onClickLabel = text, role = Role.Button, onClick = onClick)
             .padding(horizontal = metrics.horizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
@@ -505,6 +528,16 @@ private fun GroupSelectRow(
         // O export usa uma seta para baixo; SaqzIcons ainda não tem ChevronDown.
         SaqzIcon(SaqzIcons.ChevronRight, tint = colors.textSecondary)
     }
+}
+
+/**
+ * A mensagem de erro dos campos que não são `SaqzInput` — o input já traz a sua, no
+ * mesmo tom e tamanho (VUL-60), e este é o eco dela para o seletor e o segmented.
+ */
+@Composable
+private fun GroupFieldError(text: String?) {
+    if (text == null) return
+    Text(text, style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
 }
 
 /** Bloco ice de nota — o "não se aplica ao vôlei de areia" do `2b`. */
@@ -563,6 +596,9 @@ private fun GroupSlotsErrorStrip(modifier: Modifier = Modifier) {
         )
     }
 }
+
+private fun <T> List<T>.indexOfOrNone(value: T): Int =
+    indexOf(value).takeIf { it >= 0 } ?: NoSegmentedSelection
 
 /** Linha de 1px desenhada por trás — `border` cru gastaria um dp fora dos tokens. */
 private fun Modifier.hairline(color: Color, radius: Dp, width: Dp) = drawBehind {

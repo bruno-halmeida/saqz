@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
 import androidx.lifecycle.SavedStateHandle
+import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupRegularSlotForm
@@ -160,6 +161,30 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `desligar a recorrencia esvazia o recorte do comando sem perder os horarios`() =
+        runTest(mainDispatcher) {
+            val viewModel = viewModel(form = completeForm.copy(regularSlots = emptyList()))
+            viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null)))
+            viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+            runCurrent()
+            val saved = viewModel.state.value.form.regularSlots
+            assertEquals(1, saved.size)
+
+            viewModel.onIntent(GroupSetupIntent.ToggleRecurring(false))
+            runCurrent()
+
+            // O comando não leva agenda nenhuma…
+            assertEquals(emptyList(), viewModel.state.value.slotsForCommand)
+            // …mas o formulário guarda os horários para quem religa o switch.
+            assertEquals(saved, viewModel.state.value.form.regularSlots)
+
+            viewModel.onIntent(GroupSetupIntent.ToggleRecurring(true))
+            runCurrent()
+
+            assertEquals(saved, viewModel.state.value.slotsForCommand)
+        }
+
+    @Test
     fun `a duracao do grupo se espelha em todos os horarios`() = runTest(mainDispatcher) {
         val viewModel = viewModel()
 
@@ -251,6 +276,7 @@ class GroupSetupViewModelTest {
         val completeForm = GroupSetupForm(
             name = "Vôlei do CERET",
             modality = GroupModality.COURT_VOLLEYBALL,
+            composition = GroupComposition.MIXED,
             level = GroupLevel.INTERMEDIATE,
             defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = "R. Canuto Abreu, s/n"),
             regularSlots = listOf(

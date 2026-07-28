@@ -36,13 +36,16 @@ import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
 import br.com.saqz.groups.presentation.setup.GroupSetupState
+import br.com.saqz.groups.presentation.setup.validate
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_setup_create_action
 import br.com.saqz.groups.resources.group_setup_create_title
 import br.com.saqz.groups.resources.group_setup_delete_action
 import br.com.saqz.groups.resources.group_setup_edit_title
+import br.com.saqz.groups.resources.group_setup_error_composition
 import br.com.saqz.groups.resources.group_setup_error_custom_level
+import br.com.saqz.groups.resources.group_setup_error_modality
 import br.com.saqz.groups.resources.group_setup_error_name
 import br.com.saqz.groups.resources.group_setup_error_venue_address
 import br.com.saqz.groups.resources.group_setup_save_action
@@ -163,10 +166,18 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
     )
     GroupModalitySection(
         modality = form.modality,
+        errorText = state.errorText(
+            GroupSetupError.ModalityRequired,
+            Res.string.group_setup_error_modality,
+        ),
         onOpen = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Modality)) },
     )
     GroupCompositionSection(
         composition = form.composition,
+        errorText = state.errorText(
+            GroupSetupError.CompositionRequired,
+            Res.string.group_setup_error_composition,
+        ),
         onSelect = { onIntent(GroupSetupIntent.SelectComposition(it)) },
     )
     GroupLevelSection(
@@ -307,27 +318,27 @@ private fun GroupSetupBeachPreview() = SaqzTheme {
     )
 }
 
-/** `2g` — os cinco campos obrigatórios marcados. */
+/**
+ * `2g` — os cinco campos que o export marca. Os erros saem do próprio `validate`, não
+ * de uma lista escrita à mão: cena que inventa erro não confere nada.
+ */
+internal val PreviewErrorState = GroupSetupState(
+    mode = GroupSetupMode.Create,
+    form = GroupSetupForm(
+        modality = GroupModality.COURT_VOLLEYBALL,
+        composition = GroupComposition.MIXED,
+        level = GroupLevel.CUSTOM,
+        playStyle = GroupPlayStyle.SIX_ZERO,
+        defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = ""),
+        defaultCapacity = 1,
+        defaultConfirmationLeadMinutes = 360,
+    ),
+).let { it.copy(errors = validate(it)) }
+
 @Preview
 @Composable
 private fun GroupSetupErrorsPreview() = SaqzTheme {
-    GroupSetupScreen(
-        state = GroupSetupState(
-            mode = GroupSetupMode.Create,
-            form = GroupSetupForm(
-                modality = GroupModality.COURT_VOLLEYBALL,
-                composition = GroupComposition.MIXED,
-                level = GroupLevel.CUSTOM,
-                playStyle = GroupPlayStyle.SIX_ZERO,
-                defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = ""),
-                defaultCapacity = 1,
-                defaultConfirmationLeadMinutes = 360,
-            ),
-            errors = GroupSetupError.entries.toSet(),
-        ),
-        onIntent = {},
-        onBack = {},
-    )
+    GroupSetupScreen(state = PreviewErrorState, onIntent = {}, onBack = {})
 }
 
 /** `2i` — editar, com lixeira no topo e "Salvar alterações" no rodapé. */
