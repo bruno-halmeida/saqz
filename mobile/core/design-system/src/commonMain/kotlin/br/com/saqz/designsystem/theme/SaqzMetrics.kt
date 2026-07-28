@@ -14,6 +14,13 @@ import androidx.compose.ui.unit.dp
 // Duas exceções, e só duas: `minimumTouchTarget` (o export pede 44) e
 // `sectionVerticalPadding` (o export não tem). Ambas registradas em `_exceptions` no
 // ui-contract.json, com motivo. O resto casa com o export e pode ser reconciliado direto.
+//
+// Nem todo número de tela vira token daqui. O fluxo 1 (autenticação) tem os seus no
+// bloco `fluxo1` do ui-contract.json, porque são medidas de tela e não do inventário do
+// fluxo 10 — o campo de 54, a caixa de código de 56×60, a onda de 130. Cinco deles,
+// porém, são estes mesmos tokens reusados (`iconButtonSize`, `buttonHeight`,
+// `inputRadius`, `blockGap`, `cardRadius`), e o SaqzFluxo1ContractTest amarra os dois
+// lados: mexer aqui sem mexer lá reprova de propósito.
 @Immutable
 data class SaqzMetrics(
     val grid: Dp,

@@ -1,6 +1,8 @@
 package br.com.saqz.designsystem
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties as CoreSemanticsProperties
@@ -253,6 +255,62 @@ class SaqzButtonTest {
         onNodeWithTag("fab").performClick()
         waitForIdle()
         assertEquals(1, clicks)
+    }
+
+    @Test
+    fun iconButtonBackgroundPerVariant() {
+        // Repouso é sem fundo: o glifo sobre o que estiver atrás, e não um branco que
+        // recorta a barra. `outlined` é o único que pinta branco, porque é ele que
+        // precisa do par fundo+linha para se destacar do canvas do fluxo 1.
+        assertEquals(null, tokens.iconButtonBackground(soft = false, filled = false, outlined = false))
+        assertEquals(tokens.surfaceSoft, tokens.iconButtonBackground(soft = true, filled = false, outlined = false))
+        assertEquals(tokens.primary, tokens.iconButtonBackground(soft = false, filled = true, outlined = false))
+        assertEquals(tokens.surface, tokens.iconButtonBackground(soft = false, filled = false, outlined = true))
+        // Combinação absurda, mas possível de escrever: o sólido ganha, e ninguém fica
+        // com um botão azul de fundo branco.
+        assertEquals(tokens.primary, tokens.iconButtonBackground(soft = true, filled = true, outlined = true))
+    }
+
+    @Test
+    fun outlinedBackButtonKeepsNameAndTarget() = runComposeUiTest {
+        var clicks = 0
+        setContent {
+            SaqzTheme {
+                SaqzIconButton(
+                    onClick = { clicks++ },
+                    contentDescription = "Voltar",
+                    outlined = true,
+                    modifier = Modifier.testTag("voltar"),
+                ) { SaqzIcon(SaqzIcons.ChevronLeft) }
+            }
+        }
+        // O voltar solto do fluxo 1 desenha 44 (`fluxo1.voltar.tamanho`) e recebe toque
+        // em 48, igual a qualquer outro SaqzIconButton — a borda não muda nem o desenho
+        // nem o alvo. A cor da linha é o que o print do catálogo mostra.
+        val bounds = onNodeWithTag("voltar").getUnclippedBoundsInRoot()
+        assertEquals(SaqzMetrics.Default.minimumTouchTarget, bounds.width)
+        assertEquals(SaqzMetrics.Default.minimumTouchTarget, bounds.height)
+        onNodeWithContentDescription("Voltar").assertExists()
+        onNodeWithTag("voltar").performClick()
+        waitForIdle()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun outlinedBackButtonDrawsFortyFour() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzIconButton(onClick = {}, contentDescription = "Voltar", outlined = true) {
+                    // O slot ocupa o círculo inteiro, então medi-lo é medir o desenho —
+                    // que é o número que o export fixa (`fluxo1.voltar.tamanho`), e não o
+                    // alvo de toque de 48 em volta.
+                    Box(modifier = Modifier.fillMaxSize().testTag("circulo"))
+                }
+            }
+        }
+        val circle = onNodeWithTag("circulo", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(SaqzMetrics.Default.iconButtonSize, circle.width)
+        assertEquals(SaqzMetrics.Default.iconButtonSize, circle.height)
     }
 
     private fun ComposeUiTest.pressFeedback(tag: String): SaqzPressFeedback {
