@@ -10,13 +10,17 @@ import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeLinkPort
+import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ProfilePhotoCallback
+import br.com.saqz.access.domain.port.ProfilePhotoResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.port.ValueResult
+import br.com.saqz.composeapp.di.SaqzDraftStores
 import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.groups.domain.photo.GroupPhotoCrop
@@ -64,22 +68,29 @@ internal fun stopTestSaqzKoin() = stopSaqzKoin()
 internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
     environment = "test",
     apiBaseUrl = "https://api.invalid",
-    auth = TestAuthPort,
-    links = TestLinkPort,
-    localState = TestLocalAccessStatePort,
-    share = TestSharePort,
-    attendanceShare = TestAttendanceSharePort,
-    groupPhotos = GroupPhotoRuntimeDependencies(
-        selection = TestGroupPhotoSelectionPort,
-        encoder = TestGroupPhotoEncoderPort,
-        previews = GroupPhotoPreviewPort { null },
+    access = AccessRuntimeDependencies(
+        auth = TestAuthPort,
+        links = TestLinkPort,
+        localState = TestLocalAccessStatePort,
+        share = TestSharePort,
+        profilePhoto = TestProfilePhotoPort,
     ),
-    groupLinks = TestGroupLinkPort,
-    groupState = TestLocalGroupStatePort,
-    groupDrafts = TestGroupDraftStore,
-    gameDrafts = TestGameDraftStore,
-    monthlyChargeDrafts = TestMonthlyChargeDraftStore,
-    expenseDrafts = TestExpenseDraftStore,
+    groups = GroupsRuntimeDependencies(
+        attendanceShare = TestAttendanceSharePort,
+        photos = GroupPhotoRuntimeDependencies(
+            selection = TestGroupPhotoSelectionPort,
+            encoder = TestGroupPhotoEncoderPort,
+            previews = GroupPhotoPreviewPort { null },
+        ),
+        links = TestGroupLinkPort,
+        state = TestLocalGroupStatePort,
+    ),
+    drafts = SaqzDraftStores(
+        groupDrafts = TestGroupDraftStore,
+        gameDrafts = TestGameDraftStore,
+        monthlyChargeDrafts = TestMonthlyChargeDraftStore,
+        expenseDrafts = TestExpenseDraftStore,
+    ),
 )
 
 private object TestAuthPort : NativeAuthPort {
@@ -122,6 +133,16 @@ private object TestLocalAccessStatePort : LocalAccessStatePort {
 
 private object TestSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object TestProfilePhotoPort : NativeProfilePhotoPort {
+    override fun chooseCamera(done: ProfilePhotoCallback): Cancelable = unavailable(done)
+    override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable = unavailable(done)
+
+    private fun unavailable(done: ProfilePhotoCallback): Cancelable {
+        done.complete(ProfilePhotoResult.Failed)
+        return TestCancelable
+    }
 }
 
 private object TestAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {

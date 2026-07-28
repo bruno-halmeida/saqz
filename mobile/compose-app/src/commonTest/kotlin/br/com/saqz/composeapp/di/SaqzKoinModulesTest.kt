@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.di
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
@@ -26,6 +27,9 @@ import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.composeapp.AccessRuntimeDependencies
+import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
+import br.com.saqz.composeapp.GroupsRuntimeDependencies
 import br.com.saqz.composeapp.navigation.AccessRuntimeContract
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.groups.domain.photo.GroupPhotoCrop
@@ -59,6 +63,12 @@ import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.MonthlyDraftReadResult
 import br.com.saqz.groups.port.MonthlyDraftWriteResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
+import br.com.saqz.groups.presentation.di.groupsPresentationModule
+import br.com.saqz.groups.presentation.list.GroupListViewModel
+import br.com.saqz.groups.presentation.members.GroupMembersViewModel
+import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
@@ -74,6 +84,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlinx.coroutines.test.runTest
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
@@ -95,27 +106,34 @@ class SaqzKoinModulesTest {
     private val nativePortsFixtureModule = module {
         single {
             SaqzNativePorts(
-                auth = FakeAuthPort,
-                links = FakeLinkPort,
-                localAccessState = FakeLocalAccessStatePort,
-                share = FakeSharePort,
-                attendanceShare = FakeAttendanceSharePort,
-                groupPhotoSelection = FakeGroupPhotoSelectionPort,
-                groupPhotoEncoder = FakeGroupPhotoEncoderPort,
-                groupPhotoPreviews = GroupPhotoPreviewPort { null },
-                groupLinks = FakeGroupLinkPort,
-                localGroupState = FakeLocalGroupStatePort,
+                access = AccessRuntimeDependencies(
+                    auth = FakeAuthPort,
+                    links = FakeLinkPort,
+                    localState = FakeLocalAccessStatePort,
+                    share = FakeSharePort,
+                    profilePhoto = FakeProfilePhotoPort,
+                ),
+                groups = GroupsRuntimeDependencies(
+                    attendanceShare = FakeAttendanceSharePort,
+                    photos = GroupPhotoRuntimeDependencies(
+                        selection = FakeGroupPhotoSelectionPort,
+                        encoder = FakeGroupPhotoEncoderPort,
+                        previews = GroupPhotoPreviewPort { null },
+                    ),
+                    links = FakeGroupLinkPort,
+                    state = FakeLocalGroupStatePort,
+                ),
             )
         }
-        single<NativeAuthPort> { get<SaqzNativePorts>().auth }
-        single<NativeLinkPort> { get<SaqzNativePorts>().links }
-        single<LocalAccessStatePort> { get<SaqzNativePorts>().localAccessState }
-        single<NativeSharePort> { get<SaqzNativePorts>().share }
-        single<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
-        single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
-        single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
-        single<NativeGroupLinkPort> { get<SaqzNativePorts>().groupLinks }
-        single<LocalGroupStatePort> { get<SaqzNativePorts>().localGroupState }
+        single<NativeAuthPort> { get<SaqzNativePorts>().access.auth }
+        single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
+        single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
+        single<NativeSharePort> { get<SaqzNativePorts>().access.share }
+        single<br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort> { get<SaqzNativePorts>().groups.attendanceShare }
+        single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groups.photos.selection }
+        single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groups.photos.encoder }
+        single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
+        single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
     }
 
     @Test
@@ -195,6 +213,51 @@ class SaqzKoinModulesTest {
         koin.get<AccessRuntimeContract>()
         koin.get<AccessViewModel>()
         koin.get<LoginViewModel>()
+
+        app.close()
+    }
+
+    /**
+     * VUL-72: junto do grafo do app, as telas de grupo resolvem **com os argumentos que a
+     * rota passa** — o `groupId` de `GroupsRoute.Details`/`Members` e o `GroupSetupMode` de
+     * `Create`/`Edit` —, não com um mock qualquer.
+     *
+     * O `SavedStateHandle` do formulário é a única coisa que o teste fornece à mão: em app
+     * ele vem do `CreationExtras` do `NavEntry`, pelo `AndroidParametersHolder` do Koin, e
+     * nunca esteve no grafo. Sem `ViewModelStoreOwner` aqui, ele entra pelo `parametersOf`
+     * — o que se verifica é a definição, não a origem do handle.
+     *
+     * A quinta, `GroupScheduleViewModel`, é `internal` ao módulo dela (o `State` carrega o
+     * `SlotDraft`, também `internal`), então nenhum teste deste módulo consegue nomeá-la —
+     * e este é o único teste que pode subir container (AGENTS.md §7), então a definição
+     * dela não tem cobertura de resolução automatizada. O que existe no lugar: a construção
+     * direta em `GroupsInitialStateTest` e a passagem pela tela no emulador. Tornar a
+     * ViewModel pública só para o teste desfaria a decisão de encapsulamento do VUL-71.
+     */
+    @Test
+    fun groupsPresentationModuleResolvesWithTheRouteArguments() {
+        val app = koinApplication {
+            modules(
+                configFixturesModule,
+                nativePortsFixtureModule,
+                coreNetworkModule,
+                platformDraftsModule,
+                accessDataModule,
+                accessInvalidationModule,
+                accessPresentationModule,
+                composePresentationModule,
+                groupsPresentationModule(sampleContent = true),
+            )
+        }
+        val koin = app.koin
+
+        koin.get<GroupListViewModel>()
+        koin.get<GroupSetupViewModel> { parametersOf(GroupSetupMode.Create, SavedStateHandle()) }
+        koin.get<GroupSetupViewModel> {
+            parametersOf(GroupSetupMode.Edit("ceret"), SavedStateHandle())
+        }
+        koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
+        koin.get<GroupMembersViewModel> { parametersOf("ceret") }
 
         app.close()
     }
@@ -335,6 +398,18 @@ private object FakeLocalAccessStatePort : LocalAccessStatePort {
 
 private object FakeSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
+}
+
+private object FakeProfilePhotoPort : br.com.saqz.access.domain.port.NativeProfilePhotoPort {
+    override fun chooseCamera(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+    override fun chooseLibrary(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+
+    private fun failed(done: br.com.saqz.access.domain.port.ProfilePhotoCallback): Cancelable {
+        done.complete(br.com.saqz.access.domain.port.ProfilePhotoResult.Failed)
+        return object : Cancelable {
+            override fun cancel() = Unit
+        }
+    }
 }
 
 private object FakeAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {

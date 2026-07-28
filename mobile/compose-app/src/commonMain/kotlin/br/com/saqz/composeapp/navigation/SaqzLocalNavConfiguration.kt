@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.savedstate.serialization.SavedStateConfiguration
 import br.com.saqz.access.navigation.AccessRoute
+import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -32,6 +33,13 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(AccessRoute.PasswordChanged::class, AccessRoute.PasswordChanged.serializer())
             subclass(AccessRoute.Bootstrap::class, AccessRoute.Bootstrap.serializer())
             subclass(SaqzShellDestination::class, SaqzShellDestination.serializer())
+            // As rotas de grupo entram no VUL-72: agora que o stack tem profundidade, é
+            // este registro que faz um `Details` sobreviver à rotação e ao Recents.
+            subclass(GroupsRoute.Create::class, GroupsRoute.Create.serializer())
+            subclass(GroupsRoute.Details::class, GroupsRoute.Details.serializer())
+            subclass(GroupsRoute.Edit::class, GroupsRoute.Edit.serializer())
+            subclass(GroupsRoute.Members::class, GroupsRoute.Members.serializer())
+            subclass(GroupsRoute.Schedule::class, GroupsRoute.Schedule.serializer())
         }
     }
 }

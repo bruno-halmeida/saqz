@@ -71,12 +71,17 @@ class SaqzCatalogScreenTest {
     @Test
     fun theCatalogEntryIsAbsentOutsideDev() = runComposeUiTest {
         setContent { SaqzTheme { SaqzAppShell(onLogout = {}) } }
+        onNodeWithText("Perfil").performClick()
+        waitForIdle()
         onNodeWithTag(SaqzShellCatalogTag).assertDoesNotExist()
     }
 
     @Test
     fun theDevShellReachesTheCatalogAndComesBack() = runComposeUiTest {
         setContent { SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) } }
+        // VUL-72: o shell abre na aba Grupos; a entrada do catálogo vive na aba Perfil.
+        onNodeWithText("Perfil").performClick()
+        waitForIdle()
         onNodeWithTag(SaqzShellCatalogTag).performClick()
         waitForIdle()
         onNodeWithTag(SaqzCatalogTags.Root).assertIsDisplayed()

@@ -123,13 +123,13 @@ final class IOSLocalAccessStateAdapter: @preconcurrency LocalAccessStatePort {
     func writePendingInvite(value: String?, done: ResultCallback) { write(done) { try store.writePendingInvite(value) } }
 
     private func read(_ done: ValueCallback, _ operation: () throws -> String?) {
-        do { done.complete(result___: ValueResultSuccess(value: try operation())) }
-        catch { done.complete(result___: ValueResultFailure(code: .providerUnavailable)) }
+        do { done.complete(result____: ValueResultSuccess(value: try operation())) }
+        catch { done.complete(result____: ValueResultFailure(code: .providerUnavailable)) }
     }
 
     private func write(_ done: ResultCallback, _ operation: () throws -> Void) {
-        do { try operation(); done.complete(result_: OperationResultSuccess.shared) }
-        catch { done.complete(result_: OperationResultFailure(code: .providerUnavailable)) }
+        do { try operation(); done.complete(result__: OperationResultSuccess.shared) }
+        catch { done.complete(result__: OperationResultFailure(code: .providerUnavailable)) }
     }
 }
 
@@ -146,13 +146,13 @@ final class IOSLocalGroupStateAdapter: @preconcurrency LocalGroupStatePort {
     func writePendingAttendanceLink(value: String?, done: GroupResultCallback) { write(done) { try store.writePendingAttendanceLink(value) } }
 
     private func read(_ done: GroupValueCallback, _ operation: () throws -> String?) {
-        do { done.complete(result_____: GroupValueResultSuccess(value: try operation())) }
-        catch { done.complete(result_____: GroupValueResultFailure(code: .unknown)) }
+        do { done.complete(result______: GroupValueResultSuccess(value: try operation())) }
+        catch { done.complete(result______: GroupValueResultFailure(code: .unknown)) }
     }
 
     private func write(_ done: GroupResultCallback, _ operation: () throws -> Void) {
-        do { try operation(); done.complete(result____: GroupOperationResultSuccess.shared) }
-        catch { done.complete(result____: GroupOperationResultFailure(code: .unknown)) }
+        do { try operation(); done.complete(result_____: GroupOperationResultSuccess.shared) }
+        catch { done.complete(result_____: GroupOperationResultFailure(code: .unknown)) }
     }
 }
 
@@ -164,8 +164,8 @@ final class IOSShareAdapter: @preconcurrency NativeSharePort {
     private let launcher: IOSShareLauncher
     init(launcher: IOSShareLauncher) { self.launcher = launcher }
     func share(text: String, done: ResultCallback) {
-        do { try launcher.launch(text: text); done.complete(result_: OperationResultSuccess.shared) }
-        catch { done.complete(result_: OperationResultFailure(code: .providerUnavailable)) }
+        do { try launcher.launch(text: text); done.complete(result__: OperationResultSuccess.shared) }
+        catch { done.complete(result__: OperationResultFailure(code: .providerUnavailable)) }
     }
     nonisolated var description: String { "IOSShareAdapter" }
 }

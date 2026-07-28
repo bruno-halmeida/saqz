@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.catalog
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
@@ -41,6 +42,13 @@ class SaqzCatalogBackTest {
         override val navigationEventDispatcher: NavigationEventDispatcher,
     ) : NavigationEventDispatcherOwner
 
+    // VUL-72: o shell abre na aba Grupos, e o placeholder que carrega "Sair" e a entrada do
+    // catálogo passou a ser o conteúdo da aba Perfil.
+    private fun ComposeUiTest.openProfileTab() {
+        onNodeWithText("Perfil").performClick()
+        waitForIdle()
+    }
+
     @Test
     fun theSystemBackClosesTheCatalogAndKeepsTheShell() = runComposeUiTest {
         var unhandledBacks = 0
@@ -54,6 +62,7 @@ class SaqzCatalogBackTest {
                 SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
             }
         }
+        openProfileTab()
         onNodeWithTag(SaqzShellCatalogTag).performClick()
         waitForIdle()
         onNodeWithTag(SaqzCatalogTags.Root).assertIsDisplayed()
@@ -88,6 +97,7 @@ class SaqzCatalogBackTest {
                 SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
             }
         }
+        openProfileTab()
         onNodeWithTag(SaqzShellCatalogTag).performClick()
         waitForIdle()
         onNodeWithTag(SaqzCatalogTags.SheetTrigger).performScrollTo().performClick()
@@ -123,6 +133,7 @@ class SaqzCatalogBackTest {
                 SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
             }
         }
+        openProfileTab()
         input.pressBack()
         waitForIdle()
 

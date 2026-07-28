@@ -25,16 +25,22 @@ import br.com.saqz.access.domain.port.InviteCodeListener
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ProfilePhotoCallback
+import br.com.saqz.access.domain.port.ProfilePhotoResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.port.ValueResult
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
+import br.com.saqz.composeapp.AccessRuntimeDependencies
+import br.com.saqz.composeapp.GroupsRuntimeDependencies
 import br.com.saqz.composeapp.SaqzPlatformDependencies
+import br.com.saqz.composeapp.di.SaqzDraftStores
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -264,18 +270,25 @@ private class LifecycleCompositionFactory(
         val dependencies = SaqzPlatformDependencies(
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
-            auth = fixture.auth,
-            links = fixture.links,
-            localState = fixture.local,
-            share = fixture.share,
-            attendanceShare = LifecycleAttendanceSharePort,
-            groupPhotos = lifecycleGroupPhotos,
-            groupLinks = fixture.links,
-            groupState = fixture.local,
-            groupDrafts = LifecycleGroupDraftStore,
-            gameDrafts = LifecycleGameDraftStore,
-            monthlyChargeDrafts = LifecycleMonthlyChargeDraftStore,
-            expenseDrafts = LifecycleExpenseDraftStore,
+            access = AccessRuntimeDependencies(
+                auth = fixture.auth,
+                links = fixture.links,
+                localState = fixture.local,
+                share = fixture.share,
+                profilePhoto = LifecycleProfilePhotoPort,
+            ),
+            groups = GroupsRuntimeDependencies(
+                attendanceShare = LifecycleAttendanceSharePort,
+                photos = lifecycleGroupPhotos,
+                links = fixture.links,
+                state = fixture.local,
+            ),
+            drafts = SaqzDraftStores(
+                groupDrafts = LifecycleGroupDraftStore,
+                gameDrafts = LifecycleGameDraftStore,
+                monthlyChargeDrafts = LifecycleMonthlyChargeDraftStore,
+                expenseDrafts = LifecycleExpenseDraftStore,
+            ),
         )
         fixture.lastEnvironment = dependencies.environment.toNetworkEnvironment()
         return AndroidAppComposition(dependencies, fixture.links)
@@ -455,6 +468,18 @@ private class LifecycleLocalState(
 
     override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) {
         done.complete(GroupOperationResult.Success)
+    }
+}
+
+private object LifecycleProfilePhotoPort : NativeProfilePhotoPort {
+    override fun chooseCamera(done: ProfilePhotoCallback) = failed(done)
+    override fun chooseLibrary(done: ProfilePhotoCallback) = failed(done)
+
+    private fun failed(done: ProfilePhotoCallback): Cancelable {
+        done.complete(ProfilePhotoResult.Failed)
+        return object : Cancelable {
+            override fun cancel() = Unit
+        }
     }
 }
 

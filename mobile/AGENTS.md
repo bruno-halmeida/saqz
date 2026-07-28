@@ -221,17 +221,29 @@ Regras que continuam:
 ## 6. Navegação
 
 **Navigation3 é biblioteca, não módulo.** Um único `NavDisplay` (`SaqzNavHost` em `:compose-app`)
-sobre **um** back stack de acesso→shell, sempre com exatamente uma entrada.
+sobre **um** back stack de acesso→shell→jornada.
 
-- A UI **não navega**. `reconcileAccessStack` deriva o stack do estado de sessão autoritativo; cada
-  `SessionAccessState` canonicaliza para o seu destino único, incluindo `Ready` → shell vazio.
+O stack tem profundidade desde o VUL-72, quando a jornada de grupos voltou. O gate de sessão continua
+existindo, mas com um alcance menor:
+
+- A UI **não navega abaixo do shell**. `reconcileAccessStack` deriva a **base** do stack do estado de
+  sessão autoritativo. Fora de `Ready` ele **canonicaliza**: cada `SessionAccessState` colapsa o
+  stack para o seu destino único, e é isso que impede tela autenticada de aparecer sem sessão — não
+  pode afrouxar. Com `Ready` ele só garante que a base é o shell, **sem descartar o que está acima**.
+- O motivo: a sessão emite `Ready` mais de uma vez. Enquanto o stack tinha exatamente uma entrada,
+  reescrever era inofensivo; com rotas empilháveis, reescrever zeraria a navegação a cada emissão.
+  Sair de `Ready` volta a colapsar, então logout continua limpando o stack inteiro.
+- **Acima da base quem empilha são os callbacks.** Cada `Root` recebe lambdas e não conhece
+  `NavDisplay`. Efeito que aponta para fluxo inexistente leva `TODO` com o número do fluxo — nunca
+  `else -> {}`, que já escondeu bug na tela antiga de detalhe.
 - Rotas são `NavKey` `@Serializable` com argumentos **escalares**, declaradas na feature
-  (`AccessRoute` em `:features:access`). Objeto complexo não navega: passe o id.
+  (`AccessRoute` em `:features:access`, `GroupsRoute` em `:features:groups:presentation`). Objeto
+  complexo não navega: passe o id. Toda rota nova entra também em `saqzLocalNavConfiguration` — sem
+  isso ela não sobrevive à rotação.
 - A feature depende só de `navigation3-runtime` (o contrato `NavKey`), nunca de `navigation3-ui`.
 - Quem conhece `NavDisplay` é `:compose-app`. **Navegação entre features é callback.**
-
-Quando as jornadas voltarem e o stack precisar de profundidade real, ele cresce aqui — não num módulo
-novo.
+- **A barra inferior é do shell**, não das telas: `SaqzAppShell` desenha o `SaqzBottomNav` e hospeda
+  o conteúdo da aba ativa. Nenhuma tela de feature a desenha fora das próprias previews.
 
 ---
 

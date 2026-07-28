@@ -56,22 +56,29 @@ struct IOSAppComposition {
         let dependencies = SaqzPlatformDependencies(
             environment: configuration.environment,
             apiBaseUrl: configuration.apiBaseURL,
-            auth: auth,
-            links: IOSNoOpAccessLinkPort(),
-            localState: localState,
-            share: share,
-            attendanceShare: attendanceShare,
-            groupPhotos: GroupPhotoRuntimeDependencies(
-                selection: photos.selection,
-                encoder: photos.encoder,
-                previews: photos.previews
+            access: AccessRuntimeDependencies(
+                auth: auth,
+                links: IOSNoOpAccessLinkPort(),
+                localState: localState,
+                share: share,
+                profilePhoto: IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder)
             ),
-            groupLinks: links,
-            groupState: groupState,
-            groupDrafts: drafts.setup,
-            gameDrafts: drafts.game,
-            monthlyChargeDrafts: drafts.monthly,
-            expenseDrafts: drafts.expense
+            groups: GroupsRuntimeDependencies(
+                attendanceShare: attendanceShare,
+                photos: GroupPhotoRuntimeDependencies(
+                    selection: photos.selection,
+                    encoder: photos.encoder,
+                    previews: photos.previews
+                ),
+                links: links,
+                state: groupState
+            ),
+            drafts: SaqzDraftStores(
+                groupDrafts: drafts.setup,
+                gameDrafts: drafts.game,
+                monthlyChargeDrafts: drafts.monthly,
+                expenseDrafts: drafts.expense
+            )
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
     }
