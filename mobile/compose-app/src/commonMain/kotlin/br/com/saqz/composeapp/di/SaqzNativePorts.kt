@@ -1,27 +1,9 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.access.domain.port.LocalAccessStatePort
-import br.com.saqz.access.domain.port.NativeAuthPort
-import br.com.saqz.access.domain.port.NativeLinkPort
-import br.com.saqz.access.domain.port.NativeProfilePhotoPort
-import br.com.saqz.access.domain.port.NativeSharePort
-import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
-import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
-import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
-import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
-import br.com.saqz.groups.port.LocalGroupStatePort
-import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.composeapp.AccessRuntimeDependencies
+import br.com.saqz.composeapp.GroupsRuntimeDependencies
 
 class SaqzNativePorts(
-    val auth: NativeAuthPort,
-    val links: NativeLinkPort,
-    val localAccessState: LocalAccessStatePort,
-    val share: NativeSharePort,
-    val profilePhoto: NativeProfilePhotoPort,
-    val attendanceShare: NativeAttendanceSharePort,
-    val groupPhotoSelection: GroupPhotoSelectionPort,
-    val groupPhotoEncoder: GroupPhotoEncoderPort,
-    val groupPhotoPreviews: GroupPhotoPreviewPort,
-    val groupLinks: NativeGroupLinkPort,
-    val localGroupState: LocalGroupStatePort,
+    val access: AccessRuntimeDependencies,
+    val groups: GroupsRuntimeDependencies,
 )

@@ -37,7 +37,10 @@ import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.port.ValueResult
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
+import br.com.saqz.composeapp.AccessRuntimeDependencies
+import br.com.saqz.composeapp.GroupsRuntimeDependencies
 import br.com.saqz.composeapp.SaqzPlatformDependencies
+import br.com.saqz.composeapp.di.SaqzDraftStores
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -267,19 +270,25 @@ private class LifecycleCompositionFactory(
         val dependencies = SaqzPlatformDependencies(
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
-            auth = fixture.auth,
-            links = fixture.links,
-            localState = fixture.local,
-            share = fixture.share,
-            profilePhoto = LifecycleProfilePhotoPort,
-            attendanceShare = LifecycleAttendanceSharePort,
-            groupPhotos = lifecycleGroupPhotos,
-            groupLinks = fixture.links,
-            groupState = fixture.local,
-            groupDrafts = LifecycleGroupDraftStore,
-            gameDrafts = LifecycleGameDraftStore,
-            monthlyChargeDrafts = LifecycleMonthlyChargeDraftStore,
-            expenseDrafts = LifecycleExpenseDraftStore,
+            access = AccessRuntimeDependencies(
+                auth = fixture.auth,
+                links = fixture.links,
+                localState = fixture.local,
+                share = fixture.share,
+                profilePhoto = LifecycleProfilePhotoPort,
+            ),
+            groups = GroupsRuntimeDependencies(
+                attendanceShare = LifecycleAttendanceSharePort,
+                photos = lifecycleGroupPhotos,
+                links = fixture.links,
+                state = fixture.local,
+            ),
+            drafts = SaqzDraftStores(
+                groupDrafts = LifecycleGroupDraftStore,
+                gameDrafts = LifecycleGameDraftStore,
+                monthlyChargeDrafts = LifecycleMonthlyChargeDraftStore,
+                expenseDrafts = LifecycleExpenseDraftStore,
+            ),
         )
         fixture.lastEnvironment = dependencies.environment.toNetworkEnvironment()
         return AndroidAppComposition(dependencies, fixture.links)

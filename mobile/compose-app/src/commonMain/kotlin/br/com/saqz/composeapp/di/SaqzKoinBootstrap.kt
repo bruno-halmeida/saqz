@@ -83,38 +83,17 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
             baseUrl = dependencies.apiBaseUrl,
         )
     }
-    single {
-        SaqzNativePorts(
-            auth = dependencies.auth,
-            links = dependencies.links,
-            localAccessState = dependencies.localState,
-            share = dependencies.share,
-            profilePhoto = dependencies.profilePhoto,
-            attendanceShare = dependencies.attendanceShare,
-            groupPhotoSelection = dependencies.groupPhotos.selection,
-            groupPhotoEncoder = dependencies.groupPhotos.encoder,
-            groupPhotoPreviews = dependencies.groupPhotos.previews,
-            groupLinks = dependencies.groupLinks,
-            localGroupState = dependencies.groupState,
-        )
-    }
-    single<NativeAuthPort> { get<SaqzNativePorts>().auth }
-    single<NativeLinkPort> { get<SaqzNativePorts>().links }
-    single<LocalAccessStatePort> { get<SaqzNativePorts>().localAccessState }
-    single<NativeSharePort> { get<SaqzNativePorts>().share }
-    single<NativeProfilePhotoPort> { get<SaqzNativePorts>().profilePhoto }
-    single<NativeAttendanceSharePort> { get<SaqzNativePorts>().attendanceShare }
-    single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groupPhotoSelection }
-    single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groupPhotoEncoder }
-    single<GroupPhotoPreviewPort> { get<SaqzNativePorts>().groupPhotoPreviews }
-    single<NativeGroupLinkPort> { get<SaqzNativePorts>().groupLinks }
-    single<LocalGroupStatePort> { get<SaqzNativePorts>().localGroupState }
-    single {
-        SaqzDraftStores(
-            groupDrafts = dependencies.groupDrafts,
-            gameDrafts = dependencies.gameDrafts,
-            monthlyChargeDrafts = dependencies.monthlyChargeDrafts,
-            expenseDrafts = dependencies.expenseDrafts,
-        )
-    }
+    single { SaqzNativePorts(access = dependencies.access, groups = dependencies.groups) }
+    single<NativeAuthPort> { get<SaqzNativePorts>().access.auth }
+    single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
+    single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
+    single<NativeSharePort> { get<SaqzNativePorts>().access.share }
+    single<NativeProfilePhotoPort> { get<SaqzNativePorts>().access.profilePhoto }
+    single<NativeAttendanceSharePort> { get<SaqzNativePorts>().groups.attendanceShare }
+    single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groups.photos.selection }
+    single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groups.photos.encoder }
+    single<GroupPhotoPreviewPort> { get<SaqzNativePorts>().groups.photos.previews }
+    single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
+    single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
+    single { dependencies.drafts }
 }

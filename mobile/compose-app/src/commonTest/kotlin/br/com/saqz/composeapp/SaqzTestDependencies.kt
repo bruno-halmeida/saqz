@@ -20,6 +20,7 @@ import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.port.ValueResult
+import br.com.saqz.composeapp.di.SaqzDraftStores
 import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.groups.domain.photo.GroupPhotoCrop
@@ -67,23 +68,29 @@ internal fun stopTestSaqzKoin() = stopSaqzKoin()
 internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
     environment = "test",
     apiBaseUrl = "https://api.invalid",
-    auth = TestAuthPort,
-    links = TestLinkPort,
-    localState = TestLocalAccessStatePort,
-    share = TestSharePort,
-    profilePhoto = TestProfilePhotoPort,
-    attendanceShare = TestAttendanceSharePort,
-    groupPhotos = GroupPhotoRuntimeDependencies(
-        selection = TestGroupPhotoSelectionPort,
-        encoder = TestGroupPhotoEncoderPort,
-        previews = GroupPhotoPreviewPort { null },
+    access = AccessRuntimeDependencies(
+        auth = TestAuthPort,
+        links = TestLinkPort,
+        localState = TestLocalAccessStatePort,
+        share = TestSharePort,
+        profilePhoto = TestProfilePhotoPort,
     ),
-    groupLinks = TestGroupLinkPort,
-    groupState = TestLocalGroupStatePort,
-    groupDrafts = TestGroupDraftStore,
-    gameDrafts = TestGameDraftStore,
-    monthlyChargeDrafts = TestMonthlyChargeDraftStore,
-    expenseDrafts = TestExpenseDraftStore,
+    groups = GroupsRuntimeDependencies(
+        attendanceShare = TestAttendanceSharePort,
+        photos = GroupPhotoRuntimeDependencies(
+            selection = TestGroupPhotoSelectionPort,
+            encoder = TestGroupPhotoEncoderPort,
+            previews = GroupPhotoPreviewPort { null },
+        ),
+        links = TestGroupLinkPort,
+        state = TestLocalGroupStatePort,
+    ),
+    drafts = SaqzDraftStores(
+        groupDrafts = TestGroupDraftStore,
+        gameDrafts = TestGameDraftStore,
+        monthlyChargeDrafts = TestMonthlyChargeDraftStore,
+        expenseDrafts = TestExpenseDraftStore,
+    ),
 )
 
 private object TestAuthPort : NativeAuthPort {
