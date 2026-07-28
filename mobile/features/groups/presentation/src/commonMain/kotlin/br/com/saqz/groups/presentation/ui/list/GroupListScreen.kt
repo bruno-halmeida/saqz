@@ -1,4 +1,4 @@
-package br.com.saqz.groups.ui.list
+package br.com.saqz.groups.presentation.ui.list
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
