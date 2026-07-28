@@ -2,6 +2,7 @@ package br.com.saqz.androidapp
 
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -36,6 +41,7 @@ import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
+import br.com.saqz.designsystem.SaqzCodeInput
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzChoiceChip
 import br.com.saqz.designsystem.SaqzDivider
@@ -218,6 +224,31 @@ class SaqzScreenshotTest {
             SaqzIcon(SaqzIcons.Plus)
             SaqzIcon(SaqzIcons.Minus)
         }
+    }
+
+    // A fileira do código do fluxo 1. O foco é pedido de verdade porque é ele que acende a
+    // caixa da vez: sem pedir, o print sairia com quatro caixas iguais e a borda azul, o
+    // halo e o cursor de 2×26 nunca apareceriam.
+    @Test
+    fun codeInput() = gallery("ds-codigo") {
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        SaqzCodeInput(
+            "",
+            {},
+            label = "Código de verificação",
+            modifier = Modifier.focusGroup().focusRequester(focus),
+        )
+        SaqzCodeInput("", {}, label = "Código de verificação")
+        SaqzCodeInput("13", {}, label = "Código de verificação")
+        SaqzCodeInput("1359", {}, label = "Código de verificação")
+        SaqzCodeInput(
+            "1359",
+            {},
+            label = "Código de verificação",
+            errorText = "Código incorreto. Restam 2 tentativas.",
+        )
+        SaqzCodeInput("1359", {}, label = "Código de verificação", enabled = false)
     }
 
     @Test
