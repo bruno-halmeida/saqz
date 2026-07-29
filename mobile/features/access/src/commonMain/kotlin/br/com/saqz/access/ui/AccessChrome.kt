@@ -87,6 +87,10 @@ internal data class AccessWaveCurve(
 // à chave `fluxo1` do ui-contract.json — a mesma amarra que o `SaqzFluxo1ContractTest`
 // faz do lado do design system. Mexer no número sem mexer no contrato reprova.
 //
+// Medida que o export tem e o contrato não versiona entra aqui do mesmo jeito, marcada
+// com o porquê: o lugar certo do número é este objeto, não o arquivo da tela. O que não
+// pode é a tela declarar `dp` por conta própria.
+//
 // Os literais que o VUL-77 (`SaqzCodeInput`) e o VUL-78 (`SaqzInlineAlert`) já
 // mergearam seguem soltos nos arquivos deles; mudá-los agora sairia do escopo deste
 // ticket e conflitaria com PRs em voo. Eles migram para cá quando alguém os tocar.
@@ -108,10 +112,29 @@ internal object AccessMetrics {
     // largo, e a quebra real vem do texto, não do teto.
     val subtitleMaxWidth = 300.dp
 
-    // O único número deste objeto que o contrato não versiona: o bloco `subtitulo` tem
-    // tamanho, entrelinha, cor e largura, mas não o afastamento do título. Vem da
-    // descrição do export ("10 abaixo do título") e por isso não entra no teste.
+    // O afastamento do título: o bloco `subtitulo` do contrato tem tamanho, entrelinha,
+    // cor e largura, mas não isto. Vem da descrição do export ("10 abaixo do título") e por
+    // isso não entra no teste — como os outros números marcados abaixo.
     val subtitleGap = 10.dp
+
+    // O gap entre campos, do `gapDosCampos.padrao` do contrato — e por isso amarrado no
+    // `AccessMetricsTest`. É o que a 1b usa entre os quatro campos.
+    val fieldGap = 12.dp
+
+    // O respiro entre blocos (voltar → marca → cabeçalho → campos). O contrato não o
+    // versiona; sai do desenho das telas compactas.
+    val blockGap = 24.dp
+
+    // Os três números do rodapé de termos da 1b, também fora do contrato: teto de 280,
+    // tamanho de 11.5 e os dois trechos de link em peso 600.
+    val termsMaxWidth = 280.dp
+    const val TERMS_SIZE = 11.5f
+    const val TERMS_LINE_HEIGHT_RATIO = 1.45f
+    const val LINK_WEIGHT = 600
+
+    // `margin-top:-4px` da regra do helper da 1b: o texto sobe 4 em relação ao espaçamento
+    // normal. Também não versionado — é regra de CSS de uma tela, não medida do bloco.
+    val helperLift = (-4).dp
 
     const val WAVE_VIEWPORT_WIDTH = 390f
     const val WAVE_VIEWPORT_HEIGHT = 130f

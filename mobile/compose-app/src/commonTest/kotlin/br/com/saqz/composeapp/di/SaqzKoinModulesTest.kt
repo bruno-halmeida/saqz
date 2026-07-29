@@ -215,7 +215,9 @@ class SaqzKoinModulesTest {
         koin.get<AccessRuntimeContract>()
         koin.get<AccessViewModel>()
         koin.get<LoginViewModel>()
-        koin.get<RegisterViewModel>()
+        // O handle entra pelo `parametersOf` como no `GroupSetupViewModel`: sem
+        // `ViewModelStoreOwner` aqui, o `CreationExtras` do `NavEntry` não existe.
+        koin.get<RegisterViewModel> { parametersOf(SavedStateHandle()) }
 
         app.close()
     }

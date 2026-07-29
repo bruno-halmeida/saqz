@@ -1,5 +1,6 @@
 package br.com.saqz.access.presentation.register
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.NativeAuthPort
@@ -21,8 +22,9 @@ const val REGISTER_MINIMUM_PASSWORD_LENGTH = 8
  * vez, que é o que se vê ao tocar em "Criar conta" com o formulário torto. Editar um campo
  * apaga só o erro dele, senão a pessoa consertaria o nome e continuaria vendo a acusação.
  *
- * Três dependências, cada uma por um motivo diferente:
+ * Quatro dependências, cada uma por um motivo diferente:
  *
+ * - [savedState] guarda o rascunho contra morte de processo — ver [saveDraft];
  * - [auth] é quem cria a conta — `createAccount` já existia na porta e nos dois adapters
  *   desde sempre, sem nenhuma tela que o chamasse;
  * - [authentication] é o formulário compartilhado da 1a, e existe aqui só para o "Entrar?"
@@ -38,16 +40,28 @@ const val REGISTER_MINIMUM_PASSWORD_LENGTH = 8
  * `SessionAccessStateMachine`, que é de outro dono.
  */
 class RegisterViewModel(
+    private val savedState: SavedStateHandle,
     private val auth: NativeAuthPort,
     private val authentication: AuthenticationStateMachine,
     private val transition: (AuthTransition) -> Unit,
-) : MviViewModel<RegisterState, RegisterIntent, RegisterEffect>(RegisterState()) {
+) : MviViewModel<RegisterState, RegisterIntent, RegisterEffect>(savedState.restoredDraft()) {
 
     override fun onIntent(intent: RegisterIntent) {
         when (intent) {
-            is RegisterIntent.UpdateName -> edit { copy(name = intent.value, invalidName = false) }
-            is RegisterIntent.UpdateEmail -> edit { copy(email = intent.value, emailTaken = false) }
-            is RegisterIntent.UpdatePhone -> edit { copy(phone = intent.value, invalidPhone = false) }
+            is RegisterIntent.UpdateName -> {
+                saveDraft(KeyName, intent.value)
+                edit { copy(name = intent.value, invalidName = false) }
+            }
+            is RegisterIntent.UpdateEmail -> {
+                saveDraft(KeyEmail, intent.value)
+                edit { copy(email = intent.value, emailError = null) }
+            }
+            is RegisterIntent.UpdatePhone -> {
+                saveDraft(KeyPhone, intent.value)
+                edit { copy(phone = intent.value, invalidPhone = false) }
+            }
+            // A senha **não** é gravada: rascunho de formulário sobrevive num arquivo do
+            // sistema, e credencial não tem por que morar lá.
             is RegisterIntent.UpdatePassword -> edit { copy(password = intent.value, invalidPassword = false) }
             RegisterIntent.Submit -> submit()
             RegisterIntent.SignInWithTakenEmail -> {
@@ -55,6 +69,15 @@ class RegisterViewModel(
                 emit(RegisterEffect.OpenLogin)
             }
         }
+    }
+
+    /**
+     * O rascunho é gravado **na entrada**, e não ao sair da tela, porque morte de processo
+     * não avisa. Só os três campos não sensíveis: quem volta de um processo morto reencontra
+     * nome, e-mail e telefone e digita a senha de novo.
+     */
+    private fun saveDraft(key: String, value: String) {
+        savedState[key] = value
     }
 
     private fun edit(change: RegisterState.() -> RegisterState) = update { current ->
@@ -65,15 +88,20 @@ class RegisterViewModel(
         val current = state.value
         if (current.isLoading) return
 
-        // Os validadores do `AccessValidators` são os mesmos que a 1c usa; o único critério
-        // próprio da 1b é o comprimento da senha, que é o que o helper anuncia.
+        // Os validadores do nome e do telefone são os mesmos que a 1c usa. O e-mail e a
+        // senha são checados aqui: o mínimo de 8 é o que o helper anuncia, e o e-mail
+        // precisa de recusa **local** para o erro cair no campo — sem ela um endereço
+        // malformado chega ao Firebase, volta como `INVALID_CREDENTIALS` e a tela de
+        // cadastro exibiria "E-mail ou senha inválidos" sem apontar campo nenhum.
         val name = normalizedDisplayName(current.name)
+        val email = normalizedEmail(current.email)
         val phone = normalizedBrMobilePhone(current.phone)
         val strongEnough = current.password.length >= REGISTER_MINIMUM_PASSWORD_LENGTH
-        if (name == null || phone == null || !strongEnough) {
+        if (name == null || email == null || phone == null || !strongEnough) {
             update {
                 it.copy(
                     invalidName = name == null,
+                    emailError = if (email == null) RegisterEmailError.Invalid else null,
                     invalidPhone = phone == null,
                     invalidPassword = !strongEnough,
                     error = null,
@@ -82,11 +110,11 @@ class RegisterViewModel(
             return
         }
 
-        update { it.copy(isLoading = true, emailTaken = false, error = null) }
+        update { it.copy(isLoading = true, emailError = null, error = null) }
         // A senha continua no estado durante o envio, ao contrário do login: o 1j desenha o
         // campo ainda preenchido depois da recusa, e obrigar a redigitar oito caracteres por
         // causa de uma queda de rede seria pior do que o risco que o login evita.
-        auth.createAccount(name, current.email.trim(), current.password, callback())
+        auth.createAccount(name, email, current.password, callback())
     }
 
     private fun onAuthResult(result: AuthResult) {
@@ -94,17 +122,24 @@ class RegisterViewModel(
             AuthResult.Cancelled -> update { it.copy(isLoading = false) }
             is AuthResult.Failure -> fail(result.code)
             is AuthResult.Success -> {
+                // O rascunho morre com a conta criada: a tela não volta, e o que sobreviveu
+                // até aqui não tem por que esperar a próxima instalação.
+                clearDraft()
                 update { it.copy(isLoading = false) }
                 transition(AuthTransition.Authenticated(result.user))
             }
         }
     }
 
+    private fun clearDraft() {
+        listOf(KeyName, KeyEmail, KeyPhone).forEach { savedState.remove<String>(it) }
+    }
+
     // O único código que vira erro de campo é o `EMAIL_IN_USE`, e é justamente o erro do
     // 1j que faz uma pergunta. O resto é falha de infraestrutura e vai para o alerta.
     private fun fail(code: NativeFailureCode) = update {
         if (code == NativeFailureCode.EMAIL_IN_USE) {
-            it.copy(isLoading = false, emailTaken = true)
+            it.copy(isLoading = false, emailError = RegisterEmailError.Taken)
         } else {
             it.copy(isLoading = false, error = code.toUiError().message())
         }
@@ -113,4 +148,35 @@ class RegisterViewModel(
     private fun callback() = object : AuthCallback {
         override fun complete(result: AuthResult) = onAuthResult(result)
     }
+}
+
+private const val KeyName = "register-name"
+private const val KeyEmail = "register-email"
+private const val KeyPhone = "register-phone"
+
+private fun SavedStateHandle.restoredDraft() = RegisterState(
+    name = get<String>(KeyName).orEmpty(),
+    email = get<String>(KeyEmail).orEmpty(),
+    phone = get<String>(KeyPhone).orEmpty(),
+)
+
+/**
+ * A forma mínima de um e-mail, sem regex: sem espaço nem caractere de controle, exatamente
+ * um `@` com algo antes, e um domínio com ponto que não abre nem fecha o texto.
+ *
+ * Mora aqui, e não no `AccessValidators`, porque hoje só a 1b valida e-mail — o campo da
+ * 1a nunca recusou nada localmente. Sobe para lá no segundo uso, junto com o ticket que o
+ * trouxer; é a mesma regra que mantém o `SaqzInlineAlert` fora do design system.
+ *
+ * Não é o RFC 5322 e nem tenta ser: o julgamento final é do provedor, e o que se quer aqui
+ * é que o erro caia **no campo**, em vez de voltar como falha global de autenticação.
+ */
+internal fun normalizedEmail(input: String): String? {
+    val value = input.trim()
+    if (value.any { it.isWhitespace() || it.isISOControl() }) return null
+    val at = value.indexOf('@')
+    if (at <= 0 || at != value.lastIndexOf('@')) return null
+    val domain = value.substring(at + 1)
+    val dot = domain.lastIndexOf('.')
+    return value.takeIf { dot > 0 && dot < domain.length - 1 }
 }

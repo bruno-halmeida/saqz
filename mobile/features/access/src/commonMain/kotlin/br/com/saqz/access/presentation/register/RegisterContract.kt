@@ -4,12 +4,23 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.designsystem.UiText
 
 /**
+ * As duas recusas possíveis do campo de e-mail — o único dos quatro que tem mais de uma.
+ *
+ * [Invalid] é validação local, como a dos outros três. [Taken] vem do `EMAIL_IN_USE` que o
+ * `createAccount` devolve, e é a única que **pergunta** ("Entrar?"), por isso a única
+ * clicável. Um enum e não dois booleanos: os dois estados se excluem, e o par permitiria
+ * um e-mail ao mesmo tempo malformado e já cadastrado.
+ */
+enum class RegisterEmailError { Invalid, Taken }
+
+/**
  * O formulário da 1b, e o 1j é o mesmo estado com os quatro sinalizadores ligados.
  *
- * Cada campo carrega um booleano, e não uma mensagem: no export cada um tem **uma** frase
- * possível, então a string mora na tela e o estado só diz se ela aparece. É também o que
- * mantém a contagem do alerta honesta — [invalidFieldCount] conta o que está aceso agora,
- * em vez de repetir o "3" do mockup (que, aliás, mostra quatro campos errados).
+ * Nome, telefone e senha carregam um booleano, e não uma mensagem: no export cada um tem
+ * **uma** frase possível, então a string mora na tela e o estado só diz se ela aparece. O
+ * e-mail é o que foge disso, e ganha o [RegisterEmailError]. É também o que mantém a
+ * contagem do alerta honesta — [invalidFieldCount] conta o que está aceso agora, em vez de
+ * repetir o "3" do mockup (que, aliás, mostra quatro campos errados).
  *
  * [error] é o que **não** é de campo: rede fora, provedor indisponível, o inesperado. Vai
  * para o mesmo alerta, no lugar do resumo.
@@ -22,13 +33,13 @@ data class RegisterState(
     val password: String = "",
     val isLoading: Boolean = false,
     val invalidName: Boolean = false,
-    val emailTaken: Boolean = false,
+    val emailError: RegisterEmailError? = null,
     val invalidPhone: Boolean = false,
     val invalidPassword: Boolean = false,
     val error: UiText? = null,
 ) {
     val invalidFieldCount: Int
-        get() = listOf(invalidName, emailTaken, invalidPhone, invalidPassword).count { it }
+        get() = listOf(invalidName, emailError != null, invalidPhone, invalidPassword).count { it }
 }
 
 sealed interface RegisterIntent {

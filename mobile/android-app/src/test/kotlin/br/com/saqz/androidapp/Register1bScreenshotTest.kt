@@ -2,6 +2,7 @@ package br.com.saqz.androidapp
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.access.ui.RegisterScreen
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -49,7 +50,7 @@ class Register1bScreenshotTest {
                 phone = "(11) 9999",
                 password = "12345",
                 invalidName = true,
-                emailTaken = true,
+                emailError = RegisterEmailError.Taken,
                 invalidPhone = true,
                 invalidPassword = true,
             ),

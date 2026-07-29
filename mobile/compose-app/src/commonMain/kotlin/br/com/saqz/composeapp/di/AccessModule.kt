@@ -48,8 +48,12 @@ internal val accessPresentationModule = module {
     viewModelOf(::IdentityCompletionViewModel)
     // A 1b entrega a sessão pelo mesmo caminho que o `AuthenticationStateMachine` acima —
     // por isso a lambda repetida, e não `viewModelOf`.
-    viewModel {
-        RegisterViewModel(get(), get()) { transition ->
+    //
+    // `params.get<SavedStateHandle>()` e não `get()`, como o `GroupSetupViewModel` já faz:
+    // o handle vem do `CreationExtras` do `NavEntry` pelo `AndroidParametersHolder` do
+    // Koin, e nunca esteve no grafo.
+    viewModel { params ->
+        RegisterViewModel(params.get(), get(), get()) { transition ->
             get<SessionAccessStateMachine>().onIntent(SessionIntent.Accept(transition))
         }
     }

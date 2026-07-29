@@ -27,11 +27,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.access_password_hint
 import br.com.saqz.access.resources.action_back
+import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.access.resources.register_email_placeholder
 import br.com.saqz.access.resources.register_error_email_taken
 import br.com.saqz.access.resources.register_error_name
@@ -71,25 +73,10 @@ internal object RegisterTags {
     const val Terms = "register-terms"
 }
 
-// SPEC_DEVIATION: `dp`/`sp` crus em `features/*/src/commonMain`, que a seção 5 do
-// mobile/AGENTS.md proíbe por convenção.
-// Reason: mesma razão do `AccessMetrics` (AccessChrome.kt) — são medidas do fluxo 1, que o
-// AD-031 mantém fora do `:core:design-system`. Ficam neste arquivo, e não lá, porque o
-// `AccessChrome.kt` é de outro ticket e os sete tickets de tela desta onda mergeiam em
-// paralelo; é o mesmo arranjo que o VUL-77 e o VUL-78 já fizeram. Migram para o objeto
-// comum quando alguém tocar nos três.
-//
-// Só `fieldGap` está no `ui-contract.json` (`fluxo1.gapDosCampos.padrao`) e é o que o
-// `RegisterScreenTest` amarra. O resto o contrato não versiona: o teto dos termos e o
-// tamanho deles saem da descrição do export, e o `-4` do helper é o `margin-top:-4px` que
-// o export escreve na regra do helper da 1b.
-private val FieldGap = 12.dp
-private val BlockGap = 24.dp
-private val TermsMaxWidth = 280.dp
-private val PasswordHintLift = (-4).dp
-private val TermsSize = 11.5.sp
-private const val TERMS_LINE_HEIGHT = 1.45f
-private const val LINK_WEIGHT = 600
+// A única unidade declarada aqui, e nem ela é um número: `AccessMetrics.TERMS_SIZE` é
+// `Float` porque o objeto guarda tamanho de texto sem unidade (como `TITLE_SIZE` e
+// `SUBTITLE_SIZE`), e quem o consome escolhe `sp`.
+private val TermsFontSize = AccessMetrics.TERMS_SIZE.sp
 
 /**
  * Os dois trechos que o export sublinha dentro da frase dos termos. São **localizadores**,
@@ -129,16 +116,16 @@ fun RegisterScreen(
                 SaqzIcon(SaqzIcons.ChevronLeft)
             }
         }
-        Spacer(Modifier.height(BlockGap))
+        Spacer(Modifier.height(AccessMetrics.blockGap))
         AccessBrandMark()
-        Spacer(Modifier.height(BlockGap))
+        Spacer(Modifier.height(AccessMetrics.blockGap))
         AccessHeader(
             title = stringResource(Res.string.register_headline),
             emphasis = stringResource(Res.string.register_headline_emphasis),
             // O 1j troca o subtítulo pelo alerta; não empilha os dois.
             subtitle = if (alert == null) stringResource(Res.string.register_supporting_text) else null,
         )
-        Spacer(Modifier.height(BlockGap))
+        Spacer(Modifier.height(AccessMetrics.blockGap))
         if (alert != null) {
             SaqzInlineAlert(
                 text = alert.text,
@@ -146,12 +133,12 @@ fun RegisterScreen(
                 tone = SaqzInlineAlertTone.Error,
                 modifier = Modifier.testTag(RegisterTags.Alert),
             )
-            Spacer(Modifier.height(BlockGap))
+            Spacer(Modifier.height(AccessMetrics.blockGap))
         }
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(FieldGap),
+            verticalArrangement = Arrangement.spacedBy(AccessMetrics.fieldGap),
         ) {
             RegisterInput(
                 value = state.name,
@@ -162,10 +149,12 @@ fun RegisterScreen(
                 errorText = stringResource(Res.string.register_error_name).takeIf { state.invalidName },
                 tag = RegisterTags.Name,
             )
-            // O único erro que não é validação local, e o único que faz uma pergunta: a
-            // linha inteira leva à 1a com o e-mail preenchido, senão o "Entrar?" ficaria
-            // sem resposta possível. Por ser clicável ela não cabe no slot de mensagem do
-            // `SaqzInput` — daí `invalid` para a borda vermelha e o texto desenhado aqui.
+            // O e-mail é o único campo com duas recusas possíveis, e elas se comportam de
+            // formas diferentes. A malformada é como as outras três — mensagem no slot do
+            // `SaqzInput`. A do e-mail já cadastrado **pergunta** ("Entrar?"), e a linha
+            // inteira leva à 1a com o e-mail preenchido; por ser clicável ela não cabe no
+            // slot, daí `invalid` para a borda vermelha e o texto desenhado ao lado, com o
+            // mesmo estilo e o mesmo afastamento que o slot usaria.
             Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
                 RegisterInput(
                     value = state.email,
@@ -174,10 +163,12 @@ fun RegisterScreen(
                     icon = SaqzIcons.Mail,
                     kind = SaqzInputKind.Email,
                     enabled = !state.isLoading,
-                    invalid = state.emailTaken,
+                    invalid = state.emailError == RegisterEmailError.Taken,
+                    errorText = stringResource(Res.string.login_error_email_invalid)
+                        .takeIf { state.emailError == RegisterEmailError.Invalid },
                     tag = RegisterTags.Email,
                 )
-                if (state.emailTaken) {
+                if (state.emailError == RegisterEmailError.Taken) {
                     Text(
                         text = stringResource(Res.string.register_error_email_taken),
                         style = SaqzTheme.typography.caption,
@@ -218,11 +209,11 @@ fun RegisterScreen(
                 color = colors.textSecondary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = PasswordHintLift)
+                    .offset(y = AccessMetrics.helperLift)
                     .testTag(RegisterTags.PasswordHint),
             )
         }
-        Spacer(Modifier.height(FieldGap))
+        Spacer(Modifier.height(AccessMetrics.fieldGap))
         SaqzButton(
             label = stringResource(Res.string.register_submit),
             onClick = { onIntent(RegisterIntent.Submit) },
@@ -231,7 +222,7 @@ fun RegisterScreen(
             trailingContent = { color -> SaqzIcon(SaqzIcons.ArrowRight, tint = color, size = 18.dp) },
             modifier = Modifier.fillMaxWidth().clip(CircleShape).testTag(RegisterTags.Submit),
         )
-        Spacer(Modifier.height(BlockGap))
+        Spacer(Modifier.height(AccessMetrics.blockGap))
         Text(
             text = signInLink(stringResource(Res.string.register_signin_link), colors.primary),
             style = SaqzTheme.typography.support,
@@ -239,16 +230,16 @@ fun RegisterScreen(
             textAlign = TextAlign.Center,
             modifier = Modifier.clickable(onClick = onSignIn).testTag(RegisterTags.SignIn),
         )
-        Spacer(Modifier.height(FieldGap))
+        Spacer(Modifier.height(AccessMetrics.fieldGap))
         Text(
             text = termsText(stringResource(Res.string.register_terms), colors.textSecondary),
             style = SaqzTheme.typography.caption.copy(
-                fontSize = TermsSize,
-                lineHeight = TermsSize * TERMS_LINE_HEIGHT,
+                fontSize = TermsFontSize,
+                lineHeight = TermsFontSize * AccessMetrics.TERMS_LINE_HEIGHT_RATIO,
                 textAlign = TextAlign.Center,
             ),
             color = colors.textPlaceholder,
-            modifier = Modifier.widthIn(max = TermsMaxWidth).testTag(RegisterTags.Terms),
+            modifier = Modifier.widthIn(max = AccessMetrics.termsMaxWidth).testTag(RegisterTags.Terms),
         )
         // A onda sangra por cima do que estiver embaixo dela; sem este piso os termos
         // ficariam sob o azul numa tela curta.
@@ -303,7 +294,7 @@ internal fun termsText(text: String, linkColor: Color): AnnotatedString =
                 addStyle(
                     SpanStyle(
                         color = linkColor,
-                        fontWeight = FontWeight(LINK_WEIGHT),
+                        fontWeight = FontWeight(AccessMetrics.LINK_WEIGHT),
                         textDecoration = TextDecoration.Underline,
                     ),
                     start,
@@ -353,7 +344,7 @@ private fun RegisterScreenErrorPreview() = SaqzTheme {
             phone = "(11) 9999",
             password = "12345",
             invalidName = true,
-            emailTaken = true,
+            emailError = RegisterEmailError.Taken,
             invalidPhone = true,
             invalidPassword = true,
         ),

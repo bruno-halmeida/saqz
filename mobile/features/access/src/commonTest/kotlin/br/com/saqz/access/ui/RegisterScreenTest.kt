@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -84,9 +85,17 @@ class RegisterScreenTest {
     // A pergunta do e-mail duplicado tem de ter resposta: a linha inteira leva à 1a.
     @Test fun `the taken email message answers its own question`() = runComposeUiTest {
         var intent: RegisterIntent? = null
-        content(state = RegisterState(emailTaken = true), onIntent = { intent = it })
+        content(state = RegisterState(emailError = RegisterEmailError.Taken), onIntent = { intent = it })
         onNodeWithTag(RegisterTags.EmailTaken).assertHasClickAction().performScrollTo().performClick()
         assertEquals(RegisterIntent.SignInWithTakenEmail, intent)
+    }
+
+    // A outra recusa do mesmo campo é como as das outras três: mensagem no slot, sem
+    // pergunta e sem clique — não há para onde levar quem digitou o e-mail errado.
+    @Test fun `the malformed email message is not an offer to sign in`() = runComposeUiTest {
+        content(state = RegisterState(emailError = RegisterEmailError.Invalid))
+        onNodeWithText("Digite um e-mail válido.").assertExists()
+        onNodeWithTag(RegisterTags.EmailTaken).assertDoesNotExist()
     }
 
     @Test fun `the footer link goes to the login without carrying anything`() = runComposeUiTest {
@@ -119,7 +128,7 @@ class RegisterScreenTest {
         phone = "(11) 9999",
         password = "12345",
         invalidName = true,
-        emailTaken = true,
+        emailError = RegisterEmailError.Taken,
         invalidPhone = true,
         invalidPassword = true,
     )

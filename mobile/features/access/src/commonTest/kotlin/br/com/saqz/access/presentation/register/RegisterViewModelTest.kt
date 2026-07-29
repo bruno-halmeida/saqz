@@ -1,5 +1,6 @@
 package br.com.saqz.access.presentation.register
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.AuthStateListener
@@ -49,6 +50,7 @@ class RegisterViewModelTest {
         assertTrue(state.invalidName, "nome vazio")
         assertTrue(state.invalidPhone, "telefone incompleto")
         assertTrue(state.invalidPassword, "senha curta")
+        assertNull(state.emailError, "e-mail bem formado não entra na conta")
         assertEquals(3, state.invalidFieldCount)
         assertTrue(auth.accounts.isEmpty(), "formulário torto não chega ao provedor")
     }
@@ -109,7 +111,7 @@ class RegisterViewModelTest {
         auth.complete(AuthResult.Failure(NativeFailureCode.EMAIL_IN_USE))
 
         val state = viewModel.state.value
-        assertTrue(state.emailTaken)
+        assertEquals(RegisterEmailError.Taken, state.emailError)
         assertEquals(1, state.invalidFieldCount)
         assertNull(state.error, "e-mail duplicado é erro de campo, não do alerta")
     }
@@ -145,13 +147,63 @@ class RegisterViewModelTest {
     fun `answering the taken email question prefills the login form`() = runTest(mainDispatcher) {
         val auth = FakeAuthPort()
         val authentication = AuthenticationStateMachine(auth) {}
-        val viewModel = RegisterViewModel(auth, authentication) {}
+        val viewModel = RegisterViewModel(SavedStateHandle(), auth, authentication) {}
         viewModel.onIntent(RegisterIntent.UpdateEmail(" rafa@galera.com "))
 
         viewModel.onIntent(RegisterIntent.SignInWithTakenEmail)
 
         assertEquals("rafa@galera.com", authentication.state.value.email)
         assertEquals(RegisterEffect.OpenLogin, viewModel.effects.first())
+    }
+
+    /**
+     * O achado do Codex: sem recusa local, um e-mail malformado chegava ao provedor, voltava
+     * como `INVALID_CREDENTIALS` e a tela de **cadastro** exibia "E-mail ou senha inválidos"
+     * sem apontar campo nenhum. Agora nem sai daqui, e o erro é do campo.
+     */
+    @Test
+    fun `a malformed email is refused locally and never reaches the provider`() = runTest(mainDispatcher) {
+        listOf("", "   ", "ana", "ana@", "@exemplo.com", "ana@exemplo", "ana@exemplo.", "a n@exemplo.com", "a@b@c.com")
+            .forEach { malformed ->
+                val (viewModel, auth) = fixture()
+                viewModel.fill(name = "Ana Souza", email = malformed, phone = "11999990000", password = "senha-forte")
+
+                viewModel.onIntent(RegisterIntent.Submit)
+
+                val state = viewModel.state.value
+                assertEquals(RegisterEmailError.Invalid, state.emailError, "aceitou \"$malformed\"")
+                assertEquals(1, state.invalidFieldCount, "\"$malformed\" acendeu campo alheio")
+                assertNull(state.error, "e-mail torto é erro de campo, não do alerta")
+                assertTrue(auth.accounts.isEmpty(), "\"$malformed\" chegou ao provedor")
+            }
+    }
+
+    // Morte de processo: nome, e-mail e telefone voltam; a senha, **nunca** — ela não é
+    // gravada, e é isso que este teste tranca.
+    @Test
+    fun `the draft survives process death without the password`() = runTest(mainDispatcher) {
+        val savedState = SavedStateHandle()
+        val (dying, _) = fixture(savedState)
+        dying.fill(name = "Ana Souza", email = "ana@exemplo.com", phone = "11999990000", password = "senha-forte")
+
+        val (restored, _) = fixture(savedState)
+
+        assertEquals("Ana Souza", restored.state.value.name)
+        assertEquals("ana@exemplo.com", restored.state.value.email)
+        assertEquals("11999990000", restored.state.value.phone)
+        assertEquals("", restored.state.value.password, "senha não pode sobreviver ao processo")
+    }
+
+    @Test
+    fun `the draft dies with the account created`() = runTest(mainDispatcher) {
+        val savedState = SavedStateHandle()
+        val (viewModel, auth) = fixture(savedState)
+        viewModel.submitValidForm()
+
+        auth.complete(AuthResult.Success(USER))
+
+        val (fresh, _) = fixture(savedState)
+        assertEquals(RegisterState(), fresh.state.value)
     }
 
     @Test
@@ -177,10 +229,11 @@ class RegisterViewModelTest {
     }
 
     private fun fixture(
+        savedState: SavedStateHandle = SavedStateHandle(),
         onTransition: (AuthTransition) -> Unit = {},
     ): Pair<RegisterViewModel, FakeAuthPort> {
         val auth = FakeAuthPort()
-        return RegisterViewModel(auth, AuthenticationStateMachine(auth) {}, onTransition) to auth
+        return RegisterViewModel(savedState, auth, AuthenticationStateMachine(auth) {}, onTransition) to auth
     }
 
     private data class AccountCall(val name: String, val email: String, val password: String)
