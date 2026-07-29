@@ -55,6 +55,14 @@ sealed interface SessionAccessState {
          * exatamente o envio que acabou de falhar.
          */
         val photoFailed: Boolean = false,
+        /**
+         * A foto já subiu nesta identidade. Existe porque o envio da foto e o do perfil são
+         * dois pedidos: quando a foto sobe e o perfil é recusado, a 1c volta com a imagem na
+         * tela — e sem esta marca o toque seguinte reenviaria o arquivo inteiro, até 5 MiB,
+         * por causa de um erro que não foi dele. Cai quando a pessoa escolhe outra foto,
+         * que é quando há de novo algo a enviar.
+         */
+        val photoUploaded: Boolean = false,
     ) : SessionAccessState
 
     data object Bootstrapping : SessionAccessState
@@ -136,9 +144,15 @@ class SessionAccessStateMachine(
      * não vale mais.
      *
      * [edit] roda mais de uma vez sob disputa, então **não pode ter efeito colateral**:
-     * decida no lambda, aja com o contexto que [mutate] devolve.
+     * decida no lambda, aja com o contexto que [begin] devolve.
+     *
+     * **Este é o único escritor sem token, e por isso o seu uso é fechado**: os cinco
+     * intentos que *definem* contexto (digitar na 1c, começar a conclusão, repetir o
+     * bootstrap, sair, autenticar) e a cauda da saída. Nenhum deles é retomada de coisa
+     * assíncrona — são o instante em que a pessoa mandou. Tudo que volta depois de suspender
+     * escreve por [Turn], que revalida a geração no mesmo ponto atômico.
      */
-    private fun mutate(edit: (SessionContext) -> SessionContext?): SessionContext? {
+    private fun begin(edit: (SessionContext) -> SessionContext?): SessionContext? {
         while (true) {
             val current = context.value
             val next = edit(current) ?: return null
@@ -146,9 +160,41 @@ class SessionAccessStateMachine(
         }
     }
 
-    /** Escreve o estado só se o contexto ainda for o de [token] — na mesma operação. */
-    private fun publish(token: Int, state: SessionAccessState): SessionContext? =
-        mutate { if (it.generation == token) it.copy(state = state) else null }
+    /**
+     * O passe da cadeia assíncrona, e a resposta à pergunta "quem pode escrever depois de
+     * suspender".
+     *
+     * A conclusão de perfil é uma cadeia de vários passos — nome ao provedor, token
+     * renovado, bootstrap, foto, perfil, publicação — e cada passo era responsável por
+     * conferir a geração por conta própria. O que passasse despercebido virava o defeito da
+     * rodada seguinte: primeiro faltou a guarda, depois faltou zerar a pendência, depois a
+     * guarda tinha corrida, depois faltou guarda no retorno sem foto.
+     *
+     * O [Turn] fecha isso por construção: ele nasce no intento que começou a cadeia,
+     * atravessa **todos** os passos, e é a única porta de escrita depois de uma suspensão.
+     * Passo que não recebe o passe não escreve; passo que recebe não consegue escrever fora
+     * da geração dele, porque a revalidação está dentro da mesma operação atômica da escrita.
+     */
+    private inner class Turn(private val token: Int) {
+        /** Escreve o estado se a cadeia ainda for a corrente; nulo é contexto perdido. */
+        fun publish(state: SessionAccessState): SessionContext? =
+            begin { if (it.generation == token) it.copy(state = state) else null }
+
+        /** Muda estado e contabilidade juntos, sob a mesma revalidação. */
+        fun advance(edit: (SessionContext) -> SessionContext?): SessionContext? =
+            begin { if (it.generation == token) edit(it) else null }
+
+        /**
+         * Revalida sem escrever, para o passo cujo efeito é **externo** — o pedido HTTP, que
+         * sai com a sessão que o provedor tiver agora. Não fecha a janela entre a conferência
+         * e o envio; o que ela garante é que a cadeia não chega ao pedido depois de a conta
+         * ter mudado.
+         */
+        fun current(): Boolean = context.value.generation == token
+    }
+
+    /** O passe de uma cadeia que acabou de nascer neste contexto. */
+    private fun SessionContext.turn() = Turn(generation)
 
     /**
      * A troca de contexto inteira, aplicada de uma vez: a geração sobe **e** o que ficou
@@ -177,7 +223,9 @@ class SessionAccessStateMachine(
             }
             is SessionIntent.UpdateName -> updateIdentity { copy(name = intent.value, invalidName = false) }
             is SessionIntent.UpdatePhone -> updateIdentity { copy(phone = intent.value, invalidPhone = false) }
-            is SessionIntent.UpdatePhoto -> updateIdentity { copy(photo = intent.value, photoFailed = false) }
+            is SessionIntent.UpdatePhoto -> updateIdentity {
+                copy(photo = intent.value, photoFailed = false, photoUploaded = false)
+            }
             SessionIntent.CompleteIdentity -> completeIdentity()
             SessionIntent.RetryBootstrap -> retryBootstrap()
             SessionIntent.Logout -> logout()
@@ -186,13 +234,13 @@ class SessionAccessStateMachine(
 
     /**
      * Toda condição de entrada — inclusive "a saída já foi decidida" — mora dentro do
-     * [mutate], e não num `if` antes dele. Trabalho disparado **entre** o intento de sair e
+     * [begin], e não num `if` antes dele. Trabalho disparado **entre** o intento de sair e
      * o fim da saída nasceria já com a geração nova e passaria pela guarda; recusá-lo é
      * parte da mesma operação atômica que o aplica.
      */
     private fun updateIdentity(edit: SessionAccessState.CompletingIdentity.() -> SessionAccessState.CompletingIdentity) {
-        mutate { context ->
-            val current = context.state as? SessionAccessState.CompletingIdentity ?: return@mutate null
+        begin { context ->
+            val current = context.state as? SessionAccessState.CompletingIdentity ?: return@begin null
             if (context.loggingOut || current.isLoading) null
             else context.copy(state = current.edit().copy(error = null))
         }
@@ -208,9 +256,9 @@ class SessionAccessStateMachine(
         // A transição para "enviando" é o que decide quem envia: só um `compareAndSet`
         // vence, então o envio tem um dono só. É também o que sustenta o toque duplo — o
         // segundo encontra `isLoading` e desiste dentro da mesma operação.
-        val started = mutate { context ->
-            val current = context.state as? SessionAccessState.CompletingIdentity ?: return@mutate null
-            if (context.loggingOut || current.isLoading) return@mutate null
+        val started = begin { context ->
+            val current = context.state as? SessionAccessState.CompletingIdentity ?: return@begin null
+            if (context.loggingOut || current.isLoading) return@begin null
             val name = normalizedDisplayName(current.name)
             val phone = normalizedBrMobilePhone(current.phone)
             val next = if (name == null || phone == null) {
@@ -231,7 +279,7 @@ class SessionAccessStateMachine(
             context.copy(state = next)
         } ?: return
         val submitting = started.state as? SessionAccessState.CompletingIdentity ?: return
-        submitting.send(started.generation)
+        submitting.send(started.turn())
     }
 
     /**
@@ -239,13 +287,13 @@ class SessionAccessStateMachine(
      * [SessionAccessState.CompletingIdentity.session]: sem sessão o nome sobe ao provedor
      * antes do bootstrap; com sessão o perfil vai direto.
      */
-    private fun SessionAccessState.CompletingIdentity.send(token: Int) {
+    private fun SessionAccessState.CompletingIdentity.send(turn: Turn) {
         // Recusa local: os campos foram marcados e não há o que enviar.
         if (!isLoading) return
         val validName = normalizedDisplayName(name) ?: return
         val validPhone = normalizedBrMobilePhone(phone) ?: return
-        if (session == null) claimNameThenBootstrap(this, validName, validPhone, token)
-        else scope.launch { submitProfile(this@send, validName, validPhone, token) }
+        if (session == null) claimNameThenBootstrap(this, validName, validPhone, turn)
+        else scope.launch { submitProfile(this@send, validName, validPhone, turn) }
     }
 
     /**
@@ -259,16 +307,15 @@ class SessionAccessStateMachine(
         current: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
-        token: Int,
+        turn: Turn,
     ) {
         auth.updateDisplayName(name, authCallback { result ->
             when (result) {
-                AuthResult.Cancelled -> publish(token, current.copy(isLoading = false, name = name))
-                is AuthResult.Failure -> publish(
-                    token,
+                AuthResult.Cancelled -> turn.publish(current.copy(isLoading = false, name = name))
+                is AuthResult.Failure -> turn.publish(
                     current.copy(isLoading = false, name = name, error = result.code.toUiError()),
                 )
-                is AuthResult.Success -> refreshTokenThenBootstrap(result.user, current, name, phone, token)
+                is AuthResult.Success -> refreshTokenThenBootstrap(result.user, current, name, phone, turn)
             }
         })
     }
@@ -278,26 +325,24 @@ class SessionAccessStateMachine(
         current: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
-        token: Int,
+        turn: Turn,
     ) {
         auth.idToken(true, object : TokenCallback {
             override fun complete(result: TokenResult) {
                 when (result) {
-                    is TokenResult.Failure -> publish(
-                        token,
+                    is TokenResult.Failure -> turn.publish(
                         current.copy(isLoading = false, name = name, error = result.code.toUiError()),
                     )
                     // Guardar a pendência e entrar em `Bootstrapping` é uma operação só: se
                     // fossem duas, um logout no meio deixaria a pendência para a conta
                     // seguinte consumir.
-                    is TokenResult.Success -> mutate { context ->
-                        if (context.generation != token) return@mutate null
+                    is TokenResult.Success -> turn.advance { context ->
                         context.copy(
                             pendingIdentity = PendingIdentity(name, phone, current.photo),
                             currentUser = user,
                             state = SessionAccessState.Bootstrapping,
                         )
-                    }?.let { bootstrap(token) }
+                    }?.let { bootstrap(turn) }
                 }
             }
         })
@@ -307,11 +352,19 @@ class SessionAccessStateMachine(
         base: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
-        token: Int,
+        turn: Turn,
     ) {
-        val current = uploadPhoto(base, token) ?: return
+        val current = when (val photo = uploadPhoto(base, turn)) {
+            is PhotoOutcome.Sent -> photo.identity
+            is PhotoOutcome.Refused -> photo.identity
+            // A cadeia acabou: a conta mudou enquanto a imagem subia.
+            PhotoOutcome.ContextLost -> return
+        }
+        // O `completeProfile` sai com a sessão que o provedor tiver **agora**: revalidar
+        // antes de disparar é o que impede a cadeia de chegar ao pedido depois da troca.
+        if (!turn.current()) return
         val result = session.completeProfile(phone, name)
-        publish(token, when (result) {
+        turn.publish(when (result) {
             is SaqzResult.Success -> if (current.photoFailed) {
                 // Gravou nome e telefone, e só a foto ficou pelo caminho: a 1c continua de
                 // pé para dizer isso, agora **com** sessão. O próximo toque não tem mais
@@ -332,34 +385,52 @@ class SessionAccessStateMachine(
     }
 
     /**
-     * A foto sobe **antes** do perfil e devolve o estado com que o resto do envio segue.
+     * A foto sobe **antes** do perfil, e o resultado é um dos três — nunca um estado
+     * devolvido em silêncio.
      *
      * Antes porque é o único momento em que a 1c ainda está na tela para avisar: depois do
      * `completeProfile` bem-sucedido a pessoa já entrou, e um aviso emitido ali não teria
      * onde aparecer. Falhar aqui não interrompe nada — o envio do nome e do telefone
      * acontece igual, com a foto descartada.
      *
-     * Nulo é a saída da guarda de geração: o contexto trocou enquanto a imagem subia, e
-     * daí em diante não há mais o que escrever nem perfil que gravar.
+     * O tipo de retorno é o que obriga quem chama a decidir: **todo** caminho de saída,
+     * inclusive "não havia foto para enviar", passa pela revalidação da cadeia, e o
+     * compilador não deixa esquecer o caso em que ela acabou.
      */
     private suspend fun uploadPhoto(
         base: SessionAccessState.CompletingIdentity,
-        token: Int,
-    ): SessionAccessState.CompletingIdentity? {
-        val photo = base.photo ?: return base
-        val failed = session.uploadPhoto(photo.bytes, photo.mediaType) is SaqzResult.Failure
-        if (!failed) return if (context.value.generation == token) base else null
-        val warned = base.copy(photo = null, photoFailed = true)
-        return if (publish(token, warned) != null) warned else null
+        turn: Turn,
+    ): PhotoOutcome {
+        val photo = base.photo
+        // Sem foto, ou com a foto já enviada numa tentativa anterior: nada a fazer aqui,
+        // mas a cadeia continua sendo revalidada como em qualquer outro passo.
+        if (photo == null || base.photoUploaded) {
+            return if (turn.current()) PhotoOutcome.Sent(base) else PhotoOutcome.ContextLost
+        }
+        // Revalidar **antes** de disparar, e não só ao voltar: o envio sai com a sessão que
+        // o provedor tiver agora, então a imagem de uma pessoa iria com a conta de outra.
+        // A mesma regra do `completeProfile` — todo efeito externo da cadeia é precedido
+        // por esta pergunta.
+        if (!turn.current()) return PhotoOutcome.ContextLost
+        val sent = session.uploadPhoto(photo.bytes, photo.mediaType) is SaqzResult.Success
+        val next = if (sent) {
+            base.copy(photoUploaded = true)
+        } else {
+            base.copy(photo = null, photoFailed = true)
+        }
+        // A marca entra pelo mesmo ponto atômico de qualquer outra escrita: se a cadeia
+        // acabou, ela não entra e o envio do perfil também não acontece.
+        turn.publish(next) ?: return PhotoOutcome.ContextLost
+        return if (sent) PhotoOutcome.Sent(next) else PhotoOutcome.Refused(next)
     }
 
     private fun retryBootstrap() {
-        val started = mutate { context ->
-            if (context.loggingOut || context.currentUser == null) return@mutate null
-            if (context.state !is SessionAccessState.BootstrapError) return@mutate null
+        val started = begin { context ->
+            if (context.loggingOut || context.currentUser == null) return@begin null
+            if (context.state !is SessionAccessState.BootstrapError) return@begin null
             context.copy(state = SessionAccessState.Bootstrapping)
         } ?: return
-        bootstrap(started.generation)
+        bootstrap(started.turn())
     }
 
     private fun logout() {
@@ -370,11 +441,15 @@ class SessionAccessStateMachine(
         //
         // O contexto troca **aqui**, no intento, e não quando a saída termina: a decisão de
         // sair é deste instante, e o que estava em voo ou guardado tem de cair desde já.
-        mutate { if (it.loggingOut) null else it.switched().copy(loggingOut = true) } ?: return
+        begin { if (it.loggingOut) null else it.switched().copy(loggingOut = true) } ?: return
         localState.writeSelectedGroupId(null, resultCallback {
             localState.writePendingInvite(null, resultCallback {
                 auth.signOut(resultCallback {
-                    mutate { it.copy(loggingOut = false, state = SessionAccessState.SignedOut) }
+                    // A cauda da própria saída, e o único ponto assíncrono que escreve sem
+                    // passe: enquanto `loggingOut` está de pé, nenhum outro caminho muda o
+                    // contexto — conclusão, retry, digitação e autenticação recusam todos
+                    // dentro do próprio CAS. Ela fecha a transição que já aconteceu.
+                    begin { it.copy(loggingOut = false, state = SessionAccessState.SignedOut) }
                 })
             })
         })
@@ -393,8 +468,8 @@ class SessionAccessStateMachine(
         // troca e o destino entram na mesma operação, senão a conta nova existiria por um
         // instante sem estado próprio.
         val nameless = normalizedDisplayName(user.displayName.orEmpty()) == null
-        val switched = mutate { context ->
-            if (context.loggingOut) return@mutate null
+        val switched = begin { context ->
+            if (context.loggingOut) return@begin null
             context.switched().copy(
                 currentUser = user,
                 state = if (nameless) {
@@ -404,15 +479,15 @@ class SessionAccessStateMachine(
                 },
             )
         } ?: return
-        if (!nameless) bootstrap(switched.generation)
+        if (!nameless) bootstrap(switched.turn())
     }
 
     /** Só a parte assíncrona: quem já pôs o estado em `Bootstrapping` chama daqui. */
-    private fun bootstrap(token: Int) {
+    private fun bootstrap(turn: Turn) {
         scope.launch {
             when (val result = session.bootstrap()) {
-                is SaqzResult.Failure -> publish(token, SessionAccessState.BootstrapError)
-                is SaqzResult.Success -> resumePendingOrGate(result.value, token)
+                is SaqzResult.Failure -> turn.publish(SessionAccessState.BootstrapError)
+                is SaqzResult.Success -> resumePendingOrGate(result.value, turn)
             }
         }
     }
@@ -422,14 +497,13 @@ class SessionAccessStateMachine(
      * preserva para o `RetryBootstrap`, e um `completeProfile` que falha devolve a 1c já
      * **com** sessão — dali em diante o caminho normal, pós-bootstrap, dá conta.
      */
-    private suspend fun resumePendingOrGate(session: AccessSession, token: Int) {
+    private suspend fun resumePendingOrGate(session: AccessSession, turn: Turn) {
         // Consumir a pendência e entrar em "enviando" é a mesma operação que a guarda:
         // ler a pendência, conferir a geração e escrever o estado em três etapas era o que
         // deixava a identidade de uma conta ser aplicada pelo bootstrap da seguinte.
-        val resumed = mutate { context ->
-            if (context.generation != token) return@mutate null
+        val resumed = turn.advance { context ->
             val pending = context.pendingIdentity
-                ?: return@mutate context.copy(state = readyOrIdentityGate(session))
+                ?: return@advance context.copy(state = readyOrIdentityGate(session))
             context.copy(
                 pendingIdentity = null,
                 state = SessionAccessState.CompletingIdentity(
@@ -443,7 +517,7 @@ class SessionAccessStateMachine(
         } ?: return
         val base = resumed.state as? SessionAccessState.CompletingIdentity ?: return
         if (!base.isLoading) return
-        submitProfile(base, base.name, base.phone, token)
+        submitProfile(base, base.name, base.phone, turn)
     }
 
     /**
@@ -532,4 +606,19 @@ private const val FIELD_PHONE = "phone"
 private fun DataError.toUiError(): AuthUiError = when (this) {
     DataError.Connectivity, DataError.Timeout -> AuthUiError.NETWORK_UNAVAILABLE
     else -> AuthUiError.UNKNOWN
+}
+
+/**
+ * O que o passo da foto devolve. Três casos, e nenhum deles é um estado entregue em
+ * silêncio: quem chama tem de decidir o que fazer com cada um, e o compilador cobra.
+ */
+private sealed interface PhotoOutcome {
+    /** Subiu agora, já tinha subido, ou não havia foto: a cadeia segue com esta identidade. */
+    data class Sent(val identity: SessionAccessState.CompletingIdentity) : PhotoOutcome
+
+    /** Só a foto falhou; o aviso já está na tela e o perfil sobe do mesmo jeito. */
+    data class Refused(val identity: SessionAccessState.CompletingIdentity) : PhotoOutcome
+
+    /** A conta mudou no meio: não há mais cadeia, e nada mais deve sair daqui. */
+    data object ContextLost : PhotoOutcome
 }

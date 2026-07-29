@@ -18,6 +18,7 @@ import platform.CoreFoundation.CFRelease
 import platform.CoreFoundation.kCFBooleanTrue
 import platform.CoreFoundation.kCFNumberIntType
 import platform.CoreGraphics.CGImageRef
+import platform.CoreGraphics.CGImageRelease
 import platform.Foundation.NSData
 import platform.ImageIO.CGImageSourceCreateThumbnailAtIndex
 import platform.ImageIO.CGImageSourceCreateWithData
@@ -55,10 +56,17 @@ internal actual suspend fun decodeAvatarPhoto(bytes: ByteArray, targetPx: Int): 
         try {
             val source = CGImageSourceCreateWithData(data, null) ?: return@withContext null
             try {
+                // `CGImageSourceCreateThumbnailAtIndex` é `Create`: a imagem reduzida é
+                // **nossa**, e sem este `CFRelease` cada foto escolhida vazava o bitmap até
+                // o processo morrer. O `UIImage` que a embrulha não assume a posse.
                 val thumbnail = source.thumbnail(targetPx) ?: return@withContext null
-                val png = UIImagePNGRepresentation(UIImage.imageWithCGImage(thumbnail))
-                    ?: return@withContext null
-                runCatching { png.toByteArray().decodeToImageBitmap() }.getOrNull()
+                try {
+                    val png = UIImagePNGRepresentation(UIImage.imageWithCGImage(thumbnail))
+                        ?: return@withContext null
+                    runCatching { png.toByteArray().decodeToImageBitmap() }.getOrNull()
+                } finally {
+                    CGImageRelease(thumbnail)
+                }
             } finally {
                 CFRelease(source)
             }

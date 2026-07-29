@@ -469,6 +469,80 @@ class SessionAccessStateMachineTest {
         assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
     }
 
+    // ---- todo passo da cadeia responde à geração, inclusive os que não fazem nada ----
+
+    // O caminho "sem foto" também é um passo da cadeia: não envia nada, mas continua sendo
+    // revalidado. A janela é entre o `launch` e a corrotina começar a correr — sair da conta
+    // aí deixava o `completeProfile` sair mesmo assim, e ele vai com a sessão que o provedor
+    // tiver **agora**, que já é a de outra pessoa.
+    @Test
+    fun `a logout before the completion coroutine runs stops the profile call`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        fixture.machine.onIntent(SessionIntent.Logout)
+        runCurrent()
+
+        assertTrue(fixture.session.profileCalls.isEmpty())
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+    }
+
+    // A mesma janela com foto: nem a imagem sobe.
+    @Test
+    fun `a logout before the completion coroutine runs stops the photo upload`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        fixture.machine.onIntent(SessionIntent.Logout)
+        runCurrent()
+
+        assertTrue(fixture.session.photoUploads.isEmpty())
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    // A foto que já subiu não sobe de novo: o perfil recusado devolve a 1c com a imagem na
+    // tela, e o toque seguinte reenviaria o arquivo inteiro por causa de um erro que não
+    // foi dele.
+    @Test
+    fun `a photo that already went up is not sent again on retry`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+        assertEquals(1, fixture.session.photoUploads.size)
+
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // Escolher outra foto é ter de novo o que enviar.
+    @Test
+    fun `choosing another photo makes it sendable again`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(otherPhoto))
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertEquals(2, fixture.session.photoUploads.size)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
     // ---- o contexto trocado leva junto o que ficou guardado ----
 
     // O vazamento entre contas: a conta A termina os callbacks do provedor e deixa a
@@ -876,6 +950,8 @@ class SessionAccessStateMachineTest {
         val session = AccessSession(AccessUser("user-id", "person@example.test", "Person Name"), emptyList())
         val phoneRequiredSession = session.copy(user = session.user.copy(phoneRequired = true))
         val photo = ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg")
+
+        val otherPhoto = ProfilePhotoResult.Selected(byteArrayOf(9, 9, 9), "image/jpeg")
 
         /** Outra pessoa, no mesmo aparelho: nome próprio, para o bootstrap dela passar. */
         val otherAccount = NativeUser("other-subject", "outra@example.test", true, "Outra Pessoa")
