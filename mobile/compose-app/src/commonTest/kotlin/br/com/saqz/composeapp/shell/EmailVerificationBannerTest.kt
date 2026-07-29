@@ -55,6 +55,24 @@ class EmailVerificationBannerTest {
         onNodeWithTag(SaqzEmailBannerTag).assertIsDisplayed()
     }
 
+    // A trava acende antes de a chamada voltar: o envio em voo já basta para tirar a ação
+    // da faixa, e é o que a mantém travada quando a tela é recriada no meio do envio. A
+    // restauração em si é medida no `ShellEmailBannerRestorationTest`, no `:android-app` —
+    // o `StateRestorationTester` do Compose é `TODO()` no Kotlin/Native, que é onde esta
+    // suíte roda.
+    @Test
+    fun anInFlightResendAlreadyLocksTheAction() = runComposeUiTest {
+        val auth = FakeAuthPort(result = null)
+        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth, now = { 0L }) } }
+
+        onNodeWithTag(SaqzEmailBannerResendTag).performClick()
+        waitForIdle()
+
+        onNodeWithTag(SaqzEmailBannerResendTag).assertDoesNotExist()
+        onNodeWithTag(SaqzEmailBannerTag).assertIsDisplayed()
+        assertEquals(1, auth.verificationCalls)
+    }
+
     // Falha não trava: quem não conseguiu reenviar precisa poder tentar de novo.
     @Test
     fun aFailedResendSaysSoAndStaysAvailable() = runComposeUiTest {
@@ -108,14 +126,15 @@ class EmailVerificationBannerTest {
         onNodeWithTag(SaqzEmailBannerTag).assertIsDisplayed()
     }
 
+    /** [result] nulo é o envio que fica no ar: o callback nunca volta. */
     private class FakeAuthPort(
-        private val result: OperationResult = OperationResult.Success,
+        private val result: OperationResult? = OperationResult.Success,
     ) : NativeAuthPort {
         var verificationCalls = 0
 
         override fun sendVerification(done: ResultCallback) {
             verificationCalls += 1
-            done.complete(result)
+            result?.let(done::complete)
         }
 
         override fun observe(listener: AuthStateListener): Cancelable =

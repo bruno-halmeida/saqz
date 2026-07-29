@@ -465,11 +465,17 @@ class SessionAccessStateMachine(
     private fun refreshEmailVerification() {
         val current = mutableState.value as? SessionAccessState.Ready ?: return
         if (current.emailVerified) return
+        // A identidade de quem pediu, para o retorno saber a qual sessão pertence.
+        val asked = current.session.user.id
         auth.reloadUser(authCallback { result ->
             if (result !is AuthResult.Success || !result.user.emailVerified) return@authCallback
-            // O estado é relido no callback: o reload é assíncrono e a sessão pode ter
-            // caído (logout, invalidação) enquanto ele voltava.
+            // O estado é relido no callback: o reload é assíncrono e, enquanto ele voltava,
+            // a sessão pode ter caído (logout, invalidação) **ou trocado de dono** — sair e
+            // entrar com outra conta é um percurso de segundos. Conferir só que ainda é
+            // `Ready` deixaria o "confirmado" de quem pediu apagar a faixa de quem chegou
+            // depois, e o e-mail que continua por confirmar é o da conta nova.
             val ready = mutableState.value as? SessionAccessState.Ready ?: return@authCallback
+            if (ready.session.user.id != asked) return@authCallback
             mutableState.value = SessionAccessState.Ready(
                 ready.session.copy(user = ready.session.user.copy(emailVerified = true)),
             )

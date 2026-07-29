@@ -9,8 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,6 +35,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlin.time.Clock
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -43,6 +46,10 @@ internal const val SaqzEmailBannerResendTag = "shell-email-banner-resend"
 /**
  * Trava entre envios: o reenvio existe para quem não recebeu, não para quem quer insistir.
  * Um minuto é o suficiente para o e-mail chegar antes de a ação voltar.
+ *
+ * O relógio é de parede (e injetável pelo parâmetro `now`) e não monotônico: a trava é
+ * salva e precisa continuar valendo depois de a tela ser recriada, e uma marca monotônica
+ * não sobrevive a isso — nem ao processo, onde ela viraria um número sem referência.
  */
 private const val ResendCooldownMillis = 60_000L
 
@@ -58,42 +65,58 @@ private const val ResendCooldownMillis = 60_000L
  * `SaqzOfflineBanner`: faixa navy no topo do conteúdo, texto curto, uma ação. Sem o
  * spinner de lá — ali há trabalho na fila, aqui há um aviso parado.
  *
- * [auth] é parâmetro com padrão do Koin, e não uma resolução escondida no corpo, para o
- * teste montar a faixa com uma porta falsa sem subir um grafo inteiro.
+ * [auth] e [now] são parâmetros com padrão, e não resoluções escondidas no corpo, para o
+ * teste montar a faixa com uma porta falsa e um relógio seu sem subir um grafo inteiro.
+ *
+ * Pública, ao contrário do resto do shell, porque a recriação da tela só é testável onde o
+ * `StateRestorationTester` funciona — no host Android do `:android-app`. No Kotlin/Native,
+ * que é onde o `commonTest` deste módulo roda, ele é `TODO()`.
  */
 @Composable
-internal fun EmailVerificationBanner(
+fun EmailVerificationBanner(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     auth: NativeAuthPort = koinInject(),
+    now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     // Volta do plano de fundo: a pessoa saiu para o app de e-mail, tocou no link e voltou.
     // O provedor só reflete isso ao recarregar o usuário, então é aqui que se pergunta —
     // e a faixa some sozinha quando a resposta chega ao estado da sessão. A primeira
     // resumida também dispara, o que é de graça: quem já confirmou não tem faixa.
-    LifecycleResumeEffect(onRefresh) {
-        onRefresh()
+    // As duas lambdas passam por `rememberUpdatedState` porque são lidas de dentro de
+    // efeitos que reiniciam por conta própria, e ler o parâmetro direto ali prende a versão
+    // da composição em que o efeito começou.
+    val refresh by rememberUpdatedState(onRefresh)
+    val clock by rememberUpdatedState(now)
+    LifecycleResumeEffect(Unit) {
+        refresh()
         onPauseOrDispose {}
     }
 
-    // `rememberSaveable` na trava, `remember` no resto: o envio em voo morre com a
-    // recomposição de qualquer jeito, mas a trava é o que impede o segundo toque — girar
-    // o aparelho não pode devolver o botão. Recriar reinicia o minuto do zero, o que erra
-    // para o lado seguro.
-    var cooling by rememberSaveable { mutableStateOf(false) }
+    // A trava é o **instante** em que ela termina, guardado em `rememberSaveable`, e não um
+    // "está esperando" que renasce falso: girar o aparelho não pode devolver o botão, e o
+    // que sobra do minuto se mede pelo relógio, não recomeça. `sending` e `failed` seguem
+    // em `remember` porque são da volta que está acontecendo — quem os perde na recriação
+    // já encontra a trava acesa.
+    var lockedUntil by rememberSaveable { mutableLongStateOf(0L) }
     var sending by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
+    val cooling = lockedUntil > 0L
 
-    LaunchedEffect(cooling) {
-        if (!cooling) return@LaunchedEffect
-        delay(ResendCooldownMillis)
-        cooling = false
+    LaunchedEffect(lockedUntil) {
+        if (lockedUntil == 0L) return@LaunchedEffect
+        val remaining = lockedUntil - clock()
+        // Menor ou igual a zero é a trava que venceu enquanto a tela não existia.
+        if (remaining > 0) delay(remaining)
+        lockedUntil = 0L
     }
 
     EmailVerificationBannerContent(
         message = when {
             failed -> stringResource(Res.string.shell_email_resend_failed)
-            cooling -> stringResource(Res.string.shell_email_resent)
+            // Enquanto o envio está no ar a faixa segue no aviso, com o botão ocupado: a
+            // confirmação é o que já saiu, não o que está saindo.
+            cooling && !sending -> stringResource(Res.string.shell_email_resent)
             else -> stringResource(Res.string.shell_email_unverified)
         },
         loading = sending,
@@ -103,10 +126,20 @@ internal fun EmailVerificationBanner(
             {
                 sending = true
                 failed = false
+                // A trava acende **antes** da chamada, não no retorno dela. Se a tela for
+                // recriada com o envio em voo, o callback cai numa composição morta e não
+                // teria como acendê-la — e a faixa nova liberaria outro reenvio na hora,
+                // que é exatamente o spam que a trava existe para impedir.
+                lockedUntil = now() + ResendCooldownMillis
                 auth.sendVerification(object : ResultCallback {
                     override fun complete(result: OperationResult) {
                         sending = false
-                        if (result is OperationResult.Success) cooling = true else failed = true
+                        // Falha destrava na hora: quem não conseguiu reenviar não deve
+                        // esperar o minuto de quem conseguiu.
+                        if (result is OperationResult.Failure) {
+                            failed = true
+                            lockedUntil = 0L
+                        }
                     }
                 })
             }

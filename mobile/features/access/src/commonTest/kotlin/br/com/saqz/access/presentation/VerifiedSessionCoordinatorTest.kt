@@ -111,6 +111,32 @@ class SessionAccessStateMachineTest {
         assertFalse(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
     }
 
+    /**
+     * O reload da conta A voltando depois de a conta B ter entrado: sem conferir de quem é
+     * a resposta, o "confirmado" de A apagava a faixa de B — e o e-mail por confirmar é o
+     * de B. Sair e entrar com outra conta leva segundos; o reload leva uma volta de rede.
+     */
+    @Test
+    fun `a reload from a session that already ended does not touch the one that replaced it`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+        assertEquals(1, fixture.auth.reloadCalls)
+
+        // A conta B entra enquanto o reload de A ainda está no ar.
+        val other = session.copy(user = session.user.copy(id = "outra-pessoa"))
+        fixture.session.result = SaqzResult.Success(other)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+
+        fixture.auth.completeAuth(AuthResult.Success(verified))
+
+        val ready = assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertEquals("outra-pessoa", ready.session.user.id)
+        assertFalse(ready.emailVerified)
+    }
+
     // Sem faixa não há o que recarregar: a volta do plano de fundo é frequente e o provedor
     // cobra rede por reload.
     @Test
