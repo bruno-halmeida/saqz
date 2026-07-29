@@ -6,6 +6,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.forgotpassword.ForgotPasswordViewModel
 import br.com.saqz.access.presentation.identitycompletion.IdentityCompletionViewModel
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.resetcode.ResetCodeViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import org.koin.core.module.dsl.onClose
 import org.koin.core.module.dsl.onOptions
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -43,6 +45,9 @@ internal val accessPresentationModule = module {
     viewModelOf(::LoginViewModel)
     viewModelOf(::ForgotPasswordViewModel)
     viewModelOf(::IdentityCompletionViewModel)
+    // `viewModel { params -> }` e não `viewModelOf`: o e-mail vem da rota `ResetCode`, e
+    // não do grafo — resolver e-mail por DI seria inventar um singleton de argumento.
+    viewModel { params -> ResetCodeViewModel(params.get(), get()) }
     // Órfã: sem rota desde o VUL-84, apagada pelo VUL-91 junto com a tela.
     viewModelOf(::VerificationViewModel)
 }

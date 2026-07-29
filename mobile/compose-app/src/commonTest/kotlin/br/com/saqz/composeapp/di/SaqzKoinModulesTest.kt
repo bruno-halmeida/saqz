@@ -27,6 +27,7 @@ import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.resetcode.ResetCodeViewModel
 import br.com.saqz.composeapp.AccessRuntimeDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.GroupsRuntimeDependencies
@@ -256,6 +257,7 @@ class SaqzKoinModulesTest {
         koin.get<GroupSetupViewModel> {
             parametersOf(GroupSetupMode.Edit("ceret"), SavedStateHandle())
         }
+        koin.get<ResetCodeViewModel> { parametersOf("ana@exemplo.com") }
         koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
         koin.get<GroupMembersViewModel> { parametersOf("ceret") }
 

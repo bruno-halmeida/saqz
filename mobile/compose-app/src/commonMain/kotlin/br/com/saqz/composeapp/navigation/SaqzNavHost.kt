@@ -24,6 +24,7 @@ import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
+import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
@@ -111,9 +112,14 @@ internal fun SaqzNavHost(
                 )
             }
             entry<AccessRoute.ResetCode> { route ->
-                AccessSkeleton(
-                    "ResetCode",
-                    "NewPassword" to { backStack.add(AccessRoute.NewPassword(route.email, SkeletonToken)) },
+                ResetCodeRoot(
+                    email = route.email,
+                    onBack = pop,
+                    // "Lembrou a senha? Entrar ›" desiste da troca: o stack volta à base.
+                    onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                    onOpenNewPassword = { email, token ->
+                        backStack.add(AccessRoute.NewPassword(email, token))
+                    },
                 )
             }
             entry<AccessRoute.NewPassword> {
@@ -187,10 +193,6 @@ internal fun SaqzNavHost(
         modifier = modifier.testTag(SaqzDestinationHostTag),
     )
 }
-
-// Valor de andaime: a 1e ainda não troca código por ticket, mas a rota da 1g já carrega o
-// token, então o percurso precisa de algo para levar. O e-mail já vem da 1d de verdade.
-private const val SkeletonToken = "token-de-andaime"
 
 /** Uma tela feia: o nome da rota e um link por saída. */
 @Composable
