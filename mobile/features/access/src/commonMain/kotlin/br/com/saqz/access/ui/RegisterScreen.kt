@@ -28,9 +28,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
+import br.com.saqz.access.presentation.register.RegisterPasswordError
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.access_password_hint
+import br.com.saqz.access.resources.auth_error_weak_password
 import br.com.saqz.access.resources.action_back
 import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.access.resources.register_email_placeholder
@@ -110,6 +112,10 @@ fun RegisterScreen(
                 onClick = onBack,
                 contentDescription = stringResource(Res.string.action_back),
                 outlined = true,
+                // As saídas fecham junto com os campos: o `createAccount` não tem
+                // cancelamento, então sair no meio do envio deixaria a resposta chegando a
+                // uma tela que já saiu — e criando conta e trocando sessão pelas costas.
+                enabled = !state.isLoading,
                 modifier = Modifier.align(Alignment.CenterStart).testTag(RegisterTags.Back),
             ) {
                 SaqzIcon(SaqzIcons.ChevronLeft)
@@ -173,7 +179,9 @@ fun RegisterScreen(
                         style = SaqzTheme.typography.caption,
                         color = colors.errorForeground,
                         modifier = Modifier
-                            .clickable { onIntent(RegisterIntent.SignInWithTakenEmail) }
+                            .clickable(enabled = !state.isLoading) {
+                                onIntent(RegisterIntent.SignInWithTakenEmail)
+                            }
                             .testTag(RegisterTags.EmailTaken),
                     )
                 }
@@ -195,13 +203,19 @@ fun RegisterScreen(
                 icon = SaqzIcons.Lock,
                 kind = SaqzInputKind.Password,
                 enabled = !state.isLoading,
-                errorText = stringResource(Res.string.register_error_password).takeIf { state.invalidPassword },
+                errorText = when (state.passwordError) {
+                    // O comprimento é a recusa local; a política do provedor é a outra, e
+                    // repetir "no mínimo 8" para uma senha de doze não ajudaria ninguém.
+                    RegisterPasswordError.TooShort -> stringResource(Res.string.register_error_password)
+                    RegisterPasswordError.TooWeak -> stringResource(Res.string.auth_error_weak_password)
+                    null -> null
+                },
                 tag = RegisterTags.Password,
             )
         }
         // O helper mora fora do `SaqzInput` só por causa do `margin-top:-4px` do export; o
         // erro da senha o substitui, que é o que o 1j mostra.
-        if (!state.invalidPassword) {
+        if (state.passwordError == null) {
             Text(
                 text = stringResource(Res.string.access_password_hint),
                 style = SaqzTheme.typography.caption,
@@ -227,7 +241,10 @@ fun RegisterScreen(
             style = SaqzTheme.typography.support,
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.clickable(onClick = onSignIn).testTag(RegisterTags.SignIn),
+            // Mesma razão do voltar: enquanto envia, a 1b não tem saída.
+            modifier = Modifier
+                .clickable(enabled = !state.isLoading, onClick = onSignIn)
+                .testTag(RegisterTags.SignIn),
         )
         Spacer(Modifier.height(AccessMetrics.fieldGap))
         Text(
@@ -345,7 +362,7 @@ private fun RegisterScreenErrorPreview() = SaqzTheme {
             invalidName = true,
             emailError = RegisterEmailError.Taken,
             invalidPhone = true,
-            invalidPassword = true,
+            passwordError = RegisterPasswordError.TooShort,
         ),
         onIntent = {},
         onBack = {},

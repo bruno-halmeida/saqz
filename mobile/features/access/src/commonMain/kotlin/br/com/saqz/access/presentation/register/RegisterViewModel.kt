@@ -62,7 +62,7 @@ class RegisterViewModel(
             }
             // A senha **não** é gravada: rascunho de formulário sobrevive num arquivo do
             // sistema, e credencial não tem por que morar lá.
-            is RegisterIntent.UpdatePassword -> edit { copy(password = intent.value, invalidPassword = false) }
+            is RegisterIntent.UpdatePassword -> edit { copy(password = intent.value, passwordError = null) }
             RegisterIntent.Submit -> submit()
             RegisterIntent.SignInWithTakenEmail -> {
                 authentication.onIntent(AuthenticationIntent.UpdateEmail(state.value.email.trim()))
@@ -103,14 +103,14 @@ class RegisterViewModel(
                     invalidName = name == null,
                     emailError = if (email == null) RegisterEmailError.Invalid else null,
                     invalidPhone = phone == null,
-                    invalidPassword = !strongEnough,
+                    passwordError = if (strongEnough) null else RegisterPasswordError.TooShort,
                     error = null,
                 )
             }
             return
         }
 
-        update { it.copy(isLoading = true, emailError = null, error = null) }
+        update { it.copy(isLoading = true, emailError = null, passwordError = null, error = null) }
         // A senha continua no estado durante o envio, ao contrário do login: o 1j desenha o
         // campo ainda preenchido depois da recusa, e obrigar a redigitar oito caracteres por
         // causa de uma queda de rede seria pior do que o risco que o login evita.
@@ -135,13 +135,41 @@ class RegisterViewModel(
         listOf(KeyName, KeyEmail, KeyPhone).forEach { savedState.remove<String>(it) }
     }
 
-    // O único código que vira erro de campo é o `EMAIL_IN_USE`, e é justamente o erro do
-    // 1j que faz uma pergunta. O resto é falha de infraestrutura e vai para o alerta.
-    private fun fail(code: NativeFailureCode) = update {
-        if (code == NativeFailureCode.EMAIL_IN_USE) {
-            it.copy(isLoading = false, emailError = RegisterEmailError.Taken)
-        } else {
-            it.copy(isLoading = false, error = code.toUiError().message())
+    /**
+     * Os sete códigos que a porta pode devolver, e a quem cada um pertence.
+     *
+     * A 1j existe para mostrar erro **por campo**; recusa com campo dono que cai no alerta
+     * global é a tela mentindo sobre onde está o problema. Por isso o `when` é exaustivo e
+     * sem `else`: código novo na `NativeFailureCode` não compila até alguém decidir de quem
+     * ele é.
+     */
+    private fun fail(code: NativeFailureCode) = update { current ->
+        val settled = current.copy(isLoading = false)
+        when (code) {
+            // O e-mail já é de alguém. Vale para a colisão simples e para a conta que
+            // existe por outro provedor (`ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL`
+            // no Android, `accountExistsWithDifferentCredential` no iOS): as duas têm a
+            // mesma resposta — entrar em vez de criar —, e a 1a é onde estão os dois
+            // caminhos de entrada, inclusive o Google.
+            NativeFailureCode.EMAIL_IN_USE,
+            NativeFailureCode.AUTH_METHOD_CONFLICT,
+            -> settled.copy(emailError = RegisterEmailError.Taken)
+
+            // Num `createAccount` a credencial inválida só pode ser o e-mail: senha ruim
+            // sai como `WEAK_PASSWORD`, e os dois adapters mapeiam `invalidEmail` para cá.
+            // É o que a validação local barra antes; isto é a rede de segurança para o
+            // endereço que passou por ela e o provedor recusou.
+            NativeFailureCode.INVALID_CREDENTIALS -> settled.copy(emailError = RegisterEmailError.Invalid)
+
+            // A política do provedor recusou a senha escolhida — o campo é o dono, e a
+            // mensagem não é a do comprimento, que esta senha já cumpriu.
+            NativeFailureCode.WEAK_PASSWORD -> settled.copy(passwordError = RegisterPasswordError.TooWeak)
+
+            // Sem campo dono de verdade: nada no formulário explica nem conserta.
+            NativeFailureCode.NETWORK_UNAVAILABLE,
+            NativeFailureCode.PROVIDER_UNAVAILABLE,
+            NativeFailureCode.UNKNOWN,
+            -> settled.copy(error = code.toUiError().message())
         }
     }
 

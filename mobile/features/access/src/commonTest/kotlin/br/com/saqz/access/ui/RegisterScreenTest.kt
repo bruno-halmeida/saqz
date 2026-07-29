@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
+import br.com.saqz.access.presentation.register.RegisterPasswordError
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -114,6 +115,24 @@ class RegisterScreenTest {
         assertEquals(true, back)
     }
 
+    /**
+     * As saídas fecham junto com os campos enquanto o cadastro está em curso. O
+     * `createAccount` não tem cancelamento: sair no meio deixaria a resposta chegando a uma
+     * tela que já saiu, criando conta e trocando sessão pelas costas de quem desistiu.
+     */
+    @Test fun `no exit is live while the account is being created`() = runComposeUiTest {
+        var left = false
+        var intent: RegisterIntent? = null
+        content(state = RegisterState(isLoading = true), onIntent = { intent = it }, onBack = { left = true }, onSignIn = { left = true })
+
+        onNodeWithTag(RegisterTags.Back).performClick()
+        onNodeWithTag(RegisterTags.SignIn).performScrollTo().performClick()
+        onNodeWithTag(RegisterTags.Submit).performScrollTo().performClick()
+
+        assertEquals(false, left, "a 1b não tem saída enquanto envia")
+        assertNull(intent, "nem o enviar responde durante o envio")
+    }
+
     // O negrito do alerta sai da própria frase formatada, e não de um literal em PT-BR.
     @Test fun `the summary emphasis stops after the counted noun`() {
         assertEquals(
@@ -130,7 +149,7 @@ class RegisterScreenTest {
         invalidName = true,
         emailError = RegisterEmailError.Taken,
         invalidPhone = true,
-        invalidPassword = true,
+        passwordError = RegisterPasswordError.TooShort,
     )
 
     private fun ComposeUiTest.content(

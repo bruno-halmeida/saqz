@@ -12,6 +12,8 @@ import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationStateMachine
+import br.com.saqz.access.presentation.message
+import br.com.saqz.access.presentation.toUiError
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.designsystem.UiText
@@ -49,7 +51,7 @@ class RegisterViewModelTest {
         val state = viewModel.state.value
         assertTrue(state.invalidName, "nome vazio")
         assertTrue(state.invalidPhone, "telefone incompleto")
-        assertTrue(state.invalidPassword, "senha curta")
+        assertEquals(RegisterPasswordError.TooShort, state.passwordError, "senha curta")
         assertNull(state.emailError, "e-mail bem formado não entra na conta")
         assertEquals(3, state.invalidFieldCount)
         assertTrue(auth.accounts.isEmpty(), "formulário torto não chega ao provedor")
@@ -76,7 +78,7 @@ class RegisterViewModelTest {
         passwordOnly.fill(name = "Ana", email = "ana@exemplo.com", phone = "11999990000", password = "1234567")
         passwordOnly.onIntent(RegisterIntent.Submit)
         assertEquals(1, passwordOnly.state.value.invalidFieldCount)
-        assertTrue(passwordOnly.state.value.invalidPassword)
+        assertEquals(RegisterPasswordError.TooShort, passwordOnly.state.value.passwordError)
     }
 
     @Test
@@ -126,6 +128,65 @@ class RegisterViewModelTest {
 
         assertEquals(UiText.Res(Res.string.auth_error_network), viewModel.state.value.error)
         assertEquals(0, viewModel.state.value.invalidFieldCount)
+    }
+
+    /**
+     * O mapeamento inteiro, e não um código de cada vez: a 1j existe para mostrar erro por
+     * campo, e as três primeiras rodadas de review deste PR foram a mesma falha — recusa do
+     * provedor com campo dono caindo no alerta global. Este teste é o que impede a quarta.
+     *
+     * Percorre os sete códigos da porta e exige, para cada um, o campo dono (ou a ausência
+     * dele). Código novo na `NativeFailureCode` quebra o `when` da ViewModel na compilação e
+     * este `when` aqui junto.
+     */
+    @Test
+    fun `every provider failure lands on the field that owns it`() = runTest(mainDispatcher) {
+        NativeFailureCode.entries.forEach { code ->
+            val (viewModel, auth) = fixture()
+            viewModel.submitValidForm()
+
+            auth.complete(AuthResult.Failure(code))
+
+            val state = viewModel.state.value
+            when (code) {
+                NativeFailureCode.EMAIL_IN_USE,
+                NativeFailureCode.AUTH_METHOD_CONFLICT,
+                -> {
+                    assertEquals(RegisterEmailError.Taken, state.emailError, "$code")
+                    assertNull(state.error, "$code tem campo dono e não pode ir ao alerta")
+                }
+                NativeFailureCode.INVALID_CREDENTIALS -> {
+                    assertEquals(RegisterEmailError.Invalid, state.emailError, "$code")
+                    assertNull(state.error, "$code tem campo dono e não pode ir ao alerta")
+                }
+                NativeFailureCode.WEAK_PASSWORD -> {
+                    assertEquals(RegisterPasswordError.TooWeak, state.passwordError, "$code")
+                    assertNull(state.error, "$code tem campo dono e não pode ir ao alerta")
+                }
+                NativeFailureCode.NETWORK_UNAVAILABLE,
+                NativeFailureCode.PROVIDER_UNAVAILABLE,
+                NativeFailureCode.UNKNOWN,
+                -> {
+                    assertEquals(0, state.invalidFieldCount, "$code não tem campo dono")
+                    assertEquals(code.toUiError().message(), state.error, "$code")
+                }
+            }
+            assertTrue(!state.isLoading, "$code precisa destravar o formulário")
+        }
+    }
+
+    // A senha recusada pela política do provedor não repete a frase do comprimento: quem
+    // escolheu doze caracteres fracos não tem o que fazer com "use no mínimo 8".
+    @Test
+    fun `a password refused by the provider is not the local length message`() = runTest(mainDispatcher) {
+        val (viewModel, auth) = fixture()
+        viewModel.fill(name = "Ana Souza", email = "ana@exemplo.com", phone = "11999990000", password = "12345678")
+        viewModel.onIntent(RegisterIntent.Submit)
+
+        auth.complete(AuthResult.Failure(NativeFailureCode.WEAK_PASSWORD))
+
+        assertEquals(RegisterPasswordError.TooWeak, viewModel.state.value.passwordError)
+        assertEquals(1, viewModel.state.value.invalidFieldCount)
     }
 
     @Test

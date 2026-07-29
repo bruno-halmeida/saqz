@@ -14,11 +14,22 @@ import br.com.saqz.designsystem.UiText
 enum class RegisterEmailError { Invalid, Taken }
 
 /**
+ * As duas recusas do campo de senha, pelo mesmo motivo do [RegisterEmailError].
+ *
+ * [TooShort] é a validação local — o mínimo de 8 que o helper anuncia. [TooWeak] é a
+ * política do provedor recusando uma senha que **passou** por ela, e por isso não pode
+ * repetir a frase do comprimento: quem escolheu doze caracteres fracos e lê "use no mínimo
+ * 8" não tem o que fazer com a informação.
+ */
+enum class RegisterPasswordError { TooShort, TooWeak }
+
+/**
  * O formulário da 1b, e o 1j é o mesmo estado com os quatro sinalizadores ligados.
  *
- * Nome, telefone e senha carregam um booleano, e não uma mensagem: no export cada um tem
- * **uma** frase possível, então a string mora na tela e o estado só diz se ela aparece. O
- * e-mail é o que foge disso, e ganha o [RegisterEmailError]. É também o que mantém a
+ * Nome e telefone carregam um booleano, e não uma mensagem: cada um tem **uma** frase
+ * possível, então a string mora na tela e o estado só diz se ela aparece. E-mail e senha
+ * fogem disso — os dois têm uma recusa local e uma do provedor, e por isso ganham
+ * [RegisterEmailError] e [RegisterPasswordError]. É também o que mantém a
  * contagem do alerta honesta — [invalidFieldCount] conta o que está aceso agora, em vez de
  * repetir o "3" do mockup (que, aliás, mostra quatro campos errados).
  *
@@ -35,11 +46,11 @@ data class RegisterState(
     val invalidName: Boolean = false,
     val emailError: RegisterEmailError? = null,
     val invalidPhone: Boolean = false,
-    val invalidPassword: Boolean = false,
+    val passwordError: RegisterPasswordError? = null,
     val error: UiText? = null,
 ) {
     val invalidFieldCount: Int
-        get() = listOf(invalidName, emailError != null, invalidPhone, invalidPassword).count { it }
+        get() = listOf(invalidName, emailError != null, invalidPhone, passwordError != null).count { it }
 }
 
 sealed interface RegisterIntent {
