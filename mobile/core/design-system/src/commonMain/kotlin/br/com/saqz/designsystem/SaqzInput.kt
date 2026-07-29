@@ -103,6 +103,10 @@ internal fun SaqzColorTokens.inputAccent(enabled: Boolean, wrong: Boolean, focus
  *
  * Use a sobrecarga de [TextFieldValue] **só** quando a tela move o cursor de propósito
  * (máscara que reposiciona, seleção programática, colar com seleção).
+ *
+ * [revealable] desliga o olho de mostrar/esconder **sem** desligar a máscara. Existe para
+ * o "Confirmar nova senha" do 1g, onde o export tira o olho de propósito: confirmar é
+ * digitar de novo, não conferir o que já se leu. Só faz sentido com [SaqzInputKind.Password].
  */
 @Composable
 fun SaqzInput(
@@ -124,6 +128,7 @@ fun SaqzInput(
     singleLine: Boolean = true,
     minLines: Int = 1,
     showLabel: Boolean = true,
+    revealable: Boolean = true,
 ) = SaqzInputFrame(
     isEmpty = value.isEmpty(),
     label = label,
@@ -139,6 +144,7 @@ fun SaqzInput(
     trailingContent = trailingContent,
     placeholder = placeholder,
     showLabel = showLabel,
+    revealable = revealable,
 ) { fieldModifier, textStyle, transformation ->
     BasicTextField(
         value = value,
@@ -182,6 +188,7 @@ fun SaqzInput(
     singleLine: Boolean = true,
     minLines: Int = 1,
     showLabel: Boolean = true,
+    revealable: Boolean = true,
 ) = SaqzInputFrame(
     isEmpty = value.text.isEmpty(),
     label = label,
@@ -197,6 +204,7 @@ fun SaqzInput(
     trailingContent = trailingContent,
     placeholder = placeholder,
     showLabel = showLabel,
+    revealable = revealable,
 ) { fieldModifier, textStyle, transformation ->
     BasicTextField(
         value = value,
@@ -229,6 +237,7 @@ private fun SaqzInputFrame(
     trailingContent: (@Composable () -> Unit)?,
     placeholder: String?,
     showLabel: Boolean,
+    revealable: Boolean,
     modifier: Modifier = Modifier,
     field: @Composable (Modifier, TextStyle, VisualTransformation) -> Unit,
 ) {
@@ -306,7 +315,9 @@ private fun SaqzInputFrame(
                     visualTransformationFor(kind, revealed),
                 )
             }
-            if (kind == SaqzInputKind.Password) {
+            // Sem olho o campo continua mascarado: `revealed` nunca sai de false, e é essa
+            // a diferença entre não poder revelar e não ser senha.
+            if (kind == SaqzInputKind.Password && revealable) {
                 PasswordToggle(revealed = revealed, onToggle = { revealed = !revealed })
             }
             trailingContent?.let { trailing ->

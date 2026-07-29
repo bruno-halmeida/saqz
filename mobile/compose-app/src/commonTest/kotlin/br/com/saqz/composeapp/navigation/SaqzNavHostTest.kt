@@ -179,6 +179,26 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(AccessRoute.Login), stale)
     }
 
+    /**
+     * VUL-90: a troca de senha consome o ticket, então concluir o 1g **tira o formulário
+     * do stack**. Empilhar o 1h sobre ele deixava o voltar — o visível e o do sistema —
+     * reabrir o 1g com um token já usado, e o 1e com um código já gasto: a pessoa digita
+     * tudo de novo para levar um erro que não tem como entender.
+     */
+    @Test
+    fun completingTheResetDropsTheConsumedForm() {
+        val stack = mutableListOf<NavKey>(
+            AccessRoute.Login,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+            AccessRoute.NewPassword("ana@exemplo.com", "ticket-do-reset"),
+        )
+
+        stack.completePasswordReset()
+
+        assertEquals(listOf<NavKey>(AccessRoute.Login, AccessRoute.PasswordChanged), stack)
+    }
+
     private companion object {
         val session = AccessSession(
             user = AccessUser(

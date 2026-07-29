@@ -24,6 +24,8 @@ import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
+import br.com.saqz.access.ui.NewPasswordRoot
+import br.com.saqz.access.ui.PasswordChangedScreen
 import br.com.saqz.access.ui.RegisterRoot
 import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
@@ -124,13 +126,24 @@ internal fun SaqzNavHost(
                     },
                 )
             }
-            entry<AccessRoute.NewPassword> {
-                AccessSkeleton("NewPassword", "PasswordChanged" to { backStack.add(AccessRoute.PasswordChanged) })
+            entry<AccessRoute.NewPassword> { route ->
+                NewPasswordRoot(
+                    token = route.token,
+                    onBack = pop,
+                    onFinish = { backStack.completePasswordReset() },
+                    // Ticket morto pede o código de novo, e o 1e é exatamente a entrada
+                    // anterior — é para ela reaparecer intacta que a rota do 1g carrega o
+                    // e-mail. Empilhar um `ResetCode` novo deixaria dois na pilha.
+                    onRestartCode = pop,
+                )
             }
             entry<AccessRoute.PasswordChanged> {
-                // Senha trocada não tem volta para o formulário que a trocou: o "Entrar
-                // agora" recomeça o stack no login.
-                AccessSkeleton("PasswordChanged", "Login" to { backStack.resetTo(AccessRoute.Login) })
+                // Quem chega aqui já teve o stack colapsado por [completePasswordReset]:
+                // o único destino abaixo é o login, e as duas saídas do 1h vão dar nele.
+                PasswordChangedScreen(
+                    onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                    onBack = pop,
+                )
             }
             entry<AccessRoute.Bootstrap> {
                 BootstrapAccessScreen(
@@ -212,6 +225,22 @@ private fun AccessSkeleton(name: String, vararg next: Pair<String, () -> Unit>) 
 private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
     clear()
     add(route)
+}
+
+/**
+ * O 1g→1h. A troca **consome** o ticket, então o que sobrou da recuperação sai do stack em
+ * vez de ficar embaixo do 1h: o 1g reaberto pediria a senha de novo com um token morto na
+ * mão, e o 1e, com um código já gasto. Nos dois casos a pessoa digitaria tudo outra vez
+ * para levar um erro que não tem como entender.
+ *
+ * Sobra o login, que é para onde o "Entrar agora" leva de qualquer forma — o voltar do 1h,
+ * visível ou do sistema, passa a dar no mesmo lugar. Empilhar sobre o formulário era o
+ * defeito; substituir só ele deixaria o mesmo defeito uma entrada acima.
+ */
+internal fun MutableList<NavKey>.completePasswordReset() {
+    clear()
+    add(AccessRoute.Login)
+    add(AccessRoute.PasswordChanged)
 }
 
 /**

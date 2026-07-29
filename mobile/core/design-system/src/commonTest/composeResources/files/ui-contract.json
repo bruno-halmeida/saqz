@@ -51,6 +51,11 @@
       "export": "sucesso.checkStroke 3",
       "nosso": "2 — o strokeLineWidth que a Lucide desenha em todo glifo",
       "motivo": "Mesma causa do fluxo1.voltar, no outro extremo: aqui o export engrossa o traço em vez de afinar. O check de 14 dentro do círculo sólido de 24 sai mais leve que o desenho. Se algum dia o contraste do check sobre o verde reprovar em revisão, a saída é um glifo próprio para este caso — não mexer no SaqzIcons.Check, que serve o app inteiro."
+    },
+    "fluxo1.senhaAlterada": {
+      "export": "checkStroke 2.6",
+      "nosso": "2 — o strokeLineWidth que a Lucide desenha em todo glifo",
+      "motivo": "Terceira aparição da mesma causa (ver fluxo1.voltar e fluxo1.alertaInline). Aqui o desvio é o maior dos três em pixel — a 46dp o traço da Lucide sai 3.83 contra os 4.98 do export —, e ainda assim reabrir o path do check é a transcrição que o VUL-54 apagou. Se o check do 1h precisar mesmo do peso do desenho, a saída é um glifo próprio para esta tela, não mexer no SaqzIcons.Check."
     }
   },
   "colors": {
@@ -169,6 +174,14 @@
         "checkStroke": 3
       },
       "aviso": { "fundo": "rgba(245,166,35,.12)", "texto": "#8a5a05" }
+    },
+    "senhaAlterada": {
+      "_nota": "O 1h, única tela do fluxo com o conteúdo centralizado verticalmente sobre uma folga fixa embaixo. O check entra com `entrada.checkDurationMillis`.",
+      "circulo": 96,
+      "fundo": "rgba(23,178,106,.12)",
+      "check": 46,
+      "checkStroke": 2.6,
+      "folgaInferior": 60
     },
     "entrada": {
       "translateY": 8,
