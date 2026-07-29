@@ -45,6 +45,9 @@ kotlin {
             implementation(libs.navigation3.runtime)
             implementation(libs.navigation3.ui)
             implementation(libs.lifecycle.viewmodel.compose)
+            // `LifecycleResumeEffect`: a faixa de e-mail (VUL-91) recarrega o usuário na
+            // volta do plano de fundo.
+            implementation(libs.lifecycle.runtime.compose)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
@@ -63,6 +66,10 @@ kotlin {
 }
 
 compose.resources {
+    // Público pelo mesmo motivo do `:features:access`: o print da faixa (VUL-91) roda no
+    // `:android-app`, que é onde o Roborazzi vive, e lê as strings daqui em vez de
+    // repetir o texto no teste.
+    publicResClass = true
     packageOfResClass = "br.com.saqz.composeapp.resources"
     generateResClass = always
 }

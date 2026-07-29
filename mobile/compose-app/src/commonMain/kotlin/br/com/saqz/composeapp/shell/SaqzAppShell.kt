@@ -57,6 +57,11 @@ private const val SaqzShellGamesTab = "jogos"
  * [groupsTab] é a aba Grupos — o `:compose-app` passa o `GroupListRoot` já com as lambdas
  * de navegação ligadas, porque quem conhece o `NavDisplay` é ele (AGENTS.md §6).
  *
+ * [banner] é a faixa persistente acima do conteúdo, e hoje só a de e-mail não confirmado
+ * (VUL-91) mora lá. Entra por slot e não por `Boolean`: quem sabe se ela tem o que dizer é
+ * quem tem o estado da sessão, e o shell não tem — nem precisa ter, porque a faixa não
+ * decide nada aqui dentro.
+ *
  * **Início e Jogos ficam inertes**, como manda o VUL-72: o toque não leva a lugar nenhum
  * enquanto os fluxos 6 e 4 não existirem. **Perfil é a exceção deliberada**: o ticket o
  * pede inerte também, mas o botão de sair vive no shell desde o C1 e o fluxo 7 · Perfil é
@@ -75,6 +80,7 @@ internal fun SaqzAppShell(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
+    banner: @Composable () -> Unit = {},
 ) {
     // `rememberSaveable`, não `remember`: aba ativa e catálogo aberto são estado de
     // navegação, e o AGENTS.md §5 proíbe `remember` para estado de aplicação. Com
@@ -95,18 +101,24 @@ internal fun SaqzAppShell(
         return
     }
     Column(
-        modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background),
-    ) {
         // O inset do topo é do shell, não da tela. O `MainActivity` chama
         // `enableEdgeToEdge()`, e as telas de grupo empilhadas escapam porque começam com
         // `SaqzTopAppBar`, que já aplica o seu `WindowInsets.statusBars`. A lista (2n) não
         // usa barra — começa no `GroupListHeader` —, então o "Grupos" ficava sob o relógio.
-        // Resolver aqui e não lá vale para a próxima aba sem barra também. O rodapé fica
-        // com o `SaqzBottomNav`, que já trata `navigationBars`.
+        // Resolver aqui e não lá vale para a próxima aba sem barra também, e agora também
+        // para a faixa, que ficaria sob o relógio se o inset seguisse no conteúdo. O rodapé
+        // fica com o `SaqzBottomNav`, que já trata `navigationBars`.
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .windowInsetsPadding(WindowInsets.statusBars),
+    ) {
+        // Acima do conteúdo e fora do `Box` com peso: a faixa empurra a aba para baixo em
+        // vez de flutuar sobre ela — nada do que a pessoa ia tocar fica coberto.
+        banner()
         Box(
             modifier = Modifier
                 .weight(1f)
-                .windowInsetsPadding(WindowInsets.statusBars)
                 .testTag(SaqzShellTabContentTag),
         ) {
             when (activeTab) {
