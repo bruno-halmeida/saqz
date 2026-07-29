@@ -18,6 +18,7 @@ enum IOSAuthFailure: Error, Equatable, Sendable {
     case networkUnavailable
     case providerUnavailable
     case userNotFound
+    case tooManyRequests
     case unknown
 }
 
@@ -82,6 +83,11 @@ enum IOSAuthFailureMapper {
             .networkUnavailable
         case AuthErrorCode.userNotFound.rawValue:
             .userNotFound
+        // O único bloqueio real do login: quem conta tentativa é o Firebase, não o
+        // backend. Sem este caso a recusa chegaria como `.unknown` e a 1a não teria
+        // como trocar o contador cosmético pela mensagem de conta bloqueada.
+        case AuthErrorCode.tooManyRequests.rawValue:
+            .tooManyRequests
         case AuthErrorCode.operationNotAllowed.rawValue,
              AuthErrorCode.webContextAlreadyPresented.rawValue,
              AuthErrorCode.webContextCancelled.rawValue:
@@ -355,6 +361,7 @@ private extension IOSAuthFailure {
         case .authMethodConflict: .authMethodConflict
         case .networkUnavailable: .networkUnavailable
         case .providerUnavailable: .providerUnavailable
+        case .tooManyRequests: .tooManyRequests
         case .unknown: .unknown
         }
     }

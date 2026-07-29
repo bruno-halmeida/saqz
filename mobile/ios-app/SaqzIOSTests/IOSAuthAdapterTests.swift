@@ -201,6 +201,14 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(IOSAuthFailureMapper.map(code: 17020), .networkUnavailable)
     }
 
+    // 17010 é `AuthErrorCode.tooManyRequests` — o único bloqueio real do login, já que
+    // quem conta tentativa é o Firebase e não o nosso backend. Sem o caso próprio ele
+    // cairia em `.unknown` e a 1a perderia a mensagem de conta bloqueada.
+    func testFirebaseErrorMapperSeparatesTooManyRequestsFromUnknown() {
+        XCTAssertEqual(IOSAuthFailureMapper.map(code: 17010), .tooManyRequests)
+        XCTAssertEqual(IOSAuthFailureMapper.map(code: 17999), .unknown)
+    }
+
     private func makeFixture() -> (adapter: IOSAuthAdapter, firebase: FakeFirebaseAuthClient, google: FakeGoogleSignInClient) {
         let firebase = FakeFirebaseAuthClient()
         let google = FakeGoogleSignInClient()

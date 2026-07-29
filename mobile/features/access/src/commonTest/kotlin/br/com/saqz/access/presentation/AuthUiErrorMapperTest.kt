@@ -10,6 +10,7 @@ import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_provider
 import br.com.saqz.access.resources.auth_error_unknown
 import br.com.saqz.access.resources.auth_error_weak_password
+import br.com.saqz.access.resources.login_error_blocked
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -22,6 +23,7 @@ class AuthUiErrorMapperTest {
         assertEquals(UiText.Res(Res.string.auth_error_method_conflict), AuthUiError.AUTH_METHOD_CONFLICT.message())
         assertEquals(UiText.Res(Res.string.auth_error_network), AuthUiError.NETWORK_UNAVAILABLE.message())
         assertEquals(UiText.Res(Res.string.auth_error_provider), AuthUiError.PROVIDER_UNAVAILABLE.message())
+        assertEquals(UiText.Res(Res.string.login_error_blocked), AuthUiError.TOO_MANY_REQUESTS.message())
         assertEquals(UiText.Res(Res.string.auth_error_unknown), AuthUiError.UNKNOWN.message())
     }
 
@@ -33,6 +35,7 @@ class AuthUiErrorMapperTest {
         assertEquals(AuthUiError.AUTH_METHOD_CONFLICT, NativeFailureCode.AUTH_METHOD_CONFLICT.toUiError())
         assertEquals(AuthUiError.NETWORK_UNAVAILABLE, NativeFailureCode.NETWORK_UNAVAILABLE.toUiError())
         assertEquals(AuthUiError.PROVIDER_UNAVAILABLE, NativeFailureCode.PROVIDER_UNAVAILABLE.toUiError())
+        assertEquals(AuthUiError.TOO_MANY_REQUESTS, NativeFailureCode.TOO_MANY_REQUESTS.toUiError())
         assertEquals(AuthUiError.UNKNOWN, NativeFailureCode.UNKNOWN.toUiError())
     }
 }

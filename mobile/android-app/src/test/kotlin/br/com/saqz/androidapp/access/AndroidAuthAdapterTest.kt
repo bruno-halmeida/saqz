@@ -214,6 +214,26 @@ class AndroidAuthAdapterTest {
         )
     }
 
+    // O excesso de tentativas é o único bloqueio real do login e chega por dois caminhos:
+    // a exceção própria (que não é `FirebaseAuthException` e não tem `errorCode`) e o
+    // código sobre a família genérica. Cair em UNKNOWN apagaria a diferença entre "conta
+    // bloqueada" e "não foi possível entrar".
+    @Test
+    fun tooManyRequestsIsDistinguishedFromTheGenericFailure() {
+        assertEquals(
+            AndroidProviderFailure.TOO_MANY_REQUESTS,
+            mapFirebaseFailure(FirebaseFailureFamily.TOO_MANY_REQUESTS),
+        )
+        assertEquals(
+            AndroidProviderFailure.TOO_MANY_REQUESTS,
+            mapFirebaseFailure(FirebaseFailureFamily.OTHER, "ERROR_TOO_MANY_REQUESTS"),
+        )
+        assertEquals(
+            AndroidProviderFailure.UNKNOWN,
+            mapFirebaseFailure(FirebaseFailureFamily.OTHER),
+        )
+    }
+
     @Test
     fun weakPasswordAndNetworkExceptionsHaveActionableCodes() {
         assertEquals(

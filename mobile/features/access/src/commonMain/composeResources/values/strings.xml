@@ -36,6 +36,10 @@
     <string name="login_error_email_invalid">Digite um e-mail válido.</string>
     <string name="login_error_password">A senha não confere.</string>
     <string name="login_error_attempts">Errou %1$d de 5 tentativas. Depois disso, a conta é bloqueada por 15 min.</string>
+    <!-- VUL-85: o bloqueio de verdade é o do Firebase, que não diz quantas tentativas
+         faltam nem respeita o "5 e 15 min" do desenho. Quando ele barra, esta frase
+         substitui o contador cosmético. -->
+    <string name="login_error_blocked">Muitas tentativas seguidas. Sua conta está bloqueada por alguns minutos — tente de novo mais tarde.</string>
 
     <!-- 1b · criar conta -->
     <string name="register_headline">Bora organizar\nsua</string>

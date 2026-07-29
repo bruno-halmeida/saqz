@@ -10,6 +10,7 @@ import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_provider
 import br.com.saqz.access.resources.auth_error_unknown
 import br.com.saqz.access.resources.auth_error_weak_password
+import br.com.saqz.access.resources.login_error_blocked
 
 fun AuthUiError.message(): UiText = when (this) {
     AuthUiError.INVALID_CREDENTIALS -> UiText.Res(Res.string.auth_error_invalid_credentials)
@@ -18,6 +19,7 @@ fun AuthUiError.message(): UiText = when (this) {
     AuthUiError.AUTH_METHOD_CONFLICT -> UiText.Res(Res.string.auth_error_method_conflict)
     AuthUiError.NETWORK_UNAVAILABLE -> UiText.Res(Res.string.auth_error_network)
     AuthUiError.PROVIDER_UNAVAILABLE -> UiText.Res(Res.string.auth_error_provider)
+    AuthUiError.TOO_MANY_REQUESTS -> UiText.Res(Res.string.login_error_blocked)
     AuthUiError.UNKNOWN -> UiText.Res(Res.string.auth_error_unknown)
 }
 
@@ -28,5 +30,6 @@ fun NativeFailureCode.toUiError(): AuthUiError = when (this) {
     NativeFailureCode.AUTH_METHOD_CONFLICT -> AuthUiError.AUTH_METHOD_CONFLICT
     NativeFailureCode.NETWORK_UNAVAILABLE -> AuthUiError.NETWORK_UNAVAILABLE
     NativeFailureCode.PROVIDER_UNAVAILABLE -> AuthUiError.PROVIDER_UNAVAILABLE
+    NativeFailureCode.TOO_MANY_REQUESTS -> AuthUiError.TOO_MANY_REQUESTS
     NativeFailureCode.UNKNOWN -> AuthUiError.UNKNOWN
 }

@@ -23,6 +23,7 @@ import br.com.saqz.access.domain.port.TokenResult
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -48,6 +49,7 @@ internal enum class AndroidProviderFailure {
     AUTH_METHOD_CONFLICT,
     NETWORK,
     UNAVAILABLE,
+    TOO_MANY_REQUESTS,
     UNKNOWN,
 }
 
@@ -57,6 +59,7 @@ internal enum class FirebaseFailureFamily {
     USER_COLLISION,
     WEAK_PASSWORD,
     NETWORK,
+    TOO_MANY_REQUESTS,
     OTHER,
 }
 
@@ -303,6 +306,7 @@ internal fun mapFirebaseFailure(error: Throwable?): AndroidProviderFailure = map
         is FirebaseAuthInvalidCredentialsException -> FirebaseFailureFamily.INVALID_CREDENTIALS
         is FirebaseAuthInvalidUserException -> FirebaseFailureFamily.INVALID_USER
         is FirebaseNetworkException -> FirebaseFailureFamily.NETWORK
+        is FirebaseTooManyRequestsException -> FirebaseFailureFamily.TOO_MANY_REQUESTS
         else -> FirebaseFailureFamily.OTHER
     },
     errorCode = (error as? com.google.firebase.auth.FirebaseAuthException)?.errorCode,
@@ -321,7 +325,14 @@ internal fun mapFirebaseFailure(
     FirebaseFailureFamily.INVALID_USER,
     -> AndroidProviderFailure.INVALID_CREDENTIALS
     FirebaseFailureFamily.NETWORK -> AndroidProviderFailure.NETWORK
-    FirebaseFailureFamily.OTHER -> AndroidProviderFailure.UNKNOWN
+    FirebaseFailureFamily.TOO_MANY_REQUESTS -> AndroidProviderFailure.TOO_MANY_REQUESTS
+    // O excesso de tentativas chega por dois caminhos: `FirebaseTooManyRequestsException`
+    // (que é `FirebaseException`, sem `errorCode`) e o `FirebaseAuthException` de código
+    // `ERROR_TOO_MANY_REQUESTS`. Só o primeiro tem tipo próprio; o segundo cai aqui.
+    FirebaseFailureFamily.OTHER -> when (errorCode) {
+        "ERROR_TOO_MANY_REQUESTS" -> AndroidProviderFailure.TOO_MANY_REQUESTS
+        else -> AndroidProviderFailure.UNKNOWN
+    }
 }
 
 private fun Throwable?.toFailure() = AndroidProviderResult.Failure(mapFirebaseFailure(this))
@@ -338,6 +349,7 @@ private fun AndroidProviderFailure.toNative() = when (this) {
     AndroidProviderFailure.AUTH_METHOD_CONFLICT -> NativeFailureCode.AUTH_METHOD_CONFLICT
     AndroidProviderFailure.NETWORK -> NativeFailureCode.NETWORK_UNAVAILABLE
     AndroidProviderFailure.UNAVAILABLE -> NativeFailureCode.PROVIDER_UNAVAILABLE
+    AndroidProviderFailure.TOO_MANY_REQUESTS -> NativeFailureCode.TOO_MANY_REQUESTS
     AndroidProviderFailure.UNKNOWN -> NativeFailureCode.UNKNOWN
 }
 

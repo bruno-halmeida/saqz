@@ -18,6 +18,12 @@ enum class NativeFailureCode {
     AUTH_METHOD_CONFLICT,
     NETWORK_UNAVAILABLE,
     PROVIDER_UNAVAILABLE,
+
+    // O provedor barrou por excesso de tentativas. É o **único** bloqueio que existe de
+    // verdade: o login roda no cliente contra o Firebase e o nosso backend nunca vê
+    // tentativa que falhou, então quem conta e quem tranca é ele. Sem este código a
+    // recusa chegaria como UNKNOWN e a 1a não teria como dizer "conta bloqueada".
+    TOO_MANY_REQUESTS,
     UNKNOWN,
 }
 
