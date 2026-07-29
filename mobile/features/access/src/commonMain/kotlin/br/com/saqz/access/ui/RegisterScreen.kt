@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
@@ -219,7 +218,7 @@ fun RegisterScreen(
             onClick = { onIntent(RegisterIntent.Submit) },
             enabled = !state.isLoading,
             loading = state.isLoading,
-            trailingContent = { color -> SaqzIcon(SaqzIcons.ArrowRight, tint = color, size = 18.dp) },
+            trailingContent = { color -> SaqzIcon(SaqzIcons.ArrowRight, tint = color, size = AccessMetrics.primaryActionIcon) },
             modifier = Modifier.fillMaxWidth().clip(CircleShape).testTag(RegisterTags.Submit),
         )
         Spacer(Modifier.height(AccessMetrics.blockGap))
@@ -325,7 +324,7 @@ private fun RegisterInput(
     errorText = errorText,
     // Sem rótulo acima: o export desenha só o placeholder dentro do campo.
     inlineLabel = true,
-    leadingContent = { SaqzIcon(icon, tint = SaqzTheme.colors.primary, size = 20.dp) },
+    leadingContent = { SaqzIcon(icon, tint = SaqzTheme.colors.primary, size = AccessMetrics.fieldIcon) },
     modifier = Modifier.testTag(tag),
 )
 

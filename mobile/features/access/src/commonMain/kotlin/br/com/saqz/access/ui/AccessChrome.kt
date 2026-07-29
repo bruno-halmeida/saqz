@@ -136,6 +136,14 @@ internal object AccessMetrics {
     // normal. Também não versionado — é regra de CSS de uma tela, não medida do bloco.
     val helperLift = (-4).dp
 
+    // Os dois glifos que as telas de formulário desenham por conta própria: o ícone à
+    // esquerda de cada campo e a seta do botão primário. O contrato versiona o glifo do
+    // alerta (`alertaInline.icone`) e o do voltar (`voltar.chevron`), mas não estes — e
+    // eles **não** são os mesmos números, então reaproveitar aqueles seria juntar medidas
+    // que o export separa.
+    val fieldIcon = 20.dp
+    val primaryActionIcon = 18.dp
+
     const val WAVE_VIEWPORT_WIDTH = 390f
     const val WAVE_VIEWPORT_HEIGHT = 130f
     const val WAVE_BACK_LAYER_ALPHA = 0.16f
