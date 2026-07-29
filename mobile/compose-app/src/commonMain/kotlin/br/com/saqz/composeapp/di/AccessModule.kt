@@ -53,8 +53,8 @@ internal val accessPresentationModule = module {
     // o handle vem do `CreationExtras` do `NavEntry` pelo `AndroidParametersHolder` do
     // Koin, e nunca esteve no grafo.
     viewModel { params ->
-        RegisterViewModel(params.get(), get(), get()) { transition ->
-            get<SessionAccessStateMachine>().onIntent(SessionIntent.Accept(transition))
+        RegisterViewModel(params.get(), get(), get()) { intent ->
+            get<SessionAccessStateMachine>().onIntent(intent)
         }
     }
     // `viewModel { params -> }` e não `viewModelOf`: o e-mail vem da rota `ResetCode`, e

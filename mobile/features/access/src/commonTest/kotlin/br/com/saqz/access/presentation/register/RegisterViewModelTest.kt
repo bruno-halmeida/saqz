@@ -12,6 +12,7 @@ import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationStateMachine
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.message
 import br.com.saqz.access.presentation.toUiError
 import br.com.saqz.access.resources.Res
@@ -28,6 +29,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -95,14 +97,50 @@ class RegisterViewModelTest {
 
     @Test
     fun `a created account becomes a session transition`() = runTest(mainDispatcher) {
-        val transitions = mutableListOf<AuthTransition>()
-        val (viewModel, auth) = fixture(onTransition = transitions::add)
+        val sessionIntents = mutableListOf<SessionIntent>()
+        val (viewModel, auth) = fixture(onSessionIntent = sessionIntents::add)
         viewModel.submitValidForm()
 
         auth.complete(AuthResult.Success(USER))
 
-        assertEquals(listOf<AuthTransition>(AuthTransition.Authenticated(USER)), transitions.toList())
+        assertIs<SessionIntent.StageRegistrationIdentity>(sessionIntents.first())
+        assertEquals(
+            SessionIntent.Accept(AuthTransition.Authenticated(USER)),
+            sessionIntents.last(),
+        )
         assertTrue(!viewModel.state.value.isLoading)
+    }
+
+    // VUL-101: o telefone validado sobe à sessão **antes** do provedor, senão o observe
+    // autentica sozinho e a 1c abre sem o número que a pessoa acabou de digitar.
+    @Test
+    fun `submitting stages the phone before createAccount`() = runTest(mainDispatcher) {
+        val sessionIntents = mutableListOf<SessionIntent>()
+        val (viewModel, auth) = fixture(onSessionIntent = sessionIntents::add)
+        viewModel.submitValidForm()
+
+        assertEquals(
+            listOf(
+                SessionIntent.StageRegistrationIdentity(
+                    name = "Ana Souza",
+                    phone = "+5511999990000",
+                ),
+            ),
+            sessionIntents.toList(),
+        )
+        assertEquals(1, auth.accounts.size)
+    }
+
+    @Test
+    fun `a provider refusal clears the staged registration identity`() = runTest(mainDispatcher) {
+        val sessionIntents = mutableListOf<SessionIntent>()
+        val (viewModel, auth) = fixture(onSessionIntent = sessionIntents::add)
+        viewModel.submitValidForm()
+
+        auth.complete(AuthResult.Failure(NativeFailureCode.EMAIL_IN_USE))
+
+        assertEquals(SessionIntent.ClearRegistrationIdentity, sessionIntents.last())
+        assertEquals(RegisterEmailError.Taken, viewModel.state.value.emailError)
     }
 
     @Test
@@ -165,6 +203,7 @@ class RegisterViewModelTest {
                 }
                 NativeFailureCode.NETWORK_UNAVAILABLE,
                 NativeFailureCode.PROVIDER_UNAVAILABLE,
+                NativeFailureCode.TOO_MANY_REQUESTS,
                 NativeFailureCode.UNKNOWN,
                 -> {
                     assertEquals(0, state.invalidFieldCount, "$code não tem campo dono")
@@ -277,9 +316,10 @@ class RegisterViewModelTest {
      */
     @Test
     fun `a response that arrives after the screen is gone writes no state`() = runTest(mainDispatcher) {
-        val transitions = mutableListOf<AuthTransition>()
-        val (viewModel, auth) = fixture(onTransition = transitions::add)
+        val sessionIntents = mutableListOf<SessionIntent>()
+        val (viewModel, auth) = fixture(onSessionIntent = sessionIntents::add)
         viewModel.submitValidForm()
+        val staged = sessionIntents.toList()
 
         // O que o back do sistema provoca: a tela sai e a ViewModel morre com o envio em voo.
         viewModel.discardPendingSubmission()
@@ -287,23 +327,30 @@ class RegisterViewModelTest {
 
         assertTrue(viewModel.state.value.isLoading, "ViewModel morta não escreve estado")
         // Este caminho de transição cala; o do orquestrador, não — e é ele que vale.
-        assertTrue(transitions.isEmpty())
+        assertEquals(staged, sessionIntents.toList())
     }
 
     // A outra forma de o contexto mudar: um envio novo toma o lugar do anterior, e a
     // resposta velha chega atrasada.
     @Test
     fun `a late response from a replaced submission is discarded`() = runTest(mainDispatcher) {
-        val transitions = mutableListOf<AuthTransition>()
-        val (viewModel, auth) = fixture(onTransition = transitions::add)
+        val sessionIntents = mutableListOf<SessionIntent>()
+        val (viewModel, auth) = fixture(onSessionIntent = sessionIntents::add)
         viewModel.submitValidForm()
         auth.completeSubmission(0, AuthResult.Cancelled)
+        val afterCancel = sessionIntents.toList()
         viewModel.onIntent(RegisterIntent.Submit)
 
         auth.completeSubmission(0, AuthResult.Success(USER))
 
         assertEquals(2, auth.accounts.size, "o segundo envio saiu")
-        assertTrue(transitions.isEmpty(), "a resposta do envio substituído não vale mais")
+        // Cancelamento limpa o depósito; o envio novo deposita de novo; a resposta velha
+        // não acrescenta Accept.
+        assertTrue(afterCancel.contains(SessionIntent.ClearRegistrationIdentity))
+        assertTrue(
+            sessionIntents.none { it is SessionIntent.Accept },
+            "a resposta do envio substituído não vale mais",
+        )
         assertTrue(viewModel.state.value.isLoading, "nem o estado ela toca")
     }
 
@@ -331,10 +378,10 @@ class RegisterViewModelTest {
 
     private fun fixture(
         savedState: SavedStateHandle = SavedStateHandle(),
-        onTransition: (AuthTransition) -> Unit = {},
+        onSessionIntent: (SessionIntent) -> Unit = {},
     ): Pair<RegisterViewModel, FakeAuthPort> {
         val auth = FakeAuthPort()
-        return RegisterViewModel(savedState, auth, AuthenticationStateMachine(auth) {}, onTransition) to auth
+        return RegisterViewModel(savedState, auth, AuthenticationStateMachine(auth) {}, onSessionIntent) to auth
     }
 
     private data class AccountCall(val name: String, val email: String, val password: String)

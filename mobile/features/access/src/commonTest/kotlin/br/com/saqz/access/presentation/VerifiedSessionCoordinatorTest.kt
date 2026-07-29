@@ -284,6 +284,72 @@ class SessionAccessStateMachineTest {
         assertEquals("", state.phone)
     }
 
+    // VUL-101: a 1b deposita o telefone antes do createAccount; o portão da 1c prefere
+    // esse valor ao vazio que o backend devolve para conta nova. Não autoenvia — a pessoa
+    // ainda vê a 1c (foto, concluir).
+    @Test
+    fun `phone staged on register survives into identity completion after bootstrap`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals(phoneRequiredSession, state.session)
+        assertEquals("Ana Souza", state.name)
+        assertEquals("+5511999990000", state.phone)
+        assertFalse(state.isLoading)
+        assertTrue(fixture.session.profileCalls.isEmpty(), "prefill da 1b não autoenvia o perfil")
+    }
+
+    // A limpeza na troca de conta continua valendo para o depósito da 1b: a conta B não
+    // herda o telefone que a conta A digitou e abandonou no meio do bootstrap.
+    @Test
+    fun `registration phone staged by one account never travels into the next`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Costa", phone = "(11) 98888-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+
+        val otherSession = phoneRequiredSession.copy(
+            user = phoneRequiredSession.user.copy(
+                id = "other-id",
+                email = "outra@example.test",
+                displayName = "Outra Pessoa",
+            ),
+        )
+        fixture.session.result = SaqzResult.Success(otherSession)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(otherAccount)))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals("", state.phone, "telefone da conta anterior não atravessa a troca")
+        assertEquals("Outra Pessoa", state.name)
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    @Test
+    fun `clearing registration identity drops the staged phone before accept`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.ClearRegistrationIdentity)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals("", state.phone)
+    }
+
     @Test
     fun `identity completion seeds the fields the backend already knows`() = runTest {
         val known = phoneRequiredSession.copy(user = phoneRequiredSession.user.copy(phone = "+5511999990000"))
