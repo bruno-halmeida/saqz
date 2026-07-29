@@ -20,6 +20,8 @@ kotlin {
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
+            // O back do sistema é tratado dentro da 1b enquanto o cadastro está em curso.
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.lifecycle.viewmodel.compose)

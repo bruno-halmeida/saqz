@@ -80,6 +80,11 @@ class AccessMetricsTest {
         )
     }
 
+    @Test
+    fun fieldGapMatchesTheContract() = runTest {
+        assertEquals(AccessMetrics.fieldGap, fluxo1().group("gapDosCampos").number("padrao").dp)
+    }
+
     // O caso que importa da onda: os seis números de cada curva remontam exatamente o
     // path do export. Copiar meio path ou trocar um controle de lugar morre aqui, e é o
     // defeito plausível — as duas curvas têm a mesma forma e números parecidos.

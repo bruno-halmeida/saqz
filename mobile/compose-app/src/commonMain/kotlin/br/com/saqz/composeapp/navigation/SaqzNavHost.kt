@@ -24,6 +24,7 @@ import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
+import br.com.saqz.access.ui.RegisterRoot
 import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
@@ -98,11 +99,12 @@ internal fun SaqzNavHost(
                 )
             }
             entry<AccessRoute.Register> {
-                // Cadastrar não empilha a 1c: a 1c só existe quando a sessão está em
-                // `CompletingIdentity`, e quem reage a isso é o `reconcileAccessStack`.
-                // Empilhar `IdentityCompletion` daqui, com a máquina ainda em `SignedOut`,
-                // abria um formulário vazio cujos intentos a máquina recusa todos.
-                AccessSkeleton("Register")
+                // As duas saídas para a 1a são o mesmo desempilhar — a 1b só é alcançável
+                // por cima do login. O que muda entre elas ("Entrar?" do e-mail duplicado
+                // leva o e-mail junto) já aconteceu na ViewModel, no formulário que a 1a
+                // projeta. Cadastrar não empilha a 1c: vira sessão, e quem reage a sessão é
+                // o `reconcileAccessStack`.
+                RegisterRoot(onBack = pop, onOpenLogin = pop)
             }
             entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
             entry<AccessRoute.ForgotPassword> {
