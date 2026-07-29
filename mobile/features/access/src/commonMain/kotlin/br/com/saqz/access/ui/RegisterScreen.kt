@@ -13,7 +13,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -95,6 +97,7 @@ private val TermsLinks = listOf("Termos de uso", "Política de privacidade")
  * isso lá e cai na 1c. O subtítulo cede o lugar ao alerta quando há erro, que é a diferença
  * visível entre os dois quadros do export.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun RegisterScreen(
     state: RegisterState,
@@ -105,6 +108,16 @@ fun RegisterScreen(
 ) {
     val colors = SaqzTheme.colors
     val alert = registerAlert(state)
+
+    // A quarta saída, a que não se vê: o back do sistema, incluindo o preditivo. As três
+    // visíveis fecham por `enabled`, mas o `NavDisplay.onBack` do host é um `pop`
+    // incondicional, e com o login embaixo o back removeria a 1b no meio do envio.
+    //
+    // A trava mora **aqui**, e não no `onBack` do host: aquele é compartilhado pelos sete
+    // tickets desta onda e pelas rotas do fluxo 2, e condicioná-lo globalmente imporia a
+    // regra da 1b a destinos que não a pediram. Reduz a janela; quem fecha o buraco é a
+    // guarda de geração da `RegisterViewModel`.
+    BackHandler(enabled = state.isLoading) {}
 
     AccessScaffold(modifier = modifier) {
         Box(Modifier.fillMaxWidth()) {

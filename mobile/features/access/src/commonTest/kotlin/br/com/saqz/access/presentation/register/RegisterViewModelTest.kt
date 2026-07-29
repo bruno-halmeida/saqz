@@ -267,6 +267,42 @@ class RegisterViewModelTest {
         assertEquals(RegisterState(), fresh.state.value)
     }
 
+    /**
+     * A guarda de geração do `mobile/AGENTS.md` ("a resposta é descartada se o contexto
+     * mudou"). O achado do Codex era o back do sistema removendo a 1b durante o
+     * `createAccount`, que não tem cancelamento — a tela sai e a resposta chega depois,
+     * entregando sessão pelas costas. Travar as saídas estreita a janela; isto a fecha.
+     */
+    @Test
+    fun `a response that arrives after the screen is gone delivers nothing`() = runTest(mainDispatcher) {
+        val transitions = mutableListOf<AuthTransition>()
+        val (viewModel, auth) = fixture(onTransition = transitions::add)
+        viewModel.submitValidForm()
+
+        // O que o back do sistema provoca: a tela sai e a ViewModel morre com o envio em voo.
+        viewModel.discardPendingSubmission()
+        auth.complete(AuthResult.Success(USER))
+
+        assertTrue(transitions.isEmpty(), "sessão entregue a uma tela que já saiu")
+        assertTrue(viewModel.state.value.isLoading, "resposta descartada não mexe no estado")
+    }
+
+    // A outra forma de o contexto mudar: um envio novo toma o lugar do anterior, e a
+    // resposta velha chega atrasada.
+    @Test
+    fun `a late response from a replaced submission is discarded`() = runTest(mainDispatcher) {
+        val transitions = mutableListOf<AuthTransition>()
+        val (viewModel, auth) = fixture(onTransition = transitions::add)
+        viewModel.submitValidForm()
+        auth.completeSubmission(0, AuthResult.Cancelled)
+        viewModel.onIntent(RegisterIntent.Submit)
+
+        auth.completeSubmission(0, AuthResult.Success(USER))
+
+        assertEquals(2, auth.accounts.size, "o segundo envio saiu")
+        assertTrue(transitions.isEmpty(), "a resposta do envio substituído não vale mais")
+    }
+
     @Test
     fun `a submit already in flight is ignored`() = runTest(mainDispatcher) {
         val (viewModel, auth) = fixture()
@@ -301,14 +337,19 @@ class RegisterViewModelTest {
 
     private class FakeAuthPort : NativeAuthPort {
         val accounts = mutableListOf<AccountCall>()
-        private var authCallback: AuthCallback? = null
+
+        // Todos os callbacks, e não só o último: o `createAccount` não cancela, então o
+        // teste da guarda de geração precisa disparar um envio **velho** depois do novo.
+        private val callbacks = mutableListOf<AuthCallback>()
 
         override fun createAccount(name: String, email: String, password: String, done: AuthCallback) {
             accounts += AccountCall(name, email, password)
-            authCallback = done
+            callbacks += done
         }
 
-        fun complete(result: AuthResult) = authCallback!!.complete(result)
+        fun complete(result: AuthResult) = callbacks.last().complete(result)
+
+        fun completeSubmission(index: Int, result: AuthResult) = callbacks[index].complete(result)
 
         override fun observe(listener: AuthStateListener): Cancelable =
             object : Cancelable { override fun cancel() = Unit }

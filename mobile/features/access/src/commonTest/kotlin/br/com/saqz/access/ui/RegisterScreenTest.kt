@@ -1,5 +1,10 @@
 package br.com.saqz.access.ui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHasClickAction
@@ -10,6 +15,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.NavigationEventInput
 import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
 import br.com.saqz.access.presentation.register.RegisterPasswordError
@@ -19,8 +27,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-@OptIn(ExperimentalTestApi::class)
+@OptIn(ExperimentalTestApi::class, InternalComposeUiApi::class, ExperimentalComposeUiApi::class)
 class RegisterScreenTest {
+
+    // Um input é como o back entra no dispatcher; a superclasse guarda o disparo em
+    // `protected`, então o teste precisa do próprio. Igual ao `SaqzBottomSheetBackTest`.
+    private class TestBackInput : NavigationEventInput() {
+        fun pressBack() = dispatchOnBackCompleted()
+    }
+
+    private class TestOwner(
+        override val navigationEventDispatcher: NavigationEventDispatcher,
+    ) : NavigationEventDispatcherOwner
 
     // Quatro campos, na ordem do export, cada um reportando o seu próprio intent. A tela é
     // sem estado, então o campo volta a vazio depois de cada tecla — o que interessa é o
@@ -133,6 +151,41 @@ class RegisterScreenTest {
         assertNull(intent, "nem o enviar responde durante o envio")
     }
 
+    /**
+     * A quarta saída, a que não se vê. O `NavDisplay.onBack` do host é um `pop`
+     * incondicional e o login está embaixo, então sem esta trava o back do sistema removeria
+     * a 1b no meio do `createAccount`.
+     *
+     * O teste monta o próprio `NavigationEventDispatcher` porque é a única forma de disparar
+     * o back daqui e de ver quem **não** o consumiu — o `onBackCompletedFallback` é o "o
+     * host trata", que é exatamente o que a 1b não pode deixar acontecer enquanto envia.
+     * Mesmo arranjo do `SaqzBottomSheetBackTest`.
+     */
+    @Test fun `the system back is swallowed while the account is being created`() = runComposeUiTest {
+        var reachedTheHost = 0
+        val dispatcher = NavigationEventDispatcher { reachedTheHost++ }
+        val input = TestBackInput().also(dispatcher::addInput)
+        content(state = RegisterState(isLoading = true), dispatcher = dispatcher)
+
+        input.pressBack()
+        waitForIdle()
+
+        assertEquals(0, reachedTheHost, "o back saiu da 1b e chegaria ao pop do host")
+    }
+
+    // E em repouso ela não pode roubar o back: a 1b engolindo sempre travaria o voltar.
+    @Test fun `the quiet screen leaves the system back to the host`() = runComposeUiTest {
+        var reachedTheHost = 0
+        val dispatcher = NavigationEventDispatcher { reachedTheHost++ }
+        val input = TestBackInput().also(dispatcher::addInput)
+        content(dispatcher = dispatcher)
+
+        input.pressBack()
+        waitForIdle()
+
+        assertEquals(1, reachedTheHost)
+    }
+
     // O negrito do alerta sai da própria frase formatada, e não de um literal em PT-BR.
     @Test fun `the summary emphasis stops after the counted noun`() {
         assertEquals(
@@ -157,9 +210,24 @@ class RegisterScreenTest {
         onIntent: (RegisterIntent) -> Unit = {},
         onBack: () -> Unit = {},
         onSignIn: () -> Unit = {},
+        dispatcher: NavigationEventDispatcher? = null,
     ) = setContent {
-        SaqzTheme {
-            RegisterScreen(state = state, onIntent = onIntent, onBack = onBack, onSignIn = onSignIn)
+        WithDispatcher(dispatcher) {
+            SaqzTheme {
+                RegisterScreen(state = state, onIntent = onIntent, onBack = onBack, onSignIn = onSignIn)
+            }
+        }
+    }
+
+    @Composable
+    private fun WithDispatcher(dispatcher: NavigationEventDispatcher?, content: @Composable () -> Unit) {
+        if (dispatcher == null) {
+            content()
+        } else {
+            CompositionLocalProvider(
+                LocalCompatNavigationEventDispatcherOwner provides TestOwner(dispatcher),
+                content = content,
+            )
         }
     }
 }

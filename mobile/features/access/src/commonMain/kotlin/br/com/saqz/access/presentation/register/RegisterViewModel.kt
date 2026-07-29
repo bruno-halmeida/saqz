@@ -114,7 +114,7 @@ class RegisterViewModel(
         // A senha continua no estado durante o envio, ao contrário do login: o 1j desenha o
         // campo ainda preenchido depois da recusa, e obrigar a redigitar oito caracteres por
         // causa de uma queda de rede seria pior do que o risco que o login evita.
-        auth.createAccount(name, email, current.password, callback())
+        auth.createAccount(name, email, current.password, callback(++submission))
     }
 
     private fun onAuthResult(result: AuthResult) {
@@ -173,8 +173,37 @@ class RegisterViewModel(
         }
     }
 
-    private fun callback() = object : AuthCallback {
-        override fun complete(result: AuthResult) = onAuthResult(result)
+    /**
+     * A guarda de geração que o `mobile/AGENTS.md` exige em carga assíncrona ("a resposta é
+     * descartada se o contexto mudou"), e o que de fato fecha o buraco que travar as saídas
+     * só estreita.
+     *
+     * `createAccount` não tem cancelamento: o callback fica retido no provedor e vai chegar,
+     * com a tela viva ou não. Bloquear o voltar, os dois links e o back do sistema reduz as
+     * portas conhecidas; [submission] cobre as que ninguém previu, porque o resultado só é
+     * aceito se ainda for o **corrente**.
+     *
+     * Duas coisas mudam o contexto: a tela morrer ([onCleared]) e um envio novo tomar o
+     * lugar do anterior. Nos dois casos a resposta velha entra aqui e vai embora sem tocar
+     * no estado e, principalmente, sem entregar sessão.
+     */
+    private var submission = 0
+
+    override fun onCleared() {
+        discardPendingSubmission()
+        super.onCleared()
+    }
+
+    /** Invalida o que estiver em voo. Também é o gancho por onde o teste move o contexto. */
+    internal fun discardPendingSubmission() {
+        submission++
+    }
+
+    private fun callback(generation: Int) = object : AuthCallback {
+        override fun complete(result: AuthResult) {
+            if (generation != submission) return
+            onAuthResult(result)
+        }
     }
 }
 
