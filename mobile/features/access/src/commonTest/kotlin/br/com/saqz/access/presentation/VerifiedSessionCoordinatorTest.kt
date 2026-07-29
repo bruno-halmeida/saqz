@@ -432,6 +432,21 @@ class SessionAccessStateMachineTest {
         assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
     }
 
+    // A janela entre o `scope.launch` e o corpo da corrotina: a cadeia já nasceu, mas o
+    // `PUT api/session` ainda não saiu. Sair nesse intervalo não pode emitir o pedido —
+    // descartar a resposta depois não o traz de volta.
+    @Test
+    fun `a logout before bootstrap starts never issues the session put`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        // Sem `runCurrent`: o bootstrap está agendado e a corrotina ainda não rodou.
+        fixture.machine.onIntent(SessionIntent.Logout)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(0, fixture.session.calls)
+    }
+
     // O caminho pré-bootstrap responde por callback do provedor, não por corrotina, e tem
     // a mesma janela: sair enquanto o nome sobe não pode trazer a 1c de volta.
     @Test

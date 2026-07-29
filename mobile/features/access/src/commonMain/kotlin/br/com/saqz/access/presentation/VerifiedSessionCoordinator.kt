@@ -171,9 +171,12 @@ class SessionAccessStateMachine(
      * guarda tinha corrida, depois faltou guarda no retorno sem foto.
      *
      * O [Turn] fecha isso por construção: ele nasce no intento que começou a cadeia,
-     * atravessa **todos** os passos, e é a única porta de escrita depois de uma suspensão.
-     * Passo que não recebe o passe não escreve; passo que recebe não consegue escrever fora
-     * da geração dele, porque a revalidação está dentro da mesma operação atômica da escrita.
+     * atravessa **todos** os passos, e é por onde passam as duas coisas que uma cadeia morta
+     * não pode fazer — **escrever estado** e **emitir efeito**.
+     *
+     * As duas, e não só a primeira: pedido de rede disparado por uma cadeia morta já saiu, e
+     * descartar a resposta não o traz de volta. Por isso [emit] pergunta antes de emitir, e
+     * não depois de voltar.
      */
     private inner class Turn(private val token: Int) {
         /** Escreve o estado se a cadeia ainda for a corrente; nulo é contexto perdido. */
@@ -185,11 +188,17 @@ class SessionAccessStateMachine(
             begin { if (it.generation == token) edit(it) else null }
 
         /**
-         * Revalida sem escrever, para o passo cujo efeito é **externo** — o pedido HTTP, que
-         * sai com a sessão que o provedor tiver agora. Não fecha a janela entre a conferência
-         * e o envio; o que ela garante é que a cadeia não chega ao pedido depois de a conta
-         * ter mudado.
+         * Emite um efeito externo — pedido HTTP, chamada ao provedor — só se a cadeia ainda
+         * for a corrente; nulo é cadeia morta, e quem chama para por ali.
+         *
+         * **Antes** de emitir, e é essa a diferença: o `PUT api/session` de uma cadeia morta
+         * sai com o token que o provedor tiver agora, e nenhum tratamento da resposta desfaz
+         * o pedido. O que continua fora do alcance é o intervalo entre esta pergunta e o
+         * pedido sair — para fechá-lo, o pedido teria de carregar a identidade esperada, o
+         * que é mudança no cliente de rede.
          */
+        inline fun <T> emit(effect: () -> T): T? = if (current()) effect() else null
+
         fun current(): Boolean = context.value.generation == token
     }
 
@@ -485,7 +494,10 @@ class SessionAccessStateMachine(
     /** Só a parte assíncrona: quem já pôs o estado em `Bootstrapping` chama daqui. */
     private fun bootstrap(turn: Turn) {
         scope.launch {
-            when (val result = session.bootstrap()) {
+            // O `PUT api/session` sai com o token que o provedor tiver agora: a cadeia morta
+            // não pode chegar até ele. A pergunta é **antes** do pedido — o mesmo critério
+            // de [Turn.emit] nos outros efeitos externos da conclusão.
+            when (val result = turn.emit { session.bootstrap() } ?: return@launch) {
                 is SaqzResult.Failure -> turn.publish(SessionAccessState.BootstrapError)
                 is SaqzResult.Success -> resumePendingOrGate(result.value, turn)
             }
