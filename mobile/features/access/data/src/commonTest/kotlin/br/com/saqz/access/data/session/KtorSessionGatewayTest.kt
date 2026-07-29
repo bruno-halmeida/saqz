@@ -15,6 +15,7 @@ import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -180,6 +181,26 @@ class KtorSessionGatewayTest {
         val fixture = fixture(engine = MockEngine { throw CancellationException("cancelled") })
 
         assertFailsWith<CancellationException> { fixture.gateway.bootstrap() }
+    }
+
+    // ---- a foto de perfil da 1c (VUL-87) ----
+
+    @Test fun `photo upload sends multipart PUT to the session photo route`() = runTest {
+        val fixture = fixture { request ->
+            assertEquals("PUT", request.method.value)
+            assertEquals("/api/session/photo", request.url.encodedPath)
+            assertEquals("Bearer session-token", request.headers[HttpHeaders.Authorization])
+            assertTrue(request.body.contentType?.match(ContentType.MultiPart.FormData) == true)
+            respond("", HttpStatusCode.NoContent)
+        }
+
+        assertIs<SaqzResult.Success<Unit>>(fixture.gateway.uploadPhoto(byteArrayOf(1, 2, 3), "image/jpeg"))
+    }
+
+    @Test fun `a photo refused by the backend fails without touching the session`() = runTest {
+        val result = fixture { problem(413, "PAYLOAD_TOO_LARGE") }.gateway.uploadPhoto(byteArrayOf(1), "image/jpeg")
+
+        assertEquals(DataError.PayloadTooLarge, result.dataFailure())
     }
 
     private fun fixture(

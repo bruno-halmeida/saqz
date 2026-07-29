@@ -13,11 +13,14 @@ import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.network.ApiProblem
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
+import br.com.saqz.network.NetworkMediaUpload
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.RetrySafety
 import br.com.saqz.network.retryTransport
 import br.com.saqz.network.NetworkRequest
+import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -70,6 +73,28 @@ class KtorSessionGateway(
         SessionDto.serializer(),
         NetworkRequest(json.encodeToString(CompleteProfileRequestDto(phone, displayName))),
     ).toAccessResult()
+
+    /**
+     * Sem `retryTransport`: o multipart é escrito uma vez a partir dos bytes que a
+     * plataforma já recortou, e repetir um envio de imagem que pode ter chegado ao
+     * servidor é o tipo de gentileza que duplica upload.
+     */
+    override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> =
+        network.uploadMedia(
+            HttpMethod.Put,
+            "api/session/photo",
+            NetworkMediaUpload(
+                fileName = "user-photo",
+                contentType = ContentType.parse(mediaType),
+                contentLength = bytes.size.toLong(),
+                openChannel = { ByteReadChannel(bytes) },
+            ),
+        ).toUnitAccessResult()
+}
+
+private fun NetworkResult<Unit>.toUnitAccessResult(): SaqzResult<Unit, AccessError> = when (this) {
+    is NetworkResult.Success -> SaqzResult.Success(Unit)
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toAccessError())
 }
 
 private fun NetworkResult<SessionDto>.toAccessResult(): SaqzResult<AccessSession, AccessError> = when (this) {

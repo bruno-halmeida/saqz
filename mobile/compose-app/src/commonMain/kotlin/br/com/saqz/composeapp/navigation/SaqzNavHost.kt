@@ -22,6 +22,7 @@ import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
+import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
@@ -98,7 +99,7 @@ internal fun SaqzNavHost(
             entry<AccessRoute.Register> {
                 AccessSkeleton("Register", "IdentityCompletion" to { backStack.add(AccessRoute.IdentityCompletion) })
             }
-            entry<AccessRoute.IdentityCompletion> { AccessSkeleton("IdentityCompletion") }
+            entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
             entry<AccessRoute.ForgotPassword> {
                 ForgotPasswordRoot(
                     onBack = pop,

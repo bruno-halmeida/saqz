@@ -63,6 +63,9 @@
     <string name="identity_supporting_text">Confirme seu nome e adicione um telefone para a galera te encontrar.</string>
     <string name="identity_phone_privacy">Seu telefone fica visível só para os grupos que você participa.</string>
     <string name="identity_submit">Concluir cadastro</string>
+    <!-- VUL-87: o export não desenha a falha só da foto, mas ela existe — o cadastro grava
+         e o JPEG não sobe. Sem esta frase o aviso não teria texto. -->
+    <string name="identity_photo_failed">Não conseguimos enviar sua foto, mas seu cadastro foi salvo. Toque em Concluir cadastro para entrar.</string>
 
     <!-- 1d · esqueci a senha -->
     <string name="forgot_headline">Esqueceu a senha?\n</string>

@@ -274,6 +274,108 @@ class SessionAccessStateMachineTest {
         assertEquals(photo, assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value).photo)
     }
 
+    // ---- a foto: opcional em toda parte (VUL-87) ----
+
+    @Test
+    fun `the chosen photo goes up with the profile`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertEquals("image/jpeg", fixture.session.photoUploads.single().second)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    @Test
+    fun `completing without a photo never touches the photo endpoint`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertTrue(fixture.session.photoUploads.isEmpty())
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // Perder o cadastro inteiro por causa de um JPEG é o que não pode acontecer: nome e
+    // telefone gravam, a 1c avisa, e o toque seguinte entra sem foto para subir.
+    @Test
+    fun `a photo that fails to upload does not undo the profile`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertTrue(state.photoFailed)
+        assertNull(state.photo)
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+        assertEquals(1, fixture.session.profileCalls.size)
+    }
+
+    @Test
+    fun `the touch after a failed photo enters without retrying the upload`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertEquals(2, fixture.session.profileCalls.size)
+    }
+
+    // Escolher outra foto é dizer "tenta de novo": o aviso da anterior sai da tela junto.
+    @Test
+    fun `choosing another photo clears the warning`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertFalse(state.photoFailed)
+        assertEquals(photo, state.photo)
+    }
+
+    // O caminho pré-bootstrap carrega a foto na pendência: ela sobe quando a sessão passa
+    // a existir, sem a pessoa escolher a imagem duas vezes.
+    @Test
+    fun `the photo chosen before bootstrap goes up once the session exists`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Success(phoneRequiredSession))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+
+        fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
+        fixture.session.profileResult = SaqzResult.Success(session)
+        runCurrent()
+
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
     @Test
     fun `identity completion is single flight`() = runTest {
         val fixture = identityFixture()
@@ -527,6 +629,14 @@ class SessionAccessStateMachineTest {
          */
         var profileResult: SaqzResult<AccessSession, AccessError>? = null
 
+        val photoUploads = mutableListOf<Pair<ByteArray, String>>()
+        var photoResult: SaqzResult<Unit, AccessError> = SaqzResult.Success(Unit)
+
+        override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> {
+            photoUploads += bytes to mediaType
+            return photoResult
+        }
+
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             calls += 1
             return result
@@ -583,5 +693,6 @@ class SessionAccessStateMachineTest {
         val verified = unverified.copy(emailVerified = true)
         val session = AccessSession(AccessUser("user-id", "person@example.test", "Person Name"), emptyList())
         val phoneRequiredSession = session.copy(user = session.user.copy(phoneRequired = true))
+        val photo = ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg")
     }
 }

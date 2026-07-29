@@ -44,6 +44,13 @@ sealed interface SessionAccessState {
         val error: AuthUiError? = null,
         val invalidName: Boolean = false,
         val invalidPhone: Boolean = false,
+        /**
+         * A foto foi escolhida e o envio dela falhou — só ela. Nome e telefone gravaram,
+         * e é por isso que o sinal é um aviso e não um erro: o cadastro está de pé, o que
+         * falta é o JPEG. A foto sai do estado junto, senão o próximo toque tentaria
+         * exatamente o envio que acabou de falhar.
+         */
+        val photoFailed: Boolean = false,
     ) : SessionAccessState
 
     data object Bootstrapping : SessionAccessState
@@ -102,7 +109,7 @@ class SessionAccessStateMachine(
             }
             is SessionIntent.UpdateName -> updateIdentity { copy(name = intent.value, invalidName = false) }
             is SessionIntent.UpdatePhone -> updateIdentity { copy(phone = intent.value, invalidPhone = false) }
-            is SessionIntent.UpdatePhoto -> updateIdentity { copy(photo = intent.value) }
+            is SessionIntent.UpdatePhoto -> updateIdentity { copy(photo = intent.value, photoFailed = false) }
             SessionIntent.CompleteIdentity -> completeIdentity()
             SessionIntent.RetryBootstrap -> retryBootstrap()
             SessionIntent.Logout -> logout()
@@ -117,8 +124,8 @@ class SessionAccessStateMachine(
     /**
      * Um botão, dois caminhos, decididos por [SessionAccessState.CompletingIdentity.session].
      *
-     * A foto escolhida fica no estado e não sobe: o envio é HTTP multipart e ainda não há
-     * gateway para ele. Quem entrega a 1c completa liga o upload nesta transição.
+     * A foto sobe junto, mas nunca manda no resultado: quem decide se a pessoa entra são o
+     * nome e o telefone (VUL-87).
      */
     private fun completeIdentity() {
         val current = mutableState.value as? SessionAccessState.CompletingIdentity ?: return
@@ -129,7 +136,17 @@ class SessionAccessStateMachine(
             mutableState.value = current.copy(invalidName = name == null, invalidPhone = phone == null)
             return
         }
-        val submitting = current.copy(isLoading = true, error = null, invalidName = false, invalidPhone = false)
+        // `photoFailed` zera aqui junto com os outros sinais: tocar de novo é recomeçar o
+        // envio, e o aviso da tentativa anterior não pode sobreviver a ela — se sobrevivesse,
+        // um segundo toque sem foto para subir manteria a pessoa presa na 1c com o recado
+        // de um envio que nem aconteceu.
+        val submitting = current.copy(
+            isLoading = true,
+            error = null,
+            invalidName = false,
+            invalidPhone = false,
+            photoFailed = false,
+        )
         mutableState.value = submitting
         if (current.session == null) claimNameThenBootstrap(submitting, name, phone)
         else scope.launch { submitProfile(submitting, name, phone) }
@@ -182,17 +199,41 @@ class SessionAccessStateMachine(
         name: String,
         phone: String,
     ) {
+        val current = uploadPhoto(base)
         mutableState.value = when (val result = session.completeProfile(phone, name)) {
-            is SaqzResult.Success -> readyOrIdentityGate(result.value)
+            is SaqzResult.Success -> if (current.photoFailed) {
+                // Gravou nome e telefone, e só a foto ficou pelo caminho: a 1c continua de
+                // pé para dizer isso, agora **com** sessão. O próximo toque não tem mais
+                // foto para subir e entra direto — o aviso custa um toque, nunca o cadastro.
+                current.copy(session = result.value, name = name, phone = phone, isLoading = false)
+            } else {
+                readyOrIdentityGate(result.value)
+            }
             is SaqzResult.Failure -> when (val error = result.error) {
-                is AccessError.Validation -> base.refused(error.details)
-                is AccessError.DataFailure -> base.copy(isLoading = false, error = error.error.toUiError())
+                is AccessError.Validation -> current.refused(error.details)
+                is AccessError.DataFailure -> current.copy(isLoading = false, error = error.error.toUiError())
                 AccessError.EmailNotVerified,
                 AccessError.Unauthenticated,
                 AccessError.Forbidden,
-                -> base.copy(isLoading = false, error = AuthUiError.UNKNOWN)
+                -> current.copy(isLoading = false, error = AuthUiError.UNKNOWN)
             }
         }
+    }
+
+    /**
+     * A foto sobe **antes** do perfil e devolve o estado com que o resto do envio segue.
+     *
+     * Antes porque é o único momento em que a 1c ainda está na tela para avisar: depois do
+     * `completeProfile` bem-sucedido a pessoa já entrou, e um aviso emitido ali não teria
+     * onde aparecer. Falhar aqui não interrompe nada — o envio do nome e do telefone
+     * acontece igual, com a foto descartada.
+     */
+    private suspend fun uploadPhoto(
+        base: SessionAccessState.CompletingIdentity,
+    ): SessionAccessState.CompletingIdentity {
+        val photo = base.photo ?: return base
+        if (session.uploadPhoto(photo.bytes, photo.mediaType) is SaqzResult.Success) return base
+        return base.copy(photo = null, photoFailed = true).also { mutableState.value = it }
     }
 
     private fun retryBootstrap() {

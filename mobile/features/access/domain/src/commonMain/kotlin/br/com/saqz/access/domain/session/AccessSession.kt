@@ -46,6 +46,16 @@ interface SessionGateway {
         phone: String,
         displayName: String? = null,
     ): SaqzResult<AccessSession, AccessError>
+
+    /**
+     * A foto de perfil da 1c, multipart contra `api/session/photo`. Fica aqui e não numa
+     * porta própria porque o endpoint é da mesma sessão que os outros dois: o backend
+     * resolve o usuário pelo mesmo `BootstrapSession`, e um gateway a mais significaria
+     * outro binding para o mesmo cliente HTTP.
+     *
+     * Devolve `Unit`: o `PUT` responde 204 com ETag, e a 1c não lê a foto de volta.
+     */
+    suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError>
 }
 
 interface SessionInvalidator {
