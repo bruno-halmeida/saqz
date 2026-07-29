@@ -21,6 +21,7 @@ import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -376,6 +377,98 @@ class SessionAccessStateMachineTest {
         assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
     }
 
+    // ---- a guarda de geração: resposta com o contexto trocado é descartada ----
+    //
+    // O voltar da 1c continua clicável enquanto o envio corre, e o escopo da máquina é o
+    // singleton do app: nada cancela sozinho. Sem a guarda, a corrotina retomada escreve
+    // `Ready` por cima do `SignedOut` e reabre o shell de quem acabou de sair.
+
+    @Test
+    fun `a logout during the profile submit never undoes the logout`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileGate = CompletableDeferred()
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.profileGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+    }
+
+    @Test
+    fun `a logout during the photo upload never revives the screen`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoGate = CompletableDeferred()
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.photoGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        // A foto caiu com o contexto: o perfil nem chega a ser enviado.
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    @Test
+    fun `a logout during bootstrap never opens the shell`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.session.bootstrapGate = CompletableDeferred()
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.bootstrapGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+    }
+
+    // O caminho pré-bootstrap responde por callback do provedor, não por corrotina, e tem
+    // a mesma janela: sair enquanto o nome sobe não pode trazer a 1c de volta.
+    @Test
+    fun `a logout while the provider claims the name is not undone by the answer`() = runTest {
+        val fixture = namelessFixture()
+        fixture.machine.onIntent(SessionIntent.UpdateName("Pessoa Nova"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.auth.completeAuth(AuthResult.Success(verified.copy(displayName = "Pessoa Nova")))
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(0, fixture.session.calls)
+    }
+
+    // Autenticar outra identidade é a outra troca de contexto: o que estava em voo pela
+    // conta anterior não pode aterrissar sobre a nova.
+    @Test
+    fun `a response from the previous account never lands on the next one`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileGate = CompletableDeferred()
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.session.result = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.session.profileGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
     @Test
     fun `identity completion is single flight`() = runTest {
         val fixture = identityFixture()
@@ -632,13 +725,23 @@ class SessionAccessStateMachineTest {
         val photoUploads = mutableListOf<Pair<ByteArray, String>>()
         var photoResult: SaqzResult<Unit, AccessError> = SaqzResult.Success(Unit)
 
+        /**
+         * Portões para segurar a resposta no ar: é a única forma de o teste sair da conta
+         * **durante** a suspensão, que é exatamente a janela que a guarda de geração fecha.
+         */
+        var photoGate: CompletableDeferred<Unit>? = null
+        var profileGate: CompletableDeferred<Unit>? = null
+        var bootstrapGate: CompletableDeferred<Unit>? = null
+
         override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> {
             photoUploads += bytes to mediaType
+            photoGate?.await()
             return photoResult
         }
 
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             calls += 1
+            bootstrapGate?.await()
             return result
         }
 
@@ -647,6 +750,7 @@ class SessionAccessStateMachineTest {
             displayName: String?,
         ): SaqzResult<AccessSession, AccessError> {
             profileCalls += phone to displayName
+            profileGate?.await()
             return profileResult ?: result
         }
     }

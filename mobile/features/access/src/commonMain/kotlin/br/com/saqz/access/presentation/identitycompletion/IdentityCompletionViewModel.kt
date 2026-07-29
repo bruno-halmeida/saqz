@@ -19,11 +19,14 @@ import org.jetbrains.compose.resources.decodeToImageBitmap
  * Projeta a 1c da [SessionAccessStateMachine] compartilhada — nome, telefone e foto vivem
  * lá, porque é lá que o portão de identidade é decidido. Desta ViewModel são só a escolha
  * da imagem (porta nativa, callback) e a decodificação dos bytes para a tela.
+ *
+ * `Nothing` no lugar do efeito: a 1c não emite nenhum, e quem troca de tela nos dois
+ * desfechos — desistiu, concluiu — é o estado de sessão que o gate de rota lê.
  */
 class IdentityCompletionViewModel(
     private val session: SessionAccessStateMachine,
     private val photos: NativeProfilePhotoPort,
-) : MviViewModel<IdentityCompletionState, IdentityCompletionIntent, IdentityCompletionEffect>(
+) : MviViewModel<IdentityCompletionState, IdentityCompletionIntent, Nothing>(
     // O primeiro quadro sai do estado que já existe, e não de um vazio: a máquina é
     // singleton e a 1c só é composta porque ela **já** está em `CompletingIdentity` — abrir
     // com os campos em branco piscaria o nome do provedor por um quadro.

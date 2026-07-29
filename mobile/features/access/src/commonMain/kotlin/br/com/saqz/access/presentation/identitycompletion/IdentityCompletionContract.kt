@@ -42,6 +42,3 @@ sealed interface IdentityCompletionIntent {
      */
     data object Back : IdentityCompletionIntent
 }
-
-/** A 1c não tem efeito de uma vez só: quem troca de tela é o estado de sessão. */
-sealed interface IdentityCompletionEffect

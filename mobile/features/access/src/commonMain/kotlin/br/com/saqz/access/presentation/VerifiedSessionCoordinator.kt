@@ -102,6 +102,29 @@ class SessionAccessStateMachine(
      */
     private var pendingIdentity: PendingIdentity? = null
 
+    /**
+     * A geração do contexto de sessão, para a guarda que o `mobile/AGENTS.md` lista nas
+     * disciplinas obrigatórias: **resposta que volta com o contexto trocado é descartada**.
+     *
+     * Sobe em toda troca: sair da conta e autenticar outra identidade. Todo ponto que
+     * suspende — envio da foto, `completeProfile`, `bootstrap`, e os callbacks do provedor
+     * no caminho pré-bootstrap — captura o número antes e confere depois, porque nenhum
+     * deles cancela ao sair: o `scope` é o singleton do app, e o voltar da 1c continua
+     * clicável enquanto o envio corre.
+     *
+     * Sem isso, sair da conta no meio de um envio é sair e voltar sozinho: a corrotina
+     * retomada escreveria `Ready` sobre o `SignedOut`, reabrindo o shell de quem acabou de
+     * sair.
+     */
+    private var generation = 0
+
+    private fun stale(token: Int) = token != generation
+
+    /** Escreve o estado só se o contexto ainda for o de [token]. */
+    private fun publish(token: Int, state: SessionAccessState) {
+        if (!stale(token)) mutableState.value = state
+    }
+
     fun onIntent(intent: SessionIntent) {
         when (intent) {
             is SessionIntent.Accept -> when (val transition = intent.transition) {
@@ -148,8 +171,9 @@ class SessionAccessStateMachine(
             photoFailed = false,
         )
         mutableState.value = submitting
-        if (current.session == null) claimNameThenBootstrap(submitting, name, phone)
-        else scope.launch { submitProfile(submitting, name, phone) }
+        val token = generation
+        if (current.session == null) claimNameThenBootstrap(submitting, name, phone, token)
+        else scope.launch { submitProfile(submitting, name, phone, token) }
     }
 
     /**
@@ -163,13 +187,15 @@ class SessionAccessStateMachine(
         current: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
+        token: Int,
     ) {
         auth.updateDisplayName(name, authCallback { result ->
+            if (stale(token)) return@authCallback
             when (result) {
                 AuthResult.Cancelled -> mutableState.value = current.copy(isLoading = false, name = name)
                 is AuthResult.Failure -> mutableState.value =
                     current.copy(isLoading = false, name = name, error = result.code.toUiError())
-                is AuthResult.Success -> refreshTokenThenBootstrap(result.user, current, name, phone)
+                is AuthResult.Success -> refreshTokenThenBootstrap(result.user, current, name, phone, token)
             }
         })
     }
@@ -179,9 +205,11 @@ class SessionAccessStateMachine(
         current: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
+        token: Int,
     ) {
         auth.idToken(true, object : TokenCallback {
             override fun complete(result: TokenResult) {
+                if (stale(token)) return
                 when (result) {
                     is TokenResult.Failure -> mutableState.value =
                         current.copy(isLoading = false, name = name, error = result.code.toUiError())
@@ -198,9 +226,12 @@ class SessionAccessStateMachine(
         base: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
+        token: Int,
     ) {
-        val current = uploadPhoto(base)
-        mutableState.value = when (val result = session.completeProfile(phone, name)) {
+        val current = uploadPhoto(base, token) ?: return
+        val result = session.completeProfile(phone, name)
+        if (stale(token)) return
+        mutableState.value = when (result) {
             is SaqzResult.Success -> if (current.photoFailed) {
                 // Gravou nome e telefone, e só a foto ficou pelo caminho: a 1c continua de
                 // pé para dizer isso, agora **com** sessão. O próximo toque não tem mais
@@ -227,12 +258,18 @@ class SessionAccessStateMachine(
      * `completeProfile` bem-sucedido a pessoa já entrou, e um aviso emitido ali não teria
      * onde aparecer. Falhar aqui não interrompe nada — o envio do nome e do telefone
      * acontece igual, com a foto descartada.
+     *
+     * Nulo é a saída da guarda de geração: o contexto trocou enquanto a imagem subia, e
+     * daí em diante não há mais o que escrever nem perfil que gravar.
      */
     private suspend fun uploadPhoto(
         base: SessionAccessState.CompletingIdentity,
-    ): SessionAccessState.CompletingIdentity {
+        token: Int,
+    ): SessionAccessState.CompletingIdentity? {
         val photo = base.photo ?: return base
-        if (session.uploadPhoto(photo.bytes, photo.mediaType) is SaqzResult.Success) return base
+        val failed = session.uploadPhoto(photo.bytes, photo.mediaType) is SaqzResult.Failure
+        if (stale(token)) return null
+        if (!failed) return base
         return base.copy(photo = null, photoFailed = true).also { mutableState.value = it }
     }
 
@@ -245,6 +282,11 @@ class SessionAccessStateMachine(
     private fun logout() {
         if (loggingOut) return
         loggingOut = true
+        // A geração sobe **aqui**, no intento, e não quando a saída termina: a decisão de
+        // sair é deste instante, e o envio em voo tem de ser descartado desde já — se
+        // esperasse o fim da saída, a resposta que chegasse no meio ainda escreveria por
+        // cima dela.
+        generation += 1
         localState.writeSelectedGroupId(null, resultCallback {
             localState.writePendingInvite(null, resultCallback {
                 auth.signOut(resultCallback {
@@ -265,6 +307,9 @@ class SessionAccessStateMachine(
      * continua sendo portão é o nome, porque sem ele o bootstrap não passa.
      */
     private fun routeIdentity(user: NativeUser) {
+        // Autenticar é a outra troca de contexto: o que estava em voo pela conta anterior
+        // não pode aterrissar sobre a nova.
+        generation += 1
         currentUser = user
         if (normalizedDisplayName(user.displayName.orEmpty()) == null) {
             mutableState.value = SessionAccessState.CompletingIdentity(
@@ -279,10 +324,11 @@ class SessionAccessStateMachine(
     private fun bootstrap(user: NativeUser) {
         currentUser = user
         mutableState.value = SessionAccessState.Bootstrapping
+        val token = generation
         scope.launch {
             when (val result = session.bootstrap()) {
-                is SaqzResult.Failure -> mutableState.value = SessionAccessState.BootstrapError
-                is SaqzResult.Success -> resumePendingOrGate(result.value)
+                is SaqzResult.Failure -> publish(token, SessionAccessState.BootstrapError)
+                is SaqzResult.Success -> resumePendingOrGate(result.value, token)
             }
         }
     }
@@ -292,7 +338,8 @@ class SessionAccessStateMachine(
      * preserva para o `RetryBootstrap`, e um `completeProfile` que falha devolve a 1c já
      * **com** sessão — dali em diante o caminho normal, pós-bootstrap, dá conta.
      */
-    private suspend fun resumePendingOrGate(session: AccessSession) {
+    private suspend fun resumePendingOrGate(session: AccessSession, token: Int) {
+        if (stale(token)) return
         val pending = pendingIdentity
         if (pending == null) {
             mutableState.value = readyOrIdentityGate(session)
@@ -307,7 +354,7 @@ class SessionAccessStateMachine(
             isLoading = true,
         )
         mutableState.value = base
-        submitProfile(base, pending.name, pending.phone)
+        submitProfile(base, pending.name, pending.phone, token)
     }
 
     /**
