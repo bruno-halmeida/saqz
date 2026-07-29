@@ -8,6 +8,7 @@ import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationStateMachine
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.message
 import br.com.saqz.access.presentation.normalizedBrMobilePhone
 import br.com.saqz.access.presentation.normalizedDisplayName
@@ -30,20 +31,18 @@ const val REGISTER_MINIMUM_PASSWORD_LENGTH = 8
  * - [authentication] é o formulário compartilhado da 1a, e existe aqui só para o "Entrar?"
  *   do e-mail duplicado chegar lá com o campo preenchido. A `LoginViewModel` projeta essa
  *   máquina campo a campo, então escrever nela **é** preencher a 1a;
- * - [transition] entrega a autenticação vitoriosa a quem administra a sessão, exatamente
- *   como o `AuthenticationStateMachine` do login já faz. Dali a pessoa segue para a 1c com
- *   o nome que o `createAccount` gravou no `displayName`.
+ * - [onSessionIntent] entrega à máquina de sessão o depósito do telefone (VUL-101) e a
+ *   autenticação vitoriosa. O telefone sobe **antes** do `createAccount` porque o observe
+ *   global autentica sozinho e a 1c precisa achar o número já guardado.
  *
- * O telefone é validado aqui mas não sobe agora: `createAccount` leva nome, e-mail e senha,
- * e quem grava telefone é o `completeProfile` da 1c, que roda depois do bootstrap. Quem
- * chega na 1c reencontra o campo vazio — carregá-lo até lá é mudança no
- * `SessionAccessStateMachine`, que é de outro dono.
+ * O telefone é validado aqui e **não** vai no `createAccount` (nome, e-mail e senha): quem
+ * grava telefone é o `completeProfile` da 1c. O depósito na sessão só evita redigitar.
  */
 class RegisterViewModel(
     private val savedState: SavedStateHandle,
     private val auth: NativeAuthPort,
     private val authentication: AuthenticationStateMachine,
-    private val transition: (AuthTransition) -> Unit,
+    private val onSessionIntent: (SessionIntent) -> Unit,
 ) : MviViewModel<RegisterState, RegisterIntent, RegisterEffect>(savedState.restoredDraft()) {
 
     override fun onIntent(intent: RegisterIntent) {
@@ -111,6 +110,9 @@ class RegisterViewModel(
         }
 
         update { it.copy(isLoading = true, emailError = null, passwordError = null, error = null) }
+        // Antes do provedor: o observe global autentica no instante em que a conta nasce e
+        // a 1c precisa do telefone já depositado. Recusa ou cancelamento limpam o depósito.
+        onSessionIntent(SessionIntent.StageRegistrationIdentity(name, phone))
         // A senha continua no estado durante o envio, ao contrário do login: o 1j desenha o
         // campo ainda preenchido depois da recusa, e obrigar a redigitar oito caracteres por
         // causa de uma queda de rede seria pior do que o risco que o login evita.
@@ -119,14 +121,18 @@ class RegisterViewModel(
 
     private fun onAuthResult(result: AuthResult) {
         when (result) {
-            AuthResult.Cancelled -> update { it.copy(isLoading = false) }
+            AuthResult.Cancelled -> {
+                onSessionIntent(SessionIntent.ClearRegistrationIdentity)
+                update { it.copy(isLoading = false) }
+            }
             is AuthResult.Failure -> fail(result.code)
             is AuthResult.Success -> {
                 // O rascunho morre com a conta criada: a tela não volta, e o que sobreviveu
-                // até aqui não tem por que esperar a próxima instalação.
+                // até aqui não tem por que esperar a próxima instalação. O telefone depositado
+                // fica — a sessão é dona dele até a 1c consumir.
                 clearDraft()
                 update { it.copy(isLoading = false) }
-                transition(AuthTransition.Authenticated(result.user))
+                onSessionIntent(SessionIntent.Accept(AuthTransition.Authenticated(result.user)))
             }
         }
     }
@@ -143,33 +149,37 @@ class RegisterViewModel(
      * sem `else`: código novo na `NativeFailureCode` não compila até alguém decidir de quem
      * ele é.
      */
-    private fun fail(code: NativeFailureCode) = update { current ->
-        val settled = current.copy(isLoading = false)
-        when (code) {
-            // O e-mail já é de alguém. Vale para a colisão simples e para a conta que
-            // existe por outro provedor (`ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL`
-            // no Android, `accountExistsWithDifferentCredential` no iOS): as duas têm a
-            // mesma resposta — entrar em vez de criar —, e a 1a é onde estão os dois
-            // caminhos de entrada, inclusive o Google.
-            NativeFailureCode.EMAIL_IN_USE,
-            NativeFailureCode.AUTH_METHOD_CONFLICT,
-            -> settled.copy(emailError = RegisterEmailError.Taken)
+    private fun fail(code: NativeFailureCode) {
+        onSessionIntent(SessionIntent.ClearRegistrationIdentity)
+        update { current ->
+            val settled = current.copy(isLoading = false)
+            when (code) {
+                // O e-mail já é de alguém. Vale para a colisão simples e para a conta que
+                // existe por outro provedor (`ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL`
+                // no Android, `accountExistsWithDifferentCredential` no iOS): as duas têm a
+                // mesma resposta — entrar em vez de criar —, e a 1a é onde estão os dois
+                // caminhos de entrada, inclusive o Google.
+                NativeFailureCode.EMAIL_IN_USE,
+                NativeFailureCode.AUTH_METHOD_CONFLICT,
+                -> settled.copy(emailError = RegisterEmailError.Taken)
 
-            // Num `createAccount` a credencial inválida só pode ser o e-mail: senha ruim
-            // sai como `WEAK_PASSWORD`, e os dois adapters mapeiam `invalidEmail` para cá.
-            // É o que a validação local barra antes; isto é a rede de segurança para o
-            // endereço que passou por ela e o provedor recusou.
-            NativeFailureCode.INVALID_CREDENTIALS -> settled.copy(emailError = RegisterEmailError.Invalid)
+                // Num `createAccount` a credencial inválida só pode ser o e-mail: senha ruim
+                // sai como `WEAK_PASSWORD`, e os dois adapters mapeiam `invalidEmail` para cá.
+                // É o que a validação local barra antes; isto é a rede de segurança para o
+                // endereço que passou por ela e o provedor recusou.
+                NativeFailureCode.INVALID_CREDENTIALS -> settled.copy(emailError = RegisterEmailError.Invalid)
 
-            // A política do provedor recusou a senha escolhida — o campo é o dono, e a
-            // mensagem não é a do comprimento, que esta senha já cumpriu.
-            NativeFailureCode.WEAK_PASSWORD -> settled.copy(passwordError = RegisterPasswordError.TooWeak)
+                // A política do provedor recusou a senha escolhida — o campo é o dono, e a
+                // mensagem não é a do comprimento, que esta senha já cumpriu.
+                NativeFailureCode.WEAK_PASSWORD -> settled.copy(passwordError = RegisterPasswordError.TooWeak)
 
-            // Sem campo dono de verdade: nada no formulário explica nem conserta.
-            NativeFailureCode.NETWORK_UNAVAILABLE,
-            NativeFailureCode.PROVIDER_UNAVAILABLE,
-            NativeFailureCode.UNKNOWN,
-            -> settled.copy(error = code.toUiError().message())
+                // Sem campo dono de verdade: nada no formulário explica nem conserta.
+                NativeFailureCode.NETWORK_UNAVAILABLE,
+                NativeFailureCode.PROVIDER_UNAVAILABLE,
+                NativeFailureCode.TOO_MANY_REQUESTS,
+                NativeFailureCode.UNKNOWN,
+                -> settled.copy(error = code.toUiError().message())
+            }
         }
     }
 
