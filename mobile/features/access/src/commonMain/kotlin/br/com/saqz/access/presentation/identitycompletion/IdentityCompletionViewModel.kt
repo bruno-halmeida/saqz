@@ -11,9 +11,10 @@ import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.message
 import br.com.saqz.core.common.mvi.MviViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import org.jetbrains.compose.resources.decodeToImageBitmap
+import kotlinx.coroutines.launch
 
 /**
  * Projeta a 1c da [SessionAccessStateMachine] compartilhada — nome, telefone e foto vivem
@@ -46,12 +47,17 @@ class IdentityCompletionViewModel(
     // a foto).
     private var decodedFrom: ProfilePhotoResult.Selected? = null
     private var decoded: ImageBitmap? = null
+    private var decoding: Job? = null
 
     init {
         session.state
             .onEach { current ->
                 if (current is SessionAccessState.CompletingIdentity) {
-                    update { current.project(decode(current.photo), pickFailed) }
+                    // A decodificação não entra no caminho da coleta: o estado da tela
+                    // continua acompanhando cada tecla enquanto a imagem é preparada à
+                    // parte, e chega quando ficar pronta.
+                    decode(current.photo)
+                    update { current.project(decoded, pickFailed) }
                 }
             }
             .launchIn(viewModelScope)
@@ -99,19 +105,30 @@ class IdentityCompletionViewModel(
         })
     }
 
-    private fun decode(photo: ProfilePhotoResult.Selected?): ImageBitmap? {
-        if (photo == null) {
-            decodedFrom = null
-            decoded = null
-            return null
+    /**
+     * Prepara a imagem da escolha atual, uma vez por escolha (comparada por referência: a
+     * máquina copia o estado, não a foto).
+     *
+     * O trabalho sai daqui em outra corrotina de propósito — decodificar é síncrono e
+     * pesado, e no caminho da coleta travaria a tela a cada foto escolhida. Quem decodifica
+     * já devolve a imagem reduzida ao tamanho do avatar e fora da thread principal
+     * ([decodeAvatarPhoto]).
+     */
+    private fun decode(photo: ProfilePhotoResult.Selected?) {
+        if (photo === decodedFrom) return
+        decodedFrom = photo
+        decoding?.cancel()
+        decoded = null
+        if (photo == null) return
+        decoding = viewModelScope.launch {
+            // Bytes que a plataforma recortou mas que o decodificador recusa: a tela fica
+            // com o círculo vazio em vez de derrubar a composição.
+            val bitmap = decodeAvatarPhoto(photo.bytes, AVATAR_TARGET_PX)
+            // Outra escolha chegou enquanto esta era preparada: a imagem velha não entra.
+            if (photo !== decodedFrom) return@launch
+            decoded = bitmap
+            update { it.copy(photo = bitmap) }
         }
-        if (photo !== decodedFrom) {
-            decodedFrom = photo
-            // Bytes que a plataforma recortou mas que o decodificador recusa: a tela mostra
-            // o círculo vazio em vez de derrubar a composição.
-            decoded = runCatching { photo.bytes.decodeToImageBitmap() }.getOrNull()
-        }
-        return decoded
     }
 }
 

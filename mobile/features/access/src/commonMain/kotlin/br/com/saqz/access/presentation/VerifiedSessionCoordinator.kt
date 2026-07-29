@@ -18,9 +18,13 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 sealed interface SessionAccessState {
@@ -83,78 +87,90 @@ sealed interface SessionIntent {
     data object Logout : SessionIntent
 }
 
+/**
+ * Tudo que a máquina muda, num valor só.
+ *
+ * Estava em cinco campos soltos — estado, geração, pendência, usuário e a saída em curso —
+ * e cada guarda era um `if` lido de um campo seguido de uma escrita em outro. Duas etapas
+ * com uma janela no meio: o `scope` da máquina roda em `Dispatchers.Default` e os intentos
+ * chegam da interface, então entre conferir a geração e escrever o estado cabia um logout
+ * inteiro, e a resposta da conta anterior aterrissava sobre o contexto novo.
+ *
+ * Num valor só, a verificação e a escrita viram **uma** operação: o `compareAndSet` do
+ * `MutableStateFlow` aplica a mudança apenas se nada tiver mudado desde a leitura, e
+ * recomeça se tiver. Não há mais janela para fechar porque não há mais duas etapas.
+ */
+private data class SessionContext(
+    val state: SessionAccessState = SessionAccessState.SignedOut,
+    /**
+     * A geração do contexto de sessão, para a guarda que o `mobile/AGENTS.md` lista nas
+     * disciplinas obrigatórias: **resposta que volta com o contexto trocado é descartada**.
+     * Sobe em toda troca — sair da conta e autenticar outra identidade —, porque nada
+     * cancela ao sair: o escopo é o singleton do app e o voltar da 1c segue clicável.
+     */
+    val generation: Int = 0,
+    /**
+     * O telefone digitado antes do bootstrap, esperando a sessão existir para poder subir.
+     * Fica fora de [state] porque o bootstrap passa por `Bootstrapping`, que não tem onde
+     * guardá-lo — e porque um `RetryBootstrap` depois de uma queda precisa reencontrá-lo
+     * em vez de perder o que a pessoa já digitou.
+     */
+    val pendingIdentity: PendingIdentity? = null,
+    val currentUser: NativeUser? = null,
+    val loggingOut: Boolean = false,
+)
+
 class SessionAccessStateMachine(
     private val auth: NativeAuthPort,
     private val localState: LocalAccessStatePort,
     private val session: SessionGateway,
     private val scope: CoroutineScope,
 ) : SessionInvalidator {
-    private val mutableState = MutableStateFlow<SessionAccessState>(SessionAccessState.SignedOut)
-    val state: StateFlow<SessionAccessState> = mutableState.asStateFlow()
-    private var currentUser: NativeUser? = null
-    private var loggingOut = false
+    private val context = MutableStateFlow(SessionContext())
+    val state: StateFlow<SessionAccessState> = SessionStateView(context)
 
     /**
-     * O telefone digitado antes do bootstrap, esperando a sessão existir para poder subir.
-     * Vive fora do estado porque o bootstrap passa por [SessionAccessState.Bootstrapping],
-     * que não tem onde guardá-lo — e porque um `RetryBootstrap` depois de uma queda precisa
-     * reencontrá-lo em vez de perder o que a pessoa já digitou.
-     */
-    private var pendingIdentity: PendingIdentity? = null
-
-    /**
-     * A geração do contexto de sessão, para a guarda que o `mobile/AGENTS.md` lista nas
-     * disciplinas obrigatórias: **resposta que volta com o contexto trocado é descartada**.
+     * Verificação e escrita numa operação só: [edit] recebe um instantâneo do contexto e o
+     * resultado dele só entra se nada tiver mudado desde a leitura; se tiver, a tentativa
+     * recomeça sobre o valor novo. Devolver nulo é desistir — a condição que [edit] exigia
+     * não vale mais.
      *
-     * Sobe em toda troca: sair da conta e autenticar outra identidade. Todo ponto que
-     * suspende — envio da foto, `completeProfile`, `bootstrap`, e os callbacks do provedor
-     * no caminho pré-bootstrap — captura o número antes e confere depois, porque nenhum
-     * deles cancela ao sair: o `scope` é o singleton do app, e o voltar da 1c continua
-     * clicável enquanto o envio corre.
-     *
-     * Sem isso, sair da conta no meio de um envio é sair e voltar sozinho: a corrotina
-     * retomada escreveria `Ready` sobre o `SignedOut`, reabrindo o shell de quem acabou de
-     * sair.
+     * [edit] roda mais de uma vez sob disputa, então **não pode ter efeito colateral**:
+     * decida no lambda, aja com o contexto que [mutate] devolve.
      */
-    private var generation = 0
+    private fun mutate(edit: (SessionContext) -> SessionContext?): SessionContext? {
+        while (true) {
+            val current = context.value
+            val next = edit(current) ?: return null
+            if (next == current || context.compareAndSet(current, next)) return next
+        }
+    }
 
-    private fun stale(token: Int) = token != generation
+    /** Escreve o estado só se o contexto ainda for o de [token] — na mesma operação. */
+    private fun publish(token: Int, state: SessionAccessState): SessionContext? =
+        mutate { if (it.generation == token) it.copy(state = state) else null }
 
     /**
-     * A troca de contexto inteira, num lugar só: a geração sobe **e** o que ficou guardado
-     * para o contexto anterior cai junto.
+     * A troca de contexto inteira, aplicada de uma vez: a geração sobe **e** o que ficou
+     * guardado para o contexto anterior cai junto.
      *
      * Os dois andam juntos porque a guarda sozinha protege metade do problema. Ela descarta
-     * a *resposta* em voo, mas o que já foi guardado à espera do próximo passo continua
-     * aqui e é aplicado ao contexto novo: a conta A terminava os callbacks do provedor,
-     * deixava [pendingIdentity] esperando o bootstrap, e o bootstrap **corrente** da conta B
-     * consumia o nome, o telefone e a foto de A para enviá-los com a sessão de B. Foto de
-     * uma pessoa virando foto de perfil de outra, telefone de uma entrando no cadastro da
-     * outra — e a 1c promete que o telefone só fica visível para os grupos de quem o
-     * digitou.
+     * a *resposta* em voo, mas o que já foi guardado à espera do próximo passo seria
+     * consumido pelo contexto novo, que é corrente: a conta A deixava [SessionContext.pendingIdentity]
+     * esperando o bootstrap, e o bootstrap da conta B subia o nome, o telefone e a foto de
+     * A com a sessão de B — e a 1c promete que o telefone só fica visível para os grupos de
+     * quem o digitou.
      *
-     * [currentUser] cai pelo mesmo motivo: é ele que o `RetryBootstrap` usa para decidir se
-     * há conta a rebootar, e uma conta que já saiu não tem.
+     * [SessionContext.currentUser] cai pelo mesmo motivo: é ele que o `RetryBootstrap` usa
+     * para decidir se há conta a rebootar, e conta que saiu não tem.
      */
-    private fun switchContext() {
-        generation += 1
-        pendingIdentity = null
-        currentUser = null
-    }
-
-    /** Escreve o estado só se o contexto ainda for o de [token]. */
-    private fun publish(token: Int, state: SessionAccessState) {
-        if (!stale(token)) mutableState.value = state
-    }
+    private fun SessionContext.switched() = copy(
+        generation = generation + 1,
+        pendingIdentity = null,
+        currentUser = null,
+    )
 
     fun onIntent(intent: SessionIntent) {
-        // Sair já foi decidido: nada novo começa até a saída assentar. A guarda de geração
-        // não cobre isto sozinha — trabalho disparado **entre** o intento de sair e o fim
-        // da saída nasceria já com a geração nova, passaria pela guarda e publicaria
-        // `Ready` por cima do `SignedOut`. É a mesma janela por dois outros botões: o
-        // "Concluir cadastro" da 1c e o "Tentar novamente" do erro de bootstrap, os dois
-        // alcançáveis enquanto o `signOut` do provedor ainda não respondeu.
-        if (loggingOut && intent != SessionIntent.Logout) return
         when (intent) {
             is SessionIntent.Accept -> when (val transition = intent.transition) {
                 is AuthTransition.Authenticated -> routeIdentity(transition.user)
@@ -168,9 +184,18 @@ class SessionAccessStateMachine(
         }
     }
 
+    /**
+     * Toda condição de entrada — inclusive "a saída já foi decidida" — mora dentro do
+     * [mutate], e não num `if` antes dele. Trabalho disparado **entre** o intento de sair e
+     * o fim da saída nasceria já com a geração nova e passaria pela guarda; recusá-lo é
+     * parte da mesma operação atômica que o aplica.
+     */
     private fun updateIdentity(edit: SessionAccessState.CompletingIdentity.() -> SessionAccessState.CompletingIdentity) {
-        val current = mutableState.value as? SessionAccessState.CompletingIdentity ?: return
-        if (!current.isLoading) mutableState.value = current.edit().copy(error = null)
+        mutate { context ->
+            val current = context.state as? SessionAccessState.CompletingIdentity ?: return@mutate null
+            if (context.loggingOut || current.isLoading) null
+            else context.copy(state = current.edit().copy(error = null))
+        }
     }
 
     /**
@@ -180,29 +205,47 @@ class SessionAccessStateMachine(
      * nome e o telefone (VUL-87).
      */
     private fun completeIdentity() {
-        val current = mutableState.value as? SessionAccessState.CompletingIdentity ?: return
-        if (current.isLoading) return
-        val name = normalizedDisplayName(current.name)
-        val phone = normalizedBrMobilePhone(current.phone)
-        if (name == null || phone == null) {
-            mutableState.value = current.copy(invalidName = name == null, invalidPhone = phone == null)
-            return
-        }
-        // `photoFailed` zera aqui junto com os outros sinais: tocar de novo é recomeçar o
-        // envio, e o aviso da tentativa anterior não pode sobreviver a ela — se sobrevivesse,
-        // um segundo toque sem foto para subir manteria a pessoa presa na 1c com o recado
-        // de um envio que nem aconteceu.
-        val submitting = current.copy(
-            isLoading = true,
-            error = null,
-            invalidName = false,
-            invalidPhone = false,
-            photoFailed = false,
-        )
-        mutableState.value = submitting
-        val token = generation
-        if (current.session == null) claimNameThenBootstrap(submitting, name, phone, token)
-        else scope.launch { submitProfile(submitting, name, phone, token) }
+        // A transição para "enviando" é o que decide quem envia: só um `compareAndSet`
+        // vence, então o envio tem um dono só. É também o que sustenta o toque duplo — o
+        // segundo encontra `isLoading` e desiste dentro da mesma operação.
+        val started = mutate { context ->
+            val current = context.state as? SessionAccessState.CompletingIdentity ?: return@mutate null
+            if (context.loggingOut || current.isLoading) return@mutate null
+            val name = normalizedDisplayName(current.name)
+            val phone = normalizedBrMobilePhone(current.phone)
+            val next = if (name == null || phone == null) {
+                current.copy(invalidName = name == null, invalidPhone = phone == null)
+            } else {
+                // `photoFailed` zera aqui junto com os outros sinais: tocar de novo é
+                // recomeçar o envio, e o aviso da tentativa anterior não pode sobreviver a
+                // ela — se sobrevivesse, um segundo toque sem foto para subir manteria a
+                // pessoa presa na 1c com o recado de um envio que nem aconteceu.
+                current.copy(
+                    isLoading = true,
+                    error = null,
+                    invalidName = false,
+                    invalidPhone = false,
+                    photoFailed = false,
+                )
+            }
+            context.copy(state = next)
+        } ?: return
+        val submitting = started.state as? SessionAccessState.CompletingIdentity ?: return
+        submitting.send(started.generation)
+    }
+
+    /**
+     * Os dois caminhos do mesmo botão, decididos por
+     * [SessionAccessState.CompletingIdentity.session]: sem sessão o nome sobe ao provedor
+     * antes do bootstrap; com sessão o perfil vai direto.
+     */
+    private fun SessionAccessState.CompletingIdentity.send(token: Int) {
+        // Recusa local: os campos foram marcados e não há o que enviar.
+        if (!isLoading) return
+        val validName = normalizedDisplayName(name) ?: return
+        val validPhone = normalizedBrMobilePhone(phone) ?: return
+        if (session == null) claimNameThenBootstrap(this, validName, validPhone, token)
+        else scope.launch { submitProfile(this@send, validName, validPhone, token) }
     }
 
     /**
@@ -219,11 +262,12 @@ class SessionAccessStateMachine(
         token: Int,
     ) {
         auth.updateDisplayName(name, authCallback { result ->
-            if (stale(token)) return@authCallback
             when (result) {
-                AuthResult.Cancelled -> mutableState.value = current.copy(isLoading = false, name = name)
-                is AuthResult.Failure -> mutableState.value =
-                    current.copy(isLoading = false, name = name, error = result.code.toUiError())
+                AuthResult.Cancelled -> publish(token, current.copy(isLoading = false, name = name))
+                is AuthResult.Failure -> publish(
+                    token,
+                    current.copy(isLoading = false, name = name, error = result.code.toUiError()),
+                )
                 is AuthResult.Success -> refreshTokenThenBootstrap(result.user, current, name, phone, token)
             }
         })
@@ -238,14 +282,22 @@ class SessionAccessStateMachine(
     ) {
         auth.idToken(true, object : TokenCallback {
             override fun complete(result: TokenResult) {
-                if (stale(token)) return
                 when (result) {
-                    is TokenResult.Failure -> mutableState.value =
-                        current.copy(isLoading = false, name = name, error = result.code.toUiError())
-                    is TokenResult.Success -> {
-                        pendingIdentity = PendingIdentity(name, phone, current.photo)
-                        bootstrap(user)
-                    }
+                    is TokenResult.Failure -> publish(
+                        token,
+                        current.copy(isLoading = false, name = name, error = result.code.toUiError()),
+                    )
+                    // Guardar a pendência e entrar em `Bootstrapping` é uma operação só: se
+                    // fossem duas, um logout no meio deixaria a pendência para a conta
+                    // seguinte consumir.
+                    is TokenResult.Success -> mutate { context ->
+                        if (context.generation != token) return@mutate null
+                        context.copy(
+                            pendingIdentity = PendingIdentity(name, phone, current.photo),
+                            currentUser = user,
+                            state = SessionAccessState.Bootstrapping,
+                        )
+                    }?.let { bootstrap(token) }
                 }
             }
         })
@@ -259,8 +311,7 @@ class SessionAccessStateMachine(
     ) {
         val current = uploadPhoto(base, token) ?: return
         val result = session.completeProfile(phone, name)
-        if (stale(token)) return
-        mutableState.value = when (result) {
+        publish(token, when (result) {
             is SaqzResult.Success -> if (current.photoFailed) {
                 // Gravou nome e telefone, e só a foto ficou pelo caminho: a 1c continua de
                 // pé para dizer isso, agora **com** sessão. O próximo toque não tem mais
@@ -277,7 +328,7 @@ class SessionAccessStateMachine(
                 AccessError.Forbidden,
                 -> current.copy(isLoading = false, error = AuthUiError.UNKNOWN)
             }
-        }
+        })
     }
 
     /**
@@ -297,30 +348,33 @@ class SessionAccessStateMachine(
     ): SessionAccessState.CompletingIdentity? {
         val photo = base.photo ?: return base
         val failed = session.uploadPhoto(photo.bytes, photo.mediaType) is SaqzResult.Failure
-        if (stale(token)) return null
-        if (!failed) return base
-        return base.copy(photo = null, photoFailed = true).also { mutableState.value = it }
+        if (!failed) return if (context.value.generation == token) base else null
+        val warned = base.copy(photo = null, photoFailed = true)
+        return if (publish(token, warned) != null) warned else null
     }
 
     private fun retryBootstrap() {
-        val user = currentUser ?: return
-        if (mutableState.value !is SessionAccessState.BootstrapError) return
-        bootstrap(user)
+        val started = mutate { context ->
+            if (context.loggingOut || context.currentUser == null) return@mutate null
+            if (context.state !is SessionAccessState.BootstrapError) return@mutate null
+            context.copy(state = SessionAccessState.Bootstrapping)
+        } ?: return
+        bootstrap(started.generation)
     }
 
     private fun logout() {
-        if (loggingOut) return
-        loggingOut = true
+        // Decidir sair e trocar o contexto é uma operação só: dois logouts em disputa não
+        // podem passar os dois, e a troca não pode acontecer sem a trava que recusa
+        // trabalho novo — a janela entre uma e outra é por onde o "Concluir cadastro" e o
+        // "Tentar novamente" escapavam.
+        //
         // O contexto troca **aqui**, no intento, e não quando a saída termina: a decisão de
-        // sair é deste instante, e o que estava em voo ou guardado tem de cair desde já —
-        // se esperasse o fim da saída, a resposta que chegasse no meio ainda escreveria por
-        // cima dela.
-        switchContext()
+        // sair é deste instante, e o que estava em voo ou guardado tem de cair desde já.
+        mutate { if (it.loggingOut) null else it.switched().copy(loggingOut = true) } ?: return
         localState.writeSelectedGroupId(null, resultCallback {
             localState.writePendingInvite(null, resultCallback {
                 auth.signOut(resultCallback {
-                    loggingOut = false
-                    mutableState.value = SessionAccessState.SignedOut
+                    mutate { it.copy(loggingOut = false, state = SessionAccessState.SignedOut) }
                 })
             })
         })
@@ -335,23 +389,26 @@ class SessionAccessStateMachine(
      */
     private fun routeIdentity(user: NativeUser) {
         // Autenticar é a outra troca de contexto: nem o que estava em voo pela conta
-        // anterior aterrissa sobre a nova, nem o que ela deixou guardado viaja junto.
-        switchContext()
-        currentUser = user
-        if (normalizedDisplayName(user.displayName.orEmpty()) == null) {
-            mutableState.value = SessionAccessState.CompletingIdentity(
-                session = null,
-                name = user.displayName.orEmpty(),
+        // anterior aterrissa sobre a nova, nem o que ela deixou guardado viaja junto. A
+        // troca e o destino entram na mesma operação, senão a conta nova existiria por um
+        // instante sem estado próprio.
+        val nameless = normalizedDisplayName(user.displayName.orEmpty()) == null
+        val switched = mutate { context ->
+            if (context.loggingOut) return@mutate null
+            context.switched().copy(
+                currentUser = user,
+                state = if (nameless) {
+                    SessionAccessState.CompletingIdentity(session = null, name = user.displayName.orEmpty())
+                } else {
+                    SessionAccessState.Bootstrapping
+                },
             )
-        } else {
-            bootstrap(user)
-        }
+        } ?: return
+        if (!nameless) bootstrap(switched.generation)
     }
 
-    private fun bootstrap(user: NativeUser) {
-        currentUser = user
-        mutableState.value = SessionAccessState.Bootstrapping
-        val token = generation
+    /** Só a parte assíncrona: quem já pôs o estado em `Bootstrapping` chama daqui. */
+    private fun bootstrap(token: Int) {
         scope.launch {
             when (val result = session.bootstrap()) {
                 is SaqzResult.Failure -> publish(token, SessionAccessState.BootstrapError)
@@ -366,22 +423,27 @@ class SessionAccessStateMachine(
      * **com** sessão — dali em diante o caminho normal, pós-bootstrap, dá conta.
      */
     private suspend fun resumePendingOrGate(session: AccessSession, token: Int) {
-        if (stale(token)) return
-        val pending = pendingIdentity
-        if (pending == null) {
-            mutableState.value = readyOrIdentityGate(session)
-            return
-        }
-        pendingIdentity = null
-        val base = SessionAccessState.CompletingIdentity(
-            session = session,
-            name = pending.name,
-            phone = pending.phone,
-            photo = pending.photo,
-            isLoading = true,
-        )
-        mutableState.value = base
-        submitProfile(base, pending.name, pending.phone, token)
+        // Consumir a pendência e entrar em "enviando" é a mesma operação que a guarda:
+        // ler a pendência, conferir a geração e escrever o estado em três etapas era o que
+        // deixava a identidade de uma conta ser aplicada pelo bootstrap da seguinte.
+        val resumed = mutate { context ->
+            if (context.generation != token) return@mutate null
+            val pending = context.pendingIdentity
+                ?: return@mutate context.copy(state = readyOrIdentityGate(session))
+            context.copy(
+                pendingIdentity = null,
+                state = SessionAccessState.CompletingIdentity(
+                    session = session,
+                    name = pending.name,
+                    phone = pending.phone,
+                    photo = pending.photo,
+                    isLoading = true,
+                ),
+            )
+        } ?: return
+        val base = resumed.state as? SessionAccessState.CompletingIdentity ?: return
+        if (!base.isLoading) return
+        submitProfile(base, base.name, base.phone, token)
     }
 
     /**
@@ -414,6 +476,37 @@ private data class PendingIdentity(
     val phone: String,
     val photo: ProfilePhotoResult.Selected?,
 )
+
+/**
+ * O [SessionAccessState] visto de fora, sem expor a contabilidade que anda com ele.
+ *
+ * Uma vista, e não um segundo `MutableStateFlow` espelhado: dois flows voltariam a ser dois
+ * valores para manter em acordo, que é exatamente o problema que juntá-los resolveu — e um
+ * espelho escrito depois do `compareAndSet` pode inverter a ordem entre duas escritas que
+ * venceram em sequência, deixando a tela num estado mais velho que o contexto.
+ *
+ * `value` continua síncrono: quem lê logo depois de um intento vê o resultado dele, como
+ * antes.
+ *
+ * O opt-in é o preço de herdar de `StateFlow` — a instabilidade anunciada é a de **métodos
+ * novos** aparecerem na interface, e esta vista não tem comportamento próprio para divergir:
+ * os três membros só encaminham para o flow de baixo.
+ */
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
+private class SessionStateView(
+    private val source: StateFlow<SessionContext>,
+) : StateFlow<SessionAccessState> {
+    override val value: SessionAccessState get() = source.value.state
+
+    override val replayCache: List<SessionAccessState> get() = listOf(value)
+
+    override suspend fun collect(collector: FlowCollector<SessionAccessState>): Nothing {
+        // `distinctUntilChanged` porque mudança só de contabilidade — a geração subindo, a
+        // pendência caindo — não é mudança de tela.
+        source.map { it.state }.distinctUntilChanged().collect(collector)
+        awaitCancellation()
+    }
+}
 
 /**
  * O backend recusa por campo (`SafeExceptionHandler` devolve `fieldErrors`), e a 1c tem os

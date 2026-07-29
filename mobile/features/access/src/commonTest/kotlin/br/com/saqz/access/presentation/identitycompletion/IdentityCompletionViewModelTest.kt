@@ -22,10 +22,17 @@ import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.domain.SaqzResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,15 +43,26 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class IdentityCompletionViewModelTest {
 
+    /**
+     * O `viewModelScope` despacha na principal, e a decodificação sai dela e volta. Sem
+     * trocar a principal pelo dispatcher do teste, o corpo do teste — que roda **na**
+     * principal — a mantém ocupada e o retorno da decodificação nunca aterrissa.
+     */
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @BeforeTest fun installMain() = Dispatchers.setMain(mainDispatcher)
+
+    @AfterTest fun restoreMain() = Dispatchers.resetMain()
+
     // A 1c é composta porque a máquina já está em `CompletingIdentity`: o primeiro quadro
     // tem de trazer o nome do provedor, não um campo em branco que pisca.
-    @Test fun `the first frame already carries the identity being completed`() = runTest {
+    @Test fun `the first frame already carries the identity being completed`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         assertEquals("Person Name", fixture.viewModel.state.value.name)
     }
 
-    @Test fun `editing a field reaches the shared session machine`() = runTest {
+    @Test fun `editing a field reaches the shared session machine`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("(11) 99999-0000"))
@@ -53,19 +71,20 @@ class IdentityCompletionViewModelTest {
         assertEquals("(11) 99999-0000", fixture.viewModel.state.value.phone)
     }
 
-    @Test fun `the chosen image is decoded for the screen`() = runTest {
+    // A imagem chega depois: decodificar é pesado e sai do caminho da coleta, então a tela
+    // recebe a foto quando ela fica pronta, e não no mesmo quadro da escolha.
+    @Test fun `the chosen image reaches the screen once it is decoded`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
         fixture.photos.complete(ProfilePhotoResult.Selected(PNG_PIXEL, "image/png"))
-        runCurrent()
 
-        assertEquals(1, fixture.viewModel.state.value.photo?.width)
+        assertEquals(1, fixture.viewModel.state.first { it.photo != null }.photo?.width)
     }
 
     // Bytes que a plataforma entregou mas que o decodificador recusa não podem derrubar a
     // composição: a tela volta ao círculo vazio.
-    @Test fun `undecodable bytes leave the circle empty instead of crashing`() = runTest {
+    @Test fun `undecodable bytes leave the circle empty instead of crashing`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
@@ -75,7 +94,7 @@ class IdentityCompletionViewModelTest {
         assertNull(fixture.viewModel.state.value.photo)
     }
 
-    @Test fun `giving up on the picker leaves no trace on the screen`() = runTest {
+    @Test fun `giving up on the picker leaves no trace on the screen`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
@@ -88,7 +107,7 @@ class IdentityCompletionViewModelTest {
 
     // A escolha que morreu na plataforma é o mesmo aviso do envio recusado: nada saiu do
     // aparelho, e a pessoa precisa saber que a foto não entrou.
-    @Test fun `a picker failure warns without blocking the registration`() = runTest {
+    @Test fun `a picker failure warns without blocking the registration`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
@@ -99,7 +118,7 @@ class IdentityCompletionViewModelTest {
         assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
     }
 
-    @Test fun `the back control signs the incomplete identity out`() = runTest {
+    @Test fun `the back control signs the incomplete identity out`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
         fixture.viewModel.onIntent(IdentityCompletionIntent.Back)
