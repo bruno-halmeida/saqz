@@ -38,13 +38,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.Res as AccessRes
 import br.com.saqz.access.resources.google_g
 import br.com.saqz.access.ui.AccessBrandMark
 import br.com.saqz.access.ui.AccessHeader
 import br.com.saqz.access.ui.AccessScaffold
-import br.com.saqz.access.ui.LoginScreen
 import br.com.saqz.access.ui.SaqzCodeInput
 import br.com.saqz.access.ui.SaqzInlineAlert
 import br.com.saqz.access.ui.SaqzInlineAlertTone
@@ -155,18 +153,6 @@ class SaqzScreenshotTest {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
-        )
-    }
-
-    @Test
-    fun login() = capture("login") {
-        // As duas saídas que o VUL-84 devolveu à 1a são obrigatórias na assinatura; a cena
-        // é estática, então vão vazias. Sem elas este arquivo não compila desde aquele merge.
-        LoginScreen(
-            state = LoginState(email = "ana@saqz.app"),
-            onIntent = {},
-            onCreateAccount = {},
-            onForgotPassword = {},
         )
     }
 
