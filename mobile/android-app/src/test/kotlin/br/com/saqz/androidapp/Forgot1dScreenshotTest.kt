@@ -8,6 +8,7 @@ import br.com.saqz.access.ui.ForgotPasswordScreen
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.access.resources.Res as AccessRes
 import br.com.saqz.access.resources.auth_error_network
+import br.com.saqz.access.resources.invite_rate_limit
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -53,14 +54,27 @@ class Forgot1dScreenshotTest {
         ForgotPasswordScreen(ForgotPasswordState(), {}, {}, {})
     }
 
-    // A falha de rede: a única coisa que a 1d escreve de volta, e ela fica na tela em vez
-    // de virar navegação. Resposta aceita não tem cena porque não tem tela — sai daqui.
+    // As duas recusas que ficam na tela em vez de virar navegação. Resposta aceita não tem
+    // cena porque não tem tela — sai daqui.
     @Test
     fun forgotPasswordNetworkError() = capture("1d-esqueci-a-senha-erro-de-rede") {
         ForgotPasswordScreen(
             state = ForgotPasswordState(
                 email = "ana@exemplo.com",
                 error = UiText.Res(AccessRes.string.auth_error_network),
+            ),
+            onIntent = {},
+            onBack = {},
+            onSignIn = {},
+        )
+    }
+
+    @Test
+    fun forgotPasswordRateLimited() = capture("1d-esqueci-a-senha-espera") {
+        ForgotPasswordScreen(
+            state = ForgotPasswordState(
+                email = "ana@exemplo.com",
+                error = UiText.Res(AccessRes.string.invite_rate_limit, listOf(45)),
             ),
             onIntent = {},
             onBack = {},

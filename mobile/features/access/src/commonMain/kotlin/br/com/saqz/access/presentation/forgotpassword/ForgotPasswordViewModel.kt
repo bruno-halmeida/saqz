@@ -1,9 +1,11 @@
 package br.com.saqz.access.presentation.forgotpassword
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.access.domain.passwordreset.PasswordResetError
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_network
+import br.com.saqz.access.resources.invite_rate_limit
 import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.designsystem.UiText
@@ -33,16 +35,33 @@ class ForgotPasswordViewModel(
         viewModelScope.launch {
             val result = gateway.requestCode(email)
             update { it.copy(isSubmitting = false) }
+            // O campo fica travado durante o envio, mas travar é recomposição e texto já
+            // enfileirado chega depois: se o e-mail mudou no meio, esta resposta é de um
+            // endereço que não está mais na tela. Navegar com ele mandaria o código para
+            // um lugar e mostraria outro. A resposta velha morre aqui — a pessoa reenvia.
+            if (state.value.email.trim() != email) return@launch
             when (result) {
                 // Aceito é aceito, e não se pergunta de quem: navega com o e-mail digitado.
                 is SaqzResult.Success -> emit(ForgotPasswordEffect.CodeRequested(email))
-                // O que fica na tela é a recusa de **transporte** — a pessoa continua na 1d
-                // e tenta de novo. Nenhuma recusa do servidor distingue conta existente de
-                // inexistente aqui, então uma mensagem só dá conta de todas.
-                is SaqzResult.Failure -> update { it.copy(error = UiText.Res(Res.string.auth_error_network)) }
+                is SaqzResult.Failure -> update { it.copy(error = result.error.message()) }
             }
         }
     }
+}
+
+/**
+ * O 429 do backend não é falta de conexão: ele vem do `TooSoon` (pediu código de novo cedo
+ * demais) e do limite por IP, e os dois trazem a espera em segundos, que o gateway preserva.
+ * Dizer "verifique sua conexão" aí manda a pessoa mexer no wi-fi por um problema de relógio.
+ *
+ * O resto continua numa mensagem só, e de propósito: nenhuma outra recusa desta chamada
+ * distingue conta existente de inexistente, e inventar texto por código de erro só daria
+ * material para adivinhar quem tem conta no Saqz.
+ */
+private fun PasswordResetError.message(): UiText = when {
+    this is PasswordResetError.RateLimited && retryAfterSeconds > 0 ->
+        UiText.Res(Res.string.invite_rate_limit, listOf(retryAfterSeconds))
+    else -> UiText.Res(Res.string.auth_error_network)
 }
 
 // ponytail: forma mínima, e é tudo que cabe aqui. Quem valida e-mail de verdade é o

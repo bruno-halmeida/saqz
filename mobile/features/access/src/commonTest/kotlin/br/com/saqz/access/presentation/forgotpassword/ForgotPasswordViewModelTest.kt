@@ -5,10 +5,12 @@ import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetTicket
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_network
+import br.com.saqz.access.resources.invite_rate_limit
 import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,6 +89,60 @@ class ForgotPasswordViewModelTest {
         assertEquals("ana@exemplo.com", viewModel.state.value.email)
     }
 
+    /**
+     * O campo trava durante o envio, mas travar é recomposição: texto enfileirado antes
+     * disso ainda chega. A resposta que volta é de um endereço que não está mais na tela,
+     * e navegar com ele mandaria o código para um lugar e mostraria outro.
+     */
+    @Test
+    fun `resposta de um e-mail que mudou no meio do envio nao navega`() = runTest(mainDispatcher) {
+        val gateway = SuspendingGateway()
+        val viewModel = ForgotPasswordViewModel(gateway)
+        val effects = collectEffects(viewModel)
+
+        viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("ana@exemplo.com"))
+        viewModel.onIntent(ForgotPasswordIntent.Submit)
+        runCurrent()
+        viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("bruna@exemplo.com"))
+        gateway.complete(SaqzResult.Success(Unit))
+        runCurrent()
+
+        assertEquals(emptyList(), effects)
+        assertEquals("bruna@exemplo.com", viewModel.state.value.email)
+        // Nem navega nem acusa erro: some do caminho e deixa a pessoa reenviar.
+        assertNull(viewModel.state.value.error)
+        assertEquals(false, viewModel.state.value.isSubmitting)
+    }
+
+    @Test
+    fun `recusa por espera diz quantos segundos em vez de culpar a conexao`() = runTest(mainDispatcher) {
+        val gateway = FakeGateway(SaqzResult.Failure(PasswordResetError.RateLimited(retryAfterSeconds = 45)))
+        val viewModel = ForgotPasswordViewModel(gateway)
+
+        viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("ana@exemplo.com"))
+        viewModel.onIntent(ForgotPasswordIntent.Submit)
+        runCurrent()
+
+        assertEquals(
+            UiText.Res(Res.string.invite_rate_limit, listOf(45)),
+            viewModel.state.value.error,
+        )
+    }
+
+    // Sem número não há o que dizer sobre a espera; cai na mensagem genérica em vez de
+    // prometer "tente de novo em 0 segundos".
+    @Test
+    fun `recusa por espera sem segundos cai na mensagem generica`() = runTest(mainDispatcher) {
+        val gateway = FakeGateway(SaqzResult.Failure(PasswordResetError.RateLimited(retryAfterSeconds = 0)))
+        val viewModel = ForgotPasswordViewModel(gateway)
+
+        viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("ana@exemplo.com"))
+        viewModel.onIntent(ForgotPasswordIntent.Submit)
+        runCurrent()
+
+        assertEquals(UiText.Res(Res.string.auth_error_network), viewModel.state.value.error)
+    }
+
     @Test
     fun `e-mail malformado nem chega ao gateway`() = runTest(mainDispatcher) {
         val gateway = FakeGateway(SaqzResult.Success(Unit))
@@ -137,13 +193,30 @@ class ForgotPasswordViewModelTest {
 
     private class FakeGateway(
         private val response: SaqzResult<Unit, PasswordResetError>,
-    ) : PasswordResetGateway {
+    ) : PasswordResetGateway by NotUsedGateway {
         val requested = mutableListOf<String>()
 
         override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> {
             requested += email
             return response
         }
+    }
+
+    /** O pedido fica pendurado até o teste responder, que é quando a tela já mudou. */
+    private class SuspendingGateway : PasswordResetGateway by NotUsedGateway {
+        private val response = CompletableDeferred<SaqzResult<Unit, PasswordResetError>>()
+
+        override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> =
+            response.await()
+
+        fun complete(result: SaqzResult<Unit, PasswordResetError>) {
+            response.complete(result)
+        }
+    }
+
+    private object NotUsedGateway : PasswordResetGateway {
+        override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> =
+            error("cada fake implementa o seu")
 
         override suspend fun verifyCode(
             email: String,
