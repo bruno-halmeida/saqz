@@ -269,12 +269,14 @@ class RegisterViewModelTest {
 
     /**
      * A guarda de geração do `mobile/AGENTS.md` ("a resposta é descartada se o contexto
-     * mudou"). O achado do Codex era o back do sistema removendo a 1b durante o
-     * `createAccount`, que não tem cancelamento — a tela sai e a resposta chega depois,
-     * entregando sessão pelas costas. Travar as saídas estreita a janela; isto a fecha.
+     * mudou"), e o que ela protege: o **estado desta tela**.
+     *
+     * O que ela deliberadamente não protege é a sessão — quem a entrega é o `auth.observe`
+     * do `AccessOrchestrator`, que dispara sozinho quando a conta nasce. Ver o KDoc de
+     * `submission`: a conta foi criada, e ficar autenticado é o que a pessoa pediu.
      */
     @Test
-    fun `a response that arrives after the screen is gone delivers nothing`() = runTest(mainDispatcher) {
+    fun `a response that arrives after the screen is gone writes no state`() = runTest(mainDispatcher) {
         val transitions = mutableListOf<AuthTransition>()
         val (viewModel, auth) = fixture(onTransition = transitions::add)
         viewModel.submitValidForm()
@@ -283,8 +285,9 @@ class RegisterViewModelTest {
         viewModel.discardPendingSubmission()
         auth.complete(AuthResult.Success(USER))
 
-        assertTrue(transitions.isEmpty(), "sessão entregue a uma tela que já saiu")
-        assertTrue(viewModel.state.value.isLoading, "resposta descartada não mexe no estado")
+        assertTrue(viewModel.state.value.isLoading, "ViewModel morta não escreve estado")
+        // Este caminho de transição cala; o do orquestrador, não — e é ele que vale.
+        assertTrue(transitions.isEmpty())
     }
 
     // A outra forma de o contexto mudar: um envio novo toma o lugar do anterior, e a
@@ -301,6 +304,7 @@ class RegisterViewModelTest {
 
         assertEquals(2, auth.accounts.size, "o segundo envio saiu")
         assertTrue(transitions.isEmpty(), "a resposta do envio substituído não vale mais")
+        assertTrue(viewModel.state.value.isLoading, "nem o estado ela toca")
     }
 
     @Test

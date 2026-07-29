@@ -175,17 +175,25 @@ class RegisterViewModel(
 
     /**
      * A guarda de geração que o `mobile/AGENTS.md` exige em carga assíncrona ("a resposta é
-     * descartada se o contexto mudou"), e o que de fato fecha o buraco que travar as saídas
-     * só estreita.
+     * descartada se o contexto mudou").
      *
      * `createAccount` não tem cancelamento: o callback fica retido no provedor e vai chegar,
-     * com a tela viva ou não. Bloquear o voltar, os dois links e o back do sistema reduz as
-     * portas conhecidas; [submission] cobre as que ninguém previu, porque o resultado só é
-     * aceito se ainda for o **corrente**.
+     * com a tela viva ou não. Duas coisas mudam o contexto — a tela morrer ([onCleared]) e
+     * um envio novo tomar o lugar do anterior —, e nos dois casos a resposta velha entra
+     * aqui e vai embora sem tocar no estado.
      *
-     * Duas coisas mudam o contexto: a tela morrer ([onCleared]) e um envio novo tomar o
-     * lugar do anterior. Nos dois casos a resposta velha entra aqui e vai embora sem tocar
-     * no estado e, principalmente, sem entregar sessão.
+     * **O que esta guarda não faz, de propósito: impedir a sessão.** Quem entrega sessão de
+     * verdade não é este callback, e sim o `auth.observe` que o `AccessOrchestrator` mantém
+     * ligado: o provedor autentica no momento em que a conta nasce, o listener global
+     * dispara sozinho e a `SessionAccessStateMachine` recebe a autenticação por lá — os dois
+     * adapters ainda seguram este callback até depois do `updateDisplayName`, então ele
+     * sempre chega **depois** daquele caminho.
+     *
+     * Isso é intencional e não é buraco: a conta foi criada, e ficar autenticado é
+     * exatamente o que a pessoa pediu ao tocar em "Criar conta". Bloquear a transição
+     * significaria criar a conta e deixá-la deslogada, com um cadastro que ela não sabe que
+     * existe. O que esta guarda protege é o **estado desta tela** — ViewModel morta não
+     * escreve `isLoading`, erro de campo nem alerta.
      */
     private var submission = 0
 
