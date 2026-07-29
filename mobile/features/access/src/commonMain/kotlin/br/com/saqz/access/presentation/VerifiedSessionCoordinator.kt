@@ -120,12 +120,41 @@ class SessionAccessStateMachine(
 
     private fun stale(token: Int) = token != generation
 
+    /**
+     * A troca de contexto inteira, num lugar só: a geração sobe **e** o que ficou guardado
+     * para o contexto anterior cai junto.
+     *
+     * Os dois andam juntos porque a guarda sozinha protege metade do problema. Ela descarta
+     * a *resposta* em voo, mas o que já foi guardado à espera do próximo passo continua
+     * aqui e é aplicado ao contexto novo: a conta A terminava os callbacks do provedor,
+     * deixava [pendingIdentity] esperando o bootstrap, e o bootstrap **corrente** da conta B
+     * consumia o nome, o telefone e a foto de A para enviá-los com a sessão de B. Foto de
+     * uma pessoa virando foto de perfil de outra, telefone de uma entrando no cadastro da
+     * outra — e a 1c promete que o telefone só fica visível para os grupos de quem o
+     * digitou.
+     *
+     * [currentUser] cai pelo mesmo motivo: é ele que o `RetryBootstrap` usa para decidir se
+     * há conta a rebootar, e uma conta que já saiu não tem.
+     */
+    private fun switchContext() {
+        generation += 1
+        pendingIdentity = null
+        currentUser = null
+    }
+
     /** Escreve o estado só se o contexto ainda for o de [token]. */
     private fun publish(token: Int, state: SessionAccessState) {
         if (!stale(token)) mutableState.value = state
     }
 
     fun onIntent(intent: SessionIntent) {
+        // Sair já foi decidido: nada novo começa até a saída assentar. A guarda de geração
+        // não cobre isto sozinha — trabalho disparado **entre** o intento de sair e o fim
+        // da saída nasceria já com a geração nova, passaria pela guarda e publicaria
+        // `Ready` por cima do `SignedOut`. É a mesma janela por dois outros botões: o
+        // "Concluir cadastro" da 1c e o "Tentar novamente" do erro de bootstrap, os dois
+        // alcançáveis enquanto o `signOut` do provedor ainda não respondeu.
+        if (loggingOut && intent != SessionIntent.Logout) return
         when (intent) {
             is SessionIntent.Accept -> when (val transition = intent.transition) {
                 is AuthTransition.Authenticated -> routeIdentity(transition.user)
@@ -282,16 +311,14 @@ class SessionAccessStateMachine(
     private fun logout() {
         if (loggingOut) return
         loggingOut = true
-        // A geração sobe **aqui**, no intento, e não quando a saída termina: a decisão de
-        // sair é deste instante, e o envio em voo tem de ser descartado desde já — se
-        // esperasse o fim da saída, a resposta que chegasse no meio ainda escreveria por
+        // O contexto troca **aqui**, no intento, e não quando a saída termina: a decisão de
+        // sair é deste instante, e o que estava em voo ou guardado tem de cair desde já —
+        // se esperasse o fim da saída, a resposta que chegasse no meio ainda escreveria por
         // cima dela.
-        generation += 1
+        switchContext()
         localState.writeSelectedGroupId(null, resultCallback {
             localState.writePendingInvite(null, resultCallback {
                 auth.signOut(resultCallback {
-                    currentUser = null
-                    pendingIdentity = null
                     loggingOut = false
                     mutableState.value = SessionAccessState.SignedOut
                 })
@@ -307,9 +334,9 @@ class SessionAccessStateMachine(
      * continua sendo portão é o nome, porque sem ele o bootstrap não passa.
      */
     private fun routeIdentity(user: NativeUser) {
-        // Autenticar é a outra troca de contexto: o que estava em voo pela conta anterior
-        // não pode aterrissar sobre a nova.
-        generation += 1
+        // Autenticar é a outra troca de contexto: nem o que estava em voo pela conta
+        // anterior aterrissa sobre a nova, nem o que ela deixou guardado viaja junto.
+        switchContext()
         currentUser = user
         if (normalizedDisplayName(user.displayName.orEmpty()) == null) {
             mutableState.value = SessionAccessState.CompletingIdentity(

@@ -469,6 +469,67 @@ class SessionAccessStateMachineTest {
         assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
     }
 
+    // ---- o contexto trocado leva junto o que ficou guardado ----
+
+    // O vazamento entre contas: a conta A termina os callbacks do provedor e deixa a
+    // identidade guardada esperando o bootstrap; a conta B entra, e o bootstrap **dela** é
+    // corrente. Sem limpar a pendência na troca, o nome, o telefone e a foto de A subiam
+    // com a sessão de B — a foto de uma pessoa virando a foto de perfil de outra, e o
+    // telefone de uma entrando no cadastro da outra.
+    @Test
+    fun `an identity left pending by one account never travels into the next`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.claimIdentity(name = "Ana Costa", phone = "(11) 98888-0000")
+        runCurrent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+
+        fixture.session.result = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(otherAccount)))
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertTrue(fixture.session.profileCalls.isEmpty())
+        assertTrue(fixture.session.photoUploads.isEmpty())
+    }
+
+    // A outra metade da mesma janela: trabalho **disparado** entre o intento de sair e o
+    // fim da saída nasceria já com a geração nova e passaria pela guarda.
+    @Test
+    fun `a completion fired during the logout never reaches the backend`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.auth.deferSignOut = true
+        fixture.machine.onIntent(SessionIntent.Logout)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+        fixture.auth.completeSignOut()
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    @Test
+    fun `a retry fired during the logout never reopens the shell`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+        fixture.auth.deferSignOut = true
+        fixture.machine.onIntent(SessionIntent.Logout)
+
+        fixture.session.result = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        runCurrent()
+        fixture.auth.completeSignOut()
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(1, fixture.session.calls)
+    }
+
     @Test
     fun `identity completion is single flight`() = runTest {
         val fixture = identityFixture()
@@ -767,7 +828,24 @@ class SessionAccessStateMachineTest {
         override fun updateDisplayName(name: String, done: AuthCallback) { nameUpdates += name; authCallback = done }
         override fun sendVerification(done: ResultCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) { tokenCalls += forceRefresh; tokenCallback = done }
-        override fun signOut(done: ResultCallback) { signOutCalls += 1; done.complete(OperationResult.Success) }
+        /**
+         * Sair do provedor é assíncrono de verdade, e é durante essa espera que os botões
+         * da tela continuam alcançáveis — segurar a resposta é a única forma de o teste
+         * disparar trabalho novo dentro da janela.
+         */
+        var deferSignOut = false
+        private var signOutCallback: ResultCallback? = null
+
+        override fun signOut(done: ResultCallback) {
+            signOutCalls += 1
+            if (deferSignOut) signOutCallback = done else done.complete(OperationResult.Success)
+        }
+
+        fun completeSignOut() {
+            val pending = signOutCallback!!
+            signOutCallback = null
+            pending.complete(OperationResult.Success)
+        }
         fun completeAuth(result: AuthResult) = authCallback!!.complete(result)
         fun completeToken(result: TokenResult) = tokenCallback!!.complete(result)
         override fun observe(listener: AuthStateListener): Cancelable = object : Cancelable { override fun cancel() = Unit }
@@ -798,5 +876,8 @@ class SessionAccessStateMachineTest {
         val session = AccessSession(AccessUser("user-id", "person@example.test", "Person Name"), emptyList())
         val phoneRequiredSession = session.copy(user = session.user.copy(phoneRequired = true))
         val photo = ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg")
+
+        /** Outra pessoa, no mesmo aparelho: nome próprio, para o bootstrap dela passar. */
+        val otherAccount = NativeUser("other-subject", "outra@example.test", true, "Outra Pessoa")
     }
 }
