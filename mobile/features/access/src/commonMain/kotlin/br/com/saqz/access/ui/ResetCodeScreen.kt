@@ -148,7 +148,10 @@ fun ResetCodeScreen(
                 // Sem seta: o export a reserva para as telas que avançam o cadastro.
                 variant = if (state.expired) SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,
                 fullWidth = true,
-                enabled = if (state.expired) state.canResend else !state.busy,
+                // Cada modo espera a sua janela: expirado depende do balde de reenvio, e
+                // conferir depende do de verificação. Sem texto próprio para a espera de
+                // verificação, quem a comunica é o botão indisponível.
+                enabled = if (state.expired) state.canResend else state.canVerify,
                 loading = if (state.expired) state.resending else state.verifying,
                 modifier = Modifier.testTag(ResetCodeTags.Submit),
             )

@@ -95,6 +95,14 @@ class ResetCode1eScreenshotTest {
         state = ResetCodeState(email = EMAIL, resendSeconds = 0),
     )
 
+    // Janela de verificação do servidor: só o botão de conferir espera; o reenvio, cujo
+    // balde é outro, segue liberado como link azul.
+    @Test
+    fun verificacaoLimitada() = capture(
+        name = "1e-verificacao-limitada",
+        state = ResetCodeState(email = EMAIL, code = "1359", resendSeconds = 0, verifyRetrySeconds = 30),
+    )
+
     // Pedido em voo: as duas ações travadas e o spinner no botão.
     @Test
     fun verificando() = capture(

@@ -42,17 +42,29 @@ class ResetCodeViewModel(
     private val elapsedMillis: () -> Long = monotonicElapsedMillis(),
 ) : MviViewModel<ResetCodeState, ResetCodeIntent, ResetCodeEffect>(ResetCodeState(email = email)) {
 
-    private var deadlineMillis = 0L
-    private var ticker: Job? = null
+    /**
+     * **Dois baldes, dois contadores.** O servidor limita `request` e `verify` em baldes
+     * independentes por IP, e misturá-los tira as duas saídas da pessoa de uma vez: um
+     * limite de verificação travaria o pedido de código novo por um motivo que não é o
+     * dele. Cada janela conta a sua, e a tela mostra o que couber em cada lugar.
+     */
+    private val resendWindow = Countdown { update { state -> state.copy(resendSeconds = it) } }
+    private val verifyWindow = Countdown { update { state -> state.copy(verifyRetrySeconds = it) } }
 
     init {
         // Chegar aqui é ter acabado de pedir o código na 1d: a janela já está correndo.
-        restartCountdown(RESET_CODE_RESEND_SECONDS)
+        resendWindow.restart(RESET_CODE_RESEND_SECONDS)
     }
 
     override fun onIntent(intent: ResetCodeIntent) {
         when (intent) {
-            is ResetCodeIntent.UpdateCode -> update { it.copy(code = intent.value) }
+            // Mexer num dígito apaga a recusa **do código anterior** — sem isso, o valor
+            // novo, ainda não verificado, continuaria vermelho com a contagem antiga
+            // ("Restam 2 tentativas" sobre um código que a pessoa acabou de mudar). O
+            // `expired` não sai junto: quem expirou foi o código que o servidor mandou, e
+            // digitar outro dígito não o ressuscita.
+            is ResetCodeIntent.UpdateCode ->
+                update { it.copy(code = intent.value, remainingAttempts = null) }
             ResetCodeIntent.Verify -> verify()
             ResetCodeIntent.Resend -> resend()
         }
@@ -60,8 +72,9 @@ class ResetCodeViewModel(
 
     private fun verify() {
         val current = state.value
-        // Intent inválido volta cedo (AGENTS.md §4): código incompleto não vira requisição.
-        if (current.busy || current.code.length < SAQZ_CODE_LENGTH) return
+        // Intent inválido volta cedo (AGENTS.md §4): código incompleto não vira requisição,
+        // e nem tentativa dentro da janela que o servidor pediu para esperar.
+        if (!current.canVerify || current.code.length < SAQZ_CODE_LENGTH) return
         update { it.copy(verifying = true, failure = null) }
         viewModelScope.launch {
             when (val result = gateway.verifyCode(current.email, current.code)) {
@@ -92,8 +105,9 @@ class ResetCodeViewModel(
                 else -> current.copy(verifying = false, failure = error.message())
             }
         }
-        // O servidor mandou esperar: o contador passa a valer a janela dele, não a nossa.
-        if (error is PasswordResetError.RateLimited) restartCountdown(error.retryAfterSeconds)
+        // O servidor mandou esperar para **verificar**. Quem espera é o botão de conferir;
+        // o reenvio segue liberado quando estiver, porque o balde dele é outro.
+        if (error is PasswordResetError.RateLimited) verifyWindow.restart(error.retryAfterSeconds)
     }
 
     private fun resend() {
@@ -114,7 +128,7 @@ class ResetCodeViewModel(
                             expired = false,
                         )
                     }
-                    restartCountdown(RESET_CODE_RESEND_SECONDS)
+                    resendWindow.restart(RESET_CODE_RESEND_SECONDS)
                 }
                 is SaqzResult.Failure -> onResendFailure(result.error)
             }
@@ -125,34 +139,43 @@ class ResetCodeViewModel(
         if (error is PasswordResetError.RateLimited) {
             // Pedido cedo demais: nada de alerta, o contador já é a explicação.
             update { it.copy(resending = false) }
-            restartCountdown(error.retryAfterSeconds)
+            resendWindow.restart(error.retryAfterSeconds)
             return
         }
         update { it.copy(resending = false, failure = error.message()) }
     }
 
-    private fun restartCountdown(seconds: Int) {
-        val window = seconds.coerceAtLeast(0)
-        deadlineMillis = elapsedMillis() + window * MILLIS_PER_SECOND
-        update { it.copy(resendSeconds = window) }
-        ticker?.cancel()
-        if (window == 0) return
-        ticker = viewModelScope.launch {
-            while (true) {
-                delay(MILLIS_PER_SECOND)
-                val remaining = remainingSeconds()
-                update { it.copy(resendSeconds = remaining) }
-                if (remaining == 0) break
+    /**
+     * Uma janela de espera: guarda o **instante** em que ela acaba e publica quantos
+     * segundos faltam a cada tique, nunca o contrário. Ver o KDoc da classe para o porquê.
+     */
+    private inner class Countdown(private val publish: (Int) -> Unit) {
+        private var deadlineMillis = 0L
+        private var ticker: Job? = null
+
+        fun restart(seconds: Int) {
+            val window = seconds.coerceAtLeast(0)
+            deadlineMillis = elapsedMillis() + window * MILLIS_PER_SECOND
+            publish(window)
+            ticker?.cancel()
+            if (window == 0) return
+            ticker = viewModelScope.launch {
+                while (true) {
+                    delay(MILLIS_PER_SECOND)
+                    val remaining = remaining()
+                    publish(remaining)
+                    if (remaining == 0) break
+                }
             }
         }
-    }
 
-    // Arredonda para cima: um segundo que ainda não terminou é um segundo que a pessoa
-    // ainda espera, e é assim que o contador do export mostra 0:59 no primeiro tique.
-    private fun remainingSeconds(): Int {
-        val left = deadlineMillis - elapsedMillis()
-        if (left <= 0) return 0
-        return ((left + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND).toInt()
+        // Arredonda para cima: um segundo que ainda não terminou é um segundo que a pessoa
+        // ainda espera, e é assim que o contador do export mostra 0:59 no primeiro tique.
+        private fun remaining(): Int {
+            val left = deadlineMillis - elapsedMillis()
+            if (left <= 0) return 0
+            return ((left + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND).toInt()
+        }
     }
 }
 

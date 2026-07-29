@@ -27,6 +27,13 @@ data class ResetCodeState(
     val resending: Boolean = false,
     /** Segundos até o servidor aceitar um novo envio; 0 libera o reenvio. */
     val resendSeconds: Int = RESET_CODE_RESEND_SECONDS,
+    /**
+     * Segundos até o servidor aceitar uma nova **verificação**. Contador separado do
+     * [resendSeconds] de propósito: o backend limita `request` e `verify` em baldes
+     * independentes, e um limite de verificação não pode travar o pedido de código novo —
+     * seria tirar as duas saídas da pessoa por causa de uma só.
+     */
+    val verifyRetrySeconds: Int = 0,
     /** 1f: o alerta verde está no ar e o rodapé vira "Reenviar novamente em {m:ss}". */
     val resent: Boolean = false,
     /** 1k, linha vermelha. `null` enquanto o servidor não recusou o código. */
@@ -39,6 +46,8 @@ data class ResetCodeState(
     val busy: Boolean get() = verifying || resending
 
     val canResend: Boolean get() = resendSeconds <= 0 && !busy
+
+    val canVerify: Boolean get() = verifyRetrySeconds <= 0 && !busy
 
     /**
      * O "Lembrou a senha? Entrar ›" do rodapé cede o lugar assim que um alerta ocupa a

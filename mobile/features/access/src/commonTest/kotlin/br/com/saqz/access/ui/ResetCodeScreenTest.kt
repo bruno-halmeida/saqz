@@ -133,6 +133,21 @@ class ResetCodeScreenTest {
         assertNull(intent)
     }
 
+    @Test fun `the verify window locks the button without touching the resend`() = runComposeUiTest {
+        content(
+            state = ResetCodeState(
+                email = EMAIL,
+                code = "1359",
+                resendSeconds = 0,
+                verifyRetrySeconds = 30,
+            ),
+        )
+
+        onNodeWithTag(ResetCodeTags.Submit).assertIsNotEnabled()
+        // O balde do reenvio é outro: o link continua vivo.
+        onNodeWithTag(ResetCodeTags.Resend).assertIsEnabled()
+    }
+
     @Test fun `the verify action stays reachable at rest`() = runComposeUiTest {
         var intent: ResetCodeIntent? = null
         content(state = ResetCodeState(email = EMAIL, code = "1359"), onIntent = { intent = it })

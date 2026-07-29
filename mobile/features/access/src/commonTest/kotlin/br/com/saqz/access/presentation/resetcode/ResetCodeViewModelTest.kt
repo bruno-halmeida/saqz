@@ -108,6 +108,67 @@ class ResetCodeViewModelTest {
     }
 
     @Test
+    fun `verify rate limited waits on its own bucket and leaves the resend alone`() = runTest(mainDispatcher) {
+        val (viewModel, gateway) = fixture()
+        gateway.verifyResult = SaqzResult.Failure(PasswordResetError.RateLimited(retryAfterSeconds = 30))
+        // Janela de reenvio já vencida: é o caso que prova a separação — misturar os dois
+        // baldes tiraria da pessoa a saída que o servidor não recusou.
+        elapse(RESET_CODE_RESEND_SECONDS * 1_000L)
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("1359"))
+
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+
+        val state = viewModel.state.value
+        assertEquals(30, state.verifyRetrySeconds)
+        assertFalse(state.canVerify)
+        assertEquals(0, state.resendSeconds)
+        assertTrue(state.canResend)
+    }
+
+    @Test
+    fun `verify is ignored while its own window runs`() = runTest(mainDispatcher) {
+        val (viewModel, gateway) = fixture()
+        gateway.verifyResult = SaqzResult.Failure(PasswordResetError.RateLimited(retryAfterSeconds = 30))
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("1359"))
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+
+        assertEquals(1, gateway.verified.size)
+    }
+
+    @Test
+    fun `editing a digit drops the refusal of the code that was there before`() = runTest(mainDispatcher) {
+        val (viewModel, gateway) = fixture()
+        gateway.verifyResult = SaqzResult.Failure(PasswordResetError.CodeInvalid(remainingAttempts = 2))
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("1359"))
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("135"))
+
+        // "Restam 2 tentativas" era sobre o código antigo; este ainda nem foi conferido.
+        assertNull(viewModel.state.value.remainingAttempts)
+    }
+
+    @Test
+    fun `editing a digit does not resurrect an expired code`() = runTest(mainDispatcher) {
+        val (viewModel, gateway) = fixture()
+        gateway.verifyResult = SaqzResult.Failure(PasswordResetError.CodeExpired)
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("1359"))
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("135"))
+
+        // Quem expirou foi o código que o servidor mandou, não o que está sendo digitado.
+        assertTrue(viewModel.state.value.expired)
+    }
+
+    @Test
     fun `verify is ignored while the code is incomplete`() = runTest(mainDispatcher) {
         val (viewModel, gateway) = fixture()
         viewModel.onIntent(ResetCodeIntent.UpdateCode("135"))
