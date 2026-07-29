@@ -572,18 +572,26 @@ class SessionAccessStateMachine(
         // validado antes do `createAccount` — precisa atravessar **este** Accept. O observe
         // global autentica sozinho e o `switched()` zeraria o depósito; a pendência de envio
         // (`submitWhenReady`) continua caindo, que é o que impede o vazamento entre contas.
+        //
+        // O mesmo `subject` duas vezes não troca contexto: o observe do `AccessOrchestrator`
+        // e o callback da 1b emitem os dois um `Accept` para a conta que acabou de nascer.
+        // Um segundo `switched()` mataria o turno do bootstrap e droparia o telefone já
+        // consumido na 1c. Conta **outra** continua trocando — a limpeza entre contas não
+        // enfraquece.
         val nameless = normalizedDisplayName(user.displayName.orEmpty()) == null
         val switched = begin { context ->
             if (context.loggingOut) return@begin null
-            // Prefill da 1b só atravessa o Accept que **começa** o cadastro (SignedOut) ou o
-            // re-Accept do callback da 1b enquanto o bootstrap ainda corre. Em BootstrapError
-            // / Ready / 1c com sessão, carregar seria levar o telefone da conta A para a B.
+            if (context.currentUser?.subject == user.subject &&
+                context.state !is SessionAccessState.SignedOut
+            ) {
+                return@begin null
+            }
+            // Prefill da 1b só no Accept que **começa** o cadastro (SignedOut). Com o
+            // Accept idempotente acima, o re-Accept da 1b não chega aqui; carregar em
+            // BootstrapError/Ready/1c seria levar o telefone da conta A para a B.
             val registrationPrefill = context.pendingIdentity
                 ?.takeUnless { it.submitWhenReady }
-                ?.takeIf {
-                    context.state is SessionAccessState.SignedOut ||
-                        context.state is SessionAccessState.Bootstrapping
-                }
+                ?.takeIf { context.state is SessionAccessState.SignedOut }
             context.switched().copy(
                 currentUser = user,
                 pendingIdentity = registrationPrefill,

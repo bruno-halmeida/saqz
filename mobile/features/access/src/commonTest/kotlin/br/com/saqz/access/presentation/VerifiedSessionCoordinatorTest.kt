@@ -125,9 +125,15 @@ class SessionAccessStateMachineTest {
         assertEquals(1, fixture.auth.reloadCalls)
 
         // A conta B entra enquanto o reload de A ainda está no ar.
-        val other = session.copy(user = session.user.copy(id = "outra-pessoa"))
+        // Subject **outro**: o mesmo `NativeUser` seria Accept idempotente (VUL-101) e não
+        // trocaria de contexto — e o observe real também emite subject diferente por conta.
+        val other = session.copy(
+            user = session.user.copy(id = "outra-pessoa", email = "outra@example.test", emailVerified = false),
+        )
         fixture.session.result = SaqzResult.Success(other)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        fixture.machine.onIntent(
+            SessionIntent.Accept(AuthTransition.Authenticated(otherAccount.copy(emailVerified = false))),
+        )
         runCurrent()
 
         fixture.auth.completeAuth(AuthResult.Success(verified))
@@ -348,6 +354,62 @@ class SessionAccessStateMachineTest {
 
         val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
         assertEquals("", state.phone)
+    }
+
+    // observe global + callback da 1b: dois Accept da mesma conta. O segundo não pode
+    // `switched()` de novo — mataria o bootstrap em voo e o telefone depositado.
+    @Test
+    fun `a duplicate Accept for the same account during bootstrap keeps the staged phone`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.bootstrapGate = gate
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertIs<SessionAccessState.Bootstrapping>(fixture.machine.state.value)
+        assertEquals(1, fixture.session.calls)
+
+        // O segundo Accept — callback da 1b depois do observe — chega com o bootstrap no ar.
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertIs<SessionAccessState.Bootstrapping>(fixture.machine.state.value)
+        assertEquals(1, fixture.session.calls, "Accept idempotente não reinicia o bootstrap")
+
+        gate.complete(Unit)
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals("+5511999990000", state.phone)
+        assertEquals("Ana Souza", state.name)
+        assertEquals(1, fixture.session.calls)
+    }
+
+    // A outra ordem: o primeiro Accept já abriu a 1c com o telefone consumido no state.
+    // O segundo não pode dropar o campo nem rebootstrapar.
+    @Test
+    fun `a duplicate Accept after identity completion keeps the filled phone`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        val first = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals("+5511999990000", first.phone)
+        assertEquals(1, fixture.session.calls)
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        val second = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals("+5511999990000", second.phone)
+        assertEquals("Ana Souza", second.name)
+        assertEquals(phoneRequiredSession, second.session)
+        assertEquals(1, fixture.session.calls, "mesma conta não rebootstrapa")
     }
 
     @Test
@@ -610,7 +672,8 @@ class SessionAccessStateMachineTest {
     }
 
     // Autenticar outra identidade é a outra troca de contexto: o que estava em voo pela
-    // conta anterior não pode aterrissar sobre a nova.
+    // conta anterior não pode aterrissar sobre a nova. Subject distinto — Accept da mesma
+    // conta é idempotente (VUL-101) e não troca.
     @Test
     fun `a response from the previous account never lands on the next one`() = runTest {
         val fixture = identityFixture()
@@ -621,7 +684,7 @@ class SessionAccessStateMachineTest {
         runCurrent()
 
         fixture.session.result = SaqzResult.Success(session)
-        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(otherAccount)))
         runCurrent()
         fixture.session.profileGate!!.complete(Unit)
         runCurrent()
