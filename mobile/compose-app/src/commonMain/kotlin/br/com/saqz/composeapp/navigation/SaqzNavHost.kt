@@ -22,6 +22,7 @@ import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
+import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
@@ -96,9 +97,13 @@ internal fun SaqzNavHost(
                 )
             }
             entry<AccessRoute.Register> {
-                AccessSkeleton("Register", "IdentityCompletion" to { backStack.add(AccessRoute.IdentityCompletion) })
+                // Cadastrar não empilha a 1c: a 1c só existe quando a sessão está em
+                // `CompletingIdentity`, e quem reage a isso é o `reconcileAccessStack`.
+                // Empilhar `IdentityCompletion` daqui, com a máquina ainda em `SignedOut`,
+                // abria um formulário vazio cujos intentos a máquina recusa todos.
+                AccessSkeleton("Register")
             }
-            entry<AccessRoute.IdentityCompletion> { AccessSkeleton("IdentityCompletion") }
+            entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
             entry<AccessRoute.ForgotPassword> {
                 ForgotPasswordRoot(
                     onBack = pop,

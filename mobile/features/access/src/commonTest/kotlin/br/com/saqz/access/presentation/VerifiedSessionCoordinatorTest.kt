@@ -21,6 +21,7 @@ import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -272,6 +273,350 @@ class SessionAccessStateMachineTest {
         fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
 
         assertEquals(photo, assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value).photo)
+    }
+
+    // ---- a foto: opcional em toda parte (VUL-87) ----
+
+    @Test
+    fun `the chosen photo goes up with the profile`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertEquals("image/jpeg", fixture.session.photoUploads.single().second)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    @Test
+    fun `completing without a photo never touches the photo endpoint`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertTrue(fixture.session.photoUploads.isEmpty())
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // Perder o cadastro inteiro por causa de um JPEG é o que não pode acontecer: nome e
+    // telefone gravam, a 1c avisa, e o toque seguinte entra sem foto para subir.
+    @Test
+    fun `a photo that fails to upload does not undo the profile`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertTrue(state.photoFailed)
+        assertNull(state.photo)
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+        assertEquals(1, fixture.session.profileCalls.size)
+    }
+
+    @Test
+    fun `the touch after a failed photo enters without retrying the upload`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertEquals(2, fixture.session.profileCalls.size)
+    }
+
+    // Escolher outra foto é dizer "tenta de novo": o aviso da anterior sai da tela junto.
+    @Test
+    fun `choosing another photo clears the warning`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertFalse(state.photoFailed)
+        assertEquals(photo, state.photo)
+    }
+
+    // O caminho pré-bootstrap carrega a foto na pendência: ela sobe quando a sessão passa
+    // a existir, sem a pessoa escolher a imagem duas vezes.
+    @Test
+    fun `the photo chosen before bootstrap goes up once the session exists`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Success(phoneRequiredSession))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+
+        fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
+        fixture.session.profileResult = SaqzResult.Success(session)
+        runCurrent()
+
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // ---- a guarda de geração: resposta com o contexto trocado é descartada ----
+    //
+    // O voltar da 1c continua clicável enquanto o envio corre, e o escopo da máquina é o
+    // singleton do app: nada cancela sozinho. Sem a guarda, a corrotina retomada escreve
+    // `Ready` por cima do `SignedOut` e reabre o shell de quem acabou de sair.
+
+    @Test
+    fun `a logout during the profile submit never undoes the logout`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileGate = CompletableDeferred()
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.profileGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+    }
+
+    @Test
+    fun `a logout during the photo upload never revives the screen`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.photoGate = CompletableDeferred()
+        fixture.session.photoResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.photoGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        // A foto caiu com o contexto: o perfil nem chega a ser enviado.
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    @Test
+    fun `a logout during bootstrap never opens the shell`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.session.bootstrapGate = CompletableDeferred()
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.session.bootstrapGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+    }
+
+    // A janela entre o `scope.launch` e o corpo da corrotina: a cadeia já nasceu, mas o
+    // `PUT api/session` ainda não saiu. Sair nesse intervalo não pode emitir o pedido —
+    // descartar a resposta depois não o traz de volta.
+    @Test
+    fun `a logout before bootstrap starts never issues the session put`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        // Sem `runCurrent`: o bootstrap está agendado e a corrotina ainda não rodou.
+        fixture.machine.onIntent(SessionIntent.Logout)
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(0, fixture.session.calls)
+    }
+
+    // O caminho pré-bootstrap responde por callback do provedor, não por corrotina, e tem
+    // a mesma janela: sair enquanto o nome sobe não pode trazer a 1c de volta.
+    @Test
+    fun `a logout while the provider claims the name is not undone by the answer`() = runTest {
+        val fixture = namelessFixture()
+        fixture.machine.onIntent(SessionIntent.UpdateName("Pessoa Nova"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.auth.completeAuth(AuthResult.Success(verified.copy(displayName = "Pessoa Nova")))
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(0, fixture.session.calls)
+    }
+
+    // Autenticar outra identidade é a outra troca de contexto: o que estava em voo pela
+    // conta anterior não pode aterrissar sobre a nova.
+    @Test
+    fun `a response from the previous account never lands on the next one`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.session.profileGate = CompletableDeferred()
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.session.result = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.session.profileGate!!.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // ---- todo passo da cadeia responde à geração, inclusive os que não fazem nada ----
+
+    // O caminho "sem foto" também é um passo da cadeia: não envia nada, mas continua sendo
+    // revalidado. A janela é entre o `launch` e a corrotina começar a correr — sair da conta
+    // aí deixava o `completeProfile` sair mesmo assim, e ele vai com a sessão que o provedor
+    // tiver **agora**, que já é a de outra pessoa.
+    @Test
+    fun `a logout before the completion coroutine runs stops the profile call`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        fixture.machine.onIntent(SessionIntent.Logout)
+        runCurrent()
+
+        assertTrue(fixture.session.profileCalls.isEmpty())
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+    }
+
+    // A mesma janela com foto: nem a imagem sobe.
+    @Test
+    fun `a logout before the completion coroutine runs stops the photo upload`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        fixture.machine.onIntent(SessionIntent.Logout)
+        runCurrent()
+
+        assertTrue(fixture.session.photoUploads.isEmpty())
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    // A foto que já subiu não sobe de novo: o perfil recusado devolve a 1c com a imagem na
+    // tela, e o toque seguinte reenviaria o arquivo inteiro por causa de um erro que não
+    // foi dele.
+    @Test
+    fun `a photo that already went up is not sent again on retry`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+        assertEquals(1, fixture.session.photoUploads.size)
+
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertEquals(1, fixture.session.photoUploads.size)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // Escolher outra foto é ter de novo o que enviar.
+    @Test
+    fun `choosing another photo makes it sendable again`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Server))
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(otherPhoto))
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertEquals(2, fixture.session.photoUploads.size)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // ---- o contexto trocado leva junto o que ficou guardado ----
+
+    // O vazamento entre contas: a conta A termina os callbacks do provedor e deixa a
+    // identidade guardada esperando o bootstrap; a conta B entra, e o bootstrap **dela** é
+    // corrente. Sem limpar a pendência na troca, o nome, o telefone e a foto de A subiam
+    // com a sessão de B — a foto de uma pessoa virando a foto de perfil de outra, e o
+    // telefone de uma entrando no cadastro da outra.
+    @Test
+    fun `an identity left pending by one account never travels into the next`() = runTest {
+        val fixture = namelessFixture(SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+        fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
+        fixture.claimIdentity(name = "Ana Costa", phone = "(11) 98888-0000")
+        runCurrent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+
+        fixture.session.result = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(otherAccount)))
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertTrue(fixture.session.profileCalls.isEmpty())
+        assertTrue(fixture.session.photoUploads.isEmpty())
+    }
+
+    // A outra metade da mesma janela: trabalho **disparado** entre o intento de sair e o
+    // fim da saída nasceria já com a geração nova e passaria pela guarda.
+    @Test
+    fun `a completion fired during the logout never reaches the backend`() = runTest {
+        val fixture = identityFixture()
+        fixture.machine.onIntent(SessionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.auth.deferSignOut = true
+        fixture.machine.onIntent(SessionIntent.Logout)
+
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+        fixture.auth.completeSignOut()
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertTrue(fixture.session.profileCalls.isEmpty())
+    }
+
+    @Test
+    fun `a retry fired during the logout never reopens the shell`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+        fixture.auth.deferSignOut = true
+        fixture.machine.onIntent(SessionIntent.Logout)
+
+        fixture.session.result = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        runCurrent()
+        fixture.auth.completeSignOut()
+        runCurrent()
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(1, fixture.session.calls)
     }
 
     @Test
@@ -527,8 +872,26 @@ class SessionAccessStateMachineTest {
          */
         var profileResult: SaqzResult<AccessSession, AccessError>? = null
 
+        val photoUploads = mutableListOf<Pair<ByteArray, String>>()
+        var photoResult: SaqzResult<Unit, AccessError> = SaqzResult.Success(Unit)
+
+        /**
+         * Portões para segurar a resposta no ar: é a única forma de o teste sair da conta
+         * **durante** a suspensão, que é exatamente a janela que a guarda de geração fecha.
+         */
+        var photoGate: CompletableDeferred<Unit>? = null
+        var profileGate: CompletableDeferred<Unit>? = null
+        var bootstrapGate: CompletableDeferred<Unit>? = null
+
+        override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> {
+            photoUploads += bytes to mediaType
+            photoGate?.await()
+            return photoResult
+        }
+
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             calls += 1
+            bootstrapGate?.await()
             return result
         }
 
@@ -537,6 +900,7 @@ class SessionAccessStateMachineTest {
             displayName: String?,
         ): SaqzResult<AccessSession, AccessError> {
             profileCalls += phone to displayName
+            profileGate?.await()
             return profileResult ?: result
         }
     }
@@ -553,7 +917,24 @@ class SessionAccessStateMachineTest {
         override fun updateDisplayName(name: String, done: AuthCallback) { nameUpdates += name; authCallback = done }
         override fun sendVerification(done: ResultCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) { tokenCalls += forceRefresh; tokenCallback = done }
-        override fun signOut(done: ResultCallback) { signOutCalls += 1; done.complete(OperationResult.Success) }
+        /**
+         * Sair do provedor é assíncrono de verdade, e é durante essa espera que os botões
+         * da tela continuam alcançáveis — segurar a resposta é a única forma de o teste
+         * disparar trabalho novo dentro da janela.
+         */
+        var deferSignOut = false
+        private var signOutCallback: ResultCallback? = null
+
+        override fun signOut(done: ResultCallback) {
+            signOutCalls += 1
+            if (deferSignOut) signOutCallback = done else done.complete(OperationResult.Success)
+        }
+
+        fun completeSignOut() {
+            val pending = signOutCallback!!
+            signOutCallback = null
+            pending.complete(OperationResult.Success)
+        }
         fun completeAuth(result: AuthResult) = authCallback!!.complete(result)
         fun completeToken(result: TokenResult) = tokenCallback!!.complete(result)
         override fun observe(listener: AuthStateListener): Cancelable = object : Cancelable { override fun cancel() = Unit }
@@ -583,5 +964,11 @@ class SessionAccessStateMachineTest {
         val verified = unverified.copy(emailVerified = true)
         val session = AccessSession(AccessUser("user-id", "person@example.test", "Person Name"), emptyList())
         val phoneRequiredSession = session.copy(user = session.user.copy(phoneRequired = true))
+        val photo = ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg")
+
+        val otherPhoto = ProfilePhotoResult.Selected(byteArrayOf(9, 9, 9), "image/jpeg")
+
+        /** Outra pessoa, no mesmo aparelho: nome próprio, para o bootstrap dela passar. */
+        val otherAccount = NativeUser("other-subject", "outra@example.test", true, "Outra Pessoa")
     }
 }

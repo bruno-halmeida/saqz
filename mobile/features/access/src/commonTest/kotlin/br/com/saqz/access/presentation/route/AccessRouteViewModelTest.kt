@@ -139,6 +139,9 @@ class AccessRouteViewModelTest {
             displayName: String?,
         ): SaqzResult<AccessSession, AccessError> = error("not used")
 
+        override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> =
+            error("not used")
+
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> {
             val deferred = CompletableDeferred<SaqzResult<AccessSession, AccessError>>()
             calls += deferred
