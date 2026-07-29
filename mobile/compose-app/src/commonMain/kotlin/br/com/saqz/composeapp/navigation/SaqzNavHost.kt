@@ -21,6 +21,7 @@ import androidx.navigation3.ui.NavDisplay
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.ui.BootstrapAccessScreen
+import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.LoginRoot
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
@@ -99,9 +100,9 @@ internal fun SaqzNavHost(
             }
             entry<AccessRoute.IdentityCompletion> { AccessSkeleton("IdentityCompletion") }
             entry<AccessRoute.ForgotPassword> {
-                AccessSkeleton(
-                    "ForgotPassword",
-                    "ResetCode" to { backStack.add(AccessRoute.ResetCode(SkeletonEmail)) },
+                ForgotPasswordRoot(
+                    onBack = pop,
+                    onOpenResetCode = { email -> backStack.add(AccessRoute.ResetCode(email)) },
                 )
             }
             entry<AccessRoute.ResetCode> { route ->
@@ -182,9 +183,8 @@ internal fun SaqzNavHost(
     )
 }
 
-// Valores de andaime: a 1d ainda não coleta e-mail e a 1e ainda não troca código por
-// ticket, mas as rotas já carregam os dois, então o percurso precisa de algo para levar.
-private const val SkeletonEmail = "ana@exemplo.com"
+// Valor de andaime: a 1e ainda não troca código por ticket, mas a rota da 1g já carrega o
+// token, então o percurso precisa de algo para levar. O e-mail já vem da 1d de verdade.
 private const val SkeletonToken = "token-de-andaime"
 
 /** Uma tela feia: o nome da rota e um link por saída. */

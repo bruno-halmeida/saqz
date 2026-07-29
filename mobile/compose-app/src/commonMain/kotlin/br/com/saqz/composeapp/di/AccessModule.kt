@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.di
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.access.presentation.forgotpassword.ForgotPasswordViewModel
 import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.verification.VerificationViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +40,7 @@ internal val accessPresentationModule = module {
     }
 
     viewModelOf(::LoginViewModel)
+    viewModelOf(::ForgotPasswordViewModel)
     // Órfã: sem rota desde o VUL-84, apagada pelo VUL-91 junto com a tela.
     viewModelOf(::VerificationViewModel)
 }
