@@ -222,6 +222,19 @@ class LoginScreenTest {
         onNodeWithTag(LoginTags.Attempts).assertDoesNotExist()
     }
 
+    // Nada garante que o provedor barre na quinta — o limiar dele não é conhecido. Se ele
+    // aceitar a sexta, a frase some em vez de escrever "Errou 6 de 5 tentativas.".
+    @Test fun `the counter survives up to the announced limit and no further`() = runComposeUiTest {
+        content(state = refused(attempts = LoginState.ANNOUNCED_ATTEMPT_LIMIT))
+        onNodeWithTag(LoginTags.Attempts).assertExists()
+    }
+
+    @Test fun `past the announced limit the sentence disappears instead of lying`() = runComposeUiTest {
+        content(state = refused(attempts = LoginState.ANNOUNCED_ATTEMPT_LIMIT + 1))
+        onNodeWithTag(LoginTags.Attempts).assertDoesNotExist()
+        onNodeWithText("de 5 tentativas", substring = true).assertDoesNotExist()
+    }
+
     // Só a primeira frase sai em negrito; alerta de uma frase só fica sem destaque, senão
     // o `SaqzInlineAlert` engrossaria a mensagem inteira.
     @Test fun `only the leading sentence of an alert is emphasised`() {

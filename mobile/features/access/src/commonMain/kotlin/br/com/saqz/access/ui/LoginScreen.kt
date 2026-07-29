@@ -188,7 +188,10 @@ fun LoginScreen(
             modifier = Modifier.testTag(LoginTags.Submit),
         )
 
-        if (state.failedAttempts > 0) {
+        // Passado o teto anunciado a frase some: o limiar de verdade é do provedor e não é
+        // conhecido, então "Errou 6 de 5 tentativas." é a saída errada de um contador que
+        // já era só enfeite.
+        if (state.failedAttempts in 1..LoginState.ANNOUNCED_ATTEMPT_LIMIT) {
             Spacer(Modifier.height(LoginMetrics.fieldGap))
             Text(
                 text = stringResource(Res.string.login_error_attempts, state.failedAttempts),
