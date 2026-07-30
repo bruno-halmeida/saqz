@@ -1,6 +1,7 @@
 package br.com.saqz.subscriptions.adapter.output.asaas
 
 import br.com.saqz.subscriptions.application.AsaasBillingType
+import br.com.saqz.subscriptions.application.AsaasConcurrentOperationException
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import okhttp3.mockwebserver.MockResponse
@@ -19,6 +20,7 @@ import kotlin.test.assertTrue
 
 class HttpAsaasGatewayTest {
     private lateinit var server: MockWebServer
+    private lateinit var store: InMemoryAsaasIdempotencyStore
     private lateinit var gateway: HttpAsaasGateway
 
     private val fixedClock = Clock.fixed(Instant.parse("2026-07-30T12:00:00Z"), ZoneOffset.UTC)
@@ -28,12 +30,15 @@ class HttpAsaasGatewayTest {
     fun setUp() {
         server = MockWebServer()
         server.start()
+        store = InMemoryAsaasIdempotencyStore()
         gateway = HttpAsaasGateway(
             settings = AsaasClientSettings(
                 baseUrl = server.url("/v3").toString().trimEnd('/'),
                 apiKey = apiKey,
             ),
+            idempotencyStore = store,
             clock = fixedClock,
+            idempotencyPollWait = { },
         )
     }
 
@@ -89,6 +94,7 @@ class HttpAsaasGatewayTest {
             cycle = SubscriptionCycle.MONTHLY,
             valueCents = 3_990,
             billingType = AsaasBillingType.PIX,
+            idempotencyKey = "sub-owner-1-TITULAR",
         )
 
         assertEquals("sub_XYZ", id)
@@ -102,6 +108,8 @@ class HttpAsaasGatewayTest {
         assertTrue(body.contains("\"cycle\":\"MONTHLY\""))
         assertTrue(body.contains("\"nextDueDate\":\"2026-07-30\""))
         assertTrue(body.contains("\"description\":\"Assinatura Saqz TITULAR\""))
+        assertTrue(body.contains("\"externalReference\":\"sub-owner-1-TITULAR\""))
+        assertEquals("sub_XYZ", store.findResourceId("sub-owner-1-TITULAR"))
     }
 
     @Test
@@ -114,6 +122,7 @@ class HttpAsaasGatewayTest {
             cycle = SubscriptionCycle.MONTHLY,
             valueCents = 5_990,
             billingType = AsaasBillingType.CREDIT_CARD,
+            idempotencyKey = "sub-card-1",
         )
 
         assertEquals("sub_CARD", id)
@@ -133,6 +142,7 @@ class HttpAsaasGatewayTest {
             SubscriptionCycle.ANNUAL,
             89_900,
             AsaasBillingType.PIX,
+            "sub-annual-1",
         )
 
         val body = server.takeRequest().body.readUtf8()
@@ -141,7 +151,33 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createSubscription throws on asaas 4xx`() {
+    fun `createSubscription returns cached id without second asaas call`() {
+        server.enqueue(json(200, """{"id":"sub_FIRST"}"""))
+
+        val first = gateway.createSubscription(
+            "cus_1",
+            Plan.TITULAR,
+            SubscriptionCycle.MONTHLY,
+            3_990,
+            AsaasBillingType.PIX,
+            "sub-retry-1",
+        )
+        val second = gateway.createSubscription(
+            "cus_1",
+            Plan.TITULAR,
+            SubscriptionCycle.MONTHLY,
+            3_990,
+            AsaasBillingType.PIX,
+            "sub-retry-1",
+        )
+
+        assertEquals("sub_FIRST", first)
+        assertEquals("sub_FIRST", second)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `createSubscription throws on asaas 4xx and releases reservation`() {
         server.enqueue(
             json(400, """{"errors":[{"code":"invalid_customer","description":"Customer inválido"}]}"""),
         )
@@ -153,10 +189,39 @@ class HttpAsaasGatewayTest {
                 SubscriptionCycle.MONTHLY,
                 100,
                 AsaasBillingType.PIX,
+                "sub-fail-1",
             )
         }
         assertEquals(400, error.statusCode)
         assertTrue(error.message!!.contains("invalid_customer"))
+
+        server.enqueue(json(200, """{"id":"sub_RECOVERED"}"""))
+        val recovered = gateway.createSubscription(
+            "cus_ok",
+            Plan.TITULAR,
+            SubscriptionCycle.MONTHLY,
+            100,
+            AsaasBillingType.PIX,
+            "sub-fail-1",
+        )
+        assertEquals("sub_RECOVERED", recovered)
+    }
+
+    @Test
+    fun `createSubscription concurrent in-flight key throws after polls`() {
+        store.tryBegin("sub-inflight", fixedClock.instant())
+
+        assertThrows<AsaasConcurrentOperationException> {
+            gateway.createSubscription(
+                "cus_1",
+                Plan.TITULAR,
+                SubscriptionCycle.MONTHLY,
+                100,
+                AsaasBillingType.PIX,
+                "sub-inflight",
+            )
+        }
+        assertEquals(0, server.requestCount)
     }
 
     @Test
@@ -186,8 +251,7 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createOneOffCharge looks up by externalReference then posts with idempotency key`() {
-        server.enqueue(json(200, """{"object":"list","data":[],"hasMore":false,"totalCount":0}"""))
+    fun `createOneOffCharge posts pix payment with externalReference and returns charge id`() {
         server.enqueue(json(200, """{"object":"payment","id":"pay_PRORATA"}"""))
 
         val id = gateway.createOneOffCharge(
@@ -198,14 +262,7 @@ class HttpAsaasGatewayTest {
         )
 
         assertEquals("pay_PRORATA", id)
-
-        val lookup = server.takeRequest()
-        assertEquals("GET", lookup.method)
-        assertEquals(
-            "/v3/payments?externalReference=upgrade-user-1-from-TITULAR&limit=1",
-            lookup.path,
-        )
-
+        assertEquals(1, server.requestCount)
         val create = server.takeRequest()
         assertEquals("POST", create.method)
         assertEquals("/v3/payments", create.path)
@@ -216,29 +273,33 @@ class HttpAsaasGatewayTest {
         assertTrue(body.contains("\"dueDate\":\"2026-07-30\""))
         assertTrue(body.contains("\"description\":\"Upgrade prorata\""))
         assertTrue(body.contains("\"externalReference\":\"upgrade-user-1-from-TITULAR\""))
+        assertEquals("pay_PRORATA", store.findResourceId("upgrade-user-1-from-TITULAR"))
     }
 
     @Test
-    fun `createOneOffCharge reuses existing payment when externalReference already exists`() {
-        server.enqueue(
-            json(
-                200,
-                """{"object":"list","data":[{"id":"pay_EXISTING","externalReference":"upgrade-1"}],"hasMore":false,"totalCount":1}""",
-            ),
-        )
+    fun `createOneOffCharge returns cached id without second asaas call`() {
+        server.enqueue(json(200, """{"id":"pay_FIRST"}"""))
 
-        val id = gateway.createOneOffCharge("cus_ABC", 1_250, "Upgrade prorata", "upgrade-1")
+        val first = gateway.createOneOffCharge("cus_ABC", 1_250, "Upgrade", "upgrade-1")
+        val second = gateway.createOneOffCharge("cus_ABC", 1_250, "Upgrade", "upgrade-1")
 
-        assertEquals("pay_EXISTING", id)
+        assertEquals("pay_FIRST", first)
+        assertEquals("pay_FIRST", second)
         assertEquals(1, server.requestCount)
-        val lookup = server.takeRequest()
-        assertEquals("GET", lookup.method)
-        assertTrue(lookup.path!!.contains("externalReference=upgrade-1"))
+    }
+
+    @Test
+    fun `createOneOffCharge concurrent in-flight key throws after polls`() {
+        store.tryBegin("upgrade-inflight", fixedClock.instant())
+
+        assertThrows<AsaasConcurrentOperationException> {
+            gateway.createOneOffCharge("cus_1", 100, "x", "upgrade-inflight")
+        }
+        assertEquals(0, server.requestCount)
     }
 
     @Test
     fun `createOneOffCharge throws on asaas 4xx`() {
-        server.enqueue(json(200, """{"object":"list","data":[]}"""))
         server.enqueue(
             json(400, """{"errors":[{"code":"invalid_value","description":"Valor inválido"}]}"""),
         )
@@ -256,56 +317,6 @@ class HttpAsaasGatewayTest {
             gateway.createOneOffCharge("cus_1", 100, "x", "  ")
         }
         assertEquals(0, server.requestCount)
-    }
-
-    @Test
-    fun `default http client configures connect timeout`() {
-        assertEquals(HttpAsaasGateway.CONNECT_TIMEOUT, HttpAsaasGateway.defaultHttpClient().connectTimeout().get())
-    }
-
-    @Test
-    fun `interrupted request restores interrupt flag`() {
-        val interruptingClient = object : java.net.http.HttpClient() {
-            override fun cookieHandler() = java.util.Optional.empty<java.net.CookieHandler>()
-            override fun connectTimeout() = java.util.Optional.of(HttpAsaasGateway.CONNECT_TIMEOUT)
-            override fun followRedirects() = Redirect.NEVER
-            override fun proxy() = java.util.Optional.empty<java.net.ProxySelector>()
-            override fun sslContext() = javax.net.ssl.SSLContext.getDefault()
-            override fun sslParameters() = sslContext().defaultSSLParameters
-            override fun authenticator() = java.util.Optional.empty<java.net.Authenticator>()
-            override fun version() = Version.HTTP_1_1
-            override fun executor() = java.util.Optional.empty<java.util.concurrent.Executor>()
-            override fun <T : Any?> send(
-                request: java.net.http.HttpRequest,
-                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
-            ): java.net.http.HttpResponse<T> = throw InterruptedException("cancelled")
-            override fun <T : Any?> sendAsync(
-                request: java.net.http.HttpRequest,
-                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
-            ) = throw UnsupportedOperationException()
-            override fun <T : Any?> sendAsync(
-                request: java.net.http.HttpRequest,
-                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
-                pushPromiseHandler: java.net.http.HttpResponse.PushPromiseHandler<T>?,
-            ) = throw UnsupportedOperationException()
-            override fun newWebSocketBuilder() = throw UnsupportedOperationException()
-        }
-        val interruptingGateway = HttpAsaasGateway(
-            settings = AsaasClientSettings(
-                baseUrl = server.url("/v3").toString().trimEnd('/'),
-                apiKey = apiKey,
-            ),
-            httpClient = interruptingClient,
-            clock = fixedClock,
-        )
-        Thread.interrupted()
-
-        val error = assertThrows<AsaasException> {
-            interruptingGateway.createCustomer(UUID.randomUUID(), "X", "x@y.com", "000")
-        }
-
-        assertTrue(error.cause is InterruptedException)
-        assertTrue(Thread.interrupted(), "interrupt flag must be restored")
     }
 
     @Test
@@ -360,6 +371,58 @@ class HttpAsaasGatewayTest {
         assertThrows<IllegalStateException> {
             AsaasClientSettings.fromProperties { null }
         }
+    }
+
+    @Test
+    fun `default http client configures connect timeout`() {
+        assertEquals(HttpAsaasGateway.CONNECT_TIMEOUT, HttpAsaasGateway.defaultHttpClient().connectTimeout().get())
+    }
+
+    @Test
+    fun `interrupted request restores interrupt flag`() {
+        val interruptingClient = object : java.net.http.HttpClient() {
+            override fun cookieHandler() = java.util.Optional.empty<java.net.CookieHandler>()
+            override fun connectTimeout() = java.util.Optional.of(HttpAsaasGateway.CONNECT_TIMEOUT)
+            override fun followRedirects() = Redirect.NEVER
+            override fun proxy() = java.util.Optional.empty<java.net.ProxySelector>()
+            override fun sslContext() = javax.net.ssl.SSLContext.getDefault()
+            override fun sslParameters() = sslContext().defaultSSLParameters
+            override fun authenticator() = java.util.Optional.empty<java.net.Authenticator>()
+            override fun version() = Version.HTTP_1_1
+            override fun executor() = java.util.Optional.empty<java.util.concurrent.Executor>()
+            override fun <T : Any?> send(
+                request: java.net.http.HttpRequest,
+                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
+            ): java.net.http.HttpResponse<T> = throw InterruptedException("cancelled")
+            override fun <T : Any?> sendAsync(
+                request: java.net.http.HttpRequest,
+                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
+            ) = throw UnsupportedOperationException()
+            override fun <T : Any?> sendAsync(
+                request: java.net.http.HttpRequest,
+                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
+                pushPromiseHandler: java.net.http.HttpResponse.PushPromiseHandler<T>?,
+            ) = throw UnsupportedOperationException()
+            override fun newWebSocketBuilder() = throw UnsupportedOperationException()
+        }
+        val interruptingGateway = HttpAsaasGateway(
+            settings = AsaasClientSettings(
+                baseUrl = server.url("/v3").toString().trimEnd('/'),
+                apiKey = apiKey,
+            ),
+            idempotencyStore = InMemoryAsaasIdempotencyStore(),
+            httpClient = interruptingClient,
+            clock = fixedClock,
+            idempotencyPollWait = { },
+        )
+        Thread.interrupted()
+
+        val error = assertThrows<AsaasException> {
+            interruptingGateway.createCustomer(UUID.randomUUID(), "X", "x@y.com", "000")
+        }
+
+        assertTrue(error.cause is InterruptedException)
+        assertTrue(Thread.interrupted(), "interrupt flag must be restored")
     }
 
     private fun json(code: Int, body: String): MockResponse =

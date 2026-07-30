@@ -12,6 +12,7 @@ interface AsaasGateway {
         cycle: SubscriptionCycle,
         valueCents: Long,
         billingType: AsaasBillingType,
+        idempotencyKey: String,
     ): String
     fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long)
     fun createOneOffCharge(
