@@ -2,6 +2,7 @@ package br.com.saqz.groups.application.invite.redeem
 
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import java.time.Instant
 import java.util.UUID
 
@@ -27,12 +28,21 @@ data class RedeemMembershipCommand(
     val userId: UUID,
 )
 
+data class GroupAthleteOccupancy(
+    val ownerUserId: UUID,
+    val openMemberIds: Set<UUID>,
+    val openWaitlistIds: Set<UUID>,
+    val closedOccupancies: List<ClosedAthleteOccupancy>,
+)
+
 sealed interface RedeemInviteResult {
     data class Success(val groupId: UUID, val role: GroupRole) : RedeemInviteResult
 
     data class AttemptLimit(val retryAfterSeconds: Int) : RedeemInviteResult
 
     data object InvalidOrExpired : RedeemInviteResult
+
+    data object AthleteLimitExceeded : RedeemInviteResult
 }
 
 interface InviteRedemptionRepository {
@@ -41,6 +51,8 @@ interface InviteRedemptionRepository {
     fun findInvite(digest: InviteTokenDigest): RedeemableInvite?
 
     fun recordInvalidAttempt(command: RecordInvalidInviteAttempt)
+
+    fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy?
 
     fun redeemMembership(command: RedeemMembershipCommand): GroupRole
 }

@@ -47,6 +47,10 @@ import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
 import br.com.saqz.groups.application.invite.manage.RotateInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPlanLookup
+import br.com.saqz.subscriptions.application.SubscriptionLimitsAdapter
+import br.com.saqz.subscriptions.application.SubscriptionPlanLookup
 import br.com.saqz.groups.application.membership.ChangeMemberRole
 import br.com.saqz.groups.application.membership.ListAccessMemberships
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
@@ -208,10 +212,19 @@ class AccessSessionConfiguration {
     fun accessTransactionRunner(dataSource: DataSource) = JdbcTransactionRunner(dataSource)
 
     @Bean
+    fun subscriptionPlanLookup(dataSource: DataSource): SubscriptionPlanLookup =
+        JdbcSubscriptionPlanLookup(dataSource)
+
+    @Bean
+    fun subscriptionLimits(lookup: SubscriptionPlanLookup): SubscriptionLimits =
+        SubscriptionLimitsAdapter(lookup)
+
+    @Bean
     fun createGroup(
         transaction: JdbcTransactionRunner,
         repository: JdbcGroupCreationRepository,
-    ) = CreateGroup(transaction, repository)
+        subscriptionLimits: SubscriptionLimits,
+    ) = CreateGroup(transaction, repository, subscriptionLimits)
 
     @Bean
     fun accessGroupController(
@@ -331,7 +344,8 @@ class AccessSessionConfiguration {
     fun redeemInvite(
         transaction: JdbcTransactionRunner,
         repository: JdbcInviteRedemptionRepository,
-    ) = RedeemInvite(transaction, repository, Clock.systemUTC())
+        subscriptionLimits: SubscriptionLimits,
+    ) = RedeemInvite(transaction, repository, subscriptionLimits, Clock.systemUTC())
 
     @Bean
     fun accessInviteRedemptionController(

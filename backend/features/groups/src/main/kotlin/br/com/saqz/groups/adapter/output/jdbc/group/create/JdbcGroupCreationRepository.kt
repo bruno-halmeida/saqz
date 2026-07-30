@@ -17,6 +17,26 @@ class JdbcGroupCreationRepository(
 ) : GroupCreationRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
+    override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? = jdbc.sql(
+        """
+        SELECT id, owner_user_id, creation_key, name, time_zone, version, profile_status
+        FROM access_groups
+        WHERE owner_user_id = :ownerUserId AND creation_key = :creationKey
+        """.trimIndent(),
+    )
+        .param("ownerUserId", ownerUserId)
+        .param("creationKey", creationKey)
+        .query { result, _ -> result.toStoredGroup() }
+        .optional()
+        .orElse(null)
+
+    override fun countOwnedGroups(ownerUserId: UUID): Int = jdbc.sql(
+        "SELECT count(*)::int FROM access_groups WHERE owner_user_id = :ownerUserId",
+    )
+        .param("ownerUserId", ownerUserId)
+        .query(Int::class.java)
+        .single()
+
     override fun create(command: CreateGroupCommand): StoredGroup {
         val groupId = UUID.randomUUID()
         val inserted = insertGroup(groupId, command)

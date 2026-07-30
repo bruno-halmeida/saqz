@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
 import br.com.saqz.groups.application.invite.redeem.InviteRedemptionRepository
 import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
@@ -64,6 +65,38 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .param("invalidCount", command.invalidCount)
             .update()
         check(changed == 1) { "Invite attempt window was not locked" }
+    }
+
+    override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
+        val ownerUserId = jdbc.sql(
+            "SELECT owner_user_id FROM access_groups WHERE id = :groupId",
+        )
+            .param("groupId", groupId)
+            .query(UUID::class.java)
+            .optional()
+            .orElse(null)
+            ?: return null
+
+        val openMemberIds = jdbc.sql(
+            """
+            SELECT user_id
+            FROM group_memberships
+            WHERE group_id = :groupId
+              AND user_id <> :ownerUserId
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("ownerUserId", ownerUserId)
+            .query { result, _ -> result.getObject("user_id", UUID::class.java) }
+            .list()
+            .toSet()
+
+        return GroupAthleteOccupancy(
+            ownerUserId = ownerUserId,
+            openMemberIds = openMemberIds,
+            openWaitlistIds = emptySet(),
+            closedOccupancies = emptyList(),
+        )
     }
 
     override fun redeemMembership(command: RedeemMembershipCommand): GroupRole = jdbc.sql(

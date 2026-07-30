@@ -13,6 +13,7 @@ import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
 import br.com.saqz.groups.domain.group.RegularSlotInput
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -49,7 +50,7 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
         transaction = JdbcTransactionRunner(dataSource)
         repository = JdbcGroupCreationRepository(dataSource)
-        useCase = CreateGroup(transaction, repository)
+        useCase = CreateGroup(transaction, repository, UnlimitedSubscriptionLimits)
     }
 
     @AfterAll
@@ -365,6 +366,7 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         val failingUseCase = CreateGroup(
             transaction,
             JdbcGroupCreationRepository(dataSource) { throw IllegalStateException("injected child failure") },
+            UnlimitedSubscriptionLimits,
         )
 
         assertFailsWith<IllegalStateException> {
@@ -470,4 +472,9 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         }
 
     private fun connection(): Connection = dataSource.connection
+
+    private object UnlimitedSubscriptionLimits : SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = null
+        override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
 }

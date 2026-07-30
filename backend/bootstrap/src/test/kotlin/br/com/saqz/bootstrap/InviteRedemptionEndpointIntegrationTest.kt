@@ -4,6 +4,7 @@ import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
 import br.com.saqz.groups.application.invite.redeem.InviteRedemptionRepository
 import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
@@ -219,7 +220,12 @@ class InviteRedemptionEndpointIntegrationTest {
         @Bean fun redeemInvite(
             transaction: TransactionRunner,
             repository: RecordingHttpRedemptionRepository,
-        ) = RedeemInvite(transaction, repository, Clock.fixed(NOW, ZoneOffset.UTC))
+        ) = RedeemInvite(
+            transaction,
+            repository,
+            UnlimitedSubscriptionLimits,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+        )
         @Bean fun accessInviteRedemptionController(
             bootstrap: BootstrapSession,
             redeemInvite: RedeemInvite,
@@ -246,11 +252,17 @@ class InviteRedemptionEndpointIntegrationTest {
         )
     }
 
+    object UnlimitedSubscriptionLimits : br.com.saqz.sharedkernel.subscription.SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = null
+        override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
+
     class RecordingHttpRedemptionRepository : InviteRedemptionRepository {
         var target: RedeemableInvite? = RedeemableInvite(RedemptionTestConfiguration.GROUP_ID)
         var failure: RuntimeException? = null
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
         val roles = mutableMapOf<UUID, GroupRole>()
+        private val ownerId: UUID = UUID.randomUUID()
 
         fun reset() {
             target = RedeemableInvite(RedemptionTestConfiguration.GROUP_ID)
@@ -268,6 +280,16 @@ class InviteRedemptionEndpointIntegrationTest {
 
         override fun recordInvalidAttempt(command: RecordInvalidInviteAttempt) {
             windows[command.userId] = InviteAttemptWindow(command.windowStartedAt, command.invalidCount)
+        }
+
+        override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
+            if (target?.groupId != groupId) return null
+            return GroupAthleteOccupancy(
+                ownerUserId = ownerId,
+                openMemberIds = roles.keys.toSet(),
+                openWaitlistIds = emptySet(),
+                closedOccupancies = emptyList(),
+            )
         }
 
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole =

@@ -336,7 +336,7 @@ class GroupCreationEndpointIntegrationTest {
 
         @Bean
         fun createGroup(transaction: TransactionRunner, repository: RecordingGroupRepository) =
-            CreateGroup(transaction, repository)
+            CreateGroup(transaction, repository, UnlimitedSubscriptionLimits)
 
         @Bean
         fun getCreatedGroup(repository: RecordingGroupRepository) = GetGroup(repository, GroupAccessPolicy())
@@ -368,6 +368,11 @@ class GroupCreationEndpointIntegrationTest {
         )
     }
 
+    object UnlimitedSubscriptionLimits : br.com.saqz.sharedkernel.subscription.SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = null
+        override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
+
     class RecordingGroupRepository : GroupCreationRepository, GroupReadRepository {
         val commands = mutableListOf<CreateGroupCommand>()
         val groups = mutableMapOf<Pair<UUID, UUID>, StoredGroup>()
@@ -382,6 +387,12 @@ class GroupCreationEndpointIntegrationTest {
             nextVenueId = UUID.randomUUID()
             nextSlotIds = listOf(UUID.randomUUID())
         }
+
+        override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? =
+            groups[ownerUserId to creationKey]
+
+        override fun countOwnedGroups(ownerUserId: UUID): Int =
+            groups.keys.count { it.first == ownerUserId }
 
         override fun create(command: CreateGroupCommand): StoredGroup {
             failure?.let { throw it }

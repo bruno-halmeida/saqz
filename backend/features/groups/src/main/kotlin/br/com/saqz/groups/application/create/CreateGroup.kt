@@ -6,11 +6,14 @@ import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidation
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidator
 import br.com.saqz.groups.domain.group.GroupValidationError
+import br.com.saqz.groups.domain.plan.PlanLimitPolicy
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import java.util.UUID
 
 class CreateGroup(
     private val transactionRunner: TransactionRunner,
     private val repository: GroupCreationRepository,
+    private val subscriptionLimits: SubscriptionLimits,
 ) {
     fun execute(
         actor: UUID,
@@ -27,6 +30,14 @@ class CreateGroup(
         if (errors.isNotEmpty()) return CreateGroupResult.Invalid(errors)
 
         val stored = transactionRunner.inTransaction {
+            repository.findByCreationKey(actor, requestId)?.let { return@inTransaction it }
+
+            val groupLimit = subscriptionLimits.groupLimitFor(actor)
+            val ownedCount = repository.countOwnedGroups(actor)
+            if (!PlanLimitPolicy.canCreateGroup(ownedCount, groupLimit)) {
+                return@inTransaction null
+            }
+
             repository.create(
                 CreateGroupCommand(
                     ownerUserId = actor,
@@ -35,7 +46,8 @@ class CreateGroup(
                     profile = (profileValidation as GroupProfileDefaultsValidation.Valid).value,
                 ),
             )
-        }
+        } ?: return CreateGroupResult.GroupLimitExceeded
+
         return CreateGroupResult.Success(
             CreatedGroup(
                 id = stored.id,

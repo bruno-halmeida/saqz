@@ -11,6 +11,7 @@ import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -240,8 +241,14 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     private fun useCase() = RedeemInvite(
         transaction,
         repository,
+        UnlimitedSubscriptionLimits,
         Clock.fixed(now, ZoneOffset.UTC),
     )
+
+    private object UnlimitedSubscriptionLimits : SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = null
+        override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
 
     private fun inviteFixture(prefix: String): InviteFixture {
         val owner = insertUser("$prefix-owner")

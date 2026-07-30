@@ -25,6 +25,8 @@ class InviteInvalidOrExpiredException : RuntimeException()
 
 class InviteAttemptLimitException(val retryAfterSeconds: Int) : RuntimeException()
 
+class AthleteLimitExceededException : RuntimeException()
+
 @RestController
 class AccessInviteRedemptionController(
     private val actorResolver: VerifiedGroupActorResolver,
@@ -39,6 +41,7 @@ class AccessInviteRedemptionController(
     ) {
         RedeemInviteResult.InvalidOrExpired -> throw InviteInvalidOrExpiredException()
         is RedeemInviteResult.AttemptLimit -> throw InviteAttemptLimitException(result.retryAfterSeconds)
+        RedeemInviteResult.AthleteLimitExceeded -> throw AthleteLimitExceededException()
         is RedeemInviteResult.Success -> RedeemedInviteResponse(result.groupId, result.role)
     }
 

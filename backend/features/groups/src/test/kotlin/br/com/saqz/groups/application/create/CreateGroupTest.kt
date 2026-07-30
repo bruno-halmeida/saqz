@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
 import br.com.saqz.groups.domain.group.RegularSlotInput
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -119,12 +120,13 @@ class CreateGroupTest {
     @Test
     fun `retry with the same request id returns the repository group unchanged`() {
         val fixture = fixture()
+        fixture.repository.existingByKey[requestId] = stored
 
         val first = fixture.useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo")
         val second = fixture.useCase.execute(actorId, requestId, validProfile(name = "Changed Name"), "Europe/Lisbon")
 
         assertEquals(first, second)
-        assertEquals(listOf(requestId, requestId), fixture.repository.commands.map { it.creationKey })
+        assertTrue(fixture.repository.commands.isEmpty())
     }
 
     @Test
@@ -135,6 +137,45 @@ class CreateGroupTest {
 
         assertTrue(result is CreateGroupResult.Success)
         assertEquals(1, fixture.transaction.calls)
+    }
+
+    @Test
+    fun `group creation within titular limit succeeds`() {
+        val fixture = fixture(groupLimit = 1, ownedCount = 0)
+
+        assertTrue(fixture.useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo") is CreateGroupResult.Success)
+        assertEquals(1, fixture.repository.commands.size)
+    }
+
+    @Test
+    fun `group creation above titular limit is refused`() {
+        val fixture = fixture(groupLimit = 1, ownedCount = 1)
+
+        assertEquals(
+            CreateGroupResult.GroupLimitExceeded,
+            fixture.useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo"),
+        )
+        assertTrue(fixture.repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `owner without active subscription cannot create a group`() {
+        val fixture = fixture(groupLimit = 0, ownedCount = 0)
+
+        assertEquals(
+            CreateGroupResult.GroupLimitExceeded,
+            fixture.useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo"),
+        )
+    }
+
+    @Test
+    fun `pending downgrade uses the lower group limit from the port`() {
+        val fixture = fixture(groupLimit = 1, ownedCount = 1)
+
+        assertEquals(
+            CreateGroupResult.GroupLimitExceeded,
+            fixture.useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo"),
+        )
     }
 
     @Test
@@ -217,7 +258,7 @@ class CreateGroupTest {
         val failure = IllegalStateException("write failed")
         val transaction = RecordingTransactionRunner()
         val repository = RecordingGroupCreationRepository(stored, failure)
-        val useCase = CreateGroup(transaction, repository)
+        val useCase = CreateGroup(transaction, repository, FixedSubscriptionLimits(groupLimit = 1))
 
         val thrown = assertFailsWith<IllegalStateException> {
             useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo")
@@ -229,10 +270,18 @@ class CreateGroupTest {
         assertEquals(1, repository.commands.size)
     }
 
-    private fun fixture(stored: StoredGroup = this.stored): Fixture {
+    private fun fixture(
+        stored: StoredGroup = this.stored,
+        groupLimit: Int? = 3,
+        ownedCount: Int = 0,
+    ): Fixture {
         val transaction = RecordingTransactionRunner()
-        val repository = RecordingGroupCreationRepository(stored)
-        return Fixture(CreateGroup(transaction, repository), transaction, repository)
+        val repository = RecordingGroupCreationRepository(stored, ownedCount = ownedCount)
+        return Fixture(
+            CreateGroup(transaction, repository, FixedSubscriptionLimits(groupLimit = groupLimit)),
+            transaction,
+            repository,
+        )
     }
 
     private fun validProfile(
@@ -274,6 +323,14 @@ class CreateGroupTest {
         val repository: RecordingGroupCreationRepository,
     )
 
+    private class FixedSubscriptionLimits(
+        private val groupLimit: Int? = null,
+        private val athleteLimit: Int? = null,
+    ) : SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = groupLimit
+        override fun athleteLimitFor(ownerId: UUID): Int? = athleteLimit
+    }
+
     private class RecordingTransactionRunner : TransactionRunner {
         var calls = 0
         var rollbacks = 0
@@ -292,12 +349,20 @@ class CreateGroupTest {
     private class RecordingGroupCreationRepository(
         private val stored: StoredGroup,
         private val failure: Throwable? = null,
+        private val ownedCount: Int = 0,
     ) : GroupCreationRepository {
         val commands = mutableListOf<CreateGroupCommand>()
+        val existingByKey = mutableMapOf<UUID, StoredGroup>()
+
+        override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? =
+            existingByKey[creationKey]
+
+        override fun countOwnedGroups(ownerUserId: UUID): Int = ownedCount
 
         override fun create(command: CreateGroupCommand): StoredGroup {
             commands += command
             failure?.let { throw it }
+            existingByKey[command.creationKey] = stored
             return stored
         }
     }
