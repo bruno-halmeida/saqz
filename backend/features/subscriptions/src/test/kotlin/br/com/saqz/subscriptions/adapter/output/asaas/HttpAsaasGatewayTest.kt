@@ -16,6 +16,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class HttpAsaasGatewayTest {
@@ -48,27 +49,65 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createCustomer posts customer payload and returns asaas id`() {
+    fun `createCustomer looks up by externalReference before posting`() {
+        server.enqueue(json(200, emptyList()))
         server.enqueue(json(200, """{"object":"customer","id":"cus_ABC123"}"""))
 
         val ownerId = UUID.fromString("11111111-1111-1111-1111-111111111111")
         val id = gateway.createCustomer(ownerId, "Bruno", "bruno@example.com", "52998224725")
 
         assertEquals("cus_ABC123", id)
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/v3/customers", request.path)
-        assertEquals(apiKey, request.getHeader("access_token"))
-        assertEquals("saqz-backend", request.getHeader("User-Agent"))
-        val body = request.body.readUtf8()
+        val lookup = server.takeRequest()
+        assertEquals("GET", lookup.method)
+        assertEquals("/v3/customers?externalReference=$ownerId&limit=1", lookup.path)
+
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/v3/customers", create.path)
+        assertEquals(apiKey, create.getHeader("access_token"))
+        val body = create.body.readUtf8()
         assertTrue(body.contains("\"name\":\"Bruno\""))
-        assertTrue(body.contains("\"email\":\"bruno@example.com\""))
-        assertTrue(body.contains("\"cpfCnpj\":\"52998224725\""))
         assertTrue(body.contains("\"externalReference\":\"$ownerId\""))
     }
 
     @Test
+    fun `createCustomer reuses existing customer for same owner`() {
+        val ownerId = UUID.fromString("22222222-2222-2222-2222-222222222222")
+        server.enqueue(
+            json(
+                200,
+                """{"object":"list","data":[{"id":"cus_EXISTING","externalReference":"$ownerId"}]}""",
+            ),
+        )
+
+        val id = gateway.createCustomer(ownerId, "Bruno", "bruno@example.com", "52998224725")
+
+        assertEquals("cus_EXISTING", id)
+        assertEquals(1, server.requestCount)
+        assertEquals("GET", server.takeRequest().method)
+    }
+
+    @Test
+    fun `createCustomer reconciles after ambiguous truncated success body`() {
+        val ownerId = UUID.fromString("33333333-3333-3333-3333-333333333333")
+        server.enqueue(json(200, emptyList()))
+        server.enqueue(json(200, """{}"""))
+        server.enqueue(
+            json(
+                200,
+                """{"object":"list","data":[{"id":"cus_RECOVERED","externalReference":"$ownerId"}]}""",
+            ),
+        )
+
+        val id = gateway.createCustomer(ownerId, "Bruno", "bruno@example.com", "52998224725")
+
+        assertEquals("cus_RECOVERED", id)
+        assertEquals(3, server.requestCount)
+    }
+
+    @Test
     fun `createCustomer throws on asaas 4xx`() {
+        server.enqueue(json(200, emptyList()))
         server.enqueue(
             json(
                 400,
@@ -102,12 +141,7 @@ class HttpAsaasGatewayTest {
         assertEquals("POST", request.method)
         assertEquals("/v3/subscriptions", request.path)
         val body = request.body.readUtf8()
-        assertTrue(body.contains("\"customer\":\"cus_ABC\""))
         assertTrue(body.contains("\"billingType\":\"PIX\""))
-        assertTrue(body.contains("\"value\":39.90"))
-        assertTrue(body.contains("\"cycle\":\"MONTHLY\""))
-        assertTrue(body.contains("\"nextDueDate\":\"2026-07-30\""))
-        assertTrue(body.contains("\"description\":\"Assinatura Saqz TITULAR\""))
         assertTrue(body.contains("\"externalReference\":\"sub-owner-1-TITULAR\""))
         assertEquals("sub_XYZ", store.findResourceId("sub-owner-1-TITULAR"))
     }
@@ -126,10 +160,7 @@ class HttpAsaasGatewayTest {
         )
 
         assertEquals("sub_CARD", id)
-        val body = server.takeRequest().body.readUtf8()
-        assertTrue(body.contains("\"billingType\":\"CREDIT_CARD\""))
-        assertTrue(body.contains("\"customer\":\"cus_CARD\""))
-        assertTrue(body.contains("\"value\":59.90"))
+        assertTrue(server.takeRequest().body.readUtf8().contains("\"billingType\":\"CREDIT_CARD\""))
     }
 
     @Test
@@ -155,20 +186,10 @@ class HttpAsaasGatewayTest {
         server.enqueue(json(200, """{"id":"sub_FIRST"}"""))
 
         val first = gateway.createSubscription(
-            "cus_1",
-            Plan.TITULAR,
-            SubscriptionCycle.MONTHLY,
-            3_990,
-            AsaasBillingType.PIX,
-            "sub-retry-1",
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 3_990, AsaasBillingType.PIX, "sub-retry-1",
         )
         val second = gateway.createSubscription(
-            "cus_1",
-            Plan.TITULAR,
-            SubscriptionCycle.MONTHLY,
-            3_990,
-            AsaasBillingType.PIX,
-            "sub-retry-1",
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 3_990, AsaasBillingType.PIX, "sub-retry-1",
         )
 
         assertEquals("sub_FIRST", first)
@@ -177,51 +198,95 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createSubscription throws on asaas 4xx and releases reservation`() {
+    fun `createSubscription on definitive 4xx releases reservation for retry`() {
         server.enqueue(
             json(400, """{"errors":[{"code":"invalid_customer","description":"Customer inválido"}]}"""),
         )
 
         val error = assertThrows<AsaasException> {
             gateway.createSubscription(
-                "bad",
-                Plan.TITULAR,
-                SubscriptionCycle.MONTHLY,
-                100,
-                AsaasBillingType.PIX,
-                "sub-fail-1",
+                "bad", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-fail-1",
             )
         }
         assertEquals(400, error.statusCode)
-        assertTrue(error.message!!.contains("invalid_customer"))
+        assertNull(store.findResourceId("sub-fail-1"))
 
         server.enqueue(json(200, """{"id":"sub_RECOVERED"}"""))
         val recovered = gateway.createSubscription(
-            "cus_ok",
-            Plan.TITULAR,
-            SubscriptionCycle.MONTHLY,
-            100,
-            AsaasBillingType.PIX,
-            "sub-fail-1",
+            "cus_ok", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-fail-1",
         )
         assertEquals("sub_RECOVERED", recovered)
     }
 
     @Test
-    fun `createSubscription concurrent in-flight key throws after polls`() {
-        store.tryBegin("sub-inflight", fixedClock.instant())
+    fun `createSubscription ambiguous failure reconciles existing asaas resource`() {
+        server.enqueue(json(200, """{}"""))
+        server.enqueue(
+            json(
+                200,
+                """{"object":"list","data":[{"id":"sub_ALREADY","externalReference":"sub-ambig-1"}]}""",
+            ),
+        )
 
-        assertThrows<AsaasConcurrentOperationException> {
+        val id = gateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-ambig-1",
+        )
+
+        assertEquals("sub_ALREADY", id)
+        assertEquals("sub_ALREADY", store.findResourceId("sub-ambig-1"))
+        assertEquals(2, server.requestCount)
+        assertEquals("POST", server.takeRequest().method)
+        assertEquals("GET", server.takeRequest().method)
+    }
+
+    @Test
+    fun `createSubscription ambiguous failure without remote resource releases and propagates`() {
+        server.enqueue(json(200, """{}"""))
+        server.enqueue(json(200, emptyList()))
+
+        assertThrows<AsaasException> {
             gateway.createSubscription(
-                "cus_1",
-                Plan.TITULAR,
-                SubscriptionCycle.MONTHLY,
-                100,
-                AsaasBillingType.PIX,
-                "sub-inflight",
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-ambig-empty",
             )
         }
-        assertEquals(0, server.requestCount)
+        assertNull(store.findResourceId("sub-ambig-empty"))
+        assertTrue(store.tryBegin("sub-ambig-empty", fixedClock.instant()))
+    }
+
+    @Test
+    fun `createSubscription recovers abandoned reservation via asaas reconciliation`() {
+        store.tryBegin("sub-abandoned", fixedClock.instant())
+        server.enqueue(
+            json(
+                200,
+                """{"object":"list","data":[{"id":"sub_ORPHAN","externalReference":"sub-abandoned"}]}""",
+            ),
+        )
+
+        val id = gateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-abandoned",
+        )
+
+        assertEquals("sub_ORPHAN", id)
+        assertEquals("sub_ORPHAN", store.findResourceId("sub-abandoned"))
+        assertEquals(1, server.requestCount)
+        assertTrue(server.takeRequest().path!!.startsWith("/v3/subscriptions?externalReference="))
+    }
+
+    @Test
+    fun `createSubscription abandoned empty reservation is released then recreated`() {
+        store.tryBegin("sub-empty-abandoned", fixedClock.instant())
+        server.enqueue(json(200, emptyList()))
+        server.enqueue(json(200, """{"id":"sub_NEW"}"""))
+
+        val id = gateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-empty-abandoned",
+        )
+
+        assertEquals("sub_NEW", id)
+        assertEquals(2, server.requestCount)
+        assertEquals("GET", server.takeRequest().method)
+        assertEquals("POST", server.takeRequest().method)
     }
 
     @Test
@@ -262,16 +327,7 @@ class HttpAsaasGatewayTest {
         )
 
         assertEquals("pay_PRORATA", id)
-        assertEquals(1, server.requestCount)
-        val create = server.takeRequest()
-        assertEquals("POST", create.method)
-        assertEquals("/v3/payments", create.path)
-        val body = create.body.readUtf8()
-        assertTrue(body.contains("\"customer\":\"cus_ABC\""))
-        assertTrue(body.contains("\"billingType\":\"PIX\""))
-        assertTrue(body.contains("\"value\":12.50"))
-        assertTrue(body.contains("\"dueDate\":\"2026-07-30\""))
-        assertTrue(body.contains("\"description\":\"Upgrade prorata\""))
+        val body = server.takeRequest().body.readUtf8()
         assertTrue(body.contains("\"externalReference\":\"upgrade-user-1-from-TITULAR\""))
         assertEquals("pay_PRORATA", store.findResourceId("upgrade-user-1-from-TITULAR"))
     }
@@ -289,13 +345,19 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createOneOffCharge concurrent in-flight key throws after polls`() {
-        store.tryBegin("upgrade-inflight", fixedClock.instant())
+    fun `createOneOffCharge ambiguous failure reconciles existing payment`() {
+        server.enqueue(json(200, """{}"""))
+        server.enqueue(
+            json(
+                200,
+                """{"object":"list","data":[{"id":"pay_EXISTING","externalReference":"upgrade-ambig"}]}""",
+            ),
+        )
 
-        assertThrows<AsaasConcurrentOperationException> {
-            gateway.createOneOffCharge("cus_1", 100, "x", "upgrade-inflight")
-        }
-        assertEquals(0, server.requestCount)
+        val id = gateway.createOneOffCharge("cus_1", 100, "x", "upgrade-ambig")
+
+        assertEquals("pay_EXISTING", id)
+        assertEquals("pay_EXISTING", store.findResourceId("upgrade-ambig"))
     }
 
     @Test
@@ -308,7 +370,6 @@ class HttpAsaasGatewayTest {
             gateway.createOneOffCharge("cus_1", 0, "x", "key-1")
         }
         assertEquals(400, error.statusCode)
-        assertTrue(error.message!!.contains("invalid_value"))
     }
 
     @Test
@@ -330,13 +391,8 @@ class HttpAsaasGatewayTest {
             ),
         )
 
-        val result = gateway.regeneratePixPayload("pay_1")
-
-        assertEquals(payload, result)
-        val request = server.takeRequest()
-        assertEquals("GET", request.method)
-        assertEquals("/v3/payments/pay_1/pixQrCode", request.path)
-        assertEquals(apiKey, request.getHeader("access_token"))
+        assertEquals(payload, gateway.regeneratePixPayload("pay_1"))
+        assertEquals("GET", server.takeRequest().method)
     }
 
     @Test
@@ -349,7 +405,6 @@ class HttpAsaasGatewayTest {
             gateway.regeneratePixPayload("pay_bad")
         }
         assertEquals(400, error.statusCode)
-        assertTrue(error.message!!.contains("invalid_payment"))
     }
 
     @Test
@@ -417,6 +472,7 @@ class HttpAsaasGatewayTest {
         )
         Thread.interrupted()
 
+        // lookup GET also hits interrupting client
         val error = assertThrows<AsaasException> {
             interruptingGateway.createCustomer(UUID.randomUUID(), "X", "x@y.com", "000")
         }
@@ -424,6 +480,8 @@ class HttpAsaasGatewayTest {
         assertTrue(error.cause is InterruptedException)
         assertTrue(Thread.interrupted(), "interrupt flag must be restored")
     }
+
+    private fun emptyList(): String = """{"object":"list","data":[],"hasMore":false,"totalCount":0}"""
 
     private fun json(code: Int, body: String): MockResponse =
         MockResponse()

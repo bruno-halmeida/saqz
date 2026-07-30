@@ -12,9 +12,11 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.URI
+import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -32,14 +34,23 @@ class HttpAsaasGateway(
     private val idempotencyPollWait: (attempt: Int) -> Unit = defaultIdempotencyPollWait,
 ) : AsaasGateway {
     override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String): String {
+        val externalReference = ownerUserId.toString()
+        findIdByExternalReference("/customers", externalReference)?.let { return it }
+
         val body = mapOf(
             "name" to name,
             "email" to email,
             "cpfCnpj" to cpfCnpj,
-            "externalReference" to ownerUserId.toString(),
+            "externalReference" to externalReference,
         )
-        val response = post("/customers", body)
-        return requireId(response, "customer")
+        return try {
+            requireId(post("/customers", body), "customer")
+        } catch (ex: Exception) {
+            if (!isDefinitiveClientRejection(ex)) {
+                findIdByExternalReference("/customers", externalReference)?.let { return it }
+            }
+            throw ex
+        }
     }
 
     override fun createSubscription(
@@ -50,7 +61,7 @@ class HttpAsaasGateway(
         billingType: AsaasBillingType,
         idempotencyKey: String,
     ): String =
-        withIdempotency(idempotencyKey) {
+        withIdempotency(idempotencyKey, "/subscriptions") {
             val body = mapOf(
                 "customer" to asaasCustomerId,
                 "billingType" to asaasBillingType(billingType),
@@ -60,8 +71,7 @@ class HttpAsaasGateway(
                 "description" to "Assinatura Saqz ${plan.name}",
                 "externalReference" to idempotencyKey,
             )
-            val response = post("/subscriptions", body)
-            requireId(response, "subscription")
+            requireId(post("/subscriptions", body), "subscription")
         }
 
     override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) {
@@ -75,7 +85,7 @@ class HttpAsaasGateway(
         description: String,
         idempotencyKey: String,
     ): String =
-        withIdempotency(idempotencyKey) {
+        withIdempotency(idempotencyKey, "/payments") {
             val body = mapOf(
                 "customer" to asaasCustomerId,
                 "billingType" to "PIX",
@@ -84,8 +94,7 @@ class HttpAsaasGateway(
                 "description" to description,
                 "externalReference" to idempotencyKey,
             )
-            val response = post("/payments", body)
-            requireId(response, "payment")
+            requireId(post("/payments", body), "payment")
         }
 
     override fun regeneratePixPayload(asaasChargeId: String): String {
@@ -95,29 +104,97 @@ class HttpAsaasGateway(
         return payload
     }
 
-    private fun withIdempotency(key: String, create: () -> String): String {
+    private fun withIdempotency(
+        key: String,
+        collectionPath: String,
+        create: () -> String,
+    ): String {
         require(key.isNotBlank()) { "idempotencyKey must not be blank" }
-        val now = clock.instant()
-        if (idempotencyStore.tryBegin(key, now)) {
-            return try {
-                val resourceId = create()
-                idempotencyStore.complete(key, resourceId)
-                resourceId
-            } catch (ex: Exception) {
-                idempotencyStore.release(key)
-                throw ex
-            }
+
+        if (idempotencyStore.tryBegin(key, clock.instant())) {
+            return executeCreate(key, collectionPath, create)
         }
 
+        pollLocalResourceId(key)?.let { return it }
+
+        reconcileAndComplete(key, collectionPath)?.let { return it }
+
+        // Reserva abandonada ou corrida ainda sem resource_id: Asaas confirma ausência → libera.
+        idempotencyStore.release(key)
+        if (idempotencyStore.tryBegin(key, clock.instant())) {
+            return executeCreate(key, collectionPath, create)
+        }
+
+        pollLocalResourceId(key)?.let { return it }
+        reconcileAndComplete(key, collectionPath)?.let { return it }
+        throw AsaasConcurrentOperationException(key)
+    }
+
+    private fun executeCreate(
+        key: String,
+        collectionPath: String,
+        create: () -> String,
+    ): String =
+        try {
+            val resourceId = create()
+            idempotencyStore.complete(key, resourceId)
+            resourceId
+        } catch (ex: Exception) {
+            handleCreateFailure(key, collectionPath, ex)
+        }
+
+    private fun handleCreateFailure(
+        key: String,
+        collectionPath: String,
+        ex: Exception,
+    ): String {
+        // 4xx definitivo: Asaas rejeitou antes de criar — libera a reserva.
+        if (isDefinitiveClientRejection(ex)) {
+            idempotencyStore.release(key)
+            throw ex
+        }
+
+        // Falha ambígua (timeout, 5xx, corpo truncado): reconcilia por externalReference.
+        val existing = try {
+            findIdByExternalReference(collectionPath, key)
+        } catch (_: Exception) {
+            throw ex
+        }
+        if (existing != null) {
+            idempotencyStore.complete(key, existing)
+            return existing
+        }
+        // Asaas confirma ausência — libera com segurança.
+        idempotencyStore.release(key)
+        throw ex
+    }
+
+    private fun pollLocalResourceId(key: String): String? {
         repeat(maxIdempotencyPolls) { attempt ->
             idempotencyStore.findResourceId(key)?.let { return it }
             if (attempt < maxIdempotencyPolls - 1) {
                 idempotencyPollWait(attempt)
             }
         }
-        idempotencyStore.findResourceId(key)?.let { return it }
-        throw AsaasConcurrentOperationException(key)
+        return idempotencyStore.findResourceId(key)
     }
+
+    private fun reconcileAndComplete(key: String, collectionPath: String): String? {
+        val existing = findIdByExternalReference(collectionPath, key) ?: return null
+        idempotencyStore.complete(key, existing)
+        return existing
+    }
+
+    private fun findIdByExternalReference(collectionPath: String, externalReference: String): String? {
+        val encoded = URLEncoder.encode(externalReference, StandardCharsets.UTF_8)
+        val response = get("$collectionPath?externalReference=$encoded&limit=1")
+        val data = response.path("data")
+        if (!data.isArray || data.size() == 0) return null
+        return data[0].path("id").asText(null)?.takeIf { it.isNotBlank() }
+    }
+
+    private fun isDefinitiveClientRejection(ex: Exception): Boolean =
+        ex is AsaasException && ex.statusCode in 400..499
 
     private fun post(path: String, body: Map<String, Any?>): JsonNode =
         exchange("POST", path, body)
