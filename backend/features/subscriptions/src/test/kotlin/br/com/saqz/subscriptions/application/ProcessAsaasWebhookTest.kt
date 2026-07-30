@@ -453,12 +453,16 @@ class ProcessAsaasWebhookTest {
 
     private class InMemorySubscriptionRepository : SubscriptionRepository {
         private val byAsaasId = linkedMapOf<String, Subscription>()
+        private val byOwnerId = linkedMapOf<UUID, Subscription>()
 
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription? =
             byAsaasId[asaasSubscriptionId]
 
+        override fun findByOwnerUserId(ownerUserId: UUID): Subscription? = byOwnerId[ownerUserId]
+
         override fun save(subscription: Subscription) {
             byAsaasId[subscription.asaasSubscriptionId] = subscription
+            byOwnerId[subscription.ownerUserId] = subscription
         }
 
         fun get(asaasSubscriptionId: String): Subscription = byAsaasId.getValue(asaasSubscriptionId)

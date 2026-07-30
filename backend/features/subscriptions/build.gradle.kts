@@ -14,6 +14,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("org.springframework:spring-web")
     implementation("org.springframework:spring-tx")
+    implementation("org.springframework.security:spring-security-core")
     compileOnly("jakarta.servlet:jakarta.servlet-api")
 
     runtimeOnly(libs.flyway.postgresql)

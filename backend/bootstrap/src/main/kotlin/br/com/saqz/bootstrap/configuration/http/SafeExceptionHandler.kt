@@ -34,6 +34,8 @@ import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
+import br.com.saqz.subscriptions.adapter.input.http.InvalidCouponRequestException
+import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -273,6 +275,26 @@ class SafeExceptionHandler(
     @ExceptionHandler(UserPhotoNotFoundException::class)
     fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
+    }
+
+    @ExceptionHandler(InvalidCouponRequestException::class)
+    fun invalidCouponRequest(
+        failure: InvalidCouponRequestException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = failure.fieldErrors,
+        )
+    }
+
+    @ExceptionHandler(SubscriptionNotFoundException::class)
+    fun subscriptionNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.ACCOUNT_NOT_FOUND)
     }
 
     @ExceptionHandler(AsaasWebhookUnauthorizedException::class)
