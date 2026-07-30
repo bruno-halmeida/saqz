@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController
 
 class AsaasWebhookUnauthorizedException : RuntimeException()
 
+/** Local subscription row not ready yet — Asaas should retry the delivery. */
+class AsaasWebhookSubscriptionNotReadyException : RuntimeException()
+
 @RestController
 class AsaasWebhookController(
     private val processAsaasWebhook: AsaasWebhookProcessor,
@@ -37,6 +40,7 @@ class AsaasWebhookController(
         )
         when (processAsaasWebhook.execute(token, command)) {
             ProcessAsaasWebhookResult.Unauthorized -> throw AsaasWebhookUnauthorizedException()
+            ProcessAsaasWebhookResult.SubscriptionNotReady -> throw AsaasWebhookSubscriptionNotReadyException()
             ProcessAsaasWebhookResult.Accepted -> Unit
         }
     }

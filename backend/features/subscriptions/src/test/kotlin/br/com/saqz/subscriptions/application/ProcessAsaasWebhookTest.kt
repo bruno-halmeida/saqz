@@ -350,7 +350,7 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
-    fun `missing subscription still accepts and audits event`() {
+    fun `missing subscription returns not ready without claiming the event`() {
         val result = useCase.execute(
             token,
             command(
@@ -359,9 +359,46 @@ class ProcessAsaasWebhookTest {
                 subscriptionId = "sub_missing",
             ),
         )
-        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
-        assertTrue(events.rows.containsKey("evt_orphan"))
+        assertEquals(ProcessAsaasWebhookResult.SubscriptionNotReady, result)
+        assertTrue(events.rows.isEmpty())
         assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
+    }
+
+    @Test
+    fun `domain event without subscription id is audited without not ready`() {
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_no_sub",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+                asaasSubscriptionId = null,
+                rawPayload = """{"id":"evt_no_sub","event":"PAYMENT_CONFIRMED"}""",
+            ),
+        )
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        assertEquals(fixedNow, events.rows.getValue("evt_no_sub").processedAt)
+        assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
+    }
+
+    @Test
+    fun `missing subscription later becomes processable on retry`() {
+        val cmd = command(
+            eventId = "evt_race",
+            type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+            subscriptionId = "sub_new",
+        )
+        assertEquals(ProcessAsaasWebhookResult.SubscriptionNotReady, useCase.execute(token, cmd))
+        assertTrue(events.rows.isEmpty())
+
+        subscriptions.save(
+            baseSubscription().copy(
+                asaasSubscriptionId = "sub_new",
+                status = SubscriptionStatus.PAST_DUE,
+            ),
+        )
+        assertEquals(ProcessAsaasWebhookResult.Accepted, useCase.execute(token, cmd))
+        assertEquals(SubscriptionStatus.ACTIVE, subscriptions.get("sub_new").status)
+        assertEquals(fixedNow, events.rows.getValue("evt_race").processedAt)
     }
 
     private fun baseSubscription() = Subscription(

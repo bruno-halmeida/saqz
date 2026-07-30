@@ -62,6 +62,16 @@ class AsaasWebhookControllerTest {
     }
 
     @Test
+    fun `subscription not ready becomes 503 exception`() {
+        val useCase = RecordingProcessor(ProcessAsaasWebhookResult.SubscriptionNotReady)
+        val controller = AsaasWebhookController(useCase)
+
+        assertThrows<AsaasWebhookSubscriptionNotReadyException> {
+            controller.handle("{}", MockHttpServletRequest())
+        }
+    }
+
+    @Test
     fun `malformed json still reaches use case with empty ids`() {
         val useCase = RecordingProcessor()
         val controller = AsaasWebhookController(useCase)

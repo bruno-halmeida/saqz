@@ -20,6 +20,8 @@ data class AsaasWebhookCommand(
 sealed interface ProcessAsaasWebhookResult {
     data object Unauthorized : ProcessAsaasWebhookResult
     data object Accepted : ProcessAsaasWebhookResult
+    /** Local row not committed yet — Asaas should redeliver (HTTP 503). */
+    data object SubscriptionNotReady : ProcessAsaasWebhookResult
 }
 
 fun interface AsaasWebhookProcessor {
@@ -49,27 +51,41 @@ class ProcessAsaasWebhook(
 
         val now = clock.instant()
         return transaction.inTransaction {
-            val claimed = events.tryInsert(
-                id = newEventId(),
-                asaasEventId = command.asaasEventId,
-                type = command.eventType,
-                payload = command.rawPayload,
-                now = now,
-            )
-            if (!claimed) {
-                return@inTransaction ProcessAsaasWebhookResult.Accepted
+            if (command.eventType in DOMAIN_EVENT_TYPES) {
+                val subscriptionId = command.asaasSubscriptionId?.takeIf { it.isNotBlank() }
+                    ?: return@inTransaction claimAndAccept(command, now)
+                // Lock first; if the create-subscription tx has not committed yet, do not
+                // claim the event — a 200 would stop Asaas retries forever.
+                val current = subscriptions.findByAsaasSubscriptionId(subscriptionId)
+                    ?: return@inTransaction ProcessAsaasWebhookResult.SubscriptionNotReady
+                if (!claimEvent(command, now)) {
+                    return@inTransaction ProcessAsaasWebhookResult.Accepted
+                }
+                applyDomainEvent(command, current, now)
+                events.markProcessed(command.asaasEventId, now)
+                ProcessAsaasWebhookResult.Accepted
+            } else {
+                claimAndAccept(command, now)
             }
-
-            applyEvent(command, now)
-            events.markProcessed(command.asaasEventId, now)
-            ProcessAsaasWebhookResult.Accepted
         }
     }
 
-    private fun applyEvent(command: AsaasWebhookCommand, now: Instant) {
-        val subscriptionId = command.asaasSubscriptionId?.takeIf { it.isNotBlank() } ?: return
-        val current = subscriptions.findByAsaasSubscriptionId(subscriptionId) ?: return
+    private fun claimAndAccept(command: AsaasWebhookCommand, now: Instant): ProcessAsaasWebhookResult {
+        if (!claimEvent(command, now)) return ProcessAsaasWebhookResult.Accepted
+        events.markProcessed(command.asaasEventId, now)
+        return ProcessAsaasWebhookResult.Accepted
+    }
 
+    private fun claimEvent(command: AsaasWebhookCommand, now: Instant): Boolean =
+        events.tryInsert(
+            id = newEventId(),
+            asaasEventId = command.asaasEventId,
+            type = command.eventType,
+            payload = command.rawPayload,
+            now = now,
+        )
+
+    private fun applyDomainEvent(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
         when (command.eventType) {
             EVENT_PAYMENT_CONFIRMED, EVENT_PAYMENT_OVERDUE -> {
                 // CANCELED is terminal: a late PAYMENT_* must not resurrect the plan.
@@ -78,14 +94,16 @@ class ProcessAsaasWebhook(
                     val confirmed = confirmPayment(current, now)
                     subscriptions.save(confirmed.subscription)
                     confirmed.fullPriceCentsToPush?.let { cents ->
-                        asaasGateway.updateSubscriptionValue(subscriptionId, cents)
+                        asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents)
                     }
                 } else {
+                    // ponytail: a delayed PAYMENT_OVERDUE can still win over a newer
+                    // PAYMENT_CONFIRMED and regress ACTIVE → PAST_DUE; needs invoice-date
+                    // ordering from the payload (VUL-115), not fixed here.
                     subscriptions.save(markPastDue(current, now))
                 }
             }
             EVENT_SUBSCRIPTION_DELETED -> subscriptions.save(cancel(current, now))
-            else -> Unit
         }
     }
 
@@ -143,6 +161,12 @@ class ProcessAsaasWebhook(
         const val EVENT_PAYMENT_OVERDUE = "PAYMENT_OVERDUE"
         const val EVENT_SUBSCRIPTION_DELETED = "SUBSCRIPTION_DELETED"
         const val WEBHOOK_TOKEN_HEADER = "asaas-access-token"
+
+        private val DOMAIN_EVENT_TYPES = setOf(
+            EVENT_PAYMENT_CONFIRMED,
+            EVENT_PAYMENT_OVERDUE,
+            EVENT_SUBSCRIPTION_DELETED,
+        )
 
         fun advancePeriodEnd(currentPeriodEnd: Instant, cycle: SubscriptionCycle): Instant {
             val zoned = currentPeriodEnd.atZone(ZoneOffset.UTC)

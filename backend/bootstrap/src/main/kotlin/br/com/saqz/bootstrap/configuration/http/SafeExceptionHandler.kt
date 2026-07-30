@@ -32,6 +32,7 @@ import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
+import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
@@ -277,6 +278,12 @@ class SafeExceptionHandler(
     @ExceptionHandler(AsaasWebhookUnauthorizedException::class)
     fun asaasWebhookUnauthorized(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+    }
+
+    /** 503 so Asaas retries until the local subscription row is committed. */
+    @ExceptionHandler(AsaasWebhookSubscriptionNotReadyException::class)
+    fun asaasWebhookSubscriptionNotReady(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
