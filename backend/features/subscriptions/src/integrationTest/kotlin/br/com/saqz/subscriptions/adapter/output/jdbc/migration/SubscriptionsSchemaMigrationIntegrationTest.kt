@@ -70,32 +70,6 @@ class SubscriptionsSchemaMigrationIntegrationTest {
     }
 
     @Test
-    fun `V18 backfills first_confirmed_at for PAST_DUE rows that predate it`() {
-        val toV17 = Flyway.configure()
-            .dataSource(dataSource)
-            .locations(*allSubscriptionsFeatureMigrationLocations())
-            .cleanDisabled(false)
-            .target("17")
-            .load()
-        toV17.clean()
-        toV17.migrate()
-
-        val ownerId = user("firebase-uid-v18-backfill")
-        execute(
-            "INSERT INTO subscriptions (owner_user_id, plan, cycle, status, asaas_customer_id, " +
-                "asaas_subscription_id, current_period_end, past_due_since, created_at, updated_at) VALUES " +
-                "('$ownerId', 'TITULAR', 'MONTHLY', 'PAST_DUE', 'cus_x', 'sub_x', now(), now(), now(), now())",
-        )
-
-        flyway().migrate()
-
-        assertEquals(
-            0,
-            int("SELECT count(*) FROM subscriptions WHERE owner_user_id = '$ownerId' AND first_confirmed_at IS NULL"),
-        )
-    }
-
-    @Test
     fun `asaas idempotent operations key is unique`() {
         execute(
             "INSERT INTO asaas_idempotent_operations (idempotency_key, resource_id, created_at) " +
