@@ -32,18 +32,33 @@ class PlanSelectionViewModel(
     private val gateway: SubscriptionGateway,
 ) : MviViewModel<PlanSelectionState, PlanSelectionIntent, PlanSelectionEffect>(PlanSelectionState()) {
 
+    /**
+     * Contador monotônico, não os campos do estado: uma sequência ABA (valida X pro plano
+     * P, troca de plano, volta pro P, digita X de novo) faz plano/ciclo/código baterem de
+     * novo com a pergunta antiga, e uma guarda por igualdade de valor aceitaria a resposta
+     * velha como se fosse a nova. Só um número que nunca repete distingue "é a mesma
+     * pergunta em voo" de "é uma pergunta igual, mas mais nova". Toda mutação que
+     * invalidaria uma validação em voo incrementa — inclusive as que só limpam o estado,
+     * sem disparar rede.
+     */
+    private var couponValidationGeneration = 0
+
     init { loadPlans() }
 
     override fun onIntent(intent: PlanSelectionIntent) {
         when (intent) {
             is PlanSelectionIntent.SelectCycle -> selectCycle(intent.cycle)
             is PlanSelectionIntent.SelectPlan -> selectPlan(intent.planId)
-            is PlanSelectionIntent.UpdateCouponCode ->
+            is PlanSelectionIntent.UpdateCouponCode -> {
+                couponValidationGeneration++
                 update { it.copy(couponCode = intent.value, coupon = CouponUiState.Idle, isValidatingCoupon = false) }
+            }
 
             PlanSelectionIntent.ApplyCoupon -> applyCoupon()
-            PlanSelectionIntent.RemoveCoupon ->
+            PlanSelectionIntent.RemoveCoupon -> {
+                couponValidationGeneration++
                 update { it.copy(couponCode = "", coupon = CouponUiState.Idle, isValidatingCoupon = false) }
+            }
 
             PlanSelectionIntent.Confirm -> confirm()
             PlanSelectionIntent.Retry -> loadPlans()
@@ -78,12 +93,14 @@ class PlanSelectionViewModel(
         // Cupom validado é por plano+ciclo (contrato do `SubscriptionGateway`); trocar o
         // ciclo invalida a validação anterior em vez de mostrar um desconto que não vale
         // mais para o preço novo.
+        couponValidationGeneration++
         update { it.copy(cycle = cycle, couponCode = "", coupon = CouponUiState.Idle, isValidatingCoupon = false) }
     }
 
     private fun selectPlan(planId: Plan) {
         val current = state.value
         if (planId == current.selectedPlanId) return
+        couponValidationGeneration++
         update {
             it.copy(selectedPlanId = planId, couponCode = "", coupon = CouponUiState.Idle, isValidatingCoupon = false)
         }
@@ -95,15 +112,13 @@ class PlanSelectionViewModel(
         val code = current.couponCode.trim()
         if (code.isEmpty() || current.isValidatingCoupon) return
         val cycle = current.cycle
+        val generation = ++couponValidationGeneration
         update { it.copy(isValidatingCoupon = true) }
         viewModelScope.launch {
             val result = gateway.validateCoupon(code, planId, cycle)
-            // Guarda de geração: se o plano, o ciclo ou o código mudaram enquanto a
-            // validação estava no ar, esta resposta já não é sobre o que está na tela.
-            val stale = state.value.selectedPlanId != planId ||
-                state.value.cycle != cycle ||
-                state.value.couponCode.trim() != code
-            if (stale) return@launch
+            // Só aceita se ninguém disparou uma validação mais nova enquanto esta estava
+            // no ar — nem outra chamada, nem uma mudança que só limpou o estado.
+            if (generation != couponValidationGeneration) return@launch
             update {
                 it.copy(
                     isValidatingCoupon = false,

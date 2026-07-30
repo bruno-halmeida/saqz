@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -84,6 +85,32 @@ import br.com.saqz.subscriptions.resources.plan_selection_total_monthly
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
+internal object PlanSelectionTags {
+    const val CycleToggle = "plan-selection-cycle"
+    const val CouponInput = "plan-selection-coupon-input"
+    const val CouponApply = "plan-selection-coupon-apply"
+    const val CouponRemove = "plan-selection-coupon-remove"
+    const val CouponTryAnother = "plan-selection-coupon-try-another"
+    const val Retry = "plan-selection-retry"
+    const val Continue = "plan-selection-continue"
+
+    fun planCard(id: Plan): String = "plan-selection-card-${id.name}"
+}
+
+// ponytail: sem token em SaqzMetrics pra nenhum destes — nenhum componente do design
+// system pediu essas medidas ainda. Se um segundo lugar pedir o mesmo número, o token
+// nasce lá (mesmo critério do SaqzStepperButton/SaqzChoiceChip em SaqzControls.kt).
+private val PlanCardBorderWidth = 1.dp
+private val PlanCardSelectedBorderWidth = 2.dp
+private val PlanFeatureIconSize = 16.dp
+private val PlanRadioDotSize = 20.dp
+private val PlanRadioDotBorderWidth = 2.dp
+private val PlanRadioDotFillSize = 10.dp
+private val CouponAppliedIconSize = 14.dp
+private val CouponAppliedTextGap = 2.dp
+private val CouponRemoveIconSize = 18.dp
+private val CouponExpiredIconSize = 18.dp
+
 /**
  * 8a/8b — a tela não navega: o único efeito sai por [onContinue], e quem decide a rota
  * (`SubscriptionsRoute.Payment`) é o `SaqzNavHost` (VUL-113, fora do escopo daqui).
@@ -122,7 +149,7 @@ fun PlanSelectionScreen(
                 title = state.loadError.asString(),
                 action = stringResource(Res.string.plan_selection_retry),
                 onAction = { onIntent(PlanSelectionIntent.Retry) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).testTag(PlanSelectionTags.Retry),
             )
 
             else -> {
@@ -147,6 +174,7 @@ fun PlanSelectionScreen(
                                 cycle = state.cycle,
                                 selected = plan.id == state.selectedPlanId,
                                 onSelect = { onIntent(PlanSelectionIntent.SelectPlan(plan.id)) },
+                                modifier = Modifier.testTag(PlanSelectionTags.planCard(plan.id)),
                             )
                         }
                     }
@@ -169,6 +197,7 @@ private fun CycleToggle(cycle: SubscriptionCycle, onIntent: (PlanSelectionIntent
         onSelect = { index ->
             onIntent(PlanSelectionIntent.SelectCycle(if (index == 0) SubscriptionCycle.Monthly else SubscriptionCycle.Annual))
         },
+        modifier = Modifier.testTag(PlanSelectionTags.CycleToggle),
     )
 }
 
@@ -188,7 +217,11 @@ private fun PlanCard(
             .fillMaxWidth()
             .clip(shape)
             .background(colors.surface, shape)
-            .border(if (selected) 2.dp else 1.dp, if (selected) colors.primary else colors.border, shape)
+            .border(
+                width = if (selected) PlanCardSelectedBorderWidth else PlanCardBorderWidth,
+                color = if (selected) colors.primary else colors.border,
+                shape = shape,
+            )
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .padding(metrics.horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
@@ -215,7 +248,7 @@ private fun PlanCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
                 ) {
-                    SaqzIcon(SaqzIcons.Check, tint = colors.primary, size = 16.dp)
+                    SaqzIcon(SaqzIcons.Check, tint = colors.primary, size = PlanFeatureIconSize)
                     Text(text = feature.asString(), style = SaqzTheme.typography.support, color = colors.textSecondary)
                 }
             }
@@ -228,18 +261,21 @@ private fun PlanRadioDot(selected: Boolean) {
     val colors = SaqzTheme.colors
     Box(
         modifier = Modifier
-            .size(20.dp)
+            .size(PlanRadioDotSize)
             .clip(CircleShape)
-            .border(2.dp, if (selected) colors.primary else colors.border, CircleShape),
+            .border(PlanRadioDotBorderWidth, if (selected) colors.primary else colors.border, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        if (selected) Box(Modifier.size(10.dp).clip(CircleShape).background(colors.primary, CircleShape))
+        if (selected) {
+            Box(Modifier.size(PlanRadioDotFillSize).clip(CircleShape).background(colors.primary, CircleShape))
+        }
     }
 }
 
 @Composable
 private fun PlanPrice(plan: PlanUi, cycle: SubscriptionCycle) {
     val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
     if (plan.isFree) {
         Text(
             text = stringResource(Res.string.plan_selection_price_free),
@@ -247,7 +283,7 @@ private fun PlanPrice(plan: PlanUi, cycle: SubscriptionCycle) {
             color = colors.textPrimary,
         )
     } else {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(text = formatBrl(plan.priceCentsFor(cycle)), style = SaqzTheme.typography.title, color = colors.textPrimary)
             Text(
                 text = stringResource(
@@ -297,7 +333,7 @@ private fun CouponInput(state: PlanSelectionState, onIntent: (PlanSelectionInten
             placeholder = stringResource(Res.string.plan_selection_coupon_placeholder),
             errorText = errorText,
             enabled = !state.isValidatingCoupon,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(PlanSelectionTags.CouponInput),
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             SaqzButton(
@@ -307,6 +343,7 @@ private fun CouponInput(state: PlanSelectionState, onIntent: (PlanSelectionInten
                 size = SaqzButtonSize.Sm,
                 enabled = state.couponCode.isNotBlank() && !state.isValidatingCoupon,
                 loading = state.isValidatingCoupon,
+                modifier = Modifier.testTag(PlanSelectionTags.CouponApply),
             )
         }
     }
@@ -327,12 +364,14 @@ private fun AppliedCouponCard(coupon: CouponUiState.Applied, onRemove: () -> Uni
         horizontalArrangement = Arrangement.spacedBy(metrics.grid),
     ) {
         Box(
-            modifier = Modifier.size(24.dp).clip(CircleShape).background(colors.success, CircleShape),
+            // ponytail: 24dp bate com switchThumbSize por coincidência de número, não de
+            // significado — mesmo critério do SaqzChoiceChip reusando iconButtonSize.
+            modifier = Modifier.size(metrics.switchThumbSize).clip(CircleShape).background(colors.success, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            SaqzIcon(SaqzIcons.Check, tint = colors.onPrimary, size = 14.dp)
+            SaqzIcon(SaqzIcons.Check, tint = colors.onPrimary, size = CouponAppliedIconSize)
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CouponAppliedTextGap)) {
             Text(
                 text = stringResource(Res.string.plan_selection_coupon_applied_title, coupon.code),
                 style = SaqzTheme.typography.label,
@@ -356,8 +395,12 @@ private fun AppliedCouponCard(coupon: CouponUiState.Applied, onRemove: () -> Uni
                 style = SaqzTheme.typography.support,
             )
         }
-        SaqzIconButton(onClick = onRemove, contentDescription = stringResource(Res.string.plan_selection_coupon_remove)) {
-            SaqzIcon(SaqzIcons.Close, tint = colors.textSecondary, size = 18.dp)
+        SaqzIconButton(
+            onClick = onRemove,
+            contentDescription = stringResource(Res.string.plan_selection_coupon_remove),
+            modifier = Modifier.testTag(PlanSelectionTags.CouponRemove),
+        ) {
+            SaqzIcon(SaqzIcons.Close, tint = colors.textSecondary, size = CouponRemoveIconSize)
         }
     }
 }
@@ -376,7 +419,7 @@ private fun ExpiredCouponBanner(code: String, onTryAnother: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(metrics.grid)) {
-            SaqzIcon(SaqzIcons.Clock, tint = colors.warningForeground, size = 18.dp)
+            SaqzIcon(SaqzIcons.Clock, tint = colors.warningForeground, size = CouponExpiredIconSize)
             Text(
                 text = stringResource(Res.string.plan_selection_coupon_expired, code),
                 style = SaqzTheme.typography.label,
@@ -393,6 +436,7 @@ private fun ExpiredCouponBanner(code: String, onTryAnother: () -> Unit) {
             onClick = onTryAnother,
             variant = SaqzButtonVariant.Ghost,
             size = SaqzButtonSize.Sm,
+            modifier = Modifier.testTag(PlanSelectionTags.CouponTryAnother),
         )
     }
 }
@@ -432,7 +476,10 @@ private fun PlanSelectionFooter(state: PlanSelectionState, onIntent: (PlanSelect
                 label = stringResource(Res.string.plan_selection_continue),
                 onClick = { onIntent(PlanSelectionIntent.Confirm) },
                 fullWidth = true,
-                enabled = state.selectedPlan != null,
+                // Cupom no ar ainda não decidiu o preço: confirmar antes dele responder
+                // navegaria sem o desconto, calado — a pessoa nem saberia que perdeu.
+                enabled = state.selectedPlan != null && !state.isValidatingCoupon,
+                modifier = Modifier.testTag(PlanSelectionTags.Continue),
             )
         }
     }

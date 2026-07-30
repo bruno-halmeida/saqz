@@ -216,6 +216,56 @@ class PlanSelectionViewModelTest {
         assertEquals(Plan.Ilimitado, viewModel.state.value.selectedPlanId)
     }
 
+    /**
+     * ABA: a validação A (plano P, código X) fica pendurada, a pessoa troca de plano,
+     * volta pro mesmo P e dispara uma validação B com o mesmo X. Uma guarda por
+     * igualdade de campos aceitaria a resposta atrasada de A, porque plano/ciclo/código
+     * bateram de novo com o que está na tela — mesmo já não sendo a pergunta mais
+     * recente. Só o contador monotônico (`couponValidationGeneration`) resolve isso.
+     */
+    @Test
+    fun `resposta atrasada de uma validacao ABA nao sobrescreve a mais nova`() = runTest(mainDispatcher) {
+        val gateway = QueuedGateway()
+        val viewModel = PlanSelectionViewModel(gateway)
+        runCurrent()
+
+        viewModel.onIntent(PlanSelectionIntent.UpdateCouponCode("GALERA10"))
+        viewModel.onIntent(PlanSelectionIntent.ApplyCoupon)
+        runCurrent()
+
+        viewModel.onIntent(PlanSelectionIntent.SelectPlan(Plan.Ilimitado))
+        viewModel.onIntent(PlanSelectionIntent.SelectPlan(Plan.Organizador))
+        viewModel.onIntent(PlanSelectionIntent.UpdateCouponCode("GALERA10"))
+        viewModel.onIntent(PlanSelectionIntent.ApplyCoupon)
+        runCurrent()
+
+        assertEquals(2, gateway.pendingCount)
+
+        // B (a mais nova) responde primeiro — a rede não garante ordem.
+        gateway.complete(1, couponApplied(discountPercent = 20, finalPriceCents = 1_592))
+        runCurrent()
+        assertEquals(20, (viewModel.state.value.coupon as CouponUiState.Applied).discountPercent)
+
+        // A resposta atrasada de A chega depois, com plano/ciclo/código idênticos aos
+        // que já estão na tela — uma guarda por valor aceitaria e sobrescreveria B.
+        gateway.complete(0, couponApplied(discountPercent = 10, finalPriceCents = 1_791))
+        runCurrent()
+
+        assertEquals(20, (viewModel.state.value.coupon as CouponUiState.Applied).discountPercent)
+    }
+
+    private fun couponApplied(discountPercent: Int, finalPriceCents: Long) = SaqzResult.Success(
+        CouponValidation.Applied(
+            code = "GALERA10",
+            planId = Plan.Organizador,
+            cycle = SubscriptionCycle.Monthly,
+            discountPercent = discountPercent,
+            listPriceCents = 1990,
+            finalPriceCents = finalPriceCents,
+            validUntil = null,
+        ),
+    )
+
     private fun appliedResult(): (String, Plan, SubscriptionCycle) -> SaqzResult<CouponValidation, SubscriptionError> =
         { code, planId, cycle ->
             SaqzResult.Success(
@@ -306,6 +356,27 @@ class PlanSelectionViewModelTest {
         ): SaqzResult<CouponValidation, SubscriptionError> = response.await()
 
         fun complete(result: SaqzResult<CouponValidation, SubscriptionError>) = response.complete(result)
+    }
+
+    /** Uma resposta pendurada por chamada, endereçável por índice — pro cenário ABA. */
+    private inner class QueuedGateway : SubscriptionGateway by NotUsedGateway {
+        private val responses = mutableListOf<CompletableDeferred<SaqzResult<CouponValidation, SubscriptionError>>>()
+        val pendingCount: Int get() = responses.size
+
+        override suspend fun plans(): SaqzResult<List<PlanDetails>, SubscriptionError> = SaqzResult.Success(SamplePlans)
+
+        override suspend fun validateCoupon(
+            code: String,
+            planId: Plan,
+            cycle: SubscriptionCycle,
+        ): SaqzResult<CouponValidation, SubscriptionError> {
+            val deferred = CompletableDeferred<SaqzResult<CouponValidation, SubscriptionError>>()
+            responses += deferred
+            return deferred.await()
+        }
+
+        fun complete(index: Int, result: SaqzResult<CouponValidation, SubscriptionError>) =
+            responses[index].complete(result)
     }
 
     private object NotUsedGateway : SubscriptionGateway {
