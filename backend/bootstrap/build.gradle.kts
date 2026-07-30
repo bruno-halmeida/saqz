@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":features:access"))
     implementation(project(":features:groups"))
     implementation(project(":features:identity"))
+    implementation(project(":features:subscriptions"))
     implementation(project(":shared-kernel"))
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)
