@@ -33,6 +33,8 @@ class CreateGroup(
             repository.findByCreationKey(actor, requestId)?.let { return@inTransaction it }
 
             repository.lockOwnerForGroupLimit(actor)
+            repository.findByCreationKey(actor, requestId)?.let { return@inTransaction it }
+
             val groupLimit = subscriptionLimits.groupLimitFor(actor)
             val ownedCount = repository.countOwnedGroups(actor)
             if (!PlanLimitPolicy.canCreateGroup(ownedCount, groupLimit)) {

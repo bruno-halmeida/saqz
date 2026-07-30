@@ -130,6 +130,31 @@ class CreateGroupTest {
     }
 
     @Test
+    fun `concurrent same-key retry finds the group after owner lock instead of limit exceeded`() {
+        val fixture = fixture(groupLimit = 1, ownedCount = 1)
+        fixture.repository.appearAfterLock[requestId] = stored
+
+        val result = fixture.useCase.execute(actorId, requestId, validProfile(), "America/Sao_Paulo")
+
+        assertEquals(
+            CreateGroupResult.Success(
+                CreatedGroup(
+                    groupId,
+                    "Training Club",
+                    "America/Sao_Paulo",
+                    1,
+                    GroupRole.OWNER,
+                    GroupProfileStatus.COMPLETE,
+                ),
+            ),
+            result,
+        )
+        assertTrue(fixture.repository.commands.isEmpty())
+        assertEquals(1, fixture.repository.lockCalls)
+        assertEquals(2, fixture.repository.findCalls)
+    }
+
+    @Test
     fun `a user with memberships elsewhere can create a group`() {
         val fixture = fixture()
 
@@ -353,11 +378,20 @@ class CreateGroupTest {
     ) : GroupCreationRepository {
         val commands = mutableListOf<CreateGroupCommand>()
         val existingByKey = mutableMapOf<UUID, StoredGroup>()
+        val appearAfterLock = mutableMapOf<UUID, StoredGroup>()
+        var lockCalls = 0
+        var findCalls = 0
 
-        override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? =
-            existingByKey[creationKey]
+        override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? {
+            findCalls += 1
+            return existingByKey[creationKey]
+        }
 
-        override fun lockOwnerForGroupLimit(ownerUserId: UUID) = Unit
+        override fun lockOwnerForGroupLimit(ownerUserId: UUID) {
+            lockCalls += 1
+            appearAfterLock.forEach { (key, group) -> existingByKey[key] = group }
+            appearAfterLock.clear()
+        }
 
         override fun countOwnedGroups(ownerUserId: UUID): Int = ownedCount
 
