@@ -98,7 +98,7 @@ class GroupCreationEndpointIntegrationTest {
         assertEquals(201, first.statusCode())
         assertEquals(json(first), json(retry))
         assertEquals(1, repository.groups.size)
-        assertEquals(2, repository.commands.size)
+        assertEquals(1, repository.commands.size)
     }
 
     @Test
