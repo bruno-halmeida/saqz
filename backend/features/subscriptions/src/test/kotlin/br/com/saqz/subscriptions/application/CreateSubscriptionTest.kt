@@ -270,6 +270,31 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `reissues checkout for a legacy row with unknown billing type regardless of retry billing type`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = null,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+        gateway.pixPayload = "000201LEGACY"
+
+        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.CREDIT_CARD))
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_old", success.subscription.asaasSubscriptionId)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
     fun `rejects malformed cpf before calling asaas`() {
         assertEquals(
             CreateSubscriptionResult.InvalidCustomerDetails,

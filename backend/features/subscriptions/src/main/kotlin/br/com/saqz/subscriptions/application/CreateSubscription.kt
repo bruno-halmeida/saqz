@@ -75,9 +75,11 @@ class CreateSubscription(
                         reactivate(existing, command, name, email, cpfDigits, c, v, now)
                     }
                 existing.firstConfirmedAt == null ->
+                    // Legacy rows predating billingType have it null — only enforce the match once
+                    // we actually know what the existing charge's billing type was.
                     if (existing.plan == command.plan &&
                         existing.cycle == command.cycle &&
-                        existing.billingType == command.billingType
+                        (existing.billingType == null || existing.billingType == command.billingType)
                     ) {
                         CommitOutcome.Committed(existing)
                     } else {

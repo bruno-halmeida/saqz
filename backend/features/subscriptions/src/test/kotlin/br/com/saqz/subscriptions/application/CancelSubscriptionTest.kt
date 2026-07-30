@@ -37,8 +37,6 @@ class CancelSubscriptionTest {
                 billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = periodEnd,
                 status = SubscriptionStatus.ACTIVE,
-                pendingUpgradePlan = Plan.ORGANIZADOR,
-                pendingUpgradeChargeId = "pay_upg",
             ),
         )
 
@@ -48,9 +46,34 @@ class CancelSubscriptionTest {
         assertEquals(fixedNow, success.subscription.canceledAt)
         assertEquals(periodEnd, success.subscription.currentPeriodEnd)
         assertEquals(SubscriptionStatus.ACTIVE, success.subscription.status)
-        assertNull(success.subscription.pendingUpgradePlan)
-        assertNull(success.subscription.pendingUpgradeChargeId)
         assertEquals(listOf("sub_1"), gateway.canceledIds)
+    }
+
+    @Test
+    fun `cancel keeps the pending upgrade charge mapping so a late payment webhook can still find the row`() {
+        val repo = FakeSubscriptionRepository()
+        val gateway = FakeAsaasGateway()
+        repo.save(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_1",
+                asaasSubscriptionId = "sub_1",
+                billingType = AsaasBillingType.PIX,
+                currentPeriodEnd = periodEnd,
+                status = SubscriptionStatus.ACTIVE,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upg",
+            ),
+        )
+
+        val result = CancelSubscription(repo, gateway, transaction, clock).execute(ownerId)
+
+        val success = assertIs<CancelSubscriptionResult.Success>(result)
+        assertEquals(fixedNow, success.subscription.canceledAt)
+        assertEquals(Plan.ORGANIZADOR, success.subscription.pendingUpgradePlan)
+        assertEquals("pay_upg", success.subscription.pendingUpgradeChargeId)
     }
 
     @Test

@@ -13,7 +13,8 @@ data class Subscription(
     val cycle: SubscriptionCycle,
     val asaasCustomerId: String,
     val asaasSubscriptionId: String,
-    val billingType: AsaasBillingType,
+    /** Null for legacy rows created before this field existed — never fabricate a value for them. */
+    val billingType: AsaasBillingType?,
     val currentPeriodEnd: Instant,
     val status: SubscriptionStatus = SubscriptionStatus.ACTIVE,
     val canceledAt: Instant? = null,

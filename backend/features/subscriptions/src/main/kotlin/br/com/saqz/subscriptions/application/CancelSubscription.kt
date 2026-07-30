@@ -28,11 +28,11 @@ class CancelSubscription(
         // Stop future Asaas charges now; local access still follows currentPeriodEnd / VUL-106 grace.
         asaasGateway.cancelSubscription(current.asaasSubscriptionId)
         val now = clock.instant()
-        val updated = current.copy(
-            canceledAt = now,
-            pendingUpgradePlan = null,
-            pendingUpgradeChargeId = null,
-        )
+        // Deliberately keep pendingUpgradePlan/pendingUpgradeChargeId: there is no gateway call to
+        // cancel that one-off charge, so it can still be paid after this. Clearing the mapping here
+        // would make ProcessAsaasWebhook.resolveSubscription unable to find this row for that late
+        // payment; canceledAt (checked below) is what stops it from being misapplied.
+        val updated = current.copy(canceledAt = now)
         subscriptions.save(updated)
         CancelSubscriptionResult.Success(updated)
     }

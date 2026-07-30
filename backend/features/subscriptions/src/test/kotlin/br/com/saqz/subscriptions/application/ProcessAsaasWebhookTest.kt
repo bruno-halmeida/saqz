@@ -512,6 +512,41 @@ class ProcessAsaasWebhookTest {
         assertEquals(Plan.ORGANIZADOR, subscriptions.get("sub_123").plan)
     }
 
+    @Test
+    fun `late payment on an abandoned pending upgrade charge after cancel is accepted without applying anything`() {
+        // CancelSubscription sets canceledAt but keeps status/pendingUpgrade fields — there is no
+        // gateway call that cancels this one-off charge, so it can still be paid afterward.
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                canceledAt = Instant.parse("2026-07-25T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_after_cancel",
+            ),
+        )
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_upg_after_cancel",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+                asaasSubscriptionId = null,
+                asaasPaymentId = "pay_upgrade_after_cancel",
+                rawPayload = """{"id":"evt_upg_after_cancel","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_upgrade_after_cancel"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Plan.TITULAR, sub.plan)
+        assertEquals(Plan.ORGANIZADOR, sub.pendingUpgradePlan)
+        assertEquals("pay_upgrade_after_cancel", sub.pendingUpgradeChargeId)
+        assertTrue(gateway.updates.isEmpty())
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,

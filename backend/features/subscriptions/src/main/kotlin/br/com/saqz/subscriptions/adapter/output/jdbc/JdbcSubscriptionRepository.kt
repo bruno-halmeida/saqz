@@ -148,7 +148,7 @@ class JdbcSubscriptionRepository(
             .param("status", subscription.status.name)
             .param("asaasCustomerId", subscription.asaasCustomerId)
             .param("asaasSubscriptionId", subscription.asaasSubscriptionId)
-            .param("billingType", subscription.billingType.name)
+            .param("billingType", subscription.billingType?.name)
             .param("currentPeriodEnd", Timestamp.from(subscription.currentPeriodEnd))
             .param("canceledAt", subscription.canceledAt?.let(Timestamp::from))
             .param("pendingPlan", subscription.pendingPlan?.name)
@@ -167,7 +167,7 @@ class JdbcSubscriptionRepository(
         status = SubscriptionStatus.valueOf(rs.getString("status")),
         asaasCustomerId = rs.getString("asaas_customer_id"),
         asaasSubscriptionId = rs.getString("asaas_subscription_id"),
-        billingType = AsaasBillingType.valueOf(rs.getString("billing_type")),
+        billingType = rs.getString("billing_type")?.let(AsaasBillingType::valueOf),
         currentPeriodEnd = rs.getTimestamp("current_period_end").toInstant(),
         canceledAt = rs.getTimestamp("canceled_at")?.toInstant(),
         pendingPlan = rs.getString("pending_plan")?.let(Plan::valueOf),
