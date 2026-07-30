@@ -286,6 +286,15 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 503)
     }
 
+    /**
+     * Chunked / understated Content-Length bodies trip the stream cap inside MVC
+     * `@RequestBody` resolution — that path never returns to the filter catch.
+     */
+    @ExceptionHandler(BodyTooLargeException::class)
+    fun bodyTooLarge(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 413)
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
     fun methodNotAllowed(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 405)

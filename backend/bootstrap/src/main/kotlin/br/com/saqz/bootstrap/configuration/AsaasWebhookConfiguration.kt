@@ -14,9 +14,9 @@ import br.com.saqz.subscriptions.application.SubscriptionEventStore
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.application.SubscriptionsTransactionRunner
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Conditional
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
 import java.time.Clock
@@ -29,7 +29,7 @@ import javax.sql.DataSource
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("spring.datasource.url")
-@ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('\${saqz.asaas.webhook-token:}')")
+@Conditional(AsaasWebhookTokenConfiguredCondition::class)
 class AsaasWebhookConfiguration {
     @Bean
     fun asaasClientSettings(environment: Environment): AsaasClientSettings =
