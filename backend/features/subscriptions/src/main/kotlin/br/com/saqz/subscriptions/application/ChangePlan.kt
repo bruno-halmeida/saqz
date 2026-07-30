@@ -1,6 +1,7 @@
 package br.com.saqz.subscriptions.application
 
 import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
+import br.com.saqz.subscriptions.application.SubscriptionPricing.applyDiscount
 import br.com.saqz.subscriptions.application.SubscriptionPricing.priceCents
 import br.com.saqz.subscriptions.application.SubscriptionPricing.prorataUpgradeCents
 import br.com.saqz.subscriptions.domain.Plan
@@ -34,6 +35,7 @@ class ChangePlan(
     private val subscriptions: SubscriptionRepository,
     private val asaasGateway: AsaasGateway,
     private val usageLookup: OwnerPlanUsageLookup,
+    private val coupons: CouponRepository,
     private val clock: Clock,
 ) {
     fun execute(command: ChangePlanCommand): ChangePlanResult {
@@ -75,7 +77,7 @@ class ChangePlan(
             "no-charge"
         }
 
-        val nextPrice = command.targetPlan.priceCents(current.cycle)
+        val nextPrice = recurringPriceCents(command.targetPlan, current)
         asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, nextPrice)
 
         val updated = current.copy(
@@ -91,7 +93,7 @@ class ChangePlan(
         if (!usageFitsTarget(command.ownerUserId, command.targetPlan)) {
             return ChangePlanResult.DowngradeBlockedByUsage
         }
-        val targetPrice = command.targetPlan.priceCents(current.cycle)
+        val targetPrice = recurringPriceCents(command.targetPlan, current)
         asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, targetPrice)
         val updated = current.copy(
             pendingPlan = command.targetPlan,
@@ -99,6 +101,16 @@ class ChangePlan(
         )
         subscriptions.save(updated)
         return ChangePlanResult.DowngradeScheduled(updated)
+    }
+
+    /** List price of [plan], still applying an active multi-cycle coupon when remaining. */
+    private fun recurringPriceCents(plan: Plan, current: Subscription): Long {
+        val full = plan.priceCents(current.cycle)
+        val remaining = current.couponCyclesRemaining
+        if (remaining == null || remaining <= 0) return full
+        val couponId = current.couponId ?: return full
+        val coupon = coupons.findById(couponId) ?: return full
+        return applyDiscount(full, coupon.discountPercent)
     }
 
     private fun usageFitsTarget(ownerUserId: UUID, target: Plan): Boolean {

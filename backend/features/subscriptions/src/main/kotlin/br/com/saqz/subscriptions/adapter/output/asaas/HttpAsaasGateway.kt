@@ -81,6 +81,10 @@ class HttpAsaasGateway(
         put("/subscriptions/$asaasSubscriptionId", body)
     }
 
+    override fun cancelSubscription(asaasSubscriptionId: String) {
+        delete("/subscriptions/$asaasSubscriptionId")
+    }
+
     override fun createOneOffCharge(
         asaasCustomerId: String,
         valueCents: Long,
@@ -242,6 +246,9 @@ class HttpAsaasGateway(
 
     private fun put(path: String, body: Map<String, Any?>): JsonNode =
         exchange("PUT", path, body)
+
+    private fun delete(path: String): JsonNode =
+        exchange("DELETE", path, body = null)
 
     private fun get(path: String): JsonNode =
         exchange("GET", path, body = null)

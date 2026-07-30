@@ -7,6 +7,8 @@ import java.util.UUID
 interface CouponRepository {
     fun findByCode(code: String): Coupon?
 
+    fun findById(couponId: UUID): Coupon?
+
     fun hasRedemption(couponId: UUID, userId: UUID): Boolean
 
     fun saveRedemption(redemption: CouponRedemption)

@@ -15,6 +15,10 @@ interface AsaasGateway {
         idempotencyKey: String,
     ): String
     fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long)
+
+    /** Stops future Asaas billing; local access still follows currentPeriodEnd / grace. */
+    fun cancelSubscription(asaasSubscriptionId: String)
+
     fun createOneOffCharge(
         asaasCustomerId: String,
         valueCents: Long,

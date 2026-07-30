@@ -1,8 +1,11 @@
 package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.application.ProcessAsaasWebhook.Companion.EVENT_PAYMENT_CONFIRMED
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
 
@@ -40,12 +43,7 @@ class ListReceipts(
             ?: root.path("subscription").asText(null)
         if (subscriptionFromPayload != expectedSubscriptionId) return null
 
-        val valueNode = payment.path("value")
-        val valueCents = when {
-            valueNode.isNumber -> (valueNode.asDouble() * 100).toLong()
-            valueNode.isTextual -> valueNode.asText().toDoubleOrNull()?.let { (it * 100).toLong() }
-            else -> null
-        }
+        val valueCents = paymentValueToCents(payment.path("value"))
         val confirmedAt = payment.path("confirmedDate").asText(null)
             ?.let { runCatching { Instant.parse(it + if (it.endsWith("Z") || it.contains("T")) "" else "T00:00:00Z") }.getOrNull() }
             ?: payment.path("clientPaymentDate").asText(null)
@@ -59,5 +57,18 @@ class ListReceipts(
             confirmedAt = confirmedAt,
             processedAt = processedAt,
         )
+    }
+
+    private fun paymentValueToCents(valueNode: JsonNode): Long? {
+        if (valueNode.isMissingNode || valueNode.isNull) return null
+        val decimal = when {
+            valueNode.isNumber -> valueNode.decimalValue()
+            valueNode.isTextual -> valueNode.asText().toBigDecimalOrNull()
+            else -> null
+        } ?: return null
+        return decimal
+            .multiply(BigDecimal(100))
+            .setScale(0, RoundingMode.HALF_UP)
+            .longValueExact()
     }
 }

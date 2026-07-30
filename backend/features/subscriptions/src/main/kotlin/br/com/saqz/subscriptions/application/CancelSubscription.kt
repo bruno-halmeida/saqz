@@ -13,6 +13,7 @@ sealed interface CancelSubscriptionResult {
 
 class CancelSubscription(
     private val subscriptions: SubscriptionRepository,
+    private val asaasGateway: AsaasGateway,
     private val clock: Clock,
 ) {
     fun execute(ownerUserId: UUID): CancelSubscriptionResult {
@@ -21,8 +22,9 @@ class CancelSubscription(
         if (current.status == SubscriptionStatus.CANCELED || current.canceledAt != null) {
             return CancelSubscriptionResult.AlreadyCanceled
         }
+        // Stop future Asaas charges now; local access still follows currentPeriodEnd / VUL-106 grace.
+        asaasGateway.cancelSubscription(current.asaasSubscriptionId)
         val now = clock.instant()
-        // Paid period remains until currentPeriodEnd; groups grace is computed on read (VUL-106).
         val updated = current.copy(canceledAt = now)
         subscriptions.save(updated)
         return CancelSubscriptionResult.Success(updated)

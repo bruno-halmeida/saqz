@@ -34,6 +34,27 @@ class JdbcCouponRepository(
             .optional()
             .orElse(null)
 
+    override fun findById(couponId: UUID): Coupon? =
+        jdbc.sql(
+            """
+            SELECT id, code, discount_percent, duration_cycles, valid_until
+            FROM coupons
+            WHERE id = :couponId
+            """.trimIndent(),
+        )
+            .param("couponId", couponId)
+            .query { rs, _ ->
+                Coupon(
+                    id = rs.getObject("id", UUID::class.java),
+                    code = rs.getString("code"),
+                    discountPercent = rs.getInt("discount_percent"),
+                    durationCycles = rs.getObject("duration_cycles") as Int?,
+                    validUntil = rs.getTimestamp("valid_until")?.toInstant(),
+                )
+            }
+            .optional()
+            .orElse(null)
+
     override fun hasRedemption(couponId: UUID, userId: UUID): Boolean {
         val count = jdbc.sql(
             """

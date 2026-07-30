@@ -183,6 +183,7 @@ class CreateSubscriptionTest {
         val redemptions = mutableListOf<CouponRedemption>()
 
         override fun findByCode(code: String) = byCode[code]
+        override fun findById(couponId: UUID) = byCode.values.firstOrNull { it.id == couponId }
         override fun hasRedemption(couponId: UUID, userId: UUID) =
             redemptions.any { it.couponId == couponId && it.userId == userId }
 
@@ -213,6 +214,7 @@ class CreateSubscriptionTest {
         }
 
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
+        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
         override fun createOneOffCharge(
             asaasCustomerId: String,
             valueCents: Long,

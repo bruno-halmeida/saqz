@@ -73,7 +73,7 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
-    fun `PAYMENT_CONFIRMED activates renews period and clears past due`() {
+    fun `first PAYMENT_CONFIRMED activates without advancing period set at create`() {
         val result = useCase.execute(
             token,
             command(eventId = "evt_pay_1", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
@@ -82,23 +82,25 @@ class ProcessAsaasWebhookTest {
         assertEquals(ProcessAsaasWebhookResult.Accepted, result)
         val sub = subscriptions.get("sub_123")
         assertEquals(SubscriptionStatus.ACTIVE, sub.status)
-        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), sub.currentPeriodEnd)
+        assertEquals(periodEnd, sub.currentPeriodEnd)
         assertNull(sub.pastDueSince)
         assertEquals(fixedNow, sub.firstConfirmedAt)
         assertEquals(fixedNow, events.rows.getValue("evt_pay_1").processedAt)
     }
 
     @Test
-    fun `PAYMENT_CONFIRMED preserves existing firstConfirmedAt`() {
+    fun `renewal PAYMENT_CONFIRMED advances period and keeps firstConfirmedAt`() {
         val original = Instant.parse("2026-01-01T00:00:00Z")
-        subscriptions.save(baseSubscription().copy(firstConfirmedAt = original))
+        subscriptions.save(baseSubscription().copy(firstConfirmedAt = original, status = SubscriptionStatus.ACTIVE, pastDueSince = null))
 
         useCase.execute(
             token,
-            command(eventId = "evt_pay_keep", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+            command(eventId = "evt_pay_renew", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
         )
 
-        assertEquals(original, subscriptions.get("sub_123").firstConfirmedAt)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), sub.currentPeriodEnd)
+        assertEquals(original, sub.firstConfirmedAt)
     }
 
     @Test
@@ -506,6 +508,8 @@ class ProcessAsaasWebhookTest {
             calls.incrementAndGet()
             updates += asaasSubscriptionId to valueCents
         }
+
+        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
 
         override fun createOneOffCharge(
             asaasCustomerId: String,

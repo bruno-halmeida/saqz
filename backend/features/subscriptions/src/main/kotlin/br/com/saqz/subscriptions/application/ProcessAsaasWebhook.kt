@@ -113,9 +113,15 @@ class ProcessAsaasWebhook(
     )
 
     private fun confirmPayment(current: Subscription, now: Instant): ConfirmOutcome {
+        // First confirmation keeps the period set at create; renewals advance one cycle.
+        val periodEnd = if (current.firstConfirmedAt == null) {
+            current.currentPeriodEnd
+        } else {
+            advancePeriodEnd(current.currentPeriodEnd, current.cycle)
+        }
         var next = current.copy(
             status = SubscriptionStatus.ACTIVE,
-            currentPeriodEnd = advancePeriodEnd(current.currentPeriodEnd, current.cycle),
+            currentPeriodEnd = periodEnd,
             pastDueSince = null,
             firstConfirmedAt = current.firstConfirmedAt ?: now,
         )

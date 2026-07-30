@@ -108,14 +108,16 @@ class AsaasWebhookConfiguration {
         subscriptions: SubscriptionRepository,
         asaasGateway: AsaasGateway,
         usageLookup: OwnerPlanUsageLookup,
+        coupons: CouponRepository,
         clock: Clock,
-    ) = ChangePlan(subscriptions, asaasGateway, usageLookup, clock)
+    ) = ChangePlan(subscriptions, asaasGateway, usageLookup, coupons, clock)
 
     @Bean
     fun cancelSubscription(
         subscriptions: SubscriptionRepository,
+        asaasGateway: AsaasGateway,
         clock: Clock,
-    ) = CancelSubscription(subscriptions, clock)
+    ) = CancelSubscription(subscriptions, asaasGateway, clock)
 
     @Bean
     fun listReceipts(

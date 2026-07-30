@@ -2,6 +2,8 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.sharedkernel.subscription.OwnerPlanUsage
 import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
+import br.com.saqz.subscriptions.domain.Coupon
+import br.com.saqz.subscriptions.domain.CouponRedemption
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
@@ -23,10 +25,12 @@ class ChangePlanTest {
     private val clock = Clock.fixed(fixedNow, ZoneOffset.UTC)
     private val ownerId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     private val requestId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    private val couponId = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc")
 
     private lateinit var subscriptions: FakeSubscriptionRepository
     private lateinit var gateway: FakeAsaasGateway
     private lateinit var usage: MutableOwnerPlanUsageLookup
+    private lateinit var coupons: FakeCouponRepository
     private lateinit var useCase: ChangePlan
 
     @BeforeEach
@@ -34,13 +38,13 @@ class ChangePlanTest {
         subscriptions = FakeSubscriptionRepository()
         gateway = FakeAsaasGateway()
         usage = MutableOwnerPlanUsageLookup(OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5))
-        useCase = ChangePlan(subscriptions, gateway, usage, clock)
+        coupons = FakeCouponRepository()
+        useCase = ChangePlan(subscriptions, gateway, usage, coupons, clock)
         subscriptions.save(baseSubscription())
     }
 
     @Test
     fun `upgrade charges prorata and applies target plan immediately`() {
-        // Half of remaining period (~15 of ~30 days): delta 2000 * ~0.5 ≈ 1000
         val result = useCase.execute(
             ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR),
         )
@@ -55,6 +59,22 @@ class ChangePlanTest {
             gateway.oneOffIdempotencyKeys,
         )
         assertEquals(listOf("sub_1" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.valueUpdates)
+    }
+
+    @Test
+    fun `upgrade with remaining coupon cycles pushes discounted target price`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "GALERA10", discountPercent = 10, durationCycles = 3)
+        subscriptions.save(
+            baseSubscription().copy(
+                couponId = couponId,
+                couponCyclesRemaining = 2,
+            ),
+        )
+
+        useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        // 5990 * 0.9 = 5391
+        assertEquals(listOf("sub_1" to 5_391L), gateway.valueUpdates)
     }
 
     @Test
@@ -84,6 +104,24 @@ class ChangePlanTest {
         assertEquals(periodEnd, scheduled.subscription.pendingPlanEffectiveAt)
         assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
         assertEquals(listOf("sub_1" to Plan.TITULAR.monthlyPriceCents), gateway.valueUpdates)
+    }
+
+    @Test
+    fun `downgrade with remaining coupon pushes discounted target price`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "GALERA10", discountPercent = 20, durationCycles = 3)
+        subscriptions.save(
+            baseSubscription().copy(
+                plan = Plan.ORGANIZADOR,
+                couponId = couponId,
+                couponCyclesRemaining = 1,
+            ),
+        )
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5)
+
+        useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
+
+        // 3990 * 0.8 = 3192
+        assertEquals(listOf("sub_1" to 3_192L), gateway.valueUpdates)
     }
 
     @Test
@@ -123,6 +161,14 @@ class ChangePlanTest {
         override fun usageFor(ownerUserId: UUID) = usage
     }
 
+    private class FakeCouponRepository : CouponRepository {
+        val byId = linkedMapOf<UUID, Coupon>()
+        override fun findByCode(code: String) = byId.values.firstOrNull { it.code.equals(code, ignoreCase = true) }
+        override fun findById(couponId: UUID) = byId[couponId]
+        override fun hasRedemption(couponId: UUID, userId: UUID) = false
+        override fun saveRedemption(redemption: CouponRedemption) = error("unused")
+    }
+
     private class FakeAsaasGateway : AsaasGateway {
         val oneOffIdempotencyKeys = mutableListOf<String>()
         val valueUpdates = mutableListOf<Pair<String, Long>>()
@@ -140,6 +186,8 @@ class ChangePlanTest {
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) {
             valueUpdates += asaasSubscriptionId to valueCents
         }
+
+        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
 
         override fun createOneOffCharge(
             asaasCustomerId: String,

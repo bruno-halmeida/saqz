@@ -37,6 +37,10 @@ class ListReceiptsTest {
                     payload = """{"id":"evt_1","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_1","value":39.90,"subscription":"sub_mine","confirmedDate":"2026-07-30"}}""",
                 ),
                 event(
+                    id = "evt_float",
+                    payload = """{"id":"evt_float","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_float","value":0.29,"subscription":"sub_mine"}}""",
+                ),
+                event(
                     id = "evt_other",
                     payload = """{"id":"evt_other","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_x","value":59.90,"subscription":"sub_other"}}""",
                 ),
@@ -49,9 +53,10 @@ class ListReceiptsTest {
 
         val receipts = ListReceipts(subscriptions, events).execute(ownerId)
 
-        assertEquals(2, receipts.size)
-        assertEquals(listOf("evt_1", "evt_2"), receipts.map { it.asaasEventId })
+        assertEquals(3, receipts.size)
+        assertEquals(listOf("evt_1", "evt_float", "evt_2"), receipts.map { it.asaasEventId })
         assertEquals(3_990L, receipts.first().valueCents)
+        assertEquals(29L, receipts[1].valueCents)
         assertEquals("pay_1", receipts.first().asaasPaymentId)
     }
 

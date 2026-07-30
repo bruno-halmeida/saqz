@@ -12,6 +12,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class CancelSubscriptionTest {
     private val fixedNow = Instant.parse("2026-07-30T12:00:00Z")
@@ -20,8 +21,9 @@ class CancelSubscriptionTest {
     private val ownerId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
     @Test
-    fun `cancel sets canceledAt and keeps paid period end and status`() {
+    fun `cancel stops asaas billing and sets canceledAt keeping paid period`() {
         val repo = FakeSubscriptionRepository()
+        val gateway = FakeAsaasGateway()
         repo.save(
             Subscription(
                 ownerUserId = ownerId,
@@ -34,17 +36,19 @@ class CancelSubscriptionTest {
             ),
         )
 
-        val result = CancelSubscription(repo, clock).execute(ownerId)
+        val result = CancelSubscription(repo, gateway, clock).execute(ownerId)
 
         val success = assertIs<CancelSubscriptionResult.Success>(result)
         assertEquals(fixedNow, success.subscription.canceledAt)
         assertEquals(periodEnd, success.subscription.currentPeriodEnd)
         assertEquals(SubscriptionStatus.ACTIVE, success.subscription.status)
+        assertEquals(listOf("sub_1"), gateway.canceledIds)
     }
 
     @Test
-    fun `cancel is idempotent conflict when already canceled`() {
+    fun `cancel is idempotent conflict when already canceled without calling asaas`() {
         val repo = FakeSubscriptionRepository()
+        val gateway = FakeAsaasGateway()
         repo.save(
             Subscription(
                 ownerUserId = ownerId,
@@ -58,16 +62,19 @@ class CancelSubscriptionTest {
             ),
         )
 
-        assertEquals(CancelSubscriptionResult.AlreadyCanceled, CancelSubscription(repo, clock).execute(ownerId))
+        assertEquals(CancelSubscriptionResult.AlreadyCanceled, CancelSubscription(repo, gateway, clock).execute(ownerId))
+        assertTrue(gateway.canceledIds.isEmpty())
     }
 
     @Test
     fun `cancel returns not found when owner has no subscription`() {
+        val gateway = FakeAsaasGateway()
         assertEquals(
             CancelSubscriptionResult.NotFound,
-            CancelSubscription(FakeSubscriptionRepository(), clock).execute(ownerId),
+            CancelSubscription(FakeSubscriptionRepository(), gateway, clock).execute(ownerId),
         )
         assertNull(FakeSubscriptionRepository().findByOwnerUserId(ownerId))
+        assertTrue(gateway.canceledIds.isEmpty())
     }
 
     private class FakeSubscriptionRepository : SubscriptionRepository {
@@ -80,5 +87,34 @@ class CancelSubscriptionTest {
         override fun save(subscription: Subscription) {
             byOwner[subscription.ownerUserId] = subscription
         }
+    }
+
+    private class FakeAsaasGateway : AsaasGateway {
+        val canceledIds = mutableListOf<String>()
+        override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = error("unused")
+        override fun createSubscription(
+            asaasCustomerId: String,
+            plan: Plan,
+            cycle: SubscriptionCycle,
+            valueCents: Long,
+            billingType: AsaasBillingType,
+            idempotencyKey: String,
+        ) = error("unused")
+
+        override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
+        override fun cancelSubscription(asaasSubscriptionId: String) {
+            canceledIds += asaasSubscriptionId
+        }
+
+        override fun createOneOffCharge(
+            asaasCustomerId: String,
+            valueCents: Long,
+            description: String,
+            idempotencyKey: String,
+        ) = error("unused")
+
+        override fun regeneratePixPayload(asaasChargeId: String) = error("unused")
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
     }
 }

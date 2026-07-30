@@ -137,6 +137,7 @@ class ValidateCouponTest {
         override fun findByCode(code: String): Coupon? =
             coupon?.takeIf { it.code.equals(code, ignoreCase = true) }
 
+        override fun findById(couponId: java.util.UUID): Coupon? = coupon?.takeIf { it.id == couponId }
         override fun hasRedemption(couponId: java.util.UUID, userId: java.util.UUID) = false
         override fun saveRedemption(redemption: br.com.saqz.subscriptions.domain.CouponRedemption) = error("unused")
     }
