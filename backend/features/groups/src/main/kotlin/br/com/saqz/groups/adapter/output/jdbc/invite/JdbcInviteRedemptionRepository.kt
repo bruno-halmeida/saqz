@@ -8,6 +8,7 @@ import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.invite.redeem.RedeemableInvite
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
 import java.time.Instant
@@ -69,7 +70,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
 
     override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
         val ownerUserId = jdbc.sql(
-            "SELECT owner_user_id FROM access_groups WHERE id = :groupId",
+            "SELECT owner_user_id FROM access_groups WHERE id = :groupId FOR UPDATE",
         )
             .param("groupId", groupId)
             .query(UUID::class.java)
@@ -91,11 +92,30 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .list()
             .toSet()
 
+        val closedOccupancies = jdbc.sql(
+            """
+            SELECT user_id, removed_at
+            FROM group_membership_removals
+            WHERE group_id = :groupId
+              AND user_id <> :ownerUserId
+              AND removed_at > now() - interval '30 days'
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("ownerUserId", ownerUserId)
+            .query { result, _ ->
+                ClosedAthleteOccupancy(
+                    athleteId = result.getObject("user_id", UUID::class.java),
+                    closedAt = result.getTimestamp("removed_at").toInstant(),
+                )
+            }
+            .list()
+
         return GroupAthleteOccupancy(
             ownerUserId = ownerUserId,
             openMemberIds = openMemberIds,
             openWaitlistIds = emptySet(),
-            closedOccupancies = emptyList(),
+            closedOccupancies = closedOccupancies,
         )
     }
 

@@ -32,6 +32,7 @@ class CreateGroup(
         val stored = transactionRunner.inTransaction {
             repository.findByCreationKey(actor, requestId)?.let { return@inTransaction it }
 
+            repository.lockOwnerForGroupLimit(actor)
             val groupLimit = subscriptionLimits.groupLimitFor(actor)
             val ownedCount = repository.countOwnedGroups(actor)
             if (!PlanLimitPolicy.canCreateGroup(ownedCount, groupLimit)) {

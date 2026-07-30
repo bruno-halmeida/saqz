@@ -391,6 +391,8 @@ class GroupCreationEndpointIntegrationTest {
         override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? =
             groups[ownerUserId to creationKey]
 
+        override fun lockOwnerForGroupLimit(ownerUserId: UUID) = Unit
+
         override fun countOwnedGroups(ownerUserId: UUID): Int =
             groups.keys.count { it.first == ownerUserId }
 

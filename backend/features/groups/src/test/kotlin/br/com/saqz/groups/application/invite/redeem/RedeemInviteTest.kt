@@ -149,6 +149,20 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `owner redeeming own invite bypasses athlete cap`() {
+        val fixture = fixture(athleteLimit = 0).also {
+            it.repository.openMembers += (1..25).map { UUID.randomUUID() }
+            it.repository.roles[ownerId] = GroupRole.OWNER
+        }
+
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.OWNER),
+            fixture.useCase.execute(ownerId, code.value),
+        )
+        assertEquals(listOf(RedeemMembershipCommand(groupId, ownerId)), fixture.repository.redemptions)
+    }
+
+    @Test
     fun `unknown invite records one invalid attempt`() {
         val fixture = fixture(target = null)
 

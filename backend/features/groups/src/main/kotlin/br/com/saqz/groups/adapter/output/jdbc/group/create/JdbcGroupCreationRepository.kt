@@ -30,6 +30,17 @@ class JdbcGroupCreationRepository(
         .optional()
         .orElse(null)
 
+    override fun lockOwnerForGroupLimit(ownerUserId: UUID) {
+        val locked = jdbc.sql(
+            "SELECT id FROM access_users WHERE id = :ownerUserId FOR UPDATE",
+        )
+            .param("ownerUserId", ownerUserId)
+            .query(UUID::class.java)
+            .optional()
+            .orElse(null)
+        check(locked != null) { "Owner user was not found for group limit lock" }
+    }
+
     override fun countOwnedGroups(ownerUserId: UUID): Int = jdbc.sql(
         "SELECT count(*)::int FROM access_groups WHERE owner_user_id = :ownerUserId",
     )

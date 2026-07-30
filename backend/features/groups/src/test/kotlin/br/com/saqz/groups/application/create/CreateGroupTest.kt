@@ -357,6 +357,8 @@ class CreateGroupTest {
         override fun findByCreationKey(ownerUserId: UUID, creationKey: UUID): StoredGroup? =
             existingByKey[creationKey]
 
+        override fun lockOwnerForGroupLimit(ownerUserId: UUID) = Unit
+
         override fun countOwnedGroups(ownerUserId: UUID): Int = ownedCount
 
         override fun create(command: CreateGroupCommand): StoredGroup {

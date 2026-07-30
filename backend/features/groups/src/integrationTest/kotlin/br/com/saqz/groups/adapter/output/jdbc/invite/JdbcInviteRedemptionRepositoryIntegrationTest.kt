@@ -1,7 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.testing.startAndAwaitJdbc
-import br.com.saqz.groups.testing.accessMigrationLocation
+import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
@@ -51,7 +51,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).load().migrate()
         repository = JdbcInviteRedemptionRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
@@ -61,7 +61,10 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE group_invites, group_memberships, access_groups, invite_redemption_limits, access_users CASCADE")
+        execute(
+            "TRUNCATE group_invites, group_membership_removals, group_memberships, access_groups, " +
+                "invite_redemption_limits, access_users CASCADE",
+        )
     }
 
     @Test
