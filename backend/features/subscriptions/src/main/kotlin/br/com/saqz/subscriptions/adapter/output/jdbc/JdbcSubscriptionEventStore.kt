@@ -49,6 +49,20 @@ class JdbcSubscriptionEventStore(
             .update()
     }
 
+    override fun exists(asaasEventId: String): Boolean {
+        val count = jdbc.sql(
+            """
+            SELECT count(*)::int AS cnt
+            FROM subscription_events
+            WHERE asaas_event_id = :asaasEventId
+            """.trimIndent(),
+        )
+            .param("asaasEventId", asaasEventId)
+            .query { rs, _ -> rs.getInt("cnt") }
+            .single()
+        return count > 0
+    }
+
     override fun listProcessedByType(type: String): List<SubscriptionEvent> =
         jdbc.sql(
             """

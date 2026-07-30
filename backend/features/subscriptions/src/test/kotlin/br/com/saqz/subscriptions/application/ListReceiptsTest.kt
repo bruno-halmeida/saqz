@@ -115,6 +115,7 @@ class ListReceiptsTest {
     private class FakeEventStore(private val rows: List<SubscriptionEvent>) : SubscriptionEventStore {
         override fun tryInsert(id: UUID, asaasEventId: String, type: String, payload: String, now: Instant) = true
         override fun markProcessed(asaasEventId: String, processedAt: Instant) = Unit
+        override fun exists(asaasEventId: String) = rows.any { it.asaasEventId == asaasEventId }
         override fun listProcessedByType(type: String) = rows.filter { it.type == type }
     }
 }

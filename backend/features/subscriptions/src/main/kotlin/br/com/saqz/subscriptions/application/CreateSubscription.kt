@@ -60,11 +60,11 @@ class CreateSubscription(
         val coupon = (couponOutcome as CouponOutcome.Ok).coupon
         val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
 
-        // Serialize concurrent creates for the same owner before any Asaas side effect.
-        return transaction.inTransaction {
+        // Commit local row first (Asaas side effects + insert). Checkout enrichment is best-effort after.
+        val committed = transaction.inTransaction {
             subscriptions.lockOwner(command.ownerUserId)
             subscriptions.findByOwnerUserId(command.ownerUserId)?.let { existing ->
-                return@inTransaction resumeUnconfirmedOrConflict(existing, command.billingType)
+                return@inTransaction existing
             }
 
             val customerId = asaasGateway.createCustomer(
@@ -100,28 +100,17 @@ class CreateSubscription(
                     CouponRedemption(couponId = coupon.id, userId = command.ownerUserId, redeemedAt = now),
                 )
             }
-
-            val checkout = resolveCheckout(asaasSubscriptionId)
-            CreateSubscriptionResult.Success(
-                subscription = subscription,
-                billingType = command.billingType,
-                pixCopyPaste = checkout.pixCopyPaste,
-                invoiceUrl = checkout.invoiceUrl,
-            )
+            subscription
         }
-    }
 
-    private fun resumeUnconfirmedOrConflict(
-        existing: Subscription,
-        billingType: AsaasBillingType,
-    ): CreateSubscriptionResult {
-        if (existing.firstConfirmedAt != null || existing.status == SubscriptionStatus.CANCELED) {
+        if (committed.firstConfirmedAt != null || committed.status == SubscriptionStatus.CANCELED) {
             return CreateSubscriptionResult.AlreadySubscribed
         }
-        val checkout = resolveCheckout(existing.asaasSubscriptionId)
+
+        val checkout = resolveCheckout(committed.asaasSubscriptionId)
         return CreateSubscriptionResult.Success(
-            subscription = existing,
-            billingType = billingType,
+            subscription = committed,
+            billingType = command.billingType,
             pixCopyPaste = checkout.pixCopyPaste,
             invoiceUrl = checkout.invoiceUrl,
         )
@@ -148,13 +137,14 @@ class CreateSubscription(
 
     private data class Checkout(val pixCopyPaste: String?, val invoiceUrl: String?)
 
-    private fun resolveCheckout(asaasSubscriptionId: String): Checkout {
-        val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
-            ?: return Checkout(null, null)
-        val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
-        val invoice = asaasGateway.findPaymentInvoiceUrl(paymentId)
-        return Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
-    }
+    private fun resolveCheckout(asaasSubscriptionId: String): Checkout =
+        runCatching {
+            val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
+                ?: return@runCatching Checkout(null, null)
+            val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
+            val invoice = asaasGateway.findPaymentInvoiceUrl(paymentId)
+            Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
+        }.getOrDefault(Checkout(null, null))
 
     private fun isValidEmail(email: String): Boolean =
         email.length in 3..254 && email.contains('@') && email.indexOf('@') in 1 until email.lastIndex

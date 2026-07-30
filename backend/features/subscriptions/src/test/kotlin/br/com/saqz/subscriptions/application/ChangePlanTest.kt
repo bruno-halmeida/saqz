@@ -61,6 +61,22 @@ class ChangePlanTest {
     }
 
     @Test
+    fun `second upgrade request reuses existing pending charge instead of creating another`() {
+        val first = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+        val pendingFirst = assertIs<ChangePlanResult.UpgradePendingPayment>(first)
+        assertEquals(1, gateway.oneOffIdempotencyKeys.size)
+
+        val second = useCase.execute(
+            ChangePlanCommand(ownerId, UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd"), Plan.ORGANIZADOR),
+        )
+        val pendingSecond = assertIs<ChangePlanResult.UpgradePendingPayment>(second)
+
+        assertEquals(pendingFirst.oneOffChargeId, pendingSecond.oneOffChargeId)
+        assertEquals(1, gateway.oneOffIdempotencyKeys.size)
+        assertEquals("pay_upgrade", subscriptions.findByOwnerUserId(ownerId)!!.pendingUpgradeChargeId)
+    }
+
+    @Test
     fun `upgrade with remaining coupon charges prorata on discounted prices and keeps plan`() {
         coupons.byId[couponId] = Coupon(id = couponId, code = "GALERA10", discountPercent = 10, durationCycles = 3)
         subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = 2))

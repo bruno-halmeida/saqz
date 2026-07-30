@@ -95,6 +95,16 @@ class ChangePlan(
             return ChangePlanResult.Upgraded(updated, chargedCents = 0L)
         }
 
+        // Reuse an in-flight upgrade charge instead of creating a second one-off.
+        current.pendingUpgradeChargeId?.let { existingChargeId ->
+            val plan = current.pendingUpgradePlan ?: command.targetPlan
+            return upgradeCheckout(
+                subscription = current.copy(pendingUpgradePlan = plan, pendingUpgradeChargeId = existingChargeId),
+                chargedCents = chargedCents,
+                chargeId = existingChargeId,
+            )
+        }
+
         val chargeId = asaasGateway.createOneOffCharge(
             asaasCustomerId = current.asaasCustomerId,
             valueCents = chargedCents,
@@ -106,11 +116,18 @@ class ChangePlan(
             pendingUpgradeChargeId = chargeId,
         )
         subscriptions.save(updated)
+        return upgradeCheckout(updated, chargedCents, chargeId)
+    }
 
+    private fun upgradeCheckout(
+        subscription: Subscription,
+        chargedCents: Long,
+        chargeId: String,
+    ): ChangePlanResult.UpgradePendingPayment {
         val pix = runCatching { asaasGateway.regeneratePixPayload(chargeId) }.getOrNull()
         val invoice = asaasGateway.findPaymentInvoiceUrl(chargeId)
         return ChangePlanResult.UpgradePendingPayment(
-            subscription = updated,
+            subscription = subscription,
             chargedCents = chargedCents,
             oneOffChargeId = chargeId,
             pixCopyPaste = pix,

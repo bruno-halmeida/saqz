@@ -57,6 +57,12 @@ class ProcessAsaasWebhook(
                 return@inTransaction claimAndAccept(command, now)
             }
 
+            // Already-seen events (e.g. upgrade redelivery after pendingUpgradeChargeId cleared)
+            // must not 503 forever — accept without re-resolving the subscription.
+            if (events.exists(command.asaasEventId)) {
+                return@inTransaction ProcessAsaasWebhookResult.Accepted
+            }
+
             val current = resolveSubscription(command)
                 ?: return@inTransaction when {
                     command.asaasSubscriptionId.isNullOrBlank() &&
@@ -113,6 +119,11 @@ class ProcessAsaasWebhook(
                         asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents)
                     }
                 } else {
+                    if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+                        // Optional upgrade charge expired — clear pending only; base plan stays.
+                        clearPendingUpgrade(current)
+                        return
+                    }
                     subscriptions.save(markPastDue(current, now))
                 }
             }
@@ -137,6 +148,15 @@ class ProcessAsaasWebhook(
                 pendingUpgradeChargeId = null,
                 pendingPlan = null,
                 pendingPlanEffectiveAt = null,
+            ),
+        )
+    }
+
+    private fun clearPendingUpgrade(current: Subscription) {
+        subscriptions.save(
+            current.copy(
+                pendingUpgradePlan = null,
+                pendingUpgradeChargeId = null,
             ),
         )
     }

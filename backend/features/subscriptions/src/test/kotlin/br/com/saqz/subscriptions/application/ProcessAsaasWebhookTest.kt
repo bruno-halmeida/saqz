@@ -451,6 +451,66 @@ class ProcessAsaasWebhookTest {
         assertEquals(listOf("sub_123" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.updates)
     }
 
+    @Test
+    fun `PAYMENT_OVERDUE on pending upgrade charge clears pending without marking past due`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_od",
+            ),
+        )
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_upg_od",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE,
+                asaasSubscriptionId = null,
+                asaasPaymentId = "pay_upgrade_od",
+                rawPayload = """{"id":"evt_upg_od","event":"PAYMENT_OVERDUE","payment":{"id":"pay_upgrade_od"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.ACTIVE, sub.status)
+        assertNull(sub.pastDueSince)
+        assertEquals(Plan.TITULAR, sub.plan)
+        assertNull(sub.pendingUpgradePlan)
+        assertNull(sub.pendingUpgradeChargeId)
+    }
+
+    @Test
+    fun `redelivery of processed upgrade event is accepted without SubscriptionNotReady`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_re",
+            ),
+        )
+        val cmd = AsaasWebhookCommand(
+            asaasEventId = "evt_upg_re",
+            eventType = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+            asaasSubscriptionId = null,
+            asaasPaymentId = "pay_upgrade_re",
+            rawPayload = """{"id":"evt_upg_re","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_upgrade_re"}}""",
+        )
+        assertEquals(ProcessAsaasWebhookResult.Accepted, useCase.execute(token, cmd))
+        assertEquals(Plan.ORGANIZADOR, subscriptions.get("sub_123").plan)
+
+        // Charge id cleared — redelivery must still Accepted (not 503 forever).
+        assertEquals(ProcessAsaasWebhookResult.Accepted, useCase.execute(token, cmd))
+        assertEquals(Plan.ORGANIZADOR, subscriptions.get("sub_123").plan)
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
@@ -501,6 +561,8 @@ class ProcessAsaasWebhookTest {
         override fun markProcessed(asaasEventId: String, processedAt: Instant) {
             rows.getValue(asaasEventId).processedAt = processedAt
         }
+
+        override fun exists(asaasEventId: String): Boolean = rows.containsKey(asaasEventId)
 
         override fun listProcessedByType(type: String) = emptyList<br.com.saqz.subscriptions.domain.SubscriptionEvent>()
     }
