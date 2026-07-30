@@ -10,6 +10,7 @@ data class Subscription(
     val ownerUserId: UUID,
     val plan: Plan,
     val cycle: SubscriptionCycle,
+    val asaasCustomerId: String,
     val asaasSubscriptionId: String,
     val currentPeriodEnd: Instant,
     val status: SubscriptionStatus = SubscriptionStatus.ACTIVE,

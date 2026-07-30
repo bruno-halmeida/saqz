@@ -15,6 +15,7 @@ CREATE TABLE subscriptions (
     plan varchar(16) NOT NULL,
     cycle varchar(8) NOT NULL,
     status varchar(16) NOT NULL DEFAULT 'ACTIVE',
+    asaas_customer_id varchar(64) NOT NULL,
     asaas_subscription_id varchar(64) NOT NULL,
     current_period_end timestamptz NOT NULL,
     canceled_at timestamptz,

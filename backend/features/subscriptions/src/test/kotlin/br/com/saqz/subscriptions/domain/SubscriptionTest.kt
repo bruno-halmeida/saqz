@@ -13,6 +13,7 @@ class SubscriptionTest {
             ownerUserId = UUID.randomUUID(),
             plan = Plan.TITULAR,
             cycle = SubscriptionCycle.MONTHLY,
+            asaasCustomerId = "cus_123",
             asaasSubscriptionId = "sub_123",
             currentPeriodEnd = Instant.parse("2026-08-30T00:00:00Z"),
         )
