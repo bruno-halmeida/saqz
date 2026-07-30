@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 8d · Plano ativo -->
+    <string name="plan_active_title">Plano %1$s ativo</string>
+    <string name="plan_active_subtitle">Pagamento confirmado. Agora você pode criar seu grupo e chamar a galera.</string>
+    <string name="plan_active_value_label">Valor</string>
+    <string name="plan_active_value_month">%1$s/mês</string>
+    <string name="plan_active_value_year">%1$s/ano</string>
+    <string name="plan_active_next_billing_label">Próxima cobrança</string>
+    <string name="plan_active_groups_available_label">Grupos disponíveis</string>
+    <string name="plan_active_groups_unlimited">Ilimitado</string>
+    <string name="plan_active_create_group">Criar meu grupo</string>
+    <string name="plan_active_view_my_plan">Ver meu plano</string>
+    <string name="plan_active_error">Não foi possível carregar seu plano.</string>
+    <string name="plan_active_retry">Tentar novamente</string>
+</resources>
