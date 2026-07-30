@@ -28,23 +28,22 @@ class JdbcSubscriptionRepository(
             """.trimIndent(),
         )
             .param("asaasSubscriptionId", asaasSubscriptionId)
-            .query { rs, _ ->
-                Subscription(
-                    ownerUserId = rs.getObject("owner_user_id", UUID::class.java),
-                    plan = Plan.valueOf(rs.getString("plan")),
-                    cycle = SubscriptionCycle.valueOf(rs.getString("cycle")),
-                    status = SubscriptionStatus.valueOf(rs.getString("status")),
-                    asaasCustomerId = rs.getString("asaas_customer_id"),
-                    asaasSubscriptionId = rs.getString("asaas_subscription_id"),
-                    currentPeriodEnd = rs.getTimestamp("current_period_end").toInstant(),
-                    canceledAt = rs.getTimestamp("canceled_at")?.toInstant(),
-                    pendingPlan = rs.getString("pending_plan")?.let(Plan::valueOf),
-                    pendingPlanEffectiveAt = rs.getTimestamp("pending_plan_effective_at")?.toInstant(),
-                    couponId = rs.getObject("coupon_id") as UUID?,
-                    couponCyclesRemaining = rs.getObject("coupon_cycles_remaining") as Int?,
-                    pastDueSince = rs.getTimestamp("past_due_since")?.toInstant(),
-                )
-            }
+            .query { rs, _ -> mapSubscription(rs) }
+            .optional()
+            .orElse(null)
+
+    override fun findByOwnerUserId(ownerUserId: UUID): Subscription? =
+        jdbc.sql(
+            """
+            SELECT owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
+                   current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
+                   coupon_id, coupon_cycles_remaining, past_due_since
+            FROM subscriptions
+            WHERE owner_user_id = :ownerUserId
+            """.trimIndent(),
+        )
+            .param("ownerUserId", ownerUserId)
+            .query { rs, _ -> mapSubscription(rs) }
             .optional()
             .orElse(null)
 
@@ -85,4 +84,20 @@ class JdbcSubscriptionRepository(
             .param("updatedAt", now)
             .update()
     }
+
+    private fun mapSubscription(rs: java.sql.ResultSet): Subscription = Subscription(
+        ownerUserId = rs.getObject("owner_user_id", UUID::class.java),
+        plan = Plan.valueOf(rs.getString("plan")),
+        cycle = SubscriptionCycle.valueOf(rs.getString("cycle")),
+        status = SubscriptionStatus.valueOf(rs.getString("status")),
+        asaasCustomerId = rs.getString("asaas_customer_id"),
+        asaasSubscriptionId = rs.getString("asaas_subscription_id"),
+        currentPeriodEnd = rs.getTimestamp("current_period_end").toInstant(),
+        canceledAt = rs.getTimestamp("canceled_at")?.toInstant(),
+        pendingPlan = rs.getString("pending_plan")?.let(Plan::valueOf),
+        pendingPlanEffectiveAt = rs.getTimestamp("pending_plan_effective_at")?.toInstant(),
+        couponId = rs.getObject("coupon_id") as UUID?,
+        couponCyclesRemaining = rs.getObject("coupon_cycles_remaining") as Int?,
+        pastDueSince = rs.getTimestamp("past_due_since")?.toInstant(),
+    )
 }

@@ -5,7 +5,6 @@ import br.com.saqz.subscriptions.adapter.output.asaas.AsaasClientSettings
 import br.com.saqz.subscriptions.adapter.output.asaas.HttpAsaasGateway
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAsaasIdempotencyStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionEventStore
-import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
@@ -46,10 +45,6 @@ class AsaasWebhookConfiguration {
         settings: AsaasClientSettings,
         store: AsaasIdempotencyStore,
     ): AsaasGateway = HttpAsaasGateway(settings, store)
-
-    @Bean
-    fun subscriptionRepository(dataSource: DataSource): SubscriptionRepository =
-        JdbcSubscriptionRepository(dataSource)
 
     @Bean
     fun subscriptionEventStore(dataSource: DataSource): SubscriptionEventStore =

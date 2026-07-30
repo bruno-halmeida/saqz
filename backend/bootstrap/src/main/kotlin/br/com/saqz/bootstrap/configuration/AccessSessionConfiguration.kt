@@ -47,6 +47,7 @@ import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
 import br.com.saqz.groups.application.invite.manage.RotateInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
+import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPlanLookup
 import br.com.saqz.subscriptions.application.SubscriptionLimitsAdapter
@@ -207,6 +208,10 @@ class AccessSessionConfiguration {
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)
+
+    @Bean
+    fun ownedGroupCounter(repository: JdbcGroupCreationRepository): OwnedGroupCounter =
+        OwnedGroupCounter(repository::countOwnedGroups)
 
     @Bean
     fun accessTransactionRunner(dataSource: DataSource) = JdbcTransactionRunner(dataSource)
