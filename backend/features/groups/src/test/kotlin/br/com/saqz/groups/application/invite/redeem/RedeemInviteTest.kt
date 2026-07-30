@@ -4,6 +4,8 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Duration
@@ -18,6 +20,7 @@ import kotlin.test.assertTrue
 class RedeemInviteTest {
     private val now = Instant.parse("2026-07-16T18:00:00Z")
     private val actor = UUID.randomUUID()
+    private val ownerId = UUID.randomUUID()
     private val groupId = UUID.randomUUID()
     private val code = InviteCode.from(
         Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { 5 }),
@@ -65,7 +68,10 @@ class RedeemInviteTest {
 
     @Test
     fun `existing athlete retry is idempotent`() {
-        val fixture = fixture().also { it.repository.roles[actor] = GroupRole.ATHLETE }
+        val fixture = fixture().also {
+            it.repository.roles[actor] = GroupRole.ATHLETE
+            it.repository.openMembers += actor
+        }
 
         val first = fixture.useCase.execute(actor, code.value)
         val second = fixture.useCase.execute(actor, code.value)
@@ -87,6 +93,83 @@ class RedeemInviteTest {
         assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), second)
         assertEquals(setOf(actor, secondActor), fixture.repository.roles.keys)
         assertEquals(2, fixture.repository.lookups.size)
+    }
+
+    @Test
+    fun `athlete entry within titular cap of 25 succeeds`() {
+        val fixture = fixture(athleteLimit = 25).also {
+            it.repository.openMembers += (1..24).map { UUID.randomUUID() }
+        }
+
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.ATHLETE),
+            fixture.useCase.execute(actor, code.value),
+        )
+    }
+
+    @Test
+    fun `athlete entry above titular cap of 25 is refused`() {
+        val fixture = fixture(athleteLimit = 25).also {
+            it.repository.openMembers += (1..25).map { UUID.randomUUID() }
+        }
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `waitlist occupants count toward the athlete cap and block entry`() {
+        val fixture = fixture(athleteLimit = 25).also {
+            it.repository.openMembers += (1..20).map { UUID.randomUUID() }
+            it.repository.openWaitlist += (1..5).map { UUID.randomUUID() }
+        }
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `recently closed athletes still block entry under the cap`() {
+        val fixture = fixture(athleteLimit = 25).also {
+            it.repository.closed += (1..25).map {
+                ClosedAthleteOccupancy(UUID.randomUUID(), now.minusSeconds(3_600))
+            }
+        }
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+    }
+
+    @Test
+    fun `recently closed athlete cannot reenter when owner has no subscription`() {
+        val fixture = fixture(athleteLimit = 0).also {
+            it.repository.closed += ClosedAthleteOccupancy(actor, now.minusSeconds(3_600))
+        }
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `pending downgrade uses the lower athlete limit from the port`() {
+        val fixture = fixture(athleteLimit = 25).also {
+            it.repository.openMembers += (1..25).map { UUID.randomUUID() }
+        }
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+    }
+
+    @Test
+    fun `owner redeeming own invite bypasses athlete cap`() {
+        val fixture = fixture(athleteLimit = 0).also {
+            it.repository.openMembers += (1..25).map { UUID.randomUUID() }
+            it.repository.roles[ownerId] = GroupRole.OWNER
+        }
+
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.OWNER),
+            fixture.useCase.execute(ownerId, code.value),
+        )
+        assertEquals(listOf(RedeemMembershipCommand(groupId, ownerId)), fixture.repository.redemptions)
     }
 
     @Test
@@ -179,7 +262,10 @@ class RedeemInviteTest {
     }
 
     private fun assertPreservedRole(role: GroupRole) {
-        val fixture = fixture().also { it.repository.roles[actor] = role }
+        val fixture = fixture().also {
+            it.repository.roles[actor] = role
+            it.repository.openMembers += actor
+        }
 
         val result = fixture.useCase.execute(actor, code.value)
 
@@ -190,11 +276,17 @@ class RedeemInviteTest {
     private fun fixture(
         target: RedeemableInvite? = RedeemableInvite(groupId),
         clockNow: Instant = now,
+        athleteLimit: Int? = null,
     ): Fixture {
-        val repository = RecordingRedemptionRepository(target)
+        val repository = RecordingRedemptionRepository(target, ownerId)
         val transaction = RecordingTransactionRunner()
         return Fixture(
-            RedeemInvite(transaction, repository, Clock.fixed(clockNow, ZoneOffset.UTC)),
+            RedeemInvite(
+                transaction,
+                repository,
+                FixedSubscriptionLimits(athleteLimit = athleteLimit),
+                Clock.fixed(clockNow, ZoneOffset.UTC),
+            ),
             repository,
             transaction,
         )
@@ -206,6 +298,14 @@ class RedeemInviteTest {
         val transaction: RecordingTransactionRunner,
     )
 
+    private class FixedSubscriptionLimits(
+        private val groupLimit: Int? = null,
+        private val athleteLimit: Int? = null,
+    ) : SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = groupLimit
+        override fun athleteLimitFor(ownerId: UUID): Int? = athleteLimit
+    }
+
     private class RecordingTransactionRunner : TransactionRunner {
         var calls = 0
         override fun <T> inTransaction(block: () -> T): T {
@@ -216,12 +316,16 @@ class RedeemInviteTest {
 
     private class RecordingRedemptionRepository(
         private val target: RedeemableInvite?,
+        private val ownerUserId: UUID,
     ) : InviteRedemptionRepository {
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
         val lookups = mutableListOf<InviteTokenDigest>()
         val invalidAttempts = mutableListOf<RecordInvalidInviteAttempt>()
         val redemptions = mutableListOf<RedeemMembershipCommand>()
         val roles = mutableMapOf<UUID, GroupRole>()
+        val openMembers = mutableSetOf<UUID>()
+        val openWaitlist = mutableSetOf<UUID>()
+        val closed = mutableListOf<ClosedAthleteOccupancy>()
 
         override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow =
             windows[userId] ?: InviteAttemptWindow(initializedAt, 0)
@@ -234,6 +338,16 @@ class RedeemInviteTest {
         override fun recordInvalidAttempt(command: RecordInvalidInviteAttempt) {
             invalidAttempts += command
             windows[command.userId] = InviteAttemptWindow(command.windowStartedAt, command.invalidCount)
+        }
+
+        override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
+            if (target == null || target.groupId != groupId) return null
+            return GroupAthleteOccupancy(
+                ownerUserId = ownerUserId,
+                openMemberIds = openMembers.toSet(),
+                openWaitlistIds = openWaitlist.toSet(),
+                closedOccupancies = closed.toList(),
+            )
         }
 
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {

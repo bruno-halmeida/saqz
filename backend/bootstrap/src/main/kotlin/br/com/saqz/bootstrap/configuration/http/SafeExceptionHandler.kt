@@ -12,6 +12,8 @@ import br.com.saqz.access.adapter.input.http.PasswordResetRateLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetTokenInvalidException
 import br.com.saqz.access.adapter.input.http.WeakPasswordException
 import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
+import br.com.saqz.groups.adapter.input.http.AthleteLimitExceededException
+import br.com.saqz.groups.adapter.input.http.GroupLimitExceededException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
@@ -210,6 +212,16 @@ class SafeExceptionHandler(
             ErrorCode.INVITE_ATTEMPT_LIMIT,
             retryAfterSeconds = failure.retryAfterSeconds,
         )
+    }
+
+    @ExceptionHandler(GroupLimitExceededException::class)
+    fun groupLimitExceeded(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.GROUP_LIMIT_EXCEEDED)
+    }
+
+    @ExceptionHandler(AthleteLimitExceededException::class)
+    fun athleteLimitExceeded(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.ATHLETE_LIMIT_EXCEEDED)
     }
 
     @ExceptionHandler(AttendanceLinkInvalidOrExpiredException::class)

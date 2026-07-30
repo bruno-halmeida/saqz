@@ -94,6 +94,16 @@ class JdbcAthleteRepository(
         .single()
 
     override fun remove(groupId: UUID, userId: UUID) {
+        jdbc.sql(
+            """
+            INSERT INTO group_membership_removals (group_id, user_id, removed_at)
+            VALUES (:groupId, :userId, now())
+            ON CONFLICT (group_id, user_id) DO UPDATE SET removed_at = now()
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("userId", userId)
+            .update()
         jdbc.sql("DELETE FROM group_memberships WHERE group_id = :groupId AND user_id = :userId")
             .param("groupId", groupId)
             .param("userId", userId)

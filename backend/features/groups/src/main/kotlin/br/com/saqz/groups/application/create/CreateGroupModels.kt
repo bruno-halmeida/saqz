@@ -46,4 +46,6 @@ sealed interface CreateGroupResult {
     data class Success(val group: CreatedGroup) : CreateGroupResult
 
     data class Invalid(val errors: List<GroupValidationError>) : CreateGroupResult
+
+    data object GroupLimitExceeded : CreateGroupResult
 }

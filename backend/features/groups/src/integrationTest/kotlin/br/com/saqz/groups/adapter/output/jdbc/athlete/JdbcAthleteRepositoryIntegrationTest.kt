@@ -40,7 +40,10 @@ class JdbcAthleteRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE group_charges, game_attendance, attendance_events, games, group_memberships, access_groups, access_users CASCADE")
+        execute(
+            "TRUNCATE group_charges, game_attendance, attendance_events, games, " +
+                "group_membership_removals, group_memberships, access_groups, access_users CASCADE",
+        )
     }
 
     @Test
@@ -146,6 +149,7 @@ class JdbcAthleteRepositoryIntegrationTest {
         repository.remove(group, member)
 
         assertEquals(0, number("SELECT count(*) FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(1, number("SELECT count(*) FROM group_membership_removals WHERE group_id = '$group' AND user_id = '$member'"))
     }
 
     @Test

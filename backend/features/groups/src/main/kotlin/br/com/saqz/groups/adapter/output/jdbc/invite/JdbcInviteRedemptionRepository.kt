@@ -1,12 +1,14 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
 import br.com.saqz.groups.application.invite.redeem.InviteRedemptionRepository
 import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.invite.redeem.RedeemableInvite
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
 import java.time.Instant
@@ -64,6 +66,72 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .param("invalidCount", command.invalidCount)
             .update()
         check(changed == 1) { "Invite attempt window was not locked" }
+    }
+
+    override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
+        val ownerUserId = jdbc.sql(
+            "SELECT owner_user_id FROM access_groups WHERE id = :groupId FOR UPDATE",
+        )
+            .param("groupId", groupId)
+            .query(UUID::class.java)
+            .optional()
+            .orElse(null)
+            ?: return null
+
+        val openMemberIds = jdbc.sql(
+            """
+            SELECT user_id
+            FROM group_memberships
+            WHERE group_id = :groupId
+              AND user_id <> :ownerUserId
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("ownerUserId", ownerUserId)
+            .query { result, _ -> result.getObject("user_id", UUID::class.java) }
+            .list()
+            .toSet()
+
+        val openWaitlistIds = jdbc.sql(
+            """
+            SELECT DISTINCT member_user_id
+            FROM game_attendance
+            WHERE group_id = :groupId
+              AND status = 'WAITLISTED'
+              AND member_user_id <> :ownerUserId
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("ownerUserId", ownerUserId)
+            .query { result, _ -> result.getObject("member_user_id", UUID::class.java) }
+            .list()
+            .toSet()
+
+        val closedOccupancies = jdbc.sql(
+            """
+            SELECT user_id, removed_at
+            FROM group_membership_removals
+            WHERE group_id = :groupId
+              AND user_id <> :ownerUserId
+              AND removed_at > now() - interval '30 days'
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("ownerUserId", ownerUserId)
+            .query { result, _ ->
+                ClosedAthleteOccupancy(
+                    athleteId = result.getObject("user_id", UUID::class.java),
+                    closedAt = result.getTimestamp("removed_at").toInstant(),
+                )
+            }
+            .list()
+
+        return GroupAthleteOccupancy(
+            ownerUserId = ownerUserId,
+            openMemberIds = openMemberIds,
+            openWaitlistIds = openWaitlistIds,
+            closedOccupancies = closedOccupancies,
+        )
     }
 
     override fun redeemMembership(command: RedeemMembershipCommand): GroupRole = jdbc.sql(

@@ -1,7 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.testing.startAndAwaitJdbc
-import br.com.saqz.groups.testing.accessMigrationLocation
+import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
@@ -11,6 +11,7 @@ import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -34,6 +35,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcInviteRedemptionRepositoryIntegrationTest {
@@ -50,7 +52,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).load().migrate()
         repository = JdbcInviteRedemptionRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
@@ -60,7 +62,10 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE group_invites, group_memberships, access_groups, invite_redemption_limits, access_users CASCADE")
+        execute(
+            "TRUNCATE game_attendance, games, group_invites, group_membership_removals, group_memberships, " +
+                "access_groups, invite_redemption_limits, access_users CASCADE",
+        )
     }
 
     @Test
@@ -235,13 +240,34 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         assertEquals(0, membershipCount(fixture.group, user))
     }
 
+    @Test
+    fun `removed member still waitlisted on a group game occupies an athlete slot`() {
+        val fixture = inviteFixture("waitlist-occupancy")
+        val removed = insertUser("waitlist-removed")
+        insertMembership(fixture.group, removed, "ATHLETE")
+        val game = insertGame(fixture.group)
+        insertWaitlistedAttendance(game, fixture.group, removed, sequence = 1)
+        execute("DELETE FROM group_memberships WHERE group_id = '${fixture.group}' AND user_id = '$removed'")
+
+        val occupancy = transaction.inTransaction { repository.loadAthleteOccupancy(fixture.group) }
+
+        assertEquals(setOf(removed), occupancy!!.openWaitlistIds)
+        assertTrue(removed !in occupancy.openMemberIds)
+    }
+
     private data class InviteFixture(val owner: UUID, val group: UUID)
 
     private fun useCase() = RedeemInvite(
         transaction,
         repository,
+        UnlimitedSubscriptionLimits,
         Clock.fixed(now, ZoneOffset.UTC),
     )
+
+    private object UnlimitedSubscriptionLimits : SubscriptionLimits {
+        override fun groupLimitFor(ownerId: UUID): Int? = null
+        override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
 
     private fun inviteFixture(prefix: String): InviteFixture {
         val owner = insertUser("$prefix-owner")
@@ -291,6 +317,24 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     private fun insertMembership(group: UUID, user: UUID, role: String) = execute(
         "INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at) " +
             "VALUES ('$group', '$user', '$role', now(), now())",
+    )
+
+    private fun insertGame(group: UUID): UUID {
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
+                "confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at) VALUES " +
+                "('$id', '$group', 'Treino', DATE '2026-08-12', TIME '19:30', 'America/Sao_Paulo', " +
+                "TIMESTAMPTZ '2026-08-12 22:30Z', 90, TIMESTAMPTZ '2026-08-11 22:30Z', 'Arena', 'Rua Central 100', " +
+                "12, 'PUBLISHED', now(), now())",
+        )
+        return id
+    }
+
+    private fun insertWaitlistedAttendance(game: UUID, group: UUID, member: UUID, sequence: Int) = execute(
+        "INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, " +
+            "responded_at, updated_at, version, member_display_name) VALUES " +
+            "('$game', '$group', '$member', 'WAITLISTED', $sequence, now(), now(), 1, 'Waitlisted Person')",
     )
 
     private fun insertInvite(group: UUID, creator: UUID, digest: InviteTokenDigest) {

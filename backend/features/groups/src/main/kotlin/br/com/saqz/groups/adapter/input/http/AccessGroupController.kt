@@ -61,6 +61,8 @@ class InvalidGroupRequestException(
     val fieldErrors: Map<String, List<String>>,
 ) : RuntimeException()
 
+class GroupLimitExceededException : RuntimeException()
+
 @RestController
 class AccessGroupController(
     private val actorResolver: VerifiedGroupActorResolver,
@@ -86,6 +88,7 @@ class AccessGroupController(
             is CreateGroupResult.Invalid -> throw InvalidGroupRequestException(
                 result.errors.groupBy({ it.field }, { it.message }),
             )
+            CreateGroupResult.GroupLimitExceeded -> throw GroupLimitExceededException()
         }
     }
 

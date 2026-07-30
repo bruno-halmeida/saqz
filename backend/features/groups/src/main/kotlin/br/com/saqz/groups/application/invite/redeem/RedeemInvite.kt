@@ -3,6 +3,8 @@ package br.com.saqz.groups.application.invite.redeem
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.domain.plan.PlanLimitPolicy
+import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -11,6 +13,7 @@ import java.util.UUID
 class RedeemInvite(
     private val transactionRunner: TransactionRunner,
     private val repository: InviteRedemptionRepository,
+    private val subscriptionLimits: SubscriptionLimits,
     private val clock: Clock,
 ) {
     fun execute(actor: UUID, rawCode: String): RedeemInviteResult = transactionRunner.inTransaction {
@@ -34,6 +37,22 @@ class RedeemInvite(
                 ),
             )
             return@inTransaction RedeemInviteResult.InvalidOrExpired
+        }
+
+        val occupancy = repository.loadAthleteOccupancy(invite.groupId)
+            ?: return@inTransaction RedeemInviteResult.InvalidOrExpired
+        if (actor != occupancy.ownerUserId) {
+            val currentlyOpen = occupancy.openMemberIds + occupancy.openWaitlistIds
+            val occupying = PlanLimitPolicy.occupyingAthletes(
+                openMemberIds = occupancy.openMemberIds,
+                openWaitlistIds = occupancy.openWaitlistIds,
+                closedOccupancies = occupancy.closedOccupancies,
+                now = now,
+            )
+            val athleteLimit = subscriptionLimits.athleteLimitFor(occupancy.ownerUserId)
+            if (!PlanLimitPolicy.canEnterAsAthlete(currentlyOpen, occupying, actor, athleteLimit)) {
+                return@inTransaction RedeemInviteResult.AthleteLimitExceeded
+            }
         }
 
         val role = repository.redeemMembership(RedeemMembershipCommand(invite.groupId, actor))
