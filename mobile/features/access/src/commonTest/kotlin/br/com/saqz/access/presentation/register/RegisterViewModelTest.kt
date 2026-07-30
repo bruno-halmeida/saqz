@@ -319,7 +319,6 @@ class RegisterViewModelTest {
         val sessionIntents = mutableListOf<SessionIntent>()
         val (viewModel, auth) = fixture(onSessionIntent = sessionIntents::add)
         viewModel.submitValidForm()
-        val staged = sessionIntents.toList()
 
         // O que o back do sistema provoca: a tela sai e a ViewModel morre com o envio em voo.
         viewModel.discardPendingSubmission()
@@ -327,7 +326,25 @@ class RegisterViewModelTest {
 
         assertTrue(viewModel.state.value.isLoading, "ViewModel morta não escreve estado")
         // Este caminho de transição cala; o do orquestrador, não — e é ele que vale.
-        assertEquals(staged, sessionIntents.toList())
+        // O discard limpa o depósito da 1b para não sobrar no SignedOut (Codex/VUL-101).
+        assertEquals(
+            listOf(
+                SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "+5511999990000"),
+                SessionIntent.ClearRegistrationIdentity,
+            ),
+            sessionIntents.toList(),
+        )
+    }
+
+    @Test
+    fun `discarding the submission clears the staged registration identity`() = runTest(mainDispatcher) {
+        val sessionIntents = mutableListOf<SessionIntent>()
+        val (viewModel, _) = fixture(onSessionIntent = sessionIntents::add)
+        viewModel.submitValidForm()
+
+        viewModel.discardPendingSubmission()
+
+        assertEquals(SessionIntent.ClearRegistrationIdentity, sessionIntents.last())
     }
 
     // A outra forma de o contexto mudar: um envio novo toma o lugar do anterior, e a

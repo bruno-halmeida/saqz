@@ -284,9 +284,16 @@ class SessionAccessStateMachine(
         }
     }
 
-    /** Só a pendência de **preenchimento** da 1b — a do envio pós-bootstrap não é desta tela. */
+    /**
+     * Só a pendência de **preenchimento** da 1b — a do envio pós-bootstrap não é desta tela.
+     *
+     * Só em [SessionAccessState.SignedOut]: se a conta já autenticou (bootstrap/1c), o
+     * depósito passou a ser da sessão. Limpar aí — p.ex. no `onCleared` da 1b depois do
+     * observe — droparia o telefone no meio do caminho.
+     */
     private fun clearRegistrationIdentity() {
         begin { context ->
+            if (context.state !is SessionAccessState.SignedOut) return@begin null
             val pending = context.pendingIdentity ?: return@begin null
             if (pending.submitWhenReady) return@begin null
             context.copy(pendingIdentity = null)

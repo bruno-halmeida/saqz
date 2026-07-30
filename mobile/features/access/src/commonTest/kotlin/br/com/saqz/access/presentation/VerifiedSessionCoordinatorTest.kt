@@ -356,6 +356,29 @@ class SessionAccessStateMachineTest {
         assertEquals("", state.phone)
     }
 
+    // O onCleared da 1b depois do observe não pode apagar o depósito já em bootstrap —
+    // Clear só vale enquanto ainda é SignedOut.
+    @Test
+    fun `clearing registration identity after accept does not drop the phone in flight`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.bootstrapGate = gate
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertIs<SessionAccessState.Bootstrapping>(fixture.machine.state.value)
+
+        fixture.machine.onIntent(SessionIntent.ClearRegistrationIdentity)
+        gate.complete(Unit)
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals("+5511999990000", state.phone)
+    }
+
     // observe global + callback da 1b: dois Accept da mesma conta. O segundo não pode
     // `switched()` de novo — mataria o bootstrap em voo e o telefone depositado.
     @Test
