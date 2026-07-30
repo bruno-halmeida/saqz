@@ -57,6 +57,11 @@ class JdbcAsaasIdempotencyStore(
             .update()
     }
 
+    // ponytail: predicates only on (key, resource_id IS NULL), not on the exact row
+    // instance inspected before deciding to release — under a worker crash plus a
+    // second worker concurrently recovering the same abandoned reservation, an ABA
+    // race is theoretically possible (see VUL-114 for the compare-and-delete fix,
+    // gated on real Asaas production traffic, not blocking today).
     override fun release(key: String) {
         jdbc.sql(
             """

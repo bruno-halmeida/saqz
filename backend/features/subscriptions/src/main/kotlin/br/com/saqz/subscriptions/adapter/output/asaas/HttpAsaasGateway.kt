@@ -180,6 +180,9 @@ class HttpAsaasGateway(
             idempotencyStore.complete(storeKey, existing)
             return existing
         }
+        // ponytail: a single immediate reconciliation GET can still race Asaas's own
+        // write-commit — an empty result isn't a guaranteed "not created", just "not
+        // yet visible". See VUL-114, gated on real Asaas production traffic.
         idempotencyStore.release(storeKey)
         throw ex
     }
