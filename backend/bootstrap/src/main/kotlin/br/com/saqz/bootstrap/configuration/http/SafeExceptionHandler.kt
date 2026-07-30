@@ -34,7 +34,13 @@ import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
+import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
+import br.com.saqz.subscriptions.adapter.input.http.CouponExpiredException
+import br.com.saqz.subscriptions.adapter.input.http.CouponNotFoundException
+import br.com.saqz.subscriptions.adapter.input.http.DowngradeBlockedException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidCouponRequestException
+import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestException
+import br.com.saqz.subscriptions.adapter.input.http.SubscriptionConflictException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
@@ -292,11 +298,6 @@ class SafeExceptionHandler(
         )
     }
 
-    @ExceptionHandler(SubscriptionNotFoundException::class)
-    fun subscriptionNotFound(request: HttpServletRequest, response: HttpServletResponse) {
-        problemWriter.write(request, response, 404, ErrorCode.ACCOUNT_NOT_FOUND)
-    }
-
     @ExceptionHandler(AsaasWebhookUnauthorizedException::class)
     fun asaasWebhookUnauthorized(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
@@ -306,6 +307,51 @@ class SafeExceptionHandler(
     @ExceptionHandler(AsaasWebhookSubscriptionNotReadyException::class)
     fun asaasWebhookSubscriptionNotReady(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 503)
+    }
+
+    @ExceptionHandler(InvalidSubscriptionRequestException::class)
+    fun invalidSubscriptionRequest(
+        failure: InvalidSubscriptionRequestException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = failure.fieldErrors,
+        )
+    }
+
+    @ExceptionHandler(SubscriptionNotFoundException::class)
+    fun subscriptionNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.SUBSCRIPTION_NOT_FOUND)
+    }
+
+    @ExceptionHandler(SubscriptionConflictException::class)
+    fun subscriptionConflict(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.SUBSCRIPTION_CONFLICT)
+    }
+
+    @ExceptionHandler(CouponNotFoundException::class)
+    fun couponNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.COUPON_NOT_FOUND)
+    }
+
+    @ExceptionHandler(CouponExpiredException::class)
+    fun couponExpired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.COUPON_EXPIRED)
+    }
+
+    @ExceptionHandler(CouponAlreadyRedeemedException::class)
+    fun couponAlreadyRedeemed(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.COUPON_ALREADY_REDEEMED)
+    }
+
+    @ExceptionHandler(DowngradeBlockedException::class)
+    fun downgradeBlocked(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.DOWNGRADE_BLOCKED)
     }
 
     /**

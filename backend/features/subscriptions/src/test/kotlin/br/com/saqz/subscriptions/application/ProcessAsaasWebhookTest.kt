@@ -84,7 +84,21 @@ class ProcessAsaasWebhookTest {
         assertEquals(SubscriptionStatus.ACTIVE, sub.status)
         assertEquals(Instant.parse("2026-08-30T00:00:00Z"), sub.currentPeriodEnd)
         assertNull(sub.pastDueSince)
+        assertEquals(fixedNow, sub.firstConfirmedAt)
         assertEquals(fixedNow, events.rows.getValue("evt_pay_1").processedAt)
+    }
+
+    @Test
+    fun `PAYMENT_CONFIRMED preserves existing firstConfirmedAt`() {
+        val original = Instant.parse("2026-01-01T00:00:00Z")
+        subscriptions.save(baseSubscription().copy(firstConfirmedAt = original))
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_pay_keep", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+
+        assertEquals(original, subscriptions.get("sub_123").firstConfirmedAt)
     }
 
     @Test
@@ -449,6 +463,8 @@ class ProcessAsaasWebhookTest {
         override fun markProcessed(asaasEventId: String, processedAt: Instant) {
             rows.getValue(asaasEventId).processedAt = processedAt
         }
+
+        override fun listProcessedByType(type: String) = emptyList<br.com.saqz.subscriptions.domain.SubscriptionEvent>()
     }
 
     private class InMemorySubscriptionRepository : SubscriptionRepository {
@@ -459,6 +475,8 @@ class ProcessAsaasWebhookTest {
             byAsaasId[asaasSubscriptionId]
 
         override fun findByOwnerUserId(ownerUserId: UUID): Subscription? = byOwnerId[ownerUserId]
+
+        override fun insert(subscription: Subscription) = save(subscription)
 
         override fun save(subscription: Subscription) {
             byAsaasId[subscription.asaasSubscriptionId] = subscription
@@ -497,5 +515,9 @@ class ProcessAsaasWebhookTest {
         ): String = error("unused")
 
         override fun regeneratePixPayload(asaasChargeId: String): String = error("unused")
+
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? = null
+
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? = null
     }
 }

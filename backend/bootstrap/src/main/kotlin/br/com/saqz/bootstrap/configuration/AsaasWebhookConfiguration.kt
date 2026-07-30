@@ -1,13 +1,26 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
+import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookController
+import br.com.saqz.subscriptions.adapter.input.http.ReceiptController
+import br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver
+import br.com.saqz.subscriptions.adapter.input.http.SubscriptionCommandController
 import br.com.saqz.subscriptions.adapter.output.asaas.AsaasClientSettings
 import br.com.saqz.subscriptions.adapter.output.asaas.HttpAsaasGateway
+import br.com.saqz.groups.adapter.output.jdbc.plan.JdbcOwnerPlanUsageLookup
+import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAsaasIdempotencyStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionEventStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
+import br.com.saqz.subscriptions.application.CancelSubscription
+import br.com.saqz.subscriptions.application.ChangePlan
+import br.com.saqz.subscriptions.application.CouponRepository
+import br.com.saqz.subscriptions.application.CreateSubscription
+import br.com.saqz.subscriptions.application.ListReceipts
 import br.com.saqz.subscriptions.application.ProcessAsaasWebhook
 import br.com.saqz.subscriptions.application.SubscriptionEventStore
 import br.com.saqz.subscriptions.application.SubscriptionRepository
@@ -22,9 +35,10 @@ import java.time.Clock
 import javax.sql.DataSource
 
 /**
- * Webhook Asaas + cliente HTTP. Só sobe quando o token do webhook está configurado
- * e não-vazio (`saqz.asaas.webhook-token` / `SAQZ_ASAAS_WEBHOOK_TOKEN`), para não
- * exigir chave Asaas nos testes que não exercitam billing.
+ * Webhook Asaas + cliente HTTP + write endpoints de assinatura. Só sobe quando o
+ * token do webhook está configurado e não-vazio (`saqz.asaas.webhook-token` /
+ * `SAQZ_ASAAS_WEBHOOK_TOKEN`), para não exigir chave Asaas nos testes que não
+ * exercitam billing.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("spring.datasource.url")
@@ -55,6 +69,10 @@ class AsaasWebhookConfiguration {
         JdbcSubscriptionsTransactionRunner(dataSource)
 
     @Bean
+    fun ownerPlanUsageLookup(dataSource: DataSource, clock: Clock): OwnerPlanUsageLookup =
+        JdbcOwnerPlanUsageLookup(dataSource, clock)
+
+    @Bean
     fun processAsaasWebhook(
         @Value("\${saqz.asaas.webhook-token}") webhookToken: String,
         events: SubscriptionEventStore,
@@ -67,4 +85,55 @@ class AsaasWebhookConfiguration {
     @Bean
     fun asaasWebhookController(processAsaasWebhook: ProcessAsaasWebhook) =
         AsaasWebhookController(processAsaasWebhook)
+
+    @Bean
+    fun subscriptionActorResolver(bootstrapSession: BootstrapSession) = SubscriptionActorResolver { identity ->
+        when (val result = bootstrapSession.execute(identity)) {
+            BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            is BootstrapSessionResult.Success -> result.session.user.id
+        }
+    }
+
+    @Bean
+    fun createSubscription(
+        subscriptions: SubscriptionRepository,
+        coupons: CouponRepository,
+        asaasGateway: AsaasGateway,
+        transaction: SubscriptionsTransactionRunner,
+        clock: Clock,
+    ) = CreateSubscription(subscriptions, coupons, asaasGateway, transaction, clock)
+
+    @Bean
+    fun changePlan(
+        subscriptions: SubscriptionRepository,
+        asaasGateway: AsaasGateway,
+        usageLookup: OwnerPlanUsageLookup,
+        clock: Clock,
+    ) = ChangePlan(subscriptions, asaasGateway, usageLookup, clock)
+
+    @Bean
+    fun cancelSubscription(
+        subscriptions: SubscriptionRepository,
+        clock: Clock,
+    ) = CancelSubscription(subscriptions, clock)
+
+    @Bean
+    fun listReceipts(
+        subscriptions: SubscriptionRepository,
+        events: SubscriptionEventStore,
+    ) = ListReceipts(subscriptions, events)
+
+    @Bean
+    fun subscriptionCommandController(
+        actors: SubscriptionActorResolver,
+        createSubscription: CreateSubscription,
+        changePlan: ChangePlan,
+        cancelSubscription: CancelSubscription,
+    ) = SubscriptionCommandController(actors, createSubscription, changePlan, cancelSubscription)
+
+    @Bean
+    fun receiptController(
+        actors: SubscriptionActorResolver,
+        listReceipts: ListReceipts,
+    ) = ReceiptController(actors, listReceipts)
 }

@@ -8,5 +8,7 @@ interface SubscriptionRepository {
 
     fun findByOwnerUserId(ownerUserId: UUID): Subscription?
 
+    fun insert(subscription: Subscription)
+
     fun save(subscription: Subscription)
 }

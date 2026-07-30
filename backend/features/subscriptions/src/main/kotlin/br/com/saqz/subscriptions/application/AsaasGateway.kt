@@ -22,4 +22,10 @@ interface AsaasGateway {
         idempotencyKey: String,
     ): String
     fun regeneratePixPayload(asaasChargeId: String): String
+
+    /** Newest payment id for a subscription, if Asaas already generated one. */
+    fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String?
+
+    /** Hosted invoice / checkout URL for a payment (credit card path). */
+    fun findPaymentInvoiceUrl(asaasPaymentId: String): String?
 }

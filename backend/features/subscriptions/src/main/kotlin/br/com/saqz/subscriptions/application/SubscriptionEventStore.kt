@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.subscriptions.domain.SubscriptionEvent
 import java.time.Instant
 import java.util.UUID
 
@@ -17,4 +18,7 @@ interface SubscriptionEventStore {
     ): Boolean
 
     fun markProcessed(asaasEventId: String, processedAt: Instant)
+
+    /** Processed webhook rows of the given type, newest first. */
+    fun listProcessedByType(type: String): List<SubscriptionEvent>
 }

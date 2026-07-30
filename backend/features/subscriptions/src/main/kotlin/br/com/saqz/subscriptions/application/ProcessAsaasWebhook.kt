@@ -117,6 +117,7 @@ class ProcessAsaasWebhook(
             status = SubscriptionStatus.ACTIVE,
             currentPeriodEnd = advancePeriodEnd(current.currentPeriodEnd, current.cycle),
             pastDueSince = null,
+            firstConfirmedAt = current.firstConfirmedAt ?: now,
         )
 
         val pending = next.pendingPlan

@@ -110,6 +110,20 @@ class HttpAsaasGateway(
         return payload
     }
 
+    override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {
+        val encoded = URLEncoder.encode(asaasSubscriptionId, StandardCharsets.UTF_8)
+        val response = get("/payments?subscription=$encoded&limit=1&offset=0")
+        val data = response.path("data")
+        if (!data.isArray || data.size() == 0) return null
+        return data[0].path("id").asText(null)?.takeIf { it.isNotBlank() }
+    }
+
+    override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
+        val response = get("/payments/$asaasPaymentId")
+        return response.path("invoiceUrl").asText(null)?.takeIf { it.isNotBlank() }
+            ?: response.path("bankSlipUrl").asText(null)?.takeIf { it.isNotBlank() }
+    }
+
     private fun withIdempotency(
         storeKey: String,
         collectionPath: String,
