@@ -77,6 +77,8 @@ import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.SessionInvalidator as NetworkSessionInvalidator
+import br.com.saqz.subscriptions.data.subscription.KtorSubscriptionGateway
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -149,6 +151,7 @@ class SaqzKoinModulesTest {
                 platformDraftsModule,
                 accessDataModule,
                 accessInvalidationModule,
+                subscriptionsDataModule,
             )
         }
         val koin = app.koin
@@ -159,6 +162,7 @@ class SaqzKoinModulesTest {
         assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<NetworkSessionInvalidator>())
         assertIs<KtorSessionGateway>(koin.get<SessionGateway>())
         assertIs<KtorPasswordResetGateway>(koin.get<PasswordResetGateway>())
+        assertIs<KtorSubscriptionGateway>(koin.get<SubscriptionGateway>())
 
         app.close()
     }

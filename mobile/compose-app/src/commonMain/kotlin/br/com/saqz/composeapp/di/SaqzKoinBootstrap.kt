@@ -38,6 +38,7 @@ private val commonModules = listOf(
     accessInvalidationModule,
     accessPresentationModule,
     composePresentationModule,
+    subscriptionsDataModule,
 )
 
 internal fun startSaqzKoin() {
