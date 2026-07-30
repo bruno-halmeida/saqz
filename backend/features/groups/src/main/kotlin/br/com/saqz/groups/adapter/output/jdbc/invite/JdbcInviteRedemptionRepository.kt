@@ -92,6 +92,21 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .list()
             .toSet()
 
+        val openWaitlistIds = jdbc.sql(
+            """
+            SELECT DISTINCT member_user_id
+            FROM game_attendance
+            WHERE group_id = :groupId
+              AND status = 'WAITLISTED'
+              AND member_user_id <> :ownerUserId
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("ownerUserId", ownerUserId)
+            .query { result, _ -> result.getObject("member_user_id", UUID::class.java) }
+            .list()
+            .toSet()
+
         val closedOccupancies = jdbc.sql(
             """
             SELECT user_id, removed_at
@@ -114,7 +129,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         return GroupAthleteOccupancy(
             ownerUserId = ownerUserId,
             openMemberIds = openMemberIds,
-            openWaitlistIds = emptySet(),
+            openWaitlistIds = openWaitlistIds,
             closedOccupancies = closedOccupancies,
         )
     }
