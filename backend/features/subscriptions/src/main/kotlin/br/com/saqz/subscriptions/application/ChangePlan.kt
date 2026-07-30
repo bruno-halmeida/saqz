@@ -39,6 +39,18 @@ sealed interface ChangePlanResult {
     data object NotActive : ChangePlanResult
     data object SamePlan : ChangePlanResult
     data object DowngradeBlockedByUsage : ChangePlanResult
+
+    /** A pending upgrade charge exists; scheduling a downgrade over it could race the upgrade webhook. */
+    data object UpgradePendingBlocksChange : ChangePlanResult
+}
+
+private sealed interface ChangePlanOutcome {
+    data class Immediate(val result: ChangePlanResult) : ChangePlanOutcome
+    data class NeedsCheckout(
+        val subscription: Subscription,
+        val chargedCents: Long,
+        val chargeId: String,
+    ) : ChangePlanOutcome
 }
 
 class ChangePlan(
@@ -49,15 +61,18 @@ class ChangePlan(
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock,
 ) {
-    fun execute(command: ChangePlanCommand): ChangePlanResult =
-        transaction.inTransaction {
+    fun execute(command: ChangePlanCommand): ChangePlanResult {
+        // Checkout enrichment (Pix/invoice lookup) must stay OUT of the transaction: it calls Asaas
+        // and can throw after the one-off charge already exists there for real. Rolling back the local
+        // save on that failure would desync from Asaas and cause a retry to create a duplicate charge.
+        val outcome = transaction.inTransaction {
             val current = subscriptions.findByOwnerUserIdForUpdate(command.ownerUserId)
-                ?: return@inTransaction ChangePlanResult.NotFound
+                ?: return@inTransaction ChangePlanOutcome.Immediate(ChangePlanResult.NotFound)
             if (current.status == SubscriptionStatus.CANCELED) {
-                return@inTransaction ChangePlanResult.NotActive
+                return@inTransaction ChangePlanOutcome.Immediate(ChangePlanResult.NotActive)
             }
             if (current.plan == command.targetPlan) {
-                return@inTransaction ChangePlanResult.SamePlan
+                return@inTransaction ChangePlanOutcome.Immediate(ChangePlanResult.SamePlan)
             }
 
             val currentPrice = recurringPriceCents(current.plan, current)
@@ -65,16 +80,28 @@ class ChangePlan(
             if (targetPrice > currentPrice) {
                 upgrade(current, command, currentPrice, targetPrice)
             } else {
-                downgrade(current, command, targetPrice)
+                // A downgrade scheduled over a pending upgrade charge would be silently overwritten
+                // if that old charge is paid after the downgrade already applied at renewal.
+                if (current.pendingUpgradeChargeId != null) {
+                    return@inTransaction ChangePlanOutcome.Immediate(ChangePlanResult.UpgradePendingBlocksChange)
+                }
+                ChangePlanOutcome.Immediate(downgrade(current, command, targetPrice))
             }
         }
+
+        return when (outcome) {
+            is ChangePlanOutcome.Immediate -> outcome.result
+            is ChangePlanOutcome.NeedsCheckout ->
+                upgradeCheckout(outcome.subscription, outcome.chargedCents, outcome.chargeId)
+        }
+    }
 
     private fun upgrade(
         current: Subscription,
         command: ChangePlanCommand,
         currentPrice: Long,
         targetPrice: Long,
-    ): ChangePlanResult {
+    ): ChangePlanOutcome {
         val now = clock.instant()
         val chargedCents = prorataUpgradeCents(
             currentPriceCents = currentPrice,
@@ -94,14 +121,14 @@ class ChangePlan(
                 pendingUpgradeChargeId = null,
             )
             subscriptions.save(updated)
-            return ChangePlanResult.Upgraded(updated, chargedCents = 0L)
+            return ChangePlanOutcome.Immediate(ChangePlanResult.Upgraded(updated, chargedCents = 0L))
         }
 
         // Reuse an in-flight upgrade charge only for the SAME target plan — if the target changed,
         // that charge is still for the old plan/value, so a new one is required.
         val existingChargeId = current.pendingUpgradeChargeId
         if (existingChargeId != null && current.pendingUpgradePlan == command.targetPlan) {
-            return upgradeCheckout(current, chargedCents, existingChargeId)
+            return ChangePlanOutcome.NeedsCheckout(current, chargedCents, existingChargeId)
         }
 
         val chargeId = asaasGateway.createOneOffCharge(
@@ -115,7 +142,7 @@ class ChangePlan(
             pendingUpgradeChargeId = chargeId,
         )
         subscriptions.save(updated)
-        return upgradeCheckout(updated, chargedCents, chargeId)
+        return ChangePlanOutcome.NeedsCheckout(updated, chargedCents, chargeId)
     }
 
     private fun upgradeCheckout(
@@ -123,8 +150,11 @@ class ChangePlan(
         chargedCents: Long,
         chargeId: String,
     ): ChangePlanResult.UpgradePendingPayment {
-        val pix = runCatching { asaasGateway.regeneratePixPayload(chargeId) }.getOrNull()
-        val invoice = asaasGateway.findPaymentInvoiceUrl(chargeId)
+        val (pix, invoice) = runCatching {
+            val pix = runCatching { asaasGateway.regeneratePixPayload(chargeId) }.getOrNull()
+            val invoice = asaasGateway.findPaymentInvoiceUrl(chargeId)
+            pix to invoice
+        }.getOrDefault(null to null)
         return ChangePlanResult.UpgradePendingPayment(
             subscription = subscription,
             chargedCents = chargedCents,

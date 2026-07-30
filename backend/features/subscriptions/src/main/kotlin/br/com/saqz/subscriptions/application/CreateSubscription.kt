@@ -37,6 +37,9 @@ sealed interface CreateSubscriptionResult {
     data object CouponExpired : CreateSubscriptionResult
     data object CouponAlreadyRedeemed : CreateSubscriptionResult
     data object InvalidCustomerDetails : CreateSubscriptionResult
+
+    /** An unconfirmed subscription is pending for a DIFFERENT plan/cycle than this request. */
+    data object PendingCheckoutMismatch : CreateSubscriptionResult
 }
 
 class CreateSubscription(
@@ -71,7 +74,12 @@ class CreateSubscription(
                     newSubscriptionOutcome(command, now) { c, v ->
                         reactivate(existing, command, name, email, cpfDigits, c, v, now)
                     }
-                existing.firstConfirmedAt == null -> CommitOutcome.Committed(existing)
+                existing.firstConfirmedAt == null ->
+                    if (existing.plan == command.plan && existing.cycle == command.cycle) {
+                        CommitOutcome.Committed(existing)
+                    } else {
+                        CommitOutcome.Rejected(CreateSubscriptionResult.PendingCheckoutMismatch)
+                    }
                 else -> CommitOutcome.Committed(existing) // confirmed active/past_due — AlreadySubscribed after commit
             }
         }

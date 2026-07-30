@@ -216,6 +216,31 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `refuses to reissue checkout when the retry asks for a different plan or cycle`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ILIMITADO, cycle = SubscriptionCycle.ANNUAL))
+
+        assertEquals(CreateSubscriptionResult.PendingCheckoutMismatch, result)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+        val stored = subscriptions.findByOwnerUserId(ownerId)!!
+        assertEquals(Plan.TITULAR, stored.plan)
+        assertEquals(SubscriptionCycle.MONTHLY, stored.cycle)
+    }
+
+    @Test
     fun `rejects malformed cpf before calling asaas`() {
         assertEquals(
             CreateSubscriptionResult.InvalidCustomerDetails,
