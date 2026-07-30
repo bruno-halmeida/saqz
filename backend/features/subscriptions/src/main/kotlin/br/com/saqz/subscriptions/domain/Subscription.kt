@@ -7,7 +7,7 @@ enum class SubscriptionCycle { MONTHLY, ANNUAL }
 enum class SubscriptionStatus { ACTIVE, PAST_DUE, CANCELED }
 
 data class Subscription(
-    val ownerUserId: String,
+    val ownerUserId: UUID,
     val plan: Plan,
     val cycle: SubscriptionCycle,
     val asaasSubscriptionId: String,

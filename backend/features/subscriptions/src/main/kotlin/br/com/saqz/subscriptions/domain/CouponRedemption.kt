@@ -5,6 +5,6 @@ import java.util.UUID
 
 data class CouponRedemption(
     val couponId: UUID,
-    val userId: String,
+    val userId: UUID,
     val redeemedAt: Instant,
 )

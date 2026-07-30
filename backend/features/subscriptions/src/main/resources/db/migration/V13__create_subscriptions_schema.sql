@@ -11,7 +11,7 @@ CREATE TABLE coupons (
 );
 
 CREATE TABLE subscriptions (
-    owner_user_id varchar(128) PRIMARY KEY,
+    owner_user_id uuid PRIMARY KEY,
     plan varchar(16) NOT NULL,
     cycle varchar(8) NOT NULL,
     status varchar(16) NOT NULL DEFAULT 'ACTIVE',
@@ -25,6 +25,7 @@ CREATE TABLE subscriptions (
     past_due_since timestamptz,
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL,
+    CONSTRAINT fk_subscriptions_owner FOREIGN KEY (owner_user_id) REFERENCES access_users (id),
     CONSTRAINT fk_subscriptions_coupon FOREIGN KEY (coupon_id) REFERENCES coupons (id),
     CONSTRAINT uq_subscriptions_asaas_subscription_id UNIQUE (asaas_subscription_id),
     CONSTRAINT ck_subscriptions_plan CHECK (plan IN ('TITULAR', 'ORGANIZADOR', 'ILIMITADO')),
@@ -35,10 +36,11 @@ CREATE TABLE subscriptions (
 
 CREATE TABLE coupon_redemptions (
     coupon_id uuid NOT NULL,
-    user_id varchar(128) NOT NULL,
+    user_id uuid NOT NULL,
     redeemed_at timestamptz NOT NULL,
     PRIMARY KEY (coupon_id, user_id),
-    CONSTRAINT fk_coupon_redemptions_coupon FOREIGN KEY (coupon_id) REFERENCES coupons (id)
+    CONSTRAINT fk_coupon_redemptions_coupon FOREIGN KEY (coupon_id) REFERENCES coupons (id),
+    CONSTRAINT fk_coupon_redemptions_user FOREIGN KEY (user_id) REFERENCES access_users (id)
 );
 
 CREATE TABLE subscription_events (

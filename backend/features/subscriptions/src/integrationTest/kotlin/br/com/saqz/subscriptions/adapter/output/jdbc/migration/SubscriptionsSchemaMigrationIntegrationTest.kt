@@ -1,7 +1,7 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc.migration
 
+import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
 import br.com.saqz.subscriptions.testing.startAndAwaitJdbc
-import br.com.saqz.subscriptions.testing.subscriptionsMigrationLocation
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -39,7 +39,7 @@ class SubscriptionsSchemaMigrationIntegrationTest {
     @Test
     fun `coupon redemption is unique per coupon and user`() {
         val coupon = coupon("welcome-unique")
-        val userId = "firebase-uid-unique"
+        val userId = user("firebase-uid-unique")
         redeem(coupon, userId)
 
         assertFailsWith<Exception> { redeem(coupon, userId) }
@@ -47,7 +47,7 @@ class SubscriptionsSchemaMigrationIntegrationTest {
 
     @Test
     fun `same user can redeem different coupons`() {
-        val userId = "firebase-uid-multi"
+        val userId = user("firebase-uid-multi")
         val first = coupon("welcome-a")
         val second = coupon("welcome-b")
 
@@ -60,16 +60,18 @@ class SubscriptionsSchemaMigrationIntegrationTest {
     @Test
     fun `different users can redeem the same coupon`() {
         val coupon = coupon("welcome-shared")
+        val userA = user("firebase-uid-a")
+        val userB = user("firebase-uid-b")
 
-        redeem(coupon, "firebase-uid-a")
-        redeem(coupon, "firebase-uid-b")
+        redeem(coupon, userA)
+        redeem(coupon, userB)
 
         assertEquals(2, int("SELECT count(*) FROM coupon_redemptions WHERE coupon_id = '$coupon'"))
     }
 
     private fun flyway(): Flyway = Flyway.configure()
         .dataSource(dataSource)
-        .locations(subscriptionsMigrationLocation())
+        .locations(*allSubscriptionsFeatureMigrationLocations())
         .cleanDisabled(false)
         .load()
 
@@ -83,7 +85,16 @@ class SubscriptionsSchemaMigrationIntegrationTest {
         return id
     }
 
-    private fun redeem(couponId: UUID, userId: String) {
+    private fun user(subject: String, displayName: String = "User"): UUID {
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) " +
+                "VALUES ('$id', '$subject-${UUID.randomUUID()}', true, '$displayName', now(), now())",
+        )
+        return id
+    }
+
+    private fun redeem(couponId: UUID, userId: UUID) {
         execute(
             "INSERT INTO coupon_redemptions (coupon_id, user_id, redeemed_at) VALUES " +
                 "('$couponId', '$userId', now())",
