@@ -104,6 +104,8 @@ class ListReceiptsTest {
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = save(subscription)
         override fun save(subscription: Subscription) {
             byOwner[subscription.ownerUserId] = subscription

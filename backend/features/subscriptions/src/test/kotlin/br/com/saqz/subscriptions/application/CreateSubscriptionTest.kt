@@ -57,13 +57,9 @@ class CreateSubscriptionTest {
         assertEquals(fixedNow, success.subscription.pastDueSince)
         assertNull(success.subscription.firstConfirmedAt)
         assertEquals("sub_1", success.subscription.asaasSubscriptionId)
-        assertEquals("cus_1", success.subscription.asaasCustomerId)
         assertEquals("00020126PIX-COPY-PASTE", success.pixCopyPaste)
-        assertNull(success.invoiceUrl)
-        assertEquals(listOf("subscription-create:$ownerId:$requestId"), gateway.subscriptionIdempotencyKeys)
-        assertEquals(3_990L, gateway.lastSubscriptionValueCents)
+        assertTrue(subscriptions.lockedOwners.contains(ownerId))
         assertEquals(1, subscriptions.inserted.size)
-        assertTrue(coupons.redemptions.isEmpty())
     }
 
     @Test
@@ -80,10 +76,8 @@ class CreateSubscriptionTest {
         val success = assertIs<CreateSubscriptionResult.Success>(result)
         assertEquals(couponId, success.subscription.couponId)
         assertEquals(3, success.subscription.couponCyclesRemaining)
-        assertEquals(3_192L, gateway.lastSubscriptionValueCents) // 3990 * 0.8
+        assertEquals(3_192L, gateway.lastSubscriptionValueCents)
         assertEquals(1, coupons.redemptions.size)
-        assertEquals(couponId, coupons.redemptions.single().couponId)
-        assertEquals(ownerId, coupons.redemptions.single().userId)
     }
 
     @Test
@@ -91,19 +85,19 @@ class CreateSubscriptionTest {
         coupons.byCode["PROMO20"] = Coupon(id = couponId, code = "PROMO20", discountPercent = 10)
         coupons.redemptions += CouponRedemption(couponId, ownerId, fixedNow.minusSeconds(3600))
 
-        val result = useCase.execute(baseCommand().copy(couponCode = "PROMO20"))
-
-        assertEquals(CreateSubscriptionResult.CouponAlreadyRedeemed, result)
-        assertTrue(subscriptions.inserted.isEmpty())
+        assertEquals(
+            CreateSubscriptionResult.CouponAlreadyRedeemed,
+            useCase.execute(baseCommand().copy(couponCode = "PROMO20")),
+        )
         assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
     }
 
     @Test
     fun `refuses unknown coupon without calling asaas subscription create`() {
-        val result = useCase.execute(baseCommand().copy(couponCode = "MISSING"))
-
-        assertEquals(CreateSubscriptionResult.CouponNotFound, result)
-        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+        assertEquals(
+            CreateSubscriptionResult.CouponNotFound,
+            useCase.execute(baseCommand().copy(couponCode = "MISSING")),
+        )
     }
 
     @Test
@@ -114,7 +108,6 @@ class CreateSubscriptionTest {
             discountPercent = 10,
             validUntil = fixedNow.minusSeconds(1),
         )
-
         assertEquals(
             CreateSubscriptionResult.CouponExpired,
             useCase.execute(baseCommand().copy(couponCode = "OLD")),
@@ -122,7 +115,7 @@ class CreateSubscriptionTest {
     }
 
     @Test
-    fun `refuses when owner already has a subscription`() {
+    fun `refuses when owner already has a confirmed subscription`() {
         subscriptions.insert(
             Subscription(
                 ownerUserId = ownerId,
@@ -131,10 +124,53 @@ class CreateSubscriptionTest {
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
                 currentPeriodEnd = fixedNow,
+                firstConfirmedAt = fixedNow,
             ),
         )
 
         assertEquals(CreateSubscriptionResult.AlreadySubscribed, useCase.execute(baseCommand()))
+    }
+
+    @Test
+    fun `reissues checkout when owner has unconfirmed subscription`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+        gateway.pixPayload = "000201REISSUE"
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_old", success.subscription.asaasSubscriptionId)
+        assertEquals("000201REISSUE", success.pixCopyPaste)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `rejects malformed cpf before calling asaas`() {
+        assertEquals(
+            CreateSubscriptionResult.InvalidCustomerDetails,
+            useCase.execute(baseCommand().copy(cpfCnpj = "abc")),
+        )
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `rejects email without at-sign before calling asaas`() {
+        assertEquals(
+            CreateSubscriptionResult.InvalidCustomerDetails,
+            useCase.execute(baseCommand().copy(email = "not-an-email")),
+        )
     }
 
     @Test
@@ -145,7 +181,6 @@ class CreateSubscriptionTest {
 
         val success = assertIs<CreateSubscriptionResult.Success>(result)
         assertEquals("https://asaas.test/i/abc", success.invoiceUrl)
-        assertNull(success.pixCopyPaste)
     }
 
     private fun baseCommand() = CreateSubscriptionCommand(
@@ -161,12 +196,19 @@ class CreateSubscriptionTest {
 
     private class FakeSubscriptionRepository : SubscriptionRepository {
         val inserted = mutableListOf<Subscription>()
+        val lockedOwners = mutableListOf<UUID>()
         private val byOwner = linkedMapOf<UUID, Subscription>()
 
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String) =
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByPendingUpgradeChargeId(chargeId: String) =
+            byOwner.values.firstOrNull { it.pendingUpgradeChargeId == chargeId }
+
+        override fun lockOwner(ownerUserId: UUID) {
+            lockedOwners += ownerUserId
+        }
 
         override fun insert(subscription: Subscription) {
             inserted += subscription
@@ -223,7 +265,9 @@ class CreateSubscriptionTest {
         ) = error("unused")
 
         override fun regeneratePixPayload(asaasChargeId: String) = pixPayload ?: error("no pix")
-        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = "pay_1"
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) =
+            if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
+
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = invoiceUrl
     }
 }

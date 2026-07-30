@@ -31,6 +31,7 @@ class AsaasWebhookControllerTest {
                 asaasEventId = "evt_abc",
                 eventType = "PAYMENT_CONFIRMED",
                 asaasSubscriptionId = "sub_xyz",
+                asaasPaymentId = null,
                 rawPayload = body,
             ),
             useCase.lastCommand,

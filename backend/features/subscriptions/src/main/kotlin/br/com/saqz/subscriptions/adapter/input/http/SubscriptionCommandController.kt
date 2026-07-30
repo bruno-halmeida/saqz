@@ -59,8 +59,11 @@ data class ChangePlanResponse(
     val planId: String,
     val pendingPlanId: String?,
     val pendingPlanEffectiveAt: Instant?,
+    val pendingUpgradePlanId: String? = null,
     val status: String,
     val chargedCents: Long? = null,
+    val pixCopyPaste: String? = null,
+    val invoiceUrl: String? = null,
 )
 
 data class CancelSubscriptionResponse(
@@ -122,7 +125,11 @@ class SubscriptionCommandController(
             CreateSubscriptionResult.CouponExpired -> throw CouponExpiredException()
             CreateSubscriptionResult.CouponAlreadyRedeemed -> throw CouponAlreadyRedeemedException()
             CreateSubscriptionResult.InvalidCustomerDetails -> throw InvalidSubscriptionRequestException(
-                mapOf("name" to listOf("name, email and cpfCnpj are required")),
+                mapOf(
+                    "name" to listOf("is required"),
+                    "email" to listOf("must be a valid email"),
+                    "cpfCnpj" to listOf("must have 11 (CPF) or 14 (CNPJ) digits"),
+                ),
             )
         }
     }
@@ -139,6 +146,16 @@ class SubscriptionCommandController(
             targetPlan = parsePlan(request.targetPlanId, "targetPlanId"),
         )
         return when (val result = changePlan.execute(command)) {
+            is ChangePlanResult.UpgradePendingPayment -> ChangePlanResponse(
+                planId = result.subscription.plan.name,
+                pendingPlanId = null,
+                pendingPlanEffectiveAt = null,
+                pendingUpgradePlanId = result.subscription.pendingUpgradePlan?.name,
+                status = result.subscription.status.name,
+                chargedCents = result.chargedCents,
+                pixCopyPaste = result.pixCopyPaste,
+                invoiceUrl = result.invoiceUrl,
+            )
             is ChangePlanResult.Upgraded -> ChangePlanResponse(
                 planId = result.subscription.plan.name,
                 pendingPlanId = null,

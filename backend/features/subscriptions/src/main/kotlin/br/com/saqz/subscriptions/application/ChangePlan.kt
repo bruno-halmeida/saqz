@@ -17,10 +17,19 @@ data class ChangePlanCommand(
 )
 
 sealed interface ChangePlanResult {
-    data class Upgraded(
+    /** Charge created; plan applies only after PAYMENT_CONFIRMED on the one-off charge. */
+    data class UpgradePendingPayment(
         val subscription: Subscription,
         val chargedCents: Long,
         val oneOffChargeId: String,
+        val pixCopyPaste: String?,
+        val invoiceUrl: String?,
+    ) : ChangePlanResult
+
+    /** Zero prorata delta — plan applied immediately. */
+    data class Upgraded(
+        val subscription: Subscription,
+        val chargedCents: Long,
     ) : ChangePlanResult
 
     data class DowngradeScheduled(val subscription: Subscription) : ChangePlanResult
@@ -66,27 +75,42 @@ class ChangePlan(
             currentPeriodEnd = current.currentPeriodEnd,
             cycle = current.cycle,
         )
-        val chargeId = if (chargedCents > 0L) {
-            asaasGateway.createOneOffCharge(
-                asaasCustomerId = current.asaasCustomerId,
-                valueCents = chargedCents,
-                description = "Upgrade Saqz ${current.plan.name} → ${command.targetPlan.name}",
-                idempotencyKey = "subscription-upgrade:${command.ownerUserId}:${command.requestId}",
+
+        if (chargedCents <= 0L) {
+            val nextPrice = recurringPriceCents(command.targetPlan, current)
+            asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, nextPrice)
+            val updated = current.copy(
+                plan = command.targetPlan,
+                pendingPlan = null,
+                pendingPlanEffectiveAt = null,
+                pendingUpgradePlan = null,
+                pendingUpgradeChargeId = null,
             )
-        } else {
-            "no-charge"
+            subscriptions.save(updated)
+            return ChangePlanResult.Upgraded(updated, chargedCents = 0L)
         }
 
-        val nextPrice = recurringPriceCents(command.targetPlan, current)
-        asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, nextPrice)
-
+        val chargeId = asaasGateway.createOneOffCharge(
+            asaasCustomerId = current.asaasCustomerId,
+            valueCents = chargedCents,
+            description = "Upgrade Saqz ${current.plan.name} → ${command.targetPlan.name}",
+            idempotencyKey = "subscription-upgrade:${command.ownerUserId}:${command.requestId}",
+        )
         val updated = current.copy(
-            plan = command.targetPlan,
-            pendingPlan = null,
-            pendingPlanEffectiveAt = null,
+            pendingUpgradePlan = command.targetPlan,
+            pendingUpgradeChargeId = chargeId,
         )
         subscriptions.save(updated)
-        return ChangePlanResult.Upgraded(updated, chargedCents, chargeId)
+
+        val pix = runCatching { asaasGateway.regeneratePixPayload(chargeId) }.getOrNull()
+        val invoice = asaasGateway.findPaymentInvoiceUrl(chargeId)
+        return ChangePlanResult.UpgradePendingPayment(
+            subscription = updated,
+            chargedCents = chargedCents,
+            oneOffChargeId = chargeId,
+            pixCopyPaste = pix,
+            invoiceUrl = invoice,
+        )
     }
 
     private fun downgrade(current: Subscription, command: ChangePlanCommand): ChangePlanResult {

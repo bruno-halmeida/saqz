@@ -47,62 +47,81 @@ class CreateSubscription(
     private val clock: Clock,
 ) {
     fun execute(command: CreateSubscriptionCommand): CreateSubscriptionResult {
-        if (command.name.isBlank() || command.email.isBlank() || command.cpfCnpj.isBlank()) {
+        val name = command.name.trim()
+        val email = command.email.trim()
+        val cpfDigits = command.cpfCnpj.filter { it.isDigit() }
+        if (name.isBlank() || !isValidEmail(email) || !isValidCpfCnpj(cpfDigits)) {
             return CreateSubscriptionResult.InvalidCustomerDetails
-        }
-        subscriptions.findByOwnerUserId(command.ownerUserId)?.let {
-            return CreateSubscriptionResult.AlreadySubscribed
         }
 
         val now = clock.instant()
         val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now)
         if (couponOutcome is CouponOutcome.Failure) return couponOutcome.result
-
         val coupon = (couponOutcome as CouponOutcome.Ok).coupon
         val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
 
-        val customerId = asaasGateway.createCustomer(
-            ownerUserId = command.ownerUserId,
-            name = command.name.trim(),
-            email = command.email.trim(),
-            cpfCnpj = command.cpfCnpj.filter { it.isDigit() },
-        )
-        val asaasSubscriptionId = asaasGateway.createSubscription(
-            asaasCustomerId = customerId,
-            plan = command.plan,
-            cycle = command.cycle,
-            valueCents = valueCents,
-            billingType = command.billingType,
-            idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
-        )
+        // Serialize concurrent creates for the same owner before any Asaas side effect.
+        return transaction.inTransaction {
+            subscriptions.lockOwner(command.ownerUserId)
+            subscriptions.findByOwnerUserId(command.ownerUserId)?.let { existing ->
+                return@inTransaction resumeUnconfirmedOrConflict(existing, command.billingType)
+            }
 
-        // Persist before any webhook can land (VUL-105 returns 503 until this row exists).
-        val subscription = Subscription(
-            ownerUserId = command.ownerUserId,
-            plan = command.plan,
-            cycle = command.cycle,
-            asaasCustomerId = customerId,
-            asaasSubscriptionId = asaasSubscriptionId,
-            currentPeriodEnd = initialPeriodEnd(now, command.cycle),
-            status = SubscriptionStatus.PAST_DUE,
-            pastDueSince = now,
-            couponId = coupon?.id,
-            couponCyclesRemaining = coupon?.durationCycles,
-        )
+            val customerId = asaasGateway.createCustomer(
+                ownerUserId = command.ownerUserId,
+                name = name,
+                email = email,
+                cpfCnpj = cpfDigits,
+            )
+            val asaasSubscriptionId = asaasGateway.createSubscription(
+                asaasCustomerId = customerId,
+                plan = command.plan,
+                cycle = command.cycle,
+                valueCents = valueCents,
+                billingType = command.billingType,
+                idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
+            )
 
-        transaction.inTransaction {
+            val subscription = Subscription(
+                ownerUserId = command.ownerUserId,
+                plan = command.plan,
+                cycle = command.cycle,
+                asaasCustomerId = customerId,
+                asaasSubscriptionId = asaasSubscriptionId,
+                currentPeriodEnd = initialPeriodEnd(now, command.cycle),
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = now,
+                couponId = coupon?.id,
+                couponCyclesRemaining = coupon?.durationCycles,
+            )
             subscriptions.insert(subscription)
             if (coupon != null) {
                 coupons.saveRedemption(
                     CouponRedemption(couponId = coupon.id, userId = command.ownerUserId, redeemedAt = now),
                 )
             }
-        }
 
-        val checkout = resolveCheckout(asaasSubscriptionId, command.billingType)
+            val checkout = resolveCheckout(asaasSubscriptionId)
+            CreateSubscriptionResult.Success(
+                subscription = subscription,
+                billingType = command.billingType,
+                pixCopyPaste = checkout.pixCopyPaste,
+                invoiceUrl = checkout.invoiceUrl,
+            )
+        }
+    }
+
+    private fun resumeUnconfirmedOrConflict(
+        existing: Subscription,
+        billingType: AsaasBillingType,
+    ): CreateSubscriptionResult {
+        if (existing.firstConfirmedAt != null || existing.status == SubscriptionStatus.CANCELED) {
+            return CreateSubscriptionResult.AlreadySubscribed
+        }
+        val checkout = resolveCheckout(existing.asaasSubscriptionId)
         return CreateSubscriptionResult.Success(
-            subscription = subscription,
-            billingType = command.billingType,
+            subscription = existing,
+            billingType = billingType,
             pixCopyPaste = checkout.pixCopyPaste,
             invoiceUrl = checkout.invoiceUrl,
         )
@@ -129,18 +148,17 @@ class CreateSubscription(
 
     private data class Checkout(val pixCopyPaste: String?, val invoiceUrl: String?)
 
-    private fun resolveCheckout(asaasSubscriptionId: String, billingType: AsaasBillingType): Checkout {
+    private fun resolveCheckout(asaasSubscriptionId: String): Checkout {
         val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
             ?: return Checkout(null, null)
-        return when (billingType) {
-            AsaasBillingType.PIX -> Checkout(
-                pixCopyPaste = asaasGateway.regeneratePixPayload(paymentId),
-                invoiceUrl = null,
-            )
-            AsaasBillingType.CREDIT_CARD -> Checkout(
-                pixCopyPaste = null,
-                invoiceUrl = asaasGateway.findPaymentInvoiceUrl(paymentId),
-            )
-        }
+        val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
+        val invoice = asaasGateway.findPaymentInvoiceUrl(paymentId)
+        return Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
     }
+
+    private fun isValidEmail(email: String): Boolean =
+        email.length in 3..254 && email.contains('@') && email.indexOf('@') in 1 until email.lastIndex
+
+    private fun isValidCpfCnpj(digits: String): Boolean =
+        digits.length == 11 || digits.length == 14
 }

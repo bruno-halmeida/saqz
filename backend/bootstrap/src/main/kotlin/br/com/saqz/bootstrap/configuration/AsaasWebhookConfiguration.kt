@@ -80,7 +80,16 @@ class AsaasWebhookConfiguration {
         asaasGateway: AsaasGateway,
         transaction: SubscriptionsTransactionRunner,
         clock: Clock,
-    ) = ProcessAsaasWebhook(webhookToken, events, subscriptions, asaasGateway, transaction, clock)
+        coupons: CouponRepository,
+    ) = ProcessAsaasWebhook(
+        expectedToken = webhookToken,
+        events = events,
+        subscriptions = subscriptions,
+        asaasGateway = asaasGateway,
+        transaction = transaction,
+        clock = clock,
+        coupons = coupons,
+    )
 
     @Bean
     fun asaasWebhookController(processAsaasWebhook: ProcessAsaasWebhook) =

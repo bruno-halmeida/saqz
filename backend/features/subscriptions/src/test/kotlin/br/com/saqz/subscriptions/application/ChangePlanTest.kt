@@ -44,37 +44,33 @@ class ChangePlanTest {
     }
 
     @Test
-    fun `upgrade charges prorata and applies target plan immediately`() {
-        val result = useCase.execute(
-            ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR),
-        )
+    fun `upgrade creates one-off charge and keeps current plan until webhook`() {
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
 
-        val upgraded = assertIs<ChangePlanResult.Upgraded>(result)
-        assertEquals(Plan.ORGANIZADOR, upgraded.subscription.plan)
-        assertNull(upgraded.subscription.pendingPlan)
-        assertTrue(upgraded.chargedCents > 0L)
-        assertEquals("pay_upgrade", upgraded.oneOffChargeId)
+        val pending = assertIs<ChangePlanResult.UpgradePendingPayment>(result)
+        assertEquals(Plan.TITULAR, pending.subscription.plan)
+        assertEquals(Plan.ORGANIZADOR, pending.subscription.pendingUpgradePlan)
+        assertEquals("pay_upgrade", pending.subscription.pendingUpgradeChargeId)
+        assertTrue(pending.chargedCents > 0L)
+        assertEquals("000201PIX-UPG", pending.pixCopyPaste)
+        assertTrue(gateway.valueUpdates.isEmpty())
         assertEquals(
             listOf("subscription-upgrade:$ownerId:$requestId"),
             gateway.oneOffIdempotencyKeys,
         )
-        assertEquals(listOf("sub_1" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.valueUpdates)
     }
 
     @Test
-    fun `upgrade with remaining coupon cycles pushes discounted target price`() {
+    fun `upgrade with remaining coupon still only schedules charge without applying plan`() {
         coupons.byId[couponId] = Coupon(id = couponId, code = "GALERA10", discountPercent = 10, durationCycles = 3)
-        subscriptions.save(
-            baseSubscription().copy(
-                couponId = couponId,
-                couponCyclesRemaining = 2,
-            ),
-        )
+        subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = 2))
 
-        useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
 
-        // 5990 * 0.9 = 5391
-        assertEquals(listOf("sub_1" to 5_391L), gateway.valueUpdates)
+        val pending = assertIs<ChangePlanResult.UpgradePendingPayment>(result)
+        assertEquals(Plan.TITULAR, pending.subscription.plan)
+        assertEquals(Plan.ORGANIZADOR, pending.subscription.pendingUpgradePlan)
+        assertTrue(gateway.valueUpdates.isEmpty())
     }
 
     @Test
@@ -87,8 +83,6 @@ class ChangePlanTest {
         assertEquals(ChangePlanResult.DowngradeBlockedByUsage, result)
         assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
         assertTrue(gateway.valueUpdates.isEmpty())
-        assertEquals(Plan.ORGANIZADOR, subscriptions.findByOwnerUserId(ownerId)!!.plan)
-        assertNull(subscriptions.findByOwnerUserId(ownerId)!!.pendingPlan)
     }
 
     @Test
@@ -102,7 +96,6 @@ class ChangePlanTest {
         assertEquals(Plan.ORGANIZADOR, scheduled.subscription.plan)
         assertEquals(Plan.TITULAR, scheduled.subscription.pendingPlan)
         assertEquals(periodEnd, scheduled.subscription.pendingPlanEffectiveAt)
-        assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
         assertEquals(listOf("sub_1" to Plan.TITULAR.monthlyPriceCents), gateway.valueUpdates)
     }
 
@@ -120,7 +113,6 @@ class ChangePlanTest {
 
         useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
 
-        // 3990 * 0.8 = 3192
         assertEquals(listOf("sub_1" to 3_192L), gateway.valueUpdates)
     }
 
@@ -143,6 +135,7 @@ class ChangePlanTest {
         asaasSubscriptionId = "sub_1",
         currentPeriodEnd = periodEnd,
         status = SubscriptionStatus.ACTIVE,
+        firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
     private class FakeSubscriptionRepository : SubscriptionRepository {
@@ -151,6 +144,10 @@ class ChangePlanTest {
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByPendingUpgradeChargeId(chargeId: String) =
+            byOwner.values.firstOrNull { it.pendingUpgradeChargeId == chargeId }
+
+        override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = save(subscription)
         override fun save(subscription: Subscription) {
             byOwner[subscription.ownerUserId] = subscription
@@ -199,7 +196,7 @@ class ChangePlanTest {
             return "pay_upgrade"
         }
 
-        override fun regeneratePixPayload(asaasChargeId: String) = error("unused")
+        override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-UPG"
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
     }

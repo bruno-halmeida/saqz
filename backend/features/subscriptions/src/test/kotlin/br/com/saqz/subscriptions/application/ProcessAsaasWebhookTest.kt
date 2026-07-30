@@ -388,6 +388,7 @@ class ProcessAsaasWebhookTest {
                 asaasEventId = "evt_no_sub",
                 eventType = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
                 asaasSubscriptionId = null,
+                asaasPaymentId = null,
                 rawPayload = """{"id":"evt_no_sub","event":"PAYMENT_CONFIRMED"}""",
             ),
         )
@@ -417,6 +418,39 @@ class ProcessAsaasWebhookTest {
         assertEquals(fixedNow, events.rows.getValue("evt_race").processedAt)
     }
 
+    @Test
+    fun `PAYMENT_CONFIRMED on pending upgrade charge applies plan without advancing period`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_1",
+            ),
+        )
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_upg",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+                asaasSubscriptionId = null,
+                asaasPaymentId = "pay_upgrade_1",
+                rawPayload = """{"id":"evt_upg","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_upgrade_1"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Plan.ORGANIZADOR, sub.plan)
+        assertNull(sub.pendingUpgradePlan)
+        assertNull(sub.pendingUpgradeChargeId)
+        assertEquals(periodEnd, sub.currentPeriodEnd)
+        assertEquals(listOf("sub_123" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.updates)
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
@@ -432,10 +466,12 @@ class ProcessAsaasWebhookTest {
         eventId: String,
         type: String,
         subscriptionId: String = "sub_123",
+        paymentId: String? = null,
     ) = AsaasWebhookCommand(
         asaasEventId = eventId,
         eventType = type,
         asaasSubscriptionId = subscriptionId,
+        asaasPaymentId = paymentId,
         rawPayload = """{"id":"$eventId","event":"$type"}""",
     )
 
@@ -472,17 +508,26 @@ class ProcessAsaasWebhookTest {
     private class InMemorySubscriptionRepository : SubscriptionRepository {
         private val byAsaasId = linkedMapOf<String, Subscription>()
         private val byOwnerId = linkedMapOf<UUID, Subscription>()
+        private val byUpgradeCharge = linkedMapOf<String, Subscription>()
 
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription? =
             byAsaasId[asaasSubscriptionId]
 
         override fun findByOwnerUserId(ownerUserId: UUID): Subscription? = byOwnerId[ownerUserId]
 
+        override fun findByPendingUpgradeChargeId(chargeId: String): Subscription? =
+            byUpgradeCharge[chargeId]
+
+        override fun lockOwner(ownerUserId: UUID) = Unit
+
         override fun insert(subscription: Subscription) = save(subscription)
 
         override fun save(subscription: Subscription) {
+            byAsaasId.values.removeIf { it.ownerUserId == subscription.ownerUserId }
+            byUpgradeCharge.entries.removeIf { it.value.ownerUserId == subscription.ownerUserId }
             byAsaasId[subscription.asaasSubscriptionId] = subscription
             byOwnerId[subscription.ownerUserId] = subscription
+            subscription.pendingUpgradeChargeId?.let { byUpgradeCharge[it] = subscription }
         }
 
         fun get(asaasSubscriptionId: String): Subscription = byAsaasId.getValue(asaasSubscriptionId)

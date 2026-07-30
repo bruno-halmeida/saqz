@@ -36,6 +36,7 @@ class AsaasWebhookController(
             asaasEventId = root.textOrEmpty("id"),
             eventType = root.textOrEmpty("event"),
             asaasSubscriptionId = extractSubscriptionId(root),
+            asaasPaymentId = extractPaymentId(root),
             rawPayload = rawBody,
         )
         when (processAsaasWebhook.execute(token, command)) {
@@ -51,6 +52,11 @@ class AsaasWebhookController(
         root.path("subscription").path("id").asText(null)?.takeIf { it.isNotBlank() }?.let { return it }
         root.path("subscription").asText(null)?.takeIf { it.isNotBlank() && !it.startsWith("{") }?.let { return it }
         return null
+    }
+
+    private fun extractPaymentId(root: JsonNode?): String? {
+        if (root == null) return null
+        return root.path("payment").path("id").asText(null)?.takeIf { it.isNotBlank() }
     }
 
     private fun JsonNode?.textOrEmpty(field: String): String =

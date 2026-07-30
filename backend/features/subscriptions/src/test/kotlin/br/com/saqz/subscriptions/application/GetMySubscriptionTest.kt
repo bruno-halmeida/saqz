@@ -156,6 +156,8 @@ class GetMySubscriptionTest {
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription? = null
         override fun findByOwnerUserId(ownerUserId: UUID): Subscription? =
             subscription?.takeIf { it.ownerUserId == ownerUserId }
+        override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = error("unused")
         override fun save(subscription: Subscription) = error("unused")
     }
