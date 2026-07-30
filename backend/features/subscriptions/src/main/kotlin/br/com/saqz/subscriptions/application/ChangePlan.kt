@@ -46,26 +46,28 @@ class ChangePlan(
     private val asaasGateway: AsaasGateway,
     private val usageLookup: OwnerPlanUsageLookup,
     private val coupons: CouponRepository,
+    private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock,
 ) {
-    fun execute(command: ChangePlanCommand): ChangePlanResult {
-        val current = subscriptions.findByOwnerUserId(command.ownerUserId)
-            ?: return ChangePlanResult.NotFound
-        if (current.status == SubscriptionStatus.CANCELED) {
-            return ChangePlanResult.NotActive
-        }
-        if (current.plan == command.targetPlan) {
-            return ChangePlanResult.SamePlan
-        }
+    fun execute(command: ChangePlanCommand): ChangePlanResult =
+        transaction.inTransaction {
+            val current = subscriptions.findByOwnerUserIdForUpdate(command.ownerUserId)
+                ?: return@inTransaction ChangePlanResult.NotFound
+            if (current.status == SubscriptionStatus.CANCELED) {
+                return@inTransaction ChangePlanResult.NotActive
+            }
+            if (current.plan == command.targetPlan) {
+                return@inTransaction ChangePlanResult.SamePlan
+            }
 
-        val currentPrice = recurringPriceCents(current.plan, current)
-        val targetPrice = recurringPriceCents(command.targetPlan, current)
-        return if (targetPrice > currentPrice) {
-            upgrade(current, command, currentPrice, targetPrice)
-        } else {
-            downgrade(current, command, targetPrice)
+            val currentPrice = recurringPriceCents(current.plan, current)
+            val targetPrice = recurringPriceCents(command.targetPlan, current)
+            if (targetPrice > currentPrice) {
+                upgrade(current, command, currentPrice, targetPrice)
+            } else {
+                downgrade(current, command, targetPrice)
+            }
         }
-    }
 
     private fun upgrade(
         current: Subscription,

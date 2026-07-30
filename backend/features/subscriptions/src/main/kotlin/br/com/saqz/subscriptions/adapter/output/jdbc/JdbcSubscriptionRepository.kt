@@ -43,6 +43,20 @@ class JdbcSubscriptionRepository(
             .optional()
             .orElse(null)
 
+    override fun findByOwnerUserIdForUpdate(ownerUserId: UUID): Subscription? =
+        jdbc.sql(
+            """
+            SELECT $COLUMNS
+            FROM subscriptions
+            WHERE owner_user_id = :ownerUserId
+            FOR UPDATE
+            """.trimIndent(),
+        )
+            .param("ownerUserId", ownerUserId)
+            .query { rs, _ -> mapSubscription(rs) }
+            .optional()
+            .orElse(null)
+
     override fun findByPendingUpgradeChargeId(chargeId: String): Subscription? =
         jdbc.sql(
             """

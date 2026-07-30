@@ -132,6 +132,36 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `reactivates a canceled subscription with a new asaas subscription id`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_canceled",
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.CANCELED,
+                canceledAt = fixedNow.minusSeconds(3600),
+                firstConfirmedAt = fixedNow.minusSeconds(86_400),
+            ),
+        )
+        gateway.pixPayload = "000201REACTIVATE"
+
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR))
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_1", success.subscription.asaasSubscriptionId)
+        assertEquals(Plan.ORGANIZADOR, success.subscription.plan)
+        assertEquals(SubscriptionStatus.PAST_DUE, success.subscription.status)
+        assertNull(success.subscription.canceledAt)
+        assertNull(success.subscription.firstConfirmedAt)
+        assertEquals("000201REACTIVATE", success.pixCopyPaste)
+        assertEquals("sub_1", subscriptions.findByOwnerUserId(ownerId)!!.asaasSubscriptionId)
+        assertNull(subscriptions.findByOwnerUserId(ownerId)!!.canceledAt)
+    }
+
+    @Test
     fun `reissues checkout when owner has unconfirmed subscription`() {
         subscriptions.insert(
             Subscription(
@@ -203,6 +233,7 @@ class CreateSubscriptionTest {
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = byOwner[ownerUserId]
         override fun findByPendingUpgradeChargeId(chargeId: String) =
             byOwner.values.firstOrNull { it.pendingUpgradeChargeId == chargeId }
 

@@ -270,11 +270,12 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
-    fun `pending plan is not applied before effective at`() {
+    fun `pending plan is applied on any renewal confirmation regardless of wall clock`() {
         subscriptions.save(
             baseSubscription().copy(
                 status = SubscriptionStatus.ACTIVE,
                 pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
                 plan = Plan.TITULAR,
                 pendingPlan = Plan.ILIMITADO,
                 pendingPlanEffectiveAt = Instant.parse("2026-08-15T00:00:00Z"),
@@ -287,9 +288,9 @@ class ProcessAsaasWebhookTest {
         )
 
         val sub = subscriptions.get("sub_123")
-        assertEquals(Plan.TITULAR, sub.plan)
-        assertEquals(Plan.ILIMITADO, sub.pendingPlan)
-        assertEquals(Instant.parse("2026-08-15T00:00:00Z"), sub.pendingPlanEffectiveAt)
+        assertEquals(Plan.ILIMITADO, sub.plan)
+        assertNull(sub.pendingPlan)
+        assertNull(sub.pendingPlanEffectiveAt)
     }
 
     @Test
@@ -576,6 +577,8 @@ class ProcessAsaasWebhookTest {
             byAsaasId[asaasSubscriptionId]
 
         override fun findByOwnerUserId(ownerUserId: UUID): Subscription? = byOwnerId[ownerUserId]
+
+        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID): Subscription? = byOwnerId[ownerUserId]
 
         override fun findByPendingUpgradeChargeId(chargeId: String): Subscription? =
             byUpgradeCharge[chargeId]

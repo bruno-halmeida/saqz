@@ -33,6 +33,8 @@ class CancelSubscriptionTest {
                 asaasSubscriptionId = "sub_1",
                 currentPeriodEnd = periodEnd,
                 status = SubscriptionStatus.ACTIVE,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upg",
             ),
         )
 
@@ -42,6 +44,8 @@ class CancelSubscriptionTest {
         assertEquals(fixedNow, success.subscription.canceledAt)
         assertEquals(periodEnd, success.subscription.currentPeriodEnd)
         assertEquals(SubscriptionStatus.ACTIVE, success.subscription.status)
+        assertNull(success.subscription.pendingUpgradePlan)
+        assertNull(success.subscription.pendingUpgradeChargeId)
         assertEquals(listOf("sub_1"), gateway.canceledIds)
     }
 
@@ -83,6 +87,7 @@ class CancelSubscriptionTest {
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = byOwner[ownerUserId]
         override fun findByPendingUpgradeChargeId(chargeId: String) = null
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = save(subscription)

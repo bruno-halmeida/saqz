@@ -25,7 +25,11 @@ class CancelSubscription(
         // Stop future Asaas charges now; local access still follows currentPeriodEnd / VUL-106 grace.
         asaasGateway.cancelSubscription(current.asaasSubscriptionId)
         val now = clock.instant()
-        val updated = current.copy(canceledAt = now)
+        val updated = current.copy(
+            canceledAt = now,
+            pendingUpgradePlan = null,
+            pendingUpgradeChargeId = null,
+        )
         subscriptions.save(updated)
         return CancelSubscriptionResult.Success(updated)
     }

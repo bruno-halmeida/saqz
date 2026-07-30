@@ -60,61 +60,129 @@ class CreateSubscription(
         val coupon = (couponOutcome as CouponOutcome.Ok).coupon
         val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
 
-        // Commit local row first (Asaas side effects + insert). Checkout enrichment is best-effort after.
+        // Commit local row first (Asaas side effects + insert/reactivate). Checkout is best-effort after.
         val committed = transaction.inTransaction {
             subscriptions.lockOwner(command.ownerUserId)
-            subscriptions.findByOwnerUserId(command.ownerUserId)?.let { existing ->
-                return@inTransaction existing
+            val existing = subscriptions.findByOwnerUserIdForUpdate(command.ownerUserId)
+            when {
+                existing == null -> createNew(command, name, email, cpfDigits, coupon, valueCents, now)
+                existing.status == SubscriptionStatus.CANCELED ->
+                    reactivate(existing, command, name, email, cpfDigits, coupon, valueCents, now)
+                existing.firstConfirmedAt == null -> existing
+                else -> existing // confirmed active/past_due — AlreadySubscribed after commit
             }
+        }
 
-            val customerId = asaasGateway.createCustomer(
-                ownerUserId = command.ownerUserId,
-                name = name,
-                email = email,
-                cpfCnpj = cpfDigits,
-            )
-            val asaasSubscriptionId = asaasGateway.createSubscription(
-                asaasCustomerId = customerId,
-                plan = command.plan,
-                cycle = command.cycle,
-                valueCents = valueCents,
+        if (committed.status != SubscriptionStatus.CANCELED &&
+            committed.firstConfirmedAt == null
+        ) {
+            val checkout = resolveCheckout(committed.asaasSubscriptionId)
+            return CreateSubscriptionResult.Success(
+                subscription = committed,
                 billingType = command.billingType,
-                idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
+                pixCopyPaste = checkout.pixCopyPaste,
+                invoiceUrl = checkout.invoiceUrl,
             )
-
-            val subscription = Subscription(
-                ownerUserId = command.ownerUserId,
-                plan = command.plan,
-                cycle = command.cycle,
-                asaasCustomerId = customerId,
-                asaasSubscriptionId = asaasSubscriptionId,
-                currentPeriodEnd = initialPeriodEnd(now, command.cycle),
-                status = SubscriptionStatus.PAST_DUE,
-                pastDueSince = now,
-                couponId = coupon?.id,
-                couponCyclesRemaining = coupon?.durationCycles,
-            )
-            subscriptions.insert(subscription)
-            if (coupon != null) {
-                coupons.saveRedemption(
-                    CouponRedemption(couponId = coupon.id, userId = command.ownerUserId, redeemedAt = now),
-                )
-            }
-            subscription
         }
 
-        if (committed.firstConfirmedAt != null || committed.status == SubscriptionStatus.CANCELED) {
-            return CreateSubscriptionResult.AlreadySubscribed
-        }
-
-        val checkout = resolveCheckout(committed.asaasSubscriptionId)
-        return CreateSubscriptionResult.Success(
-            subscription = committed,
-            billingType = command.billingType,
-            pixCopyPaste = checkout.pixCopyPaste,
-            invoiceUrl = checkout.invoiceUrl,
-        )
+        return CreateSubscriptionResult.AlreadySubscribed
     }
+
+    private fun createNew(
+        command: CreateSubscriptionCommand,
+        name: String,
+        email: String,
+        cpfDigits: String,
+        coupon: Coupon?,
+        valueCents: Long,
+        now: Instant,
+    ): Subscription {
+        val customerId = asaasGateway.createCustomer(command.ownerUserId, name, email, cpfDigits)
+        val asaasSubscriptionId = asaasGateway.createSubscription(
+            asaasCustomerId = customerId,
+            plan = command.plan,
+            cycle = command.cycle,
+            valueCents = valueCents,
+            billingType = command.billingType,
+            idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
+        )
+        val subscription = blankSubscription(
+            ownerUserId = command.ownerUserId,
+            plan = command.plan,
+            cycle = command.cycle,
+            customerId = customerId,
+            asaasSubscriptionId = asaasSubscriptionId,
+            now = now,
+            coupon = coupon,
+        )
+        subscriptions.insert(subscription)
+        if (coupon != null) {
+            coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
+        }
+        return subscription
+    }
+
+    private fun reactivate(
+        existing: Subscription,
+        command: CreateSubscriptionCommand,
+        name: String,
+        email: String,
+        cpfDigits: String,
+        coupon: Coupon?,
+        valueCents: Long,
+        now: Instant,
+    ): Subscription {
+        val customerId = asaasGateway.createCustomer(command.ownerUserId, name, email, cpfDigits)
+        val asaasSubscriptionId = asaasGateway.createSubscription(
+            asaasCustomerId = customerId,
+            plan = command.plan,
+            cycle = command.cycle,
+            valueCents = valueCents,
+            billingType = command.billingType,
+            idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
+        )
+        val reactivated = blankSubscription(
+            ownerUserId = command.ownerUserId,
+            plan = command.plan,
+            cycle = command.cycle,
+            customerId = customerId,
+            asaasSubscriptionId = asaasSubscriptionId,
+            now = now,
+            coupon = coupon,
+        )
+        subscriptions.save(reactivated)
+        if (coupon != null && !coupons.hasRedemption(coupon.id, command.ownerUserId)) {
+            coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
+        }
+        return reactivated
+    }
+
+    private fun blankSubscription(
+        ownerUserId: UUID,
+        plan: Plan,
+        cycle: SubscriptionCycle,
+        customerId: String,
+        asaasSubscriptionId: String,
+        now: Instant,
+        coupon: Coupon?,
+    ) = Subscription(
+        ownerUserId = ownerUserId,
+        plan = plan,
+        cycle = cycle,
+        asaasCustomerId = customerId,
+        asaasSubscriptionId = asaasSubscriptionId,
+        currentPeriodEnd = initialPeriodEnd(now, cycle),
+        status = SubscriptionStatus.PAST_DUE,
+        pastDueSince = now,
+        canceledAt = null,
+        pendingPlan = null,
+        pendingPlanEffectiveAt = null,
+        couponId = coupon?.id,
+        couponCyclesRemaining = coupon?.durationCycles,
+        firstConfirmedAt = null,
+        pendingUpgradePlan = null,
+        pendingUpgradeChargeId = null,
+    )
 
     private sealed interface CouponOutcome {
         data class Ok(val coupon: Coupon?) : CouponOutcome

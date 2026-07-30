@@ -39,7 +39,16 @@ class ChangePlanTest {
         gateway = FakeAsaasGateway()
         usage = MutableOwnerPlanUsageLookup(OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5))
         coupons = FakeCouponRepository()
-        useCase = ChangePlan(subscriptions, gateway, usage, coupons, clock)
+        useCase = ChangePlan(
+            subscriptions,
+            gateway,
+            usage,
+            coupons,
+            transaction = object : SubscriptionsTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = block()
+            },
+            clock,
+        )
         subscriptions.save(baseSubscription())
     }
 
@@ -194,6 +203,7 @@ class ChangePlanTest {
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = byOwner[ownerUserId]
         override fun findByPendingUpgradeChargeId(chargeId: String) =
             byOwner.values.firstOrNull { it.pendingUpgradeChargeId == chargeId }
 

@@ -189,9 +189,10 @@ class ProcessAsaasWebhook(
             firstConfirmedAt = current.firstConfirmedAt ?: now,
         )
 
+        // Any recurring PAYMENT_CONFIRMED while a downgrade is scheduled is the renewal that
+        // should apply it — do not gate on wall-clock vs pendingPlanEffectiveAt.
         val pending = next.pendingPlan
-        val pendingAt = next.pendingPlanEffectiveAt
-        if (pending != null && pendingAt != null && !now.isBefore(pendingAt)) {
+        if (pending != null) {
             next = next.copy(
                 plan = pending,
                 pendingPlan = null,
