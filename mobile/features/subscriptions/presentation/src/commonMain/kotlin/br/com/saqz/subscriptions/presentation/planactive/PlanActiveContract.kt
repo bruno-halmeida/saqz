@@ -8,9 +8,9 @@ import br.com.saqz.designsystem.UiText
 data class PlanActiveState(
     val isLoading: Boolean = true,
     val planName: String = "",
-    val priceLabel: UiText = UiText.Raw(""),
+    val priceLabel: String = "",
     val nextBillingLabel: String = "",
-    val groupsAvailableLabel: UiText = UiText.Raw(""),
+    val groupsAvailableLabel: String = "",
     val error: UiText? = null,
 )
 

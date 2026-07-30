@@ -25,11 +25,14 @@ import br.com.saqz.subscriptions.resources.plan_active_groups_unlimited
 import br.com.saqz.subscriptions.resources.plan_active_value_month
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.jetbrains.compose.resources.getString
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -46,10 +49,17 @@ class PlanActiveViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `subscription loads with the price the plan details carry for its cycle`() = runTest(mainDispatcher) {
+    fun `subscription loads with the price the most recent receipt reflects coupon included`() = runTest(mainDispatcher) {
+        // O recibo mais antigo tem o preço de catálogo; o mais recente, com cupom, é menor.
+        // Se a tela usasse `gateway.plans()` (catálogo) o teste pegaria 1_791, não 1_592.
         val gateway = FakeSubscriptionGateway(
             subscriptionResults = listOf(SaqzResult.Success(subscription)),
-            plansResult = SaqzResult.Success(listOf(planDetails)),
+            receiptsResult = SaqzResult.Success(
+                listOf(
+                    receipt.copy(processedAt = "2026-07-01T00:00:00Z", valueCents = 1_791),
+                    receipt.copy(processedAt = "2026-07-24T00:00:00Z", valueCents = 1_592),
+                ),
+            ),
         )
         val viewModel = PlanActiveViewModel(gateway)
 
@@ -57,20 +67,19 @@ class PlanActiveViewModelTest {
         assertTrue(!state.isLoading)
         assertNull(state.error)
         assertEquals("Organizador", state.planName)
-        assertEquals(UiText.Res(Res.string.plan_active_value_month, listOf(formatBrl(1_791))), state.priceLabel)
+        assertEquals(getString(Res.string.plan_active_value_month, formatBrl(1_592)), state.priceLabel)
         assertEquals("24 de agosto", state.nextBillingLabel)
-        assertEquals(UiText.Raw("3"), state.groupsAvailableLabel)
+        assertEquals("3", state.groupsAvailableLabel)
     }
 
     @Test
     fun `no group limit shows the unlimited label`() = runTest(mainDispatcher) {
         val gateway = FakeSubscriptionGateway(
             subscriptionResults = listOf(SaqzResult.Success(subscription.copy(usage = SubscriptionUsage(groupsUsed = 10, groupsLimit = null)))),
-            plansResult = SaqzResult.Success(listOf(planDetails)),
         )
         val viewModel = PlanActiveViewModel(gateway)
 
-        assertEquals(UiText.Res(Res.string.plan_active_groups_unlimited), viewModel.state.value.groupsAvailableLabel)
+        assertEquals(getString(Res.string.plan_active_groups_unlimited), viewModel.state.value.groupsAvailableLabel)
     }
 
     @Test
@@ -86,10 +95,34 @@ class PlanActiveViewModelTest {
     }
 
     @Test
+    fun `a failure to load receipts surfaces the error state instead of a blank price`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResults = listOf(SaqzResult.Success(subscription)),
+            receiptsResult = SaqzResult.Failure(SubscriptionError.NotFound),
+        )
+        val viewModel = PlanActiveViewModel(gateway)
+
+        val state = viewModel.state.value
+        assertTrue(!state.isLoading)
+        assertEquals(UiText.Res(Res.string.plan_active_error), state.error)
+        assertEquals("", state.priceLabel)
+    }
+
+    @Test
+    fun `no receipts yet surfaces the error state instead of a blank price`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResults = listOf(SaqzResult.Success(subscription)),
+            receiptsResult = SaqzResult.Success(emptyList()),
+        )
+        val viewModel = PlanActiveViewModel(gateway)
+
+        assertEquals(UiText.Res(Res.string.plan_active_error), viewModel.state.value.error)
+    }
+
+    @Test
     fun `retrying after a failure loads the subscription that follows`() = runTest(mainDispatcher) {
         val gateway = FakeSubscriptionGateway(
             subscriptionResults = listOf(SaqzResult.Failure(SubscriptionError.NotFound), SaqzResult.Success(subscription)),
-            plansResult = SaqzResult.Success(listOf(planDetails)),
         )
         val viewModel = PlanActiveViewModel(gateway)
         assertEquals(UiText.Res(Res.string.plan_active_error), viewModel.state.value.error)
@@ -99,6 +132,26 @@ class PlanActiveViewModelTest {
         val state = viewModel.state.value
         assertNull(state.error)
         assertEquals("Organizador", state.planName)
+    }
+
+    @Test
+    fun `a second retry that answers first is not overwritten by the slower first load`() = runTest(mainDispatcher) {
+        // Guarda de geração (AGENTS.md): o load do init demora mais que o do retry disparado
+        // logo em seguida. Sem a guarda, a resposta do init (mais velha) sobrescreveria a do
+        // retry (mais nova) ao chegar depois.
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResults = listOf(
+                SaqzResult.Success(subscription.copy(plan = Plan.Titular)),
+                SaqzResult.Success(subscription.copy(plan = Plan.Ilimitado)),
+            ),
+            subscriptionDelaysMillis = listOf(1_000L, 100L),
+        )
+        val viewModel = PlanActiveViewModel(gateway)
+
+        viewModel.onIntent(PlanActiveIntent.Retry)
+        advanceUntilIdle()
+
+        assertEquals("Ilimitado", viewModel.state.value.planName)
     }
 
     @Test
@@ -132,26 +185,23 @@ private val subscription = MySubscription(
     canceledAt = null,
 )
 
-private val planDetails = PlanDetails(
-    id = Plan.Organizador,
-    name = "Organizador",
-    monthlyPriceCents = 1_791,
-    annualPriceCents = 17_910,
-    maxGroups = 3,
-    maxAthletes = null,
-    multiAdmin = true,
-    reports = false,
-    whatsappSla = false,
+private val receipt = Receipt(
+    asaasEventId = "evt-1",
+    asaasPaymentId = "pay-1",
+    valueCents = 1_791,
+    confirmedAt = "2026-07-24T00:00:00Z",
+    processedAt = "2026-07-24T00:00:00Z",
 )
 
 /** Cada `mySubscription()` consome o próximo resultado da lista; o último se repete. */
 private class FakeSubscriptionGateway(
     private val subscriptionResults: List<SaqzResult<MySubscription, SubscriptionError>>,
-    private val plansResult: SaqzResult<List<PlanDetails>, SubscriptionError> = SaqzResult.Success(emptyList()),
+    private val subscriptionDelaysMillis: List<Long> = emptyList(),
+    private val receiptsResult: SaqzResult<List<Receipt>, SubscriptionError> = SaqzResult.Success(listOf(receipt)),
 ) : SubscriptionGateway {
     private var call = 0
 
-    override suspend fun plans(): SaqzResult<List<PlanDetails>, SubscriptionError> = plansResult
+    override suspend fun plans(): SaqzResult<List<PlanDetails>, SubscriptionError> = SaqzResult.Success(emptyList())
 
     override suspend fun validateCoupon(
         code: String,
@@ -160,9 +210,11 @@ private class FakeSubscriptionGateway(
     ): SaqzResult<CouponValidation, SubscriptionError> = SaqzResult.Failure(SubscriptionError.CouponNotFound)
 
     override suspend fun mySubscription(): SaqzResult<MySubscription, SubscriptionError> {
-        val result = subscriptionResults[call.coerceAtMost(subscriptionResults.lastIndex)]
+        val index = call.coerceAtMost(subscriptionResults.lastIndex)
+        val delayMillis = subscriptionDelaysMillis.getOrElse(index) { 0L }
         call++
-        return result
+        if (delayMillis > 0) delay(delayMillis)
+        return subscriptionResults[index]
     }
 
     override suspend fun create(command: CreateSubscriptionCommand): SaqzResult<CreatedSubscription, SubscriptionError> =
@@ -174,5 +226,5 @@ private class FakeSubscriptionGateway(
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> =
         SaqzResult.Failure(SubscriptionError.Conflict)
 
-    override suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError> = SaqzResult.Success(emptyList())
+    override suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError> = receiptsResult
 }

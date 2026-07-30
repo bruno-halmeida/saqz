@@ -170,6 +170,7 @@ dependencies {
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(project(":features:access"))
+    testImplementation(project(":features:subscriptions:presentation"))
     testImplementation(project(":core:domain"))
     testImplementation(libs.bundles.compose)
 
