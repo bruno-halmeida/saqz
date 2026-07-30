@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle

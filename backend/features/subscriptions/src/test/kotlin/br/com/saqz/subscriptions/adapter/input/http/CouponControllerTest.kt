@@ -4,6 +4,7 @@ import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.ValidateCoupon
 import br.com.saqz.subscriptions.domain.Coupon
 import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Clock
@@ -32,9 +33,31 @@ class CouponControllerTest {
 
         assertEquals("APPLIED", response.status)
         assertEquals(Plan.TITULAR, response.planId)
+        assertEquals(SubscriptionCycle.MONTHLY, response.cycle)
         assertEquals(10, response.discountPercent)
         assertEquals(3_990, response.listPriceCents)
         assertEquals(3_591, response.finalPriceCents)
+    }
+
+    @Test
+    fun `maps applied annual coupon`() {
+        val controller = CouponController(
+            ValidateCoupon(
+                FixedCoupons(
+                    Coupon(id = UUID.randomUUID(), code = "SAVE10", discountPercent = 10),
+                ),
+                clock,
+            ),
+        )
+
+        val response = controller.validate(
+            ValidateCouponRequest("SAVE10", "TITULAR", "ANNUAL"),
+        )
+
+        assertEquals("APPLIED", response.status)
+        assertEquals(SubscriptionCycle.ANNUAL, response.cycle)
+        assertEquals(39_900, response.listPriceCents)
+        assertEquals(35_910, response.finalPriceCents)
     }
 
     @Test

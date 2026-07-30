@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.domain.Coupon
 import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Instant
@@ -31,9 +32,52 @@ class ValidateCouponTest {
         val applied = assertIs<ValidateCouponResult.Applied>(result)
         assertEquals("SAVE20", applied.code)
         assertEquals(Plan.ORGANIZADOR, applied.planId)
+        assertEquals(SubscriptionCycle.MONTHLY, applied.cycle)
         assertEquals(20, applied.discountPercent)
         assertEquals(5_990, applied.listPriceCents)
         assertEquals(4_792, applied.finalPriceCents)
+    }
+
+    @Test
+    fun `applied coupon on annual cycle uses annual list price`() {
+        val coupons = FixedCouponRepository(
+            Coupon(
+                id = UUID.randomUUID(),
+                code = "SAVE20",
+                discountPercent = 20,
+            ),
+        )
+        val useCase = ValidateCoupon(coupons, clock)
+
+        val result = useCase.execute("SAVE20", "ORGANIZADOR", "ANNUAL")
+
+        val applied = assertIs<ValidateCouponResult.Applied>(result)
+        assertEquals(SubscriptionCycle.ANNUAL, applied.cycle)
+        assertEquals(59_900, applied.listPriceCents)
+        assertEquals(47_920, applied.finalPriceCents)
+    }
+
+    @Test
+    fun `missing cycle defaults to monthly`() {
+        val coupons = FixedCouponRepository(
+            Coupon(id = UUID.randomUUID(), code = "X", discountPercent = 10),
+        )
+        val applied = assertIs<ValidateCouponResult.Applied>(
+            ValidateCoupon(coupons, clock).execute("X", "TITULAR", null),
+        )
+        assertEquals(SubscriptionCycle.MONTHLY, applied.cycle)
+        assertEquals(3_990, applied.listPriceCents)
+    }
+
+    @Test
+    fun `invalid cycle is rejected`() {
+        val coupons = FixedCouponRepository(
+            Coupon(id = UUID.randomUUID(), code = "X", discountPercent = 10),
+        )
+        assertEquals(
+            ValidateCouponResult.InvalidCycle,
+            ValidateCoupon(coupons, clock).execute("X", "TITULAR", "WEEKLY"),
+        )
     }
 
     @Test

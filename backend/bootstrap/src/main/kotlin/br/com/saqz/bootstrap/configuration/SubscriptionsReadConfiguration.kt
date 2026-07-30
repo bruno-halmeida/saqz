@@ -3,18 +3,18 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
+import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.sharedkernel.actor.AuthenticatedActor
 import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
+import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.subscriptions.adapter.input.http.CouponController
 import br.com.saqz.subscriptions.adapter.input.http.PlanController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionQueryController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCouponRepository
-import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcOwnedGroupCounter
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.ListPlans
-import br.com.saqz.subscriptions.application.OwnedGroupCounter
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.application.ValidateCoupon
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -35,10 +35,6 @@ class SubscriptionsReadConfiguration {
         JdbcCouponRepository(dataSource)
 
     @Bean
-    fun ownedGroupCounter(dataSource: DataSource): OwnedGroupCounter =
-        JdbcOwnedGroupCounter(dataSource)
-
-    @Bean
     fun listPlans() = ListPlans()
 
     @Bean
@@ -54,7 +50,7 @@ class SubscriptionsReadConfiguration {
     @Bean
     fun authenticatedActorResolver(bootstrapSession: BootstrapSession): AuthenticatedActorResolver =
         object : AuthenticatedActorResolver {
-            override fun resolve(identity: br.com.saqz.sharedkernel.RequestIdentity): AuthenticatedActor =
+            override fun resolve(identity: RequestIdentity): AuthenticatedActor =
                 when (val result = bootstrapSession.execute(identity)) {
                     BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
                     is BootstrapSessionResult.Success -> AuthenticatedActor(result.session.user.id)

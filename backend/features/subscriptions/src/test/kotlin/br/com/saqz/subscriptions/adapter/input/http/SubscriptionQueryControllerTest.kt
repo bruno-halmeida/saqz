@@ -3,8 +3,8 @@ package br.com.saqz.subscriptions.adapter.input.http
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.sharedkernel.actor.AuthenticatedActor
 import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
+import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.subscriptions.application.GetMySubscription
-import br.com.saqz.subscriptions.application.OwnedGroupCounter
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
