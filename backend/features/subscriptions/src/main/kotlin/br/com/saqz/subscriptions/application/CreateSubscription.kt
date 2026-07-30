@@ -75,7 +75,10 @@ class CreateSubscription(
                         reactivate(existing, command, name, email, cpfDigits, c, v, now)
                     }
                 existing.firstConfirmedAt == null ->
-                    if (existing.plan == command.plan && existing.cycle == command.cycle) {
+                    if (existing.plan == command.plan &&
+                        existing.cycle == command.cycle &&
+                        existing.billingType == command.billingType
+                    ) {
                         CommitOutcome.Committed(existing)
                     } else {
                         CommitOutcome.Rejected(CreateSubscriptionResult.PendingCheckoutMismatch)
@@ -145,6 +148,7 @@ class CreateSubscription(
             cycle = command.cycle,
             customerId = customerId,
             asaasSubscriptionId = asaasSubscriptionId,
+            billingType = command.billingType,
             now = now,
             coupon = coupon,
         )
@@ -180,6 +184,7 @@ class CreateSubscription(
             cycle = command.cycle,
             customerId = customerId,
             asaasSubscriptionId = asaasSubscriptionId,
+            billingType = command.billingType,
             now = now,
             coupon = coupon,
         )
@@ -196,6 +201,7 @@ class CreateSubscription(
         cycle: SubscriptionCycle,
         customerId: String,
         asaasSubscriptionId: String,
+        billingType: AsaasBillingType,
         now: Instant,
         coupon: Coupon?,
     ) = Subscription(
@@ -204,6 +210,7 @@ class CreateSubscription(
         cycle = cycle,
         asaasCustomerId = customerId,
         asaasSubscriptionId = asaasSubscriptionId,
+        billingType = billingType,
         currentPeriodEnd = initialPeriodEnd(now, cycle),
         status = SubscriptionStatus.PAST_DUE,
         pastDueSince = now,

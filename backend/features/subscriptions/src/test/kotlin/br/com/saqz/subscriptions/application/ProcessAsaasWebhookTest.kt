@@ -518,6 +518,7 @@ class ProcessAsaasWebhookTest {
         cycle = SubscriptionCycle.MONTHLY,
         asaasCustomerId = "cus_123",
         asaasSubscriptionId = "sub_123",
+        billingType = AsaasBillingType.PIX,
         currentPeriodEnd = periodEnd,
         status = SubscriptionStatus.PAST_DUE,
         pastDueSince = Instant.parse("2026-07-20T00:00:00Z"),

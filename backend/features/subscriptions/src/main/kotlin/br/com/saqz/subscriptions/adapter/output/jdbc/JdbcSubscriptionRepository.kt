@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
@@ -88,13 +89,13 @@ class JdbcSubscriptionRepository(
             """
             INSERT INTO subscriptions (
                 owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
-                current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
+                billing_type, current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
                 coupon_id, coupon_cycles_remaining, past_due_since, first_confirmed_at,
                 pending_upgrade_plan, pending_upgrade_charge_id,
                 created_at, updated_at
             ) VALUES (
                 :ownerUserId, :plan, :cycle, :status, :asaasCustomerId, :asaasSubscriptionId,
-                :currentPeriodEnd, :canceledAt, :pendingPlan, :pendingPlanEffectiveAt,
+                :billingType, :currentPeriodEnd, :canceledAt, :pendingPlan, :pendingPlanEffectiveAt,
                 :couponId, :couponCyclesRemaining, :pastDueSince, :firstConfirmedAt,
                 :pendingUpgradePlan, :pendingUpgradeChargeId,
                 :createdAt, :updatedAt
@@ -117,6 +118,7 @@ class JdbcSubscriptionRepository(
                 status = :status,
                 asaas_customer_id = :asaasCustomerId,
                 asaas_subscription_id = :asaasSubscriptionId,
+                billing_type = :billingType,
                 current_period_end = :currentPeriodEnd,
                 canceled_at = :canceledAt,
                 pending_plan = :pendingPlan,
@@ -146,6 +148,7 @@ class JdbcSubscriptionRepository(
             .param("status", subscription.status.name)
             .param("asaasCustomerId", subscription.asaasCustomerId)
             .param("asaasSubscriptionId", subscription.asaasSubscriptionId)
+            .param("billingType", subscription.billingType.name)
             .param("currentPeriodEnd", Timestamp.from(subscription.currentPeriodEnd))
             .param("canceledAt", subscription.canceledAt?.let(Timestamp::from))
             .param("pendingPlan", subscription.pendingPlan?.name)
@@ -164,6 +167,7 @@ class JdbcSubscriptionRepository(
         status = SubscriptionStatus.valueOf(rs.getString("status")),
         asaasCustomerId = rs.getString("asaas_customer_id"),
         asaasSubscriptionId = rs.getString("asaas_subscription_id"),
+        billingType = AsaasBillingType.valueOf(rs.getString("billing_type")),
         currentPeriodEnd = rs.getTimestamp("current_period_end").toInstant(),
         canceledAt = rs.getTimestamp("canceled_at")?.toInstant(),
         pendingPlan = rs.getString("pending_plan")?.let(Plan::valueOf),
@@ -179,7 +183,7 @@ class JdbcSubscriptionRepository(
     companion object {
         private const val COLUMNS = """
             owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
-            current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
+            billing_type, current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
             coupon_id, coupon_cycles_remaining, past_due_since, first_confirmed_at,
             pending_upgrade_plan, pending_upgrade_charge_id
         """

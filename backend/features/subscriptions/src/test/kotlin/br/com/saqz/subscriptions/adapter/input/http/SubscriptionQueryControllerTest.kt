@@ -4,6 +4,7 @@ import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.sharedkernel.actor.AuthenticatedActor
 import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.domain.Plan
@@ -37,6 +38,7 @@ class SubscriptionQueryControllerTest {
                         cycle = SubscriptionCycle.MONTHLY,
                         asaasCustomerId = "cus",
                         asaasSubscriptionId = "sub",
+                        billingType = AsaasBillingType.PIX,
                         currentPeriodEnd = Instant.parse("2026-08-15T00:00:00Z"),
                         status = SubscriptionStatus.PAST_DUE,
                         pastDueSince = Instant.parse("2026-07-01T00:00:00Z"),

@@ -148,6 +148,7 @@ class GetMySubscriptionTest {
         cycle = SubscriptionCycle.MONTHLY,
         asaasCustomerId = "cus_1",
         asaasSubscriptionId = "sub_1",
+        billingType = AsaasBillingType.PIX,
         currentPeriodEnd = Instant.parse("2026-08-30T00:00:00Z"),
         status = SubscriptionStatus.ACTIVE,
     )

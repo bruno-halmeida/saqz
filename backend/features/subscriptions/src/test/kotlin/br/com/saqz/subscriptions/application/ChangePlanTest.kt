@@ -268,6 +268,7 @@ class ChangePlanTest {
         cycle = SubscriptionCycle.MONTHLY,
         asaasCustomerId = "cus_1",
         asaasSubscriptionId = "sub_1",
+        billingType = AsaasBillingType.PIX,
         currentPeriodEnd = periodEnd,
         status = SubscriptionStatus.ACTIVE,
         firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),

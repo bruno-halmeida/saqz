@@ -123,6 +123,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 firstConfirmedAt = fixedNow,
             ),
@@ -140,6 +141,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_canceled",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.CANCELED,
                 canceledAt = fixedNow.minusSeconds(3600),
@@ -170,6 +172,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.PAST_DUE,
                 pastDueSince = fixedNow,
@@ -197,6 +200,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.PAST_DUE,
                 pastDueSince = fixedNow,
@@ -224,6 +228,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.PAST_DUE,
                 pastDueSince = fixedNow,
@@ -238,6 +243,30 @@ class CreateSubscriptionTest {
         val stored = subscriptions.findByOwnerUserId(ownerId)!!
         assertEquals(Plan.TITULAR, stored.plan)
         assertEquals(SubscriptionCycle.MONTHLY, stored.cycle)
+    }
+
+    @Test
+    fun `refuses to reissue checkout when the retry asks for a different billing type`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.CREDIT_CARD,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+
+        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.PIX))
+
+        assertEquals(CreateSubscriptionResult.PendingCheckoutMismatch, result)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+        assertEquals(AsaasBillingType.CREDIT_CARD, subscriptions.findByOwnerUserId(ownerId)!!.billingType)
     }
 
     @Test

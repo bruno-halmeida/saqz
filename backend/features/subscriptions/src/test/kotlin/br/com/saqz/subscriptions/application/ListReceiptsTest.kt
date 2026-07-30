@@ -26,6 +26,7 @@ class ListReceiptsTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_1",
                 asaasSubscriptionId = "sub_mine",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = processedAt,
                 status = SubscriptionStatus.ACTIVE,
             ),
@@ -75,6 +76,7 @@ class ListReceiptsTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_1",
                 asaasSubscriptionId = "sub_mine",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = processedAt,
             ),
         )

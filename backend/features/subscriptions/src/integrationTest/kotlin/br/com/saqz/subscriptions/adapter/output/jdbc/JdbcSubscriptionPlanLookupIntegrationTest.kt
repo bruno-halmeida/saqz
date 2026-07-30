@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
@@ -120,6 +121,7 @@ class JdbcSubscriptionPlanLookupIntegrationTest {
         cycle = SubscriptionCycle.MONTHLY,
         asaasCustomerId = "cus_1",
         asaasSubscriptionId = "sub_${UUID.randomUUID()}",
+        billingType = AsaasBillingType.PIX,
         currentPeriodEnd = currentPeriodEnd,
         status = status,
         firstConfirmedAt = firstConfirmedAt,
