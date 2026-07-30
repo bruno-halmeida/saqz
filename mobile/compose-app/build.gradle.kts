@@ -39,6 +39,7 @@ kotlin {
             implementation(project(":features:groups:presentation"))
             implementation(project(":features:access:data"))
             implementation(project(":features:subscriptions:data"))
+            implementation(project(":features:subscriptions:presentation"))
             implementation(project(":core:common"))
             implementation(project(":core:domain"))
             implementation(project(":core:network"))

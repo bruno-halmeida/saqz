@@ -79,6 +79,12 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
+    fun `validate coupon applied missing code is invalid response not empty success`() = runTest {
+        val result = gateway { json(COUPON_APPLIED_MISSING_CODE) }.validateCoupon("X", Plan.Titular)
+        assertInvalidResponse(result)
+    }
+
+    @Test
     fun `validate coupon unknown status is invalid response`() = runTest {
         val result = gateway { json("""{"status":"WEIRD"}""") }.validateCoupon("X", Plan.Titular)
         assertInvalidResponse(result)
@@ -378,6 +384,7 @@ class KtorSubscriptionGatewayTest {
         const val PLANS = """[$PLAN_TITULAR,$PLAN_ORGANIZADOR]"""
         const val COUPON_APPLIED = """{"status":"APPLIED","code":"BEMVINDO10","planId":"TITULAR","cycle":"MONTHLY","discountPercent":10,"listPriceCents":1990,"finalPriceCents":1791,"validUntil":"2026-08-30T00:00:00Z"}"""
         const val COUPON_APPLIED_MISSING_DISCOUNT = """{"status":"APPLIED","code":"BEMVINDO10","planId":"TITULAR","cycle":"MONTHLY"}"""
+        const val COUPON_APPLIED_MISSING_CODE = """{"status":"APPLIED","planId":"TITULAR","cycle":"MONTHLY","discountPercent":10,"listPriceCents":1990,"finalPriceCents":1791}"""
         const val COUPON_NOT_FOUND = """{"status":"NOT_FOUND"}"""
         const val COUPON_EXPIRED = """{"status":"EXPIRED"}"""
         const val MY_SUBSCRIPTION = """{"status":"ACTIVE","plan":"ORGANIZADOR","cycle":"MONTHLY","pendingPlan":"ILIMITADO","pendingPlanEffectiveAt":"2026-09-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z","paymentMethod":"PIX","usage":{"groupsUsed":2,"groupsLimit":3},"readOnly":false,"pastDueSince":null,"canceledAt":null}"""

@@ -225,15 +225,25 @@ private fun ValidateCouponResponseTransport.toDomain(): CouponValidation? = when
     else -> null
 }
 
+private data class AppliedIdentity(val code: String, val plan: Plan, val cycle: SubscriptionCycle)
+
 private data class AppliedPricing(val discountPercent: Int, val listPriceCents: Long, val finalPriceCents: Long)
 
 private fun ValidateCouponResponseTransport.toAppliedDomain(): CouponValidation.Applied? {
-    val plan = planId?.toDomain() ?: return null
-    val appliedCycle = cycle?.toDomain() ?: return null
+    val identity = toAppliedIdentity() ?: return null
     val pricing = toAppliedPricing() ?: return null
     return CouponValidation.Applied(
-        code.orEmpty(), plan, appliedCycle, pricing.discountPercent, pricing.listPriceCents, pricing.finalPriceCents, validUntil,
+        identity.code, identity.plan, identity.cycle,
+        pricing.discountPercent, pricing.listPriceCents, pricing.finalPriceCents,
+        validUntil,
     )
+}
+
+private fun ValidateCouponResponseTransport.toAppliedIdentity(): AppliedIdentity? {
+    val appliedCode = code ?: return null
+    val plan = planId?.toDomain() ?: return null
+    val appliedCycle = cycle?.toDomain() ?: return null
+    return AppliedIdentity(appliedCode, plan, appliedCycle)
 }
 
 private fun ValidateCouponResponseTransport.toAppliedPricing(): AppliedPricing? {

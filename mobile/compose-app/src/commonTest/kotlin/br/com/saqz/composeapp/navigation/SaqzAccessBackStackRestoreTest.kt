@@ -9,6 +9,7 @@ import androidx.savedstate.serialization.SavedStateConfiguration
 import androidx.savedstate.serialization.decodeFromSavedState
 import androidx.savedstate.serialization.encodeToSavedState
 import br.com.saqz.access.navigation.AccessRoute
+import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -87,6 +88,31 @@ class SaqzAccessBackStackRestoreTest {
         )
 
         assertEquals(listOf<NavKey>(AccessRoute.Bootstrap), restore(saved))
+    }
+
+    @Test
+    fun `subscriptions routes round-trip through the real registered configuration`() {
+        // VUL-108 P2: SubscriptionsRoute leaves must be registered in
+        // saqzLocalNavConfiguration even before any screen pushes them, or the very first
+        // navigation to one of them would fail to survive rotation.
+        val saved = encodeToSavedState(
+            saqzAccessBackStackSerializer,
+            NavBackStack<NavKey>(
+                SubscriptionsRoute.PlanSelection,
+                SubscriptionsRoute.Payment(planId = "TITULAR", cycle = "MONTHLY", couponCode = "BEMVINDO10"),
+                SubscriptionsRoute.PlanActive,
+            ),
+            saqzLocalNavConfiguration,
+        )
+
+        assertEquals(
+            listOf<NavKey>(
+                SubscriptionsRoute.PlanSelection,
+                SubscriptionsRoute.Payment(planId = "TITULAR", cycle = "MONTHLY", couponCode = "BEMVINDO10"),
+                SubscriptionsRoute.PlanActive,
+            ),
+            restore(saved),
+        )
     }
 
     @Test

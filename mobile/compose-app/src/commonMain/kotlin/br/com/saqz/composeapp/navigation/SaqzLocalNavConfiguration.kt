@@ -6,6 +6,7 @@ import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.savedstate.serialization.SavedStateConfiguration
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -40,6 +41,11 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(GroupsRoute.Edit::class, GroupsRoute.Edit.serializer())
             subclass(GroupsRoute.Members::class, GroupsRoute.Members.serializer())
             subclass(GroupsRoute.Schedule::class, GroupsRoute.Schedule.serializer())
+            // VUL-108: registro incondicional (AGENTS.md) mesmo sem nenhuma tela ainda —
+            // sem isso a rota não sobrevive à rotação quando VUL-109..111 a empilharem.
+            subclass(SubscriptionsRoute.PlanSelection::class, SubscriptionsRoute.PlanSelection.serializer())
+            subclass(SubscriptionsRoute.Payment::class, SubscriptionsRoute.Payment.serializer())
+            subclass(SubscriptionsRoute.PlanActive::class, SubscriptionsRoute.PlanActive.serializer())
         }
     }
 }
