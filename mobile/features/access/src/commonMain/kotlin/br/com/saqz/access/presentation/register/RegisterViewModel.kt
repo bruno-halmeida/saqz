@@ -212,9 +212,16 @@ class RegisterViewModel(
         super.onCleared()
     }
 
-    /** Invalida o que estiver em voo. Também é o gancho por onde o teste move o contexto. */
+    /**
+     * Invalida o que estiver em voo e o depósito da 1b. Sem o clear aqui, a ViewModel
+     * morrer antes do callback (back, troca de rota) deixava nome e telefone em
+     * `SignedOut` para o próximo login consumir — o achado do Codex no VUL-101.
+     *
+     * Também é o gancho por onde o teste move o contexto.
+     */
     internal fun discardPendingSubmission() {
         submission++
+        onSessionIntent(SessionIntent.ClearRegistrationIdentity)
     }
 
     private fun callback(generation: Int) = object : AuthCallback {
