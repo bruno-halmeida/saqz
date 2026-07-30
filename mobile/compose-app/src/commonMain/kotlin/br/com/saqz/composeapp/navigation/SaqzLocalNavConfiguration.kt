@@ -46,6 +46,9 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(SubscriptionsRoute.PlanSelection::class, SubscriptionsRoute.PlanSelection.serializer())
             subclass(SubscriptionsRoute.Payment::class, SubscriptionsRoute.Payment.serializer())
             subclass(SubscriptionsRoute.PlanActive::class, SubscriptionsRoute.PlanActive.serializer())
+            // VUL-112: mesmo registro incondicional — 8e ainda não tem tela ligada ao
+            // NavDisplay, mas a rota precisa sobreviver à rotação assim que alguém a empilhar.
+            subclass(SubscriptionsRoute.MyPlan::class, SubscriptionsRoute.MyPlan.serializer())
         }
     }
 }

@@ -18,6 +18,7 @@ import br.com.saqz.groups.presentation.di.groupsPresentationModule
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.toNetworkEnvironment
+import br.com.saqz.subscriptions.presentation.myplan.di.myPlanPresentationModule
 import br.com.saqz.subscriptions.presentation.planactive.di.planActivePresentationModule
 import org.koin.core.context.startKoin
 import org.koin.core.context.loadKoinModules
@@ -41,6 +42,7 @@ private val commonModules = listOf(
     composePresentationModule,
     subscriptionsDataModule,
     planActivePresentationModule(),
+    myPlanPresentationModule(),
 )
 
 internal fun startSaqzKoin() {
