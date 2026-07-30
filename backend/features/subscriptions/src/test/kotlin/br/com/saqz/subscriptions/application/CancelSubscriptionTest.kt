@@ -19,6 +19,9 @@ class CancelSubscriptionTest {
     private val periodEnd = Instant.parse("2026-08-30T12:00:00Z")
     private val clock = Clock.fixed(fixedNow, ZoneOffset.UTC)
     private val ownerId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    private val transaction = object : SubscriptionsTransactionRunner {
+        override fun <T> inTransaction(block: () -> T): T = block()
+    }
 
     @Test
     fun `cancel stops asaas billing and sets canceledAt keeping paid period`() {
@@ -31,6 +34,33 @@ class CancelSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_1",
                 asaasSubscriptionId = "sub_1",
+                billingType = AsaasBillingType.PIX,
+                currentPeriodEnd = periodEnd,
+                status = SubscriptionStatus.ACTIVE,
+            ),
+        )
+
+        val result = CancelSubscription(repo, gateway, transaction, clock).execute(ownerId)
+
+        val success = assertIs<CancelSubscriptionResult.Success>(result)
+        assertEquals(fixedNow, success.subscription.canceledAt)
+        assertEquals(periodEnd, success.subscription.currentPeriodEnd)
+        assertEquals(SubscriptionStatus.ACTIVE, success.subscription.status)
+        assertEquals(listOf("sub_1"), gateway.canceledIds)
+    }
+
+    @Test
+    fun `cancel keeps the pending upgrade charge mapping so a late payment webhook can still find the row`() {
+        val repo = FakeSubscriptionRepository()
+        val gateway = FakeAsaasGateway()
+        repo.save(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_1",
+                asaasSubscriptionId = "sub_1",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = periodEnd,
                 status = SubscriptionStatus.ACTIVE,
                 pendingUpgradePlan = Plan.ORGANIZADOR,
@@ -38,15 +68,12 @@ class CancelSubscriptionTest {
             ),
         )
 
-        val result = CancelSubscription(repo, gateway, clock).execute(ownerId)
+        val result = CancelSubscription(repo, gateway, transaction, clock).execute(ownerId)
 
         val success = assertIs<CancelSubscriptionResult.Success>(result)
         assertEquals(fixedNow, success.subscription.canceledAt)
-        assertEquals(periodEnd, success.subscription.currentPeriodEnd)
-        assertEquals(SubscriptionStatus.ACTIVE, success.subscription.status)
-        assertNull(success.subscription.pendingUpgradePlan)
-        assertNull(success.subscription.pendingUpgradeChargeId)
-        assertEquals(listOf("sub_1"), gateway.canceledIds)
+        assertEquals(Plan.ORGANIZADOR, success.subscription.pendingUpgradePlan)
+        assertEquals("pay_upg", success.subscription.pendingUpgradeChargeId)
     }
 
     @Test
@@ -60,13 +87,17 @@ class CancelSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_1",
                 asaasSubscriptionId = "sub_1",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = periodEnd,
                 status = SubscriptionStatus.ACTIVE,
                 canceledAt = fixedNow.minusSeconds(60),
             ),
         )
 
-        assertEquals(CancelSubscriptionResult.AlreadyCanceled, CancelSubscription(repo, gateway, clock).execute(ownerId))
+        assertEquals(
+            CancelSubscriptionResult.AlreadyCanceled,
+            CancelSubscription(repo, gateway, transaction, clock).execute(ownerId),
+        )
         assertTrue(gateway.canceledIds.isEmpty())
     }
 
@@ -75,24 +106,62 @@ class CancelSubscriptionTest {
         val gateway = FakeAsaasGateway()
         assertEquals(
             CancelSubscriptionResult.NotFound,
-            CancelSubscription(FakeSubscriptionRepository(), gateway, clock).execute(ownerId),
+            CancelSubscription(FakeSubscriptionRepository(), gateway, transaction, clock).execute(ownerId),
         )
         assertNull(FakeSubscriptionRepository().findByOwnerUserId(ownerId))
         assertTrue(gateway.canceledIds.isEmpty())
     }
 
+    @Test
+    fun `cancel runs inside a transaction using the row-locking lookup`() {
+        val repo = FakeSubscriptionRepository()
+        val gateway = FakeAsaasGateway()
+        repo.save(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_1",
+                asaasSubscriptionId = "sub_1",
+                billingType = AsaasBillingType.PIX,
+                currentPeriodEnd = periodEnd,
+                status = SubscriptionStatus.ACTIVE,
+            ),
+        )
+        val recordingTransaction = RecordingTransactionRunner()
+
+        CancelSubscription(repo, gateway, recordingTransaction, clock).execute(ownerId)
+
+        assertTrue(recordingTransaction.wrapped)
+        assertTrue(repo.lockedLookups.contains(ownerId))
+    }
+
     private class FakeSubscriptionRepository : SubscriptionRepository {
         private val byOwner = linkedMapOf<UUID, Subscription>()
+        val lockedLookups = mutableListOf<UUID>()
+
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String) =
             byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
 
         override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
-        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = byOwner[ownerUserId]
+        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID): Subscription? {
+            lockedLookups += ownerUserId
+            return byOwner[ownerUserId]
+        }
+
         override fun findByPendingUpgradeChargeId(chargeId: String) = null
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = save(subscription)
         override fun save(subscription: Subscription) {
             byOwner[subscription.ownerUserId] = subscription
+        }
+    }
+
+    private class RecordingTransactionRunner : SubscriptionsTransactionRunner {
+        var wrapped = false
+        override fun <T> inTransaction(block: () -> T): T {
+            wrapped = true
+            return block()
         }
     }
 

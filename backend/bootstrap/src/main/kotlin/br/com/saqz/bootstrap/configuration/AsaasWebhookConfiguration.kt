@@ -126,8 +126,9 @@ class AsaasWebhookConfiguration {
     fun cancelSubscription(
         subscriptions: SubscriptionRepository,
         asaasGateway: AsaasGateway,
+        transaction: SubscriptionsTransactionRunner,
         clock: Clock,
-    ) = CancelSubscription(subscriptions, asaasGateway, clock)
+    ) = CancelSubscription(subscriptions, asaasGateway, transaction, clock)
 
     @Bean
     fun listReceipts(

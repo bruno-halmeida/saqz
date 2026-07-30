@@ -37,6 +37,9 @@ sealed interface CreateSubscriptionResult {
     data object CouponExpired : CreateSubscriptionResult
     data object CouponAlreadyRedeemed : CreateSubscriptionResult
     data object InvalidCustomerDetails : CreateSubscriptionResult
+
+    /** An unconfirmed subscription is pending for a DIFFERENT plan/cycle than this request. */
+    data object PendingCheckoutMismatch : CreateSubscriptionResult
 }
 
 class CreateSubscription(
@@ -71,7 +74,17 @@ class CreateSubscription(
                     newSubscriptionOutcome(command, now) { c, v ->
                         reactivate(existing, command, name, email, cpfDigits, c, v, now)
                     }
-                existing.firstConfirmedAt == null -> CommitOutcome.Committed(existing)
+                existing.firstConfirmedAt == null ->
+                    // Legacy rows predating billingType have it null — only enforce the match once
+                    // we actually know what the existing charge's billing type was.
+                    if (existing.plan == command.plan &&
+                        existing.cycle == command.cycle &&
+                        (existing.billingType == null || existing.billingType == command.billingType)
+                    ) {
+                        CommitOutcome.Committed(existing)
+                    } else {
+                        CommitOutcome.Rejected(CreateSubscriptionResult.PendingCheckoutMismatch)
+                    }
                 else -> CommitOutcome.Committed(existing) // confirmed active/past_due — AlreadySubscribed after commit
             }
         }
@@ -137,6 +150,7 @@ class CreateSubscription(
             cycle = command.cycle,
             customerId = customerId,
             asaasSubscriptionId = asaasSubscriptionId,
+            billingType = command.billingType,
             now = now,
             coupon = coupon,
         )
@@ -172,6 +186,7 @@ class CreateSubscription(
             cycle = command.cycle,
             customerId = customerId,
             asaasSubscriptionId = asaasSubscriptionId,
+            billingType = command.billingType,
             now = now,
             coupon = coupon,
         )
@@ -188,6 +203,7 @@ class CreateSubscription(
         cycle: SubscriptionCycle,
         customerId: String,
         asaasSubscriptionId: String,
+        billingType: AsaasBillingType,
         now: Instant,
         coupon: Coupon?,
     ) = Subscription(
@@ -196,6 +212,7 @@ class CreateSubscription(
         cycle = cycle,
         asaasCustomerId = customerId,
         asaasSubscriptionId = asaasSubscriptionId,
+        billingType = billingType,
         currentPeriodEnd = initialPeriodEnd(now, cycle),
         status = SubscriptionStatus.PAST_DUE,
         pastDueSince = now,
@@ -230,14 +247,15 @@ class CreateSubscription(
 
     private data class Checkout(val pixCopyPaste: String?, val invoiceUrl: String?)
 
-    private fun resolveCheckout(asaasSubscriptionId: String): Checkout =
-        runCatching {
-            val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
-                ?: return@runCatching Checkout(null, null)
-            val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
-            val invoice = asaasGateway.findPaymentInvoiceUrl(paymentId)
-            Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
-        }.getOrDefault(Checkout(null, null))
+    private fun resolveCheckout(asaasSubscriptionId: String): Checkout {
+        // Best-effort enrichment AFTER the subscription is already committed — any failure here
+        // must not surface as an error for a create that already succeeded.
+        val paymentId = runCatching { asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId) }
+            .getOrNull() ?: return Checkout(null, null)
+        val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
+        val invoice = runCatching { asaasGateway.findPaymentInvoiceUrl(paymentId) }.getOrNull()
+        return Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
+    }
 
     private fun isValidEmail(email: String): Boolean =
         email.length in 3..254 && email.contains('@') && email.indexOf('@') in 1 until email.lastIndex

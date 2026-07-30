@@ -121,6 +121,7 @@ class SubscriptionCommandController(
                 ),
             )
             CreateSubscriptionResult.AlreadySubscribed -> throw SubscriptionConflictException()
+            CreateSubscriptionResult.PendingCheckoutMismatch -> throw SubscriptionConflictException()
             CreateSubscriptionResult.CouponNotFound -> throw CouponNotFoundException()
             CreateSubscriptionResult.CouponExpired -> throw CouponExpiredException()
             CreateSubscriptionResult.CouponAlreadyRedeemed -> throw CouponAlreadyRedeemedException()
@@ -174,6 +175,7 @@ class SubscriptionCommandController(
                 mapOf("targetPlanId" to listOf("must differ from the current plan")),
             )
             ChangePlanResult.DowngradeBlockedByUsage -> throw DowngradeBlockedException()
+            ChangePlanResult.UpgradePendingBlocksChange -> throw SubscriptionConflictException()
         }
     }
 

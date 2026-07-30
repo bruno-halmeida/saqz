@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.domain
 
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.util.UUID
@@ -15,6 +16,7 @@ class SubscriptionTest {
             cycle = SubscriptionCycle.MONTHLY,
             asaasCustomerId = "cus_123",
             asaasSubscriptionId = "sub_123",
+            billingType = AsaasBillingType.PIX,
             currentPeriodEnd = Instant.parse("2026-08-30T00:00:00Z"),
         )
 

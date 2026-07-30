@@ -123,6 +123,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 firstConfirmedAt = fixedNow,
             ),
@@ -140,6 +141,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_canceled",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.CANCELED,
                 canceledAt = fixedNow.minusSeconds(3600),
@@ -170,6 +172,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.PAST_DUE,
                 pastDueSince = fixedNow,
@@ -197,6 +200,7 @@ class CreateSubscriptionTest {
                 cycle = SubscriptionCycle.MONTHLY,
                 asaasCustomerId = "cus_old",
                 asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
                 currentPeriodEnd = fixedNow,
                 status = SubscriptionStatus.PAST_DUE,
                 pastDueSince = fixedNow,
@@ -216,6 +220,81 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `refuses to reissue checkout when the retry asks for a different plan or cycle`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ILIMITADO, cycle = SubscriptionCycle.ANNUAL))
+
+        assertEquals(CreateSubscriptionResult.PendingCheckoutMismatch, result)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+        val stored = subscriptions.findByOwnerUserId(ownerId)!!
+        assertEquals(Plan.TITULAR, stored.plan)
+        assertEquals(SubscriptionCycle.MONTHLY, stored.cycle)
+    }
+
+    @Test
+    fun `refuses to reissue checkout when the retry asks for a different billing type`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.CREDIT_CARD,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+
+        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.PIX))
+
+        assertEquals(CreateSubscriptionResult.PendingCheckoutMismatch, result)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+        assertEquals(AsaasBillingType.CREDIT_CARD, subscriptions.findByOwnerUserId(ownerId)!!.billingType)
+    }
+
+    @Test
+    fun `reissues checkout for a legacy row with unknown billing type regardless of retry billing type`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = null,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+        gateway.pixPayload = "000201LEGACY"
+
+        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.CREDIT_CARD))
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_old", success.subscription.asaasSubscriptionId)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
     fun `rejects malformed cpf before calling asaas`() {
         assertEquals(
             CreateSubscriptionResult.InvalidCustomerDetails,
@@ -230,6 +309,29 @@ class CreateSubscriptionTest {
             CreateSubscriptionResult.InvalidCustomerDetails,
             useCase.execute(baseCommand().copy(email = "not-an-email")),
         )
+    }
+
+    @Test
+    fun `create still succeeds when the checkout enrichment lookup itself fails`() {
+        gateway.latestPaymentIdThrows = true
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertNull(success.pixCopyPaste)
+        assertNull(success.invoiceUrl)
+    }
+
+    @Test
+    fun `keeps the pix payload when only the invoice lookup fails`() {
+        gateway.pixPayload = "00020126PIX-OK"
+        gateway.invoiceUrlThrows = true
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("00020126PIX-OK", success.pixCopyPaste)
+        assertNull(success.invoiceUrl)
     }
 
     @Test
@@ -297,6 +399,8 @@ class CreateSubscriptionTest {
     private class FakeAsaasGateway : AsaasGateway {
         var pixPayload: String? = "00020126DEFAULT-PIX"
         var invoiceUrl: String? = null
+        var invoiceUrlThrows: Boolean = false
+        var latestPaymentIdThrows: Boolean = false
         var lastSubscriptionValueCents: Long? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
 
@@ -325,9 +429,14 @@ class CreateSubscriptionTest {
         ) = error("unused")
 
         override fun regeneratePixPayload(asaasChargeId: String) = pixPayload ?: error("no pix")
-        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) =
-            if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {
+            if (latestPaymentIdThrows) throw RuntimeException("payment lookup failed")
+            return if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
+        }
 
-        override fun findPaymentInvoiceUrl(asaasPaymentId: String) = invoiceUrl
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
+            if (invoiceUrlThrows) throw RuntimeException("invoice lookup failed")
+            return invoiceUrl
+        }
     }
 }

@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.domain
 
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import java.time.Instant
 import java.util.UUID
 
@@ -12,6 +13,8 @@ data class Subscription(
     val cycle: SubscriptionCycle,
     val asaasCustomerId: String,
     val asaasSubscriptionId: String,
+    /** Null for legacy rows created before this field existed — never fabricate a value for them. */
+    val billingType: AsaasBillingType?,
     val currentPeriodEnd: Instant,
     val status: SubscriptionStatus = SubscriptionStatus.ACTIVE,
     val canceledAt: Instant? = null,
