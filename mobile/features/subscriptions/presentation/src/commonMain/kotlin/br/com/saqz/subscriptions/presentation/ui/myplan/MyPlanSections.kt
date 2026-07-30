@@ -40,6 +40,7 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_access_until
 import br.com.saqz.subscriptions.resources.myplan_cancel_button
 import br.com.saqz.subscriptions.resources.myplan_cancel_confirm
 import br.com.saqz.subscriptions.resources.myplan_cancel_helper
@@ -61,6 +62,7 @@ import br.com.saqz.subscriptions.resources.myplan_pending_payment_dismiss
 import br.com.saqz.subscriptions.resources.myplan_pending_payment_title
 import br.com.saqz.subscriptions.resources.myplan_receipts_empty
 import br.com.saqz.subscriptions.resources.myplan_receipts_sheet_title
+import br.com.saqz.subscriptions.resources.myplan_retry
 import br.com.saqz.subscriptions.resources.myplan_usage_title
 import org.jetbrains.compose.resources.stringResource
 
@@ -90,6 +92,23 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
                 Text(
                     text = stringResource(Res.string.myplan_next_charge, plan.nextChargeDate) +
                         (plan.paymentMethodLabel?.let { " · ${it.asString()}" } ?: ""),
+                    style = SaqzTheme.typography.support,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        // Assinatura cancelada não tem próxima cobrança — o acesso é o que segue até
+        // `currentPeriodEnd` (ver MyPlanMappers.toCardUi).
+        if (plan.accessUntilDate != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(metrics.cardRadius))
+                    .background(colors.surface)
+                    .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+            ) {
+                Text(
+                    text = stringResource(Res.string.myplan_access_until, plan.accessUntilDate),
                     style = SaqzTheme.typography.support,
                     color = colors.textSecondary,
                 )
@@ -289,7 +308,18 @@ internal fun MyPlanReceiptsSheet(state: MyPlanState, onIntent: (MyPlanIntent) ->
         modifier = Modifier.testTag(MyPlanTags.ReceiptsSheet),
         title = stringResource(Res.string.myplan_receipts_sheet_title),
     ) {
-        if (state.receipts.isEmpty()) {
+        if (state.receiptsError != null) {
+            Text(
+                text = state.receiptsError.asString(),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.errorForeground,
+            )
+            SaqzButton(
+                label = stringResource(Res.string.myplan_retry),
+                onClick = { onIntent(MyPlanIntent.RetryReceipts) },
+                variant = SaqzButtonVariant.Secondary,
+            )
+        } else if (state.receipts.isEmpty()) {
             Text(
                 text = stringResource(Res.string.myplan_receipts_empty),
                 style = SaqzTheme.typography.support,

@@ -9,6 +9,7 @@
     <string name="myplan_price_monthly">%1$s/mês</string>
     <string name="myplan_price_annual">%1$s/ano</string>
     <string name="myplan_next_charge">Próxima cobrança em %1$s</string>
+    <string name="myplan_access_until">Acesso garantido até %1$s</string>
     <string name="myplan_pending_change">Troca para %1$s vale a partir de %2$s</string>
     <string name="myplan_billing_pix">Pix</string>
     <string name="myplan_billing_credit_card">Cartão de crédito</string>
@@ -37,6 +38,7 @@
     <string name="myplan_pending_payment_dismiss">Entendi</string>
     <string name="myplan_receipts_sheet_title">Recibos</string>
     <string name="myplan_receipts_empty">Nenhum recibo ainda.</string>
+    <string name="myplan_receipts_load_error">Não foi possível carregar os recibos agora.</string>
     <string name="myplan_load_error">Não foi possível carregar seu plano agora.</string>
     <string name="myplan_retry">Tentar de novo</string>
     <string name="myplan_generic_error">Algo deu errado. Tente de novo.</string>

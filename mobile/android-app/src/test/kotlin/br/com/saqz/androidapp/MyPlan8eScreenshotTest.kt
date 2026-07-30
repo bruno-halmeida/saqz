@@ -24,8 +24,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 8e — os sete estados que o VUL-112 introduz: o básico do export, downgrade agendado,
- * troca recusada por limite, upgrade com cobrança pendente, cancelamento, carregando e erro.
+ * 8e — os estados que o VUL-112 introduz: o básico do export, downgrade agendado, troca
+ * recusada por limite, upgrade com cobrança pendente, cancelamento, carregando, erro —
+ * mais os dois que os 5 achados do Codex no PR #93 acrescentaram: assinatura cancelada
+ * (status forçado + "acesso garantido até", em vez de "Ativo" com próxima cobrança falsa)
+ * e falha ao carregar recibos (erro com retry, em vez de "nenhum recibo ainda").
  *
  * Arquivo próprio (AGENTS.md §11): `:features:subscriptions:presentation` ainda não tem
  * Roborazzi próprio (nenhum ticket da onda 6 precisou até agora), então a cena entra aqui,
@@ -116,6 +119,38 @@ class MyPlan8eScreenshotTest {
     fun myPlan8eErro() = capture("8e-myplan-erro") {
         MyPlanScreen(
             state = MyPlanState(isLoading = false, loadError = UiText.Raw("Não foi possível carregar seu plano agora.")),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    // Achado do Codex no PR #93: `canceledAt` sem esperar o webhook migrar `status` — o
+    // card mostra Cancelado e "acesso garantido até", nunca "Ativo" com próxima cobrança.
+    @Test
+    fun myPlan8eCancelado() = capture("8e-myplan-cancelado") {
+        MyPlanScreen(
+            state = ACTIVE.copy(
+                plan = ACTIVE.plan?.copy(
+                    statusLabel = UiText.Raw("Cancelado"),
+                    statusTone = MyPlanStatusTone.Canceled,
+                    nextChargeDate = null,
+                    accessUntilDate = "30/08/2026",
+                ),
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    // Achado do Codex no PR #93: falha em `receipts()` vira erro com retry, não "nenhum
+    // recibo ainda".
+    @Test
+    fun myPlan8eRecibosErro() = capture("8e-myplan-recibos-erro") {
+        MyPlanScreen(
+            state = ACTIVE.copy(
+                isReceiptsSheetOpen = true,
+                receiptsError = UiText.Raw("Não foi possível carregar os recibos agora."),
+            ),
             onBack = {},
             onIntent = {},
         )

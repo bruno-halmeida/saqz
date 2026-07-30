@@ -58,12 +58,22 @@ internal fun MySubscription.toCardUi(plans: List<PlanDetails>): MyPlanCardUi {
             listOf(pendingName, isoDateToPtBr(pendingPlanEffectiveAt.orEmpty())),
         )
     }
+    // O backend marca `canceledAt` sem tocar em `status` — o acesso segue até
+    // `currentPeriodEnd`, e é o webhook quem migra o status pra CANCELED depois (achado
+    // do Codex no PR #93, confirmado em CancelSubscriptionTest). A tela não pode esperar
+    // o webhook para parar de mostrar "Ativo" com o botão de cancelar habilitado de novo.
+    val canceled = canceledAt != null
+    val effectiveStatus = if (canceled) SubscriptionStatus.Canceled else status
     return MyPlanCardUi(
         name = details.displayName(plan),
-        statusLabel = status.toUiText(),
-        statusTone = status.toTone(),
+        statusLabel = effectiveStatus.toUiText(),
+        statusTone = effectiveStatus.toTone(),
         priceLine = details?.let { priceLineFor(it.priceCents(cycle), cycle) } ?: UiText.Raw(""),
-        nextChargeDate = isoDateToPtBr(currentPeriodEnd),
+        // `currentPeriodEnd` cancelada não é cobrança futura — cancelar já parou a cobrança
+        // no Asaas (CancelSubscription.kt: "Stop future Asaas charges now; local access
+        // still follows currentPeriodEnd"). Mostrar como próxima cobrança seria falso.
+        nextChargeDate = if (canceled) null else isoDateToPtBr(currentPeriodEnd),
+        accessUntilDate = if (canceled) isoDateToPtBr(currentPeriodEnd) else null,
         paymentMethodLabel = paymentMethod?.toUiText(),
         pendingChangeLine = pendingLine,
     )

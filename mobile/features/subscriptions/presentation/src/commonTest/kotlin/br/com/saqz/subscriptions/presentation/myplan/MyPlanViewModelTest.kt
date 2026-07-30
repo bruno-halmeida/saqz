@@ -32,6 +32,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
@@ -194,6 +195,84 @@ class MyPlanViewModelTest {
 
         assertEquals(1, gateway.changePlanCommands.size)
     }
+
+    // Achado do Codex no PR #93: troca e cancelamento mexem na mesma cobrança, então uma
+    // em voo tem que bloquear a outra também, não só ela mesma.
+    @Test
+    fun `a plan change in flight blocks a cancel`() = runTest {
+        val gateway = FakeSubscriptionGateway(neverResolveChangePlan = true)
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.SelectPlan(Plan.Titular))
+        viewModel.onIntent(MyPlanIntent.ConfirmCancel)
+
+        assertEquals(0, gateway.cancelCalls)
+    }
+
+    @Test
+    fun `a cancel in flight blocks a plan change`() = runTest {
+        val gateway = FakeSubscriptionGateway(neverResolveCancel = true)
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.ConfirmCancel)
+        viewModel.onIntent(MyPlanIntent.SelectPlan(Plan.Titular))
+
+        assertEquals(0, gateway.changePlanCommands.size)
+    }
+
+    // O backend marca `canceledAt` sem esperar o webhook migrar `status` (achado do Codex
+    // no PR #93, confirmado em CancelSubscriptionTest) — a tela não pode confiar cegamente
+    // em `status` cru, senão mostra "Ativo" de novo com o cancelar liberado.
+    @Test
+    fun `a canceled subscription shows canceled status and access-until even before status catches up`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(
+                ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.Active, canceledAt = "2026-08-01T00:00:00Z"),
+            ),
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        val plan = viewModel.state.value.plan
+        assertEquals(MyPlanStatusTone.Canceled, plan?.statusTone)
+        assertNull(plan?.nextChargeDate)
+        assertEquals("30/08/2026", plan?.accessUntilDate)
+    }
+
+    @Test
+    fun `receipts failure surfaces an error instead of an empty list and retry recovers`() = runTest {
+        val gateway = FakeSubscriptionGateway(receiptsResult = SaqzResult.Failure(SubscriptionError.Conflict))
+        val viewModel = MyPlanViewModel(gateway)
+
+        assertEquals(emptyList(), viewModel.state.value.receipts)
+        assertNotNull(viewModel.state.value.receiptsError)
+
+        gateway.receiptsResult = SaqzResult.Success(
+            listOf(
+                Receipt(
+                    asaasEventId = "evt-1",
+                    asaasPaymentId = "pay-1",
+                    valueCents = 4990,
+                    confirmedAt = "2026-07-01T00:00:00Z",
+                    processedAt = "2026-07-01T00:05:00Z",
+                ),
+            ),
+        )
+        viewModel.onIntent(MyPlanIntent.RetryReceipts)
+
+        assertNull(viewModel.state.value.receiptsError)
+        assertEquals(listOf(MyPlanReceiptUi("evt-1", "01/07/2026", "R$ 49,90")), viewModel.state.value.receipts)
+    }
+
+    @Test
+    fun `plans failure surfaces as a load error and not an empty catalog`() = runTest {
+        val gateway = FakeSubscriptionGateway(plansResult = SaqzResult.Failure(SubscriptionError.Conflict))
+        val viewModel = MyPlanViewModel(gateway)
+
+        assertEquals(false, viewModel.state.value.isLoading)
+        assertNull(viewModel.state.value.plan)
+        assertEquals(emptyList(), viewModel.state.value.changeOptions)
+        assertNotNull(viewModel.state.value.loadError)
+    }
 }
 
 private val PLAN_DETAILS = listOf(
@@ -259,9 +338,10 @@ private class FakeSubscriptionGateway(
     var changePlanResult: SaqzResult<ChangePlanResult, SubscriptionError> = SaqzResult.Failure(SubscriptionError.Conflict),
     var cancelResult: SaqzResult<CanceledSubscription, SubscriptionError> = SaqzResult.Failure(SubscriptionError.Conflict),
     var subscriptionAfterMutation: MySubscription? = null,
-    // Nunca resolve — só serve para segurar `isChangingPlan == true` enquanto o teste do
-    // reentrancy guard dispara um segundo intent por cima do primeiro, ainda em voo.
+    // Nunca resolvem — só servem para segurar `isChangingPlan`/`isCanceling == true`
+    // enquanto o teste do guard de mutação dispara a outra intent por cima, ainda em voo.
     private val neverResolveChangePlan: Boolean = false,
+    private val neverResolveCancel: Boolean = false,
 ) : SubscriptionGateway {
     val changePlanCommands = mutableListOf<ChangePlanCommand>()
     var cancelCalls = 0
@@ -288,6 +368,7 @@ private class FakeSubscriptionGateway(
 
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> {
         cancelCalls++
+        if (neverResolveCancel) awaitCancellation()
         subscriptionAfterMutation?.let { subscriptionResult = SaqzResult.Success(it) }
         return cancelResult
     }

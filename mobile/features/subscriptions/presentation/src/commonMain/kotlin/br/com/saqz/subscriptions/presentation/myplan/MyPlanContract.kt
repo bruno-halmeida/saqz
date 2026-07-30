@@ -17,6 +17,7 @@ data class MyPlanState(
     val plan: MyPlanCardUi? = null,
     val usage: MyPlanUsageUi? = null,
     val receipts: List<MyPlanReceiptUi> = emptyList(),
+    val receiptsError: UiText? = null,
     val changeOptions: List<MyPlanChangeOptionUi> = emptyList(),
     val isChangeSheetOpen: Boolean = false,
     val isChangingPlan: Boolean = false,
@@ -43,6 +44,11 @@ data class MyPlanCardUi(
     val nextChargeDate: String?,
     val paymentMethodLabel: UiText?,
     val pendingChangeLine: UiText?,
+    // Só numa assinatura cancelada (achado do Codex no PR #93): `currentPeriodEnd` não é
+    // cobrança futura nenhuma quando `canceledAt != null` — é até quando o acesso dura,
+    // porque o cancelamento já parou a cobrança no Asaas. `nextChargeDate` fica nulo nesse
+    // caso e este campo assume, com um rótulo diferente ("acesso garantido até").
+    val accessUntilDate: String? = null,
 )
 
 /** [progress] nulo é o plano sem limite de grupos (Quadra Cheia): a barra não desenha. */
@@ -78,6 +84,7 @@ sealed interface MyPlanIntent {
     data class SelectPlan(val planId: Plan) : MyPlanIntent
     data object OpenReceipts : MyPlanIntent
     data object DismissReceipts : MyPlanIntent
+    data object RetryReceipts : MyPlanIntent
     data object OpenCancel : MyPlanIntent
     data object DismissCancel : MyPlanIntent
     data object ConfirmCancel : MyPlanIntent

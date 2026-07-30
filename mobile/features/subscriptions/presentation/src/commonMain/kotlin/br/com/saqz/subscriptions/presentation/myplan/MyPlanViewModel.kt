@@ -50,6 +50,7 @@ class MyPlanViewModel(
             is MyPlanIntent.SelectPlan -> changePlan(intent.planId)
             MyPlanIntent.OpenReceipts -> update { it.copy(isReceiptsSheetOpen = true) }
             MyPlanIntent.DismissReceipts -> update { it.copy(isReceiptsSheetOpen = false) }
+            MyPlanIntent.RetryReceipts -> loadReceipts()
             MyPlanIntent.OpenCancel -> update { it.copy(isCancelSheetOpen = true, cancelError = null) }
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
@@ -65,37 +66,55 @@ class MyPlanViewModel(
             val subscriptionResult = gateway.mySubscription()
             if (generation != loadGeneration) return@launch
 
-            when (subscriptionResult) {
-                is SaqzResult.Failure -> update {
-                    it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText())
-                }
-                is SaqzResult.Success -> {
-                    subscription = subscriptionResult.value
-                    plans = (plansResult as? SaqzResult.Success)?.value.orEmpty()
-                    val receipts = when (val result = gateway.receipts()) {
-                        is SaqzResult.Success -> result.value
-                        is SaqzResult.Failure -> emptyList()
-                    }
-                    if (generation != loadGeneration) return@launch
-                    update {
-                        it.copy(
-                            isLoading = false,
-                            loadError = null,
-                            plan = subscriptionResult.value.toCardUi(plans),
-                            usage = subscriptionResult.value.toUsageUi(),
-                            receipts = receipts.map { receipt -> receipt.toUi() },
-                            changeOptions = plans.map { details -> details.toChangeOptionUi(subscriptionResult.value) },
-                        )
-                    }
-                }
+            // plans() é obrigatório: nome de exibição, preço e as opções de troca dependem
+            // dele. Uma falha aqui não pode virar catálogo vazio silencioso (achado do
+            // Codex no PR #93) — é carga que falhou, mesmo caminho de `mySubscription()`.
+            if (plansResult is SaqzResult.Failure || subscriptionResult is SaqzResult.Failure) {
+                val error = (subscriptionResult as? SaqzResult.Failure)?.error
+                    ?: (plansResult as SaqzResult.Failure).error
+                update { it.copy(isLoading = false, loadError = error.toUiText()) }
+                return@launch
+            }
+
+            val loadedPlans = (plansResult as SaqzResult.Success).value
+            val loadedSubscription = (subscriptionResult as SaqzResult.Success).value
+            subscription = loadedSubscription
+            plans = loadedPlans
+
+            val receiptsResult = gateway.receipts()
+            if (generation != loadGeneration) return@launch
+            update {
+                it.copy(
+                    isLoading = false,
+                    loadError = null,
+                    plan = loadedSubscription.toCardUi(loadedPlans),
+                    usage = loadedSubscription.toUsageUi(),
+                    // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
+                    // PR #93): mantém a última lista boa e guarda o erro à parte.
+                    receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
+                    receiptsError = (receiptsResult as? SaqzResult.Failure)?.error?.toUiText(),
+                    changeOptions = loadedPlans.map { details -> details.toChangeOptionUi(loadedSubscription) },
+                )
+            }
+        }
+    }
+
+    private fun loadReceipts() {
+        update { it.copy(receiptsError = null) }
+        viewModelScope.launch {
+            when (val result = gateway.receipts()) {
+                is SaqzResult.Success -> update { it.copy(receipts = result.value.map { r -> r.toUi() }, receiptsError = null) }
+                is SaqzResult.Failure -> update { it.copy(receiptsError = result.error.toUiText()) }
             }
         }
     }
 
     // Intent inválido retorna cedo (AGENTS.md §4): um segundo toque em "trocar" enquanto a
-    // primeira chamada ainda está no ar não abre uma segunda em paralelo.
+    // primeira chamada ainda está no ar não abre uma segunda em paralelo — e trocar e
+    // cancelar são a MESMA corrida (achado do Codex no PR #93): as duas mexem na cobrança,
+    // então uma em voo bloqueia a outra também, não só ela mesma.
     private fun changePlan(planId: Plan) {
-        if (state.value.isChangingPlan) return
+        if (state.value.isChangingPlan || state.value.isCanceling) return
         update { it.copy(isChangingPlan = true, changeError = null) }
         viewModelScope.launch {
             gateway.changePlan(ChangePlanCommand(requestId = newRequestId(), targetPlanId = planId))
@@ -139,7 +158,7 @@ class MyPlanViewModel(
     }
 
     private fun cancel() {
-        if (state.value.isCanceling) return
+        if (state.value.isCanceling || state.value.isChangingPlan) return
         update { it.copy(isCanceling = true, cancelError = null) }
         viewModelScope.launch {
             gateway.cancel()
