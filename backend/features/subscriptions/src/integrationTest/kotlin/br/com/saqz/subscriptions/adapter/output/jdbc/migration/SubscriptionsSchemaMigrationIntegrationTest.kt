@@ -1,0 +1,107 @@
+package br.com.saqz.subscriptions.adapter.output.jdbc.migration
+
+import br.com.saqz.subscriptions.testing.startAndAwaitJdbc
+import br.com.saqz.subscriptions.testing.subscriptionsMigrationLocation
+import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.testcontainers.postgresql.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
+import java.sql.Connection
+import java.util.UUID
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class SubscriptionsSchemaMigrationIntegrationTest {
+    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private lateinit var dataSource: DriverManagerDataSource
+
+    @BeforeAll
+    fun startDatabase() {
+        postgres.startAndAwaitJdbc()
+        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+    }
+
+    @BeforeEach
+    fun resetDatabase() {
+        flyway().clean()
+        flyway().migrate()
+    }
+
+    @AfterAll
+    fun stopDatabase() = postgres.stop()
+
+    @Test
+    fun `coupon redemption is unique per coupon and user`() {
+        val coupon = coupon("welcome-unique")
+        val userId = "firebase-uid-unique"
+        redeem(coupon, userId)
+
+        assertFailsWith<Exception> { redeem(coupon, userId) }
+    }
+
+    @Test
+    fun `same user can redeem different coupons`() {
+        val userId = "firebase-uid-multi"
+        val first = coupon("welcome-a")
+        val second = coupon("welcome-b")
+
+        redeem(first, userId)
+        redeem(second, userId)
+
+        assertEquals(2, int("SELECT count(*) FROM coupon_redemptions WHERE user_id = '$userId'"))
+    }
+
+    @Test
+    fun `different users can redeem the same coupon`() {
+        val coupon = coupon("welcome-shared")
+
+        redeem(coupon, "firebase-uid-a")
+        redeem(coupon, "firebase-uid-b")
+
+        assertEquals(2, int("SELECT count(*) FROM coupon_redemptions WHERE coupon_id = '$coupon'"))
+    }
+
+    private fun flyway(): Flyway = Flyway.configure()
+        .dataSource(dataSource)
+        .locations(subscriptionsMigrationLocation())
+        .cleanDisabled(false)
+        .load()
+
+    private fun coupon(code: String): UUID {
+        val id = UUID.randomUUID()
+        val uniqueCode = "$code-${UUID.randomUUID().toString().take(8)}"
+        execute(
+            "INSERT INTO coupons (id, code, discount_percent, created_at) VALUES " +
+                "('$id', '$uniqueCode', 10, now())",
+        )
+        return id
+    }
+
+    private fun redeem(couponId: UUID, userId: String) {
+        execute(
+            "INSERT INTO coupon_redemptions (coupon_id, user_id, redeemed_at) VALUES " +
+                "('$couponId', '$userId', now())",
+        )
+    }
+
+    private fun execute(sql: String) {
+        connection().use { connection -> connection.createStatement().use { it.execute(sql) } }
+    }
+
+    private fun int(sql: String): Int = connection().use { connection ->
+        connection.createStatement().use { statement ->
+            statement.executeQuery(sql).use { result ->
+                check(result.next())
+                result.getInt(1)
+            }
+        }
+    }
+
+    private fun connection(): Connection = dataSource.connection
+}

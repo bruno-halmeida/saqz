@@ -27,7 +27,15 @@ class BackendArchitectureTest {
             .toSet()
 
         assertEquals(
-            setOf(":shared-kernel", ":features:access", ":features:groups", ":features:identity", ":bootstrap", ":architecture-tests"),
+            setOf(
+                ":shared-kernel",
+                ":features:access",
+                ":features:groups",
+                ":features:identity",
+                ":features:subscriptions",
+                ":bootstrap",
+                ":architecture-tests",
+            ),
             modules,
         )
     }
@@ -110,7 +118,7 @@ class BackendArchitectureTest {
             paths.filter(Path::isDirectory).map(Path::name).sorted().toList()
         }
 
-        assertEquals(listOf("access", "groups", "identity"), featureDirectories)
+        assertEquals(listOf("access", "groups", "identity", "subscriptions"), featureDirectories)
     }
 
     @Test
@@ -188,7 +196,7 @@ class BackendArchitectureTest {
 
     @Test
     fun `ARCH-11 exposes exactly access groups and identity backend features`() {
-        assertEquals(listOf("access", "groups", "identity"), featureDirectories().map(Path::name))
+        assertEquals(listOf("access", "groups", "identity", "subscriptions"), featureDirectories().map(Path::name))
     }
 
     @Test
