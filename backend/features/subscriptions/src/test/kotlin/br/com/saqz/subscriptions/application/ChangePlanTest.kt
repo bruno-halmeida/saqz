@@ -61,7 +61,7 @@ class ChangePlanTest {
     }
 
     @Test
-    fun `upgrade with remaining coupon still only schedules charge without applying plan`() {
+    fun `upgrade with remaining coupon charges prorata on discounted prices and keeps plan`() {
         coupons.byId[couponId] = Coupon(id = couponId, code = "GALERA10", discountPercent = 10, durationCycles = 3)
         subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = 2))
 
@@ -70,7 +70,41 @@ class ChangePlanTest {
         val pending = assertIs<ChangePlanResult.UpgradePendingPayment>(result)
         assertEquals(Plan.TITULAR, pending.subscription.plan)
         assertEquals(Plan.ORGANIZADOR, pending.subscription.pendingUpgradePlan)
+        // discounted: 3990*0.9=3591, 5990*0.9=5391, delta 1800, ~half period → 900
+        assertEquals(900L, pending.chargedCents)
         assertTrue(gateway.valueUpdates.isEmpty())
+    }
+
+    @Test
+    fun `upgrade with permanent coupon keeps discount when scheduling charge`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "FOREVER20", discountPercent = 20, durationCycles = null)
+        subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = null))
+
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        val pending = assertIs<ChangePlanResult.UpgradePendingPayment>(result)
+        // 3990*0.8=3192, 5990*0.8=4792, delta 1600, ~half → 800
+        assertEquals(800L, pending.chargedCents)
+        assertEquals(couponId, pending.subscription.couponId)
+        assertNull(pending.subscription.couponCyclesRemaining)
+    }
+
+    @Test
+    fun `downgrade with permanent coupon pushes discounted target price`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "FOREVER20", discountPercent = 20, durationCycles = null)
+        subscriptions.save(
+            baseSubscription().copy(
+                plan = Plan.ORGANIZADOR,
+                couponId = couponId,
+                couponCyclesRemaining = null,
+            ),
+        )
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5)
+
+        useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
+
+        // 3990 * 0.8 = 3192
+        assertEquals(listOf("sub_1" to 3_192L), gateway.valueUpdates)
     }
 
     @Test

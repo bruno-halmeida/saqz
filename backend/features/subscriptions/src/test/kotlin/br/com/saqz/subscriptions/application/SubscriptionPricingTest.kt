@@ -14,6 +14,16 @@ class SubscriptionPricingTest {
     }
 
     @Test
+    fun `hasActiveCouponDiscount treats null cycles with couponId as permanent`() {
+        val id = java.util.UUID.randomUUID()
+        assertEquals(false, SubscriptionPricing.hasActiveCouponDiscount(null, null))
+        assertEquals(false, SubscriptionPricing.hasActiveCouponDiscount(null, 3))
+        assertEquals(true, SubscriptionPricing.hasActiveCouponDiscount(id, null))
+        assertEquals(true, SubscriptionPricing.hasActiveCouponDiscount(id, 2))
+        assertEquals(false, SubscriptionPricing.hasActiveCouponDiscount(id, 0))
+    }
+
+    @Test
     fun `prorata is zero when target is not more expensive`() {
         val now = Instant.parse("2026-07-15T00:00:00Z")
         val end = Instant.parse("2026-07-30T00:00:00Z")

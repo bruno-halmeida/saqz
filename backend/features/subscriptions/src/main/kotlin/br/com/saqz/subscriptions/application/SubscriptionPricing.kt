@@ -27,6 +27,19 @@ object SubscriptionPricing {
     }
 
     /**
+     * Whether [couponId]/[couponCyclesRemaining] still grant a discount:
+     * - no couponId → inactive
+     * - couponId set + cycles null → permanent discount
+     * - couponId set + cycles > 0 → finite remaining
+     * - couponId set + cycles <= 0 → exhausted
+     */
+    fun hasActiveCouponDiscount(couponId: java.util.UUID?, couponCyclesRemaining: Int?): Boolean {
+        if (couponId == null) return false
+        if (couponCyclesRemaining == null) return true
+        return couponCyclesRemaining > 0
+    }
+
+    /**
      * Remaining-period upgrade charge: (target − current) × remainingFraction of the cycle.
      * Floors at 0 (same or cheaper plan is not an upgrade charge).
      */

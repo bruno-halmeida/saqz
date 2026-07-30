@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
 import br.com.saqz.subscriptions.application.SubscriptionPricing.applyDiscount
+import br.com.saqz.subscriptions.application.SubscriptionPricing.hasActiveCouponDiscount
 import br.com.saqz.subscriptions.application.SubscriptionPricing.priceCents
 import br.com.saqz.subscriptions.application.SubscriptionPricing.prorataUpgradeCents
 import br.com.saqz.subscriptions.domain.Plan
@@ -57,28 +58,32 @@ class ChangePlan(
             return ChangePlanResult.SamePlan
         }
 
-        val currentPrice = current.plan.priceCents(current.cycle)
-        val targetPrice = command.targetPlan.priceCents(current.cycle)
+        val currentPrice = recurringPriceCents(current.plan, current)
+        val targetPrice = recurringPriceCents(command.targetPlan, current)
         return if (targetPrice > currentPrice) {
-            upgrade(current, command)
+            upgrade(current, command, currentPrice, targetPrice)
         } else {
-            downgrade(current, command)
+            downgrade(current, command, targetPrice)
         }
     }
 
-    private fun upgrade(current: Subscription, command: ChangePlanCommand): ChangePlanResult {
+    private fun upgrade(
+        current: Subscription,
+        command: ChangePlanCommand,
+        currentPrice: Long,
+        targetPrice: Long,
+    ): ChangePlanResult {
         val now = clock.instant()
         val chargedCents = prorataUpgradeCents(
-            currentPriceCents = current.plan.priceCents(current.cycle),
-            targetPriceCents = command.targetPlan.priceCents(current.cycle),
+            currentPriceCents = currentPrice,
+            targetPriceCents = targetPrice,
             now = now,
             currentPeriodEnd = current.currentPeriodEnd,
             cycle = current.cycle,
         )
 
         if (chargedCents <= 0L) {
-            val nextPrice = recurringPriceCents(command.targetPlan, current)
-            asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, nextPrice)
+            asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, targetPrice)
             val updated = current.copy(
                 plan = command.targetPlan,
                 pendingPlan = null,
@@ -113,11 +118,14 @@ class ChangePlan(
         )
     }
 
-    private fun downgrade(current: Subscription, command: ChangePlanCommand): ChangePlanResult {
+    private fun downgrade(
+        current: Subscription,
+        command: ChangePlanCommand,
+        targetPrice: Long,
+    ): ChangePlanResult {
         if (!usageFitsTarget(command.ownerUserId, command.targetPlan)) {
             return ChangePlanResult.DowngradeBlockedByUsage
         }
-        val targetPrice = recurringPriceCents(command.targetPlan, current)
         asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, targetPrice)
         val updated = current.copy(
             pendingPlan = command.targetPlan,
@@ -127,11 +135,13 @@ class ChangePlan(
         return ChangePlanResult.DowngradeScheduled(updated)
     }
 
-    /** List price of [plan], still applying an active multi-cycle coupon when remaining. */
+    /**
+     * List price of [plan], with active coupon discount when present.
+     * Permanent coupons (`couponId` set, `couponCyclesRemaining` null) keep the discount.
+     */
     private fun recurringPriceCents(plan: Plan, current: Subscription): Long {
         val full = plan.priceCents(current.cycle)
-        val remaining = current.couponCyclesRemaining
-        if (remaining == null || remaining <= 0) return full
+        if (!hasActiveCouponDiscount(current.couponId, current.couponCyclesRemaining)) return full
         val couponId = current.couponId ?: return full
         val coupon = coupons.findById(couponId) ?: return full
         return applyDiscount(full, coupon.discountPercent)

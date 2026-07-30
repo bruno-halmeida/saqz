@@ -142,8 +142,9 @@ class ProcessAsaasWebhook(
     }
 
     private fun recurringPriceWithCoupon(fullPriceCents: Long, current: Subscription): Long {
-        val remaining = current.couponCyclesRemaining
-        if (remaining == null || remaining <= 0) return fullPriceCents
+        if (!SubscriptionPricing.hasActiveCouponDiscount(current.couponId, current.couponCyclesRemaining)) {
+            return fullPriceCents
+        }
         val couponId = current.couponId ?: return fullPriceCents
         val coupon = coupons?.findById(couponId) ?: return fullPriceCents
         return fullPriceCents - (fullPriceCents * coupon.discountPercent / 100)
