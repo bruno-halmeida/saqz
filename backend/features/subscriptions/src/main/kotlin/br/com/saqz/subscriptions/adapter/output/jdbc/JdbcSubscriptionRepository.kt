@@ -24,6 +24,7 @@ class JdbcSubscriptionRepository(
                    coupon_id, coupon_cycles_remaining, past_due_since
             FROM subscriptions
             WHERE asaas_subscription_id = :asaasSubscriptionId
+            FOR UPDATE
             """.trimIndent(),
         )
             .param("asaasSubscriptionId", asaasSubscriptionId)

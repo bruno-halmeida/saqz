@@ -71,14 +71,19 @@ class ProcessAsaasWebhook(
         val current = subscriptions.findByAsaasSubscriptionId(subscriptionId) ?: return
 
         when (command.eventType) {
-            EVENT_PAYMENT_CONFIRMED -> {
-                val confirmed = confirmPayment(current, now)
-                subscriptions.save(confirmed.subscription)
-                confirmed.fullPriceCentsToPush?.let { cents ->
-                    asaasGateway.updateSubscriptionValue(subscriptionId, cents)
+            EVENT_PAYMENT_CONFIRMED, EVENT_PAYMENT_OVERDUE -> {
+                // CANCELED is terminal: a late PAYMENT_* must not resurrect the plan.
+                if (current.status == SubscriptionStatus.CANCELED) return
+                if (command.eventType == EVENT_PAYMENT_CONFIRMED) {
+                    val confirmed = confirmPayment(current, now)
+                    subscriptions.save(confirmed.subscription)
+                    confirmed.fullPriceCentsToPush?.let { cents ->
+                        asaasGateway.updateSubscriptionValue(subscriptionId, cents)
+                    }
+                } else {
+                    subscriptions.save(markPastDue(current, now))
                 }
             }
-            EVENT_PAYMENT_OVERDUE -> subscriptions.save(markPastDue(current, now))
             EVENT_SUBSCRIPTION_DELETED -> subscriptions.save(cancel(current, now))
             else -> Unit
         }

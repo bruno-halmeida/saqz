@@ -300,6 +300,56 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
+    fun `PAYMENT_CONFIRMED does not resurrect a canceled subscription`() {
+        val canceledAt = Instant.parse("2026-07-25T00:00:00Z")
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.CANCELED,
+                canceledAt = canceledAt,
+                pastDueSince = null,
+                couponCyclesRemaining = 1,
+                currentPeriodEnd = periodEnd,
+            ),
+        )
+
+        val result = useCase.execute(
+            token,
+            command(eventId = "evt_late_pay", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.CANCELED, sub.status)
+        assertEquals(canceledAt, sub.canceledAt)
+        assertEquals(periodEnd, sub.currentPeriodEnd)
+        assertEquals(1, sub.couponCyclesRemaining)
+        assertTrue(gateway.updates.isEmpty())
+        assertEquals(fixedNow, events.rows.getValue("evt_late_pay").processedAt)
+    }
+
+    @Test
+    fun `PAYMENT_OVERDUE does not mutate a canceled subscription`() {
+        val canceledAt = Instant.parse("2026-07-25T00:00:00Z")
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.CANCELED,
+                canceledAt = canceledAt,
+                pastDueSince = null,
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_late_od", type = ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE),
+        )
+
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.CANCELED, sub.status)
+        assertNull(sub.pastDueSince)
+        assertEquals(canceledAt, sub.canceledAt)
+    }
+
+    @Test
     fun `missing subscription still accepts and audits event`() {
         val result = useCase.execute(
             token,
