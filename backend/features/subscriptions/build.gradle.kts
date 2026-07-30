@@ -10,6 +10,8 @@ dependencies {
     implementation(project(":shared-kernel"))
     implementation(libs.flyway.core)
     implementation(libs.spring.jdbc)
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)
@@ -18,6 +20,7 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

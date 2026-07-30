@@ -69,6 +69,20 @@ class SubscriptionsSchemaMigrationIntegrationTest {
         assertEquals(2, int("SELECT count(*) FROM coupon_redemptions WHERE coupon_id = '$coupon'"))
     }
 
+    @Test
+    fun `asaas idempotent operations key is unique`() {
+        execute(
+            "INSERT INTO asaas_idempotent_operations (idempotency_key, resource_id, created_at) " +
+                "VALUES ('op-1', NULL, now())",
+        )
+        assertFailsWith<Exception> {
+            execute(
+                "INSERT INTO asaas_idempotent_operations (idempotency_key, resource_id, created_at) " +
+                    "VALUES ('op-1', 'sub_x', now())",
+            )
+        }
+    }
+
     private fun flyway(): Flyway = Flyway.configure()
         .dataSource(dataSource)
         .locations(*allSubscriptionsFeatureMigrationLocations())
