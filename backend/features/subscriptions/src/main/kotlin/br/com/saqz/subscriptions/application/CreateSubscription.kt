@@ -238,14 +238,13 @@ class CreateSubscription(
 
     private data class Checkout(val pixCopyPaste: String?, val invoiceUrl: String?)
 
-    private fun resolveCheckout(asaasSubscriptionId: String): Checkout =
-        runCatching {
-            val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
-                ?: return@runCatching Checkout(null, null)
-            val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
-            val invoice = asaasGateway.findPaymentInvoiceUrl(paymentId)
-            Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
-        }.getOrDefault(Checkout(null, null))
+    private fun resolveCheckout(asaasSubscriptionId: String): Checkout {
+        val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
+            ?: return Checkout(null, null)
+        val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
+        val invoice = runCatching { asaasGateway.findPaymentInvoiceUrl(paymentId) }.getOrNull()
+        return Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
+    }
 
     private fun isValidEmail(email: String): Boolean =
         email.length in 3..254 && email.contains('@') && email.indexOf('@') in 1 until email.lastIndex

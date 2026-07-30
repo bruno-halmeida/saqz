@@ -188,6 +188,27 @@ class ChangePlanTest {
     }
 
     @Test
+    fun `upgrade checkout keeps the pix payload when only the invoice lookup fails`() {
+        val gatewayWithFailingInvoice = PixOkInvoiceFailingAsaasGateway()
+        val useCaseWithFailingInvoice = ChangePlan(
+            subscriptions,
+            gatewayWithFailingInvoice,
+            usage,
+            coupons,
+            transaction = object : SubscriptionsTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = block()
+            },
+            clock,
+        )
+
+        val result = useCaseWithFailingInvoice.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        val pending = assertIs<ChangePlanResult.UpgradePendingPayment>(result)
+        assertEquals("000201PIX-OK", pending.pixCopyPaste)
+        assertNull(pending.invoiceUrl)
+    }
+
+    @Test
     fun `downgrade blocked when owner exceeds target group limit`() {
         subscriptions.save(baseSubscription().copy(plan = Plan.ORGANIZADOR))
         usage.usage = OwnerPlanUsage(ownedGroupCount = 3, occupyingAthleteCount = 5)
@@ -315,6 +336,34 @@ class ChangePlanTest {
         override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-UPG"
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
+    }
+
+    /** Pix succeeds; invoice lookup throws — the successful pix must not be discarded. */
+    private class PixOkInvoiceFailingAsaasGateway : AsaasGateway {
+        override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = error("unused")
+        override fun createSubscription(
+            asaasCustomerId: String,
+            plan: Plan,
+            cycle: SubscriptionCycle,
+            valueCents: Long,
+            billingType: AsaasBillingType,
+            idempotencyKey: String,
+        ) = error("unused")
+
+        override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = Unit
+        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
+
+        override fun createOneOffCharge(
+            asaasCustomerId: String,
+            valueCents: Long,
+            description: String,
+            idempotencyKey: String,
+        ) = "pay_upgrade_1"
+
+        override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-OK"
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String): String =
+            throw RuntimeException("invoice lookup failed")
     }
 
     private class RecordingTransactionRunner : SubscriptionsTransactionRunner {

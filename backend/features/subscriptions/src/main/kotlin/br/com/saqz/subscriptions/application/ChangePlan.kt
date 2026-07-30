@@ -150,11 +150,8 @@ class ChangePlan(
         chargedCents: Long,
         chargeId: String,
     ): ChangePlanResult.UpgradePendingPayment {
-        val (pix, invoice) = runCatching {
-            val pix = runCatching { asaasGateway.regeneratePixPayload(chargeId) }.getOrNull()
-            val invoice = asaasGateway.findPaymentInvoiceUrl(chargeId)
-            pix to invoice
-        }.getOrDefault(null to null)
+        val pix = runCatching { asaasGateway.regeneratePixPayload(chargeId) }.getOrNull()
+        val invoice = runCatching { asaasGateway.findPaymentInvoiceUrl(chargeId) }.getOrNull()
         return ChangePlanResult.UpgradePendingPayment(
             subscription = subscription,
             chargedCents = chargedCents,

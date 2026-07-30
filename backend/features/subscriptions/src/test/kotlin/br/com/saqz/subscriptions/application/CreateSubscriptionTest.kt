@@ -258,6 +258,18 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `keeps the pix payload when only the invoice lookup fails`() {
+        gateway.pixPayload = "00020126PIX-OK"
+        gateway.invoiceUrlThrows = true
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("00020126PIX-OK", success.pixCopyPaste)
+        assertNull(success.invoiceUrl)
+    }
+
+    @Test
     fun `credit card path returns invoice url`() {
         gateway.invoiceUrl = "https://asaas.test/i/abc"
 
@@ -322,6 +334,7 @@ class CreateSubscriptionTest {
     private class FakeAsaasGateway : AsaasGateway {
         var pixPayload: String? = "00020126DEFAULT-PIX"
         var invoiceUrl: String? = null
+        var invoiceUrlThrows: Boolean = false
         var lastSubscriptionValueCents: Long? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
 
@@ -353,6 +366,9 @@ class CreateSubscriptionTest {
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) =
             if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
 
-        override fun findPaymentInvoiceUrl(asaasPaymentId: String) = invoiceUrl
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
+            if (invoiceUrlThrows) throw RuntimeException("invoice lookup failed")
+            return invoiceUrl
+        }
     }
 }
