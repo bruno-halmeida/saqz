@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.adapter.output.asaas
 
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import okhttp3.mockwebserver.MockResponse
@@ -79,7 +80,7 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createSubscription posts recurring subscription with monthly cycle and cents converted`() {
+    fun `createSubscription posts recurring subscription with PIX billing type`() {
         server.enqueue(json(200, """{"object":"subscription","id":"sub_XYZ"}"""))
 
         val id = gateway.createSubscription(
@@ -87,6 +88,7 @@ class HttpAsaasGatewayTest {
             plan = Plan.TITULAR,
             cycle = SubscriptionCycle.MONTHLY,
             valueCents = 3_990,
+            billingType = AsaasBillingType.PIX,
         )
 
         assertEquals("sub_XYZ", id)
@@ -103,10 +105,35 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
+    fun `createSubscription posts CREDIT_CARD billing type when requested`() {
+        server.enqueue(json(200, """{"id":"sub_CARD"}"""))
+
+        val id = gateway.createSubscription(
+            asaasCustomerId = "cus_CARD",
+            plan = Plan.ORGANIZADOR,
+            cycle = SubscriptionCycle.MONTHLY,
+            valueCents = 5_990,
+            billingType = AsaasBillingType.CREDIT_CARD,
+        )
+
+        assertEquals("sub_CARD", id)
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"billingType\":\"CREDIT_CARD\""))
+        assertTrue(body.contains("\"customer\":\"cus_CARD\""))
+        assertTrue(body.contains("\"value\":59.90"))
+    }
+
+    @Test
     fun `createSubscription maps annual cycle to YEARLY`() {
         server.enqueue(json(200, """{"id":"sub_YEAR"}"""))
 
-        gateway.createSubscription("cus_1", Plan.ILIMITADO, SubscriptionCycle.ANNUAL, 89_900)
+        gateway.createSubscription(
+            "cus_1",
+            Plan.ILIMITADO,
+            SubscriptionCycle.ANNUAL,
+            89_900,
+            AsaasBillingType.PIX,
+        )
 
         val body = server.takeRequest().body.readUtf8()
         assertTrue(body.contains("\"cycle\":\"YEARLY\""))
@@ -120,7 +147,13 @@ class HttpAsaasGatewayTest {
         )
 
         val error = assertThrows<AsaasException> {
-            gateway.createSubscription("bad", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100)
+            gateway.createSubscription(
+                "bad",
+                Plan.TITULAR,
+                SubscriptionCycle.MONTHLY,
+                100,
+                AsaasBillingType.PIX,
+            )
         }
         assertEquals(400, error.statusCode)
         assertTrue(error.message!!.contains("invalid_customer"))

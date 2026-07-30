@@ -6,7 +6,13 @@ import java.util.UUID
 
 interface AsaasGateway {
     fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String): String
-    fun createSubscription(asaasCustomerId: String, plan: Plan, cycle: SubscriptionCycle, valueCents: Long): String
+    fun createSubscription(
+        asaasCustomerId: String,
+        plan: Plan,
+        cycle: SubscriptionCycle,
+        valueCents: Long,
+        billingType: AsaasBillingType,
+    ): String
     fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long)
     fun createOneOffCharge(asaasCustomerId: String, valueCents: Long, description: String): String
     fun regeneratePixPayload(asaasChargeId: String): String

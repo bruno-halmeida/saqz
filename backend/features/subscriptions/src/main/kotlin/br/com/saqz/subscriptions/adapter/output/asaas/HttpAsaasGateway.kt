@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.adapter.output.asaas
 
+import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
@@ -39,10 +40,11 @@ class HttpAsaasGateway(
         plan: Plan,
         cycle: SubscriptionCycle,
         valueCents: Long,
+        billingType: AsaasBillingType,
     ): String {
         val body = mapOf(
             "customer" to asaasCustomerId,
-            "billingType" to "PIX",
+            "billingType" to asaasBillingType(billingType),
             "value" to centsToDecimal(valueCents),
             "nextDueDate" to today().toString(),
             "cycle" to asaasCycle(cycle),
@@ -153,6 +155,12 @@ class HttpAsaasGateway(
         when (cycle) {
             SubscriptionCycle.MONTHLY -> "MONTHLY"
             SubscriptionCycle.ANNUAL -> "YEARLY"
+        }
+
+    private fun asaasBillingType(billingType: AsaasBillingType): String =
+        when (billingType) {
+            AsaasBillingType.PIX -> "PIX"
+            AsaasBillingType.CREDIT_CARD -> "CREDIT_CARD"
         }
 
     private fun centsToDecimal(valueCents: Long): BigDecimal =
