@@ -186,34 +186,126 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `createOneOffCharge posts pix payment and returns charge id`() {
+    fun `createOneOffCharge looks up by externalReference then posts with idempotency key`() {
+        server.enqueue(json(200, """{"object":"list","data":[],"hasMore":false,"totalCount":0}"""))
         server.enqueue(json(200, """{"object":"payment","id":"pay_PRORATA"}"""))
 
-        val id = gateway.createOneOffCharge("cus_ABC", 1_250, "Upgrade prorata")
+        val id = gateway.createOneOffCharge(
+            asaasCustomerId = "cus_ABC",
+            valueCents = 1_250,
+            description = "Upgrade prorata",
+            idempotencyKey = "upgrade-user-1-from-TITULAR",
+        )
 
         assertEquals("pay_PRORATA", id)
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/v3/payments", request.path)
-        val body = request.body.readUtf8()
+
+        val lookup = server.takeRequest()
+        assertEquals("GET", lookup.method)
+        assertEquals(
+            "/v3/payments?externalReference=upgrade-user-1-from-TITULAR&limit=1",
+            lookup.path,
+        )
+
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/v3/payments", create.path)
+        val body = create.body.readUtf8()
         assertTrue(body.contains("\"customer\":\"cus_ABC\""))
         assertTrue(body.contains("\"billingType\":\"PIX\""))
         assertTrue(body.contains("\"value\":12.50"))
         assertTrue(body.contains("\"dueDate\":\"2026-07-30\""))
         assertTrue(body.contains("\"description\":\"Upgrade prorata\""))
+        assertTrue(body.contains("\"externalReference\":\"upgrade-user-1-from-TITULAR\""))
+    }
+
+    @Test
+    fun `createOneOffCharge reuses existing payment when externalReference already exists`() {
+        server.enqueue(
+            json(
+                200,
+                """{"object":"list","data":[{"id":"pay_EXISTING","externalReference":"upgrade-1"}],"hasMore":false,"totalCount":1}""",
+            ),
+        )
+
+        val id = gateway.createOneOffCharge("cus_ABC", 1_250, "Upgrade prorata", "upgrade-1")
+
+        assertEquals("pay_EXISTING", id)
+        assertEquals(1, server.requestCount)
+        val lookup = server.takeRequest()
+        assertEquals("GET", lookup.method)
+        assertTrue(lookup.path!!.contains("externalReference=upgrade-1"))
     }
 
     @Test
     fun `createOneOffCharge throws on asaas 4xx`() {
+        server.enqueue(json(200, """{"object":"list","data":[]}"""))
         server.enqueue(
             json(400, """{"errors":[{"code":"invalid_value","description":"Valor inválido"}]}"""),
         )
 
         val error = assertThrows<AsaasException> {
-            gateway.createOneOffCharge("cus_1", 0, "x")
+            gateway.createOneOffCharge("cus_1", 0, "x", "key-1")
         }
         assertEquals(400, error.statusCode)
         assertTrue(error.message!!.contains("invalid_value"))
+    }
+
+    @Test
+    fun `createOneOffCharge rejects blank idempotency key`() {
+        assertThrows<IllegalArgumentException> {
+            gateway.createOneOffCharge("cus_1", 100, "x", "  ")
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `default http client configures connect timeout`() {
+        assertEquals(HttpAsaasGateway.CONNECT_TIMEOUT, HttpAsaasGateway.defaultHttpClient().connectTimeout().get())
+    }
+
+    @Test
+    fun `interrupted request restores interrupt flag`() {
+        val interruptingClient = object : java.net.http.HttpClient() {
+            override fun cookieHandler() = java.util.Optional.empty<java.net.CookieHandler>()
+            override fun connectTimeout() = java.util.Optional.of(HttpAsaasGateway.CONNECT_TIMEOUT)
+            override fun followRedirects() = Redirect.NEVER
+            override fun proxy() = java.util.Optional.empty<java.net.ProxySelector>()
+            override fun sslContext() = javax.net.ssl.SSLContext.getDefault()
+            override fun sslParameters() = sslContext().defaultSSLParameters
+            override fun authenticator() = java.util.Optional.empty<java.net.Authenticator>()
+            override fun version() = Version.HTTP_1_1
+            override fun executor() = java.util.Optional.empty<java.util.concurrent.Executor>()
+            override fun <T : Any?> send(
+                request: java.net.http.HttpRequest,
+                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
+            ): java.net.http.HttpResponse<T> = throw InterruptedException("cancelled")
+            override fun <T : Any?> sendAsync(
+                request: java.net.http.HttpRequest,
+                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
+            ) = throw UnsupportedOperationException()
+            override fun <T : Any?> sendAsync(
+                request: java.net.http.HttpRequest,
+                responseBodyHandler: java.net.http.HttpResponse.BodyHandler<T>,
+                pushPromiseHandler: java.net.http.HttpResponse.PushPromiseHandler<T>?,
+            ) = throw UnsupportedOperationException()
+            override fun newWebSocketBuilder() = throw UnsupportedOperationException()
+        }
+        val interruptingGateway = HttpAsaasGateway(
+            settings = AsaasClientSettings(
+                baseUrl = server.url("/v3").toString().trimEnd('/'),
+                apiKey = apiKey,
+            ),
+            httpClient = interruptingClient,
+            clock = fixedClock,
+        )
+        Thread.interrupted()
+
+        val error = assertThrows<AsaasException> {
+            interruptingGateway.createCustomer(UUID.randomUUID(), "X", "x@y.com", "000")
+        }
+
+        assertTrue(error.cause is InterruptedException)
+        assertTrue(Thread.interrupted(), "interrupt flag must be restored")
     }
 
     @Test

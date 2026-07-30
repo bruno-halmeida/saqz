@@ -10,19 +10,23 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.URI
+import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
 import java.time.Clock
+import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
 class HttpAsaasGateway(
     private val settings: AsaasClientSettings,
-    private val httpClient: HttpClient = HttpClient.newHttpClient(),
+    private val httpClient: HttpClient = defaultHttpClient(),
     private val objectMapper: ObjectMapper = defaultObjectMapper(),
     private val clock: Clock = Clock.systemUTC(),
+    private val requestTimeout: Duration = REQUEST_TIMEOUT,
 ) : AsaasGateway {
     override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String): String {
         val body = mapOf(
@@ -60,13 +64,27 @@ class HttpAsaasGateway(
         put("/subscriptions/$asaasSubscriptionId", body)
     }
 
-    override fun createOneOffCharge(asaasCustomerId: String, valueCents: Long, description: String): String {
+    /**
+     * Cobrança avulsa com dedup via `externalReference` do Asaas: consulta antes de criar
+     * e reutiliza a cobrança existente se a mesma chave já tiver sido aceita (retentativa
+     * após timeout/perda de resposta não gera segunda cobrança).
+     */
+    override fun createOneOffCharge(
+        asaasCustomerId: String,
+        valueCents: Long,
+        description: String,
+        idempotencyKey: String,
+    ): String {
+        require(idempotencyKey.isNotBlank()) { "idempotencyKey must not be blank" }
+        findPaymentIdByExternalReference(idempotencyKey)?.let { return it }
+
         val body = mapOf(
             "customer" to asaasCustomerId,
             "billingType" to "PIX",
             "value" to centsToDecimal(valueCents),
             "dueDate" to today().toString(),
             "description" to description,
+            "externalReference" to idempotencyKey,
         )
         val response = post("/payments", body)
         return requireId(response, "payment")
@@ -77,6 +95,14 @@ class HttpAsaasGateway(
         val payload = response.path("payload").asText(null)
             ?: throw AsaasException(statusCode = 200, message = "Asaas pixQrCode response missing payload")
         return payload
+    }
+
+    private fun findPaymentIdByExternalReference(externalReference: String): String? {
+        val encoded = URLEncoder.encode(externalReference, StandardCharsets.UTF_8)
+        val response = get("/payments?externalReference=$encoded&limit=1")
+        val data = response.path("data")
+        if (!data.isArray || data.size() == 0) return null
+        return data[0].path("id").asText(null)?.takeIf { it.isNotBlank() }
     }
 
     private fun post(path: String, body: Map<String, Any?>): JsonNode =
@@ -90,6 +116,7 @@ class HttpAsaasGateway(
 
     private fun exchange(method: String, path: String, body: Map<String, Any?>?): JsonNode {
         val builder = HttpRequest.newBuilder(URI.create(settings.baseUrl + path))
+            .timeout(requestTimeout)
             .header("access_token", settings.apiKey)
             .header("User-Agent", settings.userAgent)
             .header("Accept", "application/json")
@@ -104,6 +131,13 @@ class HttpAsaasGateway(
 
         val response = try {
             httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        } catch (ex: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw AsaasException(
+                statusCode = 0,
+                message = "Asaas request interrupted: ${ex.message}",
+                cause = ex,
+            )
         } catch (ex: Exception) {
             throw AsaasException(statusCode = 0, message = "Asaas request failed: ${ex.message}", cause = ex)
         }
@@ -167,6 +201,14 @@ class HttpAsaasGateway(
         BigDecimal.valueOf(valueCents).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)
 
     companion object {
+        val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(5)
+        val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(15)
+
         fun defaultObjectMapper(): ObjectMapper = jacksonObjectMapper()
+
+        fun defaultHttpClient(): HttpClient =
+            HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .build()
     }
 }

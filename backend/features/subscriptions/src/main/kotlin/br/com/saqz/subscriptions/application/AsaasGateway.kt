@@ -14,6 +14,11 @@ interface AsaasGateway {
         billingType: AsaasBillingType,
     ): String
     fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long)
-    fun createOneOffCharge(asaasCustomerId: String, valueCents: Long, description: String): String
+    fun createOneOffCharge(
+        asaasCustomerId: String,
+        valueCents: Long,
+        description: String,
+        idempotencyKey: String,
+    ): String
     fun regeneratePixPayload(asaasChargeId: String): String
 }
