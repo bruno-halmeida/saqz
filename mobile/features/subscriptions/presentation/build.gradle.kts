@@ -36,8 +36,9 @@ kotlin {
 }
 
 compose.resources {
-    // Público pelo mesmo motivo do :features:access — o screenshot test do android-app
-    // (Payment8cScreenshotTest) monta estados de erro com UiText.Res(Res.string.*) daqui.
+    // Público pelo mesmo motivo do :features:access (VUL-88): os screenshot tests deste
+    // módulo vivem em :android-app (Payment8cScreenshotTest, PlanSelection8a8bScreenshotTest,
+    // ...) e precisam nomear os strings de cada tela pra montar as cenas de estado.
     publicResClass = true
     packageOfResClass = "br.com.saqz.subscriptions.resources"
     generateResClass = always
