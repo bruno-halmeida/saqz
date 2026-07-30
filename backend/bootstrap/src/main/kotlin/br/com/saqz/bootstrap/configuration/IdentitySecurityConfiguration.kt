@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
+import br.com.saqz.bootstrap.configuration.http.AsaasWebhookBodySizeFilter
 import br.com.saqz.bootstrap.configuration.http.RequestCorrelationFilter
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -22,6 +23,12 @@ class IdentitySecurityConfiguration {
     fun requestCorrelationFilter() = RequestCorrelationFilter()
 
     @Bean
+    fun asaasWebhookBodySizeFilter(problemWriter: ApiProblemWriter) =
+        AsaasWebhookBodySizeFilter { request, response ->
+            problemWriter.write(request, response, 413)
+        }
+
+    @Bean
     fun bearerAuthenticationFilter(
         verifyRequestIdentity: VerifyRequestIdentity,
         problemWriter: ApiProblemWriter,
@@ -34,6 +41,7 @@ class IdentitySecurityConfiguration {
         http: HttpSecurity,
         bearerAuthenticationFilter: BearerAuthenticationFilter,
         requestCorrelationFilter: RequestCorrelationFilter,
+        asaasWebhookBodySizeFilter: AsaasWebhookBodySizeFilter,
         problemWriter: ApiProblemWriter,
     ): SecurityFilterChain = http
         .csrf { it.disable() }
@@ -51,6 +59,7 @@ class IdentitySecurityConfiguration {
         }
         .addFilterBefore(bearerAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         .addFilterBefore(requestCorrelationFilter, BearerAuthenticationFilter::class.java)
+        .addFilterAfter(asaasWebhookBodySizeFilter, RequestCorrelationFilter::class.java)
         .build()
 
     private companion object {
