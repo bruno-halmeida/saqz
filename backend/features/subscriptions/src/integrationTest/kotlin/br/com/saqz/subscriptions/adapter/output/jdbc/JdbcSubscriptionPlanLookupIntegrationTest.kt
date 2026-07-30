@@ -1,0 +1,133 @@
+package br.com.saqz.subscriptions.adapter.output.jdbc
+
+import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.subscriptions.domain.Subscription
+import br.com.saqz.subscriptions.domain.SubscriptionCycle
+import br.com.saqz.subscriptions.domain.SubscriptionStatus
+import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
+import br.com.saqz.subscriptions.testing.startAndAwaitJdbc
+import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.jdbc.datasource.DriverManagerDataSource
+import org.testcontainers.postgresql.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
+import java.time.Instant
+import java.util.UUID
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class JdbcSubscriptionPlanLookupIntegrationTest {
+    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private lateinit var dataSource: DriverManagerDataSource
+    private lateinit var jdbc: JdbcClient
+    private lateinit var subscriptions: JdbcSubscriptionRepository
+    private lateinit var lookup: JdbcSubscriptionPlanLookup
+    private val ownerId = UUID.randomUUID()
+
+    @BeforeAll
+    fun startDatabase() {
+        postgres.startAndAwaitJdbc()
+        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+    }
+
+    @BeforeEach
+    fun resetDatabase() {
+        flyway().clean()
+        flyway().migrate()
+        jdbc = JdbcClient.create(dataSource)
+        subscriptions = JdbcSubscriptionRepository(dataSource)
+        lookup = JdbcSubscriptionPlanLookup(dataSource)
+        jdbc.sql(
+            """
+            INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at)
+            VALUES (:id, :subject, true, 'Owner', now(), now())
+            """.trimIndent(),
+        )
+            .param("id", ownerId)
+            .param("subject", "subject-$ownerId")
+            .update()
+    }
+
+    @AfterAll
+    fun stopDatabase() = postgres.stop()
+
+    @Test
+    fun `an active subscription is entitling`() {
+        subscriptions.insert(subscription(status = SubscriptionStatus.ACTIVE, firstConfirmedAt = Instant.now()))
+
+        assertEquals(Plan.TITULAR, lookup.findEntitlingPlan(ownerId)?.plan)
+    }
+
+    @Test
+    fun `a canceled subscription that was never paid is not entitling even within the paid period`() {
+        subscriptions.insert(
+            subscription(
+                status = SubscriptionStatus.CANCELED,
+                firstConfirmedAt = null,
+                currentPeriodEnd = Instant.now().plusSeconds(86_400),
+            ),
+        )
+
+        assertNull(lookup.findEntitlingPlan(ownerId))
+    }
+
+    @Test
+    fun `a canceled subscription that was paid stays entitling until the period ends`() {
+        subscriptions.insert(
+            subscription(
+                status = SubscriptionStatus.CANCELED,
+                firstConfirmedAt = Instant.now().minusSeconds(3_600),
+                currentPeriodEnd = Instant.now().plusSeconds(86_400),
+            ),
+        )
+
+        assertEquals(Plan.TITULAR, lookup.findEntitlingPlan(ownerId)?.plan)
+    }
+
+    @Test
+    fun `a canceled subscription past its period end is not entitling`() {
+        subscriptions.insert(
+            subscription(
+                status = SubscriptionStatus.CANCELED,
+                firstConfirmedAt = Instant.now().minusSeconds(86_400),
+                currentPeriodEnd = Instant.now().minusSeconds(3_600),
+            ),
+        )
+
+        assertNull(lookup.findEntitlingPlan(ownerId))
+    }
+
+    @Test
+    fun `a past due subscription that was never paid is not entitling`() {
+        subscriptions.insert(subscription(status = SubscriptionStatus.PAST_DUE, firstConfirmedAt = null))
+
+        assertNull(lookup.findEntitlingPlan(ownerId))
+    }
+
+    private fun subscription(
+        status: SubscriptionStatus,
+        firstConfirmedAt: Instant?,
+        currentPeriodEnd: Instant = Instant.now().plusSeconds(86_400),
+    ) = Subscription(
+        ownerUserId = ownerId,
+        plan = Plan.TITULAR,
+        cycle = SubscriptionCycle.MONTHLY,
+        asaasCustomerId = "cus_1",
+        asaasSubscriptionId = "sub_${UUID.randomUUID()}",
+        currentPeriodEnd = currentPeriodEnd,
+        status = status,
+        firstConfirmedAt = firstConfirmedAt,
+    )
+
+    private fun flyway(): Flyway = Flyway.configure()
+        .dataSource(dataSource)
+        .locations(*allSubscriptionsFeatureMigrationLocations())
+        .cleanDisabled(false)
+        .load()
+}

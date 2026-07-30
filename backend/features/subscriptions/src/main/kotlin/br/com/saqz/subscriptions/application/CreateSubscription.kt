@@ -55,22 +55,30 @@ class CreateSubscription(
         }
 
         val now = clock.instant()
-        val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now)
-        if (couponOutcome is CouponOutcome.Failure) return couponOutcome.result
-        val coupon = (couponOutcome as CouponOutcome.Ok).coupon
-        val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
 
         // Commit local row first (Asaas side effects + insert/reactivate). Checkout is best-effort after.
-        val committed = transaction.inTransaction {
+        // Coupon resolution only runs for a genuinely new Asaas subscription (new or reactivated) — an
+        // unconfirmed subscription being recovered must not re-check redemption, since it was already
+        // recorded on the first attempt and would wrongly fail the retry.
+        val outcome = transaction.inTransaction {
             subscriptions.lockOwner(command.ownerUserId)
             val existing = subscriptions.findByOwnerUserIdForUpdate(command.ownerUserId)
             when {
-                existing == null -> createNew(command, name, email, cpfDigits, coupon, valueCents, now)
+                existing == null -> newSubscriptionOutcome(command, now) { c, v ->
+                    createNew(command, name, email, cpfDigits, c, v, now)
+                }
                 existing.status == SubscriptionStatus.CANCELED ->
-                    reactivate(existing, command, name, email, cpfDigits, coupon, valueCents, now)
-                existing.firstConfirmedAt == null -> existing
-                else -> existing // confirmed active/past_due — AlreadySubscribed after commit
+                    newSubscriptionOutcome(command, now) { c, v ->
+                        reactivate(existing, command, name, email, cpfDigits, c, v, now)
+                    }
+                existing.firstConfirmedAt == null -> CommitOutcome.Committed(existing)
+                else -> CommitOutcome.Committed(existing) // confirmed active/past_due — AlreadySubscribed after commit
             }
+        }
+
+        val committed = when (outcome) {
+            is CommitOutcome.Rejected -> return outcome.result
+            is CommitOutcome.Committed -> outcome.subscription
         }
 
         if (committed.status != SubscriptionStatus.CANCELED &&
@@ -86,6 +94,23 @@ class CreateSubscription(
         }
 
         return CreateSubscriptionResult.AlreadySubscribed
+    }
+
+    private fun newSubscriptionOutcome(
+        command: CreateSubscriptionCommand,
+        now: Instant,
+        create: (Coupon?, Long) -> Subscription,
+    ): CommitOutcome {
+        val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now)
+        if (couponOutcome is CouponOutcome.Failure) return CommitOutcome.Rejected(couponOutcome.result)
+        val coupon = (couponOutcome as CouponOutcome.Ok).coupon
+        val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
+        return CommitOutcome.Committed(create(coupon, valueCents))
+    }
+
+    private sealed interface CommitOutcome {
+        data class Committed(val subscription: Subscription) : CommitOutcome
+        data class Rejected(val result: CreateSubscriptionResult) : CommitOutcome
     }
 
     private fun createNew(

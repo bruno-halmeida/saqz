@@ -187,6 +187,35 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `reissues checkout for unconfirmed subscription even when its own coupon was already redeemed`() {
+        coupons.byCode["PROMO20"] = Coupon(id = couponId, code = "PROMO20", discountPercent = 20, durationCycles = 3)
+        coupons.redemptions += CouponRedemption(couponId, ownerId, fixedNow.minusSeconds(3600))
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+                couponId = couponId,
+                couponCyclesRemaining = 3,
+            ),
+        )
+        gateway.pixPayload = "000201RETRY"
+
+        val result = useCase.execute(baseCommand().copy(couponCode = "PROMO20"))
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_old", success.subscription.asaasSubscriptionId)
+        assertEquals("000201RETRY", success.pixCopyPaste)
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
     fun `rejects malformed cpf before calling asaas`() {
         assertEquals(
             CreateSubscriptionResult.InvalidCustomerDetails,

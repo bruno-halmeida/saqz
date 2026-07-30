@@ -59,7 +59,7 @@ class ChangePlanTest {
         val pending = assertIs<ChangePlanResult.UpgradePendingPayment>(result)
         assertEquals(Plan.TITULAR, pending.subscription.plan)
         assertEquals(Plan.ORGANIZADOR, pending.subscription.pendingUpgradePlan)
-        assertEquals("pay_upgrade", pending.subscription.pendingUpgradeChargeId)
+        assertEquals("pay_upgrade_1", pending.subscription.pendingUpgradeChargeId)
         assertTrue(pending.chargedCents > 0L)
         assertEquals("000201PIX-UPG", pending.pixCopyPaste)
         assertTrue(gateway.valueUpdates.isEmpty())
@@ -82,7 +82,26 @@ class ChangePlanTest {
 
         assertEquals(pendingFirst.oneOffChargeId, pendingSecond.oneOffChargeId)
         assertEquals(1, gateway.oneOffIdempotencyKeys.size)
-        assertEquals("pay_upgrade", subscriptions.findByOwnerUserId(ownerId)!!.pendingUpgradeChargeId)
+        assertEquals("pay_upgrade_1", subscriptions.findByOwnerUserId(ownerId)!!.pendingUpgradeChargeId)
+    }
+
+    @Test
+    fun `upgrade request to a different target before payment creates a new charge instead of reusing`() {
+        val first = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+        val pendingFirst = assertIs<ChangePlanResult.UpgradePendingPayment>(first)
+        assertEquals(1, gateway.oneOffIdempotencyKeys.size)
+
+        val second = useCase.execute(
+            ChangePlanCommand(ownerId, UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd"), Plan.ILIMITADO),
+        )
+        val pendingSecond = assertIs<ChangePlanResult.UpgradePendingPayment>(second)
+
+        assertTrue(pendingFirst.oneOffChargeId != pendingSecond.oneOffChargeId)
+        assertEquals(2, gateway.oneOffIdempotencyKeys.size)
+        assertEquals(Plan.ILIMITADO, pendingSecond.subscription.pendingUpgradePlan)
+        val stored = subscriptions.findByOwnerUserId(ownerId)!!
+        assertEquals(Plan.ILIMITADO, stored.pendingUpgradePlan)
+        assertEquals(pendingSecond.oneOffChargeId, stored.pendingUpgradeChargeId)
     }
 
     @Test
@@ -229,6 +248,7 @@ class ChangePlanTest {
     private class FakeAsaasGateway : AsaasGateway {
         val oneOffIdempotencyKeys = mutableListOf<String>()
         val valueUpdates = mutableListOf<Pair<String, Long>>()
+        private var chargeCounter = 0
 
         override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = error("unused")
         override fun createSubscription(
@@ -253,7 +273,7 @@ class ChangePlanTest {
             idempotencyKey: String,
         ): String {
             oneOffIdempotencyKeys += idempotencyKey
-            return "pay_upgrade"
+            return "pay_upgrade_${++chargeCounter}"
         }
 
         override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-UPG"

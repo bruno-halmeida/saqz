@@ -18,7 +18,7 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
           AND (
             status = 'ACTIVE'
             OR (status = 'PAST_DUE' AND first_confirmed_at IS NOT NULL)
-            OR (status = 'CANCELED' AND current_period_end > now())
+            OR (status = 'CANCELED' AND first_confirmed_at IS NOT NULL AND current_period_end > now())
           )
         """.trimIndent(),
     )

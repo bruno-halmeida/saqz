@@ -97,14 +97,11 @@ class ChangePlan(
             return ChangePlanResult.Upgraded(updated, chargedCents = 0L)
         }
 
-        // Reuse an in-flight upgrade charge instead of creating a second one-off.
-        current.pendingUpgradeChargeId?.let { existingChargeId ->
-            val plan = current.pendingUpgradePlan ?: command.targetPlan
-            return upgradeCheckout(
-                subscription = current.copy(pendingUpgradePlan = plan, pendingUpgradeChargeId = existingChargeId),
-                chargedCents = chargedCents,
-                chargeId = existingChargeId,
-            )
+        // Reuse an in-flight upgrade charge only for the SAME target plan — if the target changed,
+        // that charge is still for the old plan/value, so a new one is required.
+        val existingChargeId = current.pendingUpgradeChargeId
+        if (existingChargeId != null && current.pendingUpgradePlan == command.targetPlan) {
+            return upgradeCheckout(current, chargedCents, existingChargeId)
         }
 
         val chargeId = asaasGateway.createOneOffCharge(
