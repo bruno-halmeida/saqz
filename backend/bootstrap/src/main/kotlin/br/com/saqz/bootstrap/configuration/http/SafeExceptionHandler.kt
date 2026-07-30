@@ -32,6 +32,7 @@ import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
+import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -271,6 +272,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(UserPhotoNotFoundException::class)
     fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
+    }
+
+    @ExceptionHandler(AsaasWebhookUnauthorizedException::class)
+    fun asaasWebhookUnauthorized(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)

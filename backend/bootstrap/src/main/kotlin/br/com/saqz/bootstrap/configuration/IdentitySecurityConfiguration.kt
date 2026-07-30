@@ -41,6 +41,7 @@ class IdentitySecurityConfiguration {
         .authorizeHttpRequests {
             it.requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/password-reset/**").permitAll()
+                .requestMatchers("/webhooks/asaas").permitAll()
                 .anyRequest().authenticated()
         }
         .exceptionHandling {
@@ -54,6 +55,6 @@ class IdentitySecurityConfiguration {
 
     private companion object {
         /** Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer. */
-        val ANONYMOUS_PATHS = setOf("/actuator/health", "/api/password-reset")
+        val ANONYMOUS_PATHS = setOf("/actuator/health", "/api/password-reset", "/webhooks/asaas")
     }
 }

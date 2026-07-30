@@ -12,6 +12,9 @@ dependencies {
     implementation(libs.spring.jdbc)
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("org.springframework:spring-web")
+    implementation("org.springframework:spring-tx")
+    compileOnly("jakarta.servlet:jakarta.servlet-api")
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)
@@ -21,6 +24,8 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.springframework:spring-test")
+    testImplementation("jakarta.servlet:jakarta.servlet-api")
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
