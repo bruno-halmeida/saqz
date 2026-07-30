@@ -73,6 +73,7 @@ class SubscriptionQueryControllerTest {
     private class FixedSubscriptions(private val subscription: Subscription?) : SubscriptionRepository {
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String) = null
         override fun findByOwnerUserId(ownerUserId: UUID) = subscription
+        override fun insert(subscription: Subscription) = error("unused")
         override fun save(subscription: Subscription) = error("unused")
     }
 
