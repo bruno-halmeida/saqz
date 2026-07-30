@@ -14,11 +14,12 @@ object PlanLimitPolicy {
     }
 
     fun canEnterAsAthlete(
+        currentlyOpenAthleteIds: Set<UUID>,
         occupyingAthleteIds: Set<UUID>,
         athleteId: UUID,
         athleteLimit: Int?,
     ): Boolean {
-        if (athleteId in occupyingAthleteIds) return true
+        if (athleteId in currentlyOpenAthleteIds) return true
         if (athleteLimit == null) return true
         return occupyingAthleteIds.size < athleteLimit
     }

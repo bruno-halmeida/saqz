@@ -30,16 +30,29 @@ class PlanLimitPolicyTest {
 
     @Test
     fun `athlete entry is allowed under the cap and unlimited plans`() {
-        assertTrue(PlanLimitPolicy.canEnterAsAthlete(setOf(a), b, athleteLimit = 25))
-        assertTrue(PlanLimitPolicy.canEnterAsAthlete(emptySet(), a, athleteLimit = 1))
-        assertTrue(PlanLimitPolicy.canEnterAsAthlete((1..100).map { UUID.randomUUID() }.toSet(), a, null))
+        assertTrue(PlanLimitPolicy.canEnterAsAthlete(setOf(a), setOf(a), b, athleteLimit = 25))
+        assertTrue(PlanLimitPolicy.canEnterAsAthlete(emptySet(), emptySet(), a, athleteLimit = 1))
+        assertTrue(
+            PlanLimitPolicy.canEnterAsAthlete(
+                emptySet(),
+                (1..100).map { UUID.randomUUID() }.toSet(),
+                a,
+                null,
+            ),
+        )
     }
 
     @Test
     fun `athlete entry is refused at the titular cap of 25`() {
         val full = (1..25).map { UUID.randomUUID() }.toSet()
-        assertFalse(PlanLimitPolicy.canEnterAsAthlete(full, UUID.randomUUID(), athleteLimit = 25))
-        assertTrue(PlanLimitPolicy.canEnterAsAthlete(full, full.first(), athleteLimit = 25))
+        assertFalse(PlanLimitPolicy.canEnterAsAthlete(full, full, UUID.randomUUID(), athleteLimit = 25))
+        assertTrue(PlanLimitPolicy.canEnterAsAthlete(full, full, full.first(), athleteLimit = 25))
+    }
+
+    @Test
+    fun `open membership is idempotent even when the roster is full`() {
+        val open = (1..25).map { UUID.randomUUID() }.toSet()
+        assertTrue(PlanLimitPolicy.canEnterAsAthlete(open, open, open.first(), athleteLimit = 25))
     }
 
     @Test
@@ -62,6 +75,7 @@ class PlanLimitPolicyTest {
     fun `waitlist gaming cannot bypass the athlete cap`() {
         val members = (1..20).map { UUID.randomUUID() }.toSet()
         val waitlist = (1..5).map { UUID.randomUUID() }.toSet()
+        val open = members + waitlist
         val occupying = PlanLimitPolicy.occupyingAthletes(
             openMemberIds = members,
             openWaitlistIds = waitlist,
@@ -70,7 +84,7 @@ class PlanLimitPolicyTest {
         )
 
         assertEquals(25, occupying.size)
-        assertFalse(PlanLimitPolicy.canEnterAsAthlete(occupying, UUID.randomUUID(), athleteLimit = 25))
+        assertFalse(PlanLimitPolicy.canEnterAsAthlete(open, occupying, UUID.randomUUID(), athleteLimit = 25))
     }
 
     @Test
@@ -86,6 +100,26 @@ class PlanLimitPolicyTest {
         )
 
         assertEquals(25, occupying.size)
-        assertFalse(PlanLimitPolicy.canEnterAsAthlete(occupying, UUID.randomUUID(), athleteLimit = 25))
+        assertFalse(PlanLimitPolicy.canEnterAsAthlete(emptySet(), occupying, UUID.randomUUID(), athleteLimit = 25))
+    }
+
+    @Test
+    fun `recently closed athlete cannot reenter when owner has no subscription`() {
+        val removed = UUID.randomUUID()
+        val occupying = PlanLimitPolicy.occupyingAthletes(
+            openMemberIds = emptySet(),
+            openWaitlistIds = emptySet(),
+            closedOccupancies = listOf(ClosedAthleteOccupancy(removed, now.minusSeconds(3_600))),
+            now = now,
+        )
+
+        assertFalse(
+            PlanLimitPolicy.canEnterAsAthlete(
+                currentlyOpenAthleteIds = emptySet(),
+                occupyingAthleteIds = occupying,
+                athleteId = removed,
+                athleteLimit = 0,
+            ),
+        )
     }
 }

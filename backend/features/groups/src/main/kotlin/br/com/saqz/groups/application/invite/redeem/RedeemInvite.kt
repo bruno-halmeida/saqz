@@ -42,6 +42,7 @@ class RedeemInvite(
         val occupancy = repository.loadAthleteOccupancy(invite.groupId)
             ?: return@inTransaction RedeemInviteResult.InvalidOrExpired
         if (actor != occupancy.ownerUserId) {
+            val currentlyOpen = occupancy.openMemberIds + occupancy.openWaitlistIds
             val occupying = PlanLimitPolicy.occupyingAthletes(
                 openMemberIds = occupancy.openMemberIds,
                 openWaitlistIds = occupancy.openWaitlistIds,
@@ -49,7 +50,7 @@ class RedeemInvite(
                 now = now,
             )
             val athleteLimit = subscriptionLimits.athleteLimitFor(occupancy.ownerUserId)
-            if (!PlanLimitPolicy.canEnterAsAthlete(occupying, actor, athleteLimit)) {
+            if (!PlanLimitPolicy.canEnterAsAthlete(currentlyOpen, occupying, actor, athleteLimit)) {
                 return@inTransaction RedeemInviteResult.AthleteLimitExceeded
             }
         }

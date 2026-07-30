@@ -140,6 +140,16 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `recently closed athlete cannot reenter when owner has no subscription`() {
+        val fixture = fixture(athleteLimit = 0).also {
+            it.repository.closed += ClosedAthleteOccupancy(actor, now.minusSeconds(3_600))
+        }
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
     fun `pending downgrade uses the lower athlete limit from the port`() {
         val fixture = fixture(athleteLimit = 25).also {
             it.repository.openMembers += (1..25).map { UUID.randomUUID() }
