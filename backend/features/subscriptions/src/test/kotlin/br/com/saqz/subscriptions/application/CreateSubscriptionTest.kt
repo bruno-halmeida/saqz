@@ -258,6 +258,17 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `create still succeeds when the checkout enrichment lookup itself fails`() {
+        gateway.latestPaymentIdThrows = true
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertNull(success.pixCopyPaste)
+        assertNull(success.invoiceUrl)
+    }
+
+    @Test
     fun `keeps the pix payload when only the invoice lookup fails`() {
         gateway.pixPayload = "00020126PIX-OK"
         gateway.invoiceUrlThrows = true
@@ -335,6 +346,7 @@ class CreateSubscriptionTest {
         var pixPayload: String? = "00020126DEFAULT-PIX"
         var invoiceUrl: String? = null
         var invoiceUrlThrows: Boolean = false
+        var latestPaymentIdThrows: Boolean = false
         var lastSubscriptionValueCents: Long? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
 
@@ -363,8 +375,10 @@ class CreateSubscriptionTest {
         ) = error("unused")
 
         override fun regeneratePixPayload(asaasChargeId: String) = pixPayload ?: error("no pix")
-        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) =
-            if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {
+            if (latestPaymentIdThrows) throw RuntimeException("payment lookup failed")
+            return if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
+        }
 
         override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
             if (invoiceUrlThrows) throw RuntimeException("invoice lookup failed")

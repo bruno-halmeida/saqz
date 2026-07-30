@@ -239,8 +239,10 @@ class CreateSubscription(
     private data class Checkout(val pixCopyPaste: String?, val invoiceUrl: String?)
 
     private fun resolveCheckout(asaasSubscriptionId: String): Checkout {
-        val paymentId = asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId)
-            ?: return Checkout(null, null)
+        // Best-effort enrichment AFTER the subscription is already committed — any failure here
+        // must not surface as an error for a create that already succeeded.
+        val paymentId = runCatching { asaasGateway.findLatestPaymentIdForSubscription(asaasSubscriptionId) }
+            .getOrNull() ?: return Checkout(null, null)
         val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
         val invoice = runCatching { asaasGateway.findPaymentInvoiceUrl(paymentId) }.getOrNull()
         return Checkout(pixCopyPaste = pix, invoiceUrl = invoice)
