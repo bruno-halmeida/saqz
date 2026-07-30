@@ -20,4 +20,9 @@ data class Subscription(
     val couponId: UUID? = null,
     val couponCyclesRemaining: Int? = null,
     val pastDueSince: Instant? = null,
+    /** Set on first PAYMENT_CONFIRMED; null means never paid (no entitlements while PAST_DUE). */
+    val firstConfirmedAt: Instant? = null,
+    /** Upgrade awaiting one-off charge confirmation (webhook applies plan). */
+    val pendingUpgradePlan: Plan? = null,
+    val pendingUpgradeChargeId: String? = null,
 )

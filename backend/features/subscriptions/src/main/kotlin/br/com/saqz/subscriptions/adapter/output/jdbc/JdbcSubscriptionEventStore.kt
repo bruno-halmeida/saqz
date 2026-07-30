@@ -1,6 +1,7 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
 import br.com.saqz.subscriptions.application.SubscriptionEventStore
+import br.com.saqz.subscriptions.domain.SubscriptionEvent
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
 import java.time.Instant
@@ -47,4 +48,40 @@ class JdbcSubscriptionEventStore(
             .param("asaasEventId", asaasEventId)
             .update()
     }
+
+    override fun exists(asaasEventId: String): Boolean {
+        val count = jdbc.sql(
+            """
+            SELECT count(*)::int AS cnt
+            FROM subscription_events
+            WHERE asaas_event_id = :asaasEventId
+            """.trimIndent(),
+        )
+            .param("asaasEventId", asaasEventId)
+            .query { rs, _ -> rs.getInt("cnt") }
+            .single()
+        return count > 0
+    }
+
+    override fun listProcessedByType(type: String): List<SubscriptionEvent> =
+        jdbc.sql(
+            """
+            SELECT id, asaas_event_id, type, payload, processed_at
+            FROM subscription_events
+            WHERE type = :type
+              AND processed_at IS NOT NULL
+            ORDER BY processed_at DESC
+            """.trimIndent(),
+        )
+            .param("type", type)
+            .query { rs, _ ->
+                SubscriptionEvent(
+                    id = rs.getObject("id", UUID::class.java),
+                    asaasEventId = rs.getString("asaas_event_id"),
+                    type = rs.getString("type"),
+                    payload = rs.getString("payload"),
+                    processedAt = rs.getTimestamp("processed_at")?.toInstant(),
+                )
+            }
+            .list()
 }

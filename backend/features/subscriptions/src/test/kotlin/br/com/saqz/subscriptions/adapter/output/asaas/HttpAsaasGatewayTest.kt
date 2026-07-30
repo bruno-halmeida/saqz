@@ -288,6 +288,17 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
+    fun `cancelSubscription deletes asaas subscription`() {
+        server.enqueue(json(200, """{"deleted":true,"id":"sub_1"}"""))
+
+        gateway.cancelSubscription("sub_1")
+
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/v3/subscriptions/sub_1", request.path)
+    }
+
+    @Test
     fun `updateSubscriptionValue throws on asaas 4xx`() {
         server.enqueue(
             json(404, """{"errors":[{"code":"not_found","description":"Assinatura não encontrada"}]}"""),

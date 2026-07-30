@@ -15,7 +15,11 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
         SELECT plan, pending_plan
         FROM subscriptions
         WHERE owner_user_id = :ownerId
-          AND status IN ('ACTIVE', 'PAST_DUE')
+          AND (
+            status = 'ACTIVE'
+            OR (status = 'PAST_DUE' AND first_confirmed_at IS NOT NULL)
+            OR (status = 'CANCELED' AND first_confirmed_at IS NOT NULL AND current_period_end > now())
+          )
         """.trimIndent(),
     )
         .param("ownerId", ownerId)

@@ -14,6 +14,7 @@ data class AsaasWebhookCommand(
     val asaasEventId: String,
     val eventType: String,
     val asaasSubscriptionId: String?,
+    val asaasPaymentId: String?,
     val rawPayload: String,
 )
 
@@ -39,6 +40,7 @@ class ProcessAsaasWebhook(
     private val asaasGateway: AsaasGateway,
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock,
+    private val coupons: CouponRepository? = null,
     private val newEventId: () -> UUID = UUID::randomUUID,
 ) : AsaasWebhookProcessor {
     override fun execute(providedToken: String?, command: AsaasWebhookCommand): ProcessAsaasWebhookResult {
@@ -51,23 +53,40 @@ class ProcessAsaasWebhook(
 
         val now = clock.instant()
         return transaction.inTransaction {
-            if (command.eventType in DOMAIN_EVENT_TYPES) {
-                val subscriptionId = command.asaasSubscriptionId?.takeIf { it.isNotBlank() }
-                    ?: return@inTransaction claimAndAccept(command, now)
-                // Lock first; if the create-subscription tx has not committed yet, do not
-                // claim the event — a 200 would stop Asaas retries forever.
-                val current = subscriptions.findByAsaasSubscriptionId(subscriptionId)
-                    ?: return@inTransaction ProcessAsaasWebhookResult.SubscriptionNotReady
-                if (!claimEvent(command, now)) {
-                    return@inTransaction ProcessAsaasWebhookResult.Accepted
-                }
-                applyDomainEvent(command, current, now)
-                events.markProcessed(command.asaasEventId, now)
-                ProcessAsaasWebhookResult.Accepted
-            } else {
-                claimAndAccept(command, now)
+            if (command.eventType !in DOMAIN_EVENT_TYPES) {
+                return@inTransaction claimAndAccept(command, now)
             }
+
+            // Already-seen events (e.g. upgrade redelivery after pendingUpgradeChargeId cleared)
+            // must not 503 forever — accept without re-resolving the subscription.
+            if (events.exists(command.asaasEventId)) {
+                return@inTransaction ProcessAsaasWebhookResult.Accepted
+            }
+
+            val current = resolveSubscription(command)
+                ?: return@inTransaction when {
+                    command.asaasSubscriptionId.isNullOrBlank() &&
+                        command.asaasPaymentId.isNullOrBlank() -> claimAndAccept(command, now)
+                    else -> ProcessAsaasWebhookResult.SubscriptionNotReady
+                }
+
+            if (!claimEvent(command, now)) {
+                return@inTransaction ProcessAsaasWebhookResult.Accepted
+            }
+            applyDomainEvent(command, current, now)
+            events.markProcessed(command.asaasEventId, now)
+            ProcessAsaasWebhookResult.Accepted
         }
+    }
+
+    private fun resolveSubscription(command: AsaasWebhookCommand): Subscription? {
+        command.asaasSubscriptionId?.takeIf { it.isNotBlank() }?.let { subId ->
+            subscriptions.findByAsaasSubscriptionId(subId)?.let { return it }
+        }
+        command.asaasPaymentId?.takeIf { it.isNotBlank() }?.let { payId ->
+            subscriptions.findByPendingUpgradeChargeId(payId)?.let { return it }
+        }
+        return null
     }
 
     private fun claimAndAccept(command: AsaasWebhookCommand, now: Instant): ProcessAsaasWebhookResult {
@@ -88,23 +107,67 @@ class ProcessAsaasWebhook(
     private fun applyDomainEvent(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
         when (command.eventType) {
             EVENT_PAYMENT_CONFIRMED, EVENT_PAYMENT_OVERDUE -> {
-                // CANCELED is terminal: a late PAYMENT_* must not resurrect the plan.
                 if (current.status == SubscriptionStatus.CANCELED) return
                 if (command.eventType == EVENT_PAYMENT_CONFIRMED) {
+                    if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+                        applyPendingUpgrade(current)
+                        return
+                    }
                     val confirmed = confirmPayment(current, now)
                     subscriptions.save(confirmed.subscription)
                     confirmed.fullPriceCentsToPush?.let { cents ->
                         asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents)
                     }
                 } else {
-                    // ponytail: a delayed PAYMENT_OVERDUE can still win over a newer
-                    // PAYMENT_CONFIRMED and regress ACTIVE → PAST_DUE; needs invoice-date
-                    // ordering from the payload (VUL-115), not fixed here.
+                    if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+                        // Optional upgrade charge expired — clear pending only; base plan stays.
+                        clearPendingUpgrade(current)
+                        return
+                    }
                     subscriptions.save(markPastDue(current, now))
                 }
             }
             EVENT_SUBSCRIPTION_DELETED -> subscriptions.save(cancel(current, now))
         }
+    }
+
+    private fun isPendingUpgradePayment(current: Subscription, paymentId: String?): Boolean {
+        val pendingCharge = current.pendingUpgradeChargeId ?: return false
+        return paymentId != null && paymentId == pendingCharge
+    }
+
+    private fun applyPendingUpgrade(current: Subscription) {
+        val target = current.pendingUpgradePlan ?: return
+        val full = target.priceCents(current.cycle)
+        val recurring = recurringPriceWithCoupon(full, current)
+        asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, recurring)
+        subscriptions.save(
+            current.copy(
+                plan = target,
+                pendingUpgradePlan = null,
+                pendingUpgradeChargeId = null,
+                pendingPlan = null,
+                pendingPlanEffectiveAt = null,
+            ),
+        )
+    }
+
+    private fun clearPendingUpgrade(current: Subscription) {
+        subscriptions.save(
+            current.copy(
+                pendingUpgradePlan = null,
+                pendingUpgradeChargeId = null,
+            ),
+        )
+    }
+
+    private fun recurringPriceWithCoupon(fullPriceCents: Long, current: Subscription): Long {
+        if (!SubscriptionPricing.hasActiveCouponDiscount(current.couponId, current.couponCyclesRemaining)) {
+            return fullPriceCents
+        }
+        val couponId = current.couponId ?: return fullPriceCents
+        val coupon = coupons?.findById(couponId) ?: return fullPriceCents
+        return fullPriceCents - (fullPriceCents * coupon.discountPercent / 100)
     }
 
     private data class ConfirmOutcome(
@@ -113,15 +176,23 @@ class ProcessAsaasWebhook(
     )
 
     private fun confirmPayment(current: Subscription, now: Instant): ConfirmOutcome {
+        // First confirmation keeps the period set at create; renewals advance one cycle.
+        val periodEnd = if (current.firstConfirmedAt == null) {
+            current.currentPeriodEnd
+        } else {
+            advancePeriodEnd(current.currentPeriodEnd, current.cycle)
+        }
         var next = current.copy(
             status = SubscriptionStatus.ACTIVE,
-            currentPeriodEnd = advancePeriodEnd(current.currentPeriodEnd, current.cycle),
+            currentPeriodEnd = periodEnd,
             pastDueSince = null,
+            firstConfirmedAt = current.firstConfirmedAt ?: now,
         )
 
+        // Any recurring PAYMENT_CONFIRMED while a downgrade is scheduled is the renewal that
+        // should apply it — do not gate on wall-clock vs pendingPlanEffectiveAt.
         val pending = next.pendingPlan
-        val pendingAt = next.pendingPlanEffectiveAt
-        if (pending != null && pendingAt != null && !now.isBefore(pendingAt)) {
+        if (pending != null) {
             next = next.copy(
                 plan = pending,
                 pendingPlan = null,

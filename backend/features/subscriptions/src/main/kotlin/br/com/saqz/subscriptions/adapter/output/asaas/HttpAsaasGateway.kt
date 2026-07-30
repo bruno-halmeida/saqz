@@ -81,6 +81,10 @@ class HttpAsaasGateway(
         put("/subscriptions/$asaasSubscriptionId", body)
     }
 
+    override fun cancelSubscription(asaasSubscriptionId: String) {
+        delete("/subscriptions/$asaasSubscriptionId")
+    }
+
     override fun createOneOffCharge(
         asaasCustomerId: String,
         valueCents: Long,
@@ -108,6 +112,20 @@ class HttpAsaasGateway(
         val payload = response.path("payload").asText(null)
             ?: throw AsaasException(statusCode = 200, message = "Asaas pixQrCode response missing payload")
         return payload
+    }
+
+    override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {
+        val encoded = URLEncoder.encode(asaasSubscriptionId, StandardCharsets.UTF_8)
+        val response = get("/payments?subscription=$encoded&limit=1&offset=0")
+        val data = response.path("data")
+        if (!data.isArray || data.size() == 0) return null
+        return data[0].path("id").asText(null)?.takeIf { it.isNotBlank() }
+    }
+
+    override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
+        val response = get("/payments/$asaasPaymentId")
+        return response.path("invoiceUrl").asText(null)?.takeIf { it.isNotBlank() }
+            ?: response.path("bankSlipUrl").asText(null)?.takeIf { it.isNotBlank() }
     }
 
     private fun withIdempotency(
@@ -228,6 +246,9 @@ class HttpAsaasGateway(
 
     private fun put(path: String, body: Map<String, Any?>): JsonNode =
         exchange("PUT", path, body)
+
+    private fun delete(path: String): JsonNode =
+        exchange("DELETE", path, body = null)
 
     private fun get(path: String): JsonNode =
         exchange("GET", path, body = null)
