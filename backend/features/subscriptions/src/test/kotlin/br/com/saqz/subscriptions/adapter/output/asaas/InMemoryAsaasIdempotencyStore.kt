@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.adapter.output.asaas
 
+import br.com.saqz.subscriptions.application.AsaasIdempotencyReservation
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -14,7 +15,10 @@ class InMemoryAsaasIdempotencyStore : AsaasIdempotencyStore {
         return existing == null
     }
 
-    override fun findResourceId(key: String): String? = entries[key]?.resourceId
+    override fun find(key: String): AsaasIdempotencyReservation? {
+        val entry = entries[key] ?: return null
+        return AsaasIdempotencyReservation(resourceId = entry.resourceId, createdAt = entry.createdAt)
+    }
 
     override fun complete(key: String, resourceId: String) {
         entries.computeIfPresent(key) { _, entry -> entry.copy(resourceId = resourceId) }

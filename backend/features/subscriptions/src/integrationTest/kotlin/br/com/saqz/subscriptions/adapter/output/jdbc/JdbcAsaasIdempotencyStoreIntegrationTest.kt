@@ -48,10 +48,11 @@ class JdbcAsaasIdempotencyStoreIntegrationTest {
         val now = Instant.parse("2026-07-30T12:00:00Z")
         assertTrue(store.tryBegin("key-1", now))
         assertFalse(store.tryBegin("key-1", now))
-        assertNull(store.findResourceId("key-1"))
+        assertNull(store.find("key-1")?.resourceId)
+        assertEquals(now, store.find("key-1")?.createdAt)
 
         store.complete("key-1", "sub_ABC")
-        assertEquals("sub_ABC", store.findResourceId("key-1"))
+        assertEquals("sub_ABC", store.find("key-1")?.resourceId)
         assertFalse(store.tryBegin("key-1", now))
     }
 
@@ -63,7 +64,7 @@ class JdbcAsaasIdempotencyStoreIntegrationTest {
         assertTrue(store.tryBegin("key-2", now))
         store.complete("key-2", "pay_1")
         store.release("key-2")
-        assertEquals("pay_1", store.findResourceId("key-2"))
+        assertEquals("pay_1", store.find("key-2")?.resourceId)
     }
 
     @Test

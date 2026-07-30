@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
+import br.com.saqz.subscriptions.application.AsaasIdempotencyReservation
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
@@ -25,16 +26,21 @@ class JdbcAsaasIdempotencyStore(
         return inserted == 1
     }
 
-    override fun findResourceId(key: String): String? =
+    override fun find(key: String): AsaasIdempotencyReservation? =
         jdbc.sql(
             """
-            SELECT resource_id
+            SELECT resource_id, created_at
             FROM asaas_idempotent_operations
             WHERE idempotency_key = :key
             """.trimIndent(),
         )
             .param("key", key)
-            .query { rs, _ -> rs.getString("resource_id") }
+            .query { rs, _ ->
+                AsaasIdempotencyReservation(
+                    resourceId = rs.getString("resource_id"),
+                    createdAt = rs.getTimestamp("created_at").toInstant(),
+                )
+            }
             .optional()
             .orElse(null)
 

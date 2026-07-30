@@ -10,7 +10,7 @@ interface AsaasIdempotencyStore {
     /** @return true se esta chamada ganhou a reserva e deve chamar o Asaas. */
     fun tryBegin(key: String, now: Instant): Boolean
 
-    fun findResourceId(key: String): String?
+    fun find(key: String): AsaasIdempotencyReservation?
 
     fun complete(key: String, resourceId: String)
 
