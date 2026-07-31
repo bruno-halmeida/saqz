@@ -125,6 +125,9 @@ class ProcessAsaasWebhook(
                     }
                 } else {
                     if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+                        // Same canceledAt gap as the CONFIRMED branch above: preserve the mapping so a
+                        // late payment on this charge can still resolve.
+                        if (current.canceledAt != null) return
                         // Optional upgrade charge expired — clear pending only; base plan stays.
                         clearPendingUpgrade(current)
                         return
