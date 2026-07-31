@@ -19,11 +19,12 @@ class JdbcSubscriptionEventStore(
         type: String,
         payload: String,
         now: Instant,
+        ownerUserId: UUID?,
     ): Boolean {
         val inserted = jdbc.sql(
             """
-            INSERT INTO subscription_events (id, asaas_event_id, type, payload, processed_at, created_at)
-            VALUES (:id, :asaasEventId, :type, :payload, NULL, :now)
+            INSERT INTO subscription_events (id, asaas_event_id, type, payload, owner_user_id, processed_at, created_at)
+            VALUES (:id, :asaasEventId, :type, :payload, :ownerUserId, NULL, :now)
             ON CONFLICT (asaas_event_id) DO NOTHING
             """.trimIndent(),
         )
@@ -31,6 +32,7 @@ class JdbcSubscriptionEventStore(
             .param("asaasEventId", asaasEventId)
             .param("type", type)
             .param("payload", payload)
+            .param("ownerUserId", ownerUserId)
             .param("now", Timestamp.from(now))
             .update()
         return inserted == 1
@@ -63,17 +65,27 @@ class JdbcSubscriptionEventStore(
         return count > 0
     }
 
-    override fun listProcessedByType(type: String): List<SubscriptionEvent> =
+    override fun listProcessedByTypeForOwner(
+        type: String,
+        ownerUserId: UUID,
+        limit: Int,
+        offset: Int,
+    ): List<SubscriptionEvent> =
         jdbc.sql(
             """
             SELECT id, asaas_event_id, type, payload, processed_at
             FROM subscription_events
             WHERE type = :type
+              AND owner_user_id = :ownerUserId
               AND processed_at IS NOT NULL
-            ORDER BY processed_at DESC
+            ORDER BY processed_at DESC, id DESC
+            LIMIT :limit OFFSET :offset
             """.trimIndent(),
         )
             .param("type", type)
+            .param("ownerUserId", ownerUserId)
+            .param("limit", limit)
+            .param("offset", offset)
             .query { rs, _ ->
                 SubscriptionEvent(
                     id = rs.getObject("id", UUID::class.java),

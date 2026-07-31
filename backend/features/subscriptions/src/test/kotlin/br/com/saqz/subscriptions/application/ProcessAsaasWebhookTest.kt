@@ -86,6 +86,7 @@ class ProcessAsaasWebhookTest {
         assertNull(sub.pastDueSince)
         assertEquals(fixedNow, sub.firstConfirmedAt)
         assertEquals(fixedNow, events.rows.getValue("evt_pay_1").processedAt)
+        assertEquals(ownerId, events.rows.getValue("evt_pay_1").ownerUserId)
     }
 
     @Test
@@ -474,6 +475,7 @@ class ProcessAsaasWebhookTest {
         )
         assertEquals(ProcessAsaasWebhookResult.Accepted, result)
         assertEquals(fixedNow, events.rows.getValue("evt_no_sub").processedAt)
+        assertNull(events.rows.getValue("evt_no_sub").ownerUserId)
         assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
     }
 
@@ -529,6 +531,11 @@ class ProcessAsaasWebhookTest {
         assertNull(sub.pendingUpgradeChargeId)
         assertEquals(periodEnd, sub.currentPeriodEnd)
         assertEquals(listOf("sub_123" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.updates)
+        assertEquals(ownerId, events.rows.getValue("evt_upg").ownerUserId)
+
+        val receipts = ListReceipts(events).execute(ownerId)
+        assertEquals("evt_upg", receipts.single().asaasEventId)
+        assertEquals("pay_upgrade_1", receipts.single().asaasPaymentId)
     }
 
     @Test
@@ -713,9 +720,11 @@ class ProcessAsaasWebhookTest {
     private class InMemorySubscriptionEventStore : SubscriptionEventStore {
         data class Row(
             val id: UUID,
+            val asaasEventId: String,
             val type: String,
             val payload: String,
             val createdAt: Instant,
+            val ownerUserId: UUID?,
             var processedAt: Instant? = null,
         )
 
@@ -727,9 +736,10 @@ class ProcessAsaasWebhookTest {
             type: String,
             payload: String,
             now: Instant,
+            ownerUserId: UUID?,
         ): Boolean {
             if (rows.containsKey(asaasEventId)) return false
-            rows[asaasEventId] = Row(id, type, payload, now)
+            rows[asaasEventId] = Row(id, asaasEventId, type, payload, now, ownerUserId)
             return true
         }
 
@@ -739,7 +749,25 @@ class ProcessAsaasWebhookTest {
 
         override fun exists(asaasEventId: String): Boolean = rows.containsKey(asaasEventId)
 
-        override fun listProcessedByType(type: String) = emptyList<br.com.saqz.subscriptions.domain.SubscriptionEvent>()
+        override fun listProcessedByTypeForOwner(
+            type: String,
+            ownerUserId: UUID,
+            limit: Int,
+            offset: Int,
+        ) = rows.values
+            .filter { it.type == type && it.ownerUserId == ownerUserId && it.processedAt != null }
+            .sortedByDescending { it.processedAt }
+            .drop(offset)
+            .take(limit)
+            .map {
+                br.com.saqz.subscriptions.domain.SubscriptionEvent(
+                    id = it.id,
+                    asaasEventId = it.asaasEventId,
+                    type = it.type,
+                    payload = it.payload,
+                    processedAt = it.processedAt,
+                )
+            }
     }
 
     private class InMemorySubscriptionRepository : SubscriptionRepository {

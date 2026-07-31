@@ -74,7 +74,7 @@ class ProcessAsaasWebhook(
                     else -> ProcessAsaasWebhookResult.SubscriptionNotReady
                 }
 
-            if (!claimEvent(command, now)) {
+            if (!claimEvent(command, now, ownerUserId = current.ownerUserId)) {
                 return@inTransaction ProcessAsaasWebhookResult.Accepted
             }
             applyDomainEvent(command, current, now)
@@ -99,13 +99,18 @@ class ProcessAsaasWebhook(
         return ProcessAsaasWebhookResult.Accepted
     }
 
-    private fun claimEvent(command: AsaasWebhookCommand, now: Instant): Boolean =
+    private fun claimEvent(
+        command: AsaasWebhookCommand,
+        now: Instant,
+        ownerUserId: UUID? = null,
+    ): Boolean =
         events.tryInsert(
             id = newEventId(),
             asaasEventId = command.asaasEventId,
             type = command.eventType,
             payload = command.rawPayload,
             now = now,
+            ownerUserId = ownerUserId,
         )
 
     private fun applyDomainEvent(command: AsaasWebhookCommand, current: Subscription, now: Instant) {

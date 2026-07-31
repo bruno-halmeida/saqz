@@ -132,9 +132,8 @@ class AsaasWebhookConfiguration {
 
     @Bean
     fun listReceipts(
-        subscriptions: SubscriptionRepository,
         events: SubscriptionEventStore,
-    ) = ListReceipts(subscriptions, events)
+    ) = ListReceipts(events)
 
     @Bean
     fun subscriptionCommandController(

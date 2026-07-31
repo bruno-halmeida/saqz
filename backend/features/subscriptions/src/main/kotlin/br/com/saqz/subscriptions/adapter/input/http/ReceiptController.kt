@@ -5,6 +5,7 @@ import br.com.saqz.subscriptions.application.ListReceipts
 import br.com.saqz.subscriptions.application.Receipt
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
 
@@ -26,9 +27,13 @@ class ReceiptController(
     private val listReceipts: ListReceipts,
 ) {
     @GetMapping("/subscriptions/me/receipts")
-    fun list(@AuthenticationPrincipal identity: RequestIdentity): ReceiptListResponse {
+    fun list(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @RequestParam(defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "0") offset: Int,
+    ): ReceiptListResponse {
         val ownerUserId = actors.resolve(identity)
-        return ReceiptListResponse(listReceipts.execute(ownerUserId).map { it.toResponse() })
+        return ReceiptListResponse(listReceipts.execute(ownerUserId, limit, offset).map { it.toResponse() })
     }
 
     private fun Receipt.toResponse() = ReceiptResponse(

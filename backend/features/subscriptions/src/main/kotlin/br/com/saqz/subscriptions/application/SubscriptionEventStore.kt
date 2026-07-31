@@ -15,6 +15,7 @@ interface SubscriptionEventStore {
         type: String,
         payload: String,
         now: Instant,
+        ownerUserId: UUID? = null,
     ): Boolean
 
     fun markProcessed(asaasEventId: String, processedAt: Instant)
@@ -22,6 +23,11 @@ interface SubscriptionEventStore {
     /** True when this asaasEventId was already inserted (prior delivery). */
     fun exists(asaasEventId: String): Boolean
 
-    /** Processed webhook rows of the given type, newest first. */
-    fun listProcessedByType(type: String): List<SubscriptionEvent>
+    /** Processed webhook rows of the given type and owner, newest first. */
+    fun listProcessedByTypeForOwner(
+        type: String,
+        ownerUserId: UUID,
+        limit: Int,
+        offset: Int,
+    ): List<SubscriptionEvent>
 }
