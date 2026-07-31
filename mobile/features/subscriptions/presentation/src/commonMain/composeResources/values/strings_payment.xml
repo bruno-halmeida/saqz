@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 8c · Pagamento (VUL-110) -->
+    <string name="payment_title">Pagamento</string>
+    <string name="payment_summary_coupon">Cupom %1$s aplicado (-%2$d%%)</string>
+    <string name="payment_billing_pix">Pix</string>
+    <string name="payment_billing_card">Cartão de crédito</string>
+    <string name="payment_cpf_cnpj_label">CPF ou CNPJ</string>
+    <string name="payment_submit_action">Pagar</string>
+    <string name="payment_submit_loading">Processando…</string>
+    <string name="payment_pix_title">Pix copia e cola</string>
+    <string name="payment_pix_copy_action">Copiar código</string>
+    <string name="payment_pix_copied_action">Copiado!</string>
+    <string name="payment_pix_regenerate_action">Gerar novo código</string>
+    <string name="payment_card_title">Checkout do cartão</string>
+    <string name="payment_card_copy_action">Copiar link</string>
+    <string name="payment_waiting_title">Aguardando confirmação</string>
+    <string name="payment_waiting_body">Assim que o pagamento for confirmado, sua assinatura fica ativa automaticamente.</string>
+    <string name="payment_confirm_action">Já paguei · confirmar</string>
+    <string name="payment_error_cpf_cnpj">CPF ou CNPJ inválido. Confira os números.</string>
+    <string name="payment_error_generic">Não foi possível concluir o pagamento. Tente de novo.</string>
+    <string name="payment_error_no_session">Não foi possível carregar seus dados. Tente novamente.</string>
+</resources>

@@ -19,6 +19,9 @@ kotlin {
             api(project(":core:design-system"))
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
+            // 8c lê nome/e-mail de AccessSession.user para preencher o CreateSubscriptionCommand
+            // (SessionGateway.bootstrap() — ver PaymentViewModel).
+            implementation(project(":features:access:domain"))
             implementation(libs.bundles.compose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.lifecycle.viewmodel.compose)
@@ -36,6 +39,9 @@ kotlin {
 }
 
 compose.resources {
+    // Público pelo mesmo motivo do :features:access — o screenshot test do android-app
+    // (Payment8cScreenshotTest) monta estados de erro com UiText.Res(Res.string.*) daqui.
+    publicResClass = true
     packageOfResClass = "br.com.saqz.subscriptions.resources"
     generateResClass = always
 }
