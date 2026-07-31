@@ -16,6 +16,7 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.payment_error_checkout_unavailable
+import br.com.saqz.subscriptions.resources.payment_error_conflict_pending_checkout
 import br.com.saqz.subscriptions.resources.payment_error_cpf_cnpj
 import br.com.saqz.subscriptions.resources.payment_error_generic
 import br.com.saqz.subscriptions.resources.payment_error_no_session
@@ -90,6 +91,8 @@ class PaymentViewModel(
             PaymentIntent.Submit -> submit()
             PaymentIntent.RegeneratePix -> submit(skipValidation = true)
             PaymentIntent.ConfirmPayment -> checkNow()
+            PaymentIntent.RequestBack -> update { it.copy(isBackConfirmationOpen = true) }
+            PaymentIntent.DismissBackConfirmation -> update { it.copy(isBackConfirmationOpen = false) }
         }
     }
 
@@ -143,6 +146,11 @@ class PaymentViewModel(
         }
         pollJob?.cancel()
         submitJob?.cancel()
+        // Capturado antes do `create()`: um `Conflict` com checkout já em mãos nesta sessão
+        // (RegeneratePix) é o backend recusando por causa de UM checkout pendente que a
+        // própria tela criou — o `Submit` original nunca chega aqui com isso true, porque
+        // a seção de formulário só existe enquanto `!hasCheckout` (ver PaymentScreen).
+        val hadCheckout = state.value.hasCheckout
         submitJob = viewModelScope.launch {
             update { it.copy(isSubmitting = true, submitError = null, cpfCnpjError = null) }
             subscriptionGateway.create(
@@ -159,7 +167,7 @@ class PaymentViewModel(
             ).onSuccess { created ->
                 onCreated(created.pixCopyPaste, created.invoiceUrl)
             }.onFailure { error ->
-                update { it.copy(isSubmitting = false, submitError = error.toUiText()) }
+                update { it.copy(isSubmitting = false, submitError = error.toUiText(hadCheckout)) }
             }
         }
     }
@@ -238,10 +246,17 @@ class PaymentViewModel(
 // Mesma regra do backend (`CreateSubscription.isValidCpfCnpj`): 11 dígitos (CPF) ou 14 (CNPJ).
 internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || digits.length == 14
 
-// ponytail: mensagem única — a 8a/8b já validou o cupom antes de chegar aqui, e o resto
-// dos motivos de recusa (conflito, cupom resgatado por outra sessão) não muda a ação do
-// usuário: tentar de novo. Granularidade por caso entra se algum motivo pedir texto próprio.
-private fun SubscriptionError.toUiText(): UiText = UiText.Res(Res.string.payment_error_generic)
+// ponytail: mensagem única para o resto dos motivos de recusa (`AlreadySubscribed` chega
+// aqui como `Conflict` sem checkout prévio, cupom resgatado por outra sessão, etc.) — a
+// 8a/8b já validou o cupom antes de chegar aqui, e nenhum deles muda a ação do usuário:
+// tentar de novo. Só o `Conflict` com checkout pendente NESTA sessão tem ação diferente
+// (voltar/cancelar o checkout existente), daí a mensagem própria (VUL-119).
+private fun SubscriptionError.toUiText(hadCheckout: Boolean): UiText =
+    if (this is SubscriptionError.Conflict && hadCheckout) {
+        UiText.Res(Res.string.payment_error_conflict_pending_checkout)
+    } else {
+        UiText.Res(Res.string.payment_error_generic)
+    }
 
 private fun requirePlan(planId: String) = Plan.valueOf(planId)
 private fun requireCycle(cycle: String) = SubscriptionCycle.valueOf(cycle)

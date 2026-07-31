@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
@@ -28,6 +29,7 @@ import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.SaqzSegmented
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.subscriptions.domain.subscription.BillingType
@@ -39,12 +41,17 @@ import br.com.saqz.subscriptions.presentation.payment.PaymentIntent
 import br.com.saqz.subscriptions.presentation.payment.PaymentState
 import br.com.saqz.subscriptions.presentation.payment.PaymentViewModel
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.payment_back_confirm_body
+import br.com.saqz.subscriptions.resources.payment_back_confirm_leave
+import br.com.saqz.subscriptions.resources.payment_back_confirm_stay
+import br.com.saqz.subscriptions.resources.payment_back_confirm_title
 import br.com.saqz.subscriptions.resources.payment_billing_card
 import br.com.saqz.subscriptions.resources.payment_billing_pix
 import br.com.saqz.subscriptions.resources.payment_card_copy_action
 import br.com.saqz.subscriptions.resources.payment_card_title
 import br.com.saqz.subscriptions.resources.payment_confirm_action
 import br.com.saqz.subscriptions.resources.payment_cpf_cnpj_label
+import br.com.saqz.subscriptions.resources.payment_error_conflict_pending_checkout
 import br.com.saqz.subscriptions.resources.payment_pix_copy_action
 import br.com.saqz.subscriptions.resources.payment_pix_regenerate_action
 import br.com.saqz.subscriptions.resources.payment_pix_title
@@ -66,6 +73,7 @@ internal object PaymentTags {
     const val PixRegenerate = "payment-pix-regenerate"
     const val CardCopy = "payment-card-copy"
     const val Confirm = "payment-confirm"
+    const val BackConfirmationSheet = "payment-back-confirmation-sheet"
 }
 
 /**
@@ -94,7 +102,12 @@ fun PaymentScreen(
     val metrics = SaqzTheme.metrics
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            SaqzTopAppBar(title = stringResource(Res.string.payment_title), onBack = onBack)
+            SaqzTopAppBar(
+                title = stringResource(Res.string.payment_title),
+                // Checkout pendente por trás: sair sem avisar é o que abre espaço para o
+                // conflito do VUL-119 (escolher outro plano com este ainda em aberto).
+                onBack = { if (state.hasCheckout) onIntent(PaymentIntent.RequestBack) else onBack() },
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -111,6 +124,7 @@ fun PaymentScreen(
                 }
             }
         }
+        PaymentBackConfirmationSheet(state = state, onIntent = onIntent, onConfirmBack = onBack)
     }
 }
 
@@ -238,6 +252,12 @@ private fun PaymentCheckoutSection(state: PaymentState, onIntent: (PaymentIntent
             }
         }
 
+        // Só o RegeneratePix chega aqui com um `submitError` — o Submit original vive na
+        // seção de formulário, que some assim que `hasCheckout` liga (ver PaymentScreen).
+        state.submitError?.let {
+            Text(it.asString(), style = typography.support, color = colors.errorForeground)
+        }
+
         SaqzButton(
             label = stringResource(Res.string.payment_confirm_action),
             onClick = { onIntent(PaymentIntent.ConfirmPayment) },
@@ -246,6 +266,36 @@ private fun PaymentCheckoutSection(state: PaymentState, onIntent: (PaymentIntent
             modifier = Modifier.testTag(PaymentTags.Confirm),
         )
     }
+}
+
+@Composable
+private fun PaymentBackConfirmationSheet(
+    state: PaymentState,
+    onIntent: (PaymentIntent) -> Unit,
+    onConfirmBack: () -> Unit,
+) {
+    SaqzBottomSheet(
+        open = state.isBackConfirmationOpen,
+        onClose = { onIntent(PaymentIntent.DismissBackConfirmation) },
+        modifier = Modifier.testTag(PaymentTags.BackConfirmationSheet),
+        title = stringResource(Res.string.payment_back_confirm_title),
+        description = stringResource(Res.string.payment_back_confirm_body),
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.payment_back_confirm_stay),
+                onClick = { onIntent(PaymentIntent.DismissBackConfirmation) },
+                variant = SaqzButtonVariant.Secondary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.payment_back_confirm_leave),
+                onClick = onConfirmBack,
+                variant = SaqzButtonVariant.Danger,
+                modifier = Modifier.weight(1f),
+            )
+        },
+        content = {},
+    )
 }
 
 private fun SubscriptionCycle.label(): String = when (this) {
@@ -291,6 +341,36 @@ private fun PaymentCardCheckoutPreview() = SaqzTheme {
             billingType = BillingType.CreditCard,
             invoiceUrl = "https://checkout.asaas.com/i/abc123",
             isWaitingConfirmation = true,
+        ),
+        onIntent = {},
+        onBack = {},
+    )
+}
+
+// VUL-119 — RegeneratePix batendo num checkout pendente desta mesma sessão.
+@Preview
+@Composable
+private fun PaymentConflictPendingCheckoutPreview() = SaqzTheme {
+    PaymentScreen(
+        state = PreviewFormState.copy(
+            pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
+            isWaitingConfirmation = true,
+            submitError = UiText.Res(Res.string.payment_error_conflict_pending_checkout),
+        ),
+        onIntent = {},
+        onBack = {},
+    )
+}
+
+// VUL-119 — seta do topo com checkout pendente: confirma antes de sair.
+@Preview
+@Composable
+private fun PaymentBackConfirmationPreview() = SaqzTheme {
+    PaymentScreen(
+        state = PreviewFormState.copy(
+            pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
+            isWaitingConfirmation = true,
+            isBackConfirmationOpen = true,
         ),
         onIntent = {},
         onBack = {},

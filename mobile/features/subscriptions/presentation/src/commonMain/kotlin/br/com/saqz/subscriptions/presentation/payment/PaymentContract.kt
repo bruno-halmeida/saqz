@@ -31,6 +31,7 @@ data class PaymentState(
     val invoiceUrl: String? = null,
     val isWaitingConfirmation: Boolean = false,
     val isCheckingNow: Boolean = false,
+    val isBackConfirmationOpen: Boolean = false,
 ) {
     val hasCheckout: Boolean get() = pixCopyPaste != null || invoiceUrl != null
 }
@@ -45,6 +46,10 @@ sealed interface PaymentIntent {
 
     /** Reenvia `create()` com o mesmo requestId — não existe endpoint de Pix isolado. */
     data object RegeneratePix : PaymentIntent
+
+    /** Seta do topo com checkout pendente: abre a confirmação em vez de sair direto. */
+    data object RequestBack : PaymentIntent
+    data object DismissBackConfirmation : PaymentIntent
 }
 
 sealed interface PaymentEffect {
