@@ -107,13 +107,14 @@ class ProcessAsaasWebhook(
     private fun applyDomainEvent(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
         when (command.eventType) {
             EVENT_PAYMENT_CONFIRMED, EVENT_PAYMENT_OVERDUE -> {
-                // canceledAt is set by CancelSubscription immediately; status only flips to CANCELED
-                // once this same webhook processes SUBSCRIPTION_DELETED. A late payment on an
-                // abandoned pending-upgrade charge (never canceled at Asaas, no gateway call for
-                // that) must not be misapplied as a renewal/upgrade in that gap.
-                if (current.status == SubscriptionStatus.CANCELED || current.canceledAt != null) return
+                if (current.status == SubscriptionStatus.CANCELED) return
                 if (command.eventType == EVENT_PAYMENT_CONFIRMED) {
                     if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+                        // canceledAt is set by CancelSubscription immediately; status only flips to
+                        // CANCELED once this same webhook processes SUBSCRIPTION_DELETED. A late
+                        // payment on an abandoned pending-upgrade charge (never canceled at Asaas, no
+                        // gateway call for that) must not be misapplied as an upgrade in that gap.
+                        if (current.canceledAt != null) return
                         applyPendingUpgrade(current)
                         return
                     }
@@ -124,6 +125,9 @@ class ProcessAsaasWebhook(
                     }
                 } else {
                     if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+                        // Same canceledAt gap as the CONFIRMED branch above: preserve the mapping so a
+                        // late payment on this charge can still resolve.
+                        if (current.canceledAt != null) return
                         // Optional upgrade charge expired — clear pending only; base plan stays.
                         clearPendingUpgrade(current)
                         return

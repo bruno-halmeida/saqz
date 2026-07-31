@@ -513,6 +513,31 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
+    fun `recurring PAYMENT_CONFIRMED with no pending upgrade still advances period after canceledAt is set`() {
+        // Paid before cancel, but the webhook only arrives after CancelSubscription already set
+        // canceledAt locally (SUBSCRIPTION_DELETED hasn't landed yet) — this is a legitimate
+        // already-paid period and must not be dropped just because canceledAt is non-null.
+        val original = Instant.parse("2026-01-01T00:00:00Z")
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = original,
+                canceledAt = Instant.parse("2026-07-25T00:00:00Z"),
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_pay_after_cancel", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), sub.currentPeriodEnd)
+        assertEquals(original, sub.firstConfirmedAt)
+    }
+
+    @Test
     fun `late payment on an abandoned pending upgrade charge after cancel is accepted without applying anything`() {
         // CancelSubscription sets canceledAt but keeps status/pendingUpgrade fields — there is no
         // gateway call that cancels this one-off charge, so it can still be paid afterward.
@@ -545,6 +570,40 @@ class ProcessAsaasWebhookTest {
         assertEquals(Plan.ORGANIZADOR, sub.pendingUpgradePlan)
         assertEquals("pay_upgrade_after_cancel", sub.pendingUpgradeChargeId)
         assertTrue(gateway.updates.isEmpty())
+    }
+
+    @Test
+    fun `PAYMENT_OVERDUE on abandoned pending upgrade charge after cancel preserves the mapping`() {
+        // Same canceledAt gap as the CONFIRMED case: clearing the mapping here would recreate the
+        // SubscriptionNotReady bug if the charge is paid later.
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                canceledAt = Instant.parse("2026-07-25T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_od_after_cancel",
+            ),
+        )
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_upg_od_after_cancel",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE,
+                asaasSubscriptionId = null,
+                asaasPaymentId = "pay_upgrade_od_after_cancel",
+                rawPayload = """{"id":"evt_upg_od_after_cancel","event":"PAYMENT_OVERDUE","payment":{"id":"pay_upgrade_od_after_cancel"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Plan.TITULAR, sub.plan)
+        assertEquals(Plan.ORGANIZADOR, sub.pendingUpgradePlan)
+        assertEquals("pay_upgrade_od_after_cancel", sub.pendingUpgradeChargeId)
     }
 
     private fun baseSubscription() = Subscription(
