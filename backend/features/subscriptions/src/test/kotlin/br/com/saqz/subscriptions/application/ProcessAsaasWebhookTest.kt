@@ -193,6 +193,29 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
+    fun `PAYMENT_OVERDUE with dueDate equal to the current period end still marks past due`() {
+        // The normal renewal invoice's dueDate IS the currentPeriodEnd set at the prior confirm —
+        // only a dueDate strictly BEFORE it is stale.
+        subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.ACTIVE, pastDueSince = null))
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_od_current_cycle",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE,
+                asaasSubscriptionId = "sub_123",
+                asaasPaymentId = null,
+                rawPayload = """{"id":"evt_od_current_cycle","event":"PAYMENT_OVERDUE","payment":{"dueDate":"2026-07-30"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.PAST_DUE, sub.status)
+        assertEquals(fixedNow, sub.pastDueSince)
+    }
+
+    @Test
     fun `PAYMENT_OVERDUE for a newer invoice still marks past due`() {
         subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.ACTIVE, pastDueSince = null))
 

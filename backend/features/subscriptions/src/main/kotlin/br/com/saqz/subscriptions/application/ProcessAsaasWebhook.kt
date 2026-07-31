@@ -149,7 +149,7 @@ class ProcessAsaasWebhook(
 
     private fun isStaleOverdue(command: AsaasWebhookCommand, current: Subscription): Boolean {
         val dueDate = paymentDueDate(command.rawPayload) ?: return false
-        return !dueDate.isAfter(current.currentPeriodEnd.atZone(ZoneOffset.UTC).toLocalDate())
+        return dueDate.isBefore(current.currentPeriodEnd.atZone(ZoneOffset.UTC).toLocalDate())
     }
 
     private fun paymentDueDate(rawPayload: String): LocalDate? {
