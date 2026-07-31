@@ -254,6 +254,39 @@ class PlanSelectionViewModelTest {
         assertEquals(20, (viewModel.state.value.coupon as CouponUiState.Applied).discountPercent)
     }
 
+    /**
+     * Mesmo defeito do `couponValidationGeneration`, agora em `loadPlans()`: dois toques
+     * em "Tentar de novo" disparam duas `gateway.plans()` concorrentes, e sem contador a
+     * resposta mais velha — chegando depois — pode sobrescrever a mais nova. Uma falha
+     * atrasada não pode apagar um sucesso que já carregou os planos na tela.
+     */
+    @Test
+    fun `resposta atrasada de um carregamento de planos nao sobrescreve o mais novo`() = runTest(mainDispatcher) {
+        val gateway = QueuedPlansGateway()
+        val viewModel = PlanSelectionViewModel(gateway)
+        // O `init` já disparou a primeira chamada (A); dispara a segunda (B) via Retry.
+        viewModel.onIntent(PlanSelectionIntent.Retry)
+        runCurrent()
+
+        assertEquals(2, gateway.pendingCount)
+
+        // B (a mais nova) responde primeiro com sucesso.
+        gateway.complete(1, SaqzResult.Success(SamplePlans))
+        runCurrent()
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(SamplePlans.map { it.id }, viewModel.state.value.plans.map { it.id })
+        assertNull(viewModel.state.value.loadError)
+
+        // A resposta atrasada de A chega depois, com uma falha — não pode apagar o
+        // sucesso que B já colocou na tela.
+        gateway.complete(0, SaqzResult.Failure(SubscriptionError.NotFound))
+        runCurrent()
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(SamplePlans.map { it.id }, viewModel.state.value.plans.map { it.id })
+        assertNull(viewModel.state.value.loadError)
+    }
+
     private fun couponApplied(discountPercent: Int, finalPriceCents: Long) = SaqzResult.Success(
         CouponValidation.Applied(
             code = "GALERA10",
@@ -376,6 +409,21 @@ class PlanSelectionViewModelTest {
         }
 
         fun complete(index: Int, result: SaqzResult<CouponValidation, SubscriptionError>) =
+            responses[index].complete(result)
+    }
+
+    /** Mesma ideia do [QueuedGateway], mas pra `plans()` — pro cenário ABA de `loadPlans()`. */
+    private inner class QueuedPlansGateway : SubscriptionGateway by NotUsedGateway {
+        private val responses = mutableListOf<CompletableDeferred<SaqzResult<List<PlanDetails>, SubscriptionError>>>()
+        val pendingCount: Int get() = responses.size
+
+        override suspend fun plans(): SaqzResult<List<PlanDetails>, SubscriptionError> {
+            val deferred = CompletableDeferred<SaqzResult<List<PlanDetails>, SubscriptionError>>()
+            responses += deferred
+            return deferred.await()
+        }
+
+        fun complete(index: Int, result: SaqzResult<List<PlanDetails>, SubscriptionError>) =
             responses[index].complete(result)
     }
 

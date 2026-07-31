@@ -43,6 +43,12 @@ class PlanSelectionViewModel(
      */
     private var couponValidationGeneration = 0
 
+    /** Mesma guarda que [couponValidationGeneration], pra `loadPlans()` — dois toques em
+     * "Tentar de novo" disparam duas `gateway.plans()` concorrentes, e sem contador a
+     * resposta mais velha, chegando depois, pode sobrescrever a mais nova (uma falha
+     * antiga apaga um sucesso que já carregou os planos). */
+    private var plansLoadGeneration = 0
+
     init { loadPlans() }
 
     override fun onIntent(intent: PlanSelectionIntent) {
@@ -66,9 +72,14 @@ class PlanSelectionViewModel(
     }
 
     private fun loadPlans() {
+        val generation = ++plansLoadGeneration
         update { it.copy(isLoading = true, loadError = null) }
         viewModelScope.launch {
-            when (val result = gateway.plans()) {
+            val result = gateway.plans()
+            // Dois toques em "Tentar de novo" disparam duas chamadas; só a resposta da
+            // mais recente escreve — a mais velha morre aqui, mesmo que chegue depois.
+            if (generation != plansLoadGeneration) return@launch
+            when (result) {
                 is SaqzResult.Success -> update { current ->
                     val plans = result.value.map { it.toPlanUi() }
                     current.copy(
