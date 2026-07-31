@@ -21,4 +21,10 @@
     <string name="payment_error_generic">Não foi possível concluir o pagamento. Tente de novo.</string>
     <string name="payment_error_no_session">Não foi possível carregar seus dados. Tente novamente.</string>
     <string name="payment_error_checkout_unavailable">Não foi possível carregar os dados de pagamento. Tente novamente.</string>
+    <!-- VUL-119 -->
+    <string name="payment_error_conflict_pending_checkout">Você já tem um pagamento em andamento. Volte e finalize ou cancele-o antes de tentar de novo.</string>
+    <string name="payment_back_confirm_title">Sair sem finalizar o pagamento?</string>
+    <string name="payment_back_confirm_body">Você já gerou um código de pagamento para este plano. Se voltar agora, ele continua pendente e você pode retomá-lo depois.</string>
+    <string name="payment_back_confirm_stay">Continuar aqui</string>
+    <string name="payment_back_confirm_leave">Voltar mesmo assim</string>
 </resources>

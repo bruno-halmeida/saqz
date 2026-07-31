@@ -20,6 +20,8 @@ kotlin {
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
+            // O back do sistema/gesto é tratado dentro da 8c com checkout pendente (VUL-119).
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)

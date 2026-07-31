@@ -165,6 +165,16 @@ class KtorSubscriptionGatewayTest {
         assertSubscriptionError(SubscriptionError.Conflict, gateway { problemResponse(409, "SUBSCRIPTION_CONFLICT") }.create(createCommand()))
     }
 
+    // VUL-119: código próprio pro backend distinguir "checkout pendente para outro plano"
+    // de `AlreadySubscribed` — os dois eram a mesma exceção e colapsavam em SUBSCRIPTION_CONFLICT.
+    @Test
+    fun `create pending checkout mismatch maps distinctly`() = runTest {
+        assertSubscriptionError(
+            SubscriptionError.PendingCheckoutMismatch,
+            gateway { problemResponse(409, "SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH") }.create(createCommand()),
+        )
+    }
+
     @Test
     fun `create coupon not found maps distinctly`() = runTest {
         assertSubscriptionError(SubscriptionError.CouponNotFound, gateway { problemResponse(404, "COUPON_NOT_FOUND") }.create(createCommand()))

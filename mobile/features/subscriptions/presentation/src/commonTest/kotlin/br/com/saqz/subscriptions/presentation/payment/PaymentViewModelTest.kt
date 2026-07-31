@@ -11,7 +11,9 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.payment_error_checkout_unavailable
+import br.com.saqz.subscriptions.resources.payment_error_conflict_pending_checkout
 import br.com.saqz.subscriptions.resources.payment_error_cpf_cnpj
+import br.com.saqz.subscriptions.resources.payment_error_generic
 import br.com.saqz.subscriptions.resources.payment_error_no_session
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -182,9 +184,83 @@ class PaymentViewModelTest {
 
             assertFalse(viewModel.state.value.isWaitingConfirmation)
             assertEquals(null, viewModel.state.value.pixCopyPaste)
-            assertTrue(viewModel.state.value.submitError != null)
+            assertEquals(UiText.Res(Res.string.payment_error_generic), viewModel.state.value.submitError)
         }
     }
+
+    /**
+     * VUL-119: `Conflict` puro é o caso `AlreadySubscribed` — mensagem genérica, mesmo
+     * comportamento independente de já existir um checkout criado nesta sessão. Achado do
+     * Codex no PR #100: uma heurística client-only por `hasCheckout` não dava pra
+     * distinguir os dois casos (o repro real cria uma instância NOVA de `PaymentViewModel`
+     * pra cada plano) — o backend agora tem um código próprio pra isso (ver o teste abaixo).
+     */
+    @Test
+    fun `conflict keeps the generic error regardless of a checkout already created in this session`() =
+        runTest(mainDispatcher) {
+            val gateway = FakeSubscriptionGateway().apply {
+                createResult = SaqzResult.Success(createdPix())
+                receiptsResults = listOf(SaqzResult.Success(emptyList()))
+            }
+            withPaymentViewModel(gateway = gateway) { viewModel ->
+                viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+                viewModel.onIntent(PaymentIntent.Submit)
+                runCurrent()
+                assertTrue(viewModel.state.value.hasCheckout)
+
+                gateway.createResult = SaqzResult.Failure(SubscriptionError.Conflict)
+                viewModel.onIntent(PaymentIntent.RegeneratePix)
+                runCurrent()
+
+                assertEquals(UiText.Res(Res.string.payment_error_generic), viewModel.state.value.submitError)
+            }
+        }
+
+    /**
+     * VUL-119: `PendingCheckoutMismatch` (código `SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH`,
+     * próprio do backend desde o achado do Codex no PR #100) sempre ganha a mensagem
+     * acionável, direto pelo tipo do erro — sem depender de `hasCheckout` desta sessão. É o
+     * caminho real do repro: a tela do Plano B é uma instância NOVA de `PaymentViewModel`,
+     * então `hasCheckout` está falso quando o backend recusa por causa do checkout do Plano A.
+     */
+    @Test
+    fun `pending checkout mismatch shows the specific message even without a checkout in this session`() =
+        runTest(mainDispatcher) {
+            val gateway = FakeSubscriptionGateway().apply {
+                createResult = SaqzResult.Failure(SubscriptionError.PendingCheckoutMismatch)
+            }
+            withPaymentViewModel(gateway = gateway) { viewModel ->
+                viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+                viewModel.onIntent(PaymentIntent.Submit)
+                runCurrent()
+
+                assertFalse(viewModel.state.value.hasCheckout)
+                assertEquals(
+                    UiText.Res(Res.string.payment_error_conflict_pending_checkout),
+                    viewModel.state.value.submitError,
+                )
+            }
+        }
+
+    @Test
+    fun `back is requested with a pending checkout opens the confirmation and dismiss closes it`() =
+        runTest(mainDispatcher) {
+            val gateway = FakeSubscriptionGateway().apply {
+                createResult = SaqzResult.Success(createdPix())
+                receiptsResults = listOf(SaqzResult.Success(emptyList()))
+            }
+            withPaymentViewModel(gateway = gateway) { viewModel ->
+                viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+                viewModel.onIntent(PaymentIntent.Submit)
+                runCurrent()
+
+                viewModel.onIntent(PaymentIntent.RequestBack)
+                assertTrue(viewModel.state.value.isBackConfirmationOpen)
+
+                viewModel.onIntent(PaymentIntent.DismissBackConfirmation)
+                assertFalse(viewModel.state.value.isBackConfirmationOpen)
+            }
+        }
 
     /**
      * Achado #1 do Codex no PR #96: `resolveCheckout()` no backend pode devolver sucesso com

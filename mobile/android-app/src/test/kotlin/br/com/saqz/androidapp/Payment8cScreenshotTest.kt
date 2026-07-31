@@ -11,6 +11,7 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.presentation.payment.PaymentState
 import br.com.saqz.subscriptions.presentation.payment.ui.PaymentScreen
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.payment_error_conflict_pending_checkout
 import br.com.saqz.subscriptions.resources.payment_error_cpf_cnpj
 import br.com.saqz.subscriptions.resources.payment_error_generic
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -146,6 +147,36 @@ class Payment8cScreenshotTest {
                 pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
                 invoiceUrl = "https://checkout.asaas.com/i/abc123",
                 isWaitingConfirmation = true,
+            ),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    // VUL-119 — RegeneratePix batendo num checkout que esta mesma sessão criou: mensagem
+    // acionável no lugar do erro genérico, agora visível na seção de checkout também.
+    @Test
+    fun conflitoComCheckoutPendente() = capture("8c-11-conflito-checkout-pendente") {
+        PaymentScreen(
+            state = base.copy(
+                pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
+                isWaitingConfirmation = true,
+                submitError = UiText.Res(Res.string.payment_error_conflict_pending_checkout),
+            ),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    // VUL-119 — seta do topo com checkout pendente: confirma antes de sair, em vez de
+    // deixar o usuário reproduzir o conflito acima ao escolher outro plano.
+    @Test
+    fun confirmacaoDeVoltarComCheckoutPendente() = capture("8c-12-confirmacao-de-voltar") {
+        PaymentScreen(
+            state = base.copy(
+                pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
+                isWaitingConfirmation = true,
+                isBackConfirmationOpen = true,
             ),
             onIntent = {},
             onBack = {},

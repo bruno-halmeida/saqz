@@ -77,6 +77,13 @@ class InvalidSubscriptionRequestException(
 ) : RuntimeException()
 
 class SubscriptionConflictException : RuntimeException()
+
+/**
+ * Distinta de [SubscriptionConflictException] — o mobile precisa diferenciar "já tenho
+ * assinatura" de "tenho um checkout pendente para OUTRO plano" pra dar uma mensagem
+ * acionável (VUL-119); ambas eram a mesma exceção e colapsavam num único código no wire.
+ */
+class PendingCheckoutMismatchException : RuntimeException()
 class CouponNotFoundException : RuntimeException()
 class CouponExpiredException : RuntimeException()
 class CouponAlreadyRedeemedException : RuntimeException()
@@ -121,7 +128,7 @@ class SubscriptionCommandController(
                 ),
             )
             CreateSubscriptionResult.AlreadySubscribed -> throw SubscriptionConflictException()
-            CreateSubscriptionResult.PendingCheckoutMismatch -> throw SubscriptionConflictException()
+            CreateSubscriptionResult.PendingCheckoutMismatch -> throw PendingCheckoutMismatchException()
             CreateSubscriptionResult.CouponNotFound -> throw CouponNotFoundException()
             CreateSubscriptionResult.CouponExpired -> throw CouponExpiredException()
             CreateSubscriptionResult.CouponAlreadyRedeemed -> throw CouponAlreadyRedeemedException()

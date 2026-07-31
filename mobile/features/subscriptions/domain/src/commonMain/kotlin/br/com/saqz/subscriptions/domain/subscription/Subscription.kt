@@ -110,6 +110,9 @@ sealed interface SubscriptionError : SaqzError {
     data class Validation(val error: DataError.Validation) : SubscriptionError
     data object NotFound : SubscriptionError // 404 SUBSCRIPTION_NOT_FOUND
     data object Conflict : SubscriptionError // 409 SUBSCRIPTION_CONFLICT
+
+    /** 409 SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH — checkout pendente para OUTRO plano/ciclo/forma. */
+    data object PendingCheckoutMismatch : SubscriptionError
     data object CouponNotFound : SubscriptionError // 404 COUPON_NOT_FOUND (create flow)
     data object CouponExpired : SubscriptionError // 410 COUPON_EXPIRED
     data object CouponAlreadyRedeemed : SubscriptionError // 409 COUPON_ALREADY_REDEEMED

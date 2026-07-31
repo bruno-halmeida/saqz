@@ -16,6 +16,7 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.payment_error_checkout_unavailable
+import br.com.saqz.subscriptions.resources.payment_error_conflict_pending_checkout
 import br.com.saqz.subscriptions.resources.payment_error_cpf_cnpj
 import br.com.saqz.subscriptions.resources.payment_error_generic
 import br.com.saqz.subscriptions.resources.payment_error_no_session
@@ -90,6 +91,8 @@ class PaymentViewModel(
             PaymentIntent.Submit -> submit()
             PaymentIntent.RegeneratePix -> submit(skipValidation = true)
             PaymentIntent.ConfirmPayment -> checkNow()
+            PaymentIntent.RequestBack -> update { it.copy(isBackConfirmationOpen = true) }
+            PaymentIntent.DismissBackConfirmation -> update { it.copy(isBackConfirmationOpen = false) }
         }
     }
 
@@ -238,10 +241,18 @@ class PaymentViewModel(
 // Mesma regra do backend (`CreateSubscription.isValidCpfCnpj`): 11 dígitos (CPF) ou 14 (CNPJ).
 internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || digits.length == 14
 
-// ponytail: mensagem única — a 8a/8b já validou o cupom antes de chegar aqui, e o resto
-// dos motivos de recusa (conflito, cupom resgatado por outra sessão) não muda a ação do
-// usuário: tentar de novo. Granularidade por caso entra se algum motivo pedir texto próprio.
-private fun SubscriptionError.toUiText(): UiText = UiText.Res(Res.string.payment_error_generic)
+// VUL-119: o backend agora distingue os dois casos que colapsavam em `Conflict`
+// (achado do Codex no PR #100) — `PendingCheckoutMismatch` é o único com mensagem própria
+// e ação diferente (voltar/cancelar o checkout existente). `Conflict` puro é
+// `AlreadySubscribed`, que continua com a mensagem genérica.
+// ponytail: mensagem única para o resto dos motivos de recusa — a 8a/8b já validou o
+// cupom antes de chegar aqui, e nenhum deles muda a ação do usuário: tentar de novo.
+private fun SubscriptionError.toUiText(): UiText =
+    if (this is SubscriptionError.PendingCheckoutMismatch) {
+        UiText.Res(Res.string.payment_error_conflict_pending_checkout)
+    } else {
+        UiText.Res(Res.string.payment_error_generic)
+    }
 
 private fun requirePlan(planId: String) = Plan.valueOf(planId)
 private fun requireCycle(cycle: String) = SubscriptionCycle.valueOf(cycle)
