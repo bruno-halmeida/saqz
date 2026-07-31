@@ -14,6 +14,11 @@ interface AsaasIdempotencyStore {
 
     fun complete(key: String, resourceId: String)
 
-    /** Libera a reserva se o resource_id ainda for null (falha antes do complete). */
-    fun release(key: String)
+    /**
+     * Libera a reserva por compare-and-delete: só apaga a linha cujo `created_at` seja
+     * exatamente [expectedCreatedAt], evitando apagar uma reserva nova (ABA) criada por
+     * outro worker entre a inspeção e esta chamada.
+     * @return true se esta chamada liberou a reserva; false se outro worker já tratou dela.
+     */
+    fun release(key: String, expectedCreatedAt: Instant): Boolean
 }

@@ -19,6 +19,7 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
@@ -136,8 +137,9 @@ class HttpAsaasGateway(
     ): String {
         require(storeKey.isNotBlank()) { "idempotencyKey must not be blank" }
 
-        if (idempotencyStore.tryBegin(storeKey, clock.instant())) {
-            return executeCreate(storeKey, collectionPath, externalReference, create)
+        val beginAt = clock.instant()
+        if (idempotencyStore.tryBegin(storeKey, beginAt)) {
+            return executeCreate(storeKey, collectionPath, externalReference, beginAt, create)
         }
 
         pollLocalResourceId(storeKey)?.let { return it }
@@ -154,9 +156,11 @@ class HttpAsaasGateway(
             throw AsaasConcurrentOperationException(storeKey)
         }
 
-        idempotencyStore.release(storeKey)
-        if (idempotencyStore.tryBegin(storeKey, clock.instant())) {
-            return executeCreate(storeKey, collectionPath, externalReference, create)
+        if (idempotencyStore.release(storeKey, reservation.createdAt)) {
+            val retryBeginAt = clock.instant()
+            if (idempotencyStore.tryBegin(storeKey, retryBeginAt)) {
+                return executeCreate(storeKey, collectionPath, externalReference, retryBeginAt, create)
+            }
         }
 
         pollLocalResourceId(storeKey)?.let { return it }
@@ -168,6 +172,7 @@ class HttpAsaasGateway(
         storeKey: String,
         collectionPath: String,
         externalReference: String,
+        beginAt: Instant,
         create: () -> String,
     ): String =
         try {
@@ -175,17 +180,18 @@ class HttpAsaasGateway(
             idempotencyStore.complete(storeKey, resourceId)
             resourceId
         } catch (ex: Exception) {
-            handleCreateFailure(storeKey, collectionPath, externalReference, ex)
+            handleCreateFailure(storeKey, collectionPath, externalReference, beginAt, ex)
         }
 
     private fun handleCreateFailure(
         storeKey: String,
         collectionPath: String,
         externalReference: String,
+        beginAt: Instant,
         ex: Exception,
     ): String {
         if (isDefinitiveClientRejection(ex)) {
-            idempotencyStore.release(storeKey)
+            idempotencyStore.release(storeKey, beginAt)
             throw ex
         }
 
@@ -201,7 +207,7 @@ class HttpAsaasGateway(
         // ponytail: a single immediate reconciliation GET can still race Asaas's own
         // write-commit — an empty result isn't a guaranteed "not created", just "not
         // yet visible". See VUL-114, gated on real Asaas production traffic.
-        idempotencyStore.release(storeKey)
+        idempotencyStore.release(storeKey, beginAt)
         throw ex
     }
 
@@ -225,7 +231,7 @@ class HttpAsaasGateway(
         return existing
     }
 
-    private fun isAbandoned(createdAt: java.time.Instant): Boolean =
+    private fun isAbandoned(createdAt: Instant): Boolean =
         Duration.between(createdAt, clock.instant()) >= abandonAfter
 
     private fun findIdByExternalReference(collectionPath: String, externalReference: String): String? {

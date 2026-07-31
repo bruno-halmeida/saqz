@@ -57,20 +57,18 @@ class JdbcAsaasIdempotencyStore(
             .update()
     }
 
-    // ponytail: predicates only on (key, resource_id IS NULL), not on the exact row
-    // instance inspected before deciding to release — under a worker crash plus a
-    // second worker concurrently recovering the same abandoned reservation, an ABA
-    // race is theoretically possible (see VUL-114 for the compare-and-delete fix,
-    // gated on real Asaas production traffic, not blocking today).
-    override fun release(key: String) {
-        jdbc.sql(
+    override fun release(key: String, expectedCreatedAt: Instant): Boolean {
+        val deleted = jdbc.sql(
             """
             DELETE FROM asaas_idempotent_operations
             WHERE idempotency_key = :key
               AND resource_id IS NULL
+              AND created_at = :expectedCreatedAt
             """.trimIndent(),
         )
             .param("key", key)
+            .param("expectedCreatedAt", Timestamp.from(expectedCreatedAt))
             .update()
+        return deleted == 1
     }
 }
