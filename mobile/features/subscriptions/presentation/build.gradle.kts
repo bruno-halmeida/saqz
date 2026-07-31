@@ -36,6 +36,9 @@ kotlin {
 }
 
 compose.resources {
+    // Público pelo mesmo motivo do :features:access — o screenshot test do android-app
+    // (Payment8cScreenshotTest) monta estados de erro com UiText.Res(Res.string.*) daqui.
+    publicResClass = true
     packageOfResClass = "br.com.saqz.subscriptions.resources"
     generateResClass = always
 }

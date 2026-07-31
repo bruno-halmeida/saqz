@@ -15,6 +15,7 @@ import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
+import br.com.saqz.subscriptions.presentation.payment.di.paymentPresentationModule
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.toNetworkEnvironment
@@ -43,6 +44,8 @@ private val commonModules = listOf(
     subscriptionsDataModule,
     planActivePresentationModule(),
     myPlanPresentationModule(),
+    subscriptionsCustomerInfoModule,
+    paymentPresentationModule(),
 )
 
 internal fun startSaqzKoin() {
