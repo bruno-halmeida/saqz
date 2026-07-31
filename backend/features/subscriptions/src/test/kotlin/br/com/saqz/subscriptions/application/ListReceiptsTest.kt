@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ListReceiptsTest {
@@ -57,6 +58,31 @@ class ListReceiptsTest {
         val receipts = ListReceipts(events).execute(ownerId, limit = 1, offset = 1)
 
         assertEquals(listOf("evt_2"), receipts.map { it.asaasEventId })
+    }
+
+    @Test
+    fun `default limit keeps the current mobile receipt history available`() {
+        val events = FakeEventStore(
+            (1..60).map { index ->
+                event(
+                    id = "evt_$index",
+                    payload = """{"payment":{"id":"pay_$index","value":10.00}}""",
+                )
+            },
+        )
+
+        val receipts = ListReceipts(events).execute(ownerId)
+
+        assertEquals(60, receipts.size)
+    }
+
+    @Test
+    fun `rejects invalid pagination with a specific exception`() {
+        val listReceipts = ListReceipts(FakeEventStore(emptyList()))
+
+        assertFailsWith<InvalidReceiptPaginationException> { listReceipts.execute(ownerId, limit = 0) }
+        assertFailsWith<InvalidReceiptPaginationException> { listReceipts.execute(ownerId, limit = -1) }
+        assertFailsWith<InvalidReceiptPaginationException> { listReceipts.execute(ownerId, offset = -1) }
     }
 
     @Test

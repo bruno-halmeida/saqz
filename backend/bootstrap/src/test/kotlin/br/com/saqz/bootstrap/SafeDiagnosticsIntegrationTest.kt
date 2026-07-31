@@ -5,6 +5,7 @@ import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.junit.jupiter.api.BeforeEach
@@ -92,6 +93,15 @@ class SafeDiagnosticsIntegrationTest {
         assertFalse(response.body().contains("FirebaseAuthException"))
         assertFalse(response.body().contains("private-key-content"))
         assertCorrelationLogged(output, correlationId, 500)
+    }
+
+    @Test
+    fun `invalid receipt pagination has validation 400 instead of generic 500`() {
+        verifier.result = TokenVerification.Verified(RequestIdentity("pagination-subject"))
+
+        val response = get("/test/invalid-receipt-pagination", "pagination-secret-token")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
     }
 
     @Test
@@ -280,6 +290,9 @@ class SafeDiagnosticsIntegrationTest {
 
         @GetMapping("/test/unexpected")
         fun fail(): Nothing = error("FirebaseAuthException private-key-content service-account-content")
+
+        @GetMapping("/test/invalid-receipt-pagination")
+        fun invalidReceiptPagination(): Nothing = throw InvalidReceiptPaginationException()
 
         @PostMapping("/test/unexpected")
         fun failWithBody(): Nothing = error("unexpected failure")

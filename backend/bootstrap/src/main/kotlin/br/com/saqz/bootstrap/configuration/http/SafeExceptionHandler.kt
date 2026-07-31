@@ -43,6 +43,7 @@ import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestEx
 import br.com.saqz.subscriptions.adapter.input.http.PendingCheckoutMismatchException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionConflictException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
+import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -323,6 +324,11 @@ class SafeExceptionHandler(
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = failure.fieldErrors,
         )
+    }
+
+    @ExceptionHandler(InvalidReceiptPaginationException::class)
+    fun invalidReceiptPagination(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
     }
 
     @ExceptionHandler(SubscriptionNotFoundException::class)

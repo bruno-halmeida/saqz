@@ -26,8 +26,9 @@ class ListReceipts(
      * intentionally omitted instead of parsing their payload to infer ownership.
      */
     fun execute(ownerUserId: UUID, limit: Int = DEFAULT_LIMIT, offset: Int = 0): List<Receipt> {
-        require(limit > 0) { "limit must be positive" }
-        require(offset >= 0) { "offset must not be negative" }
+        if (limit <= 0 || offset < 0) {
+            throw InvalidReceiptPaginationException()
+        }
         return events.listProcessedByTypeForOwner(EVENT_PAYMENT_CONFIRMED, ownerUserId, limit, offset)
             .mapNotNull { event -> parseReceipt(event.asaasEventId, event.payload, event.processedAt) }
     }
@@ -71,6 +72,6 @@ class ListReceipts(
     }
 
     companion object {
-        const val DEFAULT_LIMIT = 50
+        const val DEFAULT_LIMIT = 1_000
     }
 }
