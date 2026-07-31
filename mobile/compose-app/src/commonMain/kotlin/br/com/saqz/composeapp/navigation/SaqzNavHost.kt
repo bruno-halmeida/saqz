@@ -206,7 +206,12 @@ internal fun SaqzNavHost(
                     onBack = pop,
                     onEffect = { effect ->
                         when (effect) {
-                            PaymentEffect.NavigateToPlanActive -> backStack.add(SubscriptionsRoute.PlanActive)
+                            // O recibo confirmou o pagamento: 8a/8c saem do stack junto — o
+                            // voltar do sistema na 8d não pode reabrir um checkout já pago.
+                            PaymentEffect.NavigateToPlanActive -> {
+                                backStack.dropPlansSegment()
+                                backStack.add(SubscriptionsRoute.PlanActive)
+                            }
                         }
                     },
                 )
