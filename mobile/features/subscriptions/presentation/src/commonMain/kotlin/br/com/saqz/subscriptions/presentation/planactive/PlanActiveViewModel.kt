@@ -30,7 +30,7 @@ private val MonthsPtBr = listOf(
  *
  * **`MySubscription` não carrega preço** (achado técnico, VUL-111): nem o catálogo
  * (`gateway.plans()`) serve — ele ignora cupom, e o cobrado pode ser menor que o de
- * catálogo. Quem sabe o valor real é `gateway.receipts()`: o recibo mais recente
+ * catálogo. Quem sabe o valor real é `gateway.receipts(limit = 1, offset = 0)`: o recibo mais recente
  * (`processedAt` ordena como string ISO-8601) é o que o Asaas efetivamente cobrou.
  */
 class PlanActiveViewModel(
@@ -64,7 +64,7 @@ class PlanActiveViewModel(
     }
 
     private suspend fun applySubscription(subscription: MySubscription, generation: Long) {
-        val latestReceiptCents = (gateway.receipts() as? SaqzResult.Success)
+        val latestReceiptCents = (gateway.receipts(limit = 1, offset = 0) as? SaqzResult.Success)
             ?.value
             ?.maxByOrNull { receipt -> receipt.processedAt }
             ?.valueCents

@@ -226,5 +226,5 @@ private class FakeSubscriptionGateway(
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> =
         SaqzResult.Failure(SubscriptionError.Conflict)
 
-    override suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError> = receiptsResult
+    override suspend fun receipts(limit: Int, offset: Int): SaqzResult<List<Receipt>, SubscriptionError> = receiptsResult
 }

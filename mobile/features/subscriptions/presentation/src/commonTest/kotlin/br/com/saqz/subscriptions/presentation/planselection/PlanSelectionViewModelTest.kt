@@ -450,7 +450,7 @@ class PlanSelectionViewModelTest {
         override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> =
             error("fora do escopo do VUL-109")
 
-        override suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError> =
+        override suspend fun receipts(limit: Int, offset: Int): SaqzResult<List<Receipt>, SubscriptionError> =
             error("fora do escopo do VUL-109")
     }
 }

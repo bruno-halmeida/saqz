@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+private const val RECEIPTS_PAGE_SIZE = 20
+
 /**
  * 8e. Carrega `plans()` + `mySubscription()` + `receipts()` no init — a primeira tela do
  * projeto a chamar um gateway de verdade (VUL-112). `plans` fica em memória só para
@@ -38,6 +40,11 @@ class MyPlanViewModel(
     // tudo, e essa recarga descarta a própria resposta se outra já tiver começado depois dela.
     private var loadGeneration = 0
 
+    // Contador próprio dos recibos: `load`, `RetryReceipts` e `LoadMoreReceipts` disputam a
+    // mesma lista, e o `offset` de um "carregar mais" é calculado no despacho — se uma
+    // recarga chegar no meio, a página em voo virou lixo e não pode ser concatenada.
+    private var receiptsGeneration = 0
+
     init {
         load()
     }
@@ -51,6 +58,7 @@ class MyPlanViewModel(
             MyPlanIntent.OpenReceipts -> update { it.copy(isReceiptsSheetOpen = true) }
             MyPlanIntent.DismissReceipts -> update { it.copy(isReceiptsSheetOpen = false) }
             MyPlanIntent.RetryReceipts -> loadReceipts()
+            MyPlanIntent.LoadMoreReceipts -> loadMoreReceipts()
             MyPlanIntent.OpenCancel -> update { it.copy(isCancelSheetOpen = true, cancelError = null) }
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
@@ -60,7 +68,8 @@ class MyPlanViewModel(
 
     private fun load() {
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, loadError = null) }
+        val receiptsLoadGeneration = ++receiptsGeneration
+        update { it.copy(isLoading = true, loadError = null, isLoadingMoreReceipts = false) }
         viewModelScope.launch {
             val plansResult = gateway.plans()
             val subscriptionResult = gateway.mySubscription()
@@ -81,8 +90,8 @@ class MyPlanViewModel(
             subscription = loadedSubscription
             plans = loadedPlans
 
-            val receiptsResult = gateway.receipts()
-            if (generation != loadGeneration) return@launch
+            val receiptsResult = gateway.receipts(limit = RECEIPTS_PAGE_SIZE, offset = 0)
+            if (generation != loadGeneration || receiptsLoadGeneration != receiptsGeneration) return@launch
             update {
                 it.copy(
                     isLoading = false,
@@ -93,6 +102,11 @@ class MyPlanViewModel(
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
                     receiptsError = (receiptsResult as? SaqzResult.Failure)?.error?.toUiText(),
+                    hasMoreReceipts = when (receiptsResult) {
+                        is SaqzResult.Success -> receiptsResult.value.size == RECEIPTS_PAGE_SIZE
+                        is SaqzResult.Failure -> it.hasMoreReceipts
+                    },
+                    isLoadingMoreReceipts = false,
                     changeOptions = loadedPlans.map { details -> details.toChangeOptionUi(loadedSubscription) },
                 )
             }
@@ -100,11 +114,48 @@ class MyPlanViewModel(
     }
 
     private fun loadReceipts() {
-        update { it.copy(receiptsError = null) }
+        val generation = ++receiptsGeneration
+        update { it.copy(receiptsError = null, isLoadingMoreReceipts = false) }
         viewModelScope.launch {
-            when (val result = gateway.receipts()) {
-                is SaqzResult.Success -> update { it.copy(receipts = result.value.map { r -> r.toUi() }, receiptsError = null) }
-                is SaqzResult.Failure -> update { it.copy(receiptsError = result.error.toUiText()) }
+            when (val result = gateway.receipts(limit = RECEIPTS_PAGE_SIZE, offset = 0)) {
+                is SaqzResult.Success -> if (generation == receiptsGeneration) {
+                    update {
+                        it.copy(
+                            receipts = result.value.map { r -> r.toUi() },
+                            receiptsError = null,
+                            hasMoreReceipts = result.value.size == RECEIPTS_PAGE_SIZE,
+                        )
+                    }
+                }
+                is SaqzResult.Failure -> if (generation == receiptsGeneration) {
+                    update { it.copy(receiptsError = result.error.toUiText()) }
+                }
+            }
+        }
+    }
+
+    private fun loadMoreReceipts() {
+        val currentState = state.value
+        if (!currentState.hasMoreReceipts || currentState.isLoadingMoreReceipts) return
+
+        val offset = currentState.receipts.size
+        val generation = ++receiptsGeneration
+        update { it.copy(isLoadingMoreReceipts = true, receiptsError = null) }
+        viewModelScope.launch {
+            when (val result = gateway.receipts(limit = RECEIPTS_PAGE_SIZE, offset = offset)) {
+                is SaqzResult.Success -> if (generation == receiptsGeneration) {
+                    update {
+                        it.copy(
+                            receipts = it.receipts + result.value.map { r -> r.toUi() },
+                            hasMoreReceipts = result.value.size == RECEIPTS_PAGE_SIZE,
+                            isLoadingMoreReceipts = false,
+                            receiptsError = null,
+                        )
+                    }
+                }
+                is SaqzResult.Failure -> if (generation == receiptsGeneration) {
+                    update { it.copy(isLoadingMoreReceipts = false, receiptsError = result.error.toUiText()) }
+                }
             }
         }
     }

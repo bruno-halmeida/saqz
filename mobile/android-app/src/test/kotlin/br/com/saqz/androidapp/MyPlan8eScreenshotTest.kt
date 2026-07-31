@@ -170,6 +170,39 @@ class MyPlan8eScreenshotTest {
         )
     }
 
+    @Test
+    fun myPlan8eRecibosComCarregarMais() = capture("8e-myplan-recibos-carregar-mais") {
+        MyPlanScreen(
+            state = ACTIVE.copy(isReceiptsSheetOpen = true, hasMoreReceipts = true),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    @Test
+    fun myPlan8eRecibosDepoisDeCarregarMais() = capture("8e-myplan-recibos-carregados") {
+        MyPlanScreen(
+            state = ACTIVE.copy(
+                isReceiptsSheetOpen = true,
+                hasMoreReceipts = true,
+                receipts = ACTIVE.receipts + listOf(
+                    MyPlanReceiptUi("evt-4", "01/04/2026", "R$ 19,90"),
+                ),
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    @Test
+    fun myPlan8eRecibosUltimaPagina() = capture("8e-myplan-recibos-ultima-pagina") {
+        MyPlanScreen(
+            state = ACTIVE.copy(isReceiptsSheetOpen = true, hasMoreReceipts = false),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
     // Achado do Codex no PR #93: falha em `receipts()` vira erro com retry, não "nenhum
     // recibo ainda".
     @Test

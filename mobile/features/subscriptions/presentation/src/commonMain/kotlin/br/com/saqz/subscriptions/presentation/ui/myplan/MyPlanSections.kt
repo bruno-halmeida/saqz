@@ -63,6 +63,7 @@ import br.com.saqz.subscriptions.resources.myplan_pending_payment_dismiss
 import br.com.saqz.subscriptions.resources.myplan_pending_payment_invoice
 import br.com.saqz.subscriptions.resources.myplan_pending_payment_title
 import br.com.saqz.subscriptions.resources.myplan_receipts_empty
+import br.com.saqz.subscriptions.resources.myplan_receipts_load_more
 import br.com.saqz.subscriptions.resources.myplan_receipts_sheet_title
 import br.com.saqz.subscriptions.resources.myplan_retry
 import br.com.saqz.subscriptions.resources.myplan_usage_title
@@ -346,6 +347,16 @@ internal fun MyPlanReceiptsSheet(state: MyPlanState, onIntent: (MyPlanIntent) ->
                     Text(text = receipt.dateLabel, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
                     Text(text = receipt.valueLabel, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
                 }
+            }
+            if (state.hasMoreReceipts) {
+                SaqzButton(
+                    label = stringResource(Res.string.myplan_receipts_load_more),
+                    onClick = { onIntent(MyPlanIntent.LoadMoreReceipts) },
+                    modifier = Modifier.testTag(MyPlanTags.LoadMoreReceipts),
+                    variant = SaqzButtonVariant.Secondary,
+                    fullWidth = true,
+                    loading = state.isLoadingMoreReceipts,
+                )
             }
         }
     }

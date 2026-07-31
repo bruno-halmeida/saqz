@@ -137,5 +137,11 @@ interface SubscriptionGateway {
 
     suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError>
 
-    suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError>
+    /**
+     * Uma página de recibos, do mais recente para o mais antigo. Sem tipo de página: quem
+     * chama infere "tem mais?" comparando `resultado.size == limit` — página cheia pode ter
+     * continuação, página curta acabou. `limit`/`offset` são obrigatórios de propósito
+     * (VUL-120): o backend tem default próprio, e um cliente que omite volta a depender dele.
+     */
+    suspend fun receipts(limit: Int, offset: Int): SaqzResult<List<Receipt>, SubscriptionError>
 }

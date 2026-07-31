@@ -38,6 +38,7 @@
     <string name="myplan_pending_payment_dismiss">Entendi</string>
     <string name="myplan_pending_payment_invoice">Ver fatura</string>
     <string name="myplan_receipts_sheet_title">Recibos</string>
+    <string name="myplan_receipts_load_more">Carregar mais</string>
     <string name="myplan_receipts_empty">Nenhum recibo ainda.</string>
     <string name="myplan_receipts_load_error">Não foi possível carregar os recibos agora.</string>
     <string name="myplan_load_error">Não foi possível carregar seu plano agora.</string>

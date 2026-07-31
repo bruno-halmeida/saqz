@@ -218,7 +218,8 @@ class PaymentViewModel(
      * `mySubscription().status` nasce `Active` na criação e não prova nada sozinho.
      */
     private suspend fun checkReceipts() {
-        subscriptionGateway.receipts().onSuccess { receipts ->
+        // Uma página de um item basta: a pergunta aqui é "já existe algum recibo?", não qual.
+        subscriptionGateway.receipts(limit = 1, offset = 0).onSuccess { receipts ->
             if (receipts.isEmpty() || confirmed) return@onSuccess
             confirmed = true
             pollJob?.cancel()
