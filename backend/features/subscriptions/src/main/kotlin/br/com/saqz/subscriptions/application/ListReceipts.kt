@@ -18,30 +18,28 @@ data class Receipt(
 )
 
 class ListReceipts(
-    private val subscriptions: SubscriptionRepository,
     private val events: SubscriptionEventStore,
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
 ) {
-    fun execute(ownerUserId: UUID): List<Receipt> {
-        val subscription = subscriptions.findByOwnerUserId(ownerUserId) ?: return emptyList()
-        val asaasSubId = subscription.asaasSubscriptionId
-        return events.listProcessedByType(EVENT_PAYMENT_CONFIRMED)
-            .mapNotNull { event -> parseReceipt(event.asaasEventId, event.payload, event.processedAt, asaasSubId) }
+    /**
+     * Lists receipts already scoped by owner in SQL. Historical rows without an owner are
+     * intentionally omitted instead of parsing their payload to infer ownership.
+     */
+    fun execute(ownerUserId: UUID, limit: Int = DEFAULT_LIMIT, offset: Int = 0): List<Receipt> {
+        require(limit > 0) { "limit must be positive" }
+        require(offset >= 0) { "offset must not be negative" }
+        return events.listProcessedByTypeForOwner(EVENT_PAYMENT_CONFIRMED, ownerUserId, limit, offset)
+            .mapNotNull { event -> parseReceipt(event.asaasEventId, event.payload, event.processedAt) }
     }
 
     private fun parseReceipt(
         asaasEventId: String,
         payload: String,
         processedAt: Instant?,
-        expectedSubscriptionId: String,
     ): Receipt? {
         if (processedAt == null) return null
         val root = runCatching { objectMapper.readTree(payload) }.getOrNull() ?: return null
         val payment = root.path("payment")
-        val subscriptionFromPayload = payment.path("subscription").asText(null)
-            ?: root.path("subscription").path("id").asText(null)
-            ?: root.path("subscription").asText(null)
-        if (subscriptionFromPayload != expectedSubscriptionId) return null
 
         val valueCents = paymentValueToCents(payment.path("value"))
         val confirmedAt = payment.path("confirmedDate").asText(null)
@@ -70,5 +68,9 @@ class ListReceipts(
             .multiply(BigDecimal(100))
             .setScale(0, RoundingMode.HALF_UP)
             .longValueExact()
+    }
+
+    companion object {
+        const val DEFAULT_LIMIT = 50
     }
 }

@@ -1,10 +1,6 @@
 package br.com.saqz.subscriptions.application
 
-import br.com.saqz.subscriptions.domain.Plan
-import br.com.saqz.subscriptions.domain.Subscription
-import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.SubscriptionEvent
-import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.util.UUID
@@ -17,20 +13,7 @@ class ListReceiptsTest {
     private val processedAt = Instant.parse("2026-07-30T12:00:00Z")
 
     @Test
-    fun `lists confirmed payments from processed webhook events for owner subscription only`() {
-        val subscriptions = FakeSubscriptionRepository()
-        subscriptions.save(
-            Subscription(
-                ownerUserId = ownerId,
-                plan = Plan.TITULAR,
-                cycle = SubscriptionCycle.MONTHLY,
-                asaasCustomerId = "cus_1",
-                asaasSubscriptionId = "sub_mine",
-                billingType = AsaasBillingType.PIX,
-                currentPeriodEnd = processedAt,
-                status = SubscriptionStatus.ACTIVE,
-            ),
-        )
+    fun `lists confirmed payments from owner-scoped processed webhook events`() {
         val events = FakeEventStore(
             listOf(
                 event(
@@ -43,6 +26,7 @@ class ListReceiptsTest {
                 ),
                 event(
                     id = "evt_other",
+                    ownerUserId = otherOwner,
                     payload = """{"id":"evt_other","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_x","value":59.90,"subscription":"sub_other"}}""",
                 ),
                 event(
@@ -52,7 +36,7 @@ class ListReceiptsTest {
             ),
         )
 
-        val receipts = ListReceipts(subscriptions, events).execute(ownerId)
+        val receipts = ListReceipts(events).execute(ownerId)
 
         assertEquals(3, receipts.size)
         assertEquals(listOf("evt_1", "evt_float", "evt_2"), receipts.map { it.asaasEventId })
@@ -62,63 +46,101 @@ class ListReceiptsTest {
     }
 
     @Test
-    fun `returns empty list when owner has no subscription`() {
-        assertTrue(ListReceipts(FakeSubscriptionRepository(), FakeEventStore(emptyList())).execute(ownerId).isEmpty())
+    fun `applies limit and offset to owner-scoped events`() {
+        val events = FakeEventStore(
+            listOf(
+                event("evt_1", """{"payment":{"id":"pay_1","value":10.00}}"""),
+                event("evt_2", """{"payment":{"id":"pay_2","value":20.00}}"""),
+            ),
+        )
+
+        val receipts = ListReceipts(events).execute(ownerId, limit = 1, offset = 1)
+
+        assertEquals(listOf("evt_2"), receipts.map { it.asaasEventId })
     }
 
     @Test
-    fun `returns empty when events exist only for another owner`() {
-        val subscriptions = FakeSubscriptionRepository()
-        subscriptions.save(
-            Subscription(
-                ownerUserId = ownerId,
-                plan = Plan.TITULAR,
-                cycle = SubscriptionCycle.MONTHLY,
-                asaasCustomerId = "cus_1",
-                asaasSubscriptionId = "sub_mine",
-                billingType = AsaasBillingType.PIX,
-                currentPeriodEnd = processedAt,
-            ),
-        )
+    fun `includes an upgrade receipt without subscription id in payload`() {
         val events = FakeEventStore(
             listOf(
                 event(
-                    id = "evt_x",
-                    payload = """{"payment":{"id":"pay_x","value":10.00,"subscription":"sub_other"}}""",
+                    id = "evt_upgrade",
+                    payload = """{"id":"evt_upgrade","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_upgrade","value":79.90}}""",
                 ),
             ),
         )
-        assertTrue(ListReceipts(subscriptions, events).execute(ownerId).isEmpty())
-        assertTrue(ListReceipts(subscriptions, events).execute(otherOwner).isEmpty())
+
+        val receipts = ListReceipts(events).execute(ownerId)
+
+        assertEquals(listOf("evt_upgrade"), receipts.map { it.asaasEventId })
+        assertEquals("pay_upgrade", receipts.single().asaasPaymentId)
+        assertEquals(7_990L, receipts.single().valueCents)
     }
 
-    private fun event(id: String, payload: String) = SubscriptionEvent(
-        id = UUID.randomUUID(),
-        asaasEventId = id,
-        type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
-        payload = payload,
-        processedAt = processedAt,
+    @Test
+    fun `returns empty when owner has no events`() {
+        assertTrue(ListReceipts(FakeEventStore(emptyList())).execute(ownerId).isEmpty())
+    }
+
+    @Test
+    fun `does not leak events between owners`() {
+        val events = FakeEventStore(
+            listOf(
+                event(
+                    id = "evt_other",
+                    ownerUserId = otherOwner,
+                    payload = """{"payment":{"id":"pay_x","value":10.00}}""",
+                ),
+            ),
+        )
+
+        assertTrue(ListReceipts(events).execute(ownerId).isEmpty())
+        assertEquals(listOf("evt_other"), ListReceipts(events).execute(otherOwner).map { it.asaasEventId })
+    }
+
+    private fun event(
+        id: String,
+        payload: String,
+        ownerUserId: UUID = ownerId,
+    ) = StoredEvent(
+        event = SubscriptionEvent(
+            id = UUID.randomUUID(),
+            asaasEventId = id,
+            type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+            payload = payload,
+            processedAt = processedAt,
+        ),
+        ownerUserId = ownerUserId,
     )
 
-    private class FakeSubscriptionRepository : SubscriptionRepository {
-        private val byOwner = linkedMapOf<UUID, Subscription>()
-        override fun findByAsaasSubscriptionId(asaasSubscriptionId: String) =
-            byOwner.values.firstOrNull { it.asaasSubscriptionId == asaasSubscriptionId }
+    private data class StoredEvent(
+        val event: SubscriptionEvent,
+        val ownerUserId: UUID,
+    )
 
-        override fun findByOwnerUserId(ownerUserId: UUID) = byOwner[ownerUserId]
-        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = byOwner[ownerUserId]
-        override fun findByPendingUpgradeChargeId(chargeId: String) = null
-        override fun lockOwner(ownerUserId: UUID) = Unit
-        override fun insert(subscription: Subscription) = save(subscription)
-        override fun save(subscription: Subscription) {
-            byOwner[subscription.ownerUserId] = subscription
-        }
-    }
+    private class FakeEventStore(private val rows: List<StoredEvent>) : SubscriptionEventStore {
+        override fun tryInsert(
+            id: UUID,
+            asaasEventId: String,
+            type: String,
+            payload: String,
+            now: Instant,
+            ownerUserId: UUID?,
+        ) = true
 
-    private class FakeEventStore(private val rows: List<SubscriptionEvent>) : SubscriptionEventStore {
-        override fun tryInsert(id: UUID, asaasEventId: String, type: String, payload: String, now: Instant) = true
         override fun markProcessed(asaasEventId: String, processedAt: Instant) = Unit
-        override fun exists(asaasEventId: String) = rows.any { it.asaasEventId == asaasEventId }
-        override fun listProcessedByType(type: String) = rows.filter { it.type == type }
+
+        override fun exists(asaasEventId: String) = rows.any { it.event.asaasEventId == asaasEventId }
+
+        override fun listProcessedByTypeForOwner(
+            type: String,
+            ownerUserId: UUID,
+            limit: Int,
+            offset: Int,
+        ) = rows
+            .filter { it.ownerUserId == ownerUserId && it.event.type == type }
+            .drop(offset)
+            .take(limit)
+            .map { it.event }
     }
 }
