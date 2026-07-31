@@ -192,9 +192,15 @@ class KtorSubscriptionGateway(
         CanceledSubscriptionTransport.serializer(),
     ).mapSubscription { it.toDomain() }
 
-    override suspend fun receipts() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
-        network.execute(HttpMethod.Get, "subscriptions/me/receipts", ReceiptListTransport.serializer())
-    }.mapSubscription { it.receipts.map(ReceiptTransport::toDomain) }
+    override suspend fun receipts(limit: Int, offset: Int) =
+        retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Get,
+                "subscriptions/me/receipts",
+                ReceiptListTransport.serializer(),
+                NetworkRequest(query = mapOf("limit" to limit.toString(), "offset" to offset.toString())),
+            )
+        }.mapSubscription { it.receipts.map(ReceiptTransport::toDomain) }
 }
 
 private fun String.safety() = if (isBlank()) RetrySafety.Never else RetrySafety.IdempotentWrite

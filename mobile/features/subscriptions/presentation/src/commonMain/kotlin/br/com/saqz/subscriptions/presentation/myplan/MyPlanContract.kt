@@ -18,6 +18,10 @@ data class MyPlanState(
     val usage: MyPlanUsageUi? = null,
     val receipts: List<MyPlanReceiptUi> = emptyList(),
     val receiptsError: UiText? = null,
+    // Paginação de recibos (VUL-120): sem total no contrato do backend, "tem mais" é a
+    // página ter vindo cheia. Começa `false` — antes da primeira página não há o que pedir.
+    val hasMoreReceipts: Boolean = false,
+    val isLoadingMoreReceipts: Boolean = false,
     val changeOptions: List<MyPlanChangeOptionUi> = emptyList(),
     val isChangeSheetOpen: Boolean = false,
     val isChangingPlan: Boolean = false,
@@ -85,6 +89,7 @@ sealed interface MyPlanIntent {
     data object OpenReceipts : MyPlanIntent
     data object DismissReceipts : MyPlanIntent
     data object RetryReceipts : MyPlanIntent
+    data object LoadMoreReceipts : MyPlanIntent
     data object OpenCancel : MyPlanIntent
     data object DismissCancel : MyPlanIntent
     data object ConfirmCancel : MyPlanIntent

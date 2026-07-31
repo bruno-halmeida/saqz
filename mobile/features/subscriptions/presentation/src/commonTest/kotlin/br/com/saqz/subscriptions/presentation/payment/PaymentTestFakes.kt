@@ -49,7 +49,7 @@ internal class FakeSubscriptionGateway : SubscriptionGateway {
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> =
         error("not used by the payment screen")
 
-    override suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError> {
+    override suspend fun receipts(limit: Int, offset: Int): SaqzResult<List<Receipt>, SubscriptionError> {
         val index = receiptsCallCount.coerceAtMost(receiptsResults.lastIndex)
         receiptsCallCount++
         return receiptsResults[index]

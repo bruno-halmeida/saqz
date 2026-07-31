@@ -176,11 +176,50 @@ class MyPlanViewModelTest {
             listOf(MyPlanReceiptUi("evt-1", "01/07/2026", "R$ 49,90")),
             viewModel.state.value.receipts,
         )
+        assertEquals(listOf(ReceiptRequest(limit = 20, offset = 0)), gateway.receiptRequests)
+        assertEquals(false, viewModel.state.value.hasMoreReceipts)
 
         viewModel.onIntent(MyPlanIntent.OpenReceipts)
         assertEquals(true, viewModel.state.value.isReceiptsSheetOpen)
         viewModel.onIntent(MyPlanIntent.DismissReceipts)
         assertEquals(false, viewModel.state.value.isReceiptsSheetOpen)
+    }
+
+    @Test
+    fun `load more appends the next full page at the current offset`() = runTest {
+        val firstPage = (1..20).map(::testReceipt)
+        val secondPage = (21..40).map(::testReceipt)
+        val gateway = FakeSubscriptionGateway(
+            receiptPages = listOf(SaqzResult.Success(firstPage), SaqzResult.Success(secondPage)),
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        assertEquals(true, viewModel.state.value.hasMoreReceipts)
+        viewModel.onIntent(MyPlanIntent.LoadMoreReceipts)
+
+        assertEquals((1..40).map { "evt-$it" }, viewModel.state.value.receipts.map { it.id })
+        assertEquals(
+            listOf(ReceiptRequest(20, 0), ReceiptRequest(20, 20)),
+            gateway.receiptRequests,
+        )
+        assertEquals(true, viewModel.state.value.hasMoreReceipts)
+        assertEquals(false, viewModel.state.value.isLoadingMoreReceipts)
+    }
+
+    @Test
+    fun `an incomplete receipt page disables loading more`() = runTest {
+        val firstPage = (1..20).map(::testReceipt)
+        val lastPage = (21..22).map(::testReceipt)
+        val gateway = FakeSubscriptionGateway(
+            receiptPages = listOf(SaqzResult.Success(firstPage), SaqzResult.Success(lastPage)),
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.LoadMoreReceipts)
+
+        assertEquals((1..22).map { "evt-$it" }, viewModel.state.value.receipts.map { it.id })
+        assertEquals(false, viewModel.state.value.hasMoreReceipts)
+        assertEquals(false, viewModel.state.value.isLoadingMoreReceipts)
     }
 
     // Disciplina obrigatória do AGENTS.md §4: intent inválido retorna cedo — um segundo
@@ -325,6 +364,16 @@ private val ACTIVE_SUBSCRIPTION = MySubscription(
     canceledAt = null,
 )
 
+private fun testReceipt(id: Int) = Receipt(
+    asaasEventId = "evt-$id",
+    asaasPaymentId = null,
+    valueCents = 1_990,
+    confirmedAt = "2026-07-01T00:00:00Z",
+    processedAt = "2026-07-01T00:05:00Z",
+)
+
+private data class ReceiptRequest(val limit: Int, val offset: Int)
+
 /**
  * [subscriptionAfterMutation], quando presente, é o que `mySubscription()` passa a
  * devolver depois de um `changePlan`/`cancel` bem-sucedido — simula o servidor já ter
@@ -335,6 +384,7 @@ private class FakeSubscriptionGateway(
     var plansResult: SaqzResult<List<PlanDetails>, SubscriptionError> = SaqzResult.Success(PLAN_DETAILS),
     var subscriptionResult: SaqzResult<MySubscription, SubscriptionError> = SaqzResult.Success(ACTIVE_SUBSCRIPTION),
     var receiptsResult: SaqzResult<List<Receipt>, SubscriptionError> = SaqzResult.Success(emptyList()),
+    var receiptPages: List<SaqzResult<List<Receipt>, SubscriptionError>> = emptyList(),
     var changePlanResult: SaqzResult<ChangePlanResult, SubscriptionError> = SaqzResult.Failure(SubscriptionError.Conflict),
     var cancelResult: SaqzResult<CanceledSubscription, SubscriptionError> = SaqzResult.Failure(SubscriptionError.Conflict),
     var subscriptionAfterMutation: MySubscription? = null,
@@ -344,7 +394,9 @@ private class FakeSubscriptionGateway(
     private val neverResolveCancel: Boolean = false,
 ) : SubscriptionGateway {
     val changePlanCommands = mutableListOf<ChangePlanCommand>()
+    val receiptRequests = mutableListOf<ReceiptRequest>()
     var cancelCalls = 0
+    private var receiptPageIndex = 0
 
     override suspend fun plans(): SaqzResult<List<PlanDetails>, SubscriptionError> = plansResult
 
@@ -373,5 +425,8 @@ private class FakeSubscriptionGateway(
         return cancelResult
     }
 
-    override suspend fun receipts(): SaqzResult<List<Receipt>, SubscriptionError> = receiptsResult
+    override suspend fun receipts(limit: Int, offset: Int): SaqzResult<List<Receipt>, SubscriptionError> {
+        receiptRequests += ReceiptRequest(limit, offset)
+        return receiptPages.getOrNull(receiptPageIndex++) ?: receiptsResult
+    }
 }

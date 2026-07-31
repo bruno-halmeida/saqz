@@ -42,6 +42,7 @@ internal object MyPlanTags {
     const val ChangePlan = "myplan-change-plan"
     const val PaymentMethod = "myplan-payment-method"
     const val Receipts = "myplan-receipts"
+    const val LoadMoreReceipts = "myplan-load-more-receipts"
     const val AddCoupon = "myplan-add-coupon"
     const val CancelButton = "myplan-cancel-button"
     const val ChangeSheet = "myplan-change-sheet"

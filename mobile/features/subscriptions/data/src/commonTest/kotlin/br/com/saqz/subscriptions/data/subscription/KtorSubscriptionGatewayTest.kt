@@ -260,12 +260,14 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
-    fun `receipts maps list`() = runTest {
+    fun `receipts sends pagination query and maps list`() = runTest {
         val value = success(gateway { request ->
             assertEquals(HttpMethod.Get, request.method)
             assertEquals("/subscriptions/me/receipts", request.url.encodedPath)
+            assertEquals("20", request.url.parameters["limit"])
+            assertEquals("40", request.url.parameters["offset"])
             json(RECEIPTS)
-        }.receipts())
+        }.receipts(limit = 20, offset = 40))
 
         assertEquals(1, value.size)
         assertEquals("pay-1", value.single().asaasPaymentId)
@@ -274,7 +276,7 @@ class KtorSubscriptionGatewayTest {
 
     @Test
     fun `receipts empty list maps to empty`() = runTest {
-        val value = success(gateway { json("""{"receipts":[]}""") }.receipts())
+        val value = success(gateway { json("""{"receipts":[]}""") }.receipts(limit = 20, offset = 0))
         assertTrue(value.isEmpty())
     }
 

@@ -83,6 +83,9 @@ sealed interface NetworkResult<out T> {
 data class NetworkRequest(
     val body: String? = null,
     val headers: Map<String, String> = emptyMap(),
+    // Query string vai aqui, nunca embutida no `path`: `appendPathSegments` percent-encoda
+    // o `?` como parte do segmento (VUL-120).
+    val query: Map<String, String> = emptyMap(),
 )
 
 data class NetworkMediaUpload(

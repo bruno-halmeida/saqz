@@ -58,7 +58,10 @@ internal class HttpTransport(
         return try {
             val response = client.request(config.baseUrl) {
                 this.method = method
-                url { appendPathSegments(path.trimStart('/')) }
+                url {
+                    appendPathSegments(path.trimStart('/'))
+                    request.query.forEach { (name, value) -> parameters.append(name, value) }
+                }
                 if (bearerToken != null) bearerAuth(bearerToken)
                 request.headers.forEach { (name, value) -> header(name, value) }
                 request.body?.let { body ->
