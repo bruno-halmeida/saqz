@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +60,7 @@ import br.com.saqz.subscriptions.resources.myplan_manage_receipts_count_one
 import br.com.saqz.subscriptions.resources.myplan_manage_title
 import br.com.saqz.subscriptions.resources.myplan_next_charge
 import br.com.saqz.subscriptions.resources.myplan_pending_payment_dismiss
+import br.com.saqz.subscriptions.resources.myplan_pending_payment_invoice
 import br.com.saqz.subscriptions.resources.myplan_pending_payment_title
 import br.com.saqz.subscriptions.resources.myplan_receipts_empty
 import br.com.saqz.subscriptions.resources.myplan_receipts_sheet_title
@@ -146,27 +148,40 @@ internal fun MyPlanManageSection(
     modifier: Modifier = Modifier,
 ) = Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     SaqzSectionHeader(title = stringResource(Res.string.myplan_manage_title))
+    // Assinatura efetivamente cancelada (achado do Codex no PR #93: `canceledAt != null`,
+    // não `status` cru — ver MyPlanMappers.toCardUi) não troca de plano: o próprio backend
+    // rejeita `ChangePlan` quando o status já migrou, e a janela antes disso não deveria
+    // deixar o usuário criar uma cobrança de upgrade que ele não quer mais.
+    val canceled = state.plan?.statusTone == MyPlanStatusTone.Canceled
     SaqzCard(padded = false) {
-        MyPlanManageRow(
-            label = stringResource(Res.string.myplan_manage_change_plan),
-            tag = MyPlanTags.ChangePlan,
-            onClick = { onIntent(MyPlanIntent.OpenChangePlan) },
-        ) {
-            SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
+        if (!canceled) {
+            MyPlanManageRow(
+                label = stringResource(Res.string.myplan_manage_change_plan),
+                tag = MyPlanTags.ChangePlan,
+                onClick = { onIntent(MyPlanIntent.OpenChangePlan) },
+            ) {
+                SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
+            }
+            SaqzDivider()
         }
-        SaqzDivider()
-        MyPlanManageRow(
-            label = stringResource(Res.string.myplan_manage_payment_method),
-            tag = MyPlanTags.PaymentMethod,
-            onClick = null,
-        ) {
-            Text(
-                text = state.plan?.paymentMethodLabel?.asString().orEmpty(),
-                style = SaqzTheme.typography.caption,
-                color = SaqzTheme.colors.textSecondary,
-            )
+        // `paymentMethod` chega `null` do backend hoje — `GetMySubscription` hard-coda o
+        // campo (achado do Codex no PR #93, gap de origem fora do escopo deste ticket).
+        // Linha em branco e sem ação é pior que omitir; fast-follow quando o backend expuser
+        // o valor de verdade.
+        if (state.plan?.paymentMethodLabel != null) {
+            MyPlanManageRow(
+                label = stringResource(Res.string.myplan_manage_payment_method),
+                tag = MyPlanTags.PaymentMethod,
+                onClick = null,
+            ) {
+                Text(
+                    text = state.plan.paymentMethodLabel.asString(),
+                    style = SaqzTheme.typography.caption,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+            }
+            SaqzDivider()
         }
-        SaqzDivider()
         MyPlanManageRow(
             label = stringResource(Res.string.myplan_manage_receipts),
             tag = MyPlanTags.Receipts,
@@ -369,6 +384,7 @@ internal fun MyPlanCancelSheet(state: MyPlanState, onIntent: (MyPlanIntent) -> U
 @Composable
 internal fun MyPlanPendingPaymentSheet(state: MyPlanState, onIntent: (MyPlanIntent) -> Unit) {
     val payment = state.pendingPayment
+    val uriHandler = LocalUriHandler.current
     SaqzBottomSheet(
         open = payment != null,
         onClose = { onIntent(MyPlanIntent.DismissPendingPayment) },
@@ -383,10 +399,21 @@ internal fun MyPlanPendingPaymentSheet(state: MyPlanState, onIntent: (MyPlanInte
             )
         },
     ) {
-        payment?.pixCopyPaste?.let { code ->
-            SaqzCard(tone = SaqzCardTone.Soft) {
-                Text(text = code, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+        val pixCode = payment?.pixCopyPaste
+        val invoiceUrl = payment?.invoiceUrl
+        when {
+            pixCode != null -> SaqzCard(tone = SaqzCardTone.Soft) {
+                Text(text = pixCode, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
             }
+            // Achado do Codex no PR #93: quando a regeneração do Pix falha, o backend
+            // devolve só `invoiceUrl` (fatura de cartão) — sem este fallback a folha
+            // ficava vazia, só com "Entendi", sem jeito de completar o pagamento.
+            invoiceUrl != null -> SaqzButton(
+                label = stringResource(Res.string.myplan_pending_payment_invoice),
+                onClick = { uriHandler.openUri(invoiceUrl) },
+                variant = SaqzButtonVariant.Secondary,
+                fullWidth = true,
+            )
         }
     }
 }

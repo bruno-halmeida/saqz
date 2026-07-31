@@ -142,6 +142,34 @@ class MyPlan8eScreenshotTest {
         )
     }
 
+    // Achado do Codex no PR #93 (rodada 2): quando a regeneração do Pix falha, o backend
+    // devolve só `invoiceUrl` — a folha mostra um link acionável em vez de ficar vazia.
+    @Test
+    fun myPlan8eCobrancaPendenteFatura() = capture("8e-myplan-cobranca-pendente-fatura") {
+        MyPlanScreen(
+            state = ACTIVE.copy(
+                pendingPayment = MyPlanPendingPaymentUi(
+                    message = UiText.Raw("Confirme o pagamento pela fatura para concluir a troca de plano."),
+                    pixCopyPaste = null,
+                    invoiceUrl = "https://www.asaas.com/i/abc123",
+                ),
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    // Achado do Codex no PR #93 (rodada 2): `paymentMethod` chega `null` do backend hoje
+    // (GetMySubscription hard-coda o campo) — a linha some em vez de aparecer em branco.
+    @Test
+    fun myPlan8eSemFormaDePagamento() = capture("8e-myplan-sem-forma-pagamento") {
+        MyPlanScreen(
+            state = ACTIVE.copy(plan = ACTIVE.plan?.copy(paymentMethodLabel = null)),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
     // Achado do Codex no PR #93: falha em `receipts()` vira erro com retry, não "nenhum
     // recibo ainda".
     @Test

@@ -36,6 +36,7 @@
     <string name="myplan_pending_payment_title">Cobrança pendente</string>
     <string name="myplan_pending_payment_message">Confirme o pagamento por Pix para concluir a troca de plano.</string>
     <string name="myplan_pending_payment_dismiss">Entendi</string>
+    <string name="myplan_pending_payment_invoice">Ver fatura</string>
     <string name="myplan_receipts_sheet_title">Recibos</string>
     <string name="myplan_receipts_empty">Nenhum recibo ainda.</string>
     <string name="myplan_receipts_load_error">Não foi possível carregar os recibos agora.</string>
