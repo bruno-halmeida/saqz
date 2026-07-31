@@ -41,6 +41,12 @@ import br.com.saqz.groups.presentation.ui.list.GroupListRoot
 import br.com.saqz.groups.presentation.ui.members.GroupMembersRoot
 import br.com.saqz.groups.presentation.ui.schedule.GroupScheduleRoot
 import br.com.saqz.groups.presentation.ui.setup.GroupSetupRoot
+import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
+import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
+import br.com.saqz.subscriptions.presentation.planselection.ui.PlanSelectionRoot
+import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
+import br.com.saqz.subscriptions.presentation.ui.planactive.PlanActiveRoot
 
 // Legacy observable contract carried over from the product host: exactly one active
 // destination host in the tree (rotation/recreation tests count this tag).
@@ -176,16 +182,50 @@ internal fun SaqzNavHost(
                         // a lista só enquanto o shell é quem a desenha.
                         GroupListRoot(
                             onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                            // TODO(Fluxo 8 · Planos): "Criar grupo" passa pela escolha de
-                            // plano antes de chegar ao 2a. Sem ele, `GroupsRoute.Create`
-                            // não tem quem a empilhe.
-                            onOpenPlans = {},
+                            // Criar grupo exige plano: o "+" sempre abre a 8a, incondicional
+                            // (GroupListContract.OpenPlans) — nunca atalha para
+                            // `GroupsRoute.Create`.
+                            onOpenPlans = { backStack.add(SubscriptionsRoute.PlanSelection) },
                             // TODO(Fluxo 3 · Convite): entrar por código.
                             onJoinWithCode = {},
                         )
                     },
                 )
             }
+            entry<SubscriptionsRoute.PlanSelection> {
+                PlanSelectionRoot(
+                    onBack = pop,
+                    onContinue = { planId, cycle, couponCode ->
+                        backStack.add(SubscriptionsRoute.Payment(planId.name, cycle.name, couponCode))
+                    },
+                )
+            }
+            entry<SubscriptionsRoute.Payment> { route ->
+                PaymentRoot(
+                    route = route,
+                    onBack = pop,
+                    onEffect = { effect ->
+                        when (effect) {
+                            // O recibo confirmou o pagamento: 8a/8c saem do stack junto — o
+                            // voltar do sistema na 8d não pode reabrir um checkout já pago.
+                            PaymentEffect.NavigateToPlanActive -> {
+                                backStack.dropPlansSegment()
+                                backStack.add(SubscriptionsRoute.PlanActive)
+                            }
+                        }
+                    },
+                )
+            }
+            entry<SubscriptionsRoute.PlanActive> {
+                PlanActiveRoot(
+                    onCreateGroup = {
+                        backStack.dropPlansSegment()
+                        backStack.add(GroupsRoute.Create)
+                    },
+                    onViewMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
+                )
+            }
+            entry<SubscriptionsRoute.MyPlan> { MyPlanRoot(onBack = pop) }
             entry<GroupsRoute.Create> {
                 GroupSetupDestination(GroupSetupMode.Create, backStack)
             }
@@ -256,6 +296,15 @@ internal fun MutableList<NavKey>.completePasswordReset() {
     clear()
     add(AccessRoute.Login)
     add(AccessRoute.PasswordChanged)
+}
+
+/**
+ * O 8d→2a: o pagamento já aconteceu (8a→8b→8c→8d), então o segmento do fluxo de planos sai
+ * do stack antes do formulário de criação entrar — sem isso, o voltar do 2a devolveria a
+ * pessoa a uma assinatura que já foi paga, sem como "desfazer" navegando.
+ */
+internal fun MutableList<NavKey>.dropPlansSegment() {
+    while (lastOrNull() is SubscriptionsRoute) removeLastOrNull()
 }
 
 /**
