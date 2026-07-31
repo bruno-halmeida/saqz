@@ -158,6 +158,62 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
+    fun `stale PAYMENT_OVERDUE after a newer PAYMENT_CONFIRMED does not regress status`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_pay_renew", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+        val afterConfirm = subscriptions.get("sub_123")
+        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), afterConfirm.currentPeriodEnd)
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_stale_od",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE,
+                asaasSubscriptionId = "sub_123",
+                asaasPaymentId = null,
+                rawPayload = """{"id":"evt_stale_od","event":"PAYMENT_OVERDUE","payment":{"dueDate":"2026-07-30"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.ACTIVE, sub.status)
+        assertNull(sub.pastDueSince)
+        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), sub.currentPeriodEnd)
+    }
+
+    @Test
+    fun `PAYMENT_OVERDUE for a newer invoice still marks past due`() {
+        subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.ACTIVE, pastDueSince = null))
+
+        val result = useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = "evt_od_fresh",
+                eventType = ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE,
+                asaasSubscriptionId = "sub_123",
+                asaasPaymentId = null,
+                rawPayload = """{"id":"evt_od_fresh","event":"PAYMENT_OVERDUE","payment":{"dueDate":"2026-08-30"}}""",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.PAST_DUE, sub.status)
+        assertEquals(fixedNow, sub.pastDueSince)
+    }
+
+    @Test
     fun `SUBSCRIPTION_DELETED cancels once`() {
         subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.ACTIVE, canceledAt = null))
 

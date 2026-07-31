@@ -4,9 +4,12 @@ import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -42,6 +45,7 @@ class ProcessAsaasWebhook(
     private val clock: Clock,
     private val coupons: CouponRepository? = null,
     private val newEventId: () -> UUID = UUID::randomUUID,
+    private val objectMapper: ObjectMapper = jacksonObjectMapper(),
 ) : AsaasWebhookProcessor {
     override fun execute(providedToken: String?, command: AsaasWebhookCommand): ProcessAsaasWebhookResult {
         if (!tokenMatches(providedToken, expectedToken)) {
@@ -132,11 +136,30 @@ class ProcessAsaasWebhook(
                         clearPendingUpgrade(current)
                         return
                     }
+                    // Asaas doesn't guarantee delivery order — an overdue notice for an invoice due
+                    // before the already-confirmed period end is stale (superseded by a later
+                    // PAYMENT_CONFIRMED) and must not regress the subscription back to PAST_DUE.
+                    if (isStaleOverdue(command, current)) return
                     subscriptions.save(markPastDue(current, now))
                 }
             }
             EVENT_SUBSCRIPTION_DELETED -> subscriptions.save(cancel(current, now))
         }
+    }
+
+    private fun isStaleOverdue(command: AsaasWebhookCommand, current: Subscription): Boolean {
+        val dueDate = paymentDueDate(command.rawPayload) ?: return false
+        return !dueDate.isAfter(current.currentPeriodEnd.atZone(ZoneOffset.UTC).toLocalDate())
+    }
+
+    private fun paymentDueDate(rawPayload: String): LocalDate? {
+        val text = runCatching { objectMapper.readTree(rawPayload) }
+            .getOrNull()
+            ?.path("payment")
+            ?.path("dueDate")
+            ?.asText(null)
+            ?: return null
+        return runCatching { LocalDate.parse(text) }.getOrNull()
     }
 
     private fun isPendingUpgradePayment(current: Subscription, paymentId: String?): Boolean {
