@@ -29,7 +29,7 @@ class ReceiptController(
     @GetMapping("/subscriptions/me/receipts")
     fun list(
         @AuthenticationPrincipal identity: RequestIdentity,
-        @RequestParam(defaultValue = "1000") limit: Int,
+        @RequestParam(defaultValue = "20") limit: Int,
         @RequestParam(defaultValue = "0") offset: Int,
     ): ReceiptListResponse {
         val ownerUserId = actors.resolve(identity)

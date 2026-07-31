@@ -61,7 +61,7 @@ class ListReceiptsTest {
     }
 
     @Test
-    fun `default limit keeps the current mobile receipt history available`() {
+    fun `default limit returns the first receipt page`() {
         val events = FakeEventStore(
             (1..60).map { index ->
                 event(
@@ -73,7 +73,9 @@ class ListReceiptsTest {
 
         val receipts = ListReceipts(events).execute(ownerId)
 
-        assertEquals(60, receipts.size)
+        assertEquals(20, receipts.size)
+        assertEquals("evt_1", receipts.first().asaasEventId)
+        assertEquals("evt_20", receipts.last().asaasEventId)
     }
 
     @Test

@@ -72,6 +72,6 @@ class ListReceipts(
     }
 
     companion object {
-        const val DEFAULT_LIMIT = 1_000
+        const val DEFAULT_LIMIT = 20
     }
 }
