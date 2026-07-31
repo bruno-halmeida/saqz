@@ -6,6 +6,7 @@ import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -197,6 +198,40 @@ class SaqzNavHostTest {
         stack.completePasswordReset()
 
         assertEquals(listOf<NavKey>(AccessRoute.Login, AccessRoute.PasswordChanged), stack)
+    }
+
+    /**
+     * VUL-113: "Criar meu grupo" na 8d empilha sobre um pagamento já concluído — o segmento
+     * do fluxo de planos cai do stack antes do formulário de criação entrar, senão o voltar
+     * do 2a reabriria 8d/8c/8b/8a já resolvidos.
+     */
+    @Test
+    fun creatingAGroupFromPlanActiveDropsThePlansSegment() {
+        val stack = mutableListOf<NavKey>(
+            SaqzShellDestination,
+            SubscriptionsRoute.PlanSelection,
+            SubscriptionsRoute.Payment(planId = "Organizador", cycle = "Monthly"),
+            SubscriptionsRoute.PlanActive,
+        )
+
+        stack.dropPlansSegment()
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+    }
+
+    // A base de grupos empilhada por baixo (VUL-72) não é parte do segmento de planos, e
+    // fica de pé.
+    @Test
+    fun dropPlansSegmentLeavesUnrelatedRoutesUntouched() {
+        val stack = mutableListOf<NavKey>(
+            SaqzShellDestination,
+            GroupsRoute.Details("ceret"),
+            SubscriptionsRoute.PlanSelection,
+        )
+
+        stack.dropPlansSegment()
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination, GroupsRoute.Details("ceret")), stack)
     }
 
     private companion object {
