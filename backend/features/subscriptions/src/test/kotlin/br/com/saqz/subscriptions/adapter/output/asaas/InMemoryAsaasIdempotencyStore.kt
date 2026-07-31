@@ -24,9 +24,9 @@ class InMemoryAsaasIdempotencyStore : AsaasIdempotencyStore {
         entries.computeIfPresent(key) { _, entry -> entry.copy(resourceId = resourceId) }
     }
 
-    override fun release(key: String) {
-        entries.computeIfPresent(key) { _, entry ->
-            if (entry.resourceId == null) null else entry
-        }
+    override fun release(key: String, expectedCreatedAt: Instant): Boolean {
+        val entry = entries[key] ?: return false
+        if (entry.resourceId != null || entry.createdAt != expectedCreatedAt) return false
+        return entries.remove(key, entry)
     }
 }
