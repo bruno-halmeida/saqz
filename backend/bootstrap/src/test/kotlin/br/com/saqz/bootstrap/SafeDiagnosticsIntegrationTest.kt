@@ -5,6 +5,9 @@ import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.subscriptions.adapter.input.http.ReceiptController
+import br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver
+import br.com.saqz.subscriptions.application.ListReceipts
 import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -25,6 +28,7 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
+import org.mockito.Mockito.mock
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -100,6 +104,15 @@ class SafeDiagnosticsIntegrationTest {
         verifier.result = TokenVerification.Verified(RequestIdentity("pagination-subject"))
 
         val response = get("/test/invalid-receipt-pagination", "pagination-secret-token")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+    }
+
+    @Test
+    fun `non numeric receipt pagination has validation 400 instead of generic 500`() {
+        verifier.result = TokenVerification.Verified(RequestIdentity("pagination-subject"))
+
+        val response = get("/subscriptions/me/receipts?limit=abc", "pagination-secret-token")
 
         assertProblem(response, 400, "VALIDATION_FAILED")
     }
@@ -275,6 +288,12 @@ class SafeDiagnosticsIntegrationTest {
 
         @Bean
         fun problemProbe(writer: ApiProblemWriter) = ProblemProbe(writer)
+
+        @Bean
+        fun receiptController() = ReceiptController(
+            SubscriptionActorResolver { error("unused") },
+            mock(ListReceipts::class.java),
+        )
     }
 
     class DiagnosticsVerifier : VerifyRequestIdentity {

@@ -53,6 +53,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.springframework.web.multipart.MultipartException
 import org.springframework.web.multipart.support.MissingServletRequestPartException
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class SafeExceptionHandler(
@@ -328,6 +329,11 @@ class SafeExceptionHandler(
 
     @ExceptionHandler(InvalidReceiptPaginationException::class)
     fun invalidReceiptPagination(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun methodArgumentTypeMismatch(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
     }
 
