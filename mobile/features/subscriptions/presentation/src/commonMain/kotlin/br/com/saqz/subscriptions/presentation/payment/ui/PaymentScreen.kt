@@ -12,7 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
@@ -92,6 +94,7 @@ fun PaymentRoot(
     PaymentScreen(state = state, onIntent = viewModel::onIntent, onBack = onBack)
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PaymentScreen(
     state: PaymentState,
@@ -100,6 +103,13 @@ fun PaymentScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
+    // Achado do Codex no PR #100: a seta do topo só cobria o toque — o back do
+    // sistema/gesto ia direto pro `NavDisplay.onBack = pop` sem passar pela confirmação.
+    // `!isBackConfirmationOpen` evita brigar com o `BackHandler` interno do `SaqzBottomSheet`
+    // (que já fecha o sheet e é mais interno na composição, então ganharia de qualquer jeito).
+    BackHandler(enabled = state.hasCheckout && !state.isBackConfirmationOpen) {
+        onIntent(PaymentIntent.RequestBack)
+    }
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(

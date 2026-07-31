@@ -40,6 +40,7 @@ import br.com.saqz.subscriptions.adapter.input.http.CouponNotFoundException
 import br.com.saqz.subscriptions.adapter.input.http.DowngradeBlockedException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidCouponRequestException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestException
+import br.com.saqz.subscriptions.adapter.input.http.PendingCheckoutMismatchException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionConflictException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
 import br.com.saqz.sharedkernel.ErrorCode
@@ -332,6 +333,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(SubscriptionConflictException::class)
     fun subscriptionConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.SUBSCRIPTION_CONFLICT)
+    }
+
+    @ExceptionHandler(PendingCheckoutMismatchException::class)
+    fun subscriptionPendingCheckoutMismatch(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH)
     }
 
     @ExceptionHandler(CouponNotFoundException::class)

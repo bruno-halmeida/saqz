@@ -189,32 +189,14 @@ class PaymentViewModelTest {
     }
 
     /**
-     * VUL-119: `Conflict` sem checkout pendente nesta sessão é o caso `AlreadySubscribed` —
-     * os dois códigos se sobrepõem em `SUBSCRIPTION_CONFLICT` no wire (achado do Codex no
-     * PR #97) e o mobile não distingue pelo código sozinho. Mensagem genérica preservada.
+     * VUL-119: `Conflict` puro é o caso `AlreadySubscribed` — mensagem genérica, mesmo
+     * comportamento independente de já existir um checkout criado nesta sessão. Achado do
+     * Codex no PR #100: uma heurística client-only por `hasCheckout` não dava pra
+     * distinguir os dois casos (o repro real cria uma instância NOVA de `PaymentViewModel`
+     * pra cada plano) — o backend agora tem um código próprio pra isso (ver o teste abaixo).
      */
     @Test
-    fun `conflict without a prior checkout in this session keeps the generic error`() = runTest(mainDispatcher) {
-        val gateway = FakeSubscriptionGateway().apply {
-            createResult = SaqzResult.Failure(SubscriptionError.Conflict)
-        }
-        withPaymentViewModel(gateway = gateway) { viewModel ->
-            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
-            viewModel.onIntent(PaymentIntent.Submit)
-            runCurrent()
-
-            assertEquals(UiText.Res(Res.string.payment_error_generic), viewModel.state.value.submitError)
-        }
-    }
-
-    /**
-     * VUL-119: `Conflict` com `hasCheckout` já verdadeiro nesta sessão (RegeneratePix
-     * batendo num checkout que esta própria tela criou) ganha mensagem acionável em vez do
-     * erro genérico — é o único jeito de o mobile inferir `PendingCheckoutMismatch` sem o
-     * backend distinguir o código de erro.
-     */
-    @Test
-    fun `conflict with a checkout already created in this session shows the pending checkout message`() =
+    fun `conflict keeps the generic error regardless of a checkout already created in this session`() =
         runTest(mainDispatcher) {
             val gateway = FakeSubscriptionGateway().apply {
                 createResult = SaqzResult.Success(createdPix())
@@ -230,6 +212,29 @@ class PaymentViewModelTest {
                 viewModel.onIntent(PaymentIntent.RegeneratePix)
                 runCurrent()
 
+                assertEquals(UiText.Res(Res.string.payment_error_generic), viewModel.state.value.submitError)
+            }
+        }
+
+    /**
+     * VUL-119: `PendingCheckoutMismatch` (código `SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH`,
+     * próprio do backend desde o achado do Codex no PR #100) sempre ganha a mensagem
+     * acionável, direto pelo tipo do erro — sem depender de `hasCheckout` desta sessão. É o
+     * caminho real do repro: a tela do Plano B é uma instância NOVA de `PaymentViewModel`,
+     * então `hasCheckout` está falso quando o backend recusa por causa do checkout do Plano A.
+     */
+    @Test
+    fun `pending checkout mismatch shows the specific message even without a checkout in this session`() =
+        runTest(mainDispatcher) {
+            val gateway = FakeSubscriptionGateway().apply {
+                createResult = SaqzResult.Failure(SubscriptionError.PendingCheckoutMismatch)
+            }
+            withPaymentViewModel(gateway = gateway) { viewModel ->
+                viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+                viewModel.onIntent(PaymentIntent.Submit)
+                runCurrent()
+
+                assertFalse(viewModel.state.value.hasCheckout)
                 assertEquals(
                     UiText.Res(Res.string.payment_error_conflict_pending_checkout),
                     viewModel.state.value.submitError,

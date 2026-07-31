@@ -365,6 +365,7 @@ internal fun NetworkError.toSubscriptionError(): SubscriptionError = when (this)
         )
         "SUBSCRIPTION_NOT_FOUND" -> SubscriptionError.NotFound
         "SUBSCRIPTION_CONFLICT" -> SubscriptionError.Conflict
+        "SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH" -> SubscriptionError.PendingCheckoutMismatch
         "COUPON_NOT_FOUND" -> SubscriptionError.CouponNotFound
         "COUPON_EXPIRED" -> SubscriptionError.CouponExpired
         "COUPON_ALREADY_REDEEMED" -> SubscriptionError.CouponAlreadyRedeemed

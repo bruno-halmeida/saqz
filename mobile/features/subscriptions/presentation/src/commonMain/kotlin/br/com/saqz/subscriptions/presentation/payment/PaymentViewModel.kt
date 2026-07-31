@@ -146,11 +146,6 @@ class PaymentViewModel(
         }
         pollJob?.cancel()
         submitJob?.cancel()
-        // Capturado antes do `create()`: um `Conflict` com checkout já em mãos nesta sessão
-        // (RegeneratePix) é o backend recusando por causa de UM checkout pendente que a
-        // própria tela criou — o `Submit` original nunca chega aqui com isso true, porque
-        // a seção de formulário só existe enquanto `!hasCheckout` (ver PaymentScreen).
-        val hadCheckout = state.value.hasCheckout
         submitJob = viewModelScope.launch {
             update { it.copy(isSubmitting = true, submitError = null, cpfCnpjError = null) }
             subscriptionGateway.create(
@@ -167,7 +162,7 @@ class PaymentViewModel(
             ).onSuccess { created ->
                 onCreated(created.pixCopyPaste, created.invoiceUrl)
             }.onFailure { error ->
-                update { it.copy(isSubmitting = false, submitError = error.toUiText(hadCheckout)) }
+                update { it.copy(isSubmitting = false, submitError = error.toUiText()) }
             }
         }
     }
@@ -246,13 +241,14 @@ class PaymentViewModel(
 // Mesma regra do backend (`CreateSubscription.isValidCpfCnpj`): 11 dígitos (CPF) ou 14 (CNPJ).
 internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || digits.length == 14
 
-// ponytail: mensagem única para o resto dos motivos de recusa (`AlreadySubscribed` chega
-// aqui como `Conflict` sem checkout prévio, cupom resgatado por outra sessão, etc.) — a
-// 8a/8b já validou o cupom antes de chegar aqui, e nenhum deles muda a ação do usuário:
-// tentar de novo. Só o `Conflict` com checkout pendente NESTA sessão tem ação diferente
-// (voltar/cancelar o checkout existente), daí a mensagem própria (VUL-119).
-private fun SubscriptionError.toUiText(hadCheckout: Boolean): UiText =
-    if (this is SubscriptionError.Conflict && hadCheckout) {
+// VUL-119: o backend agora distingue os dois casos que colapsavam em `Conflict`
+// (achado do Codex no PR #100) — `PendingCheckoutMismatch` é o único com mensagem própria
+// e ação diferente (voltar/cancelar o checkout existente). `Conflict` puro é
+// `AlreadySubscribed`, que continua com a mensagem genérica.
+// ponytail: mensagem única para o resto dos motivos de recusa — a 8a/8b já validou o
+// cupom antes de chegar aqui, e nenhum deles muda a ação do usuário: tentar de novo.
+private fun SubscriptionError.toUiText(): UiText =
+    if (this is SubscriptionError.PendingCheckoutMismatch) {
         UiText.Res(Res.string.payment_error_conflict_pending_checkout)
     } else {
         UiText.Res(Res.string.payment_error_generic)
