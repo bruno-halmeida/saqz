@@ -44,6 +44,7 @@ private val commonModules = listOf(
     subscriptionsDataModule,
     planActivePresentationModule(),
     myPlanPresentationModule(),
+    subscriptionsCustomerInfoModule,
     paymentPresentationModule(),
 )
 

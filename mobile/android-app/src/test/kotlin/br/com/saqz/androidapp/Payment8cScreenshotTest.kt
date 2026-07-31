@@ -134,4 +134,21 @@ class Payment8cScreenshotTest {
             isCheckingNow = true,
         ),
     )
+
+    // Achado #4 do Codex (PR #96): o backend busca os dois campos de checkout independente
+    // do `billingType` escolhido — com Pix selecionado e os DOIS preenchidos, só o card do
+    // Pix pode aparecer; nunca os dois juntos confundindo qual forma de pagamento usar.
+    @Test
+    fun pixSelecionadoComFaturaTambemPreenchida() = capture("8c-10-pix-com-fatura-oculta") {
+        PaymentScreen(
+            state = base.copy(
+                billingType = BillingType.Pix,
+                pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
+                invoiceUrl = "https://checkout.asaas.com/i/abc123",
+                isWaitingConfirmation = true,
+            ),
+            onIntent = {},
+            onBack = {},
+        )
+    }
 }

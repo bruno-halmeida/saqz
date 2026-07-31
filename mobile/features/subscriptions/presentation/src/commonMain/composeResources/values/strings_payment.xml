@@ -20,4 +20,5 @@
     <string name="payment_error_cpf_cnpj">CPF ou CNPJ inválido. Confira os números.</string>
     <string name="payment_error_generic">Não foi possível concluir o pagamento. Tente de novo.</string>
     <string name="payment_error_no_session">Não foi possível carregar seus dados. Tente novamente.</string>
+    <string name="payment_error_checkout_unavailable">Não foi possível carregar os dados de pagamento. Tente novamente.</string>
 </resources>

@@ -2,18 +2,20 @@ package br.com.saqz.subscriptions.presentation.payment
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.access.domain.session.AccessUser
-import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.designsystem.UiText
+import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.CouponValidation
 import br.com.saqz.subscriptions.domain.subscription.CreateSubscriptionCommand
+import br.com.saqz.subscriptions.domain.subscription.CustomerInfo
+import br.com.saqz.subscriptions.domain.subscription.CustomerInfoProvider
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.payment_error_checkout_unavailable
 import br.com.saqz.subscriptions.resources.payment_error_cpf_cnpj
 import br.com.saqz.subscriptions.resources.payment_error_generic
 import br.com.saqz.subscriptions.resources.payment_error_no_session
@@ -29,18 +31,28 @@ import kotlin.uuid.Uuid
  * `route` chega do `parametersOf` do koin (mesma [SubscriptionsRoute.Payment] que a 8a/8b
  * monta) — plano, ciclo e cupom são escalares porque a rota é `@Serializable` e não carrega
  * o [br.com.saqz.subscriptions.domain.subscription.PlanDetails] inteiro.
+ *
+ * [customerInfo] é um contrato próprio de `subscriptions:domain`, não `SessionGateway`
+ * direto — ver [CustomerInfoProvider]. A implementação real mora em `:compose-app`.
  */
 class PaymentViewModel(
     route: SubscriptionsRoute.Payment,
     private val savedStateHandle: SavedStateHandle,
     private val subscriptionGateway: SubscriptionGateway,
-    private val sessionGateway: SessionGateway,
+    private val customerInfo: CustomerInfoProvider,
 ) : MviViewModel<PaymentState, PaymentIntent, PaymentEffect>(
     PaymentState(
         plan = requirePlan(route.planId),
         cycle = requireCycle(route.cycle),
         couponCode = route.couponCode,
-        cpfCnpj = savedStateHandle[KEY_CPF_CNPJ] ?: "",
+        cpfCnpj = savedStateHandle.get<String>(KEY_CPF_CNPJ) ?: "",
+        billingType = savedStateHandle.get<String>(KEY_BILLING_TYPE)?.let(BillingType::valueOf) ?: BillingType.Pix,
+        pixCopyPaste = savedStateHandle.get<String>(KEY_PIX_COPY_PASTE),
+        invoiceUrl = savedStateHandle.get<String>(KEY_INVOICE_URL),
+        // O checkout sobrevive à process death (ver `onCreated`); "tinha um checkout salvo"
+        // É a mesma condição que decide "estou esperando confirmação".
+        isWaitingConfirmation = savedStateHandle.get<String>(KEY_PIX_COPY_PASTE) != null ||
+            savedStateHandle.get<String>(KEY_INVOICE_URL) != null,
     ),
 ) {
     // Sobrevive à process death via [KEY_REQUEST_ID]: reenviar `create()` com o mesmo id é
@@ -48,7 +60,7 @@ class PaymentViewModel(
     private val requestId: String =
         savedStateHandle[KEY_REQUEST_ID] ?: newRequestId().also { savedStateHandle[KEY_REQUEST_ID] = it }
 
-    private var user: AccessUser? = null
+    private var customer: CustomerInfo? = null
 
     // Guarda de geração via cancelamento estrutural: um novo `submit`/poll cancela o
     // anterior antes de escrever, então nenhuma resposta atrasada sobrepõe a mais recente.
@@ -57,14 +69,24 @@ class PaymentViewModel(
     private var confirmed = false
 
     init {
-        viewModelScope.launch { sessionGateway.bootstrap().onSuccess { user = it.user } }
+        viewModelScope.launch { customer = customerInfo.current() }
         loadSummary()
+        // Retomada de process death: se o estado inicial já trouxe um checkout salvo, o
+        // pagamento pode ter sido confirmado enquanto o app estava fora do ar. Sem checar
+        // `receipts()` agora, um `submit()` futuro reenviaria o mesmo `requestId` contra uma
+        // assinatura já confirmada e bateria em `AlreadySubscribed` — usuário que já pagou
+        // ficaria preso num erro genérico. A checagem imediata roda em paralelo ao poll
+        // regular, que seguem cuidando do caso "ainda não confirmou".
+        if (state.value.isWaitingConfirmation) {
+            viewModelScope.launch { checkReceipts() }
+            startPolling()
+        }
     }
 
     override fun onIntent(intent: PaymentIntent) {
         when (intent) {
             is PaymentIntent.UpdateCpfCnpj -> updateCpfCnpj(intent.value)
-            is PaymentIntent.SelectBillingType -> update { it.copy(billingType = intent.value) }
+            is PaymentIntent.SelectBillingType -> selectBillingType(intent.value)
             PaymentIntent.Submit -> submit()
             PaymentIntent.RegeneratePix -> submit(skipValidation = true)
             PaymentIntent.ConfirmPayment -> checkNow()
@@ -75,6 +97,11 @@ class PaymentViewModel(
         val digits = value.filter(Char::isDigit).take(MAX_CPF_CNPJ_DIGITS)
         savedStateHandle[KEY_CPF_CNPJ] = digits
         update { it.copy(cpfCnpj = digits, cpfCnpjError = null) }
+    }
+
+    private fun selectBillingType(billingType: BillingType) {
+        savedStateHandle[KEY_BILLING_TYPE] = billingType.name
+        update { it.copy(billingType = billingType) }
     }
 
     private fun loadSummary() {
@@ -109,8 +136,8 @@ class PaymentViewModel(
             update { it.copy(cpfCnpjError = UiText.Res(Res.string.payment_error_cpf_cnpj)) }
             return
         }
-        val currentUser = user
-        if (currentUser == null) {
+        val currentCustomer = customer
+        if (currentCustomer == null) {
             update { it.copy(submitError = UiText.Res(Res.string.payment_error_no_session)) }
             return
         }
@@ -124,25 +151,45 @@ class PaymentViewModel(
                     planId = state.value.plan,
                     cycle = state.value.cycle,
                     billingType = state.value.billingType,
-                    name = currentUser.displayName,
-                    email = currentUser.email.orEmpty(),
+                    name = currentCustomer.displayName,
+                    email = currentCustomer.email.orEmpty(),
                     cpfCnpj = digits,
                     couponCode = state.value.couponCode,
                 ),
             ).onSuccess { created ->
-                update {
-                    it.copy(
-                        isSubmitting = false,
-                        pixCopyPaste = created.pixCopyPaste,
-                        invoiceUrl = created.invoiceUrl,
-                        isWaitingConfirmation = true,
-                    )
-                }
-                startPolling()
+                onCreated(created.pixCopyPaste, created.invoiceUrl)
             }.onFailure { error ->
                 update { it.copy(isSubmitting = false, submitError = error.toUiText()) }
             }
         }
+    }
+
+    /**
+     * `resolveCheckout()` no backend pode devolver sucesso com os dois campos nulos se a
+     * busca do pagamento/Asaas falhar (mesmo caminho do VUL-117). Tratar isso como
+     * "aguardando confirmação" seria um travamento silencioso: `hasCheckout` fica falso, o
+     * poll roda escondido, e o usuário não vê nem código de pagamento nem erro. Trata-se
+     * como falha recuperável — mesmo padrão de `submitError` que uma recusa de `create()`
+     * já usa, então "Pagar" de novo é o próprio retry (mesmo `requestId`, idempotente).
+     */
+    private fun onCreated(pixCopyPaste: String?, invoiceUrl: String?) {
+        if (pixCopyPaste == null && invoiceUrl == null) {
+            update {
+                it.copy(isSubmitting = false, submitError = UiText.Res(Res.string.payment_error_checkout_unavailable))
+            }
+            return
+        }
+        savedStateHandle[KEY_PIX_COPY_PASTE] = pixCopyPaste
+        savedStateHandle[KEY_INVOICE_URL] = invoiceUrl
+        update {
+            it.copy(
+                isSubmitting = false,
+                pixCopyPaste = pixCopyPaste,
+                invoiceUrl = invoiceUrl,
+                isWaitingConfirmation = true,
+            )
+        }
+        startPolling()
     }
 
     private fun startPolling() {
@@ -180,6 +227,9 @@ class PaymentViewModel(
     private companion object {
         const val KEY_REQUEST_ID = "payment_request_id"
         const val KEY_CPF_CNPJ = "payment_cpf_cnpj"
+        const val KEY_BILLING_TYPE = "payment_billing_type"
+        const val KEY_PIX_COPY_PASTE = "payment_pix_copy_paste"
+        const val KEY_INVOICE_URL = "payment_invoice_url"
         const val POLL_INTERVAL_MS = 5_000L
         const val MAX_CPF_CNPJ_DIGITS = 14
     }

@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.designsystem.ObserveAsEvents
@@ -120,7 +119,7 @@ private fun PaymentSummaryCard(state: PaymentState) {
     val colors = SaqzTheme.colors
     val typography = SaqzTheme.typography
     SaqzCard {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             Text(state.planName.ifBlank { state.plan.name }, style = typography.title, color = colors.textPrimary)
             Text(state.cycle.label(), style = typography.support, color = colors.textSecondary)
             state.priceCents?.let { cents ->
@@ -179,7 +178,11 @@ private fun PaymentCheckoutSection(state: PaymentState, onIntent: (PaymentIntent
     val metrics = SaqzTheme.metrics
 
     Column(verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
-        state.pixCopyPaste?.let { code ->
+        // O backend busca os dois campos independente do `billingType` escolhido (uma
+        // cobrança Pix pode legitimamente ter `invoiceUrl` também preenchido) — o gate é
+        // sempre pela escolha do usuário, nunca só por valor não-nulo, senão as duas seções
+        // aparecem juntas e confundem qual forma de pagamento usar.
+        state.pixCopyPaste?.takeIf { state.billingType == BillingType.Pix }?.let { code ->
             SaqzCard {
                 Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
                     Text(stringResource(Res.string.payment_pix_title), style = typography.label, color = colors.textPrimary)
@@ -207,7 +210,7 @@ private fun PaymentCheckoutSection(state: PaymentState, onIntent: (PaymentIntent
             }
         }
 
-        state.invoiceUrl?.let { url ->
+        state.invoiceUrl?.takeIf { state.billingType == BillingType.CreditCard }?.let { url ->
             SaqzCard {
                 Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
                     Text(stringResource(Res.string.payment_card_title), style = typography.label, color = colors.textPrimary)
@@ -228,7 +231,7 @@ private fun PaymentCheckoutSection(state: PaymentState, onIntent: (PaymentIntent
                 Column(
                     verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
                 ) {
-                    SaqzSpinner(size = 24.dp)
+                    SaqzSpinner()
                     Text(stringResource(Res.string.payment_waiting_title), style = typography.label, color = colors.textPrimary)
                     Text(stringResource(Res.string.payment_waiting_body), style = typography.support, color = colors.textSecondary)
                 }

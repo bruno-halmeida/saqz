@@ -1,9 +1,5 @@
 package br.com.saqz.subscriptions.presentation.payment
 
-import br.com.saqz.access.domain.session.AccessError
-import br.com.saqz.access.domain.session.AccessSession
-import br.com.saqz.access.domain.session.AccessUser
-import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.CanceledSubscription
@@ -12,6 +8,8 @@ import br.com.saqz.subscriptions.domain.subscription.ChangePlanResult
 import br.com.saqz.subscriptions.domain.subscription.CouponValidation
 import br.com.saqz.subscriptions.domain.subscription.CreateSubscriptionCommand
 import br.com.saqz.subscriptions.domain.subscription.CreatedSubscription
+import br.com.saqz.subscriptions.domain.subscription.CustomerInfo
+import br.com.saqz.subscriptions.domain.subscription.CustomerInfoProvider
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.PlanDetails
@@ -58,22 +56,13 @@ internal class FakeSubscriptionGateway : SubscriptionGateway {
     }
 }
 
-internal class FakeSessionGateway(
-    private val result: SaqzResult<AccessSession, AccessError> = SaqzResult.Success(defaultSession),
-) : SessionGateway {
-    override suspend fun bootstrap() = result
-
-    override suspend fun completeProfile(phone: String, displayName: String?): SaqzResult<AccessSession, AccessError> =
-        result
-
-    override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> =
-        SaqzResult.Success(Unit)
+internal class FakeCustomerInfoProvider(
+    private val info: CustomerInfo? = defaultCustomer,
+) : CustomerInfoProvider {
+    override suspend fun current(): CustomerInfo? = info
 
     companion object {
-        val defaultSession = AccessSession(
-            user = AccessUser(id = "user-1", email = "ana@exemplo.com", displayName = "Ana Silva"),
-            memberships = emptyList(),
-        )
+        val defaultCustomer = CustomerInfo(displayName = "Ana Silva", email = "ana@exemplo.com")
     }
 }
 

@@ -2,7 +2,6 @@ package br.com.saqz.subscriptions.presentation.payment
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import br.com.saqz.access.domain.session.AccessError
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.subscriptions.domain.subscription.BillingType
@@ -11,6 +10,7 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.payment_error_checkout_unavailable
 import br.com.saqz.subscriptions.resources.payment_error_cpf_cnpj
 import br.com.saqz.subscriptions.resources.payment_error_no_session
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +66,7 @@ class PaymentViewModelTest {
         val gateway = FakeSubscriptionGateway()
         withPaymentViewModel(
             gateway = gateway,
-            session = FakeSessionGateway(result = SaqzResult.Failure(AccessError.Unauthenticated)),
+            customer = FakeCustomerInfoProvider(info = null),
         ) { viewModel ->
             viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
             viewModel.onIntent(PaymentIntent.Submit)
@@ -186,6 +186,95 @@ class PaymentViewModelTest {
         }
     }
 
+    /**
+     * Achado #1 do Codex no PR #96: `resolveCheckout()` no backend pode devolver sucesso com
+     * `pixCopyPaste`/`invoiceUrl` os dois nulos (mesmo caminho do VUL-117). Sem o guard, isso
+     * virava um "aguardando confirmação" silencioso — `hasCheckout` falso, poll rodando
+     * escondido, usuário sem código de pagamento e sem erro.
+     */
+    @Test
+    fun `create success with both checkout fields null surfaces a retryable error instead of waiting silently`() =
+        runTest(mainDispatcher) {
+            val gateway = FakeSubscriptionGateway().apply {
+                createResult = SaqzResult.Success(createdPix().copy(pixCopyPaste = null, invoiceUrl = null))
+            }
+            withPaymentViewModel(gateway = gateway) { viewModel ->
+                viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+                viewModel.onIntent(PaymentIntent.Submit)
+                runCurrent()
+
+                assertFalse(viewModel.state.value.isWaitingConfirmation)
+                assertFalse(viewModel.state.value.hasCheckout)
+                assertFalse(viewModel.state.value.isSubmitting)
+                assertEquals(
+                    UiText.Res(Res.string.payment_error_checkout_unavailable),
+                    viewModel.state.value.submitError,
+                )
+            }
+        }
+
+    /**
+     * Achado #2 do Codex no PR #96, o mais importante: um checkout criado antes da process
+     * death não persistia — a ViewModel recriada voltava pro formulário em branco, e um
+     * resubmit reenviaria o mesmo `requestId` contra uma assinatura já confirmada
+     * (`AlreadySubscribed`), deixando quem já pagou preso num erro genérico. As chaves
+     * literais abaixo espelham as `private const val KEY_*` de [PaymentViewModel] — é
+     * exatamente o que um `SavedStateHandle` restaurado pelo processo entregaria.
+     */
+    @Test
+    fun `resumes waiting from a restored SavedStateHandle without resubmitting`() = runTest(mainDispatcher) {
+        val restored = SavedStateHandle(
+            mapOf(
+                "payment_request_id" to "req-before-death",
+                "payment_cpf_cnpj" to "12345678900",
+                "payment_billing_type" to BillingType.Pix.name,
+                "payment_pix_copy_paste" to "00020126chave-antes-da-morte",
+            ),
+        )
+        val gateway = FakeSubscriptionGateway().apply {
+            receiptsResults = listOf(SaqzResult.Success(emptyList()))
+        }
+        withPaymentViewModel(gateway = gateway, savedStateHandle = restored) { viewModel ->
+            // O estado já nasce em espera — não é o formulário em branco.
+            assertTrue(viewModel.state.value.isWaitingConfirmation)
+            assertEquals("00020126chave-antes-da-morte", viewModel.state.value.pixCopyPaste)
+
+            runCurrent()
+
+            assertTrue(gateway.createCalls.isEmpty())
+        }
+    }
+
+    /**
+     * A metade que fecha o achado #2: se o pagamento foi confirmado enquanto o processo
+     * estava fora do ar, a checagem imediata do `init` (não o poll de 5s) encontra o recibo
+     * e navega — sem esperar o usuário reenviar nada.
+     */
+    @Test
+    fun `reconciles an already-confirmed payment on resume without waiting for the next poll tick`() =
+        runTest(mainDispatcher) {
+            val restored = SavedStateHandle(
+                mapOf(
+                    "payment_request_id" to "req-before-death",
+                    "payment_billing_type" to BillingType.Pix.name,
+                    "payment_pix_copy_paste" to "00020126chave-antes-da-morte",
+                ),
+            )
+            val gateway = FakeSubscriptionGateway().apply {
+                receiptsResults = listOf(SaqzResult.Success(listOf(fakeReceipt())))
+            }
+            withPaymentViewModel(gateway = gateway, savedStateHandle = restored) { viewModel ->
+                val effects = mutableListOf<PaymentEffect>()
+                backgroundScope.launch { viewModel.effects.collect { effects.add(it) } }
+
+                runCurrent()
+
+                assertEquals(listOf<PaymentEffect>(PaymentEffect.NavigateToPlanActive), effects)
+                assertFalse(viewModel.state.value.isWaitingConfirmation)
+                assertTrue(gateway.createCalls.isEmpty())
+            }
+        }
+
     @Test
     fun `selecting card billing sends it on create`() = runTest(mainDispatcher) {
         val gateway = FakeSubscriptionGateway().apply {
@@ -213,11 +302,12 @@ class PaymentViewModelTest {
             cycle = SubscriptionCycle.Monthly.name,
             couponCode = null,
         ),
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
         gateway: FakeSubscriptionGateway = FakeSubscriptionGateway(),
-        session: FakeSessionGateway = FakeSessionGateway(),
+        customer: FakeCustomerInfoProvider = FakeCustomerInfoProvider(),
         block: suspend (PaymentViewModel) -> Unit,
     ) {
-        val viewModel = PaymentViewModel(route, SavedStateHandle(), gateway, session)
+        val viewModel = PaymentViewModel(route, savedStateHandle, gateway, customer)
         try {
             runCurrent()
             block(viewModel)
