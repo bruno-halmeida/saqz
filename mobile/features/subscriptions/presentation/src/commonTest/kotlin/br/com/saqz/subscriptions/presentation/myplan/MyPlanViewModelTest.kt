@@ -222,6 +222,55 @@ class MyPlanViewModelTest {
         assertEquals(false, viewModel.state.value.isLoadingMoreReceipts)
     }
 
+    @Test
+    fun `a load more failure preserves loaded receipts and keeps the initial error empty`() = runTest {
+        val firstPage = (1..20).map(::testReceipt)
+        val gateway = FakeSubscriptionGateway(
+            receiptPages = listOf(
+                SaqzResult.Success(firstPage),
+                SaqzResult.Failure(SubscriptionError.Conflict),
+            ),
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.LoadMoreReceipts)
+
+        assertEquals((1..20).map { "evt-$it" }, viewModel.state.value.receipts.map { it.id })
+        assertNull(viewModel.state.value.receiptsError)
+        assertNotNull(viewModel.state.value.loadMoreReceiptsError)
+        assertEquals(false, viewModel.state.value.isLoadingMoreReceipts)
+        assertEquals(
+            listOf(ReceiptRequest(20, 0), ReceiptRequest(20, 20)),
+            gateway.receiptRequests,
+        )
+    }
+
+    @Test
+    fun `retrying a load more failure requests the same offset and appends only once`() = runTest {
+        val firstPage = (1..20).map(::testReceipt)
+        val lastPage = (21..22).map(::testReceipt)
+        val gateway = FakeSubscriptionGateway(
+            receiptPages = listOf(
+                SaqzResult.Success(firstPage),
+                SaqzResult.Failure(SubscriptionError.Conflict),
+                SaqzResult.Success(lastPage),
+            ),
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.LoadMoreReceipts)
+        viewModel.onIntent(MyPlanIntent.RetryLoadMore)
+
+        assertEquals((1..22).map { "evt-$it" }, viewModel.state.value.receipts.map { it.id })
+        assertNull(viewModel.state.value.receiptsError)
+        assertNull(viewModel.state.value.loadMoreReceiptsError)
+        assertEquals(false, viewModel.state.value.hasMoreReceipts)
+        assertEquals(
+            listOf(ReceiptRequest(20, 0), ReceiptRequest(20, 20), ReceiptRequest(20, 20)),
+            gateway.receiptRequests,
+        )
+    }
+
     // Disciplina obrigatória do AGENTS.md §4: intent inválido retorna cedo — um segundo
     // toque em "trocar" enquanto a primeira troca ainda está em voo não dispara outra.
     @Test

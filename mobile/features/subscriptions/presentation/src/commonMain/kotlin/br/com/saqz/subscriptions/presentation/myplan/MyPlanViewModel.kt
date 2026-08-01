@@ -40,7 +40,7 @@ class MyPlanViewModel(
     // tudo, e essa recarga descarta a própria resposta se outra já tiver começado depois dela.
     private var loadGeneration = 0
 
-    // Contador próprio dos recibos: `load`, `RetryReceipts` e `LoadMoreReceipts` disputam a
+    // Contador próprio dos recibos: `load`, `RetryReceipts` e `LoadMoreReceipts`/`RetryLoadMore` disputam a
     // mesma lista, e o `offset` de um "carregar mais" é calculado no despacho — se uma
     // recarga chegar no meio, a página em voo virou lixo e não pode ser concatenada.
     private var receiptsGeneration = 0
@@ -59,6 +59,7 @@ class MyPlanViewModel(
             MyPlanIntent.DismissReceipts -> update { it.copy(isReceiptsSheetOpen = false) }
             MyPlanIntent.RetryReceipts -> loadReceipts()
             MyPlanIntent.LoadMoreReceipts -> loadMoreReceipts()
+            MyPlanIntent.RetryLoadMore -> loadMoreReceipts()
             MyPlanIntent.OpenCancel -> update { it.copy(isCancelSheetOpen = true, cancelError = null) }
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
@@ -69,7 +70,15 @@ class MyPlanViewModel(
     private fun load() {
         val generation = ++loadGeneration
         val receiptsLoadGeneration = ++receiptsGeneration
-        update { it.copy(isLoading = true, loadError = null, isLoadingMoreReceipts = false) }
+        update {
+            it.copy(
+                isLoading = true,
+                loadError = null,
+                receiptsError = null,
+                loadMoreReceiptsError = null,
+                isLoadingMoreReceipts = false,
+            )
+        }
         viewModelScope.launch {
             val plansResult = gateway.plans()
             val subscriptionResult = gateway.mySubscription()
@@ -102,6 +111,7 @@ class MyPlanViewModel(
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
                     receiptsError = (receiptsResult as? SaqzResult.Failure)?.error?.toUiText(),
+                    loadMoreReceiptsError = null,
                     hasMoreReceipts = when (receiptsResult) {
                         is SaqzResult.Success -> receiptsResult.value.size == RECEIPTS_PAGE_SIZE
                         is SaqzResult.Failure -> it.hasMoreReceipts
@@ -115,7 +125,13 @@ class MyPlanViewModel(
 
     private fun loadReceipts() {
         val generation = ++receiptsGeneration
-        update { it.copy(receiptsError = null, isLoadingMoreReceipts = false) }
+        update {
+            it.copy(
+                receiptsError = null,
+                loadMoreReceiptsError = null,
+                isLoadingMoreReceipts = false,
+            )
+        }
         viewModelScope.launch {
             when (val result = gateway.receipts(limit = RECEIPTS_PAGE_SIZE, offset = 0)) {
                 is SaqzResult.Success -> if (generation == receiptsGeneration) {
@@ -123,6 +139,7 @@ class MyPlanViewModel(
                         it.copy(
                             receipts = result.value.map { r -> r.toUi() },
                             receiptsError = null,
+                            loadMoreReceiptsError = null,
                             hasMoreReceipts = result.value.size == RECEIPTS_PAGE_SIZE,
                         )
                     }
@@ -140,7 +157,7 @@ class MyPlanViewModel(
 
         val offset = currentState.receipts.size
         val generation = ++receiptsGeneration
-        update { it.copy(isLoadingMoreReceipts = true, receiptsError = null) }
+        update { it.copy(isLoadingMoreReceipts = true, loadMoreReceiptsError = null) }
         viewModelScope.launch {
             when (val result = gateway.receipts(limit = RECEIPTS_PAGE_SIZE, offset = offset)) {
                 is SaqzResult.Success -> if (generation == receiptsGeneration) {
@@ -149,12 +166,17 @@ class MyPlanViewModel(
                             receipts = it.receipts + result.value.map { r -> r.toUi() },
                             hasMoreReceipts = result.value.size == RECEIPTS_PAGE_SIZE,
                             isLoadingMoreReceipts = false,
-                            receiptsError = null,
+                            loadMoreReceiptsError = null,
                         )
                     }
                 }
                 is SaqzResult.Failure -> if (generation == receiptsGeneration) {
-                    update { it.copy(isLoadingMoreReceipts = false, receiptsError = result.error.toUiText()) }
+                    update {
+                        it.copy(
+                            isLoadingMoreReceipts = false,
+                            loadMoreReceiptsError = result.error.toUiText(),
+                        )
+                    }
                 }
             }
         }

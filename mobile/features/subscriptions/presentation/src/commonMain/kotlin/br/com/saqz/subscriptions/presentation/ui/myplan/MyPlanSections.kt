@@ -348,8 +348,23 @@ internal fun MyPlanReceiptsSheet(state: MyPlanState, onIntent: (MyPlanIntent) ->
                     Text(text = receipt.valueLabel, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
                 }
             }
-            if (state.hasMoreReceipts) {
-                SaqzButton(
+            when {
+                state.loadMoreReceiptsError != null -> {
+                    Text(
+                        text = state.loadMoreReceiptsError.asString(),
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.errorForeground,
+                    )
+                    SaqzButton(
+                        label = stringResource(Res.string.myplan_retry),
+                        onClick = { onIntent(MyPlanIntent.RetryLoadMore) },
+                        modifier = Modifier.testTag(MyPlanTags.LoadMoreReceipts),
+                        variant = SaqzButtonVariant.Secondary,
+                        fullWidth = true,
+                        loading = state.isLoadingMoreReceipts,
+                    )
+                }
+                state.hasMoreReceipts -> SaqzButton(
                     label = stringResource(Res.string.myplan_receipts_load_more),
                     onClick = { onIntent(MyPlanIntent.LoadMoreReceipts) },
                     modifier = Modifier.testTag(MyPlanTags.LoadMoreReceipts),
