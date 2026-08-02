@@ -59,6 +59,26 @@ class ProfilePhotoSelectionSheetTest {
     }
 
     @Test
+    fun `upload errors remain visible in the open sheet`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                ProfilePhotoSelectionSheet(
+                    open = true,
+                    photoUrl = "/api/session/photo?v=preview",
+                    onClose = {},
+                    onTakePhoto = {},
+                    onChooseFromGallery = {},
+                    onRemovePhoto = {},
+                    error = ProfilePhotoError.UploadFailed,
+                )
+            }
+        }
+
+        onNodeWithTag(ProfilePhotoTags.Error).assertExists()
+        onNodeWithText("Não foi possível atualizar sua foto. Tente novamente.").assertExists()
+    }
+
+    @Test
     fun `sheet hides remove action without a photo`() = runComposeUiTest {
         setContent {
             SaqzTheme {

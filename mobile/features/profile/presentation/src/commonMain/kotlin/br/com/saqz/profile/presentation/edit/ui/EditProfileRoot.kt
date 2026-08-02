@@ -34,8 +34,9 @@ fun EditProfileRoot(
     val photoUrl = if (photoState.hasLocalUpdate) photoState.photoUrl else state.photoUrl
 
     LaunchedEffect(photoState.hasLocalUpdate, photoState.isLoading, photoState.error) {
-        if (photoState.hasLocalUpdate && !photoState.isLoading && photoState.error == null) {
-            photoSheetOpen = false
+        when {
+            photoState.error != null -> photoSheetOpen = true
+            photoState.hasLocalUpdate && !photoState.isLoading -> photoSheetOpen = false
         }
     }
 
