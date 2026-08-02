@@ -101,6 +101,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
 
         assertEquals(fixture.group, found?.groupId)
+        assertEquals(now.plusSeconds(7 * 24 * 60 * 60), found?.expiresAt)
         assertEquals(false, found?.entryRequiresApproval)
     }
 

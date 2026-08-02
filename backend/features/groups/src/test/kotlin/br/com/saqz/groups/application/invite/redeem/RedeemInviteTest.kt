@@ -239,6 +239,28 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `expired invite is invalid and records one invalid attempt`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.minusSeconds(1)))
+
+        assertSame(RedeemInviteResult.InvalidOrExpired, fixture.useCase.execute(actor, code.value))
+        assertEquals(1, fixture.repository.invalidAttempts.size)
+        assertEquals(InviteAttemptWindow(now, 1), fixture.repository.windows[actor])
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `non-expired invite proceeds to membership redemption`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(1)))
+
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.ATHLETE),
+            fixture.useCase.execute(actor, code.value),
+        )
+        assertEquals(listOf(RedeemMembershipCommand(groupId, actor)), fixture.repository.redemptions)
+        assertTrue(fixture.repository.invalidAttempts.isEmpty())
+    }
+
+    @Test
     fun `malformed invite records failure without digest lookup`() {
         val fixture = fixture()
 
@@ -333,7 +355,7 @@ class RedeemInviteTest {
 
     private fun fixture(
         clockNow: Instant = now,
-        target: RedeemableInvite? = RedeemableInvite(groupId, clockNow, groupDeleted = false),
+        target: RedeemableInvite? = RedeemableInvite(groupId, clockNow.plusSeconds(60), groupDeleted = false),
         athleteLimit: Int? = null,
     ): Fixture {
         val repository = RecordingRedemptionRepository(target, ownerId)

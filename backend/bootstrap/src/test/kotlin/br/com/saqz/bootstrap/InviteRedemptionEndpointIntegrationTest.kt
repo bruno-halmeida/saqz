@@ -181,6 +181,20 @@ class InviteRedemptionEndpointIntegrationTest {
     }
 
     @Test
+    fun `expired invite returns invalid problem and counts as an invalid attempt`() {
+        repository.target = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.minusSeconds(1),
+        )
+
+        val response = redeem(RedemptionTestConfiguration.RAW_CODE)
+
+        assertProblem(response, 404, "INVITE_INVALID_OR_EXPIRED")
+        assertEquals(1, repository.windows.getValue(RedemptionTestConfiguration.USER_ID).invalidCount)
+        assertTrue(repository.roles.isEmpty())
+    }
+
+    @Test
     fun `eleventh attempt returns rate limit with retry seconds`() {
         repository.target = null
         repeat(10) { redeem(validCode(6)) }

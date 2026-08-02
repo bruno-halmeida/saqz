@@ -27,7 +27,7 @@
 - **Files**: `RedeemInvite`, redeem models/adapter, unit and endpoint integration tests.
 - **Done when**: expired invites return `InvalidOrExpired` and increment the invalid window; valid invites proceed; existing ADMIN and ATHLETE members receive success with their current role.
 - **Gate**: groups unit/integration tests and targeted bootstrap tests.
-- **Status**: pending
+- **Status**: completed
 
 ### T4 — GET invite metadata
 
