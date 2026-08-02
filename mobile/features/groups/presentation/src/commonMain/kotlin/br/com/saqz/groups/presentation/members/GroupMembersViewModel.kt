@@ -55,6 +55,15 @@ class GroupMembersViewModel(
         val generation = ++loadGeneration
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
+            val ownProfile = when (val result = athleteGateway.ownProfile()) {
+                is SaqzResult.Failure -> {
+                    showFailure(generation, result.error.toUiError())
+                    return@launch
+                }
+                is SaqzResult.Success -> result.value
+            }
+            if (generation != loadGeneration) return@launch
+
             val rosterResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
             if (generation != loadGeneration) return@launch
             if (rosterResult is SaqzResult.Failure) {
@@ -85,7 +94,9 @@ class GroupMembersViewModel(
                 }
             }
 
-            roster = (rosterResult as SaqzResult.Success).value.map { it.toUi(roles[it.userId]) }
+            roster = (rosterResult as SaqzResult.Success).value.map {
+                it.toUi(roles[it.userId], ownProfile.userId)
+            }
             requests = emptyList()
             update {
                 it.copy(
@@ -184,14 +195,17 @@ class GroupMembersViewModel(
     }
 }
 
-private fun AthleteRosterEntry.toUi(role: br.com.saqz.groups.domain.group.GroupRole?) = MemberUi(
+private fun AthleteRosterEntry.toUi(
+    role: br.com.saqz.groups.domain.group.GroupRole?,
+    ownUserId: String,
+) = MemberUi(
     id = userId,
     name = displayName,
     meta = listOfNotNull(position?.label(), membershipType.name.lowercase().replaceFirstChar { it.uppercase() })
         .joinToString(" · "),
     isAdmin = role == br.com.saqz.groups.domain.group.GroupRole.ADMIN ||
         role == br.com.saqz.groups.domain.group.GroupRole.OWNER,
-    isSelf = false,
+    isSelf = userId == ownUserId,
     // DESCONHECIDO é o contrato para atleta comum: não há filtro financeiro na tela e ele
     // deliberadamente não é convertido em status visual.
     stats = "",

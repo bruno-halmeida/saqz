@@ -96,7 +96,7 @@ class GroupSetupViewModel(
             GroupSetupIntent.Submit -> onSubmit()
             GroupSetupIntent.Retry -> onRetry()
             GroupSetupIntent.ConfirmCreate -> onConfirmCreate()
-            GroupSetupIntent.BackToForm -> update { it.copy(step = GroupSetupStep.Form) }
+            GroupSetupIntent.BackToForm -> onBackToForm()
             GroupSetupIntent.ConfirmDelete -> onConfirmDelete()
             GroupSetupIntent.SaveDraft -> onSaveDraft()
         }
@@ -105,6 +105,7 @@ class GroupSetupViewModel(
     private fun onRetry() {
         when {
             retryDelete -> onConfirmDelete()
+            !state.value.isEditing && state.value.creationCommandKey != null -> onConfirmCreate()
             versionToken == null && state.value.isEditing -> load()
             else -> onSubmit()
         }
@@ -126,7 +127,7 @@ class GroupSetupViewModel(
                             isLoading = false,
                             gatewayError = null,
                             saveFailed = false,
-                            form = group.toForm(),
+                            form = group.toForm().withSavedText(savedState),
                         )
                     }
                 }
@@ -159,10 +160,11 @@ class GroupSetupViewModel(
             return
         }
         viewModelScope.launch {
+            val commandForm = state.value.toDomainForm()
             // ponytail: seam de update; o formulário completo usa o endpoint de perfil e
             // converte seus erros tipados em estado visível antes de emitir Saved.
             when (val result = profileGateway.updateProfile(
-                UpdateGroupProfileCommand(GroupId(mode.groupId), token, state.value.form.toDomain()),
+                UpdateGroupProfileCommand(GroupId(mode.groupId), token, commandForm),
             )) {
                 is SaqzResult.Success -> {
                     versionToken = result.value.versionToken
@@ -175,21 +177,39 @@ class GroupSetupViewModel(
     }
 
     private fun onConfirmCreate() {
-        val form = state.value.form
+        val current = state.value
+        val commandKey = current.creationCommandKey ?: newCommandKey()
         val zone = timeZone
-        if (state.value.isSaving || zone == null) {
+        if (current.isSaving || zone == null) {
             if (zone == null) showOperationFailure(GroupUiError.Unknown)
             return
         }
-        update { it.copy(isSaving = true, saveFailed = false, gatewayError = null) }
+        if (current.creationCommandKey == null) savedState[KeyCreationCommand] = commandKey
+        val commandForm = current.toDomainForm()
+        update {
+            it.copy(
+                isSaving = true,
+                saveFailed = false,
+                gatewayError = null,
+                creationCommandKey = commandKey,
+            )
+        }
         viewModelScope.launch {
             // ponytail: seam de create; createProfile persiste a mesma carga completa que a
             // revisão apresenta e devolve o id autoritativo para o efeito de saída.
             when (val result = profileGateway.createProfile(
-                CreateGroupProfileCommand(newCommandKey(), zone, form.toDomain()),
+                CreateGroupProfileCommand(commandKey, zone, commandForm),
             )) {
                 is SaqzResult.Success -> {
-                    update { it.copy(isSaving = false, saveFailed = false, gatewayError = null) }
+                    discardCreationKey()
+                    update {
+                        it.copy(
+                            isSaving = false,
+                            saveFailed = false,
+                            gatewayError = null,
+                            creationCommandKey = null,
+                        )
+                    }
                     emit(GroupSetupEffect.Created(result.value.id.value))
                 }
                 is SaqzResult.Failure -> showOperationFailure(result.error.toUiError())
@@ -215,7 +235,18 @@ class GroupSetupViewModel(
     }
 
     private fun showOperationFailure(error: GroupUiError) {
-        update { it.copy(isLoading = false, isSaving = false, isDeleting = false, saveFailed = true, gatewayError = error) }
+        update {
+            it.copy(
+                isLoading = false,
+                isSaving = false,
+                isDeleting = false,
+                saveFailed = true,
+                gatewayError = error,
+                // O erro de create acontece na revisão, mas o card de erro existente vive no
+                // formulário e já oferece Retry/Salvar rascunho.
+                step = if (it.mode is GroupSetupMode.Create) GroupSetupStep.Form else it.step,
+            )
+        }
     }
 
     private fun showFailure(generation: Int, error: GroupUiError) {
@@ -224,9 +255,19 @@ class GroupSetupViewModel(
     }
 
     private fun onSaveDraft() {
+        discardCreationKey()
         retryDelete = false
-        update { it.copy(saveFailed = false, gatewayError = null) }
+        update { it.copy(saveFailed = false, gatewayError = null, creationCommandKey = null) }
         emit(GroupSetupEffect.DraftSaved)
+    }
+
+    private fun onBackToForm() {
+        discardCreationKey()
+        update { it.copy(step = GroupSetupStep.Form, creationCommandKey = null) }
+    }
+
+    private fun discardCreationKey() {
+        savedState.remove<String>(KeyCreationCommand)
     }
 
     private fun onOpenSheet(sheet: GroupSetupSheet) {
@@ -278,33 +319,40 @@ private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupF
 
 private fun GroupSetupState.revalidated() = if (errors.isEmpty()) this else copy(errors = validate(this))
 
-private fun GroupSetupState.withSavedText(handle: SavedStateHandle): GroupSetupState {
+private fun GroupSetupState.withSavedText(handle: SavedStateHandle): GroupSetupState = copy(
+    form = form.withSavedText(handle),
+    creationCommandKey = handle.get<String>(KeyCreationCommand),
+)
+
+private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupForm {
     val name = handle.get<String>(KeyName)
     val description = handle.get<String>(KeyDescription)
     val customLevel = handle.get<String>(KeyCustomLevel)
     val venueName = handle.get<String>(KeyVenueName)
     val venueAddress = handle.get<String>(KeyVenueAddress)
     val venue = when {
-        venueName == null && venueAddress == null -> form.defaultVenue
-        else -> (form.defaultVenue ?: EmptyVenue).copy(
-            name = venueName ?: form.defaultVenue?.name.orEmpty(),
-            address = venueAddress ?: form.defaultVenue?.address.orEmpty(),
+        venueName == null && venueAddress == null -> defaultVenue
+        else -> (defaultVenue ?: EmptyVenue).copy(
+            name = venueName ?: defaultVenue?.name.orEmpty(),
+            address = venueAddress ?: defaultVenue?.address.orEmpty(),
         ).orNullWhenCleared()
     }
     return copy(
-        form = form.copy(
-            name = name ?: form.name,
-            description = description ?: form.description,
-            customLevel = customLevel ?: form.customLevel,
-            defaultVenue = venue,
-        ),
+        name = name ?: this.name,
+        description = description ?: this.description,
+        customLevel = customLevel ?: this.customLevel,
+        defaultVenue = venue,
     )
 }
 
 private fun GroupSetupForm.withVenue(transform: GroupVenueForm.() -> GroupVenueForm) =
     copy(defaultVenue = (defaultVenue ?: EmptyVenue).transform().orNullWhenCleared())
 
-private fun GroupSetupForm.toDomain() = br.com.saqz.groups.domain.group.GroupSetupForm(
+private fun GroupSetupState.toDomainForm() = form.toDomain(slotsForCommand)
+
+private fun GroupSetupForm.toDomain(
+    slots: List<GroupRegularSlotForm> = regularSlots,
+) = br.com.saqz.groups.domain.group.GroupSetupForm(
     name = name,
     modality = modality?.let { br.com.saqz.groups.domain.group.GroupModality.valueOf(it.name) },
     composition = composition?.let { br.com.saqz.groups.domain.group.GroupComposition.valueOf(it.name) },
@@ -315,7 +363,7 @@ private fun GroupSetupForm.toDomain() = br.com.saqz.groups.domain.group.GroupSet
     playStyle = playStyle?.let { br.com.saqz.groups.domain.group.GroupPlayStyle.valueOf(it.name) },
     customPlayStyle = customPlayStyle,
     defaultVenue = defaultVenue?.let { br.com.saqz.groups.domain.group.GroupVenue(it.id, it.name, it.address, it.court) },
-    regularSlots = regularSlots.map {
+    regularSlots = slots.map {
         br.com.saqz.groups.domain.group.GroupRegularSlot(
             it.id,
             br.com.saqz.groups.domain.group.GroupWeekday.valueOf(it.weekday.name),
@@ -371,3 +419,4 @@ private const val KeyDescription = "group-setup-description"
 private const val KeyCustomLevel = "group-setup-custom-level"
 private const val KeyVenueName = "group-setup-venue-name"
 private const val KeyVenueAddress = "group-setup-venue-address"
+private const val KeyCreationCommand = "group-setup-create-command-key"

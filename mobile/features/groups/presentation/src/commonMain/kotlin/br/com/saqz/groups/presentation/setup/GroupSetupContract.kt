@@ -87,6 +87,8 @@ data class GroupSetupState(
     val isDeleting: Boolean = false,
     val saveFailed: Boolean = false,
     val gatewayError: GroupUiError? = null,
+    /** Chave de idempotência da sessão de criação; permanece durante retries e some ao sair. */
+    val creationCommandKey: String? = null,
     val isOffline: Boolean = false,
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit

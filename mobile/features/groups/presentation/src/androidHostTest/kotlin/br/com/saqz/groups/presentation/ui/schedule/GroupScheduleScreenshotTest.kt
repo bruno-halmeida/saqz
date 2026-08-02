@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.schedule.GroupScheduleState
+import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
+import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -29,6 +31,27 @@ class GroupScheduleScreenshotTest {
     @Test
     fun recurring() = capture("group-schedule-recurring") {
         GroupScheduleScreen(state = previewScheduleState, onIntent = {}, onBack = {})
+    }
+
+    @Test
+    fun loadedGameDate() = capture("group-schedule-loaded-game") {
+        GroupScheduleScreen(
+            state = GroupScheduleState(
+                isLoading = false,
+                upcoming = listOf(
+                    UpcomingGameUi(
+                        id = "loaded-game",
+                        day = "04",
+                        month = "AGO",
+                        label = "19:30 · Treino carregado",
+                        venue = "CERET",
+                        status = UpcomingGameStatus.Published,
+                    ),
+                ),
+            ),
+            onIntent = {},
+            onBack = {},
+        )
     }
 
     @Test

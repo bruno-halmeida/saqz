@@ -119,6 +119,38 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `retry da criacao reutiliza a mesma chave de idempotencia`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        var attempts = 0
+        profileGateway.createHandler = {
+            attempts += 1
+            if (attempts == 1) {
+                SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity))
+            } else {
+                SaqzResult.Success(br.com.saqz.groups.presentation.sampleGroup())
+            }
+        }
+        val viewModel = viewModel(profileGateway = profileGateway)
+        val effects = collectEffects(viewModel)
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+        assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
+
+        viewModel.onIntent(GroupSetupIntent.Retry)
+        runCurrent()
+
+        assertEquals(2, profileGateway.createCommands.size)
+        assertEquals(
+            profileGateway.createCommands[0].commandKey,
+            profileGateway.createCommands[1].commandKey,
+        )
+        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+        assertEquals(null, viewModel.state.value.creationCommandKey)
+    }
+
+    @Test
     fun `editar salva direto sem passar pela revisao`() = runTest(mainDispatcher) {
         val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
         val effects = collectEffects(viewModel)
@@ -130,6 +162,29 @@ class GroupSetupViewModelTest {
         assertTrue(!viewModel.state.value.isSaving)
         assertEquals(listOf(GroupSetupEffect.Saved), effects)
     }
+
+    @Test
+    fun `create e update enviam slots vazios quando a recorrencia esta desligada`() =
+        runTest(mainDispatcher) {
+            val createGateway = FakeGroupProfileGateway()
+            val creating = viewModel(recurring = false, profileGateway = createGateway)
+            creating.onIntent(GroupSetupIntent.Submit)
+            creating.onIntent(GroupSetupIntent.ConfirmCreate)
+            runCurrent()
+
+            assertEquals(emptyList(), createGateway.lastCreateCommand?.form?.regularSlots)
+
+            val updateGateway = FakeGroupProfileGateway()
+            val editing = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                recurring = false,
+                profileGateway = updateGateway,
+            )
+            editing.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            assertEquals(emptyList(), updateGateway.lastUpdateCommand?.form?.regularSlots)
+        }
 
     @Test
     fun `excluir so vale no modo de edicao`() = runTest(mainDispatcher) {
@@ -311,6 +366,32 @@ class GroupSetupViewModelTest {
         assertEquals(completeForm.defaultVenue?.address, viewModel.state.value.form.defaultVenue?.address)
         assertEquals(GroupModality.COURT_VOLLEYBALL, viewModel.state.value.form.modality)
     }
+
+    @Test
+    fun `o texto salvo continua por cima do perfil carregado no modo edicao`() =
+        runTest(mainDispatcher) {
+            val handle = SavedStateHandle(
+                mapOf(
+                    "group-setup-name" to "Nome restaurado",
+                    "group-setup-description" to "Descrição restaurada",
+                    "group-setup-custom-level" to "Nível restaurado",
+                    "group-setup-venue-name" to "Quadra restaurada",
+                    "group-setup-venue-address" to "Endereço restaurado",
+                ),
+            )
+
+            val viewModel = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                savedState = handle,
+            )
+            runCurrent()
+
+            assertEquals("Nome restaurado", viewModel.state.value.form.name)
+            assertEquals("Descrição restaurada", viewModel.state.value.form.description)
+            assertEquals("Nível restaurado", viewModel.state.value.form.customLevel)
+            assertEquals("Quadra restaurada", viewModel.state.value.form.defaultVenue?.name)
+            assertEquals("Endereço restaurado", viewModel.state.value.form.defaultVenue?.address)
+        }
 
     /**
      * Teto de digitação: o estado para no máximo do backend em vez de deixar digitar e

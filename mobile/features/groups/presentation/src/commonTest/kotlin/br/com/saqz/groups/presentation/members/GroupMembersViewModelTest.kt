@@ -56,6 +56,32 @@ class GroupMembersViewModelTest {
     }
 
     @Test
+    fun `signed in member is marked self and cannot open its action sheet`() = runTest {
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.athlete.OwnAthleteProfile("me", "Me", null, emptyList()),
+            ),
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("me"))),
+        )
+        val viewModel = GroupMembersViewModel(
+            "group-1",
+            athlete,
+            FakeGroupMembershipGateway(
+                listResult = SaqzResult.Success(listOf(GroupMembership("me", "Me", GroupRole.ADMIN))),
+            ),
+        )
+
+        val self = viewModel.state.value.admins.single()
+        assertTrue(self.isSelf)
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember(self.id))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+
+        assertEquals(null, viewModel.state.value.selected)
+        assertEquals(null, athlete.lastRemovedUserId)
+    }
+
+    @Test
     fun `empty roster renders without sections`() = runTest {
         val viewModel = GroupMembersViewModel(
             "group-1",

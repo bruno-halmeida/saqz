@@ -102,14 +102,35 @@ internal class GroupScheduleViewModel(
     }
 }
 
-private fun Game.toUpcoming() = UpcomingGameUi(
-    id = id,
-    day = localDate,
-    month = "",
-    label = "$localTime · $title",
-    venue = venue.name,
-    status = if (status == GameStatus.Published) UpcomingGameStatus.Published else UpcomingGameStatus.Scheduled,
+private fun Game.toUpcoming(): UpcomingGameUi {
+    val (day, month) = localDate.toDateBadge()
+    return UpcomingGameUi(
+        id = id,
+        day = day,
+        month = month,
+        label = "$localTime · $title",
+        venue = venue.name,
+        status = if (status == GameStatus.Published) UpcomingGameStatus.Published else UpcomingGameStatus.Scheduled,
+    )
+}
+
+private val PortugueseMonthLabels = listOf(
+    "JAN", "FEV", "MAR", "ABR", "MAI", "JUN",
+    "JUL", "AGO", "SET", "OUT", "NOV", "DEZ",
 )
+
+private fun String.toDateBadge(): Pair<String, String> {
+    val parts = substringBefore('T').split('-')
+    val month = parts.getOrNull(1)?.toIntOrNull()
+    val day = parts.getOrNull(2)?.toIntOrNull()
+    val validMonth = month?.let { it in 1..12 } == true
+    val validDay = day?.let { it in 1..31 } == true
+    return if (parts.getOrNull(0)?.length == 4 && validMonth && validDay) {
+        parts[2].padStart(2, '0') to PortugueseMonthLabels[month - 1]
+    } else {
+        this to ""
+    }
+}
 
 private fun SlotDraft.toForm(durationMinutes: Int) = GroupRegularSlotForm(
     weekday = weekday,

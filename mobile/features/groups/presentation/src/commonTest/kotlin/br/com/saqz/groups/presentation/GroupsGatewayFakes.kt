@@ -67,13 +67,23 @@ class FakeGroupProfileGateway(
     var createResult: SaqzResult<Group, GroupProfileError> = SaqzResult.Success(sampleGroup()),
     var updateResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(sampleVersionedGroup()),
 ) : GroupProfileGateway {
-    override suspend fun createProfile(command: CreateGroupProfileCommand): SaqzResult<Group, GroupProfileError> =
-        createResult
+    var lastCreateCommand: CreateGroupProfileCommand? = null
+    var lastUpdateCommand: UpdateGroupProfileCommand? = null
+    val createCommands = mutableListOf<CreateGroupProfileCommand>()
+    var createHandler: suspend (CreateGroupProfileCommand) -> SaqzResult<Group, GroupProfileError> = { createResult }
+
+    override suspend fun createProfile(command: CreateGroupProfileCommand): SaqzResult<Group, GroupProfileError> {
+        lastCreateCommand = command
+        createCommands += command
+        return createHandler(command)
+    }
 
     override suspend fun readProfile(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> = readResult
 
-    override suspend fun updateProfile(command: UpdateGroupProfileCommand): SaqzResult<VersionedGroup, GroupProfileError> =
-        updateResult
+    override suspend fun updateProfile(command: UpdateGroupProfileCommand): SaqzResult<VersionedGroup, GroupProfileError> {
+        lastUpdateCommand = command
+        return updateResult
+    }
 }
 
 class FakeAthleteGateway(
