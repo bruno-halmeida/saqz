@@ -183,7 +183,7 @@ class SafeExceptionHandler(
         problemWriter.write(
             request,
             response,
-            400,
+            failure.status,
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = failure.fieldErrors,
         )

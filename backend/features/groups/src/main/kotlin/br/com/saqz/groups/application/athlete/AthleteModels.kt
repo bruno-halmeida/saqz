@@ -2,8 +2,11 @@ package br.com.saqz.groups.application.athlete
 
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.AthleteMembershipType
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
+import java.time.Instant
 import java.util.UUID
 
 data class AthleteMembership(
@@ -13,6 +16,13 @@ data class AthleteMembership(
     val position: AthletePosition?,
     val membershipType: AthleteMembershipType,
     val active: Boolean,
+    val nickname: String? = null,
+    val secondaryPosition: AthletePosition? = null,
+    val level: AthleteLevel? = null,
+    val preferredSide: AthletePreferredSide? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
 )
 
 data class UpdateAthleteCommand(
@@ -21,12 +31,32 @@ data class UpdateAthleteCommand(
     val position: AthletePosition?,
     val membershipType: AthleteMembershipType,
     val active: Boolean,
+    val nickname: String? = null,
+    val secondaryPosition: AthletePosition? = null,
+    val level: AthleteLevel? = null,
+    val preferredSide: AthletePreferredSide? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
+)
+
+data class UpdateOwnAthleteProfileCommand(
+    val groupId: UUID,
+    val userId: UUID,
+    val nickname: String?,
+    val position: AthletePosition?,
+    val secondaryPosition: AthletePosition?,
+    val level: AthleteLevel?,
+    val preferredSide: AthletePreferredSide?,
+    val heightCm: Int?,
 )
 
 sealed interface UpdateOwnAthleteProfileResult {
     data class Success(val athlete: AthleteMembership) : UpdateOwnAthleteProfileResult
 
     data object GroupNotFound : UpdateOwnAthleteProfileResult
+
+    data class Invalid(val fieldErrors: Map<String, List<String>>) : UpdateOwnAthleteProfileResult
 }
 
 sealed interface UpdateAthleteResult {
@@ -35,6 +65,8 @@ sealed interface UpdateAthleteResult {
     data object GroupNotFound : UpdateAthleteResult
 
     data object AccessForbidden : UpdateAthleteResult
+
+    data class Invalid(val fieldErrors: Map<String, List<String>>) : UpdateAthleteResult
 }
 
 sealed interface RemoveAthleteResult {
@@ -69,6 +101,14 @@ data class AthleteRosterEntry(
     val membershipType: AthleteMembershipType,
     val active: Boolean,
     val financialStatus: FinancialStatus,
+    val nickname: String? = null,
+    val secondaryPosition: AthletePosition? = null,
+    val level: AthleteLevel? = null,
+    val preferredSide: AthletePreferredSide? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
+    val joinedAt: Instant = Instant.EPOCH,
 )
 
 sealed interface ListAthletesResult {
@@ -86,6 +126,14 @@ data class OwnAthleteMembership(
     val position: AthletePosition?,
     val membershipType: AthleteMembershipType,
     val active: Boolean,
+    val nickname: String? = null,
+    val secondaryPosition: AthletePosition? = null,
+    val level: AthleteLevel? = null,
+    val preferredSide: AthletePreferredSide? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
+    val joinedAt: Instant = Instant.EPOCH,
 )
 
 data class OwnAthleteProfile(

@@ -6,6 +6,8 @@ import java.util.UUID
 interface AthleteRepository {
     fun find(groupId: UUID, userId: UUID): AthleteMembership?
 
+    fun updateOwn(command: UpdateOwnAthleteProfileCommand): AthleteMembership
+
     fun updatePosition(groupId: UUID, userId: UUID, position: AthletePosition?): AthleteMembership
 
     fun update(command: UpdateAthleteCommand): AthleteMembership

@@ -8,6 +8,18 @@ enum class AthletePosition {
     LEVANTADOR,
 }
 
+enum class AthleteLevel {
+    INICIANTE,
+    INTERMEDIARIO,
+    AVANCADO,
+}
+
+enum class AthletePreferredSide {
+    DIREITA,
+    ESQUERDA,
+    TANTO_FAZ,
+}
+
 enum class AthleteMembershipType {
     MENSALISTA,
     AVULSO,

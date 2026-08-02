@@ -45,6 +45,45 @@ class AthleteAttributesMigrationIntegrationTest {
         assertEquals("AVULSO", string("SELECT membership_type FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertEquals(true, bool("SELECT active FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertNull(stringOrNull("SELECT position FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertNull(stringOrNull("SELECT level FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertNull(stringOrNull("SELECT nickname FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+    }
+
+    @Test
+    fun `new membership attributes roundtrip and enforce every check`() {
+        val group = completeGroup("new-attributes")
+        val member = member(group, "new-attributes-member")
+
+        execute(
+            "UPDATE group_memberships SET level = 'INTERMEDIARIO', secondary_position = 'PONTA', " +
+                "preferred_side = 'TANTO_FAZ', height_cm = 180, nickname = '😀a', " +
+                "monthly_fee_cents = 12500, monthly_due_day = 12 WHERE group_id = '$group' AND user_id = '$member'",
+        )
+        assertEquals("INTERMEDIARIO", string("SELECT level FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals("PONTA", string("SELECT secondary_position FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals("TANTO_FAZ", string("SELECT preferred_side FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(180, int("SELECT height_cm FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals("😀a", string("SELECT nickname FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(12500, int("SELECT monthly_fee_cents FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(12, int("SELECT monthly_due_day FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+
+        listOf(
+            "level = 'BEGINNER'",
+            "secondary_position = 'GOLEIRO'",
+            "preferred_side = 'FRENTE'",
+            "height_cm = 99",
+            "nickname = ' a'",
+            "monthly_fee_cents = 0",
+            "monthly_due_day = 29",
+        ).forEach { assignment ->
+            assertFails {
+                execute("UPDATE group_memberships SET $assignment WHERE group_id = '$group' AND user_id = '$member'")
+            }
+        }
+        execute("UPDATE group_memberships SET position = 'CENTRAL' WHERE group_id = '$group' AND user_id = '$member'")
+        assertFails {
+            execute("UPDATE group_memberships SET secondary_position = 'CENTRAL' WHERE group_id = '$group' AND user_id = '$member'")
+        }
     }
 
     @Test

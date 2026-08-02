@@ -3,6 +3,9 @@ package br.com.saqz.groups.adapter.input.http
 import br.com.saqz.groups.application.athlete.AthleteMembership
 import br.com.saqz.groups.application.athlete.AthleteRosterEntry
 import br.com.saqz.groups.application.athlete.AthleteRosterFilter
+import br.com.saqz.groups.application.athlete.AthleteStats
+import br.com.saqz.groups.application.athlete.GetAthleteStats
+import br.com.saqz.groups.application.athlete.GetAthleteStatsResult
 import br.com.saqz.groups.application.athlete.FinancialStatus
 import br.com.saqz.groups.application.athlete.GetOwnAthleteProfile
 import br.com.saqz.groups.application.athlete.GetOwnAthleteProfileResult
@@ -15,9 +18,12 @@ import br.com.saqz.groups.application.athlete.UpdateAthlete
 import br.com.saqz.groups.application.athlete.UpdateAthleteCommand
 import br.com.saqz.groups.application.athlete.UpdateAthleteResult
 import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfile
+import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfileCommand
 import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfileResult
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
@@ -30,16 +36,29 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.Instant
 import java.util.UUID
 
 data class UpdateOwnAthleteProfileRequest @JsonCreator constructor(
+    @JsonProperty("nickname") val nickname: String?,
     @JsonProperty("position") val position: String?,
+    @JsonProperty("secondaryPosition") val secondaryPosition: String?,
+    @JsonProperty("level") val level: String?,
+    @JsonProperty("preferredSide") val preferredSide: String?,
+    @JsonProperty("heightCm") val heightCm: Int?,
 )
 
 data class UpdateAthleteRequest @JsonCreator constructor(
+    @JsonProperty("nickname") val nickname: String?,
     @JsonProperty("position") val position: String?,
+    @JsonProperty("secondaryPosition") val secondaryPosition: String?,
+    @JsonProperty("level") val level: String?,
+    @JsonProperty("preferredSide") val preferredSide: String?,
+    @JsonProperty("heightCm") val heightCm: Int?,
     @JsonProperty("membershipType") val membershipType: String,
     @JsonProperty("active") val active: Boolean,
+    @JsonProperty("monthlyFeeCents") val monthlyFeeCents: Long?,
+    @JsonProperty("monthlyDueDay") val monthlyDueDay: Int?,
 )
 
 data class AthleteResponse(
@@ -49,6 +68,13 @@ data class AthleteResponse(
     val position: String?,
     val membershipType: String,
     val active: Boolean,
+    val nickname: String?,
+    val secondaryPosition: String?,
+    val level: String?,
+    val preferredSide: String?,
+    val heightCm: Int?,
+    val monthlyFeeCents: Long?,
+    val monthlyDueDay: Int?,
 )
 
 data class AthleteRosterEntryResponse(
@@ -59,6 +85,14 @@ data class AthleteRosterEntryResponse(
     val membershipType: String,
     val active: Boolean,
     val financialStatus: String,
+    val nickname: String?,
+    val secondaryPosition: String?,
+    val level: String?,
+    val preferredSide: String?,
+    val heightCm: Int?,
+    val monthlyFeeCents: Long?,
+    val monthlyDueDay: Int?,
+    val joinedAt: Instant,
 )
 
 data class AthleteRosterResponse(val athletes: List<AthleteRosterEntryResponse>)
@@ -70,6 +104,14 @@ data class OwnAthleteMembershipResponse(
     val position: String?,
     val membershipType: String,
     val active: Boolean,
+    val nickname: String?,
+    val secondaryPosition: String?,
+    val level: String?,
+    val preferredSide: String?,
+    val heightCm: Int?,
+    val monthlyFeeCents: Long?,
+    val monthlyDueDay: Int?,
+    val joinedAt: Instant,
 )
 
 data class OwnAthleteProfileResponse(
@@ -77,6 +119,12 @@ data class OwnAthleteProfileResponse(
     val displayName: String,
     val phone: String?,
     val memberships: List<OwnAthleteMembershipResponse>,
+)
+
+data class AthleteStatsResponse(
+    val games: Int,
+    val attendanceRate: Int?,
+    val absences: Int,
 )
 
 @RestController
@@ -87,6 +135,7 @@ class AthleteController(
     private val updateAthlete: UpdateAthlete,
     private val removeAthlete: RemoveAthlete,
     private val getOwnAthleteProfile: GetOwnAthleteProfile,
+    private val getAthleteStats: GetAthleteStats,
 ) {
     @GetMapping("/api/groups/{groupId}/athletes")
     fun roster(
@@ -123,9 +172,19 @@ class AthleteController(
         @PathVariable("groupId") groupId: String,
         @RequestBody request: UpdateOwnAthleteProfileRequest,
     ): AthleteResponse {
-        val position = request.position?.let { parseEnum<AthletePosition>(it, "position") }
-        return when (val result = updateOwnAthleteProfile.execute(actor(identity), parseId(groupId), position)) {
+        val command = UpdateOwnAthleteProfileCommand(
+            groupId = parseId(groupId),
+            userId = actor(identity),
+            nickname = request.nickname,
+            position = request.position?.let { parseEnum<AthletePosition>(it, "position") },
+            secondaryPosition = request.secondaryPosition?.let { parseEnum<AthletePosition>(it, "secondaryPosition") },
+            level = request.level?.let { parseEnum<AthleteLevel>(it, "level") },
+            preferredSide = request.preferredSide?.let { parseEnum<AthletePreferredSide>(it, "preferredSide") },
+            heightCm = request.heightCm,
+        )
+        return when (val result = updateOwnAthleteProfile.execute(actor(identity), parseId(groupId), command)) {
             UpdateOwnAthleteProfileResult.GroupNotFound -> throw GroupNotFoundException()
+            is UpdateOwnAthleteProfileResult.Invalid -> throw InvalidGroupRequestException(result.fieldErrors, status = 422)
             is UpdateOwnAthleteProfileResult.Success -> result.athlete.toResponse()
         }
     }
@@ -143,10 +202,18 @@ class AthleteController(
             position = request.position?.let { parseEnum<AthletePosition>(it, "position") },
             membershipType = parseEnum<AthleteMembershipType>(request.membershipType, "membershipType"),
             active = request.active,
+            nickname = request.nickname,
+            secondaryPosition = request.secondaryPosition?.let { parseEnum<AthletePosition>(it, "secondaryPosition") },
+            level = request.level?.let { parseEnum<AthleteLevel>(it, "level") },
+            preferredSide = request.preferredSide?.let { parseEnum<AthletePreferredSide>(it, "preferredSide") },
+            heightCm = request.heightCm,
+            monthlyFeeCents = request.monthlyFeeCents,
+            monthlyDueDay = request.monthlyDueDay,
         )
         return when (val result = updateAthlete.execute(actor(identity), command)) {
             UpdateAthleteResult.GroupNotFound -> throw GroupNotFoundException()
             UpdateAthleteResult.AccessForbidden -> throw AccessForbiddenException()
+            is UpdateAthleteResult.Invalid -> throw InvalidGroupRequestException(result.fieldErrors, status = 422)
             is UpdateAthleteResult.Success -> result.athlete.toResponse()
         }
     }
@@ -182,10 +249,31 @@ class AthleteController(
                         position = it.position?.name,
                         membershipType = it.membershipType.name,
                         active = it.active,
+                        nickname = it.nickname,
+                        secondaryPosition = it.secondaryPosition?.name,
+                        level = it.level?.name,
+                        preferredSide = it.preferredSide?.name,
+                        heightCm = it.heightCm,
+                        monthlyFeeCents = it.monthlyFeeCents,
+                        monthlyDueDay = it.monthlyDueDay,
+                        joinedAt = it.joinedAt,
                     )
                 },
             )
         }
+
+    @GetMapping("/api/groups/{groupId}/athletes/{userId}/stats")
+    fun stats(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable("groupId") groupId: String,
+        @PathVariable("userId") userId: String,
+    ): AthleteStatsResponse = when (
+        val result = getAthleteStats.execute(actor(identity), parseId(groupId), parseId(userId))
+    ) {
+        GetAthleteStatsResult.GroupNotFound -> throw GroupNotFoundException()
+        GetAthleteStatsResult.AccessForbidden -> throw AccessForbiddenException()
+        is GetAthleteStatsResult.Success -> result.stats.toResponse()
+    }
 
     private fun actor(identity: RequestIdentity): UUID = actorResolver.resolve(identity)
 
@@ -204,17 +292,37 @@ private fun AthleteMembership.toResponse() = AthleteResponse(
     position = position?.name,
     membershipType = membershipType.name,
     active = active,
+    nickname = nickname,
+    secondaryPosition = secondaryPosition?.name,
+    level = level?.name,
+    preferredSide = preferredSide?.name,
+    heightCm = heightCm,
+    monthlyFeeCents = monthlyFeeCents,
+    monthlyDueDay = monthlyDueDay,
 )
 
-private fun AthleteRosterEntry.toResponse(role: GroupRole?) = AthleteRosterEntryResponse(
-    userId = userId,
-    displayName = displayName.value,
-    phone = phone,
-    position = position?.name,
-    membershipType = membershipType.name,
-    active = active,
-    financialStatus = when (role) {
-        GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
-        GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
-    },
-)
+private fun AthleteRosterEntry.toResponse(role: GroupRole?): AthleteRosterEntryResponse {
+    val canReadFinancial = role == GroupRole.OWNER || role == GroupRole.ADMIN
+    return AthleteRosterEntryResponse(
+        userId = userId,
+        displayName = displayName.value,
+        phone = phone,
+        position = position?.name,
+        membershipType = membershipType.name,
+        active = active,
+        nickname = nickname,
+        secondaryPosition = secondaryPosition?.name,
+        level = level?.name,
+        preferredSide = preferredSide?.name,
+        heightCm = heightCm,
+        monthlyFeeCents = monthlyFeeCents.takeIf { canReadFinancial },
+        monthlyDueDay = monthlyDueDay.takeIf { canReadFinancial },
+        joinedAt = joinedAt,
+        financialStatus = when (role) {
+            GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
+            GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
+        },
+    )
+}
+
+private fun AthleteStats.toResponse() = AthleteStatsResponse(games, attendanceRate, absences)

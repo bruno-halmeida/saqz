@@ -3,9 +3,12 @@ package br.com.saqz.groups.adapter.output.jdbc.athlete
 import br.com.saqz.groups.application.athlete.AthleteMembership
 import br.com.saqz.groups.application.athlete.AthleteRepository
 import br.com.saqz.groups.application.athlete.UpdateAthleteCommand
+import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfileCommand
 import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
@@ -25,6 +28,13 @@ class JdbcAthleteRepository(
             u.display_name,
             CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role END AS role,
             m.position,
+            m.secondary_position,
+            m.level,
+            m.preferred_side,
+            m.height_cm,
+            m.nickname,
+            m.monthly_fee_cents,
+            m.monthly_due_day,
             m.membership_type,
             m.active
         FROM group_memberships m
@@ -39,53 +49,38 @@ class JdbcAthleteRepository(
         .optional()
         .orElse(null)
 
-    override fun updatePosition(groupId: UUID, userId: UUID, position: AthletePosition?): AthleteMembership = jdbc.sql(
+    override fun updateOwn(command: UpdateOwnAthleteProfileCommand): AthleteMembership = jdbc.sql(
         """
         WITH updated AS (
             UPDATE group_memberships
-            SET position = :position, updated_at = now()
+            SET nickname = :nickname,
+                position = :position,
+                secondary_position = :secondaryPosition,
+                level = :level,
+                preferred_side = :preferredSide,
+                height_cm = :heightCm,
+                updated_at = now()
             WHERE group_id = :groupId AND user_id = :userId
               AND EXISTS (
                   SELECT 1 FROM access_groups g
                   WHERE g.id = :groupId AND g.deleted_at IS NULL
               )
-            RETURNING user_id, group_id, role, position, membership_type, active
+            RETURNING user_id, group_id, role, position, secondary_position, level,
+                      preferred_side, height_cm, nickname, monthly_fee_cents,
+                      monthly_due_day, membership_type, active
         )
         SELECT
             updated.user_id,
             u.display_name,
             CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role END AS role,
             updated.position,
-            updated.membership_type,
-            updated.active
-        FROM updated
-        JOIN access_users u ON u.id = updated.user_id
-        JOIN access_groups g ON g.id = updated.group_id AND g.deleted_at IS NULL
-        """.trimIndent(),
-    )
-        .param("groupId", groupId)
-        .param("userId", userId)
-        .param("position", position?.name, Types.VARCHAR)
-        .query(::mapAthlete)
-        .single()
-
-    override fun update(command: UpdateAthleteCommand): AthleteMembership = jdbc.sql(
-        """
-        WITH updated AS (
-            UPDATE group_memberships
-            SET position = :position, membership_type = :membershipType, active = :active, updated_at = now()
-            WHERE group_id = :groupId AND user_id = :userId
-              AND EXISTS (
-                  SELECT 1 FROM access_groups g
-                  WHERE g.id = :groupId AND g.deleted_at IS NULL
-              )
-            RETURNING user_id, group_id, role, position, membership_type, active
-        )
-        SELECT
-            updated.user_id,
-            u.display_name,
-            CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role END AS role,
-            updated.position,
+            updated.secondary_position,
+            updated.level,
+            updated.preferred_side,
+            updated.height_cm,
+            updated.nickname,
+            updated.monthly_fee_cents,
+            updated.monthly_due_day,
             updated.membership_type,
             updated.active
         FROM updated
@@ -95,7 +90,82 @@ class JdbcAthleteRepository(
     )
         .param("groupId", command.groupId)
         .param("userId", command.userId)
+        .param("nickname", command.nickname, Types.VARCHAR)
         .param("position", command.position?.name, Types.VARCHAR)
+        .param("secondaryPosition", command.secondaryPosition?.name, Types.VARCHAR)
+        .param("level", command.level?.name, Types.VARCHAR)
+        .param("preferredSide", command.preferredSide?.name, Types.VARCHAR)
+        .param("heightCm", command.heightCm, Types.SMALLINT)
+        .query(::mapAthlete)
+        .single()
+
+    override fun updatePosition(groupId: UUID, userId: UUID, position: AthletePosition?): AthleteMembership =
+        updateOwn(
+            UpdateOwnAthleteProfileCommand(
+                groupId = groupId,
+                userId = userId,
+                nickname = null,
+                position = position,
+                secondaryPosition = null,
+                level = null,
+                preferredSide = null,
+                heightCm = null,
+            ),
+        )
+
+    override fun update(command: UpdateAthleteCommand): AthleteMembership = jdbc.sql(
+        """
+        WITH updated AS (
+            UPDATE group_memberships
+            SET nickname = :nickname,
+                position = :position,
+                secondary_position = :secondaryPosition,
+                level = :level,
+                preferred_side = :preferredSide,
+                height_cm = :heightCm,
+                monthly_fee_cents = :monthlyFeeCents,
+                monthly_due_day = :monthlyDueDay,
+                membership_type = :membershipType,
+                active = :active,
+                updated_at = now()
+            WHERE group_id = :groupId AND user_id = :userId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups g
+                  WHERE g.id = :groupId AND g.deleted_at IS NULL
+              )
+            RETURNING user_id, group_id, role, position, secondary_position, level,
+                      preferred_side, height_cm, nickname, monthly_fee_cents,
+                      monthly_due_day, membership_type, active
+        )
+        SELECT
+            updated.user_id,
+            u.display_name,
+            CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role END AS role,
+            updated.position,
+            updated.secondary_position,
+            updated.level,
+            updated.preferred_side,
+            updated.height_cm,
+            updated.nickname,
+            updated.monthly_fee_cents,
+            updated.monthly_due_day,
+            updated.membership_type,
+            updated.active
+        FROM updated
+        JOIN access_users u ON u.id = updated.user_id
+        JOIN access_groups g ON g.id = updated.group_id AND g.deleted_at IS NULL
+        """.trimIndent(),
+    )
+        .param("groupId", command.groupId)
+        .param("userId", command.userId)
+        .param("nickname", command.nickname, Types.VARCHAR)
+        .param("position", command.position?.name, Types.VARCHAR)
+        .param("secondaryPosition", command.secondaryPosition?.name, Types.VARCHAR)
+        .param("level", command.level?.name, Types.VARCHAR)
+        .param("preferredSide", command.preferredSide?.name, Types.VARCHAR)
+        .param("heightCm", command.heightCm, Types.SMALLINT)
+        .param("monthlyFeeCents", command.monthlyFeeCents, Types.BIGINT)
+        .param("monthlyDueDay", command.monthlyDueDay, Types.SMALLINT)
         .param("membershipType", command.membershipType.name)
         .param("active", command.active)
         .query(::mapAthlete)
@@ -137,7 +207,24 @@ class JdbcAthleteRepository(
         displayName = AccessName.from(rs.getString("display_name")),
         role = GroupRole.valueOf(rs.getString("role")),
         position = rs.getString("position")?.let(AthletePosition::valueOf),
+        secondaryPosition = rs.getString("secondary_position")?.let(AthletePosition::valueOf),
+        level = rs.getString("level")?.let(AthleteLevel::valueOf),
+        preferredSide = rs.getString("preferred_side")?.let(AthletePreferredSide::valueOf),
+        heightCm = rs.getNullableInt("height_cm"),
+        nickname = rs.getString("nickname"),
+        monthlyFeeCents = rs.getNullableLong("monthly_fee_cents"),
+        monthlyDueDay = rs.getNullableInt("monthly_due_day"),
         membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
         active = rs.getBoolean("active"),
     )
+
+    private fun ResultSet.getNullableInt(column: String): Int? {
+        val value = getInt(column)
+        return if (wasNull()) null else value
+    }
+
+    private fun ResultSet.getNullableLong(column: String): Long? {
+        val value = getLong(column)
+        return if (wasNull()) null else value
+    }
 }
