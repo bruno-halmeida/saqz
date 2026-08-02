@@ -30,9 +30,22 @@ class ProfilePhotoSelectionScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun selectionSheet() = capture("7b-folha-foto") {
+    fun selectionSheetWithPhoto() = capture("7b-folha-foto") {
         ProfilePhotoSelectionSheet(
             open = true,
+            photoUrl = "/api/session/photo?v=preview",
+            onClose = {},
+            onTakePhoto = {},
+            onChooseFromGallery = {},
+            onRemovePhoto = {},
+        )
+    }
+
+    @Test
+    fun selectionSheetWithoutPhoto() = capture("7b-folha-foto-sem-foto") {
+        ProfilePhotoSelectionSheet(
+            open = true,
+            photoUrl = null,
             onClose = {},
             onTakePhoto = {},
             onChooseFromGallery = {},

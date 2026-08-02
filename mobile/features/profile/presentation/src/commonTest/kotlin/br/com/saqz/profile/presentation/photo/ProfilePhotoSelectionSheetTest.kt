@@ -18,6 +18,7 @@ class ProfilePhotoSelectionSheetTest {
             SaqzTheme {
                 ProfilePhotoSelectionSheet(
                     open = true,
+                    photoUrl = "/api/session/photo?v=preview",
                     onClose = {},
                     onTakePhoto = { actions += "camera" },
                     onChooseFromGallery = { actions += "library" },
@@ -42,6 +43,7 @@ class ProfilePhotoSelectionSheetTest {
             SaqzTheme {
                 ProfilePhotoSelectionSheet(
                     open = true,
+                    photoUrl = null,
                     onClose = {},
                     onTakePhoto = {},
                     onChooseFromGallery = {},
@@ -54,5 +56,23 @@ class ProfilePhotoSelectionSheetTest {
         onNodeWithText("Permita o acesso à câmera nas configurações do celular para tirar uma foto.").assertExists()
         onNodeWithText("Permita o acesso às fotos nas configurações do celular para escolher uma imagem.")
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun `sheet hides remove action without a photo`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                ProfilePhotoSelectionSheet(
+                    open = true,
+                    photoUrl = null,
+                    onClose = {},
+                    onTakePhoto = {},
+                    onChooseFromGallery = {},
+                    onRemovePhoto = {},
+                )
+            }
+        }
+
+        onNodeWithTag(ProfilePhotoTags.Remove).assertDoesNotExist()
     }
 }

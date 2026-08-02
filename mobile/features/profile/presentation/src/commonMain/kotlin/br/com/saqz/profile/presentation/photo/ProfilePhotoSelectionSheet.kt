@@ -43,6 +43,7 @@ object ProfilePhotoTags {
 @Composable
 fun ProfilePhotoSelectionSheet(
     open: Boolean,
+    photoUrl: String?,
     onClose: () -> Unit,
     onTakePhoto: () -> Unit,
     onChooseFromGallery: () -> Unit,
@@ -68,12 +69,14 @@ fun ProfilePhotoSelectionSheet(
             onClick = onChooseFromGallery,
             tag = ProfilePhotoTags.Library,
         )
-        ProfilePhotoAction(
-            label = stringResource(Res.string.profile_photo_remove),
-            onClick = onRemovePhoto,
-            tag = ProfilePhotoTags.Remove,
-            icon = SaqzIcons.Trash,
-        )
+        if (photoUrl != null) {
+            ProfilePhotoAction(
+                label = stringResource(Res.string.profile_photo_remove),
+                onClick = onRemovePhoto,
+                tag = ProfilePhotoTags.Remove,
+                icon = SaqzIcons.Trash,
+            )
+        }
         if (error != null) {
             Spacer(Modifier.heightIn(min = metrics.subGrid))
             ProfilePhotoErrorText(error, Modifier.testTag(ProfilePhotoTags.Error))
