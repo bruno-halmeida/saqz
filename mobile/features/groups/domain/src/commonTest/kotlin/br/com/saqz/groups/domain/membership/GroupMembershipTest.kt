@@ -48,13 +48,6 @@ class GroupMembershipTest {
     }
 
     @Test
-    fun `redeemed membership preserves group and role`() {
-        val result = RedeemedMembership(GroupId("group-1"), GroupRole.ADMIN)
-
-        assertEquals(GroupId("group-1") to GroupRole.ADMIN, result.groupId to result.role)
-    }
-
-    @Test
     fun `invalid or expired remains a feature outcome`() {
         assertEquals(GroupMembershipError.InvalidOrExpired, GroupMembershipError.InvalidOrExpired)
     }

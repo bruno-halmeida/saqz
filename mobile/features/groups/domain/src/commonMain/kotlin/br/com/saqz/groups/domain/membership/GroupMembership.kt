@@ -23,11 +23,6 @@ data class GroupMembership(
 @JvmInline
 value class GroupInviteUrl(val value: String)
 
-data class RedeemedMembership(
-    val groupId: GroupId,
-    val role: GroupRole,
-)
-
 data class ChangeMembershipRoleCommand(
     val groupId: GroupId,
     val userId: String,
@@ -64,8 +59,4 @@ interface GroupMembershipGateway {
     suspend fun expireInvite(
         groupId: GroupId,
     ): EmptyResult<GroupMembershipError>
-
-    suspend fun redeem(
-        code: InviteCode,
-    ): SaqzResult<RedeemedMembership, GroupMembershipError>
 }

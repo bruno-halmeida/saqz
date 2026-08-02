@@ -22,6 +22,10 @@ class InviteLandingScreenTest {
         setScreen(InviteLandingSamples.preview) { intents += it }
 
         onNodeWithTag(InviteLandingTags.Preview).assertExists()
+        onNodeWithText("Misto").assertExists()
+        onNodeWithText("Intermediário").assertExists()
+        onNodeWithText("Terças e quintas").assertExists()
+        onNodeWithText("Ter, 04/08 · 19h30").assertExists()
         onNodeWithText("Pedir pra entrar").performClick()
         onAllNodesWithTag(InviteLandingTags.RequestSent).assertCountEquals(0)
         assertEquals(InviteLandingIntent.PrimaryAction, intents.single())

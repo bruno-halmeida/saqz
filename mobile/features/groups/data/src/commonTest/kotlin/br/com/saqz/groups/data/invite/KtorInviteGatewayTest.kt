@@ -57,6 +57,23 @@ class KtorInviteGatewayTest {
     }
 
     @Test
+    fun `preview remains public when token is unavailable`() = runTest {
+        var calls = 0
+        val fixture = fixture(
+            MockEngine {
+                calls++
+                preview()
+            },
+            tokenResult = TokenResult.Unavailable,
+        )
+
+        val card = fixture.gateway.preview(InviteCode(INVITE_CODE)).success()
+
+        assertEquals("Vôlei do CERET", card.groupName)
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun `preview maps invalid invite`() = runTest {
         val error = fixture { problem(404, "INVITE_INVALID") }.gateway
             .preview(InviteCode(INVITE_CODE)).failure()
@@ -136,12 +153,16 @@ class KtorInviteGatewayTest {
         response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
     ) = fixture(MockEngine { response(it) })
 
-    private fun fixture(engine: MockEngine): Fixture {
+    private fun fixture(
+        engine: MockEngine,
+        tokenResult: TokenResult = TokenResult.Available("fake-token"),
+    ): Fixture {
         val delays = mutableListOf<Long>()
         val network = NetworkClient(engine, NetworkConfig(NetworkEnvironment.Test, "https://api.test/"))
         return Fixture(
             gateway = KtorInviteGateway(
-                AuthenticatedNetworkClient(network, Tokens(), NoopInvalidator()),
+                network = network,
+                authenticatedNetwork = AuthenticatedNetworkClient(network, Tokens(tokenResult), NoopInvalidator()),
                 retryDelay = { delays += it },
             ),
             delays = delays,
@@ -202,9 +223,9 @@ class KtorInviteGatewayTest {
     private fun SaqzResult<*, InviteError>.failure() =
         assertIs<SaqzResult.Failure<InviteError>>(this).error
 
-    private class Tokens : IdTokenProvider {
+    private class Tokens(private val tokenResult: TokenResult) : IdTokenProvider {
         override fun token(forceRefresh: Boolean, completion: (TokenResult) -> Unit) =
-            completion(TokenResult.Available("fake-token"))
+            completion(tokenResult)
     }
 
     private class NoopInvalidator : SessionInvalidator {

@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.membership.InviteRedeem
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.domain.membership.InviteRegularSlot
 import br.com.saqz.network.AuthenticatedNetworkClient
+import br.com.saqz.network.NetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkRequest
 import br.com.saqz.network.NetworkResult
@@ -66,7 +67,8 @@ private data class InviteRedeemTransport(
 )
 
 class KtorInviteGateway(
-    private val network: AuthenticatedNetworkClient,
+    private val network: NetworkClient,
+    private val authenticatedNetwork: AuthenticatedNetworkClient,
     private val json: Json = Json { explicitNulls = false },
     private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
 ) : InviteGateway {
@@ -76,11 +78,11 @@ class KtorInviteGateway(
                 HttpMethod.Post,
                 "api/invites/preview",
                 InvitePreviewTransport.serializer(),
-                NetworkRequest(json.encodeToString(InviteCodeRequestTransport(code.value))),
+                request = NetworkRequest(json.encodeToString(InviteCodeRequestTransport(code.value))),
             )
         }.toPreviewResult()
 
-    override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> = network.execute(
+    override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> = authenticatedNetwork.execute(
         HttpMethod.Post,
         "api/invites/redeem",
         InviteRedeemTransport.serializer(),

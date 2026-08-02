@@ -11,4 +11,26 @@
     <string name="invite_landing_request_action">Pedir pra entrar</string>
     <string name="invite_landing_join_action">Entrar no grupo</string>
     <string name="invite_landing_other_groups">Ver outros grupos</string>
+    <string name="invite_landing_composition_women">Feminino</string>
+    <string name="invite_landing_composition_men">Masculino</string>
+    <string name="invite_landing_composition_mixed">Misto</string>
+    <string name="invite_landing_level_beginner">Iniciante</string>
+    <string name="invite_landing_level_intermediate">Intermediário</string>
+    <string name="invite_landing_level_advanced">Avançado</string>
+    <string name="invite_landing_level_mixed">Níveis mistos</string>
+    <string name="invite_landing_level_custom">Personalizada</string>
+    <string name="invite_landing_weekday_sunday">domingos</string>
+    <string name="invite_landing_weekday_monday">segundas</string>
+    <string name="invite_landing_weekday_tuesday">terças</string>
+    <string name="invite_landing_weekday_wednesday">quartas</string>
+    <string name="invite_landing_weekday_thursday">quintas</string>
+    <string name="invite_landing_weekday_friday">sextas</string>
+    <string name="invite_landing_weekday_saturday">sábados</string>
+    <string name="invite_landing_weekday_short_sunday">Dom</string>
+    <string name="invite_landing_weekday_short_monday">Seg</string>
+    <string name="invite_landing_weekday_short_tuesday">Ter</string>
+    <string name="invite_landing_weekday_short_wednesday">Qua</string>
+    <string name="invite_landing_weekday_short_thursday">Qui</string>
+    <string name="invite_landing_weekday_short_friday">Sex</string>
+    <string name="invite_landing_weekday_short_saturday">Sáb</string>
 </resources>

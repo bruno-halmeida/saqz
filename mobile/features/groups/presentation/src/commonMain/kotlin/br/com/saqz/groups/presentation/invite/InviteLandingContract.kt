@@ -15,10 +15,10 @@ data class InviteLandingState(
 data class InvitePreviewUi(
     val groupName: String,
     val city: String?,
-    val composition: String?,
-    val level: String?,
+    val compositionCode: String?,
+    val levelCode: String?,
     val memberCount: Int,
-    val regularSchedule: String?,
+    val regularWeekdays: List<String>,
     val inviterName: String,
     val nextGame: InviteNextGameUi?,
     val entryRequiresApproval: Boolean,
@@ -26,7 +26,9 @@ data class InvitePreviewUi(
 
 @Immutable
 data class InviteNextGameUi(
-    val startsAt: String,
+    val weekdayCode: String,
+    val date: String,
+    val time: String,
     val venueName: String,
     val court: String?,
 )

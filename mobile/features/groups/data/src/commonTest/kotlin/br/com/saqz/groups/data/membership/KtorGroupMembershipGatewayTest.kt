@@ -7,7 +7,6 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.GroupMembershipError
-import br.com.saqz.groups.domain.membership.InviteCode
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkClient
@@ -128,40 +127,6 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
-    fun `redeem uses exact global route`() = runTest {
-        fixture { request ->
-            assertEquals(HttpMethod.Post, request.method)
-            assertEquals("/api/invites/redeem", request.url.encodedPath)
-            redeemed("ATHLETE")
-        }.gateway.redeem(InviteCode(INVITE_CODE))
-    }
-
-    @Test
-    fun `redeem sends invite code as only body field`() = runTest {
-        fixture { request ->
-            val body = request.bodyJson()
-            assertEquals(setOf("code"), body.keys)
-            assertEquals(INVITE_CODE, body.getValue("code").jsonPrimitive.content)
-            redeemed("ATHLETE")
-        }.gateway.redeem(InviteCode(INVITE_CODE))
-    }
-
-    @Test
-    fun `redeem maps authoritative group and role`() = runTest {
-        val redeemed = fixture { redeemed("ADMIN") }.gateway.redeem(InviteCode(INVITE_CODE)).success()
-
-        assertEquals(GroupId(GROUP_ID) to GroupRole.ADMIN, redeemed.groupId to redeemed.role)
-    }
-
-    @Test
-    fun `validation preserves exact field messages`() = runTest {
-        val error = fixture { problem(400, "VALIDATION_FAILED", fields = "\"code\":[\"invalid\"]") }
-            .gateway.redeem(InviteCode(INVITE_CODE)).failure()
-
-        assertEquals(listOf("invalid"), assertIs<GroupMembershipError.Validation>(error).details.fieldMessages["code"])
-    }
-
-    @Test
     fun `forbidden maps shared forbidden`() = runTest {
         assertEquals(
             DataError.Forbidden,
@@ -176,40 +141,6 @@ class KtorGroupMembershipGatewayTest {
             DataError.NotFound,
             fixture { problem(404, "GROUP_NOT_FOUND") }.gateway.changeRole(change()).dataError(),
         )
-    }
-
-    @Test
-    fun `invalid invite maps feature outcome`() = runTest {
-        val result = fixture { problem(404, "INVITE_INVALID_OR_EXPIRED") }
-            .gateway.redeem(InviteCode(INVITE_CODE))
-
-        assertIs<GroupMembershipError.InvalidOrExpired>(result.failure())
-        assertFalse(result.toString().contains(INVITE_CODE))
-        assertFalse(result.toString().contains("private"))
-    }
-
-    @Test
-    fun `attempt limit preserves exact retry delay with zero automatic retries`() = runTest {
-        var calls = 0
-        val fixture = fixture {
-            calls++
-            problem(429, "INVITE_ATTEMPT_LIMIT", retryAfterSeconds = 37)
-        }
-        val error = fixture.gateway.redeem(InviteCode(INVITE_CODE)).failure()
-
-        assertEquals(37, assertIs<GroupMembershipError.AttemptLimit>(error).retryAfterSeconds)
-        assertEquals(1, calls)
-        assertTrue(fixture.delays.isEmpty())
-        assertFalse(error.toString().contains("INVITE_ATTEMPT_LIMIT"))
-        assertFalse(error.toString().contains("private"))
-    }
-
-    @Test
-    fun `attempt limit preserves missing retry delay`() = runTest {
-        val error = fixture { problem(429, "INVITE_ATTEMPT_LIMIT") }
-            .gateway.redeem(InviteCode(INVITE_CODE)).failure()
-
-        assertEquals(null, assertIs<GroupMembershipError.AttemptLimit>(error).retryAfterSeconds)
     }
 
     @Test
@@ -264,7 +195,6 @@ class KtorGroupMembershipGatewayTest {
         assertSingleCall { it.changeRole(change()) }
         assertSingleCall { it.rotateInvite(GroupId(GROUP_ID)) }
         assertSingleCall { it.expireInvite(GroupId(GROUP_ID)) }
-        assertSingleCall { it.redeem(InviteCode(INVITE_CODE)) }
     }
 
     @Test
@@ -335,11 +265,6 @@ class KtorGroupMembershipGatewayTest {
         headers = jsonHeaders(),
     )
 
-    private fun MockRequestHandleScope.redeemed(role: String) = respond(
-        """{"groupId":"$GROUP_ID","role":"$role"}""",
-        headers = jsonHeaders(),
-    )
-
     private fun MockRequestHandleScope.noContent() = respond("", HttpStatusCode.NoContent)
 
     private fun MockRequestHandleScope.problem(
@@ -394,7 +319,6 @@ class KtorGroupMembershipGatewayTest {
     private companion object {
         const val GROUP_ID = "group-1"
         const val USER_ID = "user-1"
-        const val INVITE_CODE = "fake-invite-code"
         const val INVITE_URL = "https://join.example.test/invite/fake"
     }
 }
