@@ -91,6 +91,11 @@ class AnonymousInvitePreviewRateLimiter {
         windows[ipAddress] = Window(startedAt, (current?.invalidCount ?: 0) + 1)
     }
 
+    @Synchronized
+    fun clear() {
+        windows.clear()
+    }
+
     private fun activeWindow(ipAddress: String, now: Instant): Window? {
         val current = windows[ipAddress] ?: return null
         if (now >= current.startedAt.plus(WINDOW)) {
