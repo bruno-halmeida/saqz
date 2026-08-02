@@ -408,10 +408,43 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
+    fun `single supplementary character nickname returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"nickname":"😀"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("nickname"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `forty supplementary character nickname is accepted`() {
+        putSession()
+        val nickname = "😀".repeat(40)
+
+        val response = patchProfile("""{"nickname":"$nickname"}""")
+
+        assertEquals(200, response.statusCode())
+        assertEquals(nickname, repository.profileCommands.single().nickname)
+    }
+
+    @Test
     fun `oversized city returns a stable field validation problem`() {
         putSession()
 
         val response = patchProfile("""{"city":"${"a".repeat(81)}"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("city"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `city with a NUL escape returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"city":"A\u0000B"}""")
 
         assertProblem(response, 400, "VALIDATION_FAILED")
         assertTrue(json(response)["fieldErrors"].has("city"))

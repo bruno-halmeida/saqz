@@ -45,7 +45,7 @@ class CompleteSessionProfile(
             return CompleteSessionProfileResult.InvalidNickname
         }
         val city = rawCity?.takeUnless(String::isBlank)
-        if (cityProvided && city != null && city.length > 80) {
+        if (cityProvided && city != null && (city.length > 80 || !city.codePoints().noneMatch(Character::isISOControl))) {
             return CompleteSessionProfileResult.InvalidCity
         }
         val session = repository.updateProfile(
@@ -67,6 +67,8 @@ class CompleteSessionProfile(
         return CompleteSessionProfileResult.Success(session)
     }
 
-    private fun String.isValidNickname(): Boolean =
-        this == trim() && length in 2..40 && none(Char::isISOControl)
+    private fun String.isValidNickname(): Boolean {
+        val length = codePointCount(0, this.length)
+        return this == trim() && length in 2..40 && codePoints().noneMatch(Character::isISOControl)
+    }
 }

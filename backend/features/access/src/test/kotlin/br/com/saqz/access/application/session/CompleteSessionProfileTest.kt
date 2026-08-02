@@ -165,6 +165,41 @@ class CompleteSessionProfileTest {
     }
 
     @Test
+    fun `nickname with one supplementary character is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = "😀",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidNickname, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nickname with forty supplementary characters is accepted`() {
+        val repository = RecordingSessionRepository(view)
+        val nickname = "😀".repeat(40)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = nickname,
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertEquals(CompleteSessionProfileResult.Success(view), result)
+        assertEquals(nickname, repository.commands.single().nickname)
+    }
+
+    @Test
     fun `untrimmed nickname is rejected before write`() {
         val repository = RecordingSessionRepository(view)
 
@@ -207,6 +242,23 @@ class CompleteSessionProfileTest {
             rawPhone = null,
             rawDisplayName = null,
             rawCity = "a".repeat(81),
+            phoneProvided = false,
+            cityProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidCity, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `city with a control character is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawCity = "A\u0000B",
             phoneProvided = false,
             cityProvided = true,
         )
