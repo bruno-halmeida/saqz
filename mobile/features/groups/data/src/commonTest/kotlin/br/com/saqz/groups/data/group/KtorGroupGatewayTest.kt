@@ -284,6 +284,29 @@ class KtorGroupGatewayTest {
             }
         }
 
+    @Test fun `delete uses exact route and maps no content to success`() =
+        runTest {
+            val result = fixture { req ->
+                assertEquals(HttpMethod.Delete, req.method)
+                assertEquals("/api/groups/$ID", req.url.encodedPath)
+                respond("", HttpStatusCode.NoContent)
+            }.gateway.delete(GroupId(ID))
+
+            assertIs<SaqzResult.Success<Unit>>(result)
+        }
+
+    @Test fun `delete maps forbidden and not found to typed group errors`() =
+        runTest {
+            assertEquals(
+                DataError.Forbidden,
+                fixture { problem(403, "FORBIDDEN") }.gateway.delete(GroupId(ID)).dataError(),
+            )
+            assertEquals(
+                DataError.NotFound,
+                fixture { problem(404, "NOT_FOUND") }.gateway.delete(GroupId(ID)).dataError(),
+            )
+        }
+
     private fun fixture(response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) =
         fixture(MockEngine { response(it) })
 

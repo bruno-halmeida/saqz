@@ -111,10 +111,14 @@ internal fun SaqzAppShell(
     ) {
         // Acima do conteúdo e fora do `Box` com peso: a faixa empurra a aba para baixo em
         // vez de flutuar sobre ela — nada do que a pessoa ia tocar fica coberto.
-        if (activeTab == SaqzShellGroupsTab) {
+        Box(
+            modifier = if (activeTab == SaqzShellGroupsTab) {
+                Modifier
+            } else {
+                Modifier.windowInsetsPadding(WindowInsets.statusBars)
+            },
+        ) {
             banner()
-        } else {
-            Box(Modifier.windowInsetsPadding(WindowInsets.statusBars)) { banner() }
         }
         Box(
             modifier = Modifier

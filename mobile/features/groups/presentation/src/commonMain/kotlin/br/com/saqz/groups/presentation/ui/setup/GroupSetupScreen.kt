@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,6 +21,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzOfflineBanner
+import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupComposition
@@ -106,7 +108,7 @@ fun GroupSetupScreen(
                 ),
                 onBack = onBack,
                 actions = {
-                    if (state.isEditing) {
+                    if (state.isEditing && state.canDelete) {
                         val deleteLabel = stringResource(Res.string.group_setup_delete_action)
                         SaqzIconButton(
                             onClick = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.ConfirmDelete)) },
@@ -119,6 +121,10 @@ fun GroupSetupScreen(
                     }
                 },
             )
+            if (state.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { SaqzSpinner() }
+                return@Column
+            }
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -361,6 +367,7 @@ private fun GroupSetupEditPreview() = SaqzTheme {
             form = PreviewCourtForm,
             photoUrl = "https://saqz.example/ceret.png",
             memberCount = 26,
+            canDelete = true,
         ),
         onIntent = {},
         onBack = {},
@@ -377,6 +384,7 @@ private fun GroupSetupDeletePreview() = SaqzTheme {
             form = PreviewCourtForm,
             photoUrl = "https://saqz.example/ceret.png",
             memberCount = 26,
+            canDelete = true,
             sheet = GroupSetupSheet.ConfirmDelete,
         ),
         onIntent = {},

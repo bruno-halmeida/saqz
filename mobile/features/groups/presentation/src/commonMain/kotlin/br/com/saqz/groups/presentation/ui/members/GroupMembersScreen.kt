@@ -28,6 +28,7 @@ import br.com.saqz.groups.presentation.members.GroupMembersState
 import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.MemberUi
 import br.com.saqz.groups.presentation.members.memberCount
+import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_members_admins
 import br.com.saqz.groups.resources.group_members_invite
@@ -99,6 +100,13 @@ fun GroupMembersScreen(
                 }
                 if (state.isLoading) {
                     item(key = "loading") { GroupMembersLoading() }
+                } else if (state.loadFailed) {
+                    item(key = "failure") {
+                        GroupLoadFailure(
+                            error = state.error,
+                            onRetry = { onIntent(GroupMembersIntent.Retry) },
+                        )
+                    }
                 } else {
                     membersContent(state, onIntent)
                 }

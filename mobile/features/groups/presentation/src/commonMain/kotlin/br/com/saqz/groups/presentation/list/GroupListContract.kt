@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.list
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.presentation.GroupUiError
 
 /**
  * 2n — lista de grupos. 2o não é tela separada: é [isEmpty], a lista sem grupo e sem convite.
@@ -10,6 +11,7 @@ import br.com.saqz.groups.model.GroupModality
 data class GroupListState(
     val isLoading: Boolean = true,
     val loadFailed: Boolean = false,
+    val error: GroupUiError? = null,
     val groups: List<GroupCardUi> = emptyList(),
     val invite: GroupInviteUi? = null,
 ) {

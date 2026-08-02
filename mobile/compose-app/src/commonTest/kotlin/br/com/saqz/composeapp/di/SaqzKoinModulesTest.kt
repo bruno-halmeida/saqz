@@ -66,6 +66,9 @@ import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.MonthlyDraftReadResult
 import br.com.saqz.groups.port.MonthlyDraftWriteResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupSystemTimeZonePort
+import br.com.saqz.groups.data.di.groupsDataModule
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
 import br.com.saqz.groups.presentation.list.GroupListViewModel
@@ -89,6 +92,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -140,6 +145,7 @@ class SaqzKoinModulesTest {
         single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groups.photos.encoder }
         single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
         single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
+        single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
     }
 
     @Test
@@ -153,6 +159,7 @@ class SaqzKoinModulesTest {
                 accessDataModule,
                 accessInvalidationModule,
                 subscriptionsDataModule,
+                groupsDataModule(),
             )
         }
         val koin = app.koin
@@ -242,11 +249,10 @@ class SaqzKoinModulesTest {
      * — o que se verifica é a definição, não a origem do handle.
      *
      * A quinta, `GroupScheduleViewModel`, é `internal` ao módulo dela (o `State` carrega o
-     * `SlotDraft`, também `internal`), então nenhum teste deste módulo consegue nomeá-la —
-     * e este é o único teste que pode subir container (AGENTS.md §7), então a definição
-     * dela não tem cobertura de resolução automatizada. O que existe no lugar: a construção
-     * direta em `GroupsInitialStateTest` e a passagem pela tela no emulador. Tornar a
-     * ViewModel pública só para o teste desfaria a decisão de encapsulamento do VUL-71.
+     * `SlotDraft`, também `internal`), então nenhum teste deste módulo consegue nomeá-la.
+     * A definição permanece no mesmo módulo Koin e a construção direta fica coberta pelos
+     * testes de apresentação; tornar a ViewModel pública só para este teste desfaria a
+     * decisão de encapsulamento do VUL-71.
      */
     @Test
     fun groupsPresentationModuleResolvesWithTheRouteArguments() {
@@ -260,7 +266,8 @@ class SaqzKoinModulesTest {
                 accessInvalidationModule,
                 accessPresentationModule,
                 composePresentationModule,
-                groupsPresentationModule(sampleContent = true),
+                groupsDataModule(),
+                groupsPresentationModule(),
             )
         }
         val koin = app.koin
@@ -318,6 +325,12 @@ class SaqzKoinModulesTest {
         // Any authenticated call is enough: the invalidator lives in the network client,
         // not in the gateway. Bootstrap is the one the reset keeps.
         koin.get<SessionGateway>().bootstrap()
+
+        // The invalidator deliberately owns a callback chain on the app scope, not the
+        // caller's test dispatcher; wait for that callback before asserting its effects.
+        withTimeout(1_000) {
+            while (auth.signOutCalls == 0) delay(1)
+        }
 
         assertEquals(SessionAccessState.SignedOut, session.state.value)
         assertEquals(1, auth.signOutCalls)

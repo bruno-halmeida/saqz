@@ -27,6 +27,7 @@ import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
 import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import br.com.saqz.groups.presentation.ui.components.GroupRecurrenceSection
 import br.com.saqz.groups.presentation.ui.components.GroupSlotPicker
+import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_schedule_save
 import br.com.saqz.groups.resources.group_schedule_title
@@ -64,6 +65,11 @@ internal fun GroupScheduleScreen(
             ) {
                 if (state.isLoading) {
                     GroupScheduleLoading()
+                } else if (state.loadFailed) {
+                    GroupLoadFailure(
+                        error = state.error,
+                        onRetry = { onIntent(GroupScheduleIntent.Retry) },
+                    )
                 } else {
                     SaqzCard {
                         GroupRecurrenceSection(

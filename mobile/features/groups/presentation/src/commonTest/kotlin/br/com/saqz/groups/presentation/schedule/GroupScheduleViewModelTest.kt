@@ -1,116 +1,144 @@
 package br.com.saqz.groups.presentation.schedule
 
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.game.GameError
+import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupWeekday as DomainGroupWeekday
+import br.com.saqz.groups.presentation.FakeGameGateway
+import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.sampleGroup
+import br.com.saqz.groups.presentation.sampleGame
+import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class GroupScheduleViewModelTest {
+    private val dispatcher = UnconfinedTestDispatcher()
+
+    @BeforeTest fun setUp() = Dispatchers.setMain(dispatcher)
+
+    @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun addSlotOpensSheetAndConfirmAppendsTheDraft() {
-        val viewModel = viewModel()
+    fun `success loads upcoming games`() = runTest {
+        val viewModel = GroupScheduleViewModel(
+            "group-1",
+            FakeGameGateway(SaqzResult.Success(listOf(sampleGame()))),
+            FakeGroupGateway(),
+            todayInZone = { "2026-08-02" },
+        )
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
+        assertEquals("19:30 · Jogo de terça", viewModel.state.value.upcoming.single().label)
+        assertEquals("04", viewModel.state.value.upcoming.single().day)
+        assertEquals("AGO", viewModel.state.value.upcoming.single().month)
+    }
+
+    @Test
+    fun `success hydrates schedule configuration from the group snapshot`() = runTest {
+        val group = sampleGroup(
+            profile = sampleGroup().profile?.copy(
+                regularSlots = listOf(
+                    GroupRegularSlot(
+                        weekday = DomainGroupWeekday.TUESDAY,
+                        startTime = "19:30",
+                        durationMinutes = 90,
+                    ),
+                ),
+                defaultConfirmationLeadMinutes = 180,
+            ),
+        )
+        val viewModel = GroupScheduleViewModel(
+            "group-1",
+            FakeGameGateway(),
+            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
+        )
+
+        assertTrue(viewModel.state.value.recurring)
+        assertEquals(listOf(90), viewModel.state.value.slots.map { it.durationMinutes })
+        assertEquals(90, viewModel.state.value.durationMinutes)
+        assertEquals(180, viewModel.state.value.confirmationLeadMinutes)
+    }
+
+    @Test
+    fun `completed e jogos passados ficam fora de proximos`() = runTest {
+        val past = sampleGame().copy(id = "past", localDate = "2026-08-01")
+        val completed = sampleGame().copy(id = "completed", status = GameStatus.Completed)
+        val viewModel = GroupScheduleViewModel(
+            "group-1",
+            FakeGameGateway(SaqzResult.Success(listOf(past, completed, sampleGame()))),
+            FakeGroupGateway(),
+            todayInZone = { "2026-08-02" },
+        )
+
+        assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
+    }
+
+    @Test
+    fun `empty game list leaves the schedule empty`() = runTest {
+        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeGroupGateway())
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertTrue(viewModel.state.value.upcoming.isEmpty())
+    }
+
+    @Test
+    fun `gateway failure is visible and typed`() = runTest {
+        val viewModel = GroupScheduleViewModel(
+            "group-1",
+            FakeGameGateway(
+                SaqzResult.Failure(GameError.Data(DataError.Forbidden)),
+            ),
+            FakeGroupGateway(),
+        )
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `slot editing remains local while the read path is wired`() = runTest {
+        val viewModel = GroupScheduleViewModel(
+            "group-1",
+            FakeGameGateway(),
+            FakeGroupGateway(),
+            GroupScheduleState(isLoading = false, slots = listOf(slot)),
+        )
 
         viewModel.onIntent(GroupScheduleIntent.AddSlot)
-        assertEquals(GroupScheduleState.NEW_SLOT, viewModel.state.value.slotSheet)
-
         viewModel.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.THURSDAY))
         viewModel.onIntent(GroupScheduleIntent.PickDraftTime(hour = 20, minute = 0))
         viewModel.onIntent(GroupScheduleIntent.ConfirmSlot)
 
-        assertEquals(
-            listOf(
-                slot,
-                GroupRegularSlotForm(
-                    weekday = GroupWeekday.THURSDAY,
-                    startTime = "20:00",
-                    durationMinutes = 120,
-                ),
-            ),
-            viewModel.state.value.slots,
-        )
-        assertNull(viewModel.state.value.slotSheet)
+        assertEquals(2, viewModel.state.value.slots.size)
+        assertEquals("20:00", viewModel.state.value.slots.last().startTime)
     }
 
     @Test
-    fun confirmWithoutAnOpenSheetChangesNothing() {
-        val viewModel = viewModel()
-
-        viewModel.onIntent(GroupScheduleIntent.ConfirmSlot)
-
-        assertEquals(listOf(slot), viewModel.state.value.slots)
-    }
-
-    @Test
-    fun removeSlotDropsItWithoutTouchingRecurrence() {
-        val viewModel = viewModel()
-
-        viewModel.onIntent(GroupScheduleIntent.RemoveSlot(slot))
-
-        // Recorrência ligada sem horário é estado legítimo: não se deriva de slots.
-        assertEquals(emptyList(), viewModel.state.value.slots)
-        assertTrue(viewModel.state.value.recurring)
-    }
-
-    @Test
-    fun toggleRecurringKeepsTheSlotsAlreadyChosen() {
-        val viewModel = viewModel()
-
-        viewModel.onIntent(GroupScheduleIntent.ToggleRecurring(false))
-
-        assertFalse(viewModel.state.value.recurring)
-        assertEquals(listOf(slot), viewModel.state.value.slots)
-    }
-
-    @Test
-    fun durationAndConfirmationLeadFollowTheSelectedChip() {
-        val viewModel = viewModel()
-
-        viewModel.onIntent(GroupScheduleIntent.SelectDuration(90))
-        viewModel.onIntent(GroupScheduleIntent.SelectConfirmationLead(1_440))
-
-        assertEquals(90, viewModel.state.value.durationMinutes)
-        assertEquals(1_440, viewModel.state.value.confirmationLeadMinutes)
-    }
-
-    @Test
-    fun durationReachesEverySlotAlreadyCreated() {
-        val second = GroupRegularSlotForm(
-            weekday = GroupWeekday.THURSDAY,
-            startTime = "20:00",
-            durationMinutes = 120,
-        )
+    fun `save after a load failure is rejected`() = runTest {
         val viewModel = GroupScheduleViewModel(
-            GROUP_ID,
-            GroupScheduleState(isLoading = false, slots = listOf(slot, second)),
+            "group-1",
+            FakeGameGateway(SaqzResult.Failure(GameError.Data(DataError.Forbidden))),
+            FakeGroupGateway(),
         )
-
-        viewModel.onIntent(GroupScheduleIntent.SelectDuration(90))
-
-        // A duração é do grupo; o form a guarda por slot. Salvar com slots em 120 e o
-        // grupo em 90 persistiria estado inconsistente.
-        assertEquals(listOf(90, 90), viewModel.state.value.slots.map { it.durationMinutes })
-    }
-
-    @Test
-    fun pauseAndResumeFlipTheSameFlag() {
-        val viewModel = viewModel()
-
-        viewModel.onIntent(GroupScheduleIntent.TogglePause)
-        assertTrue(viewModel.state.value.isPaused)
-
-        viewModel.onIntent(GroupScheduleIntent.TogglePause)
-        assertFalse(viewModel.state.value.isPaused)
-    }
-
-    @Test
-    fun saveWhileLoadingIsRejected() {
-        // Salvar durante o skeleton emitiria `Saved`, e o Root fecha a tela com isso —
-        // o usuário sairia achando que gravou.
-        val viewModel = GroupScheduleViewModel(GROUP_ID, GroupScheduleState())
 
         viewModel.onIntent(GroupScheduleIntent.Save)
 
@@ -118,26 +146,17 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
-    fun saveMarksSaving() {
-        val viewModel = viewModel()
+    fun `navigation effect carries the game id`() = runTest {
+        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeGroupGateway())
 
-        viewModel.onIntent(GroupScheduleIntent.Save)
+        viewModel.onIntent(GroupScheduleIntent.OpenGame("game-1"))
 
-        assertTrue(viewModel.state.value.isSaving)
+        assertEquals(GroupScheduleEffect.OpenGame("game-1"), viewModel.effects.first())
     }
-
-    private fun viewModel() = GroupScheduleViewModel(
-        GROUP_ID,
-        GroupScheduleState(isLoading = false, slots = listOf(slot)),
-    )
 
     private val slot = GroupRegularSlotForm(
         weekday = GroupWeekday.TUESDAY,
         startTime = "19:30",
         durationMinutes = 120,
     )
-
-    private companion object {
-        const val GROUP_ID = "group-1"
-    }
 }

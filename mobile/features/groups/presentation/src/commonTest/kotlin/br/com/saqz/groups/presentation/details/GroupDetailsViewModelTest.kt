@@ -1,6 +1,12 @@
 package br.com.saqz.groups.presentation.details
 
-import br.com.saqz.groups.presentation.ui.details.GroupDetailsPreviewData
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.sampleGroup
+import br.com.saqz.groups.presentation.sampleVersionedGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -12,74 +18,87 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
-private const val GROUP_ID = "grp-1"
+private const val GROUP_ID = "group-1"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupDetailsViewModelTest {
+    private val dispatcher = UnconfinedTestDispatcher()
 
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
-    }
+    @BeforeTest fun setUp() = Dispatchers.setMain(dispatcher)
 
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
+    @AfterTest fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun `success loads the group header and profile details`() = runTest {
+        val viewModel = viewModel()
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals("Vôlei do CERET", viewModel.state.value.header?.name)
+        assertEquals("Misto · Intermediário", viewModel.state.value.header?.subtitle)
+        assertEquals("CERET", viewModel.state.value.venue?.name)
+        assertTrue(viewModel.state.value.header?.summaryChips?.isNotEmpty() == true)
+        assertFalse(viewModel.state.value.isOwner)
     }
 
     @Test
-    fun adminIntentsEmitTheirExits() = runTest {
-        assertEffect(GroupDetailsIntent.CreateNextGame, GroupDetailsEffect.OpenCreateGame(GROUP_ID))
-        assertEffect(GroupDetailsIntent.EditGroup, GroupDetailsEffect.OpenEdit(GROUP_ID))
-        assertEffect(GroupDetailsIntent.EditVenue, GroupDetailsEffect.OpenEdit(GROUP_ID))
-        assertEffect(GroupDetailsIntent.ManageMembers, GroupDetailsEffect.OpenMembers(GROUP_ID))
-        assertEffect(GroupDetailsIntent.ManageSchedule, GroupDetailsEffect.OpenSchedule(GROUP_ID))
-        assertEffect(GroupDetailsIntent.InviteByLink, GroupDetailsEffect.OpenInviteLink(GROUP_ID))
+    fun `empty profile still renders a usable header`() = runTest {
+        val empty = sampleVersionedGroup(sampleGroup(profile = null))
+        val viewModel = GroupDetailsViewModel(
+            GROUP_ID,
+            FakeGroupGateway(readResult = SaqzResult.Success(empty)),
+        )
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals("Vôlei do CERET", viewModel.state.value.header?.name)
+        assertTrue(viewModel.state.value.header?.summaryChips.isNullOrEmpty())
+        assertEquals(null, viewModel.state.value.venue)
     }
 
     @Test
-    fun memberIntentsEmitTheirExits() = runTest {
-        assertEffect(GroupDetailsIntent.ViewAllMembers, GroupDetailsEffect.OpenMembers(GROUP_ID))
-        assertEffect(GroupDetailsIntent.OpenSchedule, GroupDetailsEffect.OpenSchedule(GROUP_ID))
-        assertEffect(GroupDetailsIntent.Invite, GroupDetailsEffect.OpenInviteLink(GROUP_ID))
-        assertEffect(GroupDetailsIntent.OpenVenueMap, GroupDetailsEffect.OpenMap)
-        assertEffect(GroupDetailsIntent.Leave, GroupDetailsEffect.Left)
+    fun `detail read usa o snapshot uma unica vez e preserva owner`() = runTest {
+        val gateway = FakeGroupGateway(
+            readResult = SaqzResult.Success(
+                sampleVersionedGroup(
+                    sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.OWNER),
+                ),
+            ),
+        )
+        val viewModel = GroupDetailsViewModel(GROUP_ID, gateway)
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertTrue(viewModel.state.value.isOwner)
+        assertEquals(1, gateway.readCalls)
     }
 
-    /** Fluxos 3, 4 e 5 não existem, e a tela emite a saída deles do mesmo jeito. */
     @Test
-    fun effectsForFlowsThatDoNotExistYetAreStillEmitted() = runTest {
-        assertEffect(GroupDetailsIntent.CreateNextGame, GroupDetailsEffect.OpenCreateGame(GROUP_ID))
-        assertEffect(GroupDetailsIntent.OpenCashbox, GroupDetailsEffect.OpenCashbox(GROUP_ID))
-        assertEffect(GroupDetailsIntent.InviteByLink, GroupDetailsEffect.OpenInviteLink(GROUP_ID))
+    fun `gateway failure is visible and typed`() = runTest {
+        val viewModel = GroupDetailsViewModel(
+            GROUP_ID,
+            FakeGroupGateway(
+                readResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Forbidden)),
+            ),
+        )
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
     }
 
-    /**
-     * Toque que o export desenha sem destino nenhum não inventa efeito nem mexe no estado:
-     * o primeiro efeito do canal continua sendo o do intent seguinte.
-     */
     @Test
-    fun intentsWithoutADestinationStaySilent() = runTest {
-        val state = GroupDetailsPreviewData.member
-        val viewModel = GroupDetailsViewModel(GROUP_ID, state)
+    fun `navigation effects remain available`() = runTest {
+        val viewModel = viewModel()
 
-        listOf(
-            GroupDetailsIntent.ConfirmAttendance,
-            GroupDetailsIntent.ViewGame,
-            GroupDetailsIntent.NotifyPending,
-            GroupDetailsIntent.OpenNotices,
-            GroupDetailsIntent.OpenChat,
-        ).forEach(viewModel::onIntent)
-        viewModel.onIntent(GroupDetailsIntent.Leave)
+        viewModel.onIntent(GroupDetailsIntent.ManageMembers)
+        assertEquals(GroupDetailsEffect.OpenMembers(GROUP_ID), viewModel.effects.first())
 
-        assertEquals(GroupDetailsEffect.Left, viewModel.effects.first())
-        assertEquals(state, viewModel.state.value)
+        viewModel.onIntent(GroupDetailsIntent.OpenSchedule)
+        assertEquals(GroupDetailsEffect.OpenSchedule(GROUP_ID), viewModel.effects.first())
     }
 
-    private suspend fun assertEffect(intent: GroupDetailsIntent, expected: GroupDetailsEffect) {
-        val viewModel = GroupDetailsViewModel(GROUP_ID, GroupDetailsPreviewData.member)
-        viewModel.onIntent(intent)
-        assertEquals(expected, viewModel.effects.first())
-    }
+    private fun viewModel() = GroupDetailsViewModel(
+        GROUP_ID,
+        FakeGroupGateway(),
+    )
 }

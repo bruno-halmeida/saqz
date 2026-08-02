@@ -8,6 +8,13 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeGroupProfileGateway
+import br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort
+import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -90,8 +97,96 @@ class GroupSetupViewModelTest {
         viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
         runCurrent()
 
-        assertTrue(viewModel.state.value.isSaving)
-        assertEquals(listOf(GroupSetupEffect.Created(groupId = "")), effects)
+        assertTrue(!viewModel.state.value.isSaving)
+        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+    }
+
+    @Test
+    fun `falha da criacao fica visivel como erro tipado`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            profileGateway = FakeGroupProfileGateway(
+                createResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.NotFound)),
+            ),
+        )
+        val effects = collectEffects(viewModel)
+
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.saveFailed)
+        assertEquals(GroupUiError.NotFound, viewModel.state.value.gatewayError)
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun `retry da criacao reutiliza a mesma chave de idempotencia`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        var attempts = 0
+        profileGateway.createHandler = {
+            attempts += 1
+            if (attempts == 1) {
+                SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity))
+            } else {
+                SaqzResult.Success(br.com.saqz.groups.presentation.sampleGroup())
+            }
+        }
+        val viewModel = viewModel(profileGateway = profileGateway)
+        val effects = collectEffects(viewModel)
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+        assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
+
+        viewModel.onIntent(GroupSetupIntent.Retry)
+        runCurrent()
+
+        assertEquals(2, profileGateway.createCommands.size)
+        assertEquals(
+            profileGateway.createCommands[0].commandKey,
+            profileGateway.createCommands[1].commandKey,
+        )
+        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+        assertEquals(null, viewModel.state.value.creationCommandKey)
+    }
+
+    @Test
+    fun `editar o payload descarta a chave antes de um novo create`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val handle = SavedStateHandle()
+        var attempts = 0
+        profileGateway.createHandler = {
+            attempts += 1
+            if (attempts == 1) {
+                SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity))
+            } else {
+                SaqzResult.Success(br.com.saqz.groups.presentation.sampleGroup())
+            }
+        }
+        val viewModel = viewModel(profileGateway = profileGateway, savedState = handle)
+
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+        val firstKey = profileGateway.createCommands.single().commandKey
+
+        viewModel.onIntent(GroupSetupIntent.UpdateName("Nome editado"))
+        assertEquals(null, viewModel.state.value.creationCommandKey)
+        assertEquals(null, handle.get<String>("group-setup-create-command-key"))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+
+        assertEquals(2, profileGateway.createCommands.size)
+        assertTrue(firstKey != profileGateway.createCommands[1].commandKey)
+        assertEquals("Nome editado", profileGateway.createCommands[1].form.name)
+    }
+
+    @Test
+    fun `admin nao recebe a acao de excluir no formulario de edicao`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+        runCurrent()
+
+        assertEquals(false, viewModel.state.value.canDelete)
     }
 
     @Test
@@ -103,9 +198,32 @@ class GroupSetupViewModelTest {
         runCurrent()
 
         assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
-        assertTrue(viewModel.state.value.isSaving)
+        assertTrue(!viewModel.state.value.isSaving)
         assertEquals(listOf(GroupSetupEffect.Saved), effects)
     }
+
+    @Test
+    fun `create e update enviam slots vazios quando a recorrencia esta desligada`() =
+        runTest(mainDispatcher) {
+            val createGateway = FakeGroupProfileGateway()
+            val creating = viewModel(recurring = false, profileGateway = createGateway)
+            creating.onIntent(GroupSetupIntent.Submit)
+            creating.onIntent(GroupSetupIntent.ConfirmCreate)
+            runCurrent()
+
+            assertEquals(emptyList(), createGateway.lastCreateCommand?.form?.regularSlots)
+
+            val updateGateway = FakeGroupProfileGateway()
+            val editing = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                recurring = false,
+                profileGateway = updateGateway,
+            )
+            editing.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            assertEquals(emptyList(), updateGateway.lastUpdateCommand?.form?.regularSlots)
+        }
 
     @Test
     fun `excluir so vale no modo de edicao`() = runTest(mainDispatcher) {
@@ -122,9 +240,25 @@ class GroupSetupViewModelTest {
         editing.onIntent(GroupSetupIntent.ConfirmDelete)
         runCurrent()
 
-        assertTrue(editing.state.value.isDeleting)
+        assertTrue(!editing.state.value.isDeleting)
         assertNull(editing.state.value.sheet)
         assertEquals(listOf(GroupSetupEffect.Deleted), editingEffects)
+    }
+
+    @Test
+    fun `falha do delete vira erro tipado visivel`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            groupGateway = FakeGroupGateway(
+                deleteResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Forbidden)),
+            ),
+        )
+
+        viewModel.onIntent(GroupSetupIntent.ConfirmDelete)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.saveFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.gatewayError)
     }
 
     @Test
@@ -272,6 +406,63 @@ class GroupSetupViewModelTest {
         assertEquals(GroupModality.COURT_VOLLEYBALL, viewModel.state.value.form.modality)
     }
 
+    @Test
+    fun `o texto salvo continua por cima do perfil carregado no modo edicao`() =
+        runTest(mainDispatcher) {
+            val handle = SavedStateHandle(
+                mapOf(
+                    "group-setup-name" to "Nome restaurado",
+                    "group-setup-description" to "Descrição restaurada",
+                    "group-setup-custom-level" to "Nível restaurado",
+                    "group-setup-venue-name" to "Quadra restaurada",
+                    "group-setup-venue-address" to "Endereço restaurado",
+                ),
+            )
+
+            val viewModel = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                savedState = handle,
+            )
+            runCurrent()
+
+            assertEquals("Nome restaurado", viewModel.state.value.form.name)
+            assertEquals("Descrição restaurada", viewModel.state.value.form.description)
+            assertEquals("Nível restaurado", viewModel.state.value.form.customLevel)
+            assertEquals("Quadra restaurada", viewModel.state.value.form.defaultVenue?.name)
+            assertEquals("Endereço restaurado", viewModel.state.value.form.defaultVenue?.address)
+        }
+
+    @Test
+    fun `edicao hidrata a duracao do primeiro horario e a permissao de excluir`() =
+        runTest(mainDispatcher) {
+            val group = br.com.saqz.groups.presentation.sampleGroup(
+                role = br.com.saqz.groups.domain.group.GroupRole.OWNER,
+                profile = br.com.saqz.groups.presentation.sampleGroup().profile?.copy(
+                    regularSlots = listOf(
+                        br.com.saqz.groups.domain.group.GroupRegularSlot(
+                            weekday = br.com.saqz.groups.domain.group.GroupWeekday.TUESDAY,
+                            startTime = "19:30",
+                            durationMinutes = 90,
+                        ),
+                    ),
+                    defaultConfirmationLeadMinutes = 180,
+                ),
+            )
+            val viewModel = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                profileGateway = FakeGroupProfileGateway(
+                    readResult = SaqzResult.Success(
+                        br.com.saqz.groups.presentation.sampleVersionedGroup(group),
+                    ),
+                ),
+            )
+            runCurrent()
+
+            assertEquals(90, viewModel.state.value.durationMinutes)
+            assertEquals(listOf(90), viewModel.state.value.form.regularSlots.map { it.durationMinutes })
+            assertTrue(viewModel.state.value.canDelete)
+        }
+
     /**
      * Teto de digitação: o estado para no máximo do backend em vez de deixar digitar e
      * reprovar depois. Fronteira nos dois lados — o máximo exato entra inteiro, um
@@ -402,6 +593,8 @@ class GroupSetupViewModelTest {
         recurring: Boolean = true,
         saveFailed: Boolean = false,
         savedState: SavedStateHandle = SavedStateHandle(),
+        groupGateway: FakeGroupGateway = FakeGroupGateway(),
+        profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
     ) = GroupSetupViewModel(
         initialState = GroupSetupState(
             mode = mode,
@@ -410,6 +603,9 @@ class GroupSetupViewModelTest {
             saveFailed = saveFailed,
         ),
         savedState = savedState,
+        groupGateway = groupGateway,
+        profileGateway = profileGateway,
+        timeZonePort = FakeGroupSystemTimeZonePort(),
     )
 
     private companion object {

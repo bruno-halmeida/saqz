@@ -171,6 +171,12 @@ class KtorGroupGateway(
             ),
         ).toVersionedResult()
 
+    override suspend fun delete(groupId: GroupId): SaqzResult<Unit, GroupProfileError> =
+        network.executeNoContent(
+            HttpMethod.Delete,
+            "api/groups/${groupId.value}",
+        ).toEmptyResult()
+
     override suspend fun createProfile(command: CreateGroupProfileCommand): SaqzResult<Group, GroupProfileError> =
         retryTransport(RetrySafety.IdempotentWrite, delayMillis = retryDelay) {
             network.execute(
@@ -213,6 +219,11 @@ private fun NetworkResult<GroupDto>.toVersionedResult(): SaqzResult<VersionedGro
             SaqzResult.Success(VersionedGroup(group, GroupVersionToken(token)))
         }
     }
+}
+
+private fun NetworkResult<Unit>.toEmptyResult(): SaqzResult<Unit, GroupProfileError> = when (this) {
+    is NetworkResult.Success -> SaqzResult.Success(Unit)
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
 }
 
 private fun GroupDto.toDomain(): Group? {

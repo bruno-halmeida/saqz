@@ -12,11 +12,13 @@ import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.data.di.groupsDataModule
+import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
 import br.com.saqz.network.NetworkConfig
-import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.authenticatedImageLoaderModule
 import br.com.saqz.network.toNetworkEnvironment
 import br.com.saqz.profile.data.di.profileDataModule
@@ -59,6 +61,8 @@ private val commonModules = listOf(
     editProfilePresentationModule(),
     profileExitPresentationModule(),
     ownProfilePresentationModule(),
+    groupsDataModule(),
+    groupsPresentationModule(),
 )
 
 internal fun startSaqzKoin() {
@@ -97,14 +101,8 @@ fun loadSaqzPlatformDependencies(
         unloadKoinModules(commonModules + platformModules)
         loadKoinModules(commonModules)
     }
-    // O grafo de grupos entra aqui, e não em `commonModules`, porque depende do ambiente:
-    // é ele que decide com que estado inicial as cinco telas abrem (VUL-72, ver
-    // `groupsPresentationModule`). A regra é a mesma que já liga o catálogo do design
-    // system — o flavor prod manda "prod" e não recebe as cenas de amostra.
-    val environment = dependencies.environment.toNetworkEnvironment()
     platformModules = listOf(
         platformBindingsModule(dependencies),
-        groupsPresentationModule(sampleContent = environment == NetworkEnvironment.Dev),
         profilePhotoPresentationModule(
             selection = dependencies.access.profilePhotoSelection,
             initialPhotoUrl = null,
@@ -137,5 +135,6 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<GroupPhotoPreviewPort> { get<SaqzNativePorts>().groups.photos.previews }
     single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
     single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
+    single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
     single { dependencies.drafts }
 }

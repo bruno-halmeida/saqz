@@ -3,13 +3,15 @@ package br.com.saqz.groups.presentation.schedule
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.ui.components.SlotDraft
 
 /**
  * 2m — agenda e recorrência.
  *
- * `recurring` **não** se deriva de `slots.isEmpty()`: recorrência ligada sem nenhum
- * horário é um estado legítimo da tela e sumiria com a derivação.
+ * Durante a edição local, `recurring` **não** se deriva de `slots.isEmpty()`: recorrência
+ * ligada sem nenhum horário é um estado legítimo. No primeiro carregamento, o snapshot
+ * remoto só expõe os horários recorrentes, então ele serve para hidratar o valor inicial.
  *
  * Convenção do `slotSheet`: `null` é sheet fechado; [NEW_SLOT] (-1) é o slot que ainda
  * não existe na lista. Índice >= 0 fica reservado para editar uma pílula existente —
@@ -22,6 +24,8 @@ import br.com.saqz.groups.presentation.ui.components.SlotDraft
 @Immutable
 internal data class GroupScheduleState(
     val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val error: GroupUiError? = null,
     val recurring: Boolean = true,
     val slots: List<GroupRegularSlotForm> = emptyList(),
     val durationMinutes: Int = 120,
@@ -52,6 +56,8 @@ internal data class UpcomingGameUi(
 internal enum class UpcomingGameStatus { Published, Scheduled }
 
 internal sealed interface GroupScheduleIntent {
+    data object Retry : GroupScheduleIntent
+
     data class ToggleRecurring(val value: Boolean) : GroupScheduleIntent
 
     data object AddSlot : GroupScheduleIntent

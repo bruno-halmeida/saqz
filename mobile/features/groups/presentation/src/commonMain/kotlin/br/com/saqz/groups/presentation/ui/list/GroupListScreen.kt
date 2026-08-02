@@ -63,7 +63,10 @@ fun GroupListScreen(
         )
         when {
             state.isLoading -> GroupListSkeleton()
-            state.loadFailed -> GroupListFailure(onRetry = { onIntent(GroupListIntent.Retry) })
+            state.loadFailed -> GroupListFailure(
+                error = state.error,
+                onRetry = { onIntent(GroupListIntent.Retry) },
+            )
             state.isEmpty -> GroupListEmpty(
                 onCreate = onCreate,
                 onJoinWithCode = { onIntent(GroupListIntent.JoinWithCode) },

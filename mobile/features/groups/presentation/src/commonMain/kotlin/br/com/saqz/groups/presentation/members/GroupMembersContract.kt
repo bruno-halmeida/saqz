@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.members
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.presentation.GroupUiError
 
 /** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2". */
 enum class GroupMembersFilter { All, Admins, Pending }
@@ -22,6 +23,8 @@ data class MemberUi(
     val isSelf: Boolean,
     /** "18 jogos · 92% de presença", só no cabeçalho do sheet. */
     val stats: String,
+    /** Somente o OWNER pode usar as mutações de gestão deste sheet. */
+    val canManageMembers: Boolean = true,
 )
 
 @Immutable
@@ -37,6 +40,8 @@ data class JoinRequestUi(
 @Immutable
 data class GroupMembersState(
     val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val error: GroupUiError? = null,
     val query: String = "",
     val filter: GroupMembersFilter = GroupMembersFilter.All,
     /** Todo mundo do grupo, admins inclusive — é o número da pílula "Todos". */
@@ -62,13 +67,15 @@ val GroupMembersState.memberCount: Int get() = totalCount - adminCount
  * A diferença entre o sheet do 2k e o do 2l. Admin troca "Editar jogador" por
  * "Ver perfil" e "Tornar admin" por "Remover admin"; remover do grupo fecha os dois.
  */
-fun MemberUi.sheetActions(): List<GroupMemberAction> = if (isAdmin) {
-    listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Demote, GroupMemberAction.Remove)
-} else {
-    listOf(GroupMemberAction.EditMember, GroupMemberAction.Promote, GroupMemberAction.Remove)
+fun MemberUi.sheetActions(): List<GroupMemberAction> = when {
+    !canManageMembers -> listOf(GroupMemberAction.ViewProfile)
+    isAdmin -> listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Demote, GroupMemberAction.Remove)
+    else -> listOf(GroupMemberAction.EditMember, GroupMemberAction.Promote, GroupMemberAction.Remove)
 }
 
 sealed interface GroupMembersIntent {
+    data object Retry : GroupMembersIntent
+
     data class UpdateQuery(val value: String) : GroupMembersIntent
 
     data class SelectFilter(val filter: GroupMembersFilter) : GroupMembersIntent

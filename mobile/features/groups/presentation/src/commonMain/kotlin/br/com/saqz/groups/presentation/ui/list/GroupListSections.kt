@@ -39,10 +39,12 @@ import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.list.GroupCardAttendance
 import br.com.saqz.groups.presentation.list.GroupCardGameUi
 import br.com.saqz.groups.presentation.list.GroupCardUi
 import br.com.saqz.groups.presentation.list.GroupInviteUi
+import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_member_attendance_maybe
 import br.com.saqz.groups.resources.group_system_retry
@@ -366,23 +368,11 @@ internal fun GroupListEmpty(
 /** Falha de carga não está desenhada: vazio com o erro e a saída de `Retry`. */
 @Composable
 internal fun GroupListFailure(
+    error: GroupUiError?,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        SaqzEmptyState(
-            // TODO(VUL-66): faltam `groups_load_failure_title` e `groups_load_failure_body`.
-            title = "Não foi possível carregar seus grupos",
-            description = "Verifique sua conexão e tente de novo.",
-            icon = SaqzIcons.CircleAlert,
-            action = stringResource(Res.string.group_system_retry),
-            onAction = onRetry,
-            modifier = Modifier.testTag(GroupListTags.Failure),
-        )
-    }
+    GroupLoadFailure(error, onRetry, modifier.fillMaxSize(), GroupListTags.Failure)
 }
 
 /** Carregando não está desenhado: três cartões na forma do card do 2n. */
