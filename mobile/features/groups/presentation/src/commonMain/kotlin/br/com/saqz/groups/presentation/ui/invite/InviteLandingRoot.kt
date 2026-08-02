@@ -13,8 +13,8 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun InviteLandingRoot(
     code: String,
-    onJoined: (String) -> Unit,
-    onRequestSent: () -> Unit,
+    onJoin: (String) -> Unit,
+    onRequest: () -> Unit,
     onBrowseOtherGroups: () -> Unit,
     onExploreApp: () -> Unit,
     onOpenAnotherGroup: () -> Unit,
@@ -24,8 +24,8 @@ fun InviteLandingRoot(
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            is InviteLandingEffect.Joined -> onJoined(effect.groupId)
-            InviteLandingEffect.RequestSent -> onRequestSent()
+            is InviteLandingEffect.Joined -> onJoin(effect.groupId)
+            InviteLandingEffect.RequestSent -> onRequest()
             InviteLandingEffect.BrowseOtherGroups -> onBrowseOtherGroups()
             InviteLandingEffect.ExploreApp -> onExploreApp()
             InviteLandingEffect.OpenAnotherGroup -> onOpenAnotherGroup()

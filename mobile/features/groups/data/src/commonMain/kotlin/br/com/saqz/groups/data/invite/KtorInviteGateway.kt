@@ -101,34 +101,44 @@ private fun NetworkResult<InviteRedeemTransport>.toRedeemResult() = when (this) 
 }
 
 private fun InvitePreviewTransport.toDomain(): InvitePreview? {
-    val inviter = inviterName?.takeIf(String::isNotBlank) ?: return null
-    if (groupName.isBlank() || memberCount < 0) return null
-    if (regularSlots.any { it.weekday.isBlank() || it.startTime.isBlank() }) return null
+    val inviter = inviterName?.takeIf(String::isNotBlank)
     val game = nextGame?.let {
-        if (it.startsAt.isBlank() || it.venueName.isBlank()) return null
-        InviteNextGame(it.startsAt, it.venueName, it.court)
+        it.takeIf { game -> game.startsAt.isNotBlank() && game.venueName.isNotBlank() }
+            ?.let { game -> InviteNextGame(game.startsAt, game.venueName, game.court) }
     }
-    return InvitePreview(
-        groupName = groupName,
-        inviterName = inviter,
-        entryRequiresApproval = entryRequiresApproval,
-        city = city,
-        composition = composition,
-        level = level,
-        memberCount = memberCount,
-        regularSlots = regularSlots.map { InviteRegularSlot(it.weekday, it.startTime) },
-        expiresAt = expiresAt,
-        nextGame = game,
-    )
+    val validSlots = regularSlots.none { it.weekday.isBlank() || it.startTime.isBlank() }
+    val validGame = nextGame == null || game != null
+    val validPreview = inviter != null && groupName.isNotBlank() && memberCount >= 0 && validSlots && validGame
+    return if (validPreview) {
+        InvitePreview(
+            groupName = groupName,
+            inviterName = inviter,
+            entryRequiresApproval = entryRequiresApproval,
+            city = city,
+            composition = composition,
+            level = level,
+            memberCount = memberCount,
+            regularSlots = regularSlots.map { InviteRegularSlot(it.weekday, it.startTime) },
+            expiresAt = expiresAt,
+            nextGame = game,
+        )
+    } else {
+        null
+    }
 }
 
 private fun InviteRedeemTransport.toDomain(): InviteRedeem? {
-    val domainStatus = status?.let { InviteRedeemStatus.valueOf(it.name) } ?: return null
-    if (groupId.isBlank()) return null
+    val domainStatus = status?.let { InviteRedeemStatus.valueOf(it.name) }
     val normalizedRole = role?.takeIf(String::isNotBlank)
-    if (domainStatus == InviteRedeemStatus.JOINED && normalizedRole == null) return null
-    if (domainStatus == InviteRedeemStatus.PENDING && normalizedRole != null) return null
-    return InviteRedeem(domainStatus, GroupId(groupId), normalizedRole)
+    return if (
+        domainStatus != null &&
+        groupId.isNotBlank() &&
+        (domainStatus == InviteRedeemStatus.JOINED) == (normalizedRole != null)
+    ) {
+        InviteRedeem(domainStatus, GroupId(groupId), normalizedRole)
+    } else {
+        null
+    }
 }
 
 private fun NetworkError.toInviteError(): InviteError = when (this) {

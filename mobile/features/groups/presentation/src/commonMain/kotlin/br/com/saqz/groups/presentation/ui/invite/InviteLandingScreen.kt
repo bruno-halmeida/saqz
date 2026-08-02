@@ -242,7 +242,11 @@ internal fun InviteRequestSentScreen(
         ) {
             SaqzIcon(SaqzIcons.Clock, tint = SaqzTheme.colors.primary)
         }
-        Text(stringResource(Res.string.invite_request_sent_title), style = SaqzTheme.typography.headline, color = SaqzTheme.colors.textPrimary)
+        Text(
+            stringResource(Res.string.invite_request_sent_title),
+            style = SaqzTheme.typography.headline,
+            color = SaqzTheme.colors.textPrimary,
+        )
         Text(
             stringResource(Res.string.invite_request_sent_body, inviterName),
             style = SaqzTheme.typography.body,
@@ -270,7 +274,11 @@ internal fun InviteRequestSentScreen(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(inviterName, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
-                    Text(stringResource(Res.string.invite_request_sent_organizer), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
+                    Text(
+                        stringResource(Res.string.invite_request_sent_organizer),
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.textSecondary,
+                    )
                 }
                 SaqzStatusChip(stringResource(Res.string.invite_request_sent_waiting), tone = SaqzChipTone.Warning)
             }
@@ -352,7 +360,18 @@ private fun InviteErrorScreen(
         }
         Text(title, style = SaqzTheme.typography.headline, color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center)
         Text(body, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary, textAlign = TextAlign.Center)
-        SaqzButton(primaryLabel, primaryAction, fullWidth = true, modifier = Modifier.testTag(if (error is InviteLandingError.Network || error is InviteLandingError.RateLimited) InviteLandingTags.Retry else InviteLandingTags.NewInvite))
+        SaqzButton(
+            primaryLabel,
+            primaryAction,
+            fullWidth = true,
+            modifier = Modifier.testTag(
+                if (error is InviteLandingError.Network || error is InviteLandingError.RateLimited) {
+                    InviteLandingTags.Retry
+                } else {
+                    InviteLandingTags.NewInvite
+                },
+            ),
+        )
     }
 }
 
