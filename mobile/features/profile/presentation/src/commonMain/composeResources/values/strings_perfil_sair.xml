@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_exit_title">Sair da conta?</string>
+    <string name="profile_exit_body">Seus grupos e suas confirmações continuam salvos. Você entra de novo com o mesmo e-mail.</string>
+    <string name="profile_exit_logout">Sair da conta</string>
+    <string name="profile_exit_stay">Ficar por aqui</string>
+    <string name="profile_exit_delete_title">Excluir minha conta</string>
+    <string name="profile_exit_delete_body">Você sai de todos os grupos e seu histórico é apagado. Isso não pode ser desfeito.</string>
+    <string name="profile_exit_delete_action">Excluir conta</string>
+    <string name="profile_exit_confirm_title">Excluir sua conta de vez?</string>
+    <string name="profile_exit_confirm_body">Essa ação é definitiva. Para confirmar, digite seu e-mail exatamente como aparece abaixo.</string>
+    <string name="profile_exit_confirm_email_label">Digite seu e-mail</string>
+    <string name="profile_exit_confirm_email_placeholder">Seu e-mail</string>
+    <string name="profile_exit_confirm_email_hint">Digite %1$s para confirmar.</string>
+    <string name="profile_exit_confirm_action">Confirmar exclusão</string>
+    <string name="profile_exit_confirm_cancel">Cancelar</string>
+    <string name="profile_exit_email_mismatch">O e-mail não confere. Digite %1$s para confirmar.</string>
+    <string name="profile_exit_delete_error">Não foi possível excluir sua conta agora. Sua sessão continua ativa. Tente de novo.</string>
+</resources>
