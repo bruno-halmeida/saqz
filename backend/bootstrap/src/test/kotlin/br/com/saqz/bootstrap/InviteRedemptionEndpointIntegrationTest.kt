@@ -78,6 +78,7 @@ class InviteRedemptionEndpointIntegrationTest {
     fun `approval-enabled invite returns pending with a null role`() {
         repository.target = RedeemableInvite(
             RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
             entryRequiresApproval = true,
         )
 
@@ -95,6 +96,7 @@ class InviteRedemptionEndpointIntegrationTest {
     fun `repeating pending redeem keeps one request`() {
         repository.target = RedeemableInvite(
             RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
             entryRequiresApproval = true,
         )
 

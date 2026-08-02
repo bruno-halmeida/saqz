@@ -38,7 +38,7 @@ class RedeemInviteTest {
 
     @Test
     fun `approval-enabled invite creates a pending request without membership`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true))
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true))
 
         val result = fixture.useCase.execute(actor, code.value)
 
@@ -49,7 +49,7 @@ class RedeemInviteTest {
 
     @Test
     fun `repeating approval-enabled redeem keeps the original request timestamp`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true))
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true))
 
         assertEquals(RedeemInviteResult.Pending(groupId), fixture.useCase.execute(actor, code.value))
         fixture.clock.current = now.plusSeconds(30)
@@ -62,7 +62,7 @@ class RedeemInviteTest {
 
     @Test
     fun `existing member joins immediately even when approval is enabled`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true)).also {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true)).also {
             it.repository.roles[actor] = GroupRole.ADMIN
             it.repository.openMembers += actor
         }
@@ -77,7 +77,7 @@ class RedeemInviteTest {
     @Test
     fun `approval-enabled redeem checks athlete limit before creating the request`() {
         val fixture = fixture(
-            target = RedeemableInvite(groupId, entryRequiresApproval = true),
+            target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true),
             athleteLimit = 0,
         )
 
