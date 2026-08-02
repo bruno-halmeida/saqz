@@ -10,6 +10,10 @@ import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncodingResult
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable
+import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
+import br.com.saqz.profile.domain.ProfilePhotoSelectionResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -24,42 +28,101 @@ internal class AndroidProfilePhotoAdapter(
     private val selection: GroupPhotoSelectionPort,
     private val encoder: GroupPhotoEncoderPort,
     private val scope: CoroutineScope,
-) : NativeProfilePhotoPort {
+    private val permissions: AndroidProfilePhotoPermissions = AndroidProfilePhotoPermissions.Allowed,
+) : NativeProfilePhotoPort, ProfilePhotoSelectionPort {
     override fun chooseCamera(done: ProfilePhotoCallback): Cancelable = choose(done, selection::chooseCamera)
 
     override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable = choose(done, selection::chooseLibrary)
+
+    override fun chooseCamera(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable =
+        chooseProfile(
+            done,
+            selection::chooseCamera,
+            { permissions.cameraGranted() },
+            ProfilePhotoSelectionResult.CameraPermissionDenied,
+        )
+
+    override fun chooseLibrary(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable =
+        chooseProfile(
+            done,
+            selection::chooseLibrary,
+            { permissions.libraryGranted() },
+            ProfilePhotoSelectionResult.LibraryPermissionDenied,
+        )
 
     private fun choose(done: ProfilePhotoCallback, open: suspend () -> GroupPhotoSelectionResult): Cancelable =
         JobCancelable(scope.launch { done.complete(chosen(open())) })
 
     private suspend fun chosen(selected: GroupPhotoSelectionResult): ProfilePhotoResult = when (selected) {
-        is GroupPhotoSelectionResult.Selected -> encoded(selected.value.source.value)
+        is GroupPhotoSelectionResult.Selected -> when (val result = encoded(selected.value.source.value)) {
+            is ProfilePhotoSelectionResult.Selected ->
+                ProfilePhotoResult.Selected(result.bytes, result.mediaType)
+            ProfilePhotoSelectionResult.Cancelled -> ProfilePhotoResult.Cancelled
+            ProfilePhotoSelectionResult.CameraPermissionDenied,
+            ProfilePhotoSelectionResult.LibraryPermissionDenied,
+            ProfilePhotoSelectionResult.Failed,
+            -> ProfilePhotoResult.Failed
+        }
         GroupPhotoSelectionResult.Cancelled -> ProfilePhotoResult.Cancelled
         GroupPhotoSelectionResult.Failed -> ProfilePhotoResult.Failed
     }
 
+    private fun chooseProfile(
+        done: ProfilePhotoSelectionCallback,
+        open: suspend () -> GroupPhotoSelectionResult,
+        permissionGranted: () -> Boolean,
+        denied: ProfilePhotoSelectionResult,
+    ): ProfilePhotoSelectionCancelable {
+        if (!permissionGranted()) {
+            done.complete(denied)
+            return ProfileRequestCancelable(Job())
+        }
+        val job = scope.launch { done.complete(chosenProfile(open())) }
+        return ProfileRequestCancelable(job)
+    }
+
+    private suspend fun chosenProfile(selected: GroupPhotoSelectionResult): ProfilePhotoSelectionResult = when (selected) {
+        is GroupPhotoSelectionResult.Selected -> encoded(selected.value.source.value)
+        GroupPhotoSelectionResult.Cancelled -> ProfilePhotoSelectionResult.Cancelled
+        GroupPhotoSelectionResult.Failed -> ProfilePhotoSelectionResult.Failed
+    }
+
     // O `finally` também cobre a desistência da tela: cancelar durante a codificação ainda
     // apaga a origem.
-    private suspend fun encoded(source: String): ProfilePhotoResult = try {
+    private suspend fun encoded(source: String): ProfilePhotoSelectionResult = try {
         when (val result = encoder.encode(source, CENTERED)) {
             is GroupPhotoEncodingResult.Encoded -> selected(result.value)
-            GroupPhotoEncodingResult.Failed -> ProfilePhotoResult.Failed
+            GroupPhotoEncodingResult.Failed -> ProfilePhotoSelectionResult.Failed
         }
     } finally {
         selection.cleanup(source)
     }
 
-    private fun selected(photo: EncodedGroupPhoto): ProfilePhotoResult {
+    private fun selected(photo: EncodedGroupPhoto): ProfilePhotoSelectionResult {
         val bytes = photo.source.read()
-        return if (bytes.isEmpty()) ProfilePhotoResult.Failed
-        else ProfilePhotoResult.Selected(bytes, photo.mediaType.value)
+        return if (bytes.isEmpty()) ProfilePhotoSelectionResult.Failed
+        else ProfilePhotoSelectionResult.Selected(bytes, photo.mediaType.value)
     }
 
     private class JobCancelable(private val job: Job) : Cancelable {
         override fun cancel() = job.cancel()
     }
 
+    private class ProfileRequestCancelable(private val job: Job) : ProfilePhotoSelectionCancelable {
+        override fun cancel() = job.cancel()
+    }
+
     private companion object {
         val CENTERED = GroupPhotoCrop()
+    }
+}
+
+internal interface AndroidProfilePhotoPermissions {
+    fun cameraGranted(): Boolean
+    fun libraryGranted(): Boolean
+
+    data object Allowed : AndroidProfilePhotoPermissions {
+        override fun cameraGranted() = true
+        override fun libraryGranted() = true
     }
 }

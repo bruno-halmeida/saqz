@@ -13,6 +13,8 @@ import br.com.saqz.groups.domain.photo.GroupPhotoSelection
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionResult
 import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
+import br.com.saqz.profile.domain.ProfilePhotoSelectionResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -104,6 +106,29 @@ class AndroidProfilePhotoAdapterTest {
     }
 
     @Test
+    fun permissoesNegadasDaCameraEDaGaleriaSaoResultadosDistintos() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val permissions = object : AndroidProfilePhotoPermissions {
+            override fun cameraGranted() = false
+            override fun libraryGranted() = false
+        }
+        val camera = SelectionReceived()
+        val library = SelectionReceived()
+        val adapter = AndroidProfilePhotoAdapter(
+            FakeSelection(GroupPhotoSelectionResult.Failed),
+            FakeEncoder(null),
+            scope,
+            permissions,
+        )
+
+        adapter.chooseCamera(camera)
+        adapter.chooseLibrary(library)
+
+        assertEquals(ProfilePhotoSelectionResult.CameraPermissionDenied, camera.result)
+        assertEquals(ProfilePhotoSelectionResult.LibraryPermissionDenied, library.result)
+    }
+
+    @Test
     fun cancelarInterrompeAEscolhaEmAndamentoSemEntregarResultado() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val selection = FakeSelection(GroupPhotoSelectionResult.Selected(SELECTION), pending = true)
@@ -135,6 +160,14 @@ class AndroidProfilePhotoAdapterTest {
         var result: ProfilePhotoResult? = null
 
         override fun complete(result: ProfilePhotoResult) {
+            this.result = result
+        }
+    }
+
+    private class SelectionReceived : ProfilePhotoSelectionCallback {
+        var result: ProfilePhotoSelectionResult? = null
+
+        override fun complete(result: ProfilePhotoSelectionResult) {
             this.result = result
         }
     }
