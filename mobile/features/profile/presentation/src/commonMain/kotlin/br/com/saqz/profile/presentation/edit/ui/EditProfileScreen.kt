@@ -15,12 +15,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChoiceChip
@@ -117,6 +117,7 @@ fun EditProfileScreen(
                         item(key = "photo") {
                             EditProfilePhotoCard(
                                 form = state.form,
+                                photoUrl = state.photoUrl,
                                 onPickPhoto = onPickPhoto,
                             )
                         }
@@ -159,38 +160,28 @@ private fun EditProfileLoadError(onRetry: () -> Unit) {
 @Composable
 private fun EditProfilePhotoCard(
     form: EditProfileForm,
+    photoUrl: String?,
     onPickPhoto: () -> Unit,
 ) {
+    val metrics = SaqzTheme.metrics
     SaqzCard {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(SaqzTheme.colors.surfaceSoft),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = form.displayName.initials(),
-                        style = SaqzTheme.typography.title,
-                        color = SaqzTheme.colors.textPrimary,
-                    )
-                }
+                EditProfileAvatar(photoUrl = photoUrl, initials = form.displayName.initials())
                 SaqzIconButton(
                     onClick = onPickPhoto,
                     contentDescription = stringResource(Res.string.profile_edit_photo_action),
                     filled = true,
-                    size = 28.dp,
+                    size = metrics.photoBadgeSize,
                     modifier = Modifier.testTag(EditProfileTags.Photo),
                 ) {
                     SaqzIcon(
                         icon = SaqzIcons.Camera,
                         tint = SaqzTheme.colors.onPrimary,
-                        size = 16.dp,
+                        size = metrics.photoIconSize,
                     )
                 }
             }
@@ -206,6 +197,31 @@ private fun EditProfilePhotoCard(
                     color = SaqzTheme.colors.textSecondary,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun EditProfileAvatar(
+    photoUrl: String?,
+    initials: String,
+) {
+    val colors = SaqzTheme.colors
+    // VUL-135 will consume this URL with the authenticated image loader. Until then,
+    // initials remain the intentional fallback even when a stored photo exists.
+    key(photoUrl) {
+        Box(
+            modifier = Modifier
+                .size(SaqzTheme.metrics.avatarSize)
+                .clip(CircleShape)
+                .background(colors.surfaceSoft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = initials,
+                style = SaqzTheme.typography.title,
+                color = colors.textPrimary,
+            )
         }
     }
 }

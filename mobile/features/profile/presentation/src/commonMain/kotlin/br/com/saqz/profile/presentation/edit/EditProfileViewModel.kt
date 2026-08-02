@@ -1,5 +1,6 @@
 package br.com.saqz.profile.presentation.edit
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
@@ -12,6 +13,7 @@ import kotlinx.coroutines.launch
 
 class EditProfileViewModel(
     private val gateway: ProfileGateway,
+    private val savedState: SavedStateHandle = SavedStateHandle(),
 ) : MviViewModel<EditProfileState, EditProfileIntent, EditProfileEffect>(EditProfileState()) {
     private var loadGeneration = 0L
 
@@ -21,20 +23,20 @@ class EditProfileViewModel(
 
     override fun onIntent(intent: EditProfileIntent) {
         when (intent) {
-            is EditProfileIntent.UpdateDisplayName -> updateForm(EditProfileFieldError.NameRequired) {
-                copy(displayName = intent.value)
+            is EditProfileIntent.UpdateDisplayName -> updateDraft(KeyDisplayName, intent.value) {
+                updateForm(EditProfileFieldError.NameRequired) { copy(displayName = intent.value) }
             }
-            is EditProfileIntent.UpdateNickname -> updateForm(EditProfileFieldError.NicknameInvalid) {
-                copy(nickname = intent.value)
+            is EditProfileIntent.UpdateNickname -> updateDraft(KeyNickname, intent.value) {
+                updateForm(EditProfileFieldError.NicknameInvalid) { copy(nickname = intent.value) }
             }
-            is EditProfileIntent.UpdatePhone -> updateForm(EditProfileFieldError.PhoneRequired) {
-                copy(phone = intent.value)
+            is EditProfileIntent.UpdatePhone -> updateDraft(KeyPhone, intent.value) {
+                updateForm(EditProfileFieldError.PhoneRequired) { copy(phone = intent.value) }
             }
-            is EditProfileIntent.UpdateCity -> updateForm(EditProfileFieldError.CityInvalid) {
-                copy(city = intent.value)
+            is EditProfileIntent.UpdateCity -> updateDraft(KeyCity, intent.value) {
+                updateForm(EditProfileFieldError.CityInvalid) { copy(city = intent.value) }
             }
-            is EditProfileIntent.SelectPhoneVisibility -> updateForm(EditProfileFieldError.PhoneVisibilityInvalid) {
-                copy(phoneVisibility = intent.value)
+            is EditProfileIntent.SelectPhoneVisibility -> updateDraft(KeyPhoneVisibility, intent.value.name) {
+                updateForm(EditProfileFieldError.PhoneVisibilityInvalid) { copy(phoneVisibility = intent.value) }
             }
             EditProfileIntent.Submit -> save()
             EditProfileIntent.Retry -> load()
@@ -47,7 +49,7 @@ class EditProfileViewModel(
         viewModelScope.launch {
             when (val result = gateway.bootstrap()) {
                 is SaqzResult.Success -> if (generation == loadGeneration) {
-                    update { EditProfileState.loaded(result.value) }
+                    update { EditProfileState.loaded(result.value).restoreDraft(savedState) }
                 }
                 is SaqzResult.Failure -> if (generation == loadGeneration) {
                     update { it.copy(isLoading = false, loadFailed = true) }
@@ -70,6 +72,15 @@ class EditProfileViewModel(
         }
     }
 
+    private fun updateDraft(key: String, value: String, update: () -> Unit) {
+        savedState[key] = value
+        update()
+    }
+
+    private fun clearDraft() {
+        DraftKeys.forEach { savedState.remove<Any?>(it) }
+    }
+
     private fun save() {
         val current = state.value
         if (!current.canSave) return
@@ -84,6 +95,7 @@ class EditProfileViewModel(
         viewModelScope.launch {
             when (val result = gateway.updateProfile(current.form.toRequest())) {
                 is SaqzResult.Success -> {
+                    clearDraft()
                     update { EditProfileState.loaded(result.value) }
                     emit(EditProfileEffect.Saved)
                 }
@@ -117,3 +129,24 @@ private fun String.toBackendPhone(): String {
     if (digits.length == 11) return "+55$digits"
     return trim()
 }
+
+private fun EditProfileState.restoreDraft(savedState: SavedStateHandle): EditProfileState {
+    val restoredForm = form.copy(
+        displayName = savedState.get<String>(KeyDisplayName) ?: form.displayName,
+        nickname = savedState.get<String>(KeyNickname) ?: form.nickname,
+        phone = savedState.get<String>(KeyPhone) ?: form.phone,
+        city = savedState.get<String>(KeyCity) ?: form.city,
+        phoneVisibility = savedState.get<String>(KeyPhoneVisibility)
+            ?.let { value -> runCatching { PhoneVisibility.valueOf(value) }.getOrNull() }
+            ?: form.phoneVisibility,
+    )
+    return copy(form = restoredForm)
+}
+
+private const val KeyDisplayName = "edit-profile-display-name"
+private const val KeyNickname = "edit-profile-nickname"
+private const val KeyPhone = "edit-profile-phone"
+private const val KeyCity = "edit-profile-city"
+private const val KeyPhoneVisibility = "edit-profile-phone-visibility"
+
+private val DraftKeys = listOf(KeyDisplayName, KeyNickname, KeyPhone, KeyCity, KeyPhoneVisibility)

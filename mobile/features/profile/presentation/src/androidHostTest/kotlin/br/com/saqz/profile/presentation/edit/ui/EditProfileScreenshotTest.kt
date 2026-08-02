@@ -92,6 +92,7 @@ class EditProfileScreenshotTest {
                 }
             }
         }
+        compose.waitForIdle()
         compose.onRoot().captureRoboImage("screenshots/vul-129/$name.png")
     }
 

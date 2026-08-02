@@ -1,5 +1,6 @@
 package br.com.saqz.profile.presentation.edit
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.profile.domain.PhoneVisibility
@@ -123,5 +124,29 @@ class EditProfileViewModelTest {
 
         assertTrue(viewModel.state.value.saveFailed)
         assertTrue(viewModel.state.value.hasChanges)
+    }
+
+    @Test
+    fun `rascunho dos campos sobrevive a uma nova instancia`() = runTest(mainDispatcher) {
+        val gateway = FakeProfileGateway()
+        val savedState = SavedStateHandle()
+        val firstViewModel = EditProfileViewModel(gateway, savedState)
+        runCurrent()
+
+        firstViewModel.onIntent(EditProfileIntent.UpdateDisplayName("Rafa Costa"))
+        firstViewModel.onIntent(EditProfileIntent.UpdateNickname("Rafinha"))
+        firstViewModel.onIntent(EditProfileIntent.UpdatePhone("11999998888"))
+        firstViewModel.onIntent(EditProfileIntent.UpdateCity("Campinas, SP"))
+        firstViewModel.onIntent(EditProfileIntent.SelectPhoneVisibility(PhoneVisibility.EVERYONE))
+
+        val recreatedViewModel = EditProfileViewModel(gateway, savedState)
+        runCurrent()
+
+        assertEquals("Rafa Costa", recreatedViewModel.state.value.form.displayName)
+        assertEquals("Rafinha", recreatedViewModel.state.value.form.nickname)
+        assertEquals("11999998888", recreatedViewModel.state.value.form.phone)
+        assertEquals("Campinas, SP", recreatedViewModel.state.value.form.city)
+        assertEquals(PhoneVisibility.EVERYONE, recreatedViewModel.state.value.form.phoneVisibility)
+        assertEquals("Rafael Costa", recreatedViewModel.state.value.originalForm.displayName)
     }
 }
