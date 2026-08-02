@@ -43,8 +43,6 @@ import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import br.com.saqz.groups.domain.membership.InviteCode
-import br.com.saqz.groups.domain.membership.RedeemedMembership
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.model.GroupTimeZone as ModelGroupTimeZone
@@ -239,8 +237,6 @@ class FakeGroupMembershipGateway(
     override suspend fun expireInvite(groupId: GroupId): SaqzResult<Unit, GroupMembershipError> =
         error("not used in this screen")
 
-    override suspend fun redeem(code: InviteCode): SaqzResult<RedeemedMembership, GroupMembershipError> =
-        error("not used in this screen")
 }
 
 class FakeGroupSystemTimeZonePort : GroupSystemTimeZonePort {

@@ -54,9 +54,17 @@ import br.com.saqz.groups.resources.invite_error_rate_title
 import br.com.saqz.groups.resources.invite_error_rate_unknown
 import br.com.saqz.groups.resources.invite_error_retry
 import br.com.saqz.groups.resources.invite_landing_approval_banner
+import br.com.saqz.groups.resources.invite_landing_composition_men
+import br.com.saqz.groups.resources.invite_landing_composition_mixed
+import br.com.saqz.groups.resources.invite_landing_composition_women
 import br.com.saqz.groups.resources.invite_landing_eyebrow
 import br.com.saqz.groups.resources.invite_landing_invited_by
 import br.com.saqz.groups.resources.invite_landing_join_action
+import br.com.saqz.groups.resources.invite_landing_level_advanced
+import br.com.saqz.groups.resources.invite_landing_level_beginner
+import br.com.saqz.groups.resources.invite_landing_level_custom
+import br.com.saqz.groups.resources.invite_landing_level_intermediate
+import br.com.saqz.groups.resources.invite_landing_level_mixed
 import br.com.saqz.groups.resources.invite_landing_members
 import br.com.saqz.groups.resources.invite_landing_next_game
 import br.com.saqz.groups.resources.invite_landing_open_banner
@@ -64,12 +72,27 @@ import br.com.saqz.groups.resources.invite_landing_other_groups
 import br.com.saqz.groups.resources.invite_landing_request_action
 import br.com.saqz.groups.resources.invite_landing_schedule_empty
 import br.com.saqz.groups.resources.invite_landing_title
+import br.com.saqz.groups.resources.invite_landing_weekday_friday
+import br.com.saqz.groups.resources.invite_landing_weekday_monday
+import br.com.saqz.groups.resources.invite_landing_weekday_saturday
+import br.com.saqz.groups.resources.invite_landing_weekday_sunday
+import br.com.saqz.groups.resources.invite_landing_weekday_thursday
+import br.com.saqz.groups.resources.invite_landing_weekday_tuesday
+import br.com.saqz.groups.resources.invite_landing_weekday_wednesday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_friday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_monday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_saturday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_sunday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_thursday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_tuesday
+import br.com.saqz.groups.resources.invite_landing_weekday_short_wednesday
 import br.com.saqz.groups.resources.invite_request_sent_body
 import br.com.saqz.groups.resources.invite_request_sent_explore
 import br.com.saqz.groups.resources.invite_request_sent_organizer
 import br.com.saqz.groups.resources.invite_request_sent_other_group
 import br.com.saqz.groups.resources.invite_request_sent_title
 import br.com.saqz.groups.resources.invite_request_sent_waiting
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object InviteLandingTags {
@@ -152,7 +175,7 @@ private fun InvitePreviewScreen(
         preview.nextGame?.let { nextGame ->
             SaqzGameSummaryCard(
                 eyebrow = stringResource(Res.string.invite_landing_next_game),
-                title = nextGame.startsAt,
+                title = nextGame.title(),
                 venue = nextGame.venueName,
                 address = nextGame.court,
                 modifier = Modifier.testTag(InviteLandingTags.NextGame),
@@ -194,8 +217,8 @@ private fun InviteGroupCard(preview: InvitePreviewUi) {
     SaqzCard(modifier = Modifier.testTag(InviteLandingTags.GroupCard)) {
         preview.city?.let { Text(it, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary) }
         Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-            preview.composition?.let { InviteDetailText(it) }
-            preview.level?.let { InviteDetailText(it) }
+            preview.compositionCode?.toCompositionResource()?.let { stringResource(it) }?.let { InviteDetailText(it) }
+            preview.levelCode?.toLevelResource()?.let { stringResource(it) }?.let { InviteDetailText(it) }
         }
         Text(
             text = stringResource(Res.string.invite_landing_members, preview.memberCount),
@@ -203,7 +226,8 @@ private fun InviteGroupCard(preview: InvitePreviewUi) {
             color = SaqzTheme.colors.textPrimary,
         )
         Text(
-            text = preview.regularSchedule ?: stringResource(Res.string.invite_landing_schedule_empty),
+            text = preview.regularWeekdays.toScheduleLabel()
+                ?: stringResource(Res.string.invite_landing_schedule_empty),
             style = SaqzTheme.typography.body,
             color = SaqzTheme.colors.textPrimary,
         )
@@ -213,6 +237,57 @@ private fun InviteGroupCard(preview: InvitePreviewUi) {
             color = SaqzTheme.colors.textSecondary,
         )
     }
+}
+
+@Composable
+private fun InviteNextGameUi.title(): String {
+    val dateTime = if (time.isBlank()) date else "$date · $time"
+    val weekday = weekdayCode.toShortWeekdayResource()?.let { stringResource(it) }
+    return if (weekday == null) dateTime else "$weekday, $dateTime"
+}
+
+private fun String.toCompositionResource(): StringResource? = when (this) {
+    "WOMEN" -> Res.string.invite_landing_composition_women
+    "MEN" -> Res.string.invite_landing_composition_men
+    "MIXED" -> Res.string.invite_landing_composition_mixed
+    else -> null
+}
+
+private fun String.toLevelResource(): StringResource? = when (this) {
+    "BEGINNER" -> Res.string.invite_landing_level_beginner
+    "INTERMEDIATE" -> Res.string.invite_landing_level_intermediate
+    "ADVANCED" -> Res.string.invite_landing_level_advanced
+    "MIXED_LEVELS" -> Res.string.invite_landing_level_mixed
+    "CUSTOM" -> Res.string.invite_landing_level_custom
+    else -> null
+}
+
+@Composable
+private fun List<String>.toScheduleLabel(): String? {
+    val labels = mapNotNull { it.toWeekdayResource()?.let { resource -> stringResource(resource) } }
+    return labels.takeIf { it.isNotEmpty() }?.joinToString(" e ")?.replaceFirstChar(Char::uppercaseChar)
+}
+
+private fun String.toWeekdayResource(): StringResource? = when (this) {
+    "SUNDAY" -> Res.string.invite_landing_weekday_sunday
+    "MONDAY" -> Res.string.invite_landing_weekday_monday
+    "TUESDAY" -> Res.string.invite_landing_weekday_tuesday
+    "WEDNESDAY" -> Res.string.invite_landing_weekday_wednesday
+    "THURSDAY" -> Res.string.invite_landing_weekday_thursday
+    "FRIDAY" -> Res.string.invite_landing_weekday_friday
+    "SATURDAY" -> Res.string.invite_landing_weekday_saturday
+    else -> null
+}
+
+private fun String.toShortWeekdayResource(): StringResource? = when (this) {
+    "SUNDAY" -> Res.string.invite_landing_weekday_short_sunday
+    "MONDAY" -> Res.string.invite_landing_weekday_short_monday
+    "TUESDAY" -> Res.string.invite_landing_weekday_short_tuesday
+    "WEDNESDAY" -> Res.string.invite_landing_weekday_short_wednesday
+    "THURSDAY" -> Res.string.invite_landing_weekday_short_thursday
+    "FRIDAY" -> Res.string.invite_landing_weekday_short_friday
+    "SATURDAY" -> Res.string.invite_landing_weekday_short_saturday
+    else -> null
 }
 
 @Composable
@@ -379,12 +454,12 @@ internal object InviteLandingSamples {
     val preview = InviteLandingState(isLoading = false, preview = InvitePreviewUi(
         groupName = "Vôlei do CERET",
         city = "Tatuapé",
-        composition = "Misto",
-        level = "Intermediário",
+        compositionCode = "MIXED",
+        levelCode = "INTERMEDIATE",
         memberCount = 26,
-        regularSchedule = "Terças e quintas",
+        regularWeekdays = listOf("TUESDAY", "THURSDAY"),
         inviterName = "Ana Lima",
-        nextGame = InviteNextGameUi("04/08/2026 · 19:30", "CERET", "Quadra 2"),
+        nextGame = InviteNextGameUi("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2"),
         entryRequiresApproval = true,
     ))
     val openPreview = preview.copy(preview = preview.preview!!.copy(entryRequiresApproval = false))

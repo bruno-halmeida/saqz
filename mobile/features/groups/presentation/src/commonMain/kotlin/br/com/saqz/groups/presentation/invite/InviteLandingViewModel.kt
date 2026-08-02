@@ -8,12 +8,16 @@ import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.domain.membership.InviteGateway
 import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
-import br.com.saqz.groups.domain.membership.InviteRegularSlot
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 class InviteLandingViewModel(
     private val code: String,
     private val inviteGateway: InviteGateway,
+    private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(InviteLandingState()) {
     private var generation = 0L
 
@@ -42,10 +46,10 @@ class InviteLandingViewModel(
         viewModelScope.launch {
             when (val result = inviteGateway.preview(InviteCode(code))) {
                 is SaqzResult.Success -> if (isCurrent(requestGeneration)) {
-                    update { it.copy(isLoading = false, preview = result.value.toUi(), error = null) }
+                    update { it.copy(isLoading = false, preview = result.value.toUi(timeZone), error = null) }
                 }
                 is SaqzResult.Failure -> if (isCurrent(requestGeneration)) {
-                    update { it.copy(isLoading = false, error = result.error.toUiError()) }
+                    update { it.copy(isLoading = false, error = result.error.toUiError(timeZone)) }
                 }
             }
         }
@@ -68,7 +72,7 @@ class InviteLandingViewModel(
                     }
                 }
                 is SaqzResult.Failure -> if (isCurrent(requestGeneration)) {
-                    update { it.copy(isRedeeming = false, error = result.error.toUiError()) }
+                    update { it.copy(isRedeeming = false, error = result.error.toUiError(timeZone)) }
                 }
             }
         }
@@ -77,68 +81,53 @@ class InviteLandingViewModel(
     private fun isCurrent(requestGeneration: Long): Boolean = requestGeneration == generation
 }
 
-private fun InvitePreview.toUi() = InvitePreviewUi(
+private fun InvitePreview.toUi(timeZone: TimeZone) = InvitePreviewUi(
     groupName = groupName,
     city = city?.takeIf(String::isNotBlank),
-    composition = composition.toCompositionLabel(),
-    level = level.toLevelLabel(),
+    compositionCode = composition,
+    levelCode = level,
     memberCount = memberCount,
-    regularSchedule = regularSlots.toScheduleLabel(),
+    regularWeekdays = regularSlots.map { it.weekday }.distinct(),
     inviterName = inviterName,
-    nextGame = nextGame?.let { InviteNextGameUi(formatDateTime(it.startsAt), it.venueName, it.court) },
+    nextGame = nextGame?.let { formatDateTime(it.startsAt, timeZone, it.venueName, it.court) },
     entryRequiresApproval = entryRequiresApproval,
 )
 
-private fun InviteError.toUiError(): InviteLandingError = when (this) {
+private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when (this) {
     InviteError.InvalidOrExpired -> InviteLandingError.Invalid
-    is InviteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt))
+    is InviteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
     is InviteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
     InviteError.PlanLimit -> InviteLandingError.PlanLimit
     is InviteError.DataFailure -> InviteLandingError.Network
     InviteError.GroupDeleted -> InviteLandingError.Invalid
 }
 
-private fun String?.toCompositionLabel(): String? = when (this) {
-    "WOMEN" -> "Feminino"
-    "MEN" -> "Masculino"
-    "MIXED" -> "Misto"
-    else -> null
+private fun formatDateTime(
+    value: String,
+    timeZone: TimeZone,
+    venueName: String,
+    court: String?,
+): InviteNextGameUi {
+    val localDateTime = runCatching { Instant.parse(value).toLocalDateTime(timeZone) }.getOrNull()
+    return if (localDateTime == null) {
+        InviteNextGameUi("", value, "", venueName, court)
+    } else {
+        InviteNextGameUi(
+            weekdayCode = localDateTime.date.dayOfWeek.name,
+            date = localDateTime.date.toDayMonth(),
+            time = "${localDateTime.hour.toString().padStart(2, '0')}h${localDateTime.minute.toString().padStart(2, '0')}",
+            venueName = venueName,
+            court = court,
+        )
+    }
 }
 
-private fun String?.toLevelLabel(): String? = when (this) {
-    "BEGINNER" -> "Iniciante"
-    "INTERMEDIATE" -> "Intermediário"
-    "ADVANCED" -> "Avançado"
-    "MIXED_LEVELS" -> "Níveis mistos"
-    "CUSTOM" -> "Personalizada"
-    else -> null
+private fun formatDate(value: String, timeZone: TimeZone): String {
+    val date = runCatching { Instant.parse(value).toLocalDateTime(timeZone).date }.getOrNull()
+        ?: runCatching { LocalDate.parse(value.take(10)) }.getOrNull()
+        ?: return value
+    return "${date.day.toString().padStart(2, '0')}/${(date.month.ordinal + 1).toString().padStart(2, '0')}/${date.year}"
 }
 
-private fun List<InviteRegularSlot>.toScheduleLabel(): String? {
-    val days = map { it.weekday }.distinct().mapNotNull { it.toDayLabel() }
-    if (days.isEmpty()) return null
-    return days.joinToString(" e ").replaceFirstChar(Char::uppercaseChar)
-}
-
-private fun String.toDayLabel(): String? = when (this) {
-    "SUNDAY" -> "domingos"
-    "MONDAY" -> "segundas"
-    "TUESDAY" -> "terças"
-    "WEDNESDAY" -> "quartas"
-    "THURSDAY" -> "quintas"
-    "FRIDAY" -> "sextas"
-    "SATURDAY" -> "sábados"
-    else -> null
-}
-
-private fun formatDateTime(value: String): String {
-    val date = formatDate(value)
-    val time = value.substringAfter('T', "").take(5)
-    return if (date != value && time.length == 5) "$date · $time" else value
-}
-
-private fun formatDate(value: String): String {
-    val date = value.take(10)
-    if (date.length != 10 || date[4] != '-' || date[7] != '-') return value
-    return "${date.substring(8, 10)}/${date.substring(5, 7)}/${date.substring(0, 4)}"
-}
+private fun LocalDate.toDayMonth(): String =
+    "${day.toString().padStart(2, '0')}/${(month.ordinal + 1).toString().padStart(2, '0')}"

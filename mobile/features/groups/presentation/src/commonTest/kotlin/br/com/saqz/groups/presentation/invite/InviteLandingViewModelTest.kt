@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -41,9 +42,11 @@ class InviteLandingViewModelTest {
         val viewModel = viewModel(preview = SaqzResult.Success(preview(approval = true)))
 
         assertFalse(viewModel.state.value.isLoading)
-        assertEquals("Terças e quintas", viewModel.state.value.preview?.regularSchedule)
-        assertEquals("Feminino", viewModel.state.value.preview?.composition)
-        assertEquals("04/08/2026 · 22:30", viewModel.state.value.preview?.nextGame?.startsAt)
+        assertEquals(listOf("TUESDAY", "THURSDAY"), viewModel.state.value.preview?.regularWeekdays)
+        assertEquals("WOMEN", viewModel.state.value.preview?.compositionCode)
+        assertEquals("TUESDAY", viewModel.state.value.preview?.nextGame?.weekdayCode)
+        assertEquals("04/08", viewModel.state.value.preview?.nextGame?.date)
+        assertEquals("19h30", viewModel.state.value.preview?.nextGame?.time)
         assertTrue(viewModel.state.value.preview?.entryRequiresApproval == true)
     }
 
@@ -53,6 +56,16 @@ class InviteLandingViewModelTest {
 
         assertEquals(InviteLandingError.Expired("31/08/2026"), viewModel.state.value.error)
         assertNull(viewModel.state.value.preview)
+    }
+
+    @Test
+    fun `utc expiration is rendered in the fixed local timezone`() = runTest {
+        val viewModel = viewModel(
+            preview = SaqzResult.Failure(InviteError.Expired("2026-08-01T01:30:00Z")),
+            timeZone = TIME_ZONE,
+        )
+
+        assertEquals(InviteLandingError.Expired("31/07/2026"), viewModel.state.value.error)
     }
 
     @Test
@@ -138,7 +151,8 @@ class InviteLandingViewModelTest {
         redeem: SaqzResult<InviteRedeem, InviteError> = SaqzResult.Success(
             InviteRedeem(InviteRedeemStatus.JOINED, GroupId("group-1"), "ATHLETE"),
         ),
-    ): InviteLandingViewModel = InviteLandingViewModel(INVITE_CODE, FakeInviteGateway(preview, redeem))
+        timeZone: TimeZone = TIME_ZONE,
+    ): InviteLandingViewModel = InviteLandingViewModel(INVITE_CODE, FakeInviteGateway(preview, redeem), timeZone)
 
     private fun InviteLandingViewModel.redeemError(): InviteLandingError {
         onIntent(InviteLandingIntent.PrimaryAction)
@@ -183,6 +197,7 @@ class InviteLandingViewModelTest {
     private companion object {
         const val INVITE_CODE = "invite-code"
         const val EXPIRED_AT = "2026-08-31T23:59:00Z"
+        val TIME_ZONE = TimeZone.of("America/Sao_Paulo")
 
         fun previewData() = InvitePreview("Vôlei do CERET", "Ana", false)
     }

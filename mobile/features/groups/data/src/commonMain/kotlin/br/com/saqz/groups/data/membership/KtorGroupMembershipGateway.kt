@@ -10,8 +10,6 @@ import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import br.com.saqz.groups.domain.membership.InviteCode
-import br.com.saqz.groups.domain.membership.RedeemedMembership
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkRequest
@@ -48,16 +46,7 @@ private data class MembershipDto(
 private data class InviteUrlDto(val inviteUrl: String = "")
 
 @Serializable
-private data class RedeemedInviteDto(
-    val groupId: String = "",
-    val role: GroupRoleDto? = null,
-)
-
-@Serializable
 private data class ChangeRoleRequestDto(val role: AssignableGroupRoleDto)
-
-@Serializable
-private data class RedeemInviteRequestDto(val code: String)
 
 class KtorGroupMembershipGateway(
     private val network: AuthenticatedNetworkClient,
@@ -101,14 +90,6 @@ class KtorGroupMembershipGateway(
         "api/groups/${groupId.value}/invite",
     ).toEmptyResult()
 
-    override suspend fun redeem(
-        code: InviteCode,
-    ): SaqzResult<RedeemedMembership, GroupMembershipError> = network.execute(
-        HttpMethod.Post,
-        "api/invites/redeem",
-        RedeemedInviteDto.serializer(),
-        NetworkRequest(json.encodeToString(RedeemInviteRequestDto(code.value))),
-    ).toRedeemedResult()
 }
 
 private fun NetworkResult<List<MembershipDto>>.toMembershipsResult() = when (this) {
@@ -134,11 +115,6 @@ private fun NetworkResult<InviteUrlDto>.toInviteUrlResult() = when (this) {
         ?: invalidResponse()
 }
 
-private fun NetworkResult<RedeemedInviteDto>.toRedeemedResult() = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
-    is NetworkResult.Success -> value.toDomain()?.let { SaqzResult.Success(it) } ?: invalidResponse()
-}
-
 private fun NetworkResult<Unit>.toEmptyResult() = when (this) {
     is NetworkResult.Success -> SaqzResult.Success(Unit)
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
@@ -148,12 +124,6 @@ private fun MembershipDto.toDomain(): GroupMembership? {
     val domainRole = role ?: return null
     if (userId.isBlank() || displayName.isBlank()) return null
     return GroupMembership(userId, displayName, GroupRole.valueOf(domainRole.name))
-}
-
-private fun RedeemedInviteDto.toDomain(): RedeemedMembership? {
-    val domainRole = role ?: return null
-    if (groupId.isBlank()) return null
-    return RedeemedMembership(GroupId(groupId), GroupRole.valueOf(domainRole.name))
 }
 
 private fun NetworkError.toDomainError(): GroupMembershipError = when (this) {
