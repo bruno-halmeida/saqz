@@ -83,6 +83,23 @@ class JdbcProfileStatsRepositoryIntegrationTest {
     }
 
     @Test
+    fun `does not count past draft games`() {
+        val fixture = fixture()
+        game(fixture.group, "2026-07-20 22:00:00Z", status = "DRAFT")
+
+        assertEquals(ProfileStats(0, null, 1), stats.execute(fixture.member))
+    }
+
+    @Test
+    fun `does not count past cancelled games`() {
+        val fixture = fixture()
+        val cancelled = game(fixture.group, "2026-07-20 22:00:00Z", status = "CANCELLED")
+        attendance(fixture, cancelled, "CONFIRMED")
+
+        assertEquals(ProfileStats(0, null, 1), stats.execute(fixture.member))
+    }
+
+    @Test
     fun `returns null rate when every past game is waitlisted`() {
         val fixture = fixture()
         val waitlisted = game(fixture.group, "2026-07-20 22:00:00Z")
@@ -133,13 +150,13 @@ class JdbcProfileStatsRepositoryIntegrationTest {
         )
     }
 
-    private fun game(group: UUID, startsAt: String): UUID {
+    private fun game(group: UUID, startsAt: String, status: String = "PUBLISHED"): UUID {
         val id = UUID.randomUUID()
         execute(
             "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes, " +
                 "confirmation_deadline,venue_name,venue_address,capacity,status,created_at,updated_at) " +
                 "VALUES ('$id','$group','Treino',DATE '2026-08-01',TIME '19:30','America/Sao_Paulo', " +
-                "TIMESTAMPTZ '$startsAt',90,TIMESTAMPTZ '2026-07-01 22:00:00Z','Arena','Rua Central 100',24,'PUBLISHED',now(),now())",
+                "TIMESTAMPTZ '$startsAt',90,TIMESTAMPTZ '2026-07-01 22:00:00Z','Arena','Rua Central 100',24,'$status',now(),now())",
         )
         return id
     }

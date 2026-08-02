@@ -40,6 +40,7 @@ class JdbcProfileStatsRepository(dataSource: DataSource) : ProfileStatsRepositor
                 ON games.group_id = memberships.group_id
                 AND games.starts_at < :now
                 AND games.starts_at >= memberships.created_at
+                AND games.status IN ('PUBLISHED', 'COMPLETED')
             LEFT JOIN game_attendance attendance
                 ON attendance.group_id = games.group_id
                 AND attendance.game_id = games.id
