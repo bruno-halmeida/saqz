@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_title">Perfil</string>
+    <string name="profile_settings_content_description">Abrir configurações de notificações</string>
+    <string name="profile_photo_content_description">Foto de perfil</string>
+    <string name="profile_edit_data">Editar dados</string>
+    <string name="profile_games">Jogos</string>
+    <string name="profile_attendance">Presença</string>
+    <string name="profile_groups">Grupos</string>
+    <string name="profile_play_style">Como você joga</string>
+    <string name="profile_account">Conta</string>
+    <string name="profile_monthly_payments">Minhas mensalidades</string>
+    <string name="profile_notifications">Notificações</string>
+    <string name="profile_change_password">Trocar senha</string>
+    <string name="profile_sign_out">Sair da conta</string>
+    <string name="profile_empty_groups">Você ainda não está em nenhum grupo</string>
+    <string name="profile_error_title">Não foi possível carregar seu perfil</string>
+    <string name="profile_error_message">Confira sua conexão e tente novamente.</string>
+    <string name="profile_retry">Tentar novamente</string>
+</resources>

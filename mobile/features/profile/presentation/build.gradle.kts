@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.roborazzi)
     id("saqz.kmp-compose-library")
+    alias(libs.plugins.kotlin.serialization)
     id("saqz.kmp-library")
     id("saqz.detekt")
 }
@@ -25,6 +26,7 @@ kotlin {
             implementation(project(":features:profile"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
+            implementation(libs.coil.compose.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)
@@ -47,6 +49,9 @@ kotlin {
     }
 }
 
+// A captura é host-only: as suítes de commonTest continuam rodando no simulador iOS.
+// Sem este recorte, o host test herda commonTest e tenta executar testes Compose sem o
+// runner do Robolectric.
 afterEvaluate {
     tasks.named("compileAndroidHostTest", org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool::class) {
         setSource(kotlin.sourceSets.getByName("androidHostTest").kotlin)
