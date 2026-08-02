@@ -1,10 +1,10 @@
 package br.com.saqz.bootstrap
 
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
-import br.com.saqz.access.application.session.AccountDeletedException
 import br.com.saqz.access.application.session.AccountGroupCleanup
 import br.com.saqz.access.application.session.AccountTransactionRunner
 import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
@@ -24,9 +24,11 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
+import java.sql.DriverManager
+import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
@@ -40,6 +42,7 @@ class DeleteAccountIntegrationTest {
     @BeforeAll
     fun startDatabase() {
         postgres.start()
+        awaitDatabase()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
         sessionRepository = JdbcSessionRepository(dataSource)
@@ -84,20 +87,34 @@ class DeleteAccountIntegrationTest {
         assertEquals("Deleted Public", text("SELECT member_display_name FROM game_attendance WHERE member_user_id = '${deleted.user.id}'"))
         assertEquals("Deleted Public", text("SELECT member_display_name FROM group_charges WHERE member_user_id = '${deleted.user.id}'"))
 
-        assertFailsWith<AccountDeletedException> {
-            BootstrapSession(sessionRepository).execute(
-                RequestIdentity("deleted-subject", "same@example.test", true, "Deleted Public"),
-            )
-        }
-
         deleteAccount.execute("deleted-subject")
         assertEquals(1, count("SELECT count(*) FROM access_users WHERE deleted_at IS NOT NULL"))
 
-        val replacement = sessionRepository.upsertAndLoad(
-            SessionUpsert("replacement-subject", "same@example.test", true, AccessName.from("New Person")),
-        )
+        val replacement = assertIs<BootstrapSessionResult.Success>(
+            BootstrapSession(sessionRepository).execute(
+                RequestIdentity("deleted-subject", "same@example.test", true, "New Person"),
+            ),
+        ).session
         assertNotEquals(deleted.user.id, replacement.user.id)
         assertEquals(0, replacement.memberships.size)
+        assertEquals("New Person", replacement.user.displayName.value)
+        assertEquals(3, count("SELECT count(*) FROM access_users"))
+        assertEquals(0, count("SELECT count(*) FROM game_attendance WHERE member_user_id = '${replacement.user.id}'"))
+        assertEquals(0, count("SELECT count(*) FROM group_charges WHERE member_user_id = '${replacement.user.id}'"))
+    }
+
+    private fun awaitDatabase() {
+        val deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos()
+        var lastFailure: Exception? = null
+        while (System.nanoTime() < deadline) {
+            try {
+                DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { return }
+            } catch (failure: Exception) {
+                lastFailure = failure
+                Thread.sleep(100)
+            }
+        }
+        throw IllegalStateException("PostgreSQL did not become ready", lastFailure)
     }
 
     private fun accountDeletion(): DeleteAccount {

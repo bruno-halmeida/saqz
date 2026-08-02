@@ -7,7 +7,6 @@ class BootstrapSession(
     private val repository: SessionRepository,
 ) {
     fun execute(identity: RequestIdentity): BootstrapSessionResult {
-        if (repository.isDeleted(identity.subject)) throw AccountDeletedException()
         val displayName = identity.displayName
             ?.let { runCatching { AccessName.from(it) }.getOrNull() }
             ?: return BootstrapSessionResult.InvalidDisplayName
@@ -22,5 +21,3 @@ class BootstrapSession(
         return BootstrapSessionResult.Success(session)
     }
 }
-
-class AccountDeletedException : RuntimeException()

@@ -117,16 +117,6 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `deleted account is rejected when bootstrapping the session`() {
-        putSession()
-        assertEquals(204, deleteSession().statusCode())
-
-        val response = putSession()
-
-        assertProblem(response, 401, "AUTHENTICATION_REQUIRED")
-    }
-
-    @Test
     fun `false email verification returns the session flagged as unverified`() {
         verifier.principal = identity(emailVerified = false)
 
@@ -599,8 +589,6 @@ class SessionEndpointIntegrationTest {
             failure = null
             deletedSubjects.clear()
         }
-
-        override fun isDeleted(subject: String): Boolean = subject in deletedSubjects
 
         override fun softDelete(subject: String): UUID? {
             val id = ids[subject] ?: return null

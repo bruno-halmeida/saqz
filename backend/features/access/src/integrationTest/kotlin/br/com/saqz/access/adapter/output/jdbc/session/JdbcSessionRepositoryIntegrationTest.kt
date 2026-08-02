@@ -1,12 +1,14 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.testing.startAndAwaitJdbc
-import br.com.saqz.access.application.session.AccountDeletedException
+import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.PhoneVisibility
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
+import br.com.saqz.sharedkernel.RequestIdentity
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -24,9 +26,9 @@ import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertNotEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -425,18 +427,26 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `deleted subject is rejected while a same-email registration gets a fresh user`() {
+    fun `deleted subject bootstraps a fresh user without old memberships`() {
         val deleted = repository.upsertAndLoad(command("subject-old"))
+        val oldGroup = insertGroup(deleted.user.id, "Old Group")
+        insertMembership(oldGroup, deleted.user.id, "ADMIN")
         repository.softDelete("subject-old")
 
-        assertTrue(repository.isDeleted("subject-old"))
-        assertFailsWith<AccountDeletedException> { repository.upsertAndLoad(command("subject-old")) }
-
-        val replacement = repository.upsertAndLoad(command("subject-new"))
+        val result = BootstrapSession(repository).execute(
+            RequestIdentity("subject-old", "person@example.test", true, "New Person"),
+        )
+        val replacement = assertIs<BootstrapSessionResult.Success>(result).session
 
         assertNotEquals(deleted.user.id, replacement.user.id)
+        assertEquals("New Person", replacement.user.displayName.value)
         assertTrue(replacement.memberships.isEmpty())
         assertEquals(2, count("SELECT count(*) FROM access_users"))
+        assertEquals(1, count("SELECT count(*) FROM access_users WHERE deleted_at IS NOT NULL"))
+        assertEquals(
+            1,
+            count("SELECT count(*) FROM group_memberships WHERE group_id = '$oldGroup' AND user_id = '${deleted.user.id}'"),
+        )
     }
 
     private fun command(subject: String, emailVerified: Boolean = true) =

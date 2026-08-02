@@ -8,7 +8,7 @@ import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -65,11 +65,19 @@ class BootstrapSessionTest {
     }
 
     @Test
-    fun `deleted account is rejected before display name validation and write`() {
-        val repository = RecordingSessionRepository(view).apply { deleted = true }
+    fun `bootstrap delegates a previously deleted subject for a fresh session`() {
+        val freshView = SessionView(
+            UserAccount(UUID.randomUUID(), "subject-1", "person@example.test", AccessName.from("Person Name")),
+            emptyList(),
+        )
+        val repository = RecordingSessionRepository(freshView)
 
-        assertFailsWith<AccountDeletedException> { BootstrapSession(repository).execute(identity(displayName = null)) }
-        assertTrue(repository.commands.isEmpty())
+        val result = BootstrapSession(repository).execute(identity())
+
+        assertEquals(BootstrapSessionResult.Success(freshView), result)
+        assertNotEquals(userId, (result as BootstrapSessionResult.Success).session.user.id)
+        assertTrue(result.session.memberships.isEmpty())
+        assertEquals(1, repository.commands.size)
     }
 
     @Test
@@ -172,9 +180,6 @@ class BootstrapSessionTest {
         private val result: SessionView,
     ) : SessionRepository {
         val commands: MutableList<SessionUpsert> = Collections.synchronizedList(mutableListOf())
-        var deleted = false
-
-        override fun isDeleted(subject: String): Boolean = deleted
 
         override fun upsertAndLoad(command: SessionUpsert): SessionView {
             commands += command

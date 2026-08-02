@@ -1,6 +1,5 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
-import br.com.saqz.access.application.session.AccountDeletedException
 import br.com.saqz.access.application.session.AccountDeletionRepository
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionMembership
@@ -21,7 +20,6 @@ class JdbcSessionRepository(
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
-        if (isDeleted(command.subject)) throw AccountDeletedException()
         val user = jdbc.sql(
             """
             INSERT INTO access_users (
@@ -70,26 +68,6 @@ class JdbcSessionRepository(
             memberships = loadMemberships(user.id),
         )
     }
-
-    override fun isDeleted(subject: String): Boolean = jdbc.sql(
-        """
-        SELECT EXISTS (
-            SELECT 1
-            FROM access_users deleted
-            WHERE deleted.firebase_subject = :subject
-              AND deleted.deleted_at IS NOT NULL
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM access_users active
-                  WHERE active.firebase_subject = :subject
-                    AND active.deleted_at IS NULL
-              )
-        )
-        """.trimIndent(),
-    )
-        .param("subject", subject)
-        .query(Boolean::class.java)
-        .single()
 
     override fun softDelete(subject: String): UUID? {
         val userId = jdbc.sql(
