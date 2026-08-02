@@ -7,6 +7,9 @@ import br.com.saqz.groups.application.create.GroupCreationRepository
 import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.create.StoredGroup
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.delete.DeleteGroup
+import br.com.saqz.groups.application.delete.DeleteGroupResult
+import br.com.saqz.groups.application.delete.GroupDeletionRepository
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
 import br.com.saqz.groups.application.read.GroupProfileReadModel
@@ -160,6 +163,26 @@ class GroupCreationEndpointIntegrationTest {
     }
 
     @Test
+    fun `owner deletes a group with no content and a repeated delete is not found`() {
+        val created = postGroup(UUID.randomUUID(), "Deletable Group", "UTC")
+        val groupId = UUID.fromString(json(created)["id"].stringValue())
+
+        val first = deleteGroup(groupId)
+        val second = deleteGroup(groupId)
+
+        assertEquals(204, first.statusCode())
+        assertEquals("", first.body())
+        assertProblem(second, 404, "GROUP_NOT_FOUND")
+    }
+
+    @Test
+    fun `non-owner delete is forbidden`() {
+        repository.deletionResult = DeleteGroupResult.AccessForbidden
+
+        assertProblem(deleteGroup(UUID.randomUUID()), 403, "ACCESS_FORBIDDEN")
+    }
+
+    @Test
     fun `repository failure returns generic correlated problem without details`() {
         repository.failure = IllegalStateException("group-database-password-fixture")
 
@@ -303,6 +326,13 @@ class GroupCreationEndpointIntegrationTest {
         return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
 
+    private fun deleteGroup(groupId: UUID, bearer: String? = "test-token"): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/groups/$groupId"))
+            .DELETE()
+        if (bearer != null) builder.header("Authorization", "Bearer $bearer")
+        return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString())
+    }
+
     private fun json(response: HttpResponse<String>) = objectMapper.readTree(response.body())
 
     private fun assertProblem(response: HttpResponse<String>, status: Int, code: String) {
@@ -342,8 +372,16 @@ class GroupCreationEndpointIntegrationTest {
         fun getCreatedGroup(repository: RecordingGroupRepository) = GetGroup(repository, GroupAccessPolicy())
 
         @Bean
-        fun accessGroupController(bootstrap: BootstrapSession, createGroup: CreateGroup, getCreatedGroup: GetGroup) =
-            AccessGroupController(verifiedGroupActorResolver(bootstrap), createGroup, getCreatedGroup)
+        fun deleteGroup(transaction: TransactionRunner, repository: RecordingGroupRepository) =
+            DeleteGroup(transaction, repository)
+
+        @Bean
+        fun accessGroupController(
+            bootstrap: BootstrapSession,
+            createGroup: CreateGroup,
+            getCreatedGroup: GetGroup,
+            deleteGroup: DeleteGroup,
+        ) = AccessGroupController(verifiedGroupActorResolver(bootstrap), createGroup, getCreatedGroup, deleteGroup)
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()
@@ -373,10 +411,11 @@ class GroupCreationEndpointIntegrationTest {
         override fun athleteLimitFor(ownerId: UUID): Int? = null
     }
 
-    class RecordingGroupRepository : GroupCreationRepository, GroupReadRepository {
+    class RecordingGroupRepository : GroupCreationRepository, GroupReadRepository, GroupDeletionRepository {
         val commands = mutableListOf<CreateGroupCommand>()
         val groups = mutableMapOf<Pair<UUID, UUID>, StoredGroup>()
         var failure: RuntimeException? = null
+        var deletionResult: DeleteGroupResult = DeleteGroupResult.Success
         var nextVenueId: UUID = UUID.randomUUID()
         var nextSlotIds: List<UUID> = listOf(UUID.randomUUID())
 
@@ -384,6 +423,7 @@ class GroupCreationEndpointIntegrationTest {
             commands.clear()
             groups.clear()
             failure = null
+            deletionResult = DeleteGroupResult.Success
             nextVenueId = UUID.randomUUID()
             nextSlotIds = listOf(UUID.randomUUID())
         }
@@ -445,6 +485,18 @@ class GroupCreationEndpointIntegrationTest {
                     profile.monthlyDueDay,
                 ),
             )
+        }
+
+        override fun softDelete(actorUserId: UUID, groupId: UUID): DeleteGroupResult {
+            if (deletionResult != DeleteGroupResult.Success) return deletionResult
+            val stored = groups.values.firstOrNull { it.id == groupId }
+                ?: return DeleteGroupResult.GroupNotFound
+            return if (stored.ownerUserId == actorUserId) {
+                groups.remove(stored.ownerUserId to stored.creationKey)
+                DeleteGroupResult.Success
+            } else {
+                DeleteGroupResult.AccessForbidden
+            }
         }
     }
 }

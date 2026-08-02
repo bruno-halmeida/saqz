@@ -37,6 +37,15 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `invite for deleted group has its own outcome without invalid attempt or membership`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, groupDeleted = true))
+
+        assertSame(RedeemInviteResult.GroupDeleted, fixture.useCase.execute(actor, code.value))
+        assertTrue(fixture.repository.invalidAttempts.isEmpty())
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
     fun `valid invite lookup uses only SHA-256 digest`() {
         val fixture = fixture()
 

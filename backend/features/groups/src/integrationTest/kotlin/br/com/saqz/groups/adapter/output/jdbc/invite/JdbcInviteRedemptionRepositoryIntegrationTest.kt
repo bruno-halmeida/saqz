@@ -99,6 +99,21 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     }
 
     @Test
+    fun `valid invite lookup keeps deleted group distinguishable from invalid invite`() {
+        val fixture = inviteFixture("lookup-deleted")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")
+
+        val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
+
+        assertEquals(fixture.group, found?.groupId)
+        assertEquals(true, found?.groupDeleted)
+        assertEquals(
+            RedeemInviteResult.GroupDeleted,
+            useCase().execute(insertUser("lookup-deleted-user"), code.value),
+        )
+    }
+
+    @Test
     fun `unknown digest returns no invite`() {
         inviteFixture("lookup-missing")
         val unknown = InviteTokenDigest.from(ByteArray(32) { 99.toByte() })

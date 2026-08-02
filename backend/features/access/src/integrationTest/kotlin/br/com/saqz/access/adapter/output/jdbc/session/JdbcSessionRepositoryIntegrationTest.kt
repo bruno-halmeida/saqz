@@ -16,6 +16,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -34,7 +36,10 @@ class JdbcSessionRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
+        Flyway.configure().dataSource(dataSource)
+            .locations("classpath:db/migration", groupMigrationLocation())
+            .load()
+            .migrate()
         repository = JdbcSessionRepository(dataSource)
     }
 
@@ -150,6 +155,24 @@ class JdbcSessionRepositoryIntegrationTest {
 
         assertEquals(listOf(group), refreshed.memberships.map { it.groupId })
         assertEquals("OWNER", refreshed.memberships.single().role)
+    }
+
+    @Test
+    fun `deleted owned and joined groups are absent from session memberships`() {
+        val owner = repository.upsertAndLoad(command("deleted-session-owner"))
+        val member = repository.upsertAndLoad(command("deleted-session-member"))
+        val deletedOwned = insertGroup(owner.user.id, "Deleted Owned Group")
+        val deletedJoined = insertGroup(owner.user.id, "Deleted Joined Group")
+        val active = insertGroup(owner.user.id, "Active Group")
+        insertMembership(deletedJoined, member.user.id, "ATHLETE")
+        insertMembership(active, member.user.id, "ATHLETE")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id IN ('$deletedOwned', '$deletedJoined')")
+
+        val ownerSession = repository.upsertAndLoad(command("deleted-session-owner"))
+        val memberSession = repository.upsertAndLoad(command("deleted-session-member"))
+
+        assertEquals(listOf(active), ownerSession.memberships.map { it.groupId })
+        assertEquals(listOf(active), memberSession.memberships.map { it.groupId })
     }
 
     @Test
@@ -412,4 +435,18 @@ class JdbcSessionRepositoryIntegrationTest {
         }
 
     private fun connection(): Connection = dataSource.connection
+
+    private fun groupMigrationLocation(): String {
+        var directory = Path.of(System.getProperty("user.dir")).toAbsolutePath()
+        repeat(6) {
+            val candidates = listOf(
+                directory.resolve("backend/features/groups/src/main/resources/db/migration"),
+                directory.resolve("features/groups/src/main/resources/db/migration"),
+                directory.resolve("groups/src/main/resources/db/migration"),
+            )
+            candidates.firstOrNull(Files::isDirectory)?.let { return "filesystem:$it" }
+            directory = directory.parent ?: return@repeat
+        }
+        error("Cannot find groups migrations")
+    }
 }

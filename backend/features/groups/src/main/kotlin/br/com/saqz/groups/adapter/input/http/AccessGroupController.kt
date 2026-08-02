@@ -72,7 +72,7 @@ class AccessGroupController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val createGroup: CreateGroup,
     private val getGroup: GetGroup,
-    private val deleteGroup: DeleteGroup? = null,
+    private val deleteGroup: DeleteGroup,
 ) {
     @PostMapping("/api/groups")
     fun create(
@@ -105,7 +105,7 @@ class AccessGroupController(
         val actor = actorResolver.resolve(identity)
         val parsedGroupId = runCatching { UUID.fromString(groupId) }.getOrNull()
             ?: throw GroupNotFoundException()
-        return when (requireNotNull(deleteGroup).execute(actor, parsedGroupId)) {
+        return when (deleteGroup.execute(actor, parsedGroupId)) {
             DeleteGroupResult.Success -> ResponseEntity.noContent().build()
             DeleteGroupResult.GroupNotFound -> throw GroupNotFoundException()
             DeleteGroupResult.AccessForbidden -> throw AccessForbiddenException()

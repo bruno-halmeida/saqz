@@ -48,6 +48,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         transaction = JdbcTransactionRunner(dataSource)
         useCase = UpdateGroupSettings(
             transaction,
