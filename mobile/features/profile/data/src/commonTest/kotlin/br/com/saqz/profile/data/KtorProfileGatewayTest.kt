@@ -26,7 +26,6 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull

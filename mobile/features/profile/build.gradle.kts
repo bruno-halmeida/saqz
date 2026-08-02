@@ -13,6 +13,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":features:profile:domain"))
+            implementation(project(":core:domain"))
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

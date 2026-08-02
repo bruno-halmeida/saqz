@@ -185,40 +185,49 @@ private fun NetworkResult<Unit>.toEmptyResult(): SaqzResult<Unit, DataError> = w
 }
 
 private fun ProfileTransport.toDomain(): Profile? {
-    val visibility = user.phoneVisibility.toEnumOrNull<PhoneVisibility>() ?: return null
-    if (user.id.isBlank() || user.displayName.isBlank()) return null
-    if (memberships.any { it.groupId.isBlank() || it.groupName.isBlank() || it.role.isBlank() }) return null
-    return Profile(
-        user = ProfileUser(
-            id = user.id,
-            email = user.email,
-            displayName = user.displayName,
-            nickname = user.nickname,
-            phone = user.phone,
-            phoneRequired = user.phoneRequired,
-            phoneVisibility = visibility,
-            city = user.city,
-            emailVerified = user.emailVerified,
-            photoUrl = user.photoUrl,
-        ),
-        memberships = memberships.map {
-            ProfileMembership(GroupId(it.groupId), it.groupName, it.role)
-        },
-    )
+    val identityIsValid = user.id.isNotBlank() && user.displayName.isNotBlank()
+    val membershipsAreValid = memberships.all {
+        it.groupId.isNotBlank() && it.groupName.isNotBlank() && it.role.isNotBlank()
+    }
+    return user.phoneVisibility.toEnumOrNull<PhoneVisibility>()
+        ?.takeIf { identityIsValid && membershipsAreValid }
+        ?.let { visibility ->
+            Profile(
+                user = ProfileUser(
+                    id = user.id,
+                    email = user.email,
+                    displayName = user.displayName,
+                    nickname = user.nickname,
+                    phone = user.phone,
+                    phoneRequired = user.phoneRequired,
+                    phoneVisibility = visibility,
+                    city = user.city,
+                    emailVerified = user.emailVerified,
+                    photoUrl = user.photoUrl,
+                ),
+                memberships = memberships.map {
+                    ProfileMembership(GroupId(it.groupId), it.groupName, it.role)
+                },
+            )
+        }
 }
 
 private fun ProfileStatsTransport.toDomain(): ProfileStats? {
-    val games = games ?: return null
-    val groups = groups ?: return null
-    if (games < 0 || groups < 0) return null
-    if (attendanceRate != null && attendanceRate !in 0..100) return null
-    return ProfileStats(games, attendanceRate, groups)
+    return when {
+        games == null || groups == null -> null
+        games < 0 || groups < 0 -> null
+        attendanceRate != null && attendanceRate !in 0..100 -> null
+        else -> ProfileStats(games, attendanceRate, groups)
+    }
 }
 
 private fun AthleteProfileTransport.toDomain(): AthleteProfile? {
-    if (userId.isBlank() || displayName.isBlank()) return null
-    if (memberships.any { it.toDomain() == null }) return null
-    return AthleteProfile(userId, displayName, phone, memberships.map { it.toDomain()!! })
+    val domainMemberships = memberships.map { it.toDomain() }
+    return if (userId.isBlank() || displayName.isBlank() || domainMemberships.any { it == null }) {
+        null
+    } else {
+        AthleteProfile(userId, displayName, phone, domainMemberships.filterNotNull())
+    }
 }
 
 private fun AthleteMembershipTransport.toDomain(): AthleteMembership? {
