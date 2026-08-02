@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="athlete_registration_title">Cadastro de atleta</string>
+    <string name="athlete_registration_joined_title">Você entrou no %1$s</string>
+    <string name="athlete_registration_joined_subtitle">%1$s · %2$s</string>
+    <string name="athlete_registration_city_unknown">Cidade não informada</string>
+    <string name="athlete_registration_modality_court">Vôlei de quadra</string>
+    <string name="athlete_registration_modality_beach">Vôlei de areia</string>
+    <string name="athlete_registration_modality_footvolley">Futevôlei</string>
+    <string name="athlete_registration_lead">Conta pra galera como você joga. Isso ajuda a montar os times.</string>
+    <string name="athlete_registration_identity_title">Como te chamam</string>
+    <string name="athlete_registration_nickname_hint">Seu apelido neste grupo</string>
+    <string name="athlete_registration_court_position">Posição</string>
+    <string name="athlete_registration_secondary_position">Também jogo de (opcional)</string>
+    <string name="athlete_registration_secondary_hint">Só aparece em grupos de vôlei de quadra.</string>
+    <string name="athlete_registration_level">Nível</string>
+    <string name="athlete_registration_height">Altura (opcional)</string>
+    <string name="athlete_registration_height_hint">Em centímetros</string>
+    <string name="athlete_registration_summary">Vai aparecer como %1$s · %2$s</string>
+    <string name="athlete_registration_summary_secondary">Vai aparecer como %1$s · também joga de %2$s · %3$s</string>
+    <string name="athlete_registration_undefined_position">posição não definida</string>
+    <string name="athlete_registration_undefined_level">nível não definido</string>
+    <string name="athlete_registration_beach_lead">Na areia não tem posição fixa — a gente pergunta só o lado que você prefere.</string>
+    <string name="athlete_registration_side">Lado que você joga</string>
+    <string name="athlete_registration_side_hint">Substitui a posição nos grupos de areia e futevôlei.</string>
+    <string name="athlete_registration_save">Salvar meu perfil</string>
+    <string name="athlete_registration_save_error">Não foi possível salvar seu perfil. Tente de novo.</string>
+    <string name="athlete_registration_load_error_title">Não foi possível carregar seu cadastro</string>
+    <string name="athlete_registration_load_error_body">Verifique sua conexão e tente de novo.</string>
+    <string name="athlete_registration_retry">Tentar de novo</string>
+
+    <string name="athlete_registration_position_setter_female">Levantadora</string>
+    <string name="athlete_registration_position_setter_male">Levantador</string>
+    <string name="athlete_registration_position_outside_female">Ponteira</string>
+    <string name="athlete_registration_position_outside_male">Ponteiro</string>
+    <string name="athlete_registration_position_middle">Central</string>
+    <string name="athlete_registration_position_opposite_female">Oposta</string>
+    <string name="athlete_registration_position_opposite_male">Oposto</string>
+    <string name="athlete_registration_position_libero">Líbero</string>
+
+    <string name="athlete_registration_level_beginner">Iniciante</string>
+    <string name="athlete_registration_level_intermediate">Intermediário</string>
+    <string name="athlete_registration_level_advanced">Avançado</string>
+    <string name="athlete_registration_side_right">Direita</string>
+    <string name="athlete_registration_side_left">Esquerda</string>
+    <string name="athlete_registration_side_both">Tanto faz</string>
+</resources>

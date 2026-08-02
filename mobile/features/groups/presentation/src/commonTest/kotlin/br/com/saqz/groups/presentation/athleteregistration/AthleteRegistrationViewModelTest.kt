@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.athleteregistration
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteLevel
@@ -161,6 +162,27 @@ class AthleteRegistrationViewModelTest {
 
         assertFalse(viewModel.state.value.isSaving)
         assertEquals(GroupUiError.Network, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `typed patch validation failure remains visible as generic validation error`() = runTest(dispatcher) {
+        val viewModel = viewModel(
+            athleteGateway = FakeAthleteGateway(
+                ownProfileResult = ownProfile(membership()),
+                updateOwnProfileResult = SaqzResult.Failure(
+                    AthleteError.Validation(
+                        ValidationDetails(
+                            globalMessages = listOf("invalid"),
+                            fieldMessages = mapOf("position" to listOf("invalid")),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+
+        assertEquals(GroupUiError.Validation, viewModel.state.value.error)
     }
 
     private fun viewModel(
