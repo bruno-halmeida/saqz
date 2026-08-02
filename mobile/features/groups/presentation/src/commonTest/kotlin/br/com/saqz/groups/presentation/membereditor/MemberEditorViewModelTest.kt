@@ -149,6 +149,26 @@ class MemberEditorViewModelTest {
     }
 
     @Test
+    fun `billing rejects extra decimal places without truncating money`() = runTest {
+        val invalidAthlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val invalidViewModel = editor(invalidAthlete)
+        invalidViewModel.onIntent(MemberEditorIntent.BillingAmountChanged("12,345"))
+        invalidViewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+        assertEquals(GroupUiError.Validation, invalidViewModel.state.value.error)
+        assertNull(invalidAthlete.lastUpdateCommand)
+
+        listOf("12,3" to 1230L, "12,34" to 1234L, "12" to 1200L).forEach { (value, expectedCents) ->
+            val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+            val viewModel = editor(athlete)
+            viewModel.onIntent(MemberEditorIntent.BillingAmountChanged(value))
+            viewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+            assertEquals(expectedCents, athlete.lastUpdateCommand?.monthlyFeeCents, value)
+        }
+    }
+
+    @Test
     fun `draft fields restore from SavedStateHandle`() = runTest {
         val savedState = SavedStateHandle()
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))

@@ -382,7 +382,9 @@ class MemberEditorViewModel(
         val parts = normalized.replace('.', ',').split(',')
         if (parts.size > 2 || parts.any { it.isEmpty() }) return null
         val reais = parts[0].toLongOrNull() ?: return null
-        val centavos = parts.getOrNull(1)?.padEnd(2, '0')?.take(2)?.toLongOrNull() ?: 0
+        val fraction = parts.getOrNull(1)
+        if (fraction != null && fraction.length > 2) return null
+        val centavos = fraction?.padEnd(2, '0')?.toLongOrNull() ?: 0
         return reais * 100 + centavos
     }
 
