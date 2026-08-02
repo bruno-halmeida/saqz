@@ -33,6 +33,7 @@ import java.net.http.HttpResponse
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import tools.jackson.databind.ObjectMapper
 
@@ -327,6 +328,31 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
+    fun `missing nickname field preserves the existing nickname`() {
+        repository.nickname = "Rafa"
+        putSession()
+
+        val response = patchProfile("""{"displayName":"New Name"}""")
+
+        assertEquals(200, response.statusCode())
+        assertEquals("Rafa", json(response)["user"]["nickname"].stringValue())
+        assertEquals(false, repository.profileCommands.single().nicknameProvided)
+    }
+
+    @Test
+    fun `blank nickname field clears the existing nickname`() {
+        repository.nickname = "Rafa"
+        putSession()
+
+        val response = patchProfile("""{"nickname":""}""")
+
+        assertEquals(200, response.statusCode())
+        assertTrue(json(response)["user"]["nickname"].isNull)
+        assertEquals(true, repository.profileCommands.single().nicknameProvided)
+        assertNull(repository.profileCommands.single().nickname)
+    }
+
+    @Test
     fun `blank phone field returns a stable field validation problem`() {
         putSession()
 
@@ -424,6 +450,8 @@ class SessionEndpointIntegrationTest {
         private val ids = mutableMapOf<String, UUID>()
         private val phones = mutableMapOf<String, PhoneNumber>()
         private val names = mutableMapOf<String, AccessName>()
+        private val nicknames = mutableMapOf<String, String?>()
+        var nickname: String? = null
         var memberships: List<SessionMembership> = emptyList()
         var photoDigest: String? = null
         var failure: RuntimeException? = null
@@ -434,6 +462,8 @@ class SessionEndpointIntegrationTest {
             ids.clear()
             phones.clear()
             names.clear()
+            nicknames.clear()
+            nickname = null
             memberships = emptyList()
             photoDigest = null
             failure = null
@@ -444,6 +474,7 @@ class SessionEndpointIntegrationTest {
             commands += command
             val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
             names[command.subject] = command.displayName
+            nicknames[command.subject] = nickname
             return SessionView(
                 UserAccount(
                     id,
@@ -463,8 +494,16 @@ class SessionEndpointIntegrationTest {
             profileCommands += command
             if (command.phoneProvided) phones[command.subject] = requireNotNull(command.phone)
             command.displayName?.let { names[command.subject] = it }
+            if (command.nicknameProvided) nicknames[command.subject] = command.nickname
             return SessionView(
-                UserAccount(id, command.subject, "session@example.test", names.getValue(command.subject), phones[command.subject]),
+                UserAccount(
+                    id,
+                    command.subject,
+                    "session@example.test",
+                    names.getValue(command.subject),
+                    phones[command.subject],
+                    nickname = nicknames[command.subject],
+                ),
                 memberships,
             )
         }

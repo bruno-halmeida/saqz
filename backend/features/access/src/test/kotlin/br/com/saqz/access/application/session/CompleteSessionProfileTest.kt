@@ -114,6 +114,33 @@ class CompleteSessionProfileTest {
     }
 
     @Test
+    fun `blank nickname is normalized to clear while omitted nickname is preserved`() {
+        val repository = RecordingSessionRepository(view)
+
+        CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = "   ",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertTrue(repository.commands.single().nicknameProvided)
+        assertNull(repository.commands.single().nickname)
+
+        repository.commands.clear()
+        CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            phoneProvided = false,
+        )
+
+        assertEquals(false, repository.commands.single().nicknameProvided)
+    }
+
+    @Test
     fun `blank display name is rejected before write leaving phone unset`() {
         val repository = RecordingSessionRepository(view)
 

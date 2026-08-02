@@ -33,13 +33,15 @@ class CompleteSessionProfile(
         } else {
             null
         }
+        val nickname = rawNickname?.takeUnless(String::isBlank)
+        val city = rawCity?.takeUnless(String::isBlank)
         val session = repository.updateProfile(
             ProfileCompletion(
                 subject = subject,
                 phone = phone,
                 displayName = displayName,
-                nickname = rawNickname,
-                city = rawCity,
+                nickname = nickname,
+                city = city,
                 phoneVisibility = rawPhoneVisibility,
                 phoneProvided = phoneProvided,
                 displayNameProvided = displayNameProvided,
