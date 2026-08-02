@@ -77,9 +77,9 @@ class AthleteRegistrationScreenTest {
     fun `summary includes selected secondary and lowercase labels`() = runComposeUiTest {
         setScreen(AthleteRegistrationSamples.womenCourt)
 
-        onNodeWithTag(AthleteRegistrationTags.Summary).assertTextContains(
-            "Vai aparecer como Levantadora · também joga de ponteira · intermediário",
-        )
+        onNodeWithTag(AthleteRegistrationTags.Summary).assertExists()
+        onNodeWithText("Vai aparecer como Levantadora · também joga de ponteira · intermediário")
+            .assertExists()
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.setScreen(
