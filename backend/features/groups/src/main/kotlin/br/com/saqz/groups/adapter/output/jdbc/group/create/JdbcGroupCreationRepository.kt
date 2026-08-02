@@ -58,6 +58,7 @@ class JdbcGroupCreationRepository(
                 """
                 INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at)
                 VALUES (:groupId, :ownerUserId, 'ADMIN', now(), now())
+                ON CONFLICT (group_id, user_id) DO NOTHING
                 """.trimIndent(),
             )
                 .param("groupId", groupId)

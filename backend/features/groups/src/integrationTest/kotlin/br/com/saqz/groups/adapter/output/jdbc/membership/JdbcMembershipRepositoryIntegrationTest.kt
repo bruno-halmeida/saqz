@@ -47,7 +47,7 @@ class JdbcMembershipRepositoryIntegrationTest {
     }
 
     @Test
-    fun `list synthesizes the owner when no membership rows exist`() {
+    fun `list returns the persisted owner once with OWNER role`() {
         val owner = insertUser("list-owner", "Owner Person")
         val group = insertGroup(owner)
 
@@ -74,7 +74,7 @@ class JdbcMembershipRepositoryIntegrationTest {
     }
 
     @Test
-    fun `find synthesizes owner membership`() {
+    fun `find returns the persisted owner as OWNER`() {
         val owner = insertUser("find-owner", "Owner Person")
         val group = insertGroup(owner)
 
@@ -187,7 +187,8 @@ class JdbcMembershipRepositoryIntegrationTest {
         assertFailsWith<RuntimeException> {
             repository.change(ChangeMemberRoleCommand(group, owner, PersistedMembershipRole.ADMIN))
         }
-        assertEquals(0, membershipCount(group, owner))
+        assertEquals(1, membershipCount(group, owner))
+        assertEquals("ADMIN", role(group, owner))
     }
 
     private data class Fixture(val group: UUID, val member: UUID)
@@ -211,6 +212,7 @@ class JdbcMembershipRepositoryIntegrationTest {
         val id = UUID.randomUUID()
         execute("INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at) " +
             "VALUES ('$id', '$owner', '${UUID.randomUUID()}', 'Training Group', 'UTC', now(), now())")
+        insertMembership(id, owner, "ADMIN")
         return id
     }
 

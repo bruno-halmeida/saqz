@@ -16,23 +16,19 @@ class JdbcMembershipRepository(
 
     override fun list(groupId: UUID): List<AccessMembership> = jdbc.sql(
         """
-        SELECT user_id, display_name, role
-        FROM (
-            SELECT users.id AS user_id, users.display_name, 'OWNER' AS role, 0 AS role_order
-            FROM access_groups groups
-            JOIN access_users users ON users.id = groups.owner_user_id
-            WHERE groups.id = :groupId AND groups.deleted_at IS NULL
-            UNION ALL
-            SELECT users.id AS user_id, users.display_name, memberships.role,
-                CASE memberships.role WHEN 'ADMIN' THEN 1 ELSE 2 END AS role_order
-            FROM group_memberships memberships
-            JOIN access_users users ON users.id = memberships.user_id
-            WHERE memberships.group_id = :groupId
-              AND EXISTS (
-                  SELECT 1 FROM access_groups groups
-                  WHERE groups.id = memberships.group_id AND groups.deleted_at IS NULL
-              )
-        ) access_memberships
+        SELECT
+            users.id AS user_id,
+            users.display_name,
+            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role END AS role,
+            CASE
+                WHEN groups.owner_user_id = memberships.user_id THEN 0
+                WHEN memberships.role = 'ADMIN' THEN 1
+                ELSE 2
+            END AS role_order
+        FROM group_memberships memberships
+        JOIN access_groups groups ON groups.id = memberships.group_id AND groups.deleted_at IS NULL
+        JOIN access_users users ON users.id = memberships.user_id
+        WHERE memberships.group_id = :groupId
         ORDER BY role_order, display_name, user_id
         """.trimIndent(),
     )
@@ -42,25 +38,15 @@ class JdbcMembershipRepository(
 
     override fun find(groupId: UUID, userId: UUID): AccessMembership? = jdbc.sql(
         """
-        SELECT user_id, display_name, role
-        FROM (
-            SELECT users.id AS user_id, users.display_name, 'OWNER' AS role
-            FROM access_groups groups
-            JOIN access_users users ON users.id = groups.owner_user_id
-            WHERE groups.id = :groupId
-              AND groups.deleted_at IS NULL
-              AND users.id = :userId
-            UNION ALL
-            SELECT users.id AS user_id, users.display_name, memberships.role
-            FROM group_memberships memberships
-            JOIN access_users users ON users.id = memberships.user_id
-            WHERE memberships.group_id = :groupId
-              AND memberships.user_id = :userId
-              AND EXISTS (
-                  SELECT 1 FROM access_groups groups
-                  WHERE groups.id = memberships.group_id AND groups.deleted_at IS NULL
-              )
-        ) target_membership
+        SELECT
+            users.id AS user_id,
+            users.display_name,
+            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role END AS role
+        FROM group_memberships memberships
+        JOIN access_groups groups ON groups.id = memberships.group_id AND groups.deleted_at IS NULL
+        JOIN access_users users ON users.id = memberships.user_id
+        WHERE memberships.group_id = :groupId
+          AND memberships.user_id = :userId
         """.trimIndent(),
     )
         .param("groupId", groupId)
