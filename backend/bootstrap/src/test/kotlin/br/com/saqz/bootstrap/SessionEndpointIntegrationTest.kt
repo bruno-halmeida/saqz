@@ -450,10 +450,10 @@ class SessionEndpointIntegrationTest {
             failure?.let { throw it }
             val id = ids[command.subject] ?: return null
             profileCommands += command
-            phones[command.subject] = command.phone
+            if (command.phoneProvided) phones[command.subject] = requireNotNull(command.phone)
             command.displayName?.let { names[command.subject] = it }
             return SessionView(
-                UserAccount(id, command.subject, "session@example.test", names.getValue(command.subject), command.phone),
+                UserAccount(id, command.subject, "session@example.test", names.getValue(command.subject), phones[command.subject]),
                 memberships,
             )
         }
