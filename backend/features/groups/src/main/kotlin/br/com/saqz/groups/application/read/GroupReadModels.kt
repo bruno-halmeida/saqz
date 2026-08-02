@@ -26,6 +26,7 @@ data class GroupReadSnapshot(
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
     val profile: GroupProfileReadModel? = null,
     val financeDefaults: GroupFinanceDefaultsReadModel? = null,
+    val entryRequiresApproval: Boolean = false,
 )
 
 data class GroupView(
@@ -37,6 +38,7 @@ data class GroupView(
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
     val profile: GroupProfileReadModel? = null,
     val financeDefaults: GroupFinanceDefaultsReadModel? = null,
+    val entryRequiresApproval: Boolean = false,
 )
 
 data class GroupProfileReadModel(

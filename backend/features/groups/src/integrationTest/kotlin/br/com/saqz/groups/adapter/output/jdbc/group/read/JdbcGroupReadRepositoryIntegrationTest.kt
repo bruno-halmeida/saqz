@@ -65,6 +65,21 @@ class JdbcGroupReadRepositoryIntegrationTest {
         assertEquals("America/Sao_Paulo", snapshot.timeZone.value)
         assertEquals(GroupRole.OWNER, snapshot.role)
         assertEquals(4, snapshot.version)
+        assertEquals(false, snapshot.entryRequiresApproval)
+    }
+
+    @Test
+    fun `entry approval setting is exposed without changing membership visibility`() {
+        val owner = insertUser("approval-read-owner")
+        val athlete = insertUser("approval-read-athlete")
+        val group = insertGroup(owner, "Approval Group")
+        execute("UPDATE access_groups SET entry_requires_approval = true WHERE id = '$group'")
+        insertMembership(group, athlete, "ATHLETE")
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(athlete, group)))
+
+        assertEquals(true, snapshot.entryRequiresApproval)
+        assertEquals(GroupRole.ATHLETE, snapshot.role)
     }
 
     @Test

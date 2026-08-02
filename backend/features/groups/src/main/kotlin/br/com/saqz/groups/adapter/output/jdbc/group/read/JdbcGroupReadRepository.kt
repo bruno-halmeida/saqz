@@ -34,6 +34,7 @@ class JdbcGroupReadRepository(
             groups.name,
             groups.time_zone,
             groups.version,
+            groups.entry_requires_approval,
             CASE
                 WHEN groups.modality IS NULL OR groups.composition IS NULL THEN 'INCOMPLETE'
                 ELSE groups.profile_status
@@ -100,6 +101,7 @@ class JdbcGroupReadRepository(
             id = first.id,
             name = first.name,
             timeZone = first.timeZone,
+            entryRequiresApproval = first.entryRequiresApproval,
             role = first.role,
             version = first.version,
             profileStatus = first.profileStatus,
@@ -125,6 +127,7 @@ class JdbcGroupReadRepository(
         id = getObject("id", UUID::class.java),
         name = AccessName.from(getString("name")),
         timeZone = IanaTimeZone.from(getString("time_zone")),
+        entryRequiresApproval = getBoolean("entry_requires_approval"),
         role = getString("resolved_role")?.let(GroupRole::valueOf),
         version = getLong("version"),
         profileStatus = GroupProfileStatus.valueOf(getString("profile_status")),
@@ -175,6 +178,7 @@ class JdbcGroupReadRepository(
         val id: UUID,
         val name: AccessName,
         val timeZone: IanaTimeZone,
+        val entryRequiresApproval: Boolean,
         val role: GroupRole?,
         val version: Long,
         val profileStatus: GroupProfileStatus,

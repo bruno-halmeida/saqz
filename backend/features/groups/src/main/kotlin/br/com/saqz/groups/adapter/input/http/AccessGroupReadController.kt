@@ -34,6 +34,7 @@ data class GroupReadResponse(
     val currency: String = "BRL",
     val profile: GroupProfileReadResponse?,
     val financeDefaults: GroupFinanceDefaultsReadResponse?,
+    val entryRequiresApproval: Boolean,
 )
 
 data class GroupProfileReadResponse(
@@ -110,6 +111,7 @@ fun GroupView.toResponse() = GroupReadResponse(
     currency = "BRL",
     profile = profile?.toResponse(),
     financeDefaults = financeDefaults?.toResponse(),
+    entryRequiresApproval = entryRequiresApproval,
 )
 
 private fun GroupProfileReadModel.toResponse() = GroupProfileReadResponse(
