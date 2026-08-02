@@ -114,7 +114,7 @@ class GroupInviteCoordinator(
             if (authenticated.value) {
                 redeem(token, InviteCode(code))
             } else {
-                effectChannel.send(GroupInviteEffect.OpenInviteLanding(code))
+                emitIfCurrent(token, GroupInviteEffect.OpenInviteLanding(code))
             }
         }
     }

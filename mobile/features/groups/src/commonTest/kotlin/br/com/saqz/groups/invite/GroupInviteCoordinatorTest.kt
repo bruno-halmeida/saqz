@@ -48,6 +48,10 @@ class GroupInviteCoordinatorTest {
         assertEquals(listOf("write:invite-authenticated", "write:null"), fixture.local.actions)
         assertEquals(listOf("preview", "redeem"), fixture.gateway.actions)
         assertEquals(
+            listOf("write:invite-authenticated", "preview", "redeem", "write:null"),
+            fixture.events,
+        )
+        assertEquals(
             GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED),
             fixture.coordinator.effects.first(),
         )
@@ -65,6 +69,7 @@ class GroupInviteCoordinatorTest {
 
         assertEquals("invite-login", fixture.local.pending)
         assertEquals(GroupInviteEffect.OpenInviteLanding("invite-login"), fixture.coordinator.effects.first())
+        assertEquals(GroupInviteEffect.OpenInviteLanding("invite-login"), fixture.sinkEffects.single())
 
         fixture.coordinator.onAuthenticated()
         runCurrent()
@@ -185,12 +190,16 @@ class GroupInviteCoordinatorTest {
         ),
         redeem: (suspend (InviteCode) -> SaqzResult<InviteRedeem, InviteError>)? = null,
     ): Fixture {
-        val local = FakeLocalState()
-        val gateway = FakeInviteGateway(previewResult, redeemResult, redeem)
+        val events = mutableListOf<String>()
+        val sinkEffects = mutableListOf<GroupInviteEffect>()
+        val local = FakeLocalState(events)
+        val gateway = FakeInviteGateway(previewResult, redeemResult, redeem, events)
         return Fixture(
             local = local,
             gateway = gateway,
-            coordinator = GroupInviteCoordinator(FakeLinkPort(), local, gateway, this),
+            coordinator = GroupInviteCoordinator(FakeLinkPort(), local, gateway, this, effectSink = sinkEffects::add),
+            events = events,
+            sinkEffects = sinkEffects,
         )
     }
 
@@ -198,6 +207,8 @@ class GroupInviteCoordinatorTest {
         val local: FakeLocalState,
         val gateway: FakeInviteGateway,
         val coordinator: GroupInviteCoordinator,
+        val events: MutableList<String>,
+        val sinkEffects: MutableList<GroupInviteEffect>,
     )
 
     private class FakeLinkPort : NativeGroupLinkPort {
@@ -215,7 +226,7 @@ class GroupInviteCoordinatorTest {
         fun emit(code: String) = listener?.onEvent(GroupLinkEvent.Invite(code))
     }
 
-    private class FakeLocalState : LocalGroupStatePort {
+    private class FakeLocalState(private val events: MutableList<String>) : LocalGroupStatePort {
         var pending: String? = null
         val actions = mutableListOf<String>()
 
@@ -230,6 +241,7 @@ class GroupInviteCoordinatorTest {
 
         override fun writePendingInvite(value: String?, done: GroupResultCallback) {
             actions += "write:${value ?: "null"}"
+            events += "write:${value ?: "null"}"
             pending = value
             done.complete(GroupOperationResult.Success)
         }
@@ -243,16 +255,19 @@ class GroupInviteCoordinatorTest {
         var previewResult: SaqzResult<InvitePreview, InviteError>,
         var redeemResult: SaqzResult<InviteRedeem, InviteError>,
         private val redeemHandler: (suspend (InviteCode) -> SaqzResult<InviteRedeem, InviteError>)?,
+        private val events: MutableList<String>,
     ) : InviteGateway {
         val actions = mutableListOf<String>()
 
         override suspend fun preview(code: InviteCode): SaqzResult<InvitePreview, InviteError> {
             actions += "preview"
+            events += "preview"
             return previewResult
         }
 
         override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> {
             actions += "redeem"
+            events += "redeem"
             return redeemHandler?.invoke(code) ?: redeemResult
         }
     }
