@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.access.presentation.register.RegisterEffect
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.presentation.register.RegisterViewModel
 import br.com.saqz.designsystem.ObserveAsEvents
 import org.koin.compose.viewmodel.koinViewModel
@@ -21,6 +22,7 @@ fun RegisterRoot(
     onBack: () -> Unit,
     onOpenLogin: () -> Unit,
     viewModel: RegisterViewModel = koinViewModel(),
+    inviteContext: RegisterInviteContext? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
@@ -33,5 +35,6 @@ fun RegisterRoot(
         onIntent = viewModel::onIntent,
         onBack = onBack,
         onSignIn = onOpenLogin,
+        inviteContext = inviteContext,
     )
 }

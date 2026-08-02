@@ -13,10 +13,14 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":features:groups:domain"))
+            implementation(project(":core:domain"))
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

@@ -1,0 +1,8 @@
+<resources>
+    <string name="invite_register_group_header">Entrando no %1$s</string>
+    <string name="invite_register_invitation">Convite de %1$s · %2$s</string>
+    <string name="invite_register_entry_open">entrada liberada</string>
+    <string name="invite_register_entry_approval">precisa de aprovação</string>
+    <string name="invite_register_generic_header">Você foi convidado para um grupo</string>
+    <string name="invite_register_footer">Depois disso você escolhe apelido, posição e nível no grupo.</string>
+</resources>

@@ -3,6 +3,7 @@ package br.com.saqz.androidapp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.access.presentation.register.RegisterEmailError
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.presentation.register.RegisterPasswordError
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.access.ui.RegisterScreen
@@ -55,6 +56,32 @@ class Register1bScreenshotTest {
                 invalidPhone = true,
                 passwordError = RegisterPasswordError.TooShort,
             ),
+            onIntent = {},
+            onBack = {},
+            onSignIn = {},
+        )
+    }
+
+    @Test
+    fun register3mWithInvitePreview() = capture("3m-convite-com-preview") {
+        RegisterScreen(
+            state = RegisterState(),
+            inviteContext = RegisterInviteContext.preview(
+                groupName = "Vôlei do CERET",
+                inviterName = "Ana",
+                entryRequiresApproval = false,
+            ),
+            onIntent = {},
+            onBack = {},
+            onSignIn = {},
+        )
+    }
+
+    @Test
+    fun register3mWithoutInvitePreview() = capture("3m-convite-sem-preview") {
+        RegisterScreen(
+            state = RegisterState(),
+            inviteContext = RegisterInviteContext.Generic,
             onIntent = {},
             onBack = {},
             onSignIn = {},

@@ -23,6 +23,26 @@ enum class RegisterEmailError { Invalid, Taken }
  */
 enum class RegisterPasswordError { TooShort, TooWeak }
 
+@Immutable
+data class RegisterInviteContext(
+    val groupName: String? = null,
+    val inviterName: String? = null,
+    val entryRequiresApproval: Boolean = false,
+) {
+    val hasPreview: Boolean get() = groupName != null && inviterName != null
+
+    companion object {
+        /** Preview não chegou; o convite continua guardado no coordinator. */
+        val Generic = RegisterInviteContext()
+
+        fun preview(
+            groupName: String,
+            inviterName: String,
+            entryRequiresApproval: Boolean,
+        ) = RegisterInviteContext(groupName, inviterName, entryRequiresApproval)
+    }
+}
+
 /**
  * O formulário da 1b, e o 1j é o mesmo estado com os quatro sinalizadores ligados.
  *
