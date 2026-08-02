@@ -11,6 +11,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.ComposeUIViewController
 import br.com.saqz.composeapp.di.startSaqzKoin
+import coil3.PlatformContext
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSProcessInfo
@@ -20,7 +21,7 @@ fun MainViewController(
     accessibilityController: SaqzAccessibilityController,
     dependencies: SaqzPlatformDependencies,
 ): UIViewController {
-    startSaqzKoin(dependencies)
+    startSaqzKoin(dependencies, PlatformContext.INSTANCE)
     return ComposeUIViewController {
     // ponytail: launch-arg-gated preflight — lets XCUITest prove the umbrella
     // framework's compose resources resolve on-device. Absent -> app unchanged.

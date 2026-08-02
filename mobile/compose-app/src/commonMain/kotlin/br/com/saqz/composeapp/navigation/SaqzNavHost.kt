@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSerializable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -41,6 +45,10 @@ import br.com.saqz.groups.presentation.ui.list.GroupListRoot
 import br.com.saqz.groups.presentation.ui.members.GroupMembersRoot
 import br.com.saqz.groups.presentation.ui.schedule.GroupScheduleRoot
 import br.com.saqz.groups.presentation.ui.setup.GroupSetupRoot
+import br.com.saqz.profile.presentation.edit.ui.EditProfileRoot
+import br.com.saqz.profile.presentation.exit.ProfileExitRoot
+import br.com.saqz.profile.presentation.navigation.ProfileRoute
+import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
 import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
@@ -59,7 +67,7 @@ internal const val SaqzDestinationHostTag = "authenticated-access-destination"
  *
  * O stack tem profundidade dos dois lados da sessão, e por motivos diferentes:
  *
- * - **acima da base**, as rotas de grupo empilham sobre o shell (VUL-72). Quem empilha são
+ * - **acima da base**, as rotas de grupo e de perfil empilham sobre o shell. Quem empilha são
  *   as lambdas que cada `Root` recebe — navegação entre features é callback (AGENTS.md §6),
  *   e o `Root` não conhece `NavDisplay`;
  * - **no lado deslogado**, as seis telas do fluxo 1 que a pessoa alcança clicando (1b a 1h)
@@ -89,6 +97,7 @@ internal fun SaqzNavHost(
     // jogaria fora o stack que acabou de ser restaurado — girar o aparelho no meio do 1b, ou
     // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
     val restoring = remember { booleanArrayOf(true) }
+    var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(state.session) {
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
         restoring[0] = false
@@ -139,7 +148,7 @@ internal fun SaqzNavHost(
                 NewPasswordRoot(
                     token = route.token,
                     onBack = pop,
-                    onFinish = { backStack.completePasswordReset() },
+                    onFinish = { backStack.completePasswordReset(state.session) },
                     // Ticket morto pede o código de novo, e o 1e é exatamente a entrada
                     // anterior — é para ela reaparecer intacta que a rota do 1g carrega o
                     // e-mail. Empilhar um `ResetCode` novo deixaria dois na pilha.
@@ -148,9 +157,9 @@ internal fun SaqzNavHost(
             }
             entry<AccessRoute.PasswordChanged> {
                 // Quem chega aqui já teve o stack colapsado por [completePasswordReset]:
-                // o único destino abaixo é o login, e as duas saídas do 1h vão dar nele.
+                // a recuperação consumida saiu, e a base depende de a sessão estar viva.
                 PasswordChangedScreen(
-                    onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                    onSignIn = { backStack.finishPasswordChanged(state.session) },
                     onBack = pop,
                 )
             }
@@ -162,8 +171,22 @@ internal fun SaqzNavHost(
             }
             entry<SaqzShellDestination> {
                 SaqzAppShell(
-                    onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                     catalogEnabled = catalogEnabled,
+                    profileTab = {
+                        OwnProfileRoot(
+                            onOpenEditor = { backStack.add(ProfileRoute.Edit) },
+                            onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
+                            onSignOut = {
+                                backStack.add(
+                                    ProfileRoute.Exit(
+                                        email = (state.session as? SessionAccessState.Ready)
+                                            ?.session?.user?.email.orEmpty(),
+                                    ),
+                                )
+                            },
+                            refreshVersion = profileRefreshVersion,
+                        )
+                    },
                     banner = {
                         // A faixa do VUL-91 só existe com e-mail por confirmar, e some
                         // sozinha quando a sessão disser que confirmou.
@@ -190,6 +213,22 @@ internal fun SaqzNavHost(
                             onJoinWithCode = {},
                         )
                     },
+                )
+            }
+            entry<ProfileRoute.Edit> {
+                EditProfileRoot(
+                    onSave = {
+                        pop()
+                        profileRefreshVersion++
+                    },
+                    onBack = pop,
+                )
+            }
+            entry<ProfileRoute.Exit> { route ->
+                ProfileExitRoot(
+                    email = route.email,
+                    onClose = pop,
+                    onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
             entry<SubscriptionsRoute.PlanSelection> {
@@ -288,14 +327,28 @@ private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
  * mão, e o 1e, com um código já gasto. Nos dois casos a pessoa digitaria tudo outra vez
  * para levar um erro que não tem como entender.
  *
- * Sobra o login, que é para onde o "Entrar agora" leva de qualquer forma — o voltar do 1h,
- * visível ou do sistema, passa a dar no mesmo lugar. Empilhar sobre o formulário era o
- * defeito; substituir só ele deixaria o mesmo defeito uma entrada acima.
+ * Sobra a base correta para a sessão atual, que é para onde o "Entrar agora" leva de qualquer
+ * forma — o voltar do 1h, visível ou do sistema, passa a dar no mesmo lugar. Empilhar sobre o
+ * formulário era o defeito; substituir só ele deixaria o mesmo defeito uma entrada acima.
  */
-internal fun MutableList<NavKey>.completePasswordReset() {
+internal fun MutableList<NavKey>.completePasswordReset(session: SessionAccessState) {
     clear()
-    add(AccessRoute.Login)
+    add(session.passwordChangedDestination())
     add(AccessRoute.PasswordChanged)
+}
+
+internal fun MutableList<NavKey>.finishPasswordChanged(session: SessionAccessState) {
+    clear()
+    add(session.passwordChangedDestination())
+}
+
+private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this) {
+    is SessionAccessState.Ready -> SaqzShellDestination
+    SessionAccessState.SignedOut,
+    is SessionAccessState.CompletingIdentity,
+    SessionAccessState.Bootstrapping,
+    SessionAccessState.BootstrapError,
+    -> AccessRoute.Login
 }
 
 /**

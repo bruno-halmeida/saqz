@@ -65,6 +65,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val attendanceShare = AndroidAttendanceShareAdapter(context.applicationContext)
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
+        val profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope)
         val dependencies = SaqzPlatformDependencies(
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
@@ -73,7 +74,8 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                     links = links,
                     localState = localState,
                     share = share,
-                    profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope),
+                    profilePhoto = profilePhoto,
+                    profilePhotoSelection = profilePhoto,
                 ),
                 groups = GroupsRuntimeDependencies(
                     attendanceShare = attendanceShare,

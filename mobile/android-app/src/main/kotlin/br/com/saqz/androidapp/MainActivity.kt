@@ -50,7 +50,7 @@ internal class MainActivityModel(
     private val activity = CurrentActivity()
     private val composition = factory.create(context, viewModelScope, activity::require)
     init {
-        loadSaqzPlatformDependencies(composition.dependencies)
+        loadSaqzPlatformDependencies(composition.dependencies, context.applicationContext)
     }
     private var coldStarted = false
 

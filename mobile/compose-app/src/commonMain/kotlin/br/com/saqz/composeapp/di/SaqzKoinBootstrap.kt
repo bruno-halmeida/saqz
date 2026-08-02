@@ -15,13 +15,20 @@ import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
-import br.com.saqz.subscriptions.presentation.payment.di.paymentPresentationModule
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
+import br.com.saqz.network.authenticatedImageLoaderModule
 import br.com.saqz.network.toNetworkEnvironment
+import br.com.saqz.profile.data.di.profileDataModule
+import br.com.saqz.profile.presentation.edit.di.editProfilePresentationModule
+import br.com.saqz.profile.presentation.exit.di.profileExitPresentationModule
+import br.com.saqz.profile.presentation.own.di.ownProfilePresentationModule
+import br.com.saqz.profile.presentation.photo.di.profilePhotoPresentationModule
 import br.com.saqz.subscriptions.presentation.myplan.di.myPlanPresentationModule
 import br.com.saqz.subscriptions.presentation.planactive.di.planActivePresentationModule
 import br.com.saqz.subscriptions.presentation.planselection.di.planSelectionPresentationModule
+import br.com.saqz.subscriptions.presentation.payment.di.paymentPresentationModule
+import coil3.PlatformContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.loadKoinModules
 import org.koin.core.context.stopKoin
@@ -48,6 +55,10 @@ private val commonModules = listOf(
     subscriptionsCustomerInfoModule,
     paymentPresentationModule(),
     planSelectionPresentationModule(),
+    profileDataModule(),
+    editProfilePresentationModule(),
+    profileExitPresentationModule(),
+    ownProfilePresentationModule(),
 )
 
 internal fun startSaqzKoin() {
@@ -68,13 +79,19 @@ fun installSaqzKoinModules() {
     loadKoinModules(commonModules)
 }
 
-internal fun startSaqzKoin(dependencies: SaqzPlatformDependencies) {
+internal fun startSaqzKoin(
+    dependencies: SaqzPlatformDependencies,
+    imageLoaderContext: PlatformContext? = null,
+) {
     startSaqzKoin()
-    loadSaqzPlatformDependencies(dependencies)
+    loadSaqzPlatformDependencies(dependencies, imageLoaderContext)
 }
 
 @HiddenFromObjC
-fun loadSaqzPlatformDependencies(dependencies: SaqzPlatformDependencies) {
+fun loadSaqzPlatformDependencies(
+    dependencies: SaqzPlatformDependencies,
+    imageLoaderContext: PlatformContext? = null,
+) {
     checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before loading platform dependencies" }
     if (platformModules.isNotEmpty()) {
         unloadKoinModules(commonModules + platformModules)
@@ -88,7 +105,12 @@ fun loadSaqzPlatformDependencies(dependencies: SaqzPlatformDependencies) {
     platformModules = listOf(
         platformBindingsModule(dependencies),
         groupsPresentationModule(sampleContent = environment == NetworkEnvironment.Dev),
-    ).also(::loadKoinModules)
+        profilePhotoPresentationModule(
+            selection = dependencies.access.profilePhotoSelection,
+            initialPhotoUrl = null,
+        ),
+        imageLoaderContext?.let(::authenticatedImageLoaderModule),
+    ).filterNotNull().also(::loadKoinModules)
 }
 
 internal fun stopSaqzKoin() {

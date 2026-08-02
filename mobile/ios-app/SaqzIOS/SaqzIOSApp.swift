@@ -53,6 +53,7 @@ struct IOSAppComposition {
         drafts: IOSGroupDraftAdapters
     ) -> IOSAppComposition {
         links.onColdStart(url: nil)
+        let profilePhoto = IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder)
         let dependencies = SaqzPlatformDependencies(
             environment: configuration.environment,
             apiBaseUrl: configuration.apiBaseURL,
@@ -61,7 +62,8 @@ struct IOSAppComposition {
                 links: IOSNoOpAccessLinkPort(),
                 localState: localState,
                 share: share,
-                profilePhoto: IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder)
+                profilePhoto: profilePhoto,
+                profilePhotoSelection: profilePhoto
             ),
             groups: GroupsRuntimeDependencies(
                 attendanceShare: attendanceShare,

@@ -36,6 +36,9 @@ class JdbcProfileStatsRepository(dataSource: DataSource) : ProfileStatsRepositor
                     WHERE memberships.active
                 ) AS groups
             FROM group_memberships memberships
+            JOIN access_groups groups
+                ON groups.id = memberships.group_id
+                AND groups.deleted_at IS NULL
             LEFT JOIN games
                 ON games.group_id = memberships.group_id
                 AND games.starts_at < :now

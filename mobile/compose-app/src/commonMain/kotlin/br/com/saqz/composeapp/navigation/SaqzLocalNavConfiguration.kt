@@ -6,6 +6,7 @@ import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.savedstate.serialization.SavedStateConfiguration
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.PolymorphicSerializer
@@ -49,6 +50,8 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             // VUL-112: mesmo registro incondicional — 8e ainda não tem tela ligada ao
             // NavDisplay, mas a rota precisa sobreviver à rotação assim que alguém a empilhar.
             subclass(SubscriptionsRoute.MyPlan::class, SubscriptionsRoute.MyPlan.serializer())
+            subclass(ProfileRoute.Edit::class, ProfileRoute.Edit.serializer())
+            subclass(ProfileRoute.Exit::class, ProfileRoute.Exit.serializer())
         }
     }
 }

@@ -117,6 +117,21 @@ class JdbcProfileStatsRepositoryIntegrationTest {
         assertEquals(1, stats.execute(fixture.member).groups)
     }
 
+    @Test
+    fun `excludes deleted groups and their games from profile stats`() {
+        val fixture = fixture()
+        val activeGame = game(fixture.group, "2026-07-20 22:00:00Z")
+        attendance(fixture, activeGame, "CONFIRMED")
+
+        val deletedGroup = group(fixture.owner, "Deleted Group")
+        membership(deletedGroup, fixture.member, "2026-01-01 00:00:00Z")
+        val deletedGame = game(deletedGroup, "2026-07-20 22:00:00Z")
+        attendance(fixture, deletedGame, "CONFIRMED", group = deletedGroup)
+        execute("UPDATE access_groups SET deleted_at=now() WHERE id='$deletedGroup'")
+
+        assertEquals(ProfileStats(1, 100, 1), stats.execute(fixture.member))
+    }
+
     private fun fixture(joinedAt: String = "2026-01-01 00:00:00Z"): Fixture {
         val owner = user("owner")
         val group = group(owner, "Stats Group")
@@ -161,11 +176,17 @@ class JdbcProfileStatsRepositoryIntegrationTest {
         return id
     }
 
-    private fun attendance(fixture: Fixture, game: UUID, status: String, sequence: Long? = null) {
+    private fun attendance(
+        fixture: Fixture,
+        game: UUID,
+        status: String,
+        sequence: Long? = null,
+        group: UUID = fixture.group,
+    ) {
         val sequenceSql = sequence?.toString() ?: "NULL"
         execute(
             "INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name) " +
-                "VALUES ('$game','${fixture.group}','${fixture.member}','$status',$sequenceSql,now(),now(),'Player')",
+                "VALUES ('$game','$group','${fixture.member}','$status',$sequenceSql,now(),now(),'Player')",
         )
     }
 

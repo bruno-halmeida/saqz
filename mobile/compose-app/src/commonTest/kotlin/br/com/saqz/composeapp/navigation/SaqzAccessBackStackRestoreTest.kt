@@ -10,6 +10,7 @@ import androidx.savedstate.serialization.decodeFromSavedState
 import androidx.savedstate.serialization.encodeToSavedState
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -111,6 +112,23 @@ class SaqzAccessBackStackRestoreTest {
                 SubscriptionsRoute.Payment(planId = "TITULAR", cycle = "MONTHLY", couponCode = "BEMVINDO10"),
                 SubscriptionsRoute.PlanActive,
             ),
+            restore(saved),
+        )
+    }
+
+    @Test
+    fun `profile routes round-trip through the real registered configuration`() {
+        val saved = encodeToSavedState(
+            saqzAccessBackStackSerializer,
+            NavBackStack<NavKey>(
+                ProfileRoute.Edit,
+                ProfileRoute.Exit("atleta@example.test"),
+            ),
+            saqzLocalNavConfiguration,
+        )
+
+        assertEquals(
+            listOf<NavKey>(ProfileRoute.Edit, ProfileRoute.Exit("atleta@example.test")),
             restore(saved),
         )
     }

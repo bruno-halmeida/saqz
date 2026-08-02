@@ -276,6 +276,7 @@ private class LifecycleCompositionFactory(
                 localState = fixture.local,
                 share = fixture.share,
                 profilePhoto = LifecycleProfilePhotoPort,
+                profilePhotoSelection = LifecycleProfilePhotoPort,
             ),
             groups = GroupsRuntimeDependencies(
                 attendanceShare = LifecycleAttendanceSharePort,
@@ -471,13 +472,27 @@ private class LifecycleLocalState(
     }
 }
 
-private object LifecycleProfilePhotoPort : NativeProfilePhotoPort {
+private object LifecycleProfilePhotoPort : NativeProfilePhotoPort,
+    br.com.saqz.profile.domain.ProfilePhotoSelectionPort {
     override fun chooseCamera(done: ProfilePhotoCallback) = failed(done)
     override fun chooseLibrary(done: ProfilePhotoCallback) = failed(done)
+
+    override fun chooseCamera(done: br.com.saqz.profile.domain.ProfilePhotoSelectionCallback) =
+        profileFailed(done)
+
+    override fun chooseLibrary(done: br.com.saqz.profile.domain.ProfilePhotoSelectionCallback) =
+        profileFailed(done)
 
     private fun failed(done: ProfilePhotoCallback): Cancelable {
         done.complete(ProfilePhotoResult.Failed)
         return object : Cancelable {
+            override fun cancel() = Unit
+        }
+    }
+
+    private fun profileFailed(done: br.com.saqz.profile.domain.ProfilePhotoSelectionCallback): br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable {
+        done.complete(br.com.saqz.profile.domain.ProfilePhotoSelectionResult.Failed)
+        return object : br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable {
             override fun cancel() = Unit
         }
     }

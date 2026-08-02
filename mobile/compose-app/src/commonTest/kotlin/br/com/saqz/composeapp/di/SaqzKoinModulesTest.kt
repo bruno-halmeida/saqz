@@ -117,6 +117,7 @@ class SaqzKoinModulesTest {
                     localState = FakeLocalAccessStatePort,
                     share = FakeSharePort,
                     profilePhoto = FakeProfilePhotoPort,
+                    profilePhotoSelection = FakeProfilePhotoPort,
                 ),
                 groups = GroupsRuntimeDependencies(
                     attendanceShare = FakeAttendanceSharePort,
@@ -414,13 +415,27 @@ private object FakeSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
 }
 
-private object FakeProfilePhotoPort : br.com.saqz.access.domain.port.NativeProfilePhotoPort {
+private object FakeProfilePhotoPort : br.com.saqz.access.domain.port.NativeProfilePhotoPort,
+    br.com.saqz.profile.domain.ProfilePhotoSelectionPort {
     override fun chooseCamera(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
     override fun chooseLibrary(done: br.com.saqz.access.domain.port.ProfilePhotoCallback) = failed(done)
+
+    override fun chooseCamera(done: br.com.saqz.profile.domain.ProfilePhotoSelectionCallback) =
+        profileFailed(done)
+
+    override fun chooseLibrary(done: br.com.saqz.profile.domain.ProfilePhotoSelectionCallback) =
+        profileFailed(done)
 
     private fun failed(done: br.com.saqz.access.domain.port.ProfilePhotoCallback): Cancelable {
         done.complete(br.com.saqz.access.domain.port.ProfilePhotoResult.Failed)
         return object : Cancelable {
+            override fun cancel() = Unit
+        }
+    }
+
+    private fun profileFailed(done: br.com.saqz.profile.domain.ProfilePhotoSelectionCallback): br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable {
+        done.complete(br.com.saqz.profile.domain.ProfilePhotoSelectionResult.Failed)
+        return object : br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable {
             override fun cancel() = Unit
         }
     }

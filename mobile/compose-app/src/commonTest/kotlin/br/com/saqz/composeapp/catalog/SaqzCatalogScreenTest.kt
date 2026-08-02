@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.catalog
 
+import androidx.compose.material.Text
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
@@ -70,7 +71,7 @@ class SaqzCatalogScreenTest {
 
     @Test
     fun theCatalogEntryIsAbsentOutsideDev() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(onLogout = {}) } }
+        setContent { SaqzTheme { SaqzAppShell(profileTab = { Text("Você está conectado.") }) } }
         onNodeWithText("Perfil").performClick()
         waitForIdle()
         onNodeWithTag(SaqzShellCatalogTag).assertDoesNotExist()
@@ -78,7 +79,14 @@ class SaqzCatalogScreenTest {
 
     @Test
     fun theDevShellReachesTheCatalogAndComesBack() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) } }
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    catalogEnabled = true,
+                    profileTab = { Text("Você está conectado.") },
+                )
+            }
+        }
         // VUL-72: o shell abre na aba Grupos; a entrada do catálogo vive na aba Perfil.
         onNodeWithText("Perfil").performClick()
         waitForIdle()
