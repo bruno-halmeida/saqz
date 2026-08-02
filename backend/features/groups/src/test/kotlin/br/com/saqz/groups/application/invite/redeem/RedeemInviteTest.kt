@@ -87,7 +87,7 @@ class RedeemInviteTest {
 
     @Test
     fun `invite for deleted group has its own outcome without invalid attempt or membership`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, groupDeleted = true))
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), groupDeleted = true))
 
         assertSame(RedeemInviteResult.GroupDeleted, fixture.useCase.execute(actor, code.value))
         assertTrue(fixture.repository.invalidAttempts.isEmpty())
@@ -332,8 +332,8 @@ class RedeemInviteTest {
     }
 
     private fun fixture(
-        target: RedeemableInvite? = RedeemableInvite(groupId),
         clockNow: Instant = now,
+        target: RedeemableInvite? = RedeemableInvite(groupId, clockNow, groupDeleted = false),
         athleteLimit: Int? = null,
     ): Fixture {
         val repository = RecordingRedemptionRepository(target, ownerId)

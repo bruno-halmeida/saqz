@@ -1,8 +1,10 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.application.invite.manage.InviteManagementRepository
+import br.com.saqz.groups.application.invite.manage.InviteMetadata
 import br.com.saqz.groups.application.invite.manage.RotateInviteCommand
 import org.springframework.jdbc.core.simple.JdbcClient
+import java.sql.Timestamp
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -14,21 +16,42 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
         jdbc.sql(
             """
             INSERT INTO group_invites (
-                group_id, token_digest, created_by_user_id, created_at
+                group_id, token_digest, created_by_user_id, created_at, expires_at
             ) VALUES (
-                :groupId, :tokenDigest, :createdByUserId, now()
+                :groupId, :tokenDigest, :createdByUserId, now(), :expiresAt
             )
             ON CONFLICT (group_id) DO UPDATE SET
                 token_digest = EXCLUDED.token_digest,
                 created_by_user_id = EXCLUDED.created_by_user_id,
-                created_at = EXCLUDED.created_at
+                created_at = EXCLUDED.created_at,
+                expires_at = EXCLUDED.expires_at
             """.trimIndent(),
         )
             .param("groupId", command.groupId)
             .param("tokenDigest", command.digest.toByteArray())
             .param("createdByUserId", command.createdByUserId)
+            .param("expiresAt", Timestamp.from(command.expiresAt))
             .update()
     }
+
+    override fun findMetadata(groupId: UUID): InviteMetadata? = jdbc.sql(
+        """
+        SELECT invites.expires_at, invites.created_at, users.display_name
+        FROM group_invites invites
+        JOIN access_users users ON users.id = invites.created_by_user_id
+        WHERE invites.group_id = :groupId
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .query { result, _ ->
+            InviteMetadata(
+                expiresAt = result.getTimestamp("expires_at").toInstant(),
+                createdAt = result.getTimestamp("created_at").toInstant(),
+                createdByName = result.getString("display_name"),
+            )
+        }
+        .optional()
+        .orElse(null)
 
     override fun expire(groupId: UUID) {
         lockGroup(groupId)

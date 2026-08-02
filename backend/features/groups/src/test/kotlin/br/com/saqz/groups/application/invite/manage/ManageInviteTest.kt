@@ -210,6 +210,8 @@ class ManageInviteTest {
             activeDigest = command.digest
         }
 
+        override fun findMetadata(groupId: UUID): InviteMetadata? = null
+
         override fun expire(groupId: UUID) {
             expirations += groupId
             activeDigest = null

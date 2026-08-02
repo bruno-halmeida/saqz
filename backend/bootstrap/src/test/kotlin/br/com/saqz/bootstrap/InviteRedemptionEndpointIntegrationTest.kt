@@ -118,6 +118,7 @@ class InviteRedemptionEndpointIntegrationTest {
     fun `deleted group invite returns its own problem`() {
         repository.target = RedeemableInvite(
             RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
             groupDeleted = true,
         )
 
@@ -306,7 +307,10 @@ class InviteRedemptionEndpointIntegrationTest {
     }
 
     class RecordingHttpRedemptionRepository : InviteRedemptionRepository {
-        var target: RedeemableInvite? = RedeemableInvite(RedemptionTestConfiguration.GROUP_ID)
+        var target: RedeemableInvite? = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
+        )
         var failure: RuntimeException? = null
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
         val roles = mutableMapOf<UUID, GroupRole>()
@@ -314,7 +318,10 @@ class InviteRedemptionEndpointIntegrationTest {
         private val ownerId: UUID = UUID.randomUUID()
 
         fun reset() {
-            target = RedeemableInvite(RedemptionTestConfiguration.GROUP_ID)
+            target = RedeemableInvite(
+                RedemptionTestConfiguration.GROUP_ID,
+                RedemptionTestConfiguration.NOW.plusSeconds(60),
+            )
             failure = null
             windows.clear()
             roles.clear()

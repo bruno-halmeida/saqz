@@ -273,6 +273,9 @@ class InviteManagementEndpointIntegrationTest {
             expirations.clear()
         }
         override fun rotate(command: RotateInviteCommand) { rotations += command }
+
+        override fun findMetadata(groupId: UUID) = null
+
         override fun expire(groupId: UUID) { expirations += groupId }
     }
 

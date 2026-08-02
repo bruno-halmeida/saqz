@@ -53,7 +53,8 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         """
         SELECT invites.group_id,
                groups.deleted_at IS NOT NULL AS group_deleted,
-               groups.entry_requires_approval
+               groups.entry_requires_approval,
+               invites.expires_at
         FROM group_invites invites
         JOIN access_groups groups ON groups.id = invites.group_id
         WHERE invites.token_digest = :tokenDigest
@@ -63,6 +64,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         .query { result, _ ->
             RedeemableInvite(
                 groupId = result.getObject("group_id", UUID::class.java),
+                expiresAt = result.getTimestamp("expires_at").toInstant(),
                 groupDeleted = result.getBoolean("group_deleted"),
                 entryRequiresApproval = result.getBoolean("entry_requires_approval"),
             )

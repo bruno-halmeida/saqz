@@ -446,11 +446,13 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     private fun insertInvite(group: UUID, creator: UUID, digest: InviteTokenDigest) {
         connection().use { connection ->
             connection.prepareStatement(
-                "INSERT INTO group_invites (group_id, token_digest, created_by_user_id, created_at) VALUES (?, ?, ?, now())",
+                "INSERT INTO group_invites (group_id, token_digest, created_by_user_id, created_at, expires_at) " +
+                    "VALUES (?, ?, ?, now(), ?)",
             ).use { statement ->
                 statement.setObject(1, group)
                 statement.setBytes(2, digest.toByteArray())
                 statement.setObject(3, creator)
+                statement.setTimestamp(4, Timestamp.from(now.plusSeconds(7 * 24 * 60 * 60)))
                 statement.executeUpdate()
             }
         }
