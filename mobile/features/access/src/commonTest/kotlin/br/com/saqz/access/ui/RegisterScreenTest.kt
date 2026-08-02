@@ -20,6 +20,7 @@ import androidx.navigationevent.NavigationEventDispatcherOwner
 import androidx.navigationevent.NavigationEventInput
 import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.presentation.register.RegisterPasswordError
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -85,6 +86,28 @@ class RegisterScreenTest {
         onNodeWithText("Crie sua conta em menos de um minuto.").assertExists()
         onNodeWithTag(RegisterTags.PasswordHint).assertExists()
         onNodeWithTag(RegisterTags.Alert).assertDoesNotExist()
+    }
+
+    @Test fun `invite registration shows preview context and group follow-up`() = runComposeUiTest {
+        content(
+            inviteContext = RegisterInviteContext.preview(
+                groupName = "Vôlei do CERET",
+                inviterName = "Ana",
+                entryRequiresApproval = true,
+            ),
+        )
+
+        onNodeWithText("Entrando no Vôlei do CERET").assertExists()
+        onNodeWithText("Convite de Ana · precisa de aprovação").assertExists()
+        onNodeWithText("Depois disso você escolhe apelido, posição e nível no grupo.").assertExists()
+        onNodeWithText("Crie sua conta em menos de um minuto.").assertDoesNotExist()
+    }
+
+    @Test fun `invite registration falls back to generic header without preview`() = runComposeUiTest {
+        content(inviteContext = RegisterInviteContext.Generic)
+
+        onNodeWithText("Você foi convidado para um grupo").assertExists()
+        onNodeWithText("Depois disso você escolhe apelido, posição e nível no grupo.").assertExists()
     }
 
     // 1j: o alerta ocupa o lugar do subtítulo, e a contagem é a dos campos acesos — não o
@@ -211,10 +234,17 @@ class RegisterScreenTest {
         onBack: () -> Unit = {},
         onSignIn: () -> Unit = {},
         dispatcher: NavigationEventDispatcher? = null,
+        inviteContext: RegisterInviteContext? = null,
     ) = setContent {
         WithDispatcher(dispatcher) {
             SaqzTheme {
-                RegisterScreen(state = state, onIntent = onIntent, onBack = onBack, onSignIn = onSignIn)
+                RegisterScreen(
+                    state = state,
+                    onIntent = onIntent,
+                    onBack = onBack,
+                    onSignIn = onSignIn,
+                    inviteContext = inviteContext,
+                )
             }
         }
     }

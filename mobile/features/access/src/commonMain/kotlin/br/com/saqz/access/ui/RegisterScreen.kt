@@ -27,9 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.register.RegisterEmailError
 import br.com.saqz.access.presentation.register.RegisterIntent
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.presentation.register.RegisterPasswordError
 import br.com.saqz.access.presentation.register.RegisterState
 import br.com.saqz.access.resources.Res
@@ -52,6 +54,12 @@ import br.com.saqz.access.resources.register_signin_link
 import br.com.saqz.access.resources.register_submit
 import br.com.saqz.access.resources.register_supporting_text
 import br.com.saqz.access.resources.register_terms
+import br.com.saqz.access.resources.invite_register_entry_approval
+import br.com.saqz.access.resources.invite_register_entry_open
+import br.com.saqz.access.resources.invite_register_footer
+import br.com.saqz.access.resources.invite_register_generic_header
+import br.com.saqz.access.resources.invite_register_group_header
+import br.com.saqz.access.resources.invite_register_invitation
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
@@ -74,6 +82,9 @@ internal object RegisterTags {
     const val Submit = "register-submit"
     const val SignIn = "register-signin"
     const val Terms = "register-terms"
+    const val InviteHeader = "register-invite-header"
+    const val InviteDetails = "register-invite-details"
+    const val InviteFooter = "register-invite-footer"
 }
 
 // A única unidade declarada aqui, e nem ela é um número: `AccessMetrics.TERMS_SIZE` é
@@ -105,6 +116,7 @@ fun RegisterScreen(
     onBack: () -> Unit,
     onSignIn: () -> Unit,
     modifier: Modifier = Modifier,
+    inviteContext: RegisterInviteContext? = null,
 ) {
     val colors = SaqzTheme.colors
     val alert = registerAlert(state)
@@ -137,12 +149,16 @@ fun RegisterScreen(
         Spacer(Modifier.height(AccessMetrics.blockGap))
         AccessBrandMark()
         Spacer(Modifier.height(AccessMetrics.blockGap))
-        AccessHeader(
-            title = stringResource(Res.string.register_headline),
-            emphasis = stringResource(Res.string.register_headline_emphasis),
-            // O 1j troca o subtítulo pelo alerta; não empilha os dois.
-            subtitle = if (alert == null) stringResource(Res.string.register_supporting_text) else null,
-        )
+        if (inviteContext == null) {
+            AccessHeader(
+                title = stringResource(Res.string.register_headline),
+                emphasis = stringResource(Res.string.register_headline_emphasis),
+                // O 1j troca o subtítulo pelo alerta; não empilha os dois.
+                subtitle = if (alert == null) stringResource(Res.string.register_supporting_text) else null,
+            )
+        } else {
+            RegisterInviteHeader(context = inviteContext)
+        }
         Spacer(Modifier.height(AccessMetrics.blockGap))
         if (alert != null) {
             SaqzInlineAlert(
@@ -270,9 +286,67 @@ fun RegisterScreen(
             color = colors.textPlaceholder,
             modifier = Modifier.widthIn(max = AccessMetrics.termsMaxWidth).testTag(RegisterTags.Terms),
         )
+        if (inviteContext != null) {
+            Spacer(Modifier.height(AccessMetrics.fieldGap))
+            Text(
+                text = stringResource(Res.string.invite_register_footer),
+                style = SaqzTheme.typography.caption.copy(textAlign = TextAlign.Center),
+                color = colors.textSecondary,
+                modifier = Modifier
+                    .widthIn(max = AccessMetrics.termsMaxWidth)
+                    .testTag(RegisterTags.InviteFooter),
+            )
+        }
         // A onda sangra por cima do que estiver embaixo dela; sem este piso os termos
         // ficariam sob o azul numa tela curta.
         Spacer(Modifier.height(AccessMetrics.waveHeight))
+    }
+}
+
+@Composable
+private fun RegisterInviteHeader(context: RegisterInviteContext) {
+    val colors = SaqzTheme.colors
+    val title = context.groupName?.let { groupName ->
+        stringResource(Res.string.invite_register_group_header, groupName)
+    } ?: stringResource(Res.string.invite_register_generic_header)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = title,
+            style = SaqzTheme.typography.title.copy(
+                fontSize = AccessMetrics.TITLE_SIZE.sp,
+                lineHeight = AccessMetrics.TITLE_SIZE.sp * AccessMetrics.TITLE_LINE_HEIGHT_RATIO,
+                fontWeight = FontWeight(AccessMetrics.TITLE_WEIGHT),
+                letterSpacing = AccessMetrics.TITLE_TRACKING.em,
+                textAlign = TextAlign.Center,
+            ),
+            color = colors.textPrimary,
+            modifier = Modifier.testTag(RegisterTags.InviteHeader),
+        )
+        if (context.hasPreview) {
+            Spacer(Modifier.height(AccessMetrics.subtitleGap))
+            Text(
+                text = stringResource(
+                    Res.string.invite_register_invitation,
+                    context.inviterName.orEmpty(),
+                    stringResource(
+                        if (context.entryRequiresApproval) {
+                            Res.string.invite_register_entry_approval
+                        } else {
+                            Res.string.invite_register_entry_open
+                        },
+                    ),
+                ),
+                style = SaqzTheme.typography.support.copy(
+                    fontSize = AccessMetrics.SUBTITLE_SIZE.sp,
+                    lineHeight = AccessMetrics.SUBTITLE_SIZE.sp * AccessMetrics.SUBTITLE_LINE_HEIGHT_RATIO,
+                    textAlign = TextAlign.Center,
+                ),
+                color = colors.textSecondary,
+                modifier = Modifier
+                    .widthIn(max = AccessMetrics.subtitleMaxWidth)
+                    .testTag(RegisterTags.InviteDetails),
+            )
+        }
     }
 }
 
