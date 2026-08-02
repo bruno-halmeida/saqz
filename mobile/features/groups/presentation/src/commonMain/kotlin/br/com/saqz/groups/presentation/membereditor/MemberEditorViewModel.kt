@@ -185,9 +185,10 @@ class MemberEditorViewModel(
             update { it.copy(error = GroupUiError.Validation) }
             return
         }
+        val persisted = member ?: return
         patch(
             operation = MemberEditorOperation.Billing,
-            command = current.toUpdateCommand(
+            command = persisted.toBillingUpdateCommand(
                 membershipType = AthleteMembershipType.MENSALISTA,
                 monthlyFeeCents = amount,
                 monthlyDueDay = current.billingDueDay,
@@ -236,23 +237,34 @@ class MemberEditorViewModel(
             monthlyDueDay = athlete.monthlyDueDay,
         )
         update {
-            it.copy(
-                operation = null,
-                error = null,
-                name = athlete.nickname?.takeIf(String::isNotBlank) ?: it.displayName,
-                nickname = athlete.nickname.orEmpty(),
-                position = athlete.position,
-                secondaryPosition = athlete.secondaryPosition,
-                level = athlete.level,
-                preferredSide = athlete.preferredSide,
-                heightCm = athlete.heightCm,
-                heightText = athlete.heightCm?.toString().orEmpty(),
-                membershipType = athlete.membershipType,
-                active = athlete.active,
-                monthlyFeeOverrideCents = athlete.monthlyFeeCents,
-                monthlyDueDayOverride = athlete.monthlyDueDay,
-                billingSheetOpen = if (operation == MemberEditorOperation.Billing) false else it.billingSheetOpen,
-            )
+            if (operation == MemberEditorOperation.Billing) {
+                it.copy(
+                    operation = null,
+                    error = null,
+                    membershipType = athlete.membershipType,
+                    monthlyFeeOverrideCents = athlete.monthlyFeeCents,
+                    monthlyDueDayOverride = athlete.monthlyDueDay,
+                    billingSheetOpen = false,
+                )
+            } else {
+                it.copy(
+                    operation = null,
+                    error = null,
+                    name = athlete.nickname?.takeIf(String::isNotBlank) ?: it.displayName,
+                    nickname = athlete.nickname.orEmpty(),
+                    position = athlete.position,
+                    secondaryPosition = athlete.secondaryPosition,
+                    level = athlete.level,
+                    preferredSide = athlete.preferredSide,
+                    heightCm = athlete.heightCm,
+                    heightText = athlete.heightCm?.toString().orEmpty(),
+                    membershipType = athlete.membershipType,
+                    active = athlete.active,
+                    monthlyFeeOverrideCents = athlete.monthlyFeeCents,
+                    monthlyDueDayOverride = athlete.monthlyDueDay,
+                    billingSheetOpen = it.billingSheetOpen,
+                )
+            }
         }
         if (operation == MemberEditorOperation.Save) emit(MemberEditorEffect.Close)
         if (operation == MemberEditorOperation.Save) clearDraft()
@@ -324,6 +336,25 @@ class MemberEditorViewModel(
         level = level,
         preferredSide = preferredSide,
         heightCm = heightText.toIntOrNull(),
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
+    )
+
+    private fun AthleteRosterEntry.toBillingUpdateCommand(
+        membershipType: AthleteMembershipType,
+        monthlyFeeCents: Long,
+        monthlyDueDay: Int,
+    ) = UpdateAthleteCommand(
+        groupId = GroupId(groupId),
+        userId = userId,
+        position = position,
+        membershipType = membershipType,
+        active = active,
+        nickname = nickname,
+        secondaryPosition = secondaryPosition,
+        level = level,
+        preferredSide = preferredSide,
+        heightCm = heightCm,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
     )

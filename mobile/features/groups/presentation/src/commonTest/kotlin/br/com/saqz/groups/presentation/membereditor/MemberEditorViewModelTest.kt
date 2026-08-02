@@ -122,6 +122,33 @@ class MemberEditorViewModelTest {
     }
 
     @Test
+    fun `monthly billing uses persisted profile and preserves the profile draft`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf(sampleRosterEntry().copy(nickname = "Salvo", heightCm = 180)),
+            ),
+        )
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.NicknameChanged("Rascunho"))
+        viewModel.onIntent(MemberEditorIntent.HeightChanged(""))
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(MemberEditorIntent.BillingAmountChanged("120,00"))
+        viewModel.onIntent(MemberEditorIntent.BillingDueDaySelected(15))
+        viewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+        assertEquals("Salvo", athlete.lastUpdateCommand?.nickname)
+        assertEquals(180, athlete.lastUpdateCommand?.heightCm)
+        assertEquals(AthleteMembershipType.MENSALISTA, athlete.lastUpdateCommand?.membershipType)
+        assertEquals(12000, athlete.lastUpdateCommand?.monthlyFeeCents)
+        assertEquals(15, athlete.lastUpdateCommand?.monthlyDueDay)
+        assertEquals("Rascunho", viewModel.state.value.nickname)
+        assertEquals("", viewModel.state.value.heightText)
+        assertNull(viewModel.state.value.heightCm)
+        assertFalse(viewModel.state.value.billingSheetOpen)
+    }
+
+    @Test
     fun `draft fields restore from SavedStateHandle`() = runTest {
         val savedState = SavedStateHandle()
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
