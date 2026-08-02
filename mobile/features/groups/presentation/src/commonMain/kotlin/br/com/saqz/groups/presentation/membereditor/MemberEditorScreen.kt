@@ -253,47 +253,51 @@ private fun MemberEditorIdentity(state: MemberEditorState, onIntent: (MemberEdit
 private fun MemberEditorAttributes(state: MemberEditorState, onIntent: (MemberEditorIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
     MemberEditorSection(stringResource(Res.string.member_editor_position)) {
-        if (state.isCourt) {
-            MemberEditorChoiceRow(
-                options = AthletePosition.entries,
-                selected = state.position,
-                label = { positionLabel(it, state.composition) },
-                onSelect = { onIntent(MemberEditorIntent.PositionSelected(it)) },
-                tag = MemberEditorTags::position,
-            )
-            Text(
-                text = stringResource(Res.string.member_editor_secondary_position),
-                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                color = SaqzTheme.colors.textPrimary,
-            )
-            MemberEditorChoiceRow(
-                options = listOf(null) + AthletePosition.entries.filter { it != state.position },
-                selected = state.secondaryPosition,
-                label = { it?.let { positionLabel(it, state.composition) } ?: stringResource(Res.string.member_editor_none) },
-                onSelect = { onIntent(MemberEditorIntent.SecondaryPositionSelected(it)) },
-                tag = MemberEditorTags::secondary,
-            )
-            SaqzInput(
-                value = state.heightText,
-                onValueChange = { onIntent(MemberEditorIntent.HeightChanged(it.filter(Char::isDigit))) },
-                label = stringResource(Res.string.member_editor_height),
-                placeholder = stringResource(Res.string.member_editor_height_hint),
-                keyboardType = KeyboardType.Number,
-                enabled = state.operation == null,
-            )
-        } else {
-            Text(
-                text = stringResource(Res.string.member_editor_side),
-                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                color = SaqzTheme.colors.textPrimary,
-            )
-            MemberEditorChoiceRow(
-                options = AthletePreferredSide.entries,
-                selected = state.preferredSide,
-                label = { sideLabel(it) },
-                onSelect = { onIntent(MemberEditorIntent.PreferredSideSelected(it)) },
-                tag = MemberEditorTags::side,
-            )
+        when (state.modality) {
+            GroupModality.COURT_VOLLEYBALL -> {
+                MemberEditorChoiceRow(
+                    options = AthletePosition.entries,
+                    selected = state.position,
+                    label = { positionLabel(it, state.composition) },
+                    onSelect = { onIntent(MemberEditorIntent.PositionSelected(it)) },
+                    tag = MemberEditorTags::position,
+                )
+                Text(
+                    text = stringResource(Res.string.member_editor_secondary_position),
+                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                MemberEditorChoiceRow(
+                    options = listOf(null) + AthletePosition.entries.filter { it != state.position },
+                    selected = state.secondaryPosition,
+                    label = { it?.let { positionLabel(it, state.composition) } ?: stringResource(Res.string.member_editor_none) },
+                    onSelect = { onIntent(MemberEditorIntent.SecondaryPositionSelected(it)) },
+                    tag = MemberEditorTags::secondary,
+                )
+                SaqzInput(
+                    value = state.heightText,
+                    onValueChange = { onIntent(MemberEditorIntent.HeightChanged(it.filter(Char::isDigit))) },
+                    label = stringResource(Res.string.member_editor_height),
+                    placeholder = stringResource(Res.string.member_editor_height_hint),
+                    keyboardType = KeyboardType.Number,
+                    enabled = state.operation == null,
+                )
+            }
+            GroupModality.BEACH_VOLLEYBALL, GroupModality.FOOTVOLLEY -> {
+                Text(
+                    text = stringResource(Res.string.member_editor_side),
+                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                MemberEditorChoiceRow(
+                    options = AthletePreferredSide.entries,
+                    selected = state.preferredSide,
+                    label = { sideLabel(it) },
+                    onSelect = { onIntent(MemberEditorIntent.PreferredSideSelected(it)) },
+                    tag = MemberEditorTags::side,
+                )
+            }
+            null -> Unit
         }
         Text(
             text = stringResource(Res.string.member_editor_level),
