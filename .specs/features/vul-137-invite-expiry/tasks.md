@@ -34,7 +34,7 @@
 - **Files**: metadata use case, controller, repository/configuration, endpoint integration tests.
 - **Done when**: active, expired, absent, 404 and 403 responses match the contract; no response contains the invite URL or digest.
 - **Gate**: groups unit/integration tests and bootstrap tests.
-- **Status**: pending
+- **Status**: completed
 
 ### T5 — Final verification and publication
 

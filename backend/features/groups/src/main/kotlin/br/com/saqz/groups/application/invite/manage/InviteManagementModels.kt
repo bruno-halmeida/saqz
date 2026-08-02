@@ -26,6 +26,21 @@ data class InviteMetadata(
     val createdByName: String,
 )
 
+data class InviteMetadataView(
+    val active: Boolean,
+    val expiresAt: Instant?,
+    val createdAt: Instant?,
+    val createdByName: String?,
+)
+
+sealed interface GetInviteMetadataResult {
+    data class Success(val metadata: InviteMetadataView) : GetInviteMetadataResult
+
+    data object GroupNotFound : GetInviteMetadataResult
+
+    data object AccessForbidden : GetInviteMetadataResult
+}
+
 sealed interface ExpireInviteResult {
     data object Success : ExpireInviteResult
 
