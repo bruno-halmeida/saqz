@@ -22,6 +22,7 @@ import br.com.saqz.groups.adapter.output.crypto.JcaAttendanceLinkTokenGenerator
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
 import br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
+import br.com.saqz.groups.adapter.output.jdbc.group.delete.JdbcGroupDeletionRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
 import br.com.saqz.groups.adapter.output.jdbc.photo.JdbcGroupPhotoRepository
@@ -42,6 +43,7 @@ import br.com.saqz.groups.application.attendance.share.ReadAttendanceShareSnapsh
 import br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink
 import br.com.saqz.groups.application.attendance.share.RotateAttendanceLink
 import br.com.saqz.groups.application.create.CreateGroup
+import br.com.saqz.groups.application.delete.DeleteGroup
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
@@ -232,11 +234,21 @@ class AccessSessionConfiguration {
     ) = CreateGroup(transaction, repository, subscriptionLimits)
 
     @Bean
+    fun groupDeletionRepository(dataSource: DataSource) = JdbcGroupDeletionRepository(dataSource)
+
+    @Bean
+    fun deleteGroup(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcGroupDeletionRepository,
+    ) = DeleteGroup(transaction, repository)
+
+    @Bean
     fun accessGroupController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         createGroup: CreateGroup,
         getGroup: GetGroup,
-    ) = AccessGroupController(verifiedGroupActorResolver, createGroup, getGroup)
+        deleteGroup: DeleteGroup,
+    ) = AccessGroupController(verifiedGroupActorResolver, createGroup, getGroup, deleteGroup)
 
     @Bean
     fun groupReadRepository(dataSource: DataSource) = JdbcGroupReadRepository(dataSource)
