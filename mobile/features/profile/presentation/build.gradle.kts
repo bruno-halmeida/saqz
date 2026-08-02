@@ -48,6 +48,9 @@ kotlin {
     }
 }
 
+// A captura é host-only: as suítes de commonTest continuam rodando no simulador iOS.
+// Sem este recorte, o host test herda commonTest e tenta executar testes Compose sem o
+// runner do Robolectric.
 afterEvaluate {
     tasks.named("compileAndroidHostTest", org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool::class) {
         setSource(kotlin.sourceSets.getByName("androidHostTest").kotlin)

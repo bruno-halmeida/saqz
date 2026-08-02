@@ -68,30 +68,30 @@ class OwnProfileViewModel(
                 it.copy(
                     isLoading = false,
                     loadError = false,
-                    user = profile.user.toUi(),
-                    stats = stats.toUi(),
+                    user = profile.user.toOwnProfileUserUi(),
+                    stats = stats.toOwnProfileStatsUi(),
                     groups = athleteProfile.memberships
                         .filter(AthleteMembership::active)
-                        .map(AthleteMembership::toUi),
+                        .map(AthleteMembership::toOwnProfileGroupUi),
                 )
             }
         }
     }
 }
 
-private fun ProfileUser.toUi() = OwnProfileUserUi(
+internal fun ProfileUser.toOwnProfileUserUi() = OwnProfileUserUi(
     displayName = displayName,
     subtitle = profileSubtitle(nickname, city),
     photoUrl = photoUrl,
 )
 
-private fun ProfileStats.toUi() = OwnProfileStatsUi(
+internal fun ProfileStats.toOwnProfileStatsUi() = OwnProfileStatsUi(
     gamesLabel = games.toString(),
     attendanceLabel = attendanceRate?.let { "$it%" },
     groupsLabel = groups.toString(),
 )
 
-private fun AthleteMembership.toUi() = OwnProfileGroupUi(
+internal fun AthleteMembership.toOwnProfileGroupUi() = OwnProfileGroupUi(
     id = groupId.value,
     name = groupName,
     details = listOfNotNull(position?.toPositionLabel(), role.toRoleLabel())
