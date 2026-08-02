@@ -18,7 +18,7 @@ class ListAthletes(
         return when (accessPolicy.authorize(group.role, GroupAction.MANAGE_ATHLETES)) {
             GroupAccessDecision.GroupNotFound -> ListAthletesResult.GroupNotFound
             GroupAccessDecision.Forbidden -> ListAthletesResult.AccessForbidden
-            GroupAccessDecision.Allowed -> ListAthletesResult.Success(rosterRepository.list(groupId, filter))
+            GroupAccessDecision.Allowed -> ListAthletesResult.Success(rosterRepository.list(actor, groupId, filter))
         }
     }
 }
