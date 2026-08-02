@@ -143,7 +143,7 @@ internal fun SaqzNavHost(
                 NewPasswordRoot(
                     token = route.token,
                     onBack = pop,
-                    onFinish = { backStack.completePasswordReset() },
+                    onFinish = { backStack.completePasswordReset(state.session) },
                     // Ticket morto pede o código de novo, e o 1e é exatamente a entrada
                     // anterior — é para ela reaparecer intacta que a rota do 1g carrega o
                     // e-mail. Empilhar um `ResetCode` novo deixaria dois na pilha.
@@ -152,9 +152,9 @@ internal fun SaqzNavHost(
             }
             entry<AccessRoute.PasswordChanged> {
                 // Quem chega aqui já teve o stack colapsado por [completePasswordReset]:
-                // o único destino abaixo é o login, e as duas saídas do 1h vão dar nele.
+                // a recuperação consumida saiu, e a base depende de a sessão estar viva.
                 PasswordChangedScreen(
-                    onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                    onSignIn = { backStack.finishPasswordChanged(state.session) },
                     onBack = pop,
                 )
             }
@@ -318,14 +318,28 @@ private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
  * mão, e o 1e, com um código já gasto. Nos dois casos a pessoa digitaria tudo outra vez
  * para levar um erro que não tem como entender.
  *
- * Sobra o login, que é para onde o "Entrar agora" leva de qualquer forma — o voltar do 1h,
- * visível ou do sistema, passa a dar no mesmo lugar. Empilhar sobre o formulário era o
- * defeito; substituir só ele deixaria o mesmo defeito uma entrada acima.
+ * Sobra a base correta para a sessão atual, que é para onde o "Entrar agora" leva de qualquer
+ * forma — o voltar do 1h, visível ou do sistema, passa a dar no mesmo lugar. Empilhar sobre o
+ * formulário era o defeito; substituir só ele deixaria o mesmo defeito uma entrada acima.
  */
-internal fun MutableList<NavKey>.completePasswordReset() {
+internal fun MutableList<NavKey>.completePasswordReset(session: SessionAccessState) {
     clear()
-    add(AccessRoute.Login)
+    add(session.passwordChangedDestination())
     add(AccessRoute.PasswordChanged)
+}
+
+internal fun MutableList<NavKey>.finishPasswordChanged(session: SessionAccessState) {
+    clear()
+    add(session.passwordChangedDestination())
+}
+
+private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this) {
+    is SessionAccessState.Ready -> SaqzShellDestination
+    SessionAccessState.SignedOut,
+    is SessionAccessState.CompletingIdentity,
+    SessionAccessState.Bootstrapping,
+    SessionAccessState.BootstrapError,
+    -> AccessRoute.Login
 }
 
 /**

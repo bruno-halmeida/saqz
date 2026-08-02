@@ -193,7 +193,7 @@ class SaqzNavHostTest {
      * tudo de novo para levar um erro que não tem como entender.
      */
     @Test
-    fun completingTheResetDropsTheConsumedForm() {
+    fun completingTheSignedOutResetDropsTheConsumedFormToLogin() {
         val stack = mutableListOf<NavKey>(
             AccessRoute.Login,
             AccessRoute.ForgotPassword,
@@ -201,9 +201,34 @@ class SaqzNavHostTest {
             AccessRoute.NewPassword("ana@exemplo.com", "ticket-do-reset"),
         )
 
-        stack.completePasswordReset()
+        stack.completePasswordReset(SessionAccessState.SignedOut)
 
         assertEquals(listOf<NavKey>(AccessRoute.Login, AccessRoute.PasswordChanged), stack)
+    }
+
+    @Test
+    fun completingTheAuthenticatedResetDropsTheConsumedFormToTheShell() {
+        val stack = mutableListOf<NavKey>(
+            SaqzShellDestination,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+            AccessRoute.NewPassword("ana@exemplo.com", "ticket-do-reset"),
+        )
+
+        stack.completePasswordReset(SessionAccessState.Ready(session))
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination, AccessRoute.PasswordChanged), stack)
+    }
+
+    @Test
+    fun passwordChangedSignInReturnsToTheLiveSessionDestination() {
+        val authenticated = mutableListOf<NavKey>(AccessRoute.PasswordChanged)
+        authenticated.finishPasswordChanged(SessionAccessState.Ready(session))
+        assertEquals(listOf<NavKey>(SaqzShellDestination), authenticated)
+
+        val signedOut = mutableListOf<NavKey>(AccessRoute.PasswordChanged)
+        signedOut.finishPasswordChanged(SessionAccessState.SignedOut)
+        assertEquals(listOf<NavKey>(AccessRoute.Login), signedOut)
     }
 
     /**
