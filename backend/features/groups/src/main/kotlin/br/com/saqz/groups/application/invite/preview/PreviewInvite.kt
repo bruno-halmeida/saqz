@@ -88,6 +88,7 @@ class AnonymousInvitePreviewRateLimiter {
 
     @Synchronized
     fun recordInvalid(ipAddress: String, now: Instant) {
+        windows.entries.removeIf { now >= it.value.startedAt.plus(WINDOW) }
         val current = activeWindow(ipAddress, now)
         val startedAt = current?.startedAt ?: now
         windows[ipAddress] = Window(startedAt, (current?.invalidCount ?: 0) + 1)
