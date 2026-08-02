@@ -63,15 +63,16 @@ fun ProfileExitScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dismiss = { if (!state.isDeleting) onClose() }
     SaqzBottomSheet(
         open = true,
-        onClose = onClose,
+        onClose = dismiss,
         modifier = modifier.testTag(ProfileExitTags.Sheet),
     ) {
         when (state.sheet) {
             ProfileExitSheet.Exit -> ExitSheetContent(
                 onLogout = onLogout,
-                onClose = onClose,
+                onClose = dismiss,
                 onOpenDeleteConfirmation = {
                     onIntent(ProfileExitIntent.OpenDeleteConfirmation)
                 },
@@ -80,7 +81,7 @@ fun ProfileExitScreen(
             ProfileExitSheet.ConfirmDelete -> DeleteConfirmationContent(
                 state = state,
                 onIntent = onIntent,
-                onClose = onClose,
+                onClose = dismiss,
             )
         }
     }
