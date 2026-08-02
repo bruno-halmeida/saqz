@@ -203,6 +203,19 @@ class MyPlan8eScreenshotTest {
         )
     }
 
+    @Test
+    fun myPlan8eRecibosErroAoCarregarMais() = capture("8e-myplan-recibos-erro-carregar-mais") {
+        MyPlanScreen(
+            state = ACTIVE.copy(
+                isReceiptsSheetOpen = true,
+                hasMoreReceipts = true,
+                loadMoreReceiptsError = UiText.Raw("Não foi possível carregar mais recibos agora."),
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
     // Achado do Codex no PR #93: falha em `receipts()` vira erro com retry, não "nenhum
     // recibo ainda".
     @Test
