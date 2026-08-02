@@ -14,6 +14,8 @@ import br.com.saqz.access.adapter.input.http.PasswordResetTokenInvalidException
 import br.com.saqz.access.adapter.input.http.WeakPasswordException
 import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
 import br.com.saqz.groups.adapter.input.http.AthleteLimitExceededException
+import br.com.saqz.groups.adapter.input.http.EntryRequestAthleteLimitExceededException
+import br.com.saqz.groups.adapter.input.http.EntryRequestNotFoundException
 import br.com.saqz.groups.adapter.input.http.GroupLimitExceededException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
@@ -194,6 +196,11 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
     }
 
+    @ExceptionHandler(EntryRequestNotFoundException::class)
+    fun entryRequestNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.ENTRY_REQUEST_NOT_FOUND)
+    }
+
     @ExceptionHandler(PreconditionRequiredException::class)
     fun preconditionRequired(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 428, ErrorCode.PRECONDITION_REQUIRED)
@@ -257,6 +264,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(AthleteLimitExceededException::class)
     fun athleteLimitExceeded(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.ATHLETE_LIMIT_EXCEEDED)
+    }
+
+    @ExceptionHandler(EntryRequestAthleteLimitExceededException::class)
+    fun entryRequestAthleteLimitExceeded(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 422, ErrorCode.ATHLETE_LIMIT_EXCEEDED)
     }
 
     @ExceptionHandler(AttendanceLinkInvalidOrExpiredException::class)

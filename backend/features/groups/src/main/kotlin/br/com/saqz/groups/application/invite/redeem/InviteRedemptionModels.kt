@@ -68,9 +68,9 @@ interface InviteRedemptionRepository {
 
     fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy?
 
-    fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = null
+    fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole?
 
-    fun createEntryRequest(command: CreateEntryRequestCommand) = Unit
+    fun createEntryRequest(command: CreateEntryRequestCommand)
 
     fun redeemMembership(command: RedeemMembershipCommand): GroupRole
 }

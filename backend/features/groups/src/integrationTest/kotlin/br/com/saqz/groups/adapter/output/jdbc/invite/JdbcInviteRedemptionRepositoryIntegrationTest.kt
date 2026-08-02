@@ -12,6 +12,8 @@ import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
+import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
+import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.flywaydb.core.Flyway
@@ -66,7 +68,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     @BeforeEach
     fun clearData() {
         execute(
-            "TRUNCATE game_attendance, games, group_invites, group_membership_removals, group_memberships, " +
+            "TRUNCATE game_attendance, games, group_invites, group_entry_requests, group_membership_removals, group_memberships, " +
                 "access_groups, invite_redemption_limits, access_users CASCADE",
         )
     }
@@ -124,6 +126,24 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
 
         assertEquals(1, number("SELECT count(*) FROM group_entry_requests WHERE group_id = '${fixture.group}' AND user_id = '$user'"))
         assertEquals(now, timestamp("SELECT requested_at FROM group_entry_requests WHERE group_id = '${fixture.group}' AND user_id = '$user'"))
+    }
+
+    @Test
+    fun `entry request list and delete expose persisted identity and timestamp`() {
+        val fixture = inviteFixture("entry-request-list")
+        val user = insertUser("entry-request-list-user")
+
+        transaction.inTransaction {
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now))
+        }
+
+        val listed = transaction.inTransaction { repository.list(fixture.group) }
+        assertEquals(listOf(GroupEntryRequest(user, AccessName.from("Access Person"), now)), listed)
+        assertEquals(listed.single(), transaction.inTransaction { repository.find(fixture.group, user) })
+
+        transaction.inTransaction { repository.delete(fixture.group, user) }
+
+        assertTrue(transaction.inTransaction { repository.list(fixture.group) }.isEmpty())
     }
 
     @Test
