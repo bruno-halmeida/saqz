@@ -1,8 +1,11 @@
 package br.com.saqz.groups.adapter.output.jdbc.athlete
 
 import br.com.saqz.groups.application.athlete.UpdateAthleteCommand
+import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfileCommand
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.testing.startAndAwaitJdbc
@@ -138,6 +141,72 @@ class JdbcAthleteRepositoryIntegrationTest {
         assertEquals("OPOSTO", text("SELECT position FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertEquals("MENSALISTA", text("SELECT membership_type FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertEquals(false, bool("SELECT active FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+    }
+
+    @Test
+    fun `update roundtrips every new membership attribute`() {
+        val owner = insertUser("update-all-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("update-all-member", "Member Person")
+        insertMembership(group, member)
+
+        val updated = repository.update(
+            UpdateAthleteCommand(
+                groupId = group,
+                userId = member,
+                position = AthletePosition.OPOSTO,
+                membershipType = AthleteMembershipType.MENSALISTA,
+                active = false,
+                nickname = "😀a",
+                secondaryPosition = AthletePosition.PONTA,
+                level = AthleteLevel.INTERMEDIARIO,
+                preferredSide = AthletePreferredSide.DIREITA,
+                heightCm = 188,
+                monthlyFeeCents = 12500,
+                monthlyDueDay = 12,
+            ),
+        )
+
+        assertEquals("😀a", updated.nickname)
+        assertEquals(AthletePosition.PONTA, updated.secondaryPosition)
+        assertEquals(AthleteLevel.INTERMEDIARIO, updated.level)
+        assertEquals(AthletePreferredSide.DIREITA, updated.preferredSide)
+        assertEquals(188, updated.heightCm)
+        assertEquals(12500, updated.monthlyFeeCents)
+        assertEquals(12, updated.monthlyDueDay)
+        assertEquals("😀a", text("SELECT nickname FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals("INTERMEDIARIO", text("SELECT level FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(12500, number("SELECT monthly_fee_cents FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+    }
+
+    @Test
+    fun `updateOwn roundtrips profile attributes without changing monthly override`() {
+        val owner = insertUser("update-own-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("update-own-member", "Member Person")
+        insertMembership(group, member)
+        execute("UPDATE group_memberships SET monthly_fee_cents = 9000, monthly_due_day = 9 WHERE group_id = '$group' AND user_id = '$member'")
+
+        val updated = repository.updateOwn(
+            UpdateOwnAthleteProfileCommand(
+                groupId = group,
+                userId = member,
+                nickname = "a\u0301",
+                position = AthletePosition.CENTRAL,
+                secondaryPosition = AthletePosition.PONTA,
+                level = AthleteLevel.INICIANTE,
+                preferredSide = AthletePreferredSide.ESQUERDA,
+                heightCm = 175,
+            ),
+        )
+
+        assertEquals("a\u0301", updated.nickname)
+        assertEquals(AthletePosition.PONTA, updated.secondaryPosition)
+        assertEquals(AthleteLevel.INICIANTE, updated.level)
+        assertEquals(AthletePreferredSide.ESQUERDA, updated.preferredSide)
+        assertEquals(175, updated.heightCm)
+        assertEquals(9000, updated.monthlyFeeCents)
+        assertEquals(9, updated.monthlyDueDay)
     }
 
     @Test

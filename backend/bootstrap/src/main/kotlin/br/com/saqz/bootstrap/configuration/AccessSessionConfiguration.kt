@@ -67,7 +67,9 @@ import br.com.saqz.groups.application.entryrequest.ListEntryRequests
 import br.com.saqz.groups.application.entryrequest.RejectEntryRequest
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRosterRepository
+import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteStatsRepository
 import br.com.saqz.groups.application.athlete.GetOwnAthleteProfile
+import br.com.saqz.groups.application.athlete.GetAthleteStats
 import br.com.saqz.groups.application.athlete.ListAthletes
 import br.com.saqz.groups.application.athlete.RemoveAthlete
 import br.com.saqz.groups.application.athlete.UpdateAthlete
@@ -608,10 +610,12 @@ class AccessSessionConfiguration {
 
     @Bean fun athleteRepository(dataSource: DataSource) = JdbcAthleteRepository(dataSource)
     @Bean fun athleteRosterRepository(dataSource: DataSource) = JdbcAthleteRosterRepository(dataSource)
+    @Bean fun athleteStatsRepository(dataSource: DataSource) = JdbcAthleteStatsRepository(dataSource)
     @Bean fun updateOwnAthleteProfile(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateOwnAthleteProfile(transaction, readRepository, athletes)
     @Bean fun updateAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
     @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
     @Bean fun listAthletes(readRepository: JdbcGroupReadRepository, roster: JdbcAthleteRosterRepository) = ListAthletes(readRepository, roster, GroupAccessPolicy())
     @Bean fun getOwnAthleteProfile(roster: JdbcAthleteRosterRepository) = GetOwnAthleteProfile(roster)
-    @Bean fun athleteController(actor: VerifiedGroupActorResolver, list: ListAthletes, updateOwn: UpdateOwnAthleteProfile, update: UpdateAthlete, remove: RemoveAthlete, ownProfile: GetOwnAthleteProfile) = AthleteController(actor, list, updateOwn, update, remove, ownProfile)
+    @Bean fun getAthleteStats(readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, stats: JdbcAthleteStatsRepository) = GetAthleteStats(readRepository, athletes, stats)
+    @Bean fun athleteController(actor: VerifiedGroupActorResolver, list: ListAthletes, updateOwn: UpdateOwnAthleteProfile, update: UpdateAthlete, remove: RemoveAthlete, ownProfile: GetOwnAthleteProfile, stats: GetAthleteStats) = AthleteController(actor, list, updateOwn, update, remove, ownProfile, stats)
 }

@@ -7,11 +7,14 @@ import br.com.saqz.groups.application.athlete.FinancialStatus
 import br.com.saqz.groups.application.athlete.OwnAthleteMembership
 import br.com.saqz.groups.application.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -62,7 +65,9 @@ class JdbcAthleteRosterRepository(
                        THEN u.phone
                        ELSE NULL
                    END AS phone,
-                   m.position, m.membership_type, m.active
+                   m.position, m.secondary_position, m.level, m.preferred_side,
+                   m.height_cm, m.nickname, m.monthly_fee_cents, m.monthly_due_day,
+                   m.membership_type, m.active, m.created_at
             FROM group_memberships m
             JOIN access_users u ON u.id = m.user_id
             JOIN access_groups groups ON groups.id = m.group_id AND groups.deleted_at IS NULL
@@ -91,6 +96,14 @@ class JdbcAthleteRosterRepository(
                 membershipType = row.membershipType,
                 active = row.active,
                 financialStatus = status,
+                nickname = row.nickname,
+                secondaryPosition = row.secondaryPosition,
+                level = row.level,
+                preferredSide = row.preferredSide,
+                heightCm = row.heightCm,
+                monthlyFeeCents = row.monthlyFeeCents,
+                monthlyDueDay = row.monthlyDueDay,
+                joinedAt = row.joinedAt,
             )
         }
         return if (filter.financialStatus == null) withStatus else withStatus.filter { it.financialStatus == filter.financialStatus }
@@ -110,8 +123,16 @@ class JdbcAthleteRosterRepository(
                 g.name AS group_name,
                 CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role END AS role,
                 m.position,
+                m.secondary_position,
+                m.level,
+                m.preferred_side,
+                m.height_cm,
+                m.nickname,
+                m.monthly_fee_cents,
+                m.monthly_due_day,
                 m.membership_type,
-                m.active
+                m.active,
+                m.created_at
             FROM group_memberships m
             JOIN access_groups g ON g.id = m.group_id
                 AND g.deleted_at IS NULL
@@ -126,8 +147,16 @@ class JdbcAthleteRosterRepository(
                     groupName = AccessName.from(rs.getString("group_name")),
                     role = GroupRole.valueOf(rs.getString("role")),
                     position = rs.getString("position")?.let(AthletePosition::valueOf),
+                    nickname = rs.getString("nickname"),
+                    secondaryPosition = rs.getString("secondary_position")?.let(AthletePosition::valueOf),
+                    level = rs.getString("level")?.let(AthleteLevel::valueOf),
+                    preferredSide = rs.getString("preferred_side")?.let(AthletePreferredSide::valueOf),
+                    heightCm = rs.getNullableInt("height_cm"),
+                    monthlyFeeCents = rs.getNullableLong("monthly_fee_cents"),
+                    monthlyDueDay = rs.getNullableInt("monthly_due_day"),
                     membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
                     active = rs.getBoolean("active"),
+                    joinedAt = rs.getTimestamp("created_at").toInstant(),
                 )
             }
             .list()
@@ -174,8 +203,16 @@ class JdbcAthleteRosterRepository(
         displayName = AccessName.from(rs.getString("display_name")),
         phone = rs.getString("phone"),
         position = rs.getString("position")?.let(AthletePosition::valueOf),
+        nickname = rs.getString("nickname"),
+        secondaryPosition = rs.getString("secondary_position")?.let(AthletePosition::valueOf),
+        level = rs.getString("level")?.let(AthleteLevel::valueOf),
+        preferredSide = rs.getString("preferred_side")?.let(AthletePreferredSide::valueOf),
+        heightCm = rs.getNullableInt("height_cm"),
+        monthlyFeeCents = rs.getNullableLong("monthly_fee_cents"),
+        monthlyDueDay = rs.getNullableInt("monthly_due_day"),
         membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
         active = rs.getBoolean("active"),
+        joinedAt = rs.getTimestamp("created_at").toInstant(),
     )
 
     private data class RosterRow(
@@ -183,7 +220,25 @@ class JdbcAthleteRosterRepository(
         val displayName: AccessName,
         val phone: String?,
         val position: AthletePosition?,
+        val nickname: String?,
+        val secondaryPosition: AthletePosition?,
+        val level: AthleteLevel?,
+        val preferredSide: AthletePreferredSide?,
+        val heightCm: Int?,
+        val monthlyFeeCents: Long?,
+        val monthlyDueDay: Int?,
         val membershipType: AthleteMembershipType,
         val active: Boolean,
+        val joinedAt: Instant,
     )
+
+    private fun ResultSet.getNullableInt(column: String): Int? {
+        val value = getInt(column)
+        return if (wasNull()) null else value
+    }
+
+    private fun ResultSet.getNullableLong(column: String): Long? {
+        val value = getLong(column)
+        return if (wasNull()) null else value
+    }
 }

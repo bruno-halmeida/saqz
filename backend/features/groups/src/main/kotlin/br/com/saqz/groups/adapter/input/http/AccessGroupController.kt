@@ -63,6 +63,7 @@ data class CreateRegularSlotRequest @JsonCreator constructor(
 
 class InvalidGroupRequestException(
     val fieldErrors: Map<String, List<String>>,
+    val status: Int = 400,
 ) : RuntimeException()
 
 class GroupLimitExceededException : RuntimeException()

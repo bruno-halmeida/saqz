@@ -2,8 +2,10 @@ package br.com.saqz.groups.adapter.output.jdbc.athlete
 
 import br.com.saqz.groups.application.athlete.AthleteRosterFilter
 import br.com.saqz.groups.application.athlete.FinancialStatus
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.testing.startAndAwaitJdbc
@@ -18,6 +20,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.LocalDate
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -60,6 +63,30 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         assertEquals(AthletePosition.PONTA, entry.position)
         assertEquals(AthleteMembershipType.MENSALISTA, entry.membershipType)
         assertTrue(entry.active)
+    }
+
+    @Test
+    fun `list returns raw membership attributes and joined at`() {
+        val owner = insertUser("roster-attrs-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("roster-attrs-member", "Member Person")
+        insertMembership(group, member, position = "PONTA", membershipType = "MENSALISTA")
+        execute(
+            "UPDATE group_memberships SET nickname = 'Raio', secondary_position = 'CENTRAL', level = 'AVANCADO', " +
+                "preferred_side = 'DIREITA', height_cm = 187, monthly_fee_cents = 12500, monthly_due_day = 10 " +
+                "WHERE group_id = '$group' AND user_id = '$member'",
+        )
+
+        val entry = repository.list(owner, group, AthleteRosterFilter()).single { it.userId == member }
+
+        assertEquals("Raio", entry.nickname)
+        assertEquals(AthletePosition.CENTRAL, entry.secondaryPosition)
+        assertEquals(AthleteLevel.AVANCADO, entry.level)
+        assertEquals(AthletePreferredSide.DIREITA, entry.preferredSide)
+        assertEquals(187, entry.heightCm)
+        assertEquals(12500, entry.monthlyFeeCents)
+        assertEquals(10, entry.monthlyDueDay)
+        assertTrue(entry.joinedAt.isAfter(Instant.EPOCH))
     }
 
     @Test
@@ -286,6 +313,11 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         val groupTwo = insertGroup(ownerTwo, name = "Group Two")
         insertMembership(groupOne, athlete, position = "CENTRAL", membershipType = "MENSALISTA")
         insertMembership(groupTwo, athlete, position = "LIBERO")
+        execute(
+            "UPDATE group_memberships SET nickname = 'Raio', secondary_position = 'PONTA', level = 'INICIANTE', " +
+                "preferred_side = 'ESQUERDA', height_cm = 175, monthly_fee_cents = 9000, monthly_due_day = 9 " +
+                "WHERE group_id = '$groupOne' AND user_id = '$athlete'",
+        )
 
         val profile = repository.findOwnProfile(athlete)
 
@@ -295,6 +327,15 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         assertEquals(AthletePosition.CENTRAL, profile?.memberships?.single { it.groupId == groupOne }?.position)
         assertEquals(AthleteMembershipType.MENSALISTA, profile?.memberships?.single { it.groupId == groupOne }?.membershipType)
         assertEquals(GroupRole.ATHLETE, profile?.memberships?.single { it.groupId == groupOne }?.role)
+        val membership = profile?.memberships?.single { it.groupId == groupOne }
+        assertEquals("Raio", membership?.nickname)
+        assertEquals(AthletePosition.PONTA, membership?.secondaryPosition)
+        assertEquals(AthleteLevel.INICIANTE, membership?.level)
+        assertEquals(AthletePreferredSide.ESQUERDA, membership?.preferredSide)
+        assertEquals(175, membership?.heightCm)
+        assertEquals(9000, membership?.monthlyFeeCents)
+        assertEquals(9, membership?.monthlyDueDay)
+        assertTrue(membership?.joinedAt?.isAfter(Instant.EPOCH) == true)
     }
 
     @Test

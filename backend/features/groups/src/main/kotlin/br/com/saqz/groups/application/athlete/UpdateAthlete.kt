@@ -24,6 +24,18 @@ class UpdateAthlete(
         }
         athleteRepository.find(command.groupId, command.userId)
             ?: return@inTransaction UpdateAthleteResult.GroupNotFound
+        val errors = AthleteAttributeValidator.validate(
+            group.profile?.modality,
+            command.nickname,
+            command.position,
+            command.secondaryPosition,
+            command.level,
+            command.preferredSide,
+            command.heightCm,
+            command.monthlyFeeCents,
+            command.monthlyDueDay,
+        )
+        if (errors.isNotEmpty()) return@inTransaction UpdateAthleteResult.Invalid(errors)
         UpdateAthleteResult.Success(athleteRepository.update(command))
     }
 }

@@ -13,6 +13,9 @@ import br.com.saqz.groups.application.athlete.AthleteRosterFilter
 import br.com.saqz.groups.application.athlete.AthleteRosterRepository
 import br.com.saqz.groups.application.athlete.FinancialStatus
 import br.com.saqz.groups.application.athlete.GetOwnAthleteProfile
+import br.com.saqz.groups.application.athlete.GetAthleteStats
+import br.com.saqz.groups.application.athlete.AthleteStatsAggregate
+import br.com.saqz.groups.application.athlete.AthleteStatsRepository
 import br.com.saqz.groups.application.athlete.ListAthletes
 import br.com.saqz.groups.application.athlete.OwnAthleteMembership
 import br.com.saqz.groups.application.athlete.OwnAthleteProfile
@@ -20,16 +23,20 @@ import br.com.saqz.groups.application.athlete.RemoveAthlete
 import br.com.saqz.groups.application.athlete.UpdateAthlete
 import br.com.saqz.groups.application.athlete.UpdateAthleteCommand
 import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfile
+import br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfileCommand
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
+import br.com.saqz.groups.application.read.GroupProfileReadModel
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -64,6 +71,7 @@ class AthleteEndpointIntegrationTest {
     @Autowired private lateinit var read: RecordingAthleteGroupReadRepository
     @Autowired private lateinit var athletes: RecordingAthleteRepository
     @Autowired private lateinit var roster: RecordingAthleteRosterRepository
+    @Autowired private lateinit var stats: RecordingAthleteStatsRepository
     @Autowired private lateinit var objectMapper: ObjectMapper
     private val groupId = UUID.randomUUID()
     private val actorId = AthleteTestConfiguration.USER_ID
@@ -73,6 +81,7 @@ class AthleteEndpointIntegrationTest {
     @BeforeEach
     fun reset() {
         read.role = GroupRole.OWNER
+        read.modality = GroupModality.COURT_VOLLEYBALL
         athletes.reset(
             listOf(
                 athlete(actorId, "Owner Person", GroupRole.OWNER),
@@ -92,9 +101,18 @@ class AthleteEndpointIntegrationTest {
                 OwnAthleteMembership(
                     groupId, AccessName.from("Training Group"), GroupRole.OWNER,
                     AthletePosition.LEVANTADOR, AthleteMembershipType.MENSALISTA, true,
+                    nickname = "Raio",
+                    secondaryPosition = AthletePosition.CENTRAL,
+                    level = br.com.saqz.groups.domain.AthleteLevel.AVANCADO,
+                    preferredSide = null,
+                    heightCm = 185,
+                    monthlyFeeCents = 12500,
+                    monthlyDueDay = 10,
+                    joinedAt = java.time.Instant.parse("2026-08-01T12:00:00Z"),
                 ),
             ),
         )
+        stats.values = AthleteStatsAggregate(games = 3, eligibleGames = 3, absences = 1)
     }
 
     @Test
@@ -108,6 +126,39 @@ class AthleteEndpointIntegrationTest {
         assertEquals("+5511987654321", entry["phone"].stringValue())
         assertEquals("PENDENTE", entry["financialStatus"].stringValue())
         assertEquals("AVULSO", entry["membershipType"].stringValue())
+    }
+
+    @Test
+    fun `roster returns raw membership attributes and joined at`() {
+        roster.entries = listOf(
+            AthleteRosterEntry(
+                userId = memberId,
+                displayName = AccessName.from("Member Person"),
+                phone = null,
+                position = AthletePosition.PONTA,
+                membershipType = AthleteMembershipType.MENSALISTA,
+                active = true,
+                financialStatus = FinancialStatus.EM_DIA,
+                nickname = "Raio",
+                secondaryPosition = AthletePosition.CENTRAL,
+                level = br.com.saqz.groups.domain.AthleteLevel.AVANCADO,
+                preferredSide = null,
+                heightCm = 187,
+                monthlyFeeCents = 12500,
+                monthlyDueDay = 10,
+                joinedAt = java.time.Instant.parse("2026-08-01T12:00:00Z"),
+            ),
+        )
+
+        val entry = json(getRoster(groupId))["athletes"][0]
+
+        assertEquals("Raio", entry["nickname"].stringValue())
+        assertEquals("CENTRAL", entry["secondaryPosition"].stringValue())
+        assertEquals("AVANCADO", entry["level"].stringValue())
+        assertEquals(187, entry["heightCm"].intValue())
+        assertEquals(12500, entry["monthlyFeeCents"].intValue())
+        assertEquals(10, entry["monthlyDueDay"].intValue())
+        assertEquals("2026-08-01T12:00:00Z", entry["joinedAt"].stringValue())
     }
 
     @Test
@@ -201,6 +252,41 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
+    fun `own patch returns new profile attributes`() {
+        read.role = GroupRole.ATHLETE
+        val response = patch(
+            "/api/groups/$groupId/athletes/me",
+            mapOf(
+                "nickname" to "Raio",
+                "position" to "PONTA",
+                "secondaryPosition" to "CENTRAL",
+                "level" to "INTERMEDIARIO",
+                "heightCm" to 185,
+            ),
+        )
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals("Raio", body["nickname"].stringValue())
+        assertEquals("CENTRAL", body["secondaryPosition"].stringValue())
+        assertEquals("INTERMEDIARIO", body["level"].stringValue())
+        assertEquals(185, body["heightCm"].intValue())
+    }
+
+    @Test
+    fun `own patch rejects check violations with 422`() {
+        val response = patch(
+            "/api/groups/$groupId/athletes/me",
+            mapOf("nickname" to " a", "heightCm" to 251),
+        )
+
+        assertProblem(response, 422, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("nickname"))
+        assertTrue(json(response)["fieldErrors"].has("heightCm"))
+        assertTrue(athletes.positionUpdates.isEmpty())
+    }
+
+    @Test
     fun `organizer updates athlete attributes`() {
         val response = patch(
             "/api/groups/$groupId/athletes/$memberId",
@@ -210,6 +296,54 @@ class AthleteEndpointIntegrationTest {
         assertEquals(200, response.statusCode())
         assertEquals("MENSALISTA", json(response)["membershipType"].stringValue())
         assertFalse(json(response)["active"].booleanValue())
+    }
+
+    @Test
+    fun `organizer patch accepts all new attributes and overrides`() {
+        val response = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf(
+                "nickname" to "Raio",
+                "position" to "OPOSTO",
+                "secondaryPosition" to "PONTA",
+                "level" to "AVANCADO",
+                "heightCm" to 190,
+                "membershipType" to "MENSALISTA",
+                "active" to false,
+                "monthlyFeeCents" to 15000,
+                "monthlyDueDay" to 12,
+            ),
+        )
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals("Raio", body["nickname"].stringValue())
+        assertEquals("PONTA", body["secondaryPosition"].stringValue())
+        assertEquals("AVANCADO", body["level"].stringValue())
+        assertEquals(190, body["heightCm"].intValue())
+        assertEquals(15000, body["monthlyFeeCents"].intValue())
+        assertEquals(12, body["monthlyDueDay"].intValue())
+    }
+
+    @Test
+    fun `patch rejects attributes not supported by group modality with 422`() {
+        read.modality = GroupModality.BEACH_VOLLEYBALL
+        val response = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf(
+                "position" to "PONTA",
+                "secondaryPosition" to "CENTRAL",
+                "heightCm" to 180,
+                "membershipType" to "AVULSO",
+                "active" to true,
+            ),
+        )
+
+        assertProblem(response, 422, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("position"))
+        assertTrue(json(response)["fieldErrors"].has("secondaryPosition"))
+        assertTrue(json(response)["fieldErrors"].has("heightCm"))
+        assertTrue(athletes.updates.isEmpty())
     }
 
     @Test
@@ -263,6 +397,38 @@ class AthleteEndpointIntegrationTest {
         assertEquals("+5511987654321", body["phone"].stringValue())
         assertEquals(1, body["memberships"].size())
         assertEquals("MENSALISTA", body["memberships"][0]["membershipType"].stringValue())
+        assertEquals("Raio", body["memberships"][0]["nickname"].stringValue())
+        assertEquals("CENTRAL", body["memberships"][0]["secondaryPosition"].stringValue())
+        assertEquals("AVANCADO", body["memberships"][0]["level"].stringValue())
+        assertEquals(185, body["memberships"][0]["heightCm"].intValue())
+        assertEquals("2026-08-01T12:00:00Z", body["memberships"][0]["joinedAt"].stringValue())
+    }
+
+    @Test
+    fun `admin reads group athlete stats`() {
+        val body = json(send(get("/api/groups/$groupId/athletes/$memberId/stats")))
+
+        assertEquals(3, body["games"].intValue())
+        assertEquals(66, body["attendanceRate"].intValue())
+        assertEquals(1, body["absences"].intValue())
+    }
+
+    @Test
+    fun `athlete reads own stats but not another athlete stats`() {
+        read.role = GroupRole.ATHLETE
+        val ownResponse = send(get("/api/groups/$groupId/athletes/$actorId/stats"))
+        val own = json(ownResponse)
+
+        assertEquals(200, ownResponse.statusCode())
+        assertEquals(3, own["games"].intValue())
+        assertProblem(send(get("/api/groups/$groupId/athletes/$memberId/stats")), 403, "ACCESS_FORBIDDEN")
+    }
+
+    @Test
+    fun `nonmember stats is hidden as not found`() {
+        read.role = null
+
+        assertProblem(send(get("/api/groups/$groupId/athletes/$memberId/stats")), 404, "GROUP_NOT_FOUND")
     }
 
     private fun getRoster(id: Any): HttpResponse<String> = send(get("/api/groups/$id/athletes"))
@@ -307,6 +473,7 @@ class AthleteEndpointIntegrationTest {
         @Bean fun athleteGroupReadRepository() = RecordingAthleteGroupReadRepository()
         @Bean fun recordingAthleteRepository() = RecordingAthleteRepository()
         @Bean fun recordingAthleteRosterRepository() = RecordingAthleteRosterRepository()
+        @Bean fun recordingAthleteStatsRepository() = RecordingAthleteStatsRepository()
         @Bean fun athleteTransaction() = object : TransactionRunner {
             override fun <T> inTransaction(block: () -> T): T = block()
         }
@@ -319,6 +486,11 @@ class AthleteEndpointIntegrationTest {
         @Bean fun testRemoveAthlete(transaction: TransactionRunner, read: RecordingAthleteGroupReadRepository, repository: RecordingAthleteRepository) =
             RemoveAthlete(transaction, read, repository, GroupAccessPolicy())
         @Bean fun testGetOwnAthleteProfile(roster: RecordingAthleteRosterRepository) = GetOwnAthleteProfile(roster)
+        @Bean fun testGetAthleteStats(
+            read: RecordingAthleteGroupReadRepository,
+            athletes: RecordingAthleteRepository,
+            stats: RecordingAthleteStatsRepository,
+        ) = GetAthleteStats(read, athletes, stats)
         @Bean fun testAthleteController(
             bootstrap: BootstrapSession,
             list: ListAthletes,
@@ -326,7 +498,8 @@ class AthleteEndpointIntegrationTest {
             update: UpdateAthlete,
             remove: RemoveAthlete,
             ownProfile: GetOwnAthleteProfile,
-        ) = AthleteController(verifiedGroupActorResolver(bootstrap), list, updateOwn, update, remove, ownProfile)
+            stats: GetAthleteStats,
+        ) = AthleteController(verifiedGroupActorResolver(bootstrap), list, updateOwn, update, remove, ownProfile, stats)
         companion object { val USER_ID: UUID = UUID.randomUUID() }
     }
 
@@ -345,8 +518,23 @@ class AthleteEndpointIntegrationTest {
 
     class RecordingAthleteGroupReadRepository : GroupReadRepository {
         var role: GroupRole? = GroupRole.OWNER
+        var modality: GroupModality? = GroupModality.COURT_VOLLEYBALL
         override fun find(key: GroupReadKey) = GroupReadSnapshot(
             key.groupId, AccessName.from("Training Group"), IanaTimeZone.from("UTC"), role, 1,
+            profile = GroupProfileReadModel(
+                modality = modality,
+                composition = GroupComposition.MIXED,
+                description = null,
+                city = null,
+                level = null,
+                customLevel = null,
+                playStyle = null,
+                customPlayStyle = null,
+                defaultVenue = null,
+                regularSlots = emptyList(),
+                defaultCapacity = null,
+                defaultConfirmationLeadMinutes = null,
+            ),
         )
     }
 
@@ -363,6 +551,19 @@ class AthleteEndpointIntegrationTest {
             removals.clear()
         }
         override fun find(groupId: UUID, userId: UUID) = members[userId]
+        override fun updateOwn(command: UpdateOwnAthleteProfileCommand): AthleteMembership {
+            positionUpdates += command.userId to command.position
+            val changed = members.getValue(command.userId).copy(
+                nickname = command.nickname,
+                position = command.position,
+                secondaryPosition = command.secondaryPosition,
+                level = command.level,
+                preferredSide = command.preferredSide,
+                heightCm = command.heightCm,
+            )
+            members[command.userId] = changed
+            return changed
+        }
         override fun updatePosition(groupId: UUID, userId: UUID, position: AthletePosition?): AthleteMembership {
             positionUpdates += userId to position
             val changed = members.getValue(userId).copy(position = position)
@@ -372,7 +573,18 @@ class AthleteEndpointIntegrationTest {
         override fun update(command: UpdateAthleteCommand): AthleteMembership {
             updates += command
             val changed = members.getValue(command.userId)
-                .copy(position = command.position, membershipType = command.membershipType, active = command.active)
+                .copy(
+                    position = command.position,
+                    membershipType = command.membershipType,
+                    active = command.active,
+                    nickname = command.nickname,
+                    secondaryPosition = command.secondaryPosition,
+                    level = command.level,
+                    preferredSide = command.preferredSide,
+                    heightCm = command.heightCm,
+                    monthlyFeeCents = command.monthlyFeeCents,
+                    monthlyDueDay = command.monthlyDueDay,
+                )
             members[command.userId] = changed
             return changed
         }
@@ -393,5 +605,10 @@ class AthleteEndpointIntegrationTest {
         }
 
         override fun findOwnProfile(actor: UUID) = profile
+    }
+
+    class RecordingAthleteStatsRepository : AthleteStatsRepository {
+        var values = AthleteStatsAggregate(0, 0, 0)
+        override fun find(groupId: UUID, userId: UUID) = values
     }
 }
