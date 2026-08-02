@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -59,13 +62,21 @@ class MemberEditorScreenshotTest {
         )
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    @Test
+    fun lowerHalf() = capture("3g-baixo", scrollToBottom = true) {
+        MemberEditorScreen(memberEditorPreviewState, {}, {})
+    }
+
+    private fun capture(name: String, scrollToBottom: Boolean = false, content: @Composable () -> Unit) {
         compose.setContent {
             SaqzTheme {
                 Box(modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
                     content()
                 }
             }
+        }
+        if (scrollToBottom) {
+            compose.onNodeWithTag(MemberEditorTags.Screen).performTouchInput { swipeUp() }
         }
         compose.onRoot().captureRoboImage("screenshots/vul-144/$name.png")
     }

@@ -1,11 +1,13 @@
 package br.com.saqz.groups.presentation.membereditor
 
+import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteLevel
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.athlete.AthleteStats
 import br.com.saqz.groups.domain.group.GroupFinanceDefaults
@@ -63,6 +65,7 @@ class MemberEditorViewModelTest {
         val viewModel = MemberEditorViewModel(
             GROUP_ID,
             USER_ID,
+            SavedStateHandle(),
             athlete,
             FakeGroupMembershipGateway(
                 listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Bruno Almeida", GroupRole.ADMIN))),
@@ -116,6 +119,50 @@ class MemberEditorViewModelTest {
         assertEquals(AthleteMembershipType.AVULSO, athlete.lastUpdateCommand?.membershipType)
         assertEquals(12000, athlete.lastUpdateCommand?.monthlyFeeCents)
         assertEquals(15, athlete.lastUpdateCommand?.monthlyDueDay)
+    }
+
+    @Test
+    fun `draft fields restore from SavedStateHandle`() = runTest {
+        val savedState = SavedStateHandle()
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val viewModel = editor(athlete, savedState = savedState)
+
+        viewModel.onIntent(MemberEditorIntent.NicknameChanged("Raio"))
+        viewModel.onIntent(MemberEditorIntent.PositionSelected(AthletePosition.PONTA))
+        viewModel.onIntent(MemberEditorIntent.SecondaryPositionSelected(AthletePosition.CENTRAL))
+        viewModel.onIntent(MemberEditorIntent.LevelSelected(AthleteLevel.AVANCADO))
+        viewModel.onIntent(MemberEditorIntent.HeightChanged("188"))
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(MemberEditorIntent.BillingAmountChanged("120,00"))
+        viewModel.onIntent(MemberEditorIntent.BillingDueDaySelected(15))
+
+        val restored = editor(athlete, savedState = savedState).state.value
+
+        assertEquals("Raio", restored.nickname)
+        assertEquals(AthletePosition.PONTA, restored.position)
+        assertEquals(AthletePosition.CENTRAL, restored.secondaryPosition)
+        assertEquals(AthleteLevel.AVANCADO, restored.level)
+        assertEquals("188", restored.heightText)
+        assertEquals(AthleteMembershipType.MENSALISTA, restored.membershipType)
+        assertEquals("120,00", restored.billingAmountText)
+        assertEquals(15, restored.billingDueDay)
+    }
+
+    @Test
+    fun `selecting secondary position as primary clears duplicate before patch`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf(sampleRosterEntry().copy(position = AthletePosition.PONTA, secondaryPosition = AthletePosition.CENTRAL)),
+            ),
+        )
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.PositionSelected(AthletePosition.CENTRAL))
+        assertNull(viewModel.state.value.secondaryPosition)
+
+        viewModel.onIntent(MemberEditorIntent.Save)
+
+        assertNull(athlete.lastUpdateCommand?.secondaryPosition)
     }
 
     @Test
@@ -201,14 +248,62 @@ class MemberEditorViewModelTest {
         assertNull(viewModel.state.value.operation)
     }
 
+    @Test
+    fun `typed save failure clears operation and exposes error in normal state`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())),
+            updateResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Conflict)),
+        )
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.Save)
+
+        assertEquals(GroupUiError.Conflict, viewModel.state.value.error)
+        assertNull(viewModel.state.value.operation)
+        assertFalse(viewModel.state.value.loadFailed)
+    }
+
+    @Test
+    fun `typed monthly failure clears operation and exposes error`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())),
+            updateResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Conflict)),
+        )
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+        assertEquals(GroupUiError.Conflict, viewModel.state.value.error)
+        assertNull(viewModel.state.value.operation)
+    }
+
+    @Test
+    fun `typed removal failure clears operation and exposes error`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())),
+            removeResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Conflict)),
+        )
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.OpenRemove)
+        viewModel.onIntent(MemberEditorIntent.ConfirmRemove)
+
+        assertEquals(GroupUiError.Conflict, viewModel.state.value.error)
+        assertNull(viewModel.state.value.operation)
+        assertTrue(viewModel.state.value.removeSheetOpen)
+    }
+
     private fun editor(
         athlete: FakeAthleteGateway,
         membership: FakeGroupMembershipGateway = FakeGroupMembershipGateway(
             listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
         ),
+        savedState: SavedStateHandle = SavedStateHandle(),
     ) = MemberEditorViewModel(
         GROUP_ID,
         USER_ID,
+        savedState,
         athlete,
         membership,
         FakeGroupGateway(

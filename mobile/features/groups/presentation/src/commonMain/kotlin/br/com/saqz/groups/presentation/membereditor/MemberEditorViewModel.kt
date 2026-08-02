@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.membereditor
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
@@ -25,10 +26,13 @@ import kotlinx.datetime.toLocalDateTime
 class MemberEditorViewModel(
     private val groupId: String,
     private val userId: String,
+    private val savedState: SavedStateHandle,
     private val athleteGateway: AthleteGateway,
     private val membershipGateway: GroupMembershipGateway,
     private val groupGateway: GroupGateway,
-) : MviViewModel<MemberEditorState, MemberEditorIntent, MemberEditorEffect>(MemberEditorState()) {
+) : MviViewModel<MemberEditorState, MemberEditorIntent, MemberEditorEffect>(
+    MemberEditorState().restoreDraft(savedState),
+) {
     private var generation = 0
     private var member: AthleteRosterEntry? = null
 
@@ -39,17 +43,40 @@ class MemberEditorViewModel(
     override fun onIntent(intent: MemberEditorIntent) {
         when (intent) {
             MemberEditorIntent.Retry -> load()
-            is MemberEditorIntent.NicknameChanged -> update { it.copy(nickname = intent.value) }
-            is MemberEditorIntent.PositionSelected -> update { it.copy(position = intent.value) }
-            is MemberEditorIntent.SecondaryPositionSelected -> update { it.copy(secondaryPosition = intent.value) }
-            is MemberEditorIntent.LevelSelected -> update { it.copy(level = intent.value) }
-            is MemberEditorIntent.PreferredSideSelected -> update { it.copy(preferredSide = intent.value) }
-            is MemberEditorIntent.HeightChanged -> update { it.copy(heightText = intent.value, heightCm = intent.value.toIntOrNull()) }
+            is MemberEditorIntent.NicknameChanged -> {
+                savedState[KEY_NICKNAME] = intent.value
+                update { it.copy(nickname = intent.value, error = null) }
+            }
+            is MemberEditorIntent.PositionSelected -> {
+                val secondary = state.value.secondaryPosition.takeUnless { it == intent.value }
+                savedState[KEY_POSITION] = intent.value?.name
+                savedState[KEY_SECONDARY_POSITION] = secondary?.name
+                update { it.copy(position = intent.value, secondaryPosition = secondary, error = null) }
+            }
+            is MemberEditorIntent.SecondaryPositionSelected -> {
+                savedState[KEY_SECONDARY_POSITION] = intent.value?.name
+                update { it.copy(secondaryPosition = intent.value, error = null) }
+            }
+            is MemberEditorIntent.LevelSelected -> {
+                savedState[KEY_LEVEL] = intent.value?.name
+                update { it.copy(level = intent.value, error = null) }
+            }
+            is MemberEditorIntent.PreferredSideSelected -> update { it.copy(preferredSide = intent.value, error = null) }
+            is MemberEditorIntent.HeightChanged -> {
+                savedState[KEY_HEIGHT] = intent.value
+                update { it.copy(heightText = intent.value, heightCm = intent.value.toIntOrNull(), error = null) }
+            }
             is MemberEditorIntent.MembershipSelected -> selectMembership(intent.value)
             MemberEditorIntent.OpenBilling -> openBilling()
             MemberEditorIntent.DismissBilling -> update { it.copy(billingSheetOpen = false) }
-            is MemberEditorIntent.BillingAmountChanged -> update { it.copy(billingAmountText = intent.value) }
-            is MemberEditorIntent.BillingDueDaySelected -> update { it.copy(billingDueDay = intent.value) }
+            is MemberEditorIntent.BillingAmountChanged -> {
+                savedState[KEY_BILLING_AMOUNT] = intent.value
+                update { it.copy(billingAmountText = intent.value, error = null) }
+            }
+            is MemberEditorIntent.BillingDueDaySelected -> {
+                savedState[KEY_BILLING_DUE_DAY] = intent.value
+                update { it.copy(billingDueDay = intent.value, error = null) }
+            }
             MemberEditorIntent.SaveBilling -> saveBilling()
             is MemberEditorIntent.AdminChanged -> changeRole(intent.value)
             MemberEditorIntent.Save -> save()
@@ -123,14 +150,15 @@ class MemberEditorViewModel(
                     billingAmountText = formatCents(currentFee),
                     billingDueDay = currentDueDay,
                     role = role,
-                )
+                ).restoreDraft(savedState)
             }
         }
     }
 
     private fun selectMembership(value: AthleteMembershipType) {
         if (state.value.operation != null) return
-        update { it.copy(membershipType = value) }
+        savedState[KEY_MEMBERSHIP] = value.name
+        update { it.copy(membershipType = value, error = null) }
         if (value == AthleteMembershipType.MENSALISTA) openBilling()
     }
 
@@ -140,8 +168,12 @@ class MemberEditorViewModel(
         update {
             it.copy(
                 billingSheetOpen = true,
-                billingAmountText = formatCents(current.effectiveMonthlyFeeCents),
-                billingDueDay = current.effectiveMonthlyDueDay ?: DEFAULT_DUE_DAY,
+                billingAmountText = current.billingAmountText.ifBlank { formatCents(current.effectiveMonthlyFeeCents) },
+                billingDueDay = if (current.billingAmountText.isBlank()) {
+                    current.effectiveMonthlyDueDay ?: DEFAULT_DUE_DAY
+                } else {
+                    current.billingDueDay
+                },
             )
         }
     }
@@ -223,6 +255,7 @@ class MemberEditorViewModel(
             )
         }
         if (operation == MemberEditorOperation.Save) emit(MemberEditorEffect.Close)
+        if (operation == MemberEditorOperation.Save) clearDraft()
     }
 
     private fun changeRole(admin: Boolean) {
@@ -287,7 +320,7 @@ class MemberEditorViewModel(
         membershipType = membershipType,
         active = active,
         nickname = nickname.trim().takeIf(String::isNotEmpty),
-        secondaryPosition = secondaryPosition,
+        secondaryPosition = secondaryPosition.takeUnless { it == position },
         level = level,
         preferredSide = preferredSide,
         heightCm = heightText.toIntOrNull(),
@@ -319,6 +352,19 @@ class MemberEditorViewModel(
         return reais * 100 + centavos
     }
 
+    private fun clearDraft() {
+        listOf(
+            KEY_NICKNAME,
+            KEY_POSITION,
+            KEY_SECONDARY_POSITION,
+            KEY_LEVEL,
+            KEY_HEIGHT,
+            KEY_MEMBERSHIP,
+            KEY_BILLING_AMOUNT,
+            KEY_BILLING_DUE_DAY,
+        ).forEach { key -> savedState.remove<Any>(key) }
+    }
+
     private companion object {
         val MONTH_NAMES = listOf(
             "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -327,3 +373,36 @@ class MemberEditorViewModel(
         const val DEFAULT_DUE_DAY = 10
     }
 }
+
+private fun MemberEditorState.restoreDraft(savedState: SavedStateHandle): MemberEditorState {
+    val restoredHeight = savedState.get<String>(KEY_HEIGHT)
+    val restoredMembership = savedState.get<String>(KEY_MEMBERSHIP).toEnumOrNull<AthleteMembershipType>()
+    return copy(
+        nickname = savedState.get<String>(KEY_NICKNAME) ?: nickname,
+        position = savedState.restoreNullableEnum(KEY_POSITION, position),
+        secondaryPosition = savedState.restoreNullableEnum(KEY_SECONDARY_POSITION, secondaryPosition),
+        level = savedState.restoreNullableEnum(KEY_LEVEL, level),
+        heightText = restoredHeight ?: heightText,
+        heightCm = restoredHeight?.toIntOrNull() ?: if (savedState.contains(KEY_HEIGHT)) null else heightCm,
+        membershipType = if (savedState.contains(KEY_MEMBERSHIP)) restoredMembership ?: membershipType else membershipType,
+        billingAmountText = savedState.get<String>(KEY_BILLING_AMOUNT) ?: billingAmountText,
+        billingDueDay = savedState.get<Int>(KEY_BILLING_DUE_DAY) ?: billingDueDay,
+    )
+}
+
+private inline fun <reified T : Enum<T>> SavedStateHandle.restoreNullableEnum(
+    key: String,
+    fallback: T?,
+): T? = if (contains(key)) get<String>(key).toEnumOrNull() else fallback
+
+private inline fun <reified T : Enum<T>> String?.toEnumOrNull(): T? =
+    this?.let { runCatching { enumValueOf<T>(it) }.getOrNull() }
+
+private const val KEY_NICKNAME = "member-editor-nickname"
+private const val KEY_POSITION = "member-editor-position"
+private const val KEY_SECONDARY_POSITION = "member-editor-secondary-position"
+private const val KEY_LEVEL = "member-editor-level"
+private const val KEY_HEIGHT = "member-editor-height"
+private const val KEY_MEMBERSHIP = "member-editor-membership"
+private const val KEY_BILLING_AMOUNT = "member-editor-billing-amount"
+private const val KEY_BILLING_DUE_DAY = "member-editor-billing-due-day"

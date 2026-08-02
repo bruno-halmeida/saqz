@@ -13,6 +13,7 @@ fun memberEditorPresentationModule(): Module = module {
         MemberEditorViewModel(
             groupId = params.get(),
             userId = params.get(),
+            savedState = params.get(),
             athleteGateway = get<AthleteGateway>(),
             membershipGateway = get<GroupMembershipGateway>(),
             groupGateway = get<GroupGateway>(),

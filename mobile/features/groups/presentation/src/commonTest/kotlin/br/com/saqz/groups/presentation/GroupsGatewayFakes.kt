@@ -97,6 +97,7 @@ class FakeAthleteGateway(
         OwnAthleteProfile("me", "Bruno", null, emptyList()),
     ),
     var rosterResult: SaqzResult<List<AthleteRosterEntry>, AthleteError> = SaqzResult.Success(emptyList()),
+    var updateResult: SaqzResult<Athlete, AthleteError>? = null,
     var removeResult: SaqzResult<Unit, AthleteError> = SaqzResult.Success(Unit),
     var statsResult: SaqzResult<AthleteStats, AthleteError> = SaqzResult.Success(AthleteStats(0, null, 0)),
 ) : AthleteGateway {
@@ -120,7 +121,7 @@ class FakeAthleteGateway(
 
     override suspend fun updateAthlete(command: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand): SaqzResult<Athlete, AthleteError> {
         lastUpdateCommand = command
-        return SaqzResult.Success(
+        return updateResult ?: SaqzResult.Success(
             Athlete(
                 userId = command.userId,
                 displayName = "Member",

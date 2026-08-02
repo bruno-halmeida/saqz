@@ -81,6 +81,7 @@ import br.com.saqz.groups.resources.member_editor_monthly_explanation
 import br.com.saqz.groups.resources.member_editor_none
 import br.com.saqz.groups.resources.member_editor_nickname
 import br.com.saqz.groups.resources.member_editor_nickname_hint
+import br.com.saqz.groups.resources.member_editor_operation_failure
 import br.com.saqz.groups.resources.member_editor_position
 import br.com.saqz.groups.resources.member_editor_remove
 import br.com.saqz.groups.resources.member_editor_remove_body
@@ -123,6 +124,7 @@ object MemberEditorTags {
     const val BillingAmount = "member-editor-billing-amount"
     const val BillingSave = "member-editor-billing-save"
     const val RemoveConfirm = "member-editor-remove-confirm"
+    const val OperationError = "member-editor-operation-error"
 
     fun position(position: AthletePosition) = "member-editor-position-${position.name}"
 
@@ -160,9 +162,13 @@ fun MemberEditorScreen(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
+                        .testTag(MemberEditorTags.Screen)
                         .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
                     verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
                 ) {
+                    if (state.error != null) {
+                        MemberEditorOperationError()
+                    }
                     MemberEditorHeader(state)
                     MemberEditorIdentity(state, onIntent)
                     MemberEditorAttributes(state, onIntent)
@@ -185,6 +191,17 @@ fun MemberEditorScreen(
         }
         MemberEditorBillingSheet(state, onIntent)
         MemberEditorRemoveSheet(state, onIntent)
+    }
+}
+
+@Composable
+private fun MemberEditorOperationError() {
+    SaqzCard(modifier = Modifier.testTag(MemberEditorTags.OperationError)) {
+        Text(
+            text = stringResource(Res.string.member_editor_operation_failure),
+            style = SaqzTheme.typography.support,
+            color = SaqzTheme.colors.errorForeground,
+        )
     }
 }
 
@@ -470,7 +487,10 @@ private fun MemberEditorBillingSheet(state: MemberEditorState, onIntent: (Member
     SaqzBottomSheet(
         open = state.billingSheetOpen,
         onClose = { onIntent(MemberEditorIntent.DismissBilling) },
-        title = stringResource(Res.string.member_editor_billing_title),
+        title = stringResource(
+            Res.string.member_editor_billing_title,
+            state.nickname.takeIf(String::isNotBlank) ?: state.name,
+        ),
         description = stringResource(Res.string.member_editor_billing_description),
         splitFooter = {
             SaqzButton(
