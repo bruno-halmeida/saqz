@@ -1,0 +1,9 @@
+<resources>
+    <string name="invite_preview_title">Convite para %1$s</string>
+    <string name="invite_preview_message_label">Mensagem</string>
+    <string name="invite_preview_message_hint">Escreva uma mensagem para a galera</string>
+    <string name="invite_preview_counter">%1$d/300</string>
+    <string name="invite_preview_whatsapp">Enviar no WhatsApp</string>
+    <string name="invite_preview_back">Voltar ao convite</string>
+    <string name="invite_preview_error">Não foi possível abrir o compartilhamento</string>
+</resources>

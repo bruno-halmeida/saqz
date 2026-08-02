@@ -1,0 +1,8 @@
+<resources>
+    <string name="invite_qr_title">QR code do convite</string>
+    <string name="invite_qr_validity">O convite vale por 7 dias</string>
+    <string name="invite_qr_save">Salvar imagem</string>
+    <string name="invite_qr_share">Compartilhar</string>
+    <string name="invite_qr_error_share">Não foi possível compartilhar a imagem</string>
+    <string name="invite_qr_error_save">Não foi possível salvar a imagem</string>
+</resources>
