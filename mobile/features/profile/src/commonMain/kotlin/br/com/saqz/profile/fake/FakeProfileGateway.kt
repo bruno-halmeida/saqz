@@ -68,6 +68,9 @@ class FakeProfileGateway(
     override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, ProfileError> {
         uploadPhotoError?.let { return SaqzResult.Failure(it) }
         uploadedPhotos += UploadedPhoto(bytes.copyOf(), mediaType)
+        profile = profile.copy(
+            user = profile.user.copy(photoUrl = "/api/session/photo?v=upload-${uploadedPhotos.size}"),
+        )
         return SaqzResult.Success(Unit)
     }
 
