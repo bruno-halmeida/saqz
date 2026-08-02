@@ -58,7 +58,7 @@ data class AthleteRosterEntryResponse(
     val position: String?,
     val membershipType: String,
     val active: Boolean,
-    val financialStatus: String?,
+    val financialStatus: String,
 )
 
 data class AthleteRosterResponse(val athletes: List<AthleteRosterEntryResponse>)
@@ -213,5 +213,8 @@ private fun AthleteRosterEntry.toResponse(role: GroupRole?) = AthleteRosterEntry
     position = position?.name,
     membershipType = membershipType.name,
     active = active,
-    financialStatus = financialStatus.name.takeIf { role == GroupRole.OWNER || role == GroupRole.ADMIN },
+    financialStatus = when (role) {
+        GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
+        GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
+    },
 )

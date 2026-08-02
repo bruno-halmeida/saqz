@@ -38,12 +38,12 @@ class ListAthletesTest {
     }
 
     @Test
-    fun `nonmember is forbidden when the group exists`() {
+    fun `nonmember is hidden as not found when the group exists`() {
         val roster = RecordingRosterRepository(listOf(entry))
 
         val result = useCase(null, roster).execute(actor, groupId, AthleteRosterFilter())
 
-        assertSame(ListAthletesResult.AccessForbidden, result)
+        assertSame(ListAthletesResult.GroupNotFound, result)
         assertEquals(0, roster.calls)
     }
 

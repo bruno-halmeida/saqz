@@ -111,19 +111,19 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
-    fun `athlete lists roster without financial status`() {
+    fun `athlete lists roster with unknown financial status`() {
         read.role = GroupRole.ATHLETE
         val response = getRoster(groupId)
         val entry = json(response)["athletes"][0]
 
         assertEquals(200, response.statusCode())
-        assertTrue(entry["financialStatus"].isNull())
+        assertEquals("DESCONHECIDO", entry["financialStatus"].stringValue())
     }
 
     @Test
-    fun `nonmember roster is forbidden`() {
+    fun `nonmember roster is hidden as not found`() {
         read.role = null
-        assertProblem(getRoster(groupId), 403, "ACCESS_FORBIDDEN")
+        assertProblem(getRoster(groupId), 404, "GROUP_NOT_FOUND")
     }
 
     @Test

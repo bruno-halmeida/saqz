@@ -22,7 +22,7 @@ class ListAthletes(
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
             ?: return ListAthletesResult.GroupNotFound
 
-        val role = group.role ?: return ListAthletesResult.AccessForbidden
+        val role = group.role ?: return ListAthletesResult.GroupNotFound
         if (role == GroupRole.ATHLETE && filter.financialStatus != null) {
             return ListAthletesResult.AccessForbidden
         }
