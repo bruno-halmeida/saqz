@@ -1,12 +1,12 @@
 package br.com.saqz.profile.fake
 
-import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.profile.domain.AthleteMembership
 import br.com.saqz.profile.domain.AthleteProfile
 import br.com.saqz.profile.domain.PhoneVisibility
 import br.com.saqz.profile.domain.Profile
+import br.com.saqz.profile.domain.ProfileError
 import br.com.saqz.profile.domain.ProfileGateway
 import br.com.saqz.profile.domain.ProfileMembership
 import br.com.saqz.profile.domain.ProfileStats
@@ -24,12 +24,12 @@ class FakeProfileGateway(
     var stats: ProfileStats = initialStats
     var athleteProfile: AthleteProfile = initialAthleteProfile
 
-    var profileError: DataError? = null
-    var statsError: DataError? = null
-    var athleteProfileError: DataError? = null
-    var deleteSessionError: DataError? = null
-    var uploadPhotoError: DataError? = null
-    var deletePhotoError: DataError? = null
+    var profileError: ProfileError? = null
+    var statsError: ProfileError? = null
+    var athleteProfileError: ProfileError? = null
+    var deleteSessionError: ProfileError? = null
+    var uploadPhotoError: ProfileError? = null
+    var deletePhotoError: ProfileError? = null
 
     val updateRequests = mutableListOf<UpdateSessionProfileRequest>()
     val uploadedPhotos = mutableListOf<UploadedPhoto>()
@@ -40,38 +40,38 @@ class FakeProfileGateway(
     var accountDeleted: Boolean = false
         private set
 
-    override suspend fun bootstrap(): SaqzResult<Profile, DataError> =
+    override suspend fun bootstrap(): SaqzResult<Profile, ProfileError> =
         profileError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(profile)
 
     override suspend fun updateProfile(
         request: UpdateSessionProfileRequest,
-    ): SaqzResult<Profile, DataError> {
+    ): SaqzResult<Profile, ProfileError> {
         updateRequests += request
         profileError?.let { return SaqzResult.Failure(it) }
         profile = profile.apply(request)
         return SaqzResult.Success(profile)
     }
 
-    override suspend fun stats(): SaqzResult<ProfileStats, DataError> =
+    override suspend fun stats(): SaqzResult<ProfileStats, ProfileError> =
         statsError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(stats)
 
-    override suspend fun athleteProfile(): SaqzResult<AthleteProfile, DataError> =
+    override suspend fun athleteProfile(): SaqzResult<AthleteProfile, ProfileError> =
         athleteProfileError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(athleteProfile)
 
-    override suspend fun deleteSession(): SaqzResult<Unit, DataError> {
+    override suspend fun deleteSession(): SaqzResult<Unit, ProfileError> {
         deleteSessionCalls += 1
         deleteSessionError?.let { return SaqzResult.Failure(it) }
         accountDeleted = true
         return SaqzResult.Success(Unit)
     }
 
-    override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, DataError> {
+    override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, ProfileError> {
         uploadPhotoError?.let { return SaqzResult.Failure(it) }
         uploadedPhotos += UploadedPhoto(bytes.copyOf(), mediaType)
         return SaqzResult.Success(Unit)
     }
 
-    override suspend fun deletePhoto(): SaqzResult<Unit, DataError> {
+    override suspend fun deletePhoto(): SaqzResult<Unit, ProfileError> {
         deletePhotoCalls += 1
         deletePhotoError?.let { return SaqzResult.Failure(it) }
         profile = profile.copy(user = profile.user.copy(photoUrl = null))

@@ -15,6 +15,7 @@ import br.com.saqz.profile.domain.AthleteMembership
 import br.com.saqz.profile.domain.AthleteProfile
 import br.com.saqz.profile.domain.PhoneVisibility
 import br.com.saqz.profile.domain.Profile
+import br.com.saqz.profile.domain.ProfileError
 import br.com.saqz.profile.domain.ProfileGateway
 import br.com.saqz.profile.domain.ProfileMembership
 import br.com.saqz.profile.domain.ProfileStats
@@ -94,32 +95,32 @@ class KtorProfileGateway(
     private val network: AuthenticatedNetworkClient,
     private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
 ) : ProfileGateway {
-    override suspend fun bootstrap(): SaqzResult<Profile, DataError> =
+    override suspend fun bootstrap(): SaqzResult<Profile, ProfileError> =
         network.execute(HttpMethod.Put, SESSION_PATH, ProfileTransport.serializer()).toProfileResult()
 
     override suspend fun updateProfile(
         request: UpdateSessionProfileRequest,
-    ): SaqzResult<Profile, DataError> = network.execute(
+    ): SaqzResult<Profile, ProfileError> = network.execute(
         HttpMethod.Patch,
         SESSION_PROFILE_PATH,
         ProfileTransport.serializer(),
         NetworkRequest(body = request.toJson()),
     ).toProfileResult()
 
-    override suspend fun stats(): SaqzResult<ProfileStats, DataError> =
+    override suspend fun stats(): SaqzResult<ProfileStats, ProfileError> =
         retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
             network.execute(HttpMethod.Get, PROFILE_STATS_PATH, ProfileStatsTransport.serializer())
         }.toStatsResult()
 
-    override suspend fun athleteProfile(): SaqzResult<AthleteProfile, DataError> =
+    override suspend fun athleteProfile(): SaqzResult<AthleteProfile, ProfileError> =
         retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
             network.execute(HttpMethod.Get, ATHLETE_PROFILE_PATH, AthleteProfileTransport.serializer())
         }.toAthleteProfileResult()
 
-    override suspend fun deleteSession(): SaqzResult<Unit, DataError> =
+    override suspend fun deleteSession(): SaqzResult<Unit, ProfileError> =
         network.executeNoContent(HttpMethod.Delete, SESSION_PATH).toEmptyResult()
 
-    override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, DataError> =
+    override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, ProfileError> =
         network.uploadMedia(
             HttpMethod.Put,
             USER_PHOTO_PATH,
@@ -131,7 +132,7 @@ class KtorProfileGateway(
             ),
         ).toEmptyResult()
 
-    override suspend fun deletePhoto(): SaqzResult<Unit, DataError> =
+    override suspend fun deletePhoto(): SaqzResult<Unit, ProfileError> =
         network.executeNoContent(HttpMethod.Delete, USER_PHOTO_PATH).toEmptyResult()
 
     private fun UpdateSessionProfileRequest.toJson(): String = buildJsonObject {
@@ -158,29 +159,29 @@ class KtorProfileGateway(
     }
 }
 
-private fun NetworkResult<ProfileTransport>.toProfileResult(): SaqzResult<Profile, DataError> = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDataError())
+private fun NetworkResult<ProfileTransport>.toProfileResult(): SaqzResult<Profile, ProfileError> = when (this) {
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toProfileError())
     is NetworkResult.Success -> value.toDomain()
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
 }
 
-private fun NetworkResult<ProfileStatsTransport>.toStatsResult(): SaqzResult<ProfileStats, DataError> = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDataError())
+private fun NetworkResult<ProfileStatsTransport>.toStatsResult(): SaqzResult<ProfileStats, ProfileError> = when (this) {
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toProfileError())
     is NetworkResult.Success -> value.toDomain()
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
 }
 
-private fun NetworkResult<AthleteProfileTransport>.toAthleteProfileResult(): SaqzResult<AthleteProfile, DataError> = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDataError())
+private fun NetworkResult<AthleteProfileTransport>.toAthleteProfileResult(): SaqzResult<AthleteProfile, ProfileError> = when (this) {
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toProfileError())
     is NetworkResult.Success -> value.toDomain()
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
 }
 
-private fun NetworkResult<Unit>.toEmptyResult(): SaqzResult<Unit, DataError> = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDataError())
+private fun NetworkResult<Unit>.toEmptyResult(): SaqzResult<Unit, ProfileError> = when (this) {
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toProfileError())
     is NetworkResult.Success -> SaqzResult.Success(Unit)
 }
 
@@ -246,21 +247,21 @@ private fun AthleteMembershipTransport.toDomain(): AthleteMembership? {
 private inline fun <reified T : Enum<T>> String.toEnumOrNull(): T? =
     runCatching { enumValueOf<T>(this) }.getOrNull()
 
-private fun NetworkError.toDataError(): DataError = when (this) {
+private fun NetworkError.toProfileError(): ProfileError = when (this) {
     is NetworkError.ApiProblemError -> when {
-        problem.code == "VALIDATION_FAILED" || problem.status == 400 -> DataError.Validation(
+        problem.code == "VALIDATION_FAILED" || problem.status == 400 -> ProfileError.Validation(
             ValidationDetails(emptyList(), problem.fieldErrors.orEmpty()),
         )
-        else -> problem.status.toDataError()
+        else -> ProfileError.DataFailure(problem.status.toDataError())
     }
-    is NetworkError.HttpStatus -> status.toDataError()
-    NetworkError.Timeout -> DataError.Timeout
-    NetworkError.Connectivity -> DataError.Connectivity
-    NetworkError.InvalidResponse -> DataError.InvalidResponse
-    NetworkError.PayloadTooLarge -> DataError.PayloadTooLarge
+    is NetworkError.HttpStatus -> ProfileError.DataFailure(status.toDataError())
+    NetworkError.Timeout -> ProfileError.DataFailure(DataError.Timeout)
+    NetworkError.Connectivity -> ProfileError.DataFailure(DataError.Connectivity)
+    NetworkError.InvalidResponse -> ProfileError.DataFailure(DataError.InvalidResponse)
+    NetworkError.PayloadTooLarge -> ProfileError.DataFailure(DataError.PayloadTooLarge)
     NetworkError.Unavailable,
     NetworkError.Unknown,
-    -> DataError.Unknown
+    -> ProfileError.DataFailure(DataError.Unknown)
 }
 
 private fun Int.toDataError(): DataError = when (this) {
@@ -273,5 +274,5 @@ private fun Int.toDataError(): DataError = when (this) {
     else -> DataError.Unknown
 }
 
-private fun <T> invalidResponse(): SaqzResult<T, DataError> =
-    SaqzResult.Failure(DataError.InvalidResponse)
+private fun <T> invalidResponse(): SaqzResult<T, ProfileError> =
+    SaqzResult.Failure(ProfileError.DataFailure(DataError.InvalidResponse))

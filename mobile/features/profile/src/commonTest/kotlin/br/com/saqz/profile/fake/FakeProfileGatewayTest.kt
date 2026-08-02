@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.profile.domain.PhoneVisibility
 import br.com.saqz.profile.domain.Profile
+import br.com.saqz.profile.domain.ProfileError
 import br.com.saqz.profile.domain.UpdateField
 import br.com.saqz.profile.domain.UpdateSessionProfileRequest
 import kotlinx.coroutines.test.runTest
@@ -50,11 +51,16 @@ class FakeProfileGatewayTest {
 
     @Test
     fun `operation errors are injected without changing successful state`() = runTest {
-        val gateway = FakeProfileGateway().apply { statsError = DataError.Connectivity }
+        val gateway = FakeProfileGateway().apply {
+            statsError = ProfileError.DataFailure(DataError.Connectivity)
+        }
 
         val result = gateway.stats()
 
-        assertEquals(DataError.Connectivity, assertIs<SaqzResult.Failure<DataError>>(result).error)
+        assertEquals(
+            ProfileError.DataFailure(DataError.Connectivity),
+            assertIs<SaqzResult.Failure<ProfileError>>(result).error,
+        )
         assertTrue(gateway.profile.user.displayName.isNotBlank())
     }
 }

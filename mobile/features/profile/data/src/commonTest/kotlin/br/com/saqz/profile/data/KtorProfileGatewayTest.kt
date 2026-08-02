@@ -10,6 +10,7 @@ import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.SessionInvalidator
 import br.com.saqz.network.TokenResult
 import br.com.saqz.profile.domain.PhoneVisibility
+import br.com.saqz.profile.domain.ProfileError
 import br.com.saqz.profile.domain.UpdateField
 import br.com.saqz.profile.domain.UpdateSessionProfileRequest
 import io.ktor.client.engine.mock.MockEngine
@@ -185,7 +186,7 @@ class KtorProfileGatewayTest {
             )
         }.gateway.updateProfile(UpdateSessionProfileRequest())
 
-        val error = assertIs<DataError.Validation>(result.failure())
+        val error = assertIs<ProfileError.Validation>(result.failure())
         assertEquals(listOf("invalid"), error.details.fieldMessages["nickname"])
         assertFalse(error.toString().contains("private"))
     }
@@ -247,12 +248,14 @@ class KtorProfileGatewayTest {
 
     private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, "application/json")
 
-    private inline fun <reified T> SaqzResult<T, DataError>.success() =
+    private inline fun <reified T> SaqzResult<T, ProfileError>.success() =
         assertIs<SaqzResult.Success<T>>(this).value
 
-    private fun SaqzResult<*, DataError>.failure() = assertIs<SaqzResult.Failure<DataError>>(this).error
+    private fun SaqzResult<*, ProfileError>.failure() =
+        assertIs<SaqzResult.Failure<ProfileError>>(this).error
 
-    private fun SaqzResult<*, DataError>.dataError() = failure()
+    private fun SaqzResult<*, ProfileError>.dataError() =
+        assertIs<ProfileError.DataFailure>(failure()).error
 
     private class Tokens : IdTokenProvider {
         override fun token(forceRefresh: Boolean, completion: (TokenResult) -> Unit) {

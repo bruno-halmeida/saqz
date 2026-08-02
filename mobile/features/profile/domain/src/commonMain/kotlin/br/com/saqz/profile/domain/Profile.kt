@@ -2,7 +2,9 @@ package br.com.saqz.profile.domain
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
+import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
 
 enum class PhoneVisibility {
     EVERYONE,
@@ -76,26 +78,31 @@ data class UpdateSessionProfileRequest(
     val phoneVisibility: UpdateField<PhoneVisibility> = UpdateField.Unchanged,
 )
 
+sealed interface ProfileError : SaqzError {
+    data class Validation(val details: ValidationDetails) : ProfileError
+    data class DataFailure(val error: DataError) : ProfileError
+}
+
 interface ProfileGateway {
-    suspend fun bootstrap(): SaqzResult<Profile, DataError>
+    suspend fun bootstrap(): SaqzResult<Profile, ProfileError>
 
     suspend fun updateProfile(
         request: UpdateSessionProfileRequest,
-    ): SaqzResult<Profile, DataError>
+    ): SaqzResult<Profile, ProfileError>
 
-    suspend fun stats(): SaqzResult<ProfileStats, DataError>
+    suspend fun stats(): SaqzResult<ProfileStats, ProfileError>
 
-    suspend fun athleteProfile(): SaqzResult<AthleteProfile, DataError>
+    suspend fun athleteProfile(): SaqzResult<AthleteProfile, ProfileError>
 
-    suspend fun deleteSession(): SaqzResult<Unit, DataError>
+    suspend fun deleteSession(): SaqzResult<Unit, ProfileError>
 
-    suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, DataError>
+    suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, ProfileError>
 
-    suspend fun deletePhoto(): SaqzResult<Unit, DataError>
+    suspend fun deletePhoto(): SaqzResult<Unit, ProfileError>
 
-    suspend fun loadProfile(): SaqzResult<Profile, DataError> = bootstrap()
+    suspend fun loadProfile(): SaqzResult<Profile, ProfileError> = bootstrap()
 
-    suspend fun profileStats(): SaqzResult<ProfileStats, DataError> = stats()
+    suspend fun profileStats(): SaqzResult<ProfileStats, ProfileError> = stats()
 
-    suspend fun ownAthleteProfile(): SaqzResult<AthleteProfile, DataError> = athleteProfile()
+    suspend fun ownAthleteProfile(): SaqzResult<AthleteProfile, ProfileError> = athleteProfile()
 }
