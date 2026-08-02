@@ -45,7 +45,11 @@ class CompleteSessionProfile(
             return CompleteSessionProfileResult.InvalidNickname
         }
         val city = rawCity?.takeUnless(String::isBlank)
-        if (cityProvided && city != null && (city.length > 80 || !city.codePoints().noneMatch(Character::isISOControl))) {
+        if (
+            cityProvided &&
+            city != null &&
+            (city.codePointCount(0, city.length) > 80 || !city.codePoints().noneMatch(Character::isISOControl))
+        ) {
             return CompleteSessionProfileResult.InvalidCity
         }
         val session = repository.updateProfile(

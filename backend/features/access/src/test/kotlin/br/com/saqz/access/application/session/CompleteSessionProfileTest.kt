@@ -251,6 +251,24 @@ class CompleteSessionProfileTest {
     }
 
     @Test
+    fun `city with eighty supplementary characters is accepted`() {
+        val repository = RecordingSessionRepository(view)
+        val city = "😀".repeat(80)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawCity = city,
+            phoneProvided = false,
+            cityProvided = true,
+        )
+
+        assertEquals(CompleteSessionProfileResult.Success(view), result)
+        assertEquals(city, repository.commands.single().city)
+    }
+
+    @Test
     fun `city with a control character is rejected before write`() {
         val repository = RecordingSessionRepository(view)
 
