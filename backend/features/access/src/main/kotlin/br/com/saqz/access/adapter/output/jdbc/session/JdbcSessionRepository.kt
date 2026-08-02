@@ -165,20 +165,15 @@ class JdbcSessionRepository(
 
     private fun loadMemberships(userId: UUID): List<SessionMembership> = jdbc.sql(
         """
-        SELECT group_id, group_name, role
-        FROM (
-            SELECT groups.id AS group_id, groups.name AS group_name, 'OWNER' AS role
-            FROM access_groups groups
-            WHERE groups.owner_user_id = :userId
-              AND groups.deleted_at IS NULL
-            UNION ALL
-            SELECT groups.id AS group_id, groups.name AS group_name, memberships.role AS role
-            FROM group_memberships memberships
-            JOIN access_groups groups ON groups.id = memberships.group_id
-            WHERE memberships.user_id = :userId
-              AND groups.deleted_at IS NULL
-        ) session_memberships
-        ORDER BY group_name, group_id
+        SELECT
+            groups.id AS group_id,
+            groups.name AS group_name,
+            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role END AS role
+        FROM group_memberships memberships
+        JOIN access_groups groups ON groups.id = memberships.group_id
+        WHERE memberships.user_id = :userId
+          AND groups.deleted_at IS NULL
+        ORDER BY groups.name, groups.id
         """.trimIndent(),
     )
         .param("userId", userId)

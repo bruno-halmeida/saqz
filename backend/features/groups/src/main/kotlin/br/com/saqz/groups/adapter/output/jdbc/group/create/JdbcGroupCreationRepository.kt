@@ -54,6 +54,16 @@ class JdbcGroupCreationRepository(
         val groupId = UUID.randomUUID()
         val inserted = insertGroup(groupId, command)
         if (inserted != null) {
+            jdbc.sql(
+                """
+                INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at)
+                VALUES (:groupId, :ownerUserId, 'ADMIN', now(), now())
+                ON CONFLICT (group_id, user_id) DO NOTHING
+                """.trimIndent(),
+            )
+                .param("groupId", groupId)
+                .param("ownerUserId", command.ownerUserId)
+                .update()
             failureInjector.afterGroupInsert()
             val defaultVenueId = command.profile.defaultVenue?.let { venue ->
                 val venueId = UUID.randomUUID()

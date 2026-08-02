@@ -152,7 +152,7 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `group ownership is synthesized as owner membership`() {
+    fun `persisted owner membership is returned once with OWNER role`() {
         val owner = repository.upsertAndLoad(command("owner-subject"))
         val group = insertGroup(owner.user.id, "Owner Group")
 
@@ -462,6 +462,7 @@ class JdbcSessionRepositoryIntegrationTest {
                 "(id, owner_user_id, creation_key, name, time_zone, created_at, updated_at) VALUES " +
                 "('$id', '$ownerId', '${UUID.randomUUID()}', '$name', 'UTC', now(), now())",
         )
+        insertMembership(id, ownerId, "ADMIN")
         return id
     }
 
