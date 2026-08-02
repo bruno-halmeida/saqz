@@ -64,6 +64,8 @@ class DisposableAccessFlowIntegrationTest {
         awaitReady()
         ownerToken = state.resolve("id-token").readText().trim()
         athleteToken = createVerifiedIdentity("Athlete Fixture")
+        grantUnlimitedSubscription(userId(session(ownerToken)))
+        grantUnlimitedSubscription(userId(session(athleteToken)))
     }
 
     @AfterAll
@@ -88,6 +90,68 @@ class DisposableAccessFlowIntegrationTest {
         assertEquals(200, athlete.statusCode())
         assertNotEquals(jsonValue(owner.body(), "id"), jsonValue(athlete.body(), "id"))
         assertFalse(owner.body().contains(state.resolve("subject").readText().trim()))
+    }
+
+    @Test
+    fun `deleted account bootstraps as a new user without owned or third party groups`() {
+        val subjectToken = createVerifiedIdentity("Deletion Fixture")
+        val originalSession = session(subjectToken)
+        assertEquals(200, originalSession.statusCode(), originalSession.body())
+        val originalUserId = UUID.fromString(jsonValue(originalSession.body(), "id"))
+        grantUnlimitedSubscription(originalUserId)
+
+        val ownedGroup = groupId(createGroup(subjectToken, uniqueName()))
+        val thirdPartyGroup = groupId(createGroup(athleteToken, uniqueName()))
+        val joined = redeem(inviteCode(rotateInvite(thirdPartyGroup, athleteToken)), subjectToken)
+        assertEquals(200, joined.statusCode(), joined.body())
+        assertTrue(session(subjectToken).body().contains(thirdPartyGroup.toString()))
+
+        val deleted = request("DELETE", "/api/session", subjectToken)
+        assertEquals(204, deleted.statusCode(), deleted.body())
+        assertEquals("", deleted.body())
+
+        val replacement = session(subjectToken)
+        assertEquals(200, replacement.statusCode(), replacement.body())
+        val replacementUserId = UUID.fromString(jsonValue(replacement.body(), "id"))
+        assertNotEquals(originalUserId, replacementUserId)
+        assertTrue(replacement.body().contains("\"memberships\":[]"), replacement.body())
+
+        assertEquals(
+            1,
+            jdbc.queryForObject(
+                "select count(*) from access_users where id = ? and deleted_at is not null",
+                Int::class.java,
+                originalUserId,
+            ),
+        )
+        assertEquals(
+            1,
+            jdbc.queryForObject(
+                "select count(*) from access_groups where id = ? and deleted_at is not null",
+                Int::class.java,
+                ownedGroup,
+            ),
+        )
+        assertEquals(
+            1,
+            jdbc.queryForObject(
+                "select count(*) from access_groups where id = ? and deleted_at is null",
+                Int::class.java,
+                thirdPartyGroup,
+            ),
+        )
+        assertEquals(
+            0,
+            jdbc.queryForObject(
+                "select count(*) from group_memberships where user_id = ?",
+                Int::class.java,
+                replacementUserId,
+            ),
+        )
+
+        val thirdPartyOwnerSession = session(athleteToken)
+        assertEquals(200, thirdPartyOwnerSession.statusCode(), thirdPartyOwnerSession.body())
+        assertTrue(thirdPartyOwnerSession.body().contains(thirdPartyGroup.toString()), thirdPartyOwnerSession.body())
     }
 
     @Test
@@ -169,18 +233,34 @@ class DisposableAccessFlowIntegrationTest {
     }
 
     private fun session(token: String) = request("PUT", "/api/session", token)
-    private fun createGroup(name: String) = request(
+    private fun createGroup(name: String) = createGroup(ownerToken, name)
+    private fun createGroup(token: String, name: String) = request(
         "POST",
         "/api/groups",
-        ownerToken,
+        token,
         completeGroupBody(name, "America/Sao_Paulo"),
     )
     private fun completeGroupBody(name: String, timeZone: String) =
         "{\"requestId\":\"${UUID.randomUUID()}\",\"name\":\"$name\",\"timeZone\":\"$timeZone\",\"modality\":\"COURT_VOLLEYBALL\",\"composition\":\"MIXED\"}"
-    private fun rotateInvite(groupId: UUID) = request("POST", "/api/groups/$groupId/invite", ownerToken)
-    private fun redeem(code: String) = request("POST", "/api/invites/redeem", athleteToken, "{\"code\":\"$code\"}")
+    private fun rotateInvite(groupId: UUID, token: String = ownerToken) = request("POST", "/api/groups/$groupId/invite", token)
+    private fun redeem(code: String, token: String = athleteToken) = request("POST", "/api/invites/redeem", token, "{\"code\":\"$code\"}")
     private fun groupId(response: HttpResponse<String>) = UUID.fromString(jsonValue(response.body(), "id"))
     private fun uniqueName() = "E2E ${UUID.randomUUID()}"
+    private fun userId(response: HttpResponse<String>) = UUID.fromString(jsonValue(response.body(), "id"))
+
+    private fun grantUnlimitedSubscription(ownerUserId: UUID) {
+        jdbc.update(
+            """
+            INSERT INTO subscriptions (
+                owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
+                current_period_end, first_confirmed_at, created_at, updated_at
+            ) VALUES (?, 'ILIMITADO', 'MONTHLY', 'ACTIVE', ?, ?, now() + interval '1 year', now(), now(), now())
+            """.trimIndent(),
+            ownerUserId,
+            "customer-$ownerUserId",
+            "subscription-$ownerUserId",
+        )
+    }
 
     private fun inviteCode(response: HttpResponse<String>): String {
         val url = jsonValue(response.body(), "inviteUrl")
@@ -255,6 +335,7 @@ class DisposableAccessFlowIntegrationTest {
             registry.add("spring.datasource.password", postgres::getPassword)
             registry.add("saqz.firebase.emulator.enabled") { "true" }
             registry.add("saqz.branch.domain") { "https://join.test" }
+            registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
         }
     }
 }
