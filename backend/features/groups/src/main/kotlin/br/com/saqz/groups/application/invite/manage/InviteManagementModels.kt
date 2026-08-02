@@ -9,11 +9,11 @@ data class RotateInviteCommand(
     val groupId: UUID,
     val digest: InviteTokenDigest,
     val createdByUserId: UUID,
-    val expiresAt: Instant = Instant.EPOCH,
+    val expiresAt: Instant,
 )
 
 sealed interface RotateInviteResult {
-    data class Success(val inviteUrl: URI, val expiresAt: Instant = Instant.EPOCH) : RotateInviteResult
+    data class Success(val inviteUrl: URI, val expiresAt: Instant) : RotateInviteResult
 
     data object GroupNotFound : RotateInviteResult
 

@@ -462,6 +462,7 @@ class AccessSessionConfiguration {
         inviteRepository: JdbcInviteManagementRepository,
         tokenGenerator: JcaSecureTokenGenerator,
         linkFactory: BranchInviteLinkFactory,
+        clock: Clock,
     ) = RotateInvite(
         transaction,
         readRepository,
@@ -469,6 +470,7 @@ class AccessSessionConfiguration {
         GroupAccessPolicy(),
         tokenGenerator,
         linkFactory,
+        clock,
     )
 
     @Bean

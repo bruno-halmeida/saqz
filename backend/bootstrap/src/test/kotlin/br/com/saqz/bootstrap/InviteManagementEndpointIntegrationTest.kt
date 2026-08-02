@@ -46,6 +46,10 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -73,15 +77,20 @@ class InviteManagementEndpointIntegrationTest {
     }
 
     @Test
-    fun `owner rotates invite and receives only the URL`() {
+    fun `owner rotates invite and receives URL with expiration`() {
         val response = rotate(groupId)
         val body = json(response)
 
         assertEquals(200, response.statusCode())
-        assertEquals(setOf("inviteUrl"), body.propertyNames().asSequence().toSet())
+        assertEquals(setOf("inviteUrl", "expiresAt"), body.propertyNames().asSequence().toSet())
         assertEquals(InviteTestConfiguration.INVITE_URL.toString(), body["inviteUrl"].stringValue())
+        assertEquals(
+            InviteTestConfiguration.NOW.plus(Duration.ofDays(7)).toString(),
+            body["expiresAt"].stringValue(),
+        )
         assertEquals(groupId, repository.rotations.single().groupId)
         assertEquals(InviteTestConfiguration.USER_ID, repository.rotations.single().createdByUserId)
+        assertEquals(InviteTestConfiguration.NOW.plus(Duration.ofDays(7)), repository.rotations.single().expiresAt)
     }
 
     @Test
@@ -211,6 +220,7 @@ class InviteManagementEndpointIntegrationTest {
         @Bean fun httpInviteRepository() = RecordingHttpInviteRepository()
         @Bean fun httpInviteLinks() = ConfigurableHttpInviteLinkFactory()
         @Bean fun inviteTokenGenerator() = SecureTokenGenerator { INVITE_TOKEN }
+        @Bean fun inviteClock(): Clock = Clock.fixed(NOW, ZoneOffset.UTC)
         @Bean fun inviteTransaction() = object : TransactionRunner {
             override fun <T> inTransaction(block: () -> T): T = block()
         }
@@ -220,7 +230,8 @@ class InviteManagementEndpointIntegrationTest {
             repository: RecordingHttpInviteRepository,
             generator: SecureTokenGenerator,
             links: ConfigurableHttpInviteLinkFactory,
-        ) = RotateInvite(transaction, read, repository, GroupAccessPolicy(), generator, links)
+            clock: Clock,
+        ) = RotateInvite(transaction, read, repository, GroupAccessPolicy(), generator, links, clock)
         @Bean fun expireInvite(
             transaction: TransactionRunner,
             read: RecordingInviteGroupReadRepository,
@@ -238,6 +249,7 @@ class InviteManagementEndpointIntegrationTest {
             val INVITE_CODE = InviteCode.from(RAW_CODE)
             val INVITE_TOKEN = InviteToken(INVITE_CODE, InviteTokenDigest.from(ByteArray(32) { 9 }))
             val INVITE_URL: URI = URI("https://join.saqz.app/?saqz_invite=$RAW_CODE")
+            val NOW: Instant = Instant.parse("2026-07-16T18:00:00Z")
         }
     }
 

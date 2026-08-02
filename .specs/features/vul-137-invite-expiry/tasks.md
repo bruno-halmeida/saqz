@@ -20,7 +20,7 @@
 - **Files**: `RotateInvite`, rotate models, bootstrap wiring, unit and endpoint test fixtures.
 - **Done when**: owner/admin rotate succeeds with `inviteUrl` and `expiresAt` equal to injected now plus seven days; authorization is unchanged.
 - **Gate**: groups unit tests and targeted bootstrap tests.
-- **Status**: pending
+- **Status**: completed
 
 ### T3 — Redeem expiration and idempotency
 

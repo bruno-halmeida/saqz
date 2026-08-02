@@ -12,9 +12,10 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import java.net.URI
+import java.time.Instant
 import java.util.UUID
 
-data class InviteUrlResponse(val inviteUrl: URI)
+data class InviteUrlResponse(val inviteUrl: URI, val expiresAt: Instant)
 
 @RestController
 class AccessInviteManagementController(
@@ -29,7 +30,7 @@ class AccessInviteManagementController(
     ): InviteUrlResponse = when (val result = rotateInvite.execute(actor(identity), parseId(groupId))) {
         RotateInviteResult.GroupNotFound -> throw GroupNotFoundException()
         RotateInviteResult.AccessForbidden -> throw AccessForbiddenException()
-        is RotateInviteResult.Success -> InviteUrlResponse(result.inviteUrl)
+        is RotateInviteResult.Success -> InviteUrlResponse(result.inviteUrl, result.expiresAt)
     }
 
     @DeleteMapping("/api/groups/{groupId}/invite")
