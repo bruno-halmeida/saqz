@@ -108,7 +108,7 @@ fun GroupSetupScreen(
                 ),
                 onBack = onBack,
                 actions = {
-                    if (state.isEditing) {
+                    if (state.isEditing && state.canDelete) {
                         val deleteLabel = stringResource(Res.string.group_setup_delete_action)
                         SaqzIconButton(
                             onClick = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.ConfirmDelete)) },
@@ -367,6 +367,7 @@ private fun GroupSetupEditPreview() = SaqzTheme {
             form = PreviewCourtForm,
             photoUrl = "https://saqz.example/ceret.png",
             memberCount = 26,
+            canDelete = true,
         ),
         onIntent = {},
         onBack = {},
@@ -383,6 +384,7 @@ private fun GroupSetupDeletePreview() = SaqzTheme {
             form = PreviewCourtForm,
             photoUrl = "https://saqz.example/ceret.png",
             memberCount = 26,
+            canDelete = true,
             sheet = GroupSetupSheet.ConfirmDelete,
         ),
         onIntent = {},

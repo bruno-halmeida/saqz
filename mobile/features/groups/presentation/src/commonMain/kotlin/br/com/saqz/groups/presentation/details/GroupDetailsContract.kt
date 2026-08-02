@@ -16,6 +16,7 @@ data class GroupDetailsState(
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val isAdmin: Boolean = false,
+    val isOwner: Boolean = false,
     val header: GroupHeaderUi? = null,
     val nextGame: NextGameUi? = null,
     val attendance: AttendanceSummaryUi? = null,

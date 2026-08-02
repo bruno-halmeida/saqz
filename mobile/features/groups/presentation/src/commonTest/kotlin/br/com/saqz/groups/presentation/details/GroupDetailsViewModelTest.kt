@@ -4,7 +4,6 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.presentation.FakeGroupGateway
-import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleVersionedGroup
@@ -41,6 +40,7 @@ class GroupDetailsViewModelTest {
         assertEquals("Misto · Intermediário", viewModel.state.value.header?.subtitle)
         assertEquals("CERET", viewModel.state.value.venue?.name)
         assertTrue(viewModel.state.value.header?.summaryChips?.isNotEmpty() == true)
+        assertFalse(viewModel.state.value.isOwner)
     }
 
     @Test
@@ -49,7 +49,6 @@ class GroupDetailsViewModelTest {
         val viewModel = GroupDetailsViewModel(
             GROUP_ID,
             FakeGroupGateway(readResult = SaqzResult.Success(empty)),
-            FakeGroupProfileGateway(readResult = SaqzResult.Success(empty)),
         )
 
         assertFalse(viewModel.state.value.isLoading)
@@ -59,13 +58,28 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `detail read usa o snapshot uma unica vez e preserva owner`() = runTest {
+        val gateway = FakeGroupGateway(
+            readResult = SaqzResult.Success(
+                sampleVersionedGroup(
+                    sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.OWNER),
+                ),
+            ),
+        )
+        val viewModel = GroupDetailsViewModel(GROUP_ID, gateway)
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertTrue(viewModel.state.value.isOwner)
+        assertEquals(1, gateway.readCalls)
+    }
+
+    @Test
     fun `gateway failure is visible and typed`() = runTest {
         val viewModel = GroupDetailsViewModel(
             GROUP_ID,
             FakeGroupGateway(
                 readResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Forbidden)),
             ),
-            FakeGroupProfileGateway(),
         )
 
         assertTrue(viewModel.state.value.loadFailed)
@@ -86,6 +100,5 @@ class GroupDetailsViewModelTest {
     private fun viewModel() = GroupDetailsViewModel(
         GROUP_ID,
         FakeGroupGateway(),
-        FakeGroupProfileGateway(),
     )
 }

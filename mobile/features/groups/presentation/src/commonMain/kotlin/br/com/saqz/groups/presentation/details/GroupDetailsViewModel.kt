@@ -7,7 +7,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
-import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 class GroupDetailsViewModel(
     private val groupId: String,
     private val groupGateway: GroupGateway,
-    private val profileGateway: GroupProfileGateway,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -56,22 +55,15 @@ class GroupDetailsViewModel(
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
             val groupResult = groupGateway.read(GroupId(groupId))
-            val profileResult = profileGateway.readProfile(GroupId(groupId))
             if (generation != loadGeneration) return@launch
 
-            val failure = when {
-                groupResult is SaqzResult.Failure -> groupResult.error.toUiError()
-                profileResult is SaqzResult.Failure -> profileResult.error.toUiError()
-                else -> null
+            when (groupResult) {
+                is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
+                is SaqzResult.Success -> update {
+                    it.copy(isLoading = false, loadFailed = false, error = null)
+                        .from(groupResult.value.group)
+                }
             }
-            if (failure != null) {
-                showFailure(generation, failure)
-                return@launch
-            }
-
-            val group = (groupResult as SaqzResult.Success).value.group
-            val profileGroup = (profileResult as SaqzResult.Success).value.group
-            update { it.copy(isLoading = false, loadFailed = false, error = null).from(group, profileGroup) }
         }
     }
 
@@ -81,10 +73,11 @@ class GroupDetailsViewModel(
     }
 }
 
-private fun GroupDetailsState.from(group: Group, profileGroup: Group): GroupDetailsState {
-    val profile = profileGroup.profile ?: group.profile
+private fun GroupDetailsState.from(group: Group): GroupDetailsState {
+    val profile = group.profile
     return copy(
-        isAdmin = group.role != br.com.saqz.groups.domain.group.GroupRole.ATHLETE,
+        isAdmin = group.role != GroupRole.ATHLETE,
+        isOwner = group.role == GroupRole.OWNER,
         header = GroupHeaderUi(
             name = group.name,
             subtitle = listOfNotNull(

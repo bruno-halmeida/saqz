@@ -9,8 +9,9 @@ import br.com.saqz.groups.presentation.ui.components.SlotDraft
 /**
  * 2m — agenda e recorrência.
  *
- * `recurring` **não** se deriva de `slots.isEmpty()`: recorrência ligada sem nenhum
- * horário é um estado legítimo da tela e sumiria com a derivação.
+ * Durante a edição local, `recurring` **não** se deriva de `slots.isEmpty()`: recorrência
+ * ligada sem nenhum horário é um estado legítimo. No primeiro carregamento, o snapshot
+ * remoto só expõe os horários recorrentes, então ele serve para hidratar o valor inicial.
  *
  * Convenção do `slotSheet`: `null` é sheet fechado; [NEW_SLOT] (-1) é o slot que ainda
  * não existe na lista. Índice >= 0 fica reservado para editar uma pílula existente —

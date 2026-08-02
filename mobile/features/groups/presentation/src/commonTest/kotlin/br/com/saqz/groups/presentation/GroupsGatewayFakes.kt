@@ -51,10 +51,15 @@ class FakeGroupGateway(
     var readResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(sampleVersionedGroup()),
     var deleteResult: SaqzResult<Unit, GroupProfileError> = SaqzResult.Success(Unit),
 ) : GroupGateway {
+    var readCalls = 0
+
     override suspend fun create(command: CreateGroupCommand): SaqzResult<Group, GroupProfileError> =
         SaqzResult.Success(sampleGroup(command.name, command.timeZone))
 
-    override suspend fun read(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> = readResult
+    override suspend fun read(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> {
+        readCalls += 1
+        return readResult
+    }
 
     override suspend fun update(command: UpdateGroupSettingsCommand): SaqzResult<VersionedGroup, GroupProfileError> =
         readResult

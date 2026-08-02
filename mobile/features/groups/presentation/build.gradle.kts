@@ -26,6 +26,7 @@ kotlin {
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)
             implementation(libs.lifecycle.viewmodel.savedstate)

@@ -127,6 +127,9 @@ class GroupSetupViewModel(
                             isLoading = false,
                             gatewayError = null,
                             saveFailed = false,
+                            canDelete = group.role == br.com.saqz.groups.domain.group.GroupRole.OWNER,
+                            durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
+                                ?: it.durationMinutes,
                             form = group.toForm().withSavedText(savedState),
                         )
                     }
@@ -290,16 +293,27 @@ class GroupSetupViewModel(
             sheet.index == null || sheet.index !in slots.indices -> slots + slot
             else -> slots.toMutableList().also { it[sheet.index] = slot }
         }
-        update { it.copy(sheet = null).withForm { copy(regularSlots = updated) }.revalidated() }
+        discardCreationKey()
+        update {
+            it.copy(sheet = null, creationCommandKey = null)
+                .withForm { copy(regularSlots = updated) }
+                .revalidated()
+        }
     }
 
-    private fun onDurationChange(minutes: Int) = update { current ->
-        current.copy(durationMinutes = minutes)
-            .withForm { copy(regularSlots = regularSlots.map { it.copy(durationMinutes = minutes) }) }
-            .revalidated()
+    private fun onDurationChange(minutes: Int) {
+        discardCreationKey()
+        update { current ->
+            current.copy(durationMinutes = minutes, creationCommandKey = null)
+                .withForm { copy(regularSlots = regularSlots.map { it.copy(durationMinutes = minutes) }) }
+                .revalidated()
+        }
     }
 
-    private fun onRecurringChange(recurring: Boolean) = update { current -> current.copy(recurring = recurring).revalidated() }
+    private fun onRecurringChange(recurring: Boolean) {
+        discardCreationKey()
+        update { current -> current.copy(recurring = recurring, creationCommandKey = null).revalidated() }
+    }
 
     private fun onTextChange(
         key: String,
@@ -312,7 +326,10 @@ class GroupSetupViewModel(
         onFormChange { edit(capped) }
     }
 
-    private fun onFormChange(transform: GroupSetupForm.() -> GroupSetupForm) = update { it.withForm(transform).revalidated() }
+    private fun onFormChange(transform: GroupSetupForm.() -> GroupSetupForm) {
+        discardCreationKey()
+        update { it.withForm(transform).copy(creationCommandKey = null).revalidated() }
+    }
 }
 
 private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupForm) = copy(form = form.transform())

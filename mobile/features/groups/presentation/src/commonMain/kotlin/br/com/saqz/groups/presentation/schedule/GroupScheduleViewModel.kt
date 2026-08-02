@@ -7,16 +7,24 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.presentation.ui.components.SlotDraft
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 internal class GroupScheduleViewModel(
     val groupId: String,
     private val gameGateway: GameGateway,
+    private val groupGateway: GroupGateway,
     initialState: GroupScheduleState = GroupScheduleState(),
+    private val todayInZone: (String) -> String = { zoneId ->
+        Clock.System.todayIn(TimeZone.of(zoneId)).toString()
+    },
 ) : MviViewModel<GroupScheduleState, GroupScheduleIntent, GroupScheduleEffect>(initialState) {
 
     private var loadGeneration = 0
@@ -60,20 +68,39 @@ internal class GroupScheduleViewModel(
         val generation = ++loadGeneration
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
+            val group = when (val result = groupGateway.read(GroupId(groupId))) {
+                is SaqzResult.Failure -> {
+                    showFailure(generation, result.error.toUiError())
+                    return@launch
+                }
+                is SaqzResult.Success -> result.value.group
+            }
+            if (generation != loadGeneration) return@launch
+
             when (val result = gameGateway.list(GroupId(groupId))) {
                 is SaqzResult.Failure -> showFailure(generation, result.error.toUiError())
-                is SaqzResult.Success -> {
-                    if (generation != loadGeneration) return@launch
-                    update {
-                        it.copy(
-                            isLoading = false,
-                            loadFailed = false,
-                            error = null,
-                            upcoming = result.value
-                                .filter { game -> game.status != GameStatus.Cancelled }
-                                .map(Game::toUpcoming),
+                is SaqzResult.Success -> update {
+                    val profile = group.profile
+                    val slots = profile?.regularSlots.orEmpty().map {
+                        GroupRegularSlotForm(
+                            weekday = br.com.saqz.groups.model.GroupWeekday.valueOf(it.weekday.name),
+                            startTime = it.startTime,
+                            durationMinutes = it.durationMinutes,
                         )
                     }
+                    it.copy(
+                        isLoading = false,
+                        loadFailed = false,
+                        error = null,
+                        recurring = profile?.let { it.regularSlots.isNotEmpty() } ?: it.recurring,
+                        slots = slots,
+                        durationMinutes = slots.firstOrNull()?.durationMinutes ?: it.durationMinutes,
+                        confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes
+                            ?: it.confirmationLeadMinutes,
+                        upcoming = result.value
+                            .filter { game -> game.isUpcoming(todayInZone) }
+                            .map(Game::toUpcoming),
+                    )
                 }
             }
         }
@@ -100,6 +127,12 @@ internal class GroupScheduleViewModel(
         // A agenda editing endpoint is Fluxo 4; this ticket only wires its read path.
         emit(GroupScheduleEffect.Saved)
     }
+}
+
+private fun Game.isUpcoming(todayInZone: (String) -> String): Boolean {
+    if (status != GameStatus.Draft && status != GameStatus.Published) return false
+    val today = runCatching { todayInZone(zoneId) }.getOrNull() ?: return false
+    return localDate.substringBefore('T') >= today
 }
 
 private fun Game.toUpcoming(): UpcomingGameUi {

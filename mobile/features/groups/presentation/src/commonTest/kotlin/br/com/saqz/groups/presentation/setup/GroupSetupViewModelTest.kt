@@ -151,6 +151,45 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `editar o payload descarta a chave antes de um novo create`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val handle = SavedStateHandle()
+        var attempts = 0
+        profileGateway.createHandler = {
+            attempts += 1
+            if (attempts == 1) {
+                SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity))
+            } else {
+                SaqzResult.Success(br.com.saqz.groups.presentation.sampleGroup())
+            }
+        }
+        val viewModel = viewModel(profileGateway = profileGateway, savedState = handle)
+
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+        val firstKey = profileGateway.createCommands.single().commandKey
+
+        viewModel.onIntent(GroupSetupIntent.UpdateName("Nome editado"))
+        assertEquals(null, viewModel.state.value.creationCommandKey)
+        assertEquals(null, handle.get<String>("group-setup-create-command-key"))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+
+        assertEquals(2, profileGateway.createCommands.size)
+        assertTrue(firstKey != profileGateway.createCommands[1].commandKey)
+        assertEquals("Nome editado", profileGateway.createCommands[1].form.name)
+    }
+
+    @Test
+    fun `admin nao recebe a acao de excluir no formulario de edicao`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+        runCurrent()
+
+        assertEquals(false, viewModel.state.value.canDelete)
+    }
+
+    @Test
     fun `editar salva direto sem passar pela revisao`() = runTest(mainDispatcher) {
         val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
         val effects = collectEffects(viewModel)
@@ -391,6 +430,37 @@ class GroupSetupViewModelTest {
             assertEquals("Nível restaurado", viewModel.state.value.form.customLevel)
             assertEquals("Quadra restaurada", viewModel.state.value.form.defaultVenue?.name)
             assertEquals("Endereço restaurado", viewModel.state.value.form.defaultVenue?.address)
+        }
+
+    @Test
+    fun `edicao hidrata a duracao do primeiro horario e a permissao de excluir`() =
+        runTest(mainDispatcher) {
+            val group = br.com.saqz.groups.presentation.sampleGroup(
+                role = br.com.saqz.groups.domain.group.GroupRole.OWNER,
+                profile = br.com.saqz.groups.presentation.sampleGroup().profile?.copy(
+                    regularSlots = listOf(
+                        br.com.saqz.groups.domain.group.GroupRegularSlot(
+                            weekday = br.com.saqz.groups.domain.group.GroupWeekday.TUESDAY,
+                            startTime = "19:30",
+                            durationMinutes = 90,
+                        ),
+                    ),
+                    defaultConfirmationLeadMinutes = 180,
+                ),
+            )
+            val viewModel = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                profileGateway = FakeGroupProfileGateway(
+                    readResult = SaqzResult.Success(
+                        br.com.saqz.groups.presentation.sampleVersionedGroup(group),
+                    ),
+                ),
+            )
+            runCurrent()
+
+            assertEquals(90, viewModel.state.value.durationMinutes)
+            assertEquals(listOf(90), viewModel.state.value.form.regularSlots.map { it.durationMinutes })
+            assertTrue(viewModel.state.value.canDelete)
         }
 
     /**

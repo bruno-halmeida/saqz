@@ -12,6 +12,8 @@ import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.isExpectedRosterAccessFailure
+import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -20,6 +22,7 @@ class GroupMembersViewModel(
     private val groupId: String,
     private val athleteGateway: AthleteGateway,
     private val membershipGateway: GroupMembershipGateway,
+    private val groupGateway: GroupGateway,
 ) : MviViewModel<GroupMembersState, GroupMembersIntent, GroupMembersEffect>(GroupMembersState()) {
 
     private var loadGeneration = 0
@@ -55,6 +58,13 @@ class GroupMembersViewModel(
         val generation = ++loadGeneration
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
+            val viewerRole = when (val result = groupGateway.read(GroupId(groupId))) {
+                is SaqzResult.Failure -> {
+                    showFailure(generation, result.error.toUiError())
+                    return@launch
+                }
+                is SaqzResult.Success -> result.value.group.role
+            }
             val ownProfile = when (val result = athleteGateway.ownProfile()) {
                 is SaqzResult.Failure -> {
                     showFailure(generation, result.error.toUiError())
@@ -93,9 +103,14 @@ class GroupMembersViewModel(
                     }
                 }
             }
+            val canManageMembers = viewerRole == GroupRole.OWNER && memberships is SaqzResult.Success
 
             roster = (rosterResult as SaqzResult.Success).value.map {
-                it.toUi(roles[it.userId], ownProfile.userId)
+                it.toUi(
+                    role = roles[it.userId] ?: viewerRole.takeIf { role -> it.userId == ownProfile.userId },
+                    ownUserId = ownProfile.userId,
+                    canManageMembers = canManageMembers,
+                )
             }
             requests = emptyList()
             update {
@@ -196,16 +211,17 @@ class GroupMembersViewModel(
 }
 
 private fun AthleteRosterEntry.toUi(
-    role: br.com.saqz.groups.domain.group.GroupRole?,
+    role: GroupRole?,
     ownUserId: String,
+    canManageMembers: Boolean,
 ) = MemberUi(
     id = userId,
     name = displayName,
     meta = listOfNotNull(position?.label(), membershipType.name.lowercase().replaceFirstChar { it.uppercase() })
         .joinToString(" · "),
-    isAdmin = role == br.com.saqz.groups.domain.group.GroupRole.ADMIN ||
-        role == br.com.saqz.groups.domain.group.GroupRole.OWNER,
+    isAdmin = role == GroupRole.ADMIN || role == GroupRole.OWNER,
     isSelf = userId == ownUserId,
+    canManageMembers = canManageMembers,
     // DESCONHECIDO é o contrato para atleta comum: não há filtro financeiro na tela e ele
     // deliberadamente não é convertido em status visual.
     stats = "",

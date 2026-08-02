@@ -75,6 +75,8 @@ data class GroupSetupState(
     val photoUrl: String? = null,
     // Só o `2j` usa: "Os %d membros perdem o acesso…". Não sai do formulário.
     val memberCount: Int = 0,
+    /** Só o OWNER pode excluir; enquanto o snapshot não chega, a ação fica escondida. */
+    val canDelete: Boolean = false,
     // NÃO se deriva de `form.regularSlots.isEmpty()`: ligado e sem horário é o `2g`.
     val recurring: Boolean = true,
     // Duração é do grupo no desenho e por slot no modelo; ver GroupSetupViewModel.
@@ -87,7 +89,7 @@ data class GroupSetupState(
     val isDeleting: Boolean = false,
     val saveFailed: Boolean = false,
     val gatewayError: GroupUiError? = null,
-    /** Chave de idempotência da sessão de criação; permanece durante retries e some ao sair. */
+    /** Chave de idempotência do payload atual; qualquer edição a descarta antes do retry. */
     val creationCommandKey: String? = null,
     val isOffline: Boolean = false,
 ) {

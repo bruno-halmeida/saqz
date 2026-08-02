@@ -23,6 +23,8 @@ data class MemberUi(
     val isSelf: Boolean,
     /** "18 jogos · 92% de presença", só no cabeçalho do sheet. */
     val stats: String,
+    /** Somente o OWNER pode usar as mutações de gestão deste sheet. */
+    val canManageMembers: Boolean = true,
 )
 
 @Immutable
@@ -65,10 +67,10 @@ val GroupMembersState.memberCount: Int get() = totalCount - adminCount
  * A diferença entre o sheet do 2k e o do 2l. Admin troca "Editar jogador" por
  * "Ver perfil" e "Tornar admin" por "Remover admin"; remover do grupo fecha os dois.
  */
-fun MemberUi.sheetActions(): List<GroupMemberAction> = if (isAdmin) {
-    listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Demote, GroupMemberAction.Remove)
-} else {
-    listOf(GroupMemberAction.EditMember, GroupMemberAction.Promote, GroupMemberAction.Remove)
+fun MemberUi.sheetActions(): List<GroupMemberAction> = when {
+    !canManageMembers -> listOf(GroupMemberAction.ViewProfile)
+    isAdmin -> listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Demote, GroupMemberAction.Remove)
+    else -> listOf(GroupMemberAction.EditMember, GroupMemberAction.Promote, GroupMemberAction.Remove)
 }
 
 sealed interface GroupMembersIntent {

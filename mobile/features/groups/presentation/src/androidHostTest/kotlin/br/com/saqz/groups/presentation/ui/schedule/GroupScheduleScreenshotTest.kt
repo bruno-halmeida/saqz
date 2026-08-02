@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.schedule.GroupScheduleState
 import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
 import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
@@ -38,6 +40,15 @@ class GroupScheduleScreenshotTest {
         GroupScheduleScreen(
             state = GroupScheduleState(
                 isLoading = false,
+                slots = listOf(
+                    GroupRegularSlotForm(
+                        weekday = GroupWeekday.TUESDAY,
+                        startTime = "19:30",
+                        durationMinutes = 90,
+                    ),
+                ),
+                durationMinutes = 90,
+                confirmationLeadMinutes = 180,
                 upcoming = listOf(
                     UpcomingGameUi(
                         id = "loaded-game",
@@ -48,6 +59,27 @@ class GroupScheduleScreenshotTest {
                         status = UpcomingGameStatus.Published,
                     ),
                 ),
+            ),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    @Test
+    fun loadedConfigurationWithoutCompletedGames() = capture("group-schedule-loaded-sem-completed") {
+        GroupScheduleScreen(
+            state = GroupScheduleState(
+                isLoading = false,
+                slots = listOf(
+                    GroupRegularSlotForm(
+                        weekday = GroupWeekday.TUESDAY,
+                        startTime = "19:30",
+                        durationMinutes = 90,
+                    ),
+                ),
+                durationMinutes = 90,
+                confirmationLeadMinutes = 180,
+                upcoming = emptyList(),
             ),
             onIntent = {},
             onBack = {},

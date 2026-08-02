@@ -158,6 +158,7 @@ internal object GroupDetailsPreviewData {
     val admin = GroupDetailsState(
         isLoading = false,
         isAdmin = true,
+        isOwner = true,
         header = header,
         attendance = AttendanceSummaryUi(
             title = "Próximo jogo · terça",

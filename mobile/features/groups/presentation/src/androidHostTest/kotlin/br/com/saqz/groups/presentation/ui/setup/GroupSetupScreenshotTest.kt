@@ -13,6 +13,7 @@ import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
 import br.com.saqz.groups.presentation.setup.GroupSetupState
@@ -97,9 +98,17 @@ class GroupSetupScreenshotTest {
     }
 
     @Test
+    @Config(qualifiers = "+h1400dp")
     fun editForm() = capture("2i-editar-grupo") {
         GroupSetupScreen(
-            state = createState(mode = GroupSetupMode.Edit(groupId = "grp-1"), photoUrl = PhotoUrl),
+            state = createState(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                photoUrl = PhotoUrl,
+                form = PreviewCourtForm.copy(
+                    regularSlots = PreviewCourtForm.regularSlots.map { it.copy(durationMinutes = 90) },
+                ),
+                durationMinutes = 90,
+            ),
             onIntent = {},
             onBack = {},
         )
@@ -123,12 +132,16 @@ class GroupSetupScreenshotTest {
         step: GroupSetupStep = GroupSetupStep.Form,
         photoUrl: String? = null,
         sheet: GroupSetupSheet? = null,
+        form: GroupSetupForm = PreviewCourtForm,
+        durationMinutes: Int = GroupSetupDefaults.DurationMinutes,
     ) = GroupSetupState(
         mode = mode,
         step = step,
-        form = PreviewCourtForm,
+        form = form,
         photoUrl = photoUrl,
         memberCount = 26,
+        canDelete = mode is GroupSetupMode.Edit,
+        durationMinutes = durationMinutes,
         sheet = sheet,
     )
 
