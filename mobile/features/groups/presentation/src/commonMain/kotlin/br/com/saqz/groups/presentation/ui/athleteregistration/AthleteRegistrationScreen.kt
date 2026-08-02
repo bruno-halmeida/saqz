@@ -289,9 +289,9 @@ private fun AthleteBeachSection(
 @Composable
 private fun PositionChips(
     state: AthleteRegistrationState,
-    secondary: Boolean = false,
     onSelect: (AthletePosition) -> Unit,
     modifier: Modifier = Modifier,
+    secondary: Boolean = false,
 ) {
     val options = AthletePosition.entries
     FlowRow(
@@ -403,7 +403,7 @@ private fun AthleteRegistrationError(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AthleteRegistrationLoadFailure(modifier: Modifier = Modifier, onRetry: () -> Unit) {
+private fun AthleteRegistrationLoadFailure(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     SaqzEmptyState(
         title = stringResource(Res.string.athlete_registration_load_error_title),
         description = stringResource(Res.string.athlete_registration_load_error_body),

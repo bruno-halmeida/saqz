@@ -12,14 +12,14 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun AthleteRegistrationRoot(
     groupId: String,
-    onSaved: () -> Unit,
+    onSave: () -> Unit,
     onBack: () -> Unit,
     viewModel: AthleteRegistrationViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            AthleteRegistrationEffect.Saved -> onSaved()
+            AthleteRegistrationEffect.Saved -> onSave()
         }
     }
     AthleteRegistrationScreen(state = state, onIntent = viewModel::onIntent, onBack = onBack)
