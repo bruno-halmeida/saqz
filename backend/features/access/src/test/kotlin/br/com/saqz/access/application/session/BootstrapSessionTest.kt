@@ -8,6 +8,7 @@ import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -61,6 +62,14 @@ class BootstrapSessionTest {
     @Test
     fun `missing display name is rejected before write`() {
         assertBlocked(identity(displayName = null), BootstrapSessionResult.InvalidDisplayName)
+    }
+
+    @Test
+    fun `deleted account is rejected before display name validation and write`() {
+        val repository = RecordingSessionRepository(view).apply { deleted = true }
+
+        assertFailsWith<AccountDeletedException> { BootstrapSession(repository).execute(identity(displayName = null)) }
+        assertTrue(repository.commands.isEmpty())
     }
 
     @Test
@@ -163,6 +172,9 @@ class BootstrapSessionTest {
         private val result: SessionView,
     ) : SessionRepository {
         val commands: MutableList<SessionUpsert> = Collections.synchronizedList(mutableListOf())
+        var deleted = false
+
+        override fun isDeleted(subject: String): Boolean = deleted
 
         override fun upsertAndLoad(command: SessionUpsert): SessionView {
             commands += command

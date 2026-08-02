@@ -44,6 +44,7 @@ import br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink
 import br.com.saqz.groups.application.attendance.share.RotateAttendanceLink
 import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.delete.DeleteGroup
+import br.com.saqz.groups.application.delete.DeleteGroupResult
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
@@ -99,6 +100,9 @@ import br.com.saqz.groups.application.finance.expense.ExpenseService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
+import br.com.saqz.access.application.session.AccountGroupCleanup
+import br.com.saqz.access.application.session.AccountTransactionRunner
+import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
@@ -108,11 +112,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
+import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.mail.javamail.JavaMailSender
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
+import java.util.UUID
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
@@ -149,8 +155,79 @@ class AccessSessionConfiguration {
     fun completeSessionProfile(repository: JdbcSessionRepository) = CompleteSessionProfile(repository)
 
     @Bean
-    fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
-        AccessSessionController(useCase, profile)
+    fun deleteAccount(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcSessionRepository,
+        deleteGroup: DeleteGroup,
+        athleteRepository: JdbcAthleteRepository,
+        dataSource: DataSource,
+    ): DeleteAccount {
+        val jdbc = JdbcClient.create(dataSource)
+        val cleanup = object : AccountGroupCleanup {
+            override fun deleteOwnedGroups(ownerUserId: UUID) {
+                ownedGroupIds(ownerUserId).forEach { groupId ->
+                    when (deleteGroup.execute(ownerUserId, groupId)) {
+                        DeleteGroupResult.Success,
+                        DeleteGroupResult.GroupNotFound,
+                        -> Unit
+                        DeleteGroupResult.AccessForbidden ->
+                            error("account owner could not soft-delete owned group")
+                    }
+                }
+            }
+
+            override fun removeMemberships(userId: UUID) {
+                membershipGroupIds(userId).forEach { groupId ->
+                    athleteRepository.remove(groupId, userId)
+                }
+            }
+
+            private fun ownedGroupIds(ownerUserId: UUID): List<UUID> = jdbc.sql(
+                """
+                SELECT id
+                FROM access_groups
+                WHERE owner_user_id = :ownerUserId AND deleted_at IS NULL
+                ORDER BY id
+                FOR UPDATE
+                """.trimIndent(),
+            )
+                .param("ownerUserId", ownerUserId)
+                .query(UUID::class.java)
+                .list()
+                .filterNotNull()
+
+            private fun membershipGroupIds(userId: UUID): List<UUID> = jdbc.sql(
+                """
+                SELECT memberships.group_id
+                FROM group_memberships memberships
+                JOIN access_groups groups ON groups.id = memberships.group_id
+                WHERE memberships.user_id = :userId
+                  AND groups.owner_user_id <> :userId
+                  AND groups.deleted_at IS NULL
+                ORDER BY memberships.group_id
+                FOR UPDATE OF memberships, groups
+                """.trimIndent(),
+            )
+                .param("userId", userId)
+                .query(UUID::class.java)
+                .list()
+                .filterNotNull()
+        }
+        return DeleteAccount(
+            transactionRunner = object : AccountTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = transaction.inTransaction(block)
+            },
+            repository = repository,
+            groupCleanup = cleanup,
+        )
+    }
+
+    @Bean
+    fun accessSessionController(
+        useCase: BootstrapSession,
+        profile: CompleteSessionProfile,
+        deleteAccount: DeleteAccount,
+    ) = AccessSessionController(useCase, profile, deleteAccount)
 
     @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
     @Bean fun userPhotoConverter() = UserPhotoConverter()

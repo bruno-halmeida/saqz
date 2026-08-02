@@ -30,7 +30,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(8, flyway.migrate().migrationsExecuted)
+        assertEquals(9, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -173,6 +173,7 @@ class AccessSchemaIntegrationTest {
             val afterV20 = Flyway.configure()
                 .dataSource(legacyDataSource)
                 .locations("classpath:db/migration")
+                .target("20")
                 .load()
             assertEquals(1, afterV20.migrate().migrationsExecuted)
 

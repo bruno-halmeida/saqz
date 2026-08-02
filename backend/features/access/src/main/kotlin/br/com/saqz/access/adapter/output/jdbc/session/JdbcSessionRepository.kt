@@ -1,5 +1,7 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
+import br.com.saqz.access.application.session.AccountDeletedException
+import br.com.saqz.access.application.session.AccountDeletionRepository
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionMembership
 import br.com.saqz.access.application.session.SessionRepository
@@ -15,10 +17,11 @@ import javax.sql.DataSource
 
 class JdbcSessionRepository(
     dataSource: DataSource,
-) : SessionRepository {
+) : SessionRepository, AccountDeletionRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
+        if (isDeleted(command.subject)) throw AccountDeletedException()
         val user = jdbc.sql(
             """
             INSERT INTO access_users (
@@ -26,7 +29,7 @@ class JdbcSessionRepository(
             ) VALUES (
                 :id, :subject, :email, :emailVerified, :displayName, now(), now()
             )
-            ON CONFLICT (firebase_subject) DO UPDATE SET
+            ON CONFLICT (firebase_subject) WHERE deleted_at IS NULL DO UPDATE SET
                 email = EXCLUDED.email,
                 email_verified = EXCLUDED.email_verified,
                 display_name = EXCLUDED.display_name,
@@ -68,6 +71,57 @@ class JdbcSessionRepository(
         )
     }
 
+    override fun isDeleted(subject: String): Boolean = jdbc.sql(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM access_users deleted
+            WHERE deleted.firebase_subject = :subject
+              AND deleted.deleted_at IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM access_users active
+                  WHERE active.firebase_subject = :subject
+                    AND active.deleted_at IS NULL
+              )
+        )
+        """.trimIndent(),
+    )
+        .param("subject", subject)
+        .query(Boolean::class.java)
+        .single()
+
+    override fun softDelete(subject: String): UUID? {
+        val userId = jdbc.sql(
+            "SELECT id FROM access_users WHERE firebase_subject = :subject AND deleted_at IS NULL FOR UPDATE",
+        )
+            .param("subject", subject)
+            .query(UUID::class.java)
+            .optional()
+            .orElse(null) ?: return null
+
+        jdbc.sql("DELETE FROM access_user_photos WHERE user_id = :userId")
+            .param("userId", userId)
+            .update()
+
+        jdbc.sql(
+            """
+            UPDATE access_users
+            SET deleted_at = now(),
+                email = NULL,
+                phone = NULL,
+                city = NULL,
+                nickname = NULL,
+                updated_at = now()
+            WHERE id = :userId AND deleted_at IS NULL
+            """.trimIndent(),
+        )
+            .param("userId", userId)
+            .update()
+
+        return userId
+    }
+
     override fun updateProfile(command: ProfileCompletion): SessionView? {
         val user = jdbc.sql(
             """
@@ -79,6 +133,7 @@ class JdbcSessionRepository(
                 phone_visibility = CASE WHEN :phoneVisibilityProvided THEN :phoneVisibility ELSE phone_visibility END,
                 updated_at = now()
             WHERE firebase_subject = :subject
+              AND deleted_at IS NULL
             RETURNING id, email, display_name, phone, nickname, city, phone_visibility
             """.trimIndent(),
         )

@@ -6,6 +6,7 @@ import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as Acce
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
+import br.com.saqz.access.application.session.AccountDeletedException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
@@ -101,6 +102,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccountNotFoundException::class)
     fun accountNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.ACCOUNT_NOT_FOUND)
+    }
+
+    @ExceptionHandler(AccountDeletedException::class)
+    fun accountDeleted(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
     }
 
     @ExceptionHandler(PasswordResetRateLimitException::class)

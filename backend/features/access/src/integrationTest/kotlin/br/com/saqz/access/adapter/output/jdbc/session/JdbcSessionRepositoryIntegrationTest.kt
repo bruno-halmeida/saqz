@@ -1,6 +1,7 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.testing.startAndAwaitJdbc
+import br.com.saqz.access.application.session.AccountDeletedException
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.PhoneVisibility
 import br.com.saqz.access.application.session.SessionUpsert
@@ -23,6 +24,8 @@ import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -387,6 +390,55 @@ class JdbcSessionRepositoryIntegrationTest {
         assertEquals(null, result)
     }
 
+    @Test
+    fun `soft delete clears personal fields and photo while preserving the display name`() {
+        val session = repository.upsertAndLoad(command("subject-delete"))
+        repository.updateProfile(
+            ProfileCompletion(
+                subject = "subject-delete",
+                phone = PhoneNumber.from("+5511911112222"),
+                displayName = AccessName.from("Public Snapshot"),
+                nickname = "Rafa",
+                city = "São Paulo, SP",
+                phoneVisibility = PhoneVisibility.NOBODY,
+                phoneProvided = true,
+                displayNameProvided = true,
+                nicknameProvided = true,
+                cityProvided = true,
+                phoneVisibilityProvided = true,
+            ),
+        )
+        execute(
+            "INSERT INTO access_user_photos " +
+                "(user_id, photo_bytes, byte_size, width, height, sha256_digest, created_at, updated_at) VALUES " +
+                "('${session.user.id}', decode('01', 'hex'), 1, 1, 1, decode(repeat('ab', 32), 'hex'), now(), now())",
+        )
+
+        assertEquals(session.user.id, repository.softDelete("subject-delete"))
+        assertEquals(1, count("SELECT count(*) FROM access_users WHERE deleted_at IS NOT NULL"))
+        assertEquals("Public Snapshot", text("SELECT display_name FROM access_users WHERE id = '${session.user.id}'"))
+        assertNull(textOrNull("SELECT email FROM access_users WHERE id = '${session.user.id}'"))
+        assertNull(textOrNull("SELECT phone FROM access_users WHERE id = '${session.user.id}'"))
+        assertNull(textOrNull("SELECT nickname FROM access_users WHERE id = '${session.user.id}'"))
+        assertNull(textOrNull("SELECT city FROM access_users WHERE id = '${session.user.id}'"))
+        assertEquals(0, count("SELECT count(*) FROM access_user_photos WHERE user_id = '${session.user.id}'"))
+    }
+
+    @Test
+    fun `deleted subject is rejected while a same-email registration gets a fresh user`() {
+        val deleted = repository.upsertAndLoad(command("subject-old"))
+        repository.softDelete("subject-old")
+
+        assertTrue(repository.isDeleted("subject-old"))
+        assertFailsWith<AccountDeletedException> { repository.upsertAndLoad(command("subject-old")) }
+
+        val replacement = repository.upsertAndLoad(command("subject-new"))
+
+        assertNotEquals(deleted.user.id, replacement.user.id)
+        assertTrue(replacement.memberships.isEmpty())
+        assertEquals(2, count("SELECT count(*) FROM access_users"))
+    }
+
     private fun command(subject: String, emailVerified: Boolean = true) =
         SessionUpsert(subject, "person@example.test", emailVerified, AccessName.from("Person Name"))
 
@@ -425,6 +477,16 @@ class JdbcSessionRepositoryIntegrationTest {
         }
 
     private fun text(sql: String): String =
+        connection().use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery(sql).use { result ->
+                    result.next()
+                    result.getString(1)
+                }
+            }
+        }
+
+    private fun textOrNull(sql: String): String? =
         connection().use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery(sql).use { result ->
