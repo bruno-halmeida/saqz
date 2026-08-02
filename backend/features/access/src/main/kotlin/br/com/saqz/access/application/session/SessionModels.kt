@@ -36,6 +36,12 @@ data class SessionUpsert(
     val displayName: AccessName,
 )
 
+enum class PhoneVisibility {
+    EVERYONE,
+    ADMINS,
+    NOBODY,
+}
+
 /**
  * Ausência do claim conta como não confirmado: tanto a coluna `email_verified`
  * quanto o campo da resposta são não-nulos.
@@ -48,7 +54,7 @@ data class ProfileCompletion(
     val displayName: AccessName?,
     val nickname: String? = null,
     val city: String? = null,
-    val phoneVisibility: String? = null,
+    val phoneVisibility: PhoneVisibility? = null,
     val phoneProvided: Boolean = true,
     val displayNameProvided: Boolean = displayName != null,
     val nicknameProvided: Boolean = false,
@@ -68,6 +74,12 @@ sealed interface CompleteSessionProfileResult {
     data object InvalidPhone : CompleteSessionProfileResult
 
     data object InvalidDisplayName : CompleteSessionProfileResult
+
+    data object InvalidNickname : CompleteSessionProfileResult
+
+    data object InvalidCity : CompleteSessionProfileResult
+
+    data object InvalidPhoneVisibility : CompleteSessionProfileResult
 
     data object AccountNotFound : CompleteSessionProfileResult
 }

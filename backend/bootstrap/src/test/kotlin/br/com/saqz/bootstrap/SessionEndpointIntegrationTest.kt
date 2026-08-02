@@ -374,6 +374,50 @@ class SessionEndpointIntegrationTest {
         assertTrue(repository.profileCommands.isEmpty())
     }
 
+    @Test
+    fun `invalid phone visibility returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phoneVisibility":"FRIENDS"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phoneVisibility"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `null phone visibility returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phoneVisibility":null}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phoneVisibility"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `invalid nickname returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"nickname":"R"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("nickname"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `oversized city returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"city":"${"a".repeat(81)}"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("city"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
     private fun patchProfile(body: String): HttpResponse<String> =
         send(
             HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/session/profile"))

@@ -90,7 +90,7 @@ class JdbcSessionRepository(
             .param("nicknameProvided", command.nicknameProvided)
             .param("city", command.city, Types.VARCHAR)
             .param("cityProvided", command.cityProvided)
-            .param("phoneVisibility", command.phoneVisibility, Types.VARCHAR)
+            .param("phoneVisibility", command.phoneVisibility?.name, Types.VARCHAR)
             .param("phoneVisibilityProvided", command.phoneVisibilityProvided)
             .param("subject", command.subject)
             .query { result, _ ->

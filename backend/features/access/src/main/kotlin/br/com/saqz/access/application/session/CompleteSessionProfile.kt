@@ -33,8 +33,21 @@ class CompleteSessionProfile(
         } else {
             null
         }
+        val phoneVisibility = if (phoneVisibilityProvided) {
+            rawPhoneVisibility?.let { raw ->
+                runCatching { PhoneVisibility.valueOf(raw) }.getOrNull()
+            } ?: return CompleteSessionProfileResult.InvalidPhoneVisibility
+        } else {
+            null
+        }
         val nickname = rawNickname?.takeUnless(String::isBlank)
+        if (nicknameProvided && nickname != null && !nickname.isValidNickname()) {
+            return CompleteSessionProfileResult.InvalidNickname
+        }
         val city = rawCity?.takeUnless(String::isBlank)
+        if (cityProvided && city != null && city.length > 80) {
+            return CompleteSessionProfileResult.InvalidCity
+        }
         val session = repository.updateProfile(
             ProfileCompletion(
                 subject = subject,
@@ -42,7 +55,7 @@ class CompleteSessionProfile(
                 displayName = displayName,
                 nickname = nickname,
                 city = city,
-                phoneVisibility = rawPhoneVisibility,
+                phoneVisibility = phoneVisibility,
                 phoneProvided = phoneProvided,
                 displayNameProvided = displayNameProvided,
                 nicknameProvided = nicknameProvided,
@@ -53,4 +66,7 @@ class CompleteSessionProfile(
             ?: return CompleteSessionProfileResult.AccountNotFound
         return CompleteSessionProfileResult.Success(session)
     }
+
+    private fun String.isValidNickname(): Boolean =
+        this == trim() && length in 2..40 && none(Char::isISOControl)
 }

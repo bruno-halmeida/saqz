@@ -2,6 +2,7 @@ package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.testing.startAndAwaitJdbc
 import br.com.saqz.access.application.session.ProfileCompletion
+import br.com.saqz.access.application.session.PhoneVisibility
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
@@ -239,7 +240,7 @@ class JdbcSessionRepositoryIntegrationTest {
                 displayName = AccessName.from("Rafael Costa"),
                 nickname = "Rafa",
                 city = "São Paulo, SP",
-                phoneVisibility = "EVERYONE",
+                phoneVisibility = PhoneVisibility.EVERYONE,
                 phoneProvided = true,
                 displayNameProvided = true,
                 nicknameProvided = true,
@@ -264,7 +265,7 @@ class JdbcSessionRepositoryIntegrationTest {
                 displayName = AccessName.from("Rafael Costa"),
                 nickname = "Rafa",
                 city = "São Paulo, SP",
-                phoneVisibility = "NOBODY",
+                phoneVisibility = PhoneVisibility.NOBODY,
                 phoneProvided = true,
                 displayNameProvided = true,
                 nicknameProvided = true,

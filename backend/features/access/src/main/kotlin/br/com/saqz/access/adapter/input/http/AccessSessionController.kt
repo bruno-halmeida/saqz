@@ -97,6 +97,8 @@ class InvalidDisplayNameException : RuntimeException()
 
 class InvalidPhoneException : RuntimeException()
 
+class InvalidSessionProfileFieldException(val field: String) : RuntimeException()
+
 class AccountNotFoundException : RuntimeException()
 
 @RestController
@@ -134,6 +136,10 @@ class AccessSessionController(
         ) {
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            CompleteSessionProfileResult.InvalidNickname -> throw InvalidSessionProfileFieldException("nickname")
+            CompleteSessionProfileResult.InvalidCity -> throw InvalidSessionProfileFieldException("city")
+            CompleteSessionProfileResult.InvalidPhoneVisibility ->
+                throw InvalidSessionProfileFieldException("phoneVisibility")
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
             is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
