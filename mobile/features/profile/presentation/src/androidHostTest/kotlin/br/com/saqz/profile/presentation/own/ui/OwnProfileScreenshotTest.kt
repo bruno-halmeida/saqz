@@ -4,13 +4,16 @@ import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import coil3.compose.LocalPlatformContext
 import br.com.saqz.designsystem.SaqzBottomNav
 import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.profile.presentation.screenshotImageLoader
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -49,6 +52,8 @@ class OwnProfileScreenshotTest {
     private fun capture(name: String, state: br.com.saqz.profile.presentation.own.OwnProfileState) {
         compose.setContent {
             SaqzTheme {
+                val context = LocalPlatformContext.current
+                val imageLoader = remember(context) { screenshotImageLoader(context) }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -57,6 +62,7 @@ class OwnProfileScreenshotTest {
                     OwnProfileScreen(
                         state = state,
                         onIntent = {},
+                        imageLoader = imageLoader,
                         modifier = Modifier.weight(1f),
                     )
                     SaqzBottomNav(

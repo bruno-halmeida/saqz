@@ -5,14 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.domain.PhoneVisibility
 import br.com.saqz.profile.fake.FakeProfileGateway
 import br.com.saqz.profile.presentation.edit.EditProfileFieldError
 import br.com.saqz.profile.presentation.edit.EditProfileState
+import br.com.saqz.profile.presentation.screenshotImageLoader
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -35,7 +39,13 @@ class EditProfileScreenshotTest {
 
     @Test
     fun loadedDefault() = capture("7b-editar-dados") {
-        EditProfileScreen(state = loadedState(), onIntent = {}, onPickPhoto = {}, onBack = {})
+        EditProfileScreen(
+            state = loadedState(),
+            onIntent = {},
+            onPickPhoto = {},
+            onBack = {},
+            imageLoader = it,
+        )
     }
 
     @Test
@@ -48,6 +58,7 @@ class EditProfileScreenshotTest {
             onIntent = {},
             onPickPhoto = {},
             onBack = {},
+            imageLoader = it,
         )
     }
 
@@ -64,6 +75,7 @@ class EditProfileScreenshotTest {
             onIntent = {},
             onPickPhoto = {},
             onBack = {},
+            imageLoader = it,
         )
     }
 
@@ -77,18 +89,21 @@ class EditProfileScreenshotTest {
             onIntent = {},
             onPickPhoto = {},
             onBack = {},
+            imageLoader = it,
         )
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    private fun capture(name: String, content: @Composable (ImageLoader) -> Unit) {
         compose.setContent {
             SaqzTheme {
+                val context = LocalPlatformContext.current
+                val imageLoader = remember(context) { screenshotImageLoader(context) }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(SaqzTheme.colors.background),
                 ) {
-                    content()
+                    content(imageLoader)
                 }
             }
         }

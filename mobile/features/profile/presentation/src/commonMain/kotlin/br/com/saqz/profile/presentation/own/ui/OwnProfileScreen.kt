@@ -67,6 +67,7 @@ import br.com.saqz.profile.presentation.own.OwnProfileViewModel
 import br.com.saqz.profile.presentation.own.toOwnProfileGroupUi
 import br.com.saqz.profile.presentation.own.toOwnProfileStatsUi
 import br.com.saqz.profile.presentation.own.toOwnProfileUserUi
+import br.com.saqz.profile.presentation.photo.profilePhotoImageRequest
 import br.com.saqz.profile.resources.Res
 import br.com.saqz.profile.resources.profile_account
 import br.com.saqz.profile.resources.profile_attendance
@@ -109,12 +110,11 @@ internal object OwnProfileTags {
 fun OwnProfileScreen(
     state: OwnProfileState,
     onIntent: (OwnProfileIntent) -> Unit,
+    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    val context = LocalPlatformContext.current
-    val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
     val pullRefreshState = rememberPullRefreshState(
         refreshing = state.isLoading,
         onRefresh = { onIntent(OwnProfileIntent.Refresh) },
@@ -328,17 +328,21 @@ private fun OwnProfileAvatar(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
+    val context = LocalPlatformContext.current
     val description = stringResource(Res.string.profile_photo_content_description)
+    val imageRequest = user.photoUrl?.let { photoUrl ->
+        remember(context, photoUrl) { profilePhotoImageRequest(context, photoUrl) }
+    }
     SaqzAvatar(
         name = user.displayName,
         size = metrics.iconButtonSize * 2,
         modifier = modifier
             .testTag("${OwnProfileTags.Screen}-photo")
             .semantics { contentDescription = description },
-        photo = user.photoUrl?.let { url ->
+        photo = imageRequest?.let { request ->
             {
                 SubcomposeAsyncImage(
-                    model = url,
+                    model = request,
                     contentDescription = null,
                     imageLoader = imageLoader,
                     modifier = Modifier.fillMaxSize(),
@@ -515,6 +519,13 @@ private fun OwnProfileAccountRow(
     }
 }
 
+@Composable
+private fun OwnProfilePreview(state: OwnProfileState) {
+    val context = LocalPlatformContext.current
+    val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+    OwnProfileScreen(state = state, onIntent = {}, imageLoader = imageLoader)
+}
+
 internal object OwnProfilePreviewData {
     private val fake = FakeProfileGateway()
     private val user = fake.profile.user.toOwnProfileUserUi()
@@ -536,29 +547,29 @@ internal object OwnProfilePreviewData {
 @Preview(name = "7a — perfil", widthDp = 390, heightDp = 844)
 @Composable
 private fun OwnProfileFilledPreview() = SaqzTheme {
-    OwnProfileScreen(state = OwnProfilePreviewData.filled, onIntent = {})
+    OwnProfilePreview(OwnProfilePreviewData.filled)
 }
 
 @Preview(name = "7a — sem presença", widthDp = 390, heightDp = 844)
 @Composable
 private fun OwnProfileNoAttendancePreview() = SaqzTheme {
-    OwnProfileScreen(state = OwnProfilePreviewData.noAttendance, onIntent = {})
+    OwnProfilePreview(OwnProfilePreviewData.noAttendance)
 }
 
 @Preview(name = "7a — sem grupo", widthDp = 390, heightDp = 844)
 @Composable
 private fun OwnProfileEmptyPreview() = SaqzTheme {
-    OwnProfileScreen(state = OwnProfilePreviewData.empty, onIntent = {})
+    OwnProfilePreview(OwnProfilePreviewData.empty)
 }
 
 @Preview(name = "7a — carregando", widthDp = 390, heightDp = 844)
 @Composable
 private fun OwnProfileLoadingPreview() = SaqzTheme {
-    OwnProfileScreen(state = OwnProfilePreviewData.loading, onIntent = {})
+    OwnProfilePreview(OwnProfilePreviewData.loading)
 }
 
 @Preview(name = "7a — erro", widthDp = 390, heightDp = 844)
 @Composable
 private fun OwnProfileErrorPreview() = SaqzTheme {
-    OwnProfileScreen(state = OwnProfilePreviewData.error, onIntent = {})
+    OwnProfilePreview(OwnProfilePreviewData.error)
 }

@@ -15,12 +15,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
+import coil3.compose.SubcomposeAsyncImage
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChoiceChip
@@ -39,6 +43,7 @@ import br.com.saqz.profile.presentation.edit.EditProfileFieldError
 import br.com.saqz.profile.presentation.edit.EditProfileForm
 import br.com.saqz.profile.presentation.edit.EditProfileIntent
 import br.com.saqz.profile.presentation.edit.EditProfileState
+import br.com.saqz.profile.presentation.photo.profilePhotoImageRequest
 import br.com.saqz.profile.resources.Res
 import br.com.saqz.profile.resources.profile_edit_city
 import br.com.saqz.profile.resources.profile_edit_email
@@ -87,6 +92,7 @@ fun EditProfileScreen(
     onIntent: (EditProfileIntent) -> Unit,
     onPickPhoto: () -> Unit,
     onBack: () -> Unit,
+    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -118,6 +124,7 @@ fun EditProfileScreen(
                             EditProfilePhotoCard(
                                 form = state.form,
                                 photoUrl = state.photoUrl,
+                                imageLoader = imageLoader,
                                 onPickPhoto = onPickPhoto,
                             )
                         }
@@ -161,6 +168,7 @@ private fun EditProfileLoadError(onRetry: () -> Unit) {
 private fun EditProfilePhotoCard(
     form: EditProfileForm,
     photoUrl: String?,
+    imageLoader: ImageLoader,
     onPickPhoto: () -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
@@ -170,7 +178,11 @@ private fun EditProfilePhotoCard(
             horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
-                EditProfileAvatar(photoUrl = photoUrl, initials = form.displayName.initials())
+                EditProfileAvatar(
+                    photoUrl = photoUrl,
+                    initials = form.displayName.initials(),
+                    imageLoader = imageLoader,
+                )
                 SaqzIconButton(
                     onClick = onPickPhoto,
                     contentDescription = stringResource(Res.string.profile_edit_photo_action),
@@ -205,25 +217,43 @@ private fun EditProfilePhotoCard(
 private fun EditProfileAvatar(
     photoUrl: String?,
     initials: String,
+    imageLoader: ImageLoader,
 ) {
     val colors = SaqzTheme.colors
-    // VUL-135 will consume this URL with the authenticated image loader. Until then,
-    // initials remain the intentional fallback even when a stored photo exists.
-    key(photoUrl) {
-        Box(
-            modifier = Modifier
-                .size(SaqzTheme.metrics.avatarSize)
-                .clip(CircleShape)
-                .background(colors.surfaceSoft),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = initials,
-                style = SaqzTheme.typography.title,
-                color = colors.textPrimary,
+    val context = LocalPlatformContext.current
+    val imageRequest = photoUrl?.let { url ->
+        remember(context, url) { profilePhotoImageRequest(context, url) }
+    }
+    Box(
+        modifier = Modifier
+            .size(SaqzTheme.metrics.avatarSize)
+            .clip(CircleShape)
+            .background(colors.surfaceSoft),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (imageRequest == null) {
+            EditProfileAvatarFallback(initials)
+        } else {
+            SubcomposeAsyncImage(
+                model = imageRequest,
+                imageLoader = imageLoader,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                loading = { EditProfileAvatarFallback(initials) },
+                error = { EditProfileAvatarFallback(initials) },
             )
         }
     }
+}
+
+@Composable
+private fun EditProfileAvatarFallback(initials: String) {
+    Text(
+        text = initials,
+        style = SaqzTheme.typography.title,
+        color = SaqzTheme.colors.textPrimary,
+    )
 }
 
 @Composable
@@ -414,10 +444,13 @@ private fun String.initials(): String = trim()
 @Preview
 @Composable
 private fun EditProfilePreview() = SaqzTheme {
+    val context = LocalPlatformContext.current
+    val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
     EditProfileScreen(
         state = EditProfileState.loaded(FakeProfileGateway().profile),
         onIntent = {},
         onPickPhoto = {},
         onBack = {},
+        imageLoader = imageLoader,
     )
 }
