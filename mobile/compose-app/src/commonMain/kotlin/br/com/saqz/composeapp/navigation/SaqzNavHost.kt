@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSerializable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -93,6 +97,7 @@ internal fun SaqzNavHost(
     // jogaria fora o stack que acabou de ser restaurado — girar o aparelho no meio do 1b, ou
     // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
     val restoring = remember { booleanArrayOf(true) }
+    var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(state.session) {
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
         restoring[0] = false
@@ -179,6 +184,7 @@ internal fun SaqzNavHost(
                                     ),
                                 )
                             },
+                            refreshVersion = profileRefreshVersion,
                         )
                     },
                     banner = {
@@ -211,7 +217,10 @@ internal fun SaqzNavHost(
             }
             entry<ProfileRoute.Edit> {
                 EditProfileRoot(
-                    onSave = pop,
+                    onSave = {
+                        pop()
+                        profileRefreshVersion++
+                    },
                     onBack = pop,
                 )
             }

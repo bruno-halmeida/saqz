@@ -68,6 +68,29 @@ class OwnProfileViewModelTest {
     }
 
     @Test
+    fun `refresh reloads the profile data after returning from the editor`() = runTest(dispatcher) {
+        val gateway = FakeProfileGateway()
+        val viewModel = OwnProfileViewModel(gateway)
+
+        advanceUntilIdle()
+        gateway.profile = gateway.profile.copy(
+            user = gateway.profile.user.copy(
+                displayName = "Novo nome",
+                nickname = "Novo apelido",
+                city = "Rio de Janeiro",
+                photoUrl = "/api/session/photo?v=novo",
+            ),
+        )
+
+        viewModel.onIntent(OwnProfileIntent.Refresh)
+        advanceUntilIdle()
+
+        assertEquals("Novo nome", viewModel.state.value.user?.displayName)
+        assertEquals("Novo apelido · Rio de Janeiro", viewModel.state.value.user?.subtitle)
+        assertEquals("/api/session/photo?v=novo", viewModel.state.value.user?.photoUrl)
+    }
+
+    @Test
     fun `subtitle keeps only the nickname when city is null`() = runTest(dispatcher) {
         val gateway = FakeProfileGateway().apply {
             profile = profile.copy(user = profile.user.copy(nickname = "Rafa", city = null))
