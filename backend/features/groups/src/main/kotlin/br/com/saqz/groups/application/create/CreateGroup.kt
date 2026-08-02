@@ -10,6 +10,8 @@ import br.com.saqz.groups.domain.plan.PlanLimitPolicy
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import java.util.UUID
 
+private const val MAX_TIME_ZONE_LENGTH = 64
+
 class CreateGroup(
     private val transactionRunner: TransactionRunner,
     private val repository: GroupCreationRepository,
@@ -22,10 +24,20 @@ class CreateGroup(
         timeZone: String,
     ): CreateGroupResult {
         val validTimeZone = runCatching { IanaTimeZone.from(timeZone) }.getOrNull()
+        val timeZoneLength = timeZone.codePointCount(0, timeZone.length)
+        val timeZoneError = when {
+            timeZoneLength !in 1..MAX_TIME_ZONE_LENGTH ->
+                GroupValidationError("timeZone", "must be between 1 and $MAX_TIME_ZONE_LENGTH characters")
+            timeZone.codePoints().anyMatch(Character::isISOControl) ->
+                GroupValidationError("timeZone", "must not contain control characters")
+            validTimeZone == null ->
+                GroupValidationError("timeZone", "must be a valid IANA identifier")
+            else -> null
+        }
         val profileValidation = GroupProfileDefaultsValidator.validate(profile)
         val errors = buildList {
             if (profileValidation is GroupProfileDefaultsValidation.Invalid) addAll(profileValidation.errors)
-            if (validTimeZone == null) add(GroupValidationError("timeZone", "must be a valid IANA identifier"))
+            timeZoneError?.let(::add)
         }
         if (errors.isNotEmpty()) return CreateGroupResult.Invalid(errors)
 

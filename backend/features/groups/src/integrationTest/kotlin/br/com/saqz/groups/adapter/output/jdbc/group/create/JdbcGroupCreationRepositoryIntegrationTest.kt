@@ -83,12 +83,13 @@ class JdbcGroupCreationRepositoryIntegrationTest {
     }
 
     @Test
-    fun `owner is represented only by the group foreign key`() {
+    fun `owner is represented by an ADMIN membership`() {
         val owner = insertUser("sole-owner")
         val group = success(useCase.execute(owner, UUID.randomUUID(), validProfile(name = "Owner Group"), "UTC")).group
 
         assertEquals(1, count("SELECT count(*) FROM access_groups WHERE id = '${group.id}'"))
-        assertEquals(0, count("SELECT count(*) FROM group_memberships WHERE group_id = '${group.id}'"))
+        assertEquals(1, count("SELECT count(*) FROM group_memberships WHERE group_id = '${group.id}' AND user_id = '$owner'"))
+        assertEquals("ADMIN", text("SELECT role FROM group_memberships WHERE group_id = '${group.id}' AND user_id = '$owner'"))
     }
 
     @Test
