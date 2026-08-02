@@ -39,6 +39,6 @@
 ### T5 — Final verification and publication
 
 - **Files**: validation report only if needed by the verification workflow.
-- **Done when**: the migration number is reconfirmed against `origin/main`; JDK 21 unit/integration/detekt gates pass; commit, ready PR and Linear review update exist.
+- **Done when**: the migration number is reconfirmed against `origin/main`; JDK 21 unit/integration gates pass; the repository's detekt availability is recorded; commit, ready PR and Linear review update exist.
 - **Gate**: build gate plus required final checks.
-- **Status**: pending
+- **Status**: completed
