@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.MediaType
 import tools.jackson.databind.ObjectMapper
+import java.time.Instant
 
 class ApiProblemWriter(
     private val objectMapper: ObjectMapper,
@@ -17,6 +18,7 @@ class ApiProblemWriter(
         fieldErrors: Map<String, List<String>>? = null,
         retryAfterSeconds: Int? = null,
         remainingAttempts: Int? = null,
+        expiredAt: Instant? = null,
     ) {
         val correlationId = requestCorrelationId(request).value
         response.status = status
@@ -24,7 +26,7 @@ class ApiProblemWriter(
         if (retryAfterSeconds != null) response.setHeader("Retry-After", retryAfterSeconds.toString())
         objectMapper.writeValue(
             response.outputStream,
-            ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds, remainingAttempts),
+            ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds, remainingAttempts, expiredAt),
         )
     }
 }

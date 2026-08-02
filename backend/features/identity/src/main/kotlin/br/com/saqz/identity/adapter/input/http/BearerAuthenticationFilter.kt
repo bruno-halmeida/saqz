@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 class BearerAuthenticationFilter(
     private val verifyRequestIdentity: VerifyRequestIdentity,
     private val anonymousPaths: Set<String> = setOf("/actuator/health"),
+    private val optionalAuthenticationPaths: Set<String> = emptySet(),
     private val writeProblem: (HttpServletRequest, HttpServletResponse, Int, ErrorCode?) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
@@ -26,6 +27,10 @@ class BearerAuthenticationFilter(
     ) {
         val token = bearerToken(request.getHeader("Authorization"))
         if (token == null) {
+            if (matchesPath(request, optionalAuthenticationPaths)) {
+                filterChain.doFilter(request, response)
+                return
+            }
             writeProblem(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
             return
         }
@@ -52,4 +57,7 @@ class BearerAuthenticationFilter(
         val token = header.substringAfter(' ').trim()
         return token.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) }
     }
+
+    private fun matchesPath(request: HttpServletRequest, paths: Set<String>): Boolean =
+        paths.any { request.requestURI == it || request.requestURI.startsWith("$it/") }
 }

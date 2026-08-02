@@ -13,6 +13,7 @@ dependencies {
     implementation(libs.twelvemonkeys.imageio.webp)
     implementation("org.springframework.security:spring-security-core")
     implementation("org.springframework:spring-web")
+    implementation("jakarta.servlet:jakarta.servlet-api")
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)

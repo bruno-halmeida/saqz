@@ -32,7 +32,11 @@ class IdentitySecurityConfiguration {
     fun bearerAuthenticationFilter(
         verifyRequestIdentity: VerifyRequestIdentity,
         problemWriter: ApiProblemWriter,
-    ) = BearerAuthenticationFilter(verifyRequestIdentity, ANONYMOUS_PATHS) { request, response, status, code ->
+    ) = BearerAuthenticationFilter(
+        verifyRequestIdentity,
+        ANONYMOUS_PATHS,
+        OPTIONAL_AUTHENTICATION_PATHS,
+    ) { request, response, status, code ->
         problemWriter.write(request, response, status, code)
     }
 
@@ -49,6 +53,7 @@ class IdentitySecurityConfiguration {
         .authorizeHttpRequests {
             it.requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/password-reset/**").permitAll()
+                .requestMatchers("/api/invites/preview").permitAll()
                 .requestMatchers("/webhooks/asaas").permitAll()
                 .anyRequest().authenticated()
         }
@@ -65,5 +70,6 @@ class IdentitySecurityConfiguration {
     private companion object {
         /** Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer. */
         val ANONYMOUS_PATHS = setOf("/actuator/health", "/api/password-reset", "/webhooks/asaas")
+        val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview")
     }
 }

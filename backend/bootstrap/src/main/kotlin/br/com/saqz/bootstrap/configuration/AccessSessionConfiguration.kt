@@ -6,6 +6,7 @@ import br.com.saqz.groups.adapter.input.http.AccessGroupReadController
 import br.com.saqz.groups.adapter.input.http.AccessGroupSettingsController
 import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
 import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
+import br.com.saqz.groups.adapter.input.http.AccessInvitePreviewController
 import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
@@ -29,6 +30,7 @@ import br.com.saqz.groups.adapter.output.jdbc.photo.JdbcGroupPhotoRepository
 import br.com.saqz.groups.adapter.output.media.GroupPhotoValidator
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
+import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInvitePreviewRepository
 import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.access.adapter.input.http.UserPhotoController
 import br.com.saqz.access.adapter.output.jdbc.photo.JdbcUserPhotoRepository
@@ -50,6 +52,8 @@ import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
 import br.com.saqz.groups.application.invite.manage.RotateInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
+import br.com.saqz.groups.application.invite.preview.AnonymousInvitePreviewRateLimiter
+import br.com.saqz.groups.application.invite.preview.PreviewInvite
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPlanLookup
@@ -446,6 +450,25 @@ class AccessSessionConfiguration {
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         redeemInvite: RedeemInvite,
     ) = AccessInviteRedemptionController(verifiedGroupActorResolver, redeemInvite)
+
+    @Bean
+    fun invitePreviewRepository(dataSource: DataSource) = JdbcInvitePreviewRepository(dataSource)
+
+    @Bean
+    fun invitePreviewAnonymousRateLimiter() = AnonymousInvitePreviewRateLimiter()
+
+    @Bean
+    fun previewInvite(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcInvitePreviewRepository,
+        anonymousRateLimiter: AnonymousInvitePreviewRateLimiter,
+    ) = PreviewInvite(transaction, repository, anonymousRateLimiter, Clock.systemUTC())
+
+    @Bean
+    fun accessInvitePreviewController(
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
+        previewInvite: PreviewInvite,
+    ) = AccessInvitePreviewController(verifiedGroupActorResolver, previewInvite)
 
     @Bean
     fun attendanceLinkRepository(dataSource: DataSource) = JdbcAttendanceLinkRepository(dataSource)
