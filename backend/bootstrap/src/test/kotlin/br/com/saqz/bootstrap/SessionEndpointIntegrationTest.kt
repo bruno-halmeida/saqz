@@ -33,6 +33,7 @@ import java.net.http.HttpResponse
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import tools.jackson.databind.ObjectMapper
 
@@ -316,10 +317,46 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `missing phone field returns a stable field validation problem`() {
+    fun `missing phone field preserves the existing phone`() {
         putSession()
 
         val response = patchProfile("""{"displayName":"New Name"}""")
+
+        assertEquals(200, response.statusCode())
+        assertTrue(json(response)["user"]["phone"].isNull)
+        assertEquals(false, repository.profileCommands.single().phoneProvided)
+    }
+
+    @Test
+    fun `missing nickname field preserves the existing nickname`() {
+        repository.nickname = "Rafa"
+        putSession()
+
+        val response = patchProfile("""{"displayName":"New Name"}""")
+
+        assertEquals(200, response.statusCode())
+        assertEquals("Rafa", json(response)["user"]["nickname"].stringValue())
+        assertEquals(false, repository.profileCommands.single().nicknameProvided)
+    }
+
+    @Test
+    fun `blank nickname field clears the existing nickname`() {
+        repository.nickname = "Rafa"
+        putSession()
+
+        val response = patchProfile("""{"nickname":""}""")
+
+        assertEquals(200, response.statusCode())
+        assertTrue(json(response)["user"]["nickname"].isNull)
+        assertEquals(true, repository.profileCommands.single().nicknameProvided)
+        assertNull(repository.profileCommands.single().nickname)
+    }
+
+    @Test
+    fun `blank phone field returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phone":""}""")
 
         assertProblem(response, 400, "VALIDATION_FAILED")
         assertTrue(json(response)["fieldErrors"].has("phone"))
@@ -334,6 +371,83 @@ class SessionEndpointIntegrationTest {
 
         assertProblem(response, 400, "VALIDATION_FAILED")
         assertTrue(json(response)["fieldErrors"].has("phone"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `invalid phone visibility returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phoneVisibility":"FRIENDS"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phoneVisibility"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `null phone visibility returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phoneVisibility":null}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("phoneVisibility"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `invalid nickname returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"nickname":"R"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("nickname"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `single supplementary character nickname returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"nickname":"😀"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("nickname"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `forty supplementary character nickname is accepted`() {
+        putSession()
+        val nickname = "😀".repeat(40)
+
+        val response = patchProfile("""{"nickname":"$nickname"}""")
+
+        assertEquals(200, response.statusCode())
+        assertEquals(nickname, repository.profileCommands.single().nickname)
+    }
+
+    @Test
+    fun `oversized city returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"city":"${"a".repeat(81)}"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("city"))
+        assertTrue(repository.profileCommands.isEmpty())
+    }
+
+    @Test
+    fun `city with a NUL escape returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"city":"A\u0000B"}""")
+
+        assertProblem(response, 400, "VALIDATION_FAILED")
+        assertTrue(json(response)["fieldErrors"].has("city"))
         assertTrue(repository.profileCommands.isEmpty())
     }
 
@@ -413,6 +527,8 @@ class SessionEndpointIntegrationTest {
         private val ids = mutableMapOf<String, UUID>()
         private val phones = mutableMapOf<String, PhoneNumber>()
         private val names = mutableMapOf<String, AccessName>()
+        private val nicknames = mutableMapOf<String, String?>()
+        var nickname: String? = null
         var memberships: List<SessionMembership> = emptyList()
         var photoDigest: String? = null
         var failure: RuntimeException? = null
@@ -423,6 +539,8 @@ class SessionEndpointIntegrationTest {
             ids.clear()
             phones.clear()
             names.clear()
+            nicknames.clear()
+            nickname = null
             memberships = emptyList()
             photoDigest = null
             failure = null
@@ -433,6 +551,7 @@ class SessionEndpointIntegrationTest {
             commands += command
             val id = ids.getOrPut(command.subject) { UUID.randomUUID() }
             names[command.subject] = command.displayName
+            nicknames[command.subject] = nickname
             return SessionView(
                 UserAccount(
                     id,
@@ -450,10 +569,18 @@ class SessionEndpointIntegrationTest {
             failure?.let { throw it }
             val id = ids[command.subject] ?: return null
             profileCommands += command
-            phones[command.subject] = command.phone
+            if (command.phoneProvided) phones[command.subject] = requireNotNull(command.phone)
             command.displayName?.let { names[command.subject] = it }
+            if (command.nicknameProvided) nicknames[command.subject] = command.nickname
             return SessionView(
-                UserAccount(id, command.subject, "session@example.test", names.getValue(command.subject), command.phone),
+                UserAccount(
+                    id,
+                    command.subject,
+                    "session@example.test",
+                    names.getValue(command.subject),
+                    phones[command.subject],
+                    nickname = nicknames[command.subject],
+                ),
                 memberships,
             )
         }

@@ -29,23 +29,47 @@ class JdbcAthleteRosterRepository(
 ) : AthleteRosterRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun list(groupId: UUID, filter: AthleteRosterFilter): List<AthleteRosterEntry> {
+    override fun list(actorId: UUID, groupId: UUID, filter: AthleteRosterFilter): List<AthleteRosterEntry> {
         val conditions = buildList {
             add("m.group_id = :groupId")
             if (!filter.includeInactive) add("m.active = true")
             if (filter.membershipType != null) add("m.membership_type = :membershipType")
             if (filter.position != null) add("m.position = :position")
-            if (!filter.search.isNullOrBlank()) add("${fold("u.display_name")} LIKE '%' || ${fold(":search")} || '%'")
+            if (!filter.search.isNullOrBlank()) {
+                add("${fold("coalesce(u.nickname, u.display_name)")} LIKE '%' || ${fold(":search")} || '%'")
+            }
         }
         var spec = jdbc.sql(
             """
-            SELECT m.user_id, u.display_name, u.phone, m.position, m.membership_type, m.active
+            SELECT m.user_id,
+                   coalesce(u.nickname, u.display_name) AS display_name,
+                   CASE
+                       WHEN m.user_id = :actorId
+                           OR u.phone_visibility = 'EVERYONE'
+                           OR (
+                               u.phone_visibility = 'ADMINS'
+                               AND (
+                                   groups.owner_user_id = :actorId
+                                   OR EXISTS (
+                                       SELECT 1
+                                       FROM group_memberships actor_membership
+                                       WHERE actor_membership.group_id = :groupId
+                                         AND actor_membership.user_id = :actorId
+                                         AND actor_membership.role = 'ADMIN'
+                                   )
+                               )
+                           )
+                       THEN u.phone
+                       ELSE NULL
+                   END AS phone,
+                   m.position, m.membership_type, m.active
             FROM group_memberships m
             JOIN access_users u ON u.id = m.user_id
+            JOIN access_groups groups ON groups.id = m.group_id
             WHERE ${conditions.joinToString(" AND ")}
-            ORDER BY u.display_name, m.user_id
+            ORDER BY coalesce(u.nickname, u.display_name), m.user_id
             """.trimIndent(),
-        ).param("groupId", groupId)
+        ).param("actorId", actorId).param("groupId", groupId)
         if (filter.membershipType != null) spec = spec.param("membershipType", filter.membershipType.name)
         if (filter.position != null) spec = spec.param("position", filter.position.name)
         if (!filter.search.isNullOrBlank()) spec = spec.param("search", filter.search)

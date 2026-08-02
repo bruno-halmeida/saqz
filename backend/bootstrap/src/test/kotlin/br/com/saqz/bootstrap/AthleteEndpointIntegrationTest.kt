@@ -334,7 +334,7 @@ class AthleteEndpointIntegrationTest {
     class RecordingAthleteRosterRepository : AthleteRosterRepository {
         var entries: List<AthleteRosterEntry> = emptyList()
         var profile: OwnAthleteProfile? = null
-        override fun list(groupId: UUID, filter: AthleteRosterFilter) = entries
+        override fun list(actorId: UUID, groupId: UUID, filter: AthleteRosterFilter) = entries
         override fun findOwnProfile(actor: UUID) = profile
     }
 }

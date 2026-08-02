@@ -7,7 +7,7 @@ import br.com.saqz.access.application.session.CompleteSessionProfileResult
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.hasVerifiedEmail
 import br.com.saqz.sharedkernel.RequestIdentity
-import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.PatchMapping
@@ -20,8 +20,11 @@ data class SessionUserResponse(
     val id: UUID,
     val email: String?,
     val displayName: String,
+    val nickname: String?,
     val phone: String?,
     val phoneRequired: Boolean,
+    val phoneVisibility: String,
+    val city: String?,
     val emailVerified: Boolean,
     val photoUrl: String?,
 )
@@ -37,14 +40,64 @@ data class AccessSessionResponse(
     val memberships: List<SessionMembershipResponse>,
 )
 
-data class UpdateSessionProfileRequest @JsonCreator constructor(
-    @JsonProperty("phone") val phone: String?,
-    @JsonProperty("displayName") val displayName: String? = null,
-)
+class UpdateSessionProfileRequest {
+    @get:JsonProperty("displayName")
+    @set:JsonProperty("displayName")
+    var displayName: String? = null
+        set(value) {
+            field = value
+            displayNameProvided = true
+        }
+
+    @get:JsonProperty("nickname")
+    @set:JsonProperty("nickname")
+    var nickname: String? = null
+        set(value) {
+            field = value
+            nicknameProvided = true
+        }
+
+    @get:JsonProperty("phone")
+    @set:JsonProperty("phone")
+    var phone: String? = null
+        set(value) {
+            field = value
+            phoneProvided = true
+        }
+
+    @get:JsonProperty("city")
+    @set:JsonProperty("city")
+    var city: String? = null
+        set(value) {
+            field = value
+            cityProvided = true
+        }
+
+    @get:JsonProperty("phoneVisibility")
+    @set:JsonProperty("phoneVisibility")
+    var phoneVisibility: String? = null
+        set(value) {
+            field = value
+            phoneVisibilityProvided = true
+        }
+
+    @get:JsonIgnore
+    internal var displayNameProvided = false
+    @get:JsonIgnore
+    internal var nicknameProvided = false
+    @get:JsonIgnore
+    internal var phoneProvided = false
+    @get:JsonIgnore
+    internal var cityProvided = false
+    @get:JsonIgnore
+    internal var phoneVisibilityProvided = false
+}
 
 class InvalidDisplayNameException : RuntimeException()
 
 class InvalidPhoneException : RuntimeException()
+
+class InvalidSessionProfileFieldException(val field: String) : RuntimeException()
 
 class AccountNotFoundException : RuntimeException()
 
@@ -67,10 +120,26 @@ class AccessSessionController(
     ): AccessSessionResponse =
         when (
             val result =
-                completeSessionProfile.execute(identity.subject, request.phone ?: "", request.displayName)
+                completeSessionProfile.execute(
+                    subject = identity.subject,
+                    rawPhone = request.phone,
+                    rawDisplayName = request.displayName,
+                    rawNickname = request.nickname,
+                    rawCity = request.city,
+                    rawPhoneVisibility = request.phoneVisibility,
+                    phoneProvided = request.phoneProvided,
+                    displayNameProvided = request.displayNameProvided,
+                    nicknameProvided = request.nicknameProvided,
+                    cityProvided = request.cityProvided,
+                    phoneVisibilityProvided = request.phoneVisibilityProvided,
+                )
         ) {
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            CompleteSessionProfileResult.InvalidNickname -> throw InvalidSessionProfileFieldException("nickname")
+            CompleteSessionProfileResult.InvalidCity -> throw InvalidSessionProfileFieldException("city")
+            CompleteSessionProfileResult.InvalidPhoneVisibility ->
+                throw InvalidSessionProfileFieldException("phoneVisibility")
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
             is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
@@ -81,8 +150,11 @@ private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionRespon
         id = user.id,
         email = user.email,
         displayName = user.displayName.value,
+        nickname = user.nickname,
         phone = user.phone?.value,
         phoneRequired = user.phone == null,
+        phoneVisibility = user.phoneVisibility,
+        city = user.city,
         emailVerified = emailVerified,
         // O digest vai na URL para o cliente nao servir a foto antiga do cache
         // depois de uma troca: contador reiniciaria em 1 depois de uma remocao.

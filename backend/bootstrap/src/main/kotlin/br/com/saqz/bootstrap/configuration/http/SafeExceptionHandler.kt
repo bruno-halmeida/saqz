@@ -4,6 +4,7 @@ import br.com.saqz.groups.adapter.input.http.AccessForbiddenException
 import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
+import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
@@ -78,6 +79,21 @@ class SafeExceptionHandler(
             400,
             ErrorCode.VALIDATION_FAILED,
             fieldErrors = mapOf("phone" to listOf("must be a valid Brazilian mobile number (+55DDD9XXXXXXXX)")),
+        )
+    }
+
+    @ExceptionHandler(InvalidSessionProfileFieldException::class)
+    fun invalidSessionProfileField(
+        failure: InvalidSessionProfileFieldException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = mapOf(failure.field to listOf("valor inválido")),
         )
     }
 

@@ -13,6 +13,9 @@ data class UserAccount(
     val phone: PhoneNumber? = null,
     /** Digest da foto guardada, ou null quando a conta nao tem foto. */
     val photoDigest: String? = null,
+    val nickname: String? = null,
+    val city: String? = null,
+    val phoneVisibility: String = "ADMINS",
 )
 
 data class SessionMembership(
@@ -33,6 +36,12 @@ data class SessionUpsert(
     val displayName: AccessName,
 )
 
+enum class PhoneVisibility {
+    EVERYONE,
+    ADMINS,
+    NOBODY,
+}
+
 /**
  * Ausência do claim conta como não confirmado: tanto a coluna `email_verified`
  * quanto o campo da resposta são não-nulos.
@@ -41,8 +50,16 @@ fun RequestIdentity.hasVerifiedEmail(): Boolean = emailVerified == true
 
 data class ProfileCompletion(
     val subject: String,
-    val phone: PhoneNumber,
+    val phone: PhoneNumber?,
     val displayName: AccessName?,
+    val nickname: String? = null,
+    val city: String? = null,
+    val phoneVisibility: PhoneVisibility? = null,
+    val phoneProvided: Boolean = true,
+    val displayNameProvided: Boolean = displayName != null,
+    val nicknameProvided: Boolean = false,
+    val cityProvided: Boolean = false,
+    val phoneVisibilityProvided: Boolean = false,
 )
 
 sealed interface BootstrapSessionResult {
@@ -57,6 +74,12 @@ sealed interface CompleteSessionProfileResult {
     data object InvalidPhone : CompleteSessionProfileResult
 
     data object InvalidDisplayName : CompleteSessionProfileResult
+
+    data object InvalidNickname : CompleteSessionProfileResult
+
+    data object InvalidCity : CompleteSessionProfileResult
+
+    data object InvalidPhoneVisibility : CompleteSessionProfileResult
 
     data object AccountNotFound : CompleteSessionProfileResult
 }

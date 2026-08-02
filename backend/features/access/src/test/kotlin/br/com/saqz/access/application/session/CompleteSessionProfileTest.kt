@@ -59,6 +59,260 @@ class CompleteSessionProfileTest {
     }
 
     @Test
+    fun `missing phone is not changed`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            phoneProvided = false,
+        )
+
+        assertEquals(CompleteSessionProfileResult.Success(view), result)
+        assertEquals(null, repository.commands.single().phone)
+        assertEquals(false, repository.commands.single().phoneProvided)
+    }
+
+    @Test
+    fun `explicit null phone is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            phoneProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidPhone, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nickname and city can be cleared while visibility is forwarded`() {
+        val repository = RecordingSessionRepository(view)
+
+        CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = null,
+            rawCity = null,
+            rawPhoneVisibility = "NOBODY",
+            phoneProvided = false,
+            nicknameProvided = true,
+            cityProvided = true,
+            phoneVisibilityProvided = true,
+        )
+
+        val command = repository.commands.single()
+        assertEquals(true, command.nicknameProvided)
+        assertEquals(true, command.cityProvided)
+        assertEquals(PhoneVisibility.NOBODY, command.phoneVisibility)
+        assertEquals(true, command.phoneVisibilityProvided)
+    }
+
+    @Test
+    fun `invalid phone visibility is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawPhoneVisibility = "FRIENDS",
+            phoneProvided = false,
+            phoneVisibilityProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidPhoneVisibility, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `null phone visibility is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawPhoneVisibility = null,
+            phoneProvided = false,
+            phoneVisibilityProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidPhoneVisibility, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `invalid nickname is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = "R",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidNickname, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nickname with one supplementary character is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = "😀",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidNickname, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nickname with forty supplementary characters is accepted`() {
+        val repository = RecordingSessionRepository(view)
+        val nickname = "😀".repeat(40)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = nickname,
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertEquals(CompleteSessionProfileResult.Success(view), result)
+        assertEquals(nickname, repository.commands.single().nickname)
+    }
+
+    @Test
+    fun `untrimmed nickname is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = " Rafa",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidNickname, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nickname with a control character is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = "Ra\nfa",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidNickname, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `city over eighty characters is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawCity = "a".repeat(81),
+            phoneProvided = false,
+            cityProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidCity, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `city with eighty supplementary characters is accepted`() {
+        val repository = RecordingSessionRepository(view)
+        val city = "😀".repeat(80)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawCity = city,
+            phoneProvided = false,
+            cityProvided = true,
+        )
+
+        assertEquals(CompleteSessionProfileResult.Success(view), result)
+        assertEquals(city, repository.commands.single().city)
+    }
+
+    @Test
+    fun `city with a control character is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawCity = "A\u0000B",
+            phoneProvided = false,
+            cityProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidCity, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `blank nickname is normalized to clear while omitted nickname is preserved`() {
+        val repository = RecordingSessionRepository(view)
+
+        CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = "   ",
+            phoneProvided = false,
+            nicknameProvided = true,
+        )
+
+        assertTrue(repository.commands.single().nicknameProvided)
+        assertNull(repository.commands.single().nickname)
+
+        repository.commands.clear()
+        CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            phoneProvided = false,
+        )
+
+        assertEquals(false, repository.commands.single().nicknameProvided)
+    }
+
+    @Test
     fun `blank display name is rejected before write leaving phone unset`() {
         val repository = RecordingSessionRepository(view)
 

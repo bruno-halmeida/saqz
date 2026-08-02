@@ -52,7 +52,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         val member = insertUser("roster-member", "Member Person", "+5511977776666")
         insertMembership(group, member, position = "PONTA", membershipType = "MENSALISTA")
 
-        val roster = repository.list(group, AthleteRosterFilter())
+        val roster = repository.list(owner, group, AthleteRosterFilter())
 
         val entry = roster.single { it.userId == member }
         assertEquals("Member Person", entry.displayName.value)
@@ -63,13 +63,62 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
     }
 
     @Test
+    fun `roster resolves public names and filters phone by visibility and actor`() {
+        val owner = insertUser("visibility-owner", "Owner Person", "+5511900000000", phoneVisibility = "NOBODY")
+        val group = insertGroup(owner)
+        val admin = insertUser("visibility-admin", "Admin Person", "+5511900000001")
+        val athlete = insertUser("visibility-athlete", "Athlete Person", "+5511900000002")
+        val adminsOnly = insertUser(
+            "visibility-admins-only",
+            "Full Admins Name",
+            "+5511900000003",
+            nickname = "Rafa",
+            phoneVisibility = "ADMINS",
+        )
+        val everyone = insertUser(
+            "visibility-everyone",
+            "Full Everyone Name",
+            "+5511900000004",
+            phoneVisibility = "EVERYONE",
+        )
+        insertMembership(group, owner, role = "ADMIN")
+        insertMembership(group, admin, role = "ADMIN")
+        insertMembership(group, athlete)
+        insertMembership(group, adminsOnly)
+        insertMembership(group, everyone)
+
+        fun roster(actor: UUID) = repository.list(actor, group, AthleteRosterFilter()).associateBy { it.userId }
+
+        val adminView = roster(admin)
+        assertEquals("Rafa", adminView.getValue(adminsOnly).displayName.value)
+        assertEquals("+5511900000003", adminView.getValue(adminsOnly).phone)
+        assertEquals("+5511900000004", adminView.getValue(everyone).phone)
+        assertNull(adminView.getValue(owner).phone)
+        assertEquals("+5511900000001", adminView.getValue(admin).phone)
+
+        val athleteView = roster(athlete)
+        assertNull(athleteView.getValue(adminsOnly).phone)
+        assertEquals("+5511900000004", athleteView.getValue(everyone).phone)
+        assertNull(athleteView.getValue(owner).phone)
+        assertEquals("+5511900000002", athleteView.getValue(athlete).phone)
+
+        val ownerView = roster(owner)
+        assertEquals("+5511900000003", ownerView.getValue(adminsOnly).phone)
+        assertEquals("+5511900000004", ownerView.getValue(everyone).phone)
+        assertEquals("+5511900000000", ownerView.getValue(owner).phone)
+
+        assertEquals("+5511900000003", roster(adminsOnly).getValue(adminsOnly).phone)
+        assertEquals("+5511900000004", roster(everyone).getValue(everyone).phone)
+    }
+
+    @Test
     fun `list excludes inactive members by default`() {
         val owner = insertUser("inactive-default-owner", "Owner Person")
         val group = insertGroup(owner)
         val inactive = insertUser("inactive-default-member", "Inactive Person")
         insertMembership(group, inactive, active = false)
 
-        val roster = repository.list(group, AthleteRosterFilter())
+        val roster = repository.list(owner, group, AthleteRosterFilter())
 
         assertTrue(roster.none { it.userId == inactive })
     }
@@ -81,7 +130,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         val inactive = insertUser("inactive-include-member", "Inactive Person")
         insertMembership(group, inactive, active = false)
 
-        val roster = repository.list(group, AthleteRosterFilter(includeInactive = true))
+        val roster = repository.list(owner, group, AthleteRosterFilter(includeInactive = true))
 
         assertTrue(roster.any { it.userId == inactive })
     }
@@ -95,7 +144,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, mensalista, membershipType = "MENSALISTA")
         insertMembership(group, avulso, membershipType = "AVULSO")
 
-        val roster = repository.list(group, AthleteRosterFilter(membershipType = AthleteMembershipType.MENSALISTA))
+        val roster = repository.list(owner, group, AthleteRosterFilter(membershipType = AthleteMembershipType.MENSALISTA))
 
         assertEquals(setOf(mensalista), roster.map { it.userId }.toSet())
     }
@@ -109,7 +158,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, libero, position = "LIBERO")
         insertMembership(group, central, position = "CENTRAL")
 
-        val roster = repository.list(group, AthleteRosterFilter(position = AthletePosition.LIBERO))
+        val roster = repository.list(owner, group, AthleteRosterFilter(position = AthletePosition.LIBERO))
 
         assertEquals(setOf(libero), roster.map { it.userId }.toSet())
     }
@@ -121,7 +170,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         val member = insertUser("case-member", "Fulano Silva")
         insertMembership(group, member)
 
-        val roster = repository.list(group, AthleteRosterFilter(search = "fulano"))
+        val roster = repository.list(owner, group, AthleteRosterFilter(search = "fulano"))
 
         assertEquals(setOf(member), roster.map { it.userId }.toSet())
     }
@@ -133,7 +182,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         val member = insertUser("accent-member", "João Ávila")
         insertMembership(group, member)
 
-        val roster = repository.list(group, AthleteRosterFilter(search = "joao avila"))
+        val roster = repository.list(owner, group, AthleteRosterFilter(search = "joao avila"))
 
         assertEquals(setOf(member), roster.map { it.userId }.toSet())
     }
@@ -148,6 +197,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, wrongType, position = "OPOSTO", membershipType = "AVULSO")
 
         val roster = repository.list(
+            owner,
             group,
             AthleteRosterFilter(search = "combine", membershipType = AthleteMembershipType.MENSALISTA, position = AthletePosition.OPOSTO),
         )
@@ -164,7 +214,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, zeta)
         insertMembership(group, alpha)
 
-        val roster = repository.list(group, AthleteRosterFilter())
+        val roster = repository.list(owner, group, AthleteRosterFilter())
 
         val names = roster.map { it.displayName.value }
         assertEquals(names.sorted(), names)
@@ -178,7 +228,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, member)
         insertCharge(group, member, status = "PENDING", dueDate = LocalDate.now().withDayOfMonth(1))
 
-        val roster = repository.list(group, AthleteRosterFilter())
+        val roster = repository.list(owner, group, AthleteRosterFilter())
 
         assertEquals(FinancialStatus.PENDENTE, roster.single { it.userId == member }.financialStatus)
     }
@@ -191,7 +241,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, member)
         insertCharge(group, member, status = "PAID", dueDate = LocalDate.now().withDayOfMonth(1))
 
-        val roster = repository.list(group, AthleteRosterFilter())
+        val roster = repository.list(owner, group, AthleteRosterFilter())
 
         assertEquals(FinancialStatus.EM_DIA, roster.single { it.userId == member }.financialStatus)
     }
@@ -206,7 +256,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         insertMembership(group, current)
         insertCharge(group, pending, status = "PENDING", dueDate = LocalDate.now().withDayOfMonth(1))
 
-        val roster = repository.list(group, AthleteRosterFilter(financialStatus = FinancialStatus.PENDENTE))
+        val roster = repository.list(owner, group, AthleteRosterFilter(financialStatus = FinancialStatus.PENDENTE))
 
         assertEquals(setOf(pending), roster.map { it.userId }.toSet())
     }
@@ -220,7 +270,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
 
         execute("ALTER TABLE group_charges RENAME TO group_charges_tmp")
         try {
-            val roster = repository.list(group, AthleteRosterFilter())
+            val roster = repository.list(owner, group, AthleteRosterFilter())
             assertEquals(FinancialStatus.DESCONHECIDO, roster.single { it.userId == member }.financialStatus)
         } finally {
             execute("ALTER TABLE group_charges_tmp RENAME TO group_charges")
@@ -266,11 +316,18 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         assertNull(repository.findOwnProfile(UUID.randomUUID()))
     }
 
-    private fun insertUser(subject: String, name: String, phone: String? = null): UUID {
+    private fun insertUser(
+        subject: String,
+        name: String,
+        phone: String? = null,
+        nickname: String? = null,
+        phoneVisibility: String = "ADMINS",
+    ): UUID {
         val id = UUID.randomUUID()
         execute(
-            "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, phone, created_at, updated_at) " +
-                "VALUES ('$id', '$subject-${UUID.randomUUID()}', true, '$name', ${phone?.let { "'$it'" } ?: "NULL"}, now(), now())",
+            "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, phone, nickname, phone_visibility, created_at, updated_at) " +
+                "VALUES ('$id', '$subject-${UUID.randomUUID()}', true, '$name', ${phone?.let { "'$it'" } ?: "NULL"}, " +
+                "${nickname?.let { "'$it'" } ?: "NULL"}, '$phoneVisibility', now(), now())",
         )
         return id
     }
