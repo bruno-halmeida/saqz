@@ -6,6 +6,7 @@ import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.delete.JdbcGroupDeletionRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
+import br.com.saqz.groups.adapter.output.jdbc.plan.JdbcOwnerPlanUsageLookup
 import br.com.saqz.groups.application.athlete.AthleteRosterFilter
 import br.com.saqz.groups.application.delete.DeleteGroupResult
 import br.com.saqz.groups.application.read.GroupReadKey
@@ -95,7 +96,7 @@ class GroupSoftDeleteIntegrationTest {
         val fixture = fixture()
         delete(fixture.group)
 
-        assertTrue(JdbcAthleteRosterRepository(dataSource).list(fixture.group, AthleteRosterFilter()).isEmpty())
+        assertTrue(JdbcAthleteRosterRepository(dataSource).list(fixture.owner, fixture.group, AthleteRosterFilter()).isEmpty())
     }
 
     @Test
@@ -141,6 +142,21 @@ class GroupSoftDeleteIntegrationTest {
         delete(fixture.group)
 
         assertTrue(repository.list(fixture.group).isEmpty())
+    }
+
+    @Test
+    fun `deleted group does not consume owner plan usage`() {
+        val fixture = fixture()
+        val repository = JdbcOwnerPlanUsageLookup(dataSource)
+
+        assertEquals(1, repository.usageFor(fixture.owner).ownedGroupCount)
+        assertEquals(2, repository.usageFor(fixture.owner).occupyingAthleteCount)
+
+        delete(fixture.group)
+
+        val usage = repository.usageFor(fixture.owner)
+        assertEquals(0, usage.ownedGroupCount)
+        assertEquals(0, usage.occupyingAthleteCount)
     }
 
     private fun fixture(): Fixture {

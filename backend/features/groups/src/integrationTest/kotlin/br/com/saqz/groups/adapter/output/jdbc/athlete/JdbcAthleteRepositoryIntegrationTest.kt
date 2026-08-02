@@ -18,6 +18,7 @@ import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -79,6 +80,19 @@ class JdbcAthleteRepositoryIntegrationTest {
         val stranger = insertUser("find-null-stranger", "Stranger")
 
         assertNull(repository.find(group, stranger))
+    }
+
+    @Test
+    fun `deleted group hides athlete and rejects membership removal`() {
+        val owner = insertUser("deleted-athlete-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("deleted-athlete-member", "Member Person")
+        insertMembership(group, member)
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
+
+        assertNull(repository.find(group, member))
+        assertFailsWith<IllegalStateException> { repository.remove(group, member) }
+        assertEquals(1, number("SELECT count(*) FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
     }
 
     @Test

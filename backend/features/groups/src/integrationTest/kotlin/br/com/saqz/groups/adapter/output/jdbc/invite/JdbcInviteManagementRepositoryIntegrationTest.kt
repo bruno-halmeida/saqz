@@ -37,6 +37,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         repository = JdbcInviteManagementRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
@@ -102,6 +103,22 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         transaction.inTransaction { repository.expire(fixture.group) }
         transaction.inTransaction { repository.expire(fixture.group) }
 
+        assertEquals(0, inviteCount(fixture.group))
+    }
+
+    @Test
+    fun `deleted group rejects invite writes`() {
+        val fixture = fixture("deleted")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")
+
+        assertFailsWith<IllegalArgumentException> {
+            transaction.inTransaction {
+                repository.rotate(RotateInviteCommand(fixture.group, digest(1), fixture.owner))
+            }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            transaction.inTransaction { repository.expire(fixture.group) }
+        }
         assertEquals(0, inviteCount(fixture.group))
     }
 

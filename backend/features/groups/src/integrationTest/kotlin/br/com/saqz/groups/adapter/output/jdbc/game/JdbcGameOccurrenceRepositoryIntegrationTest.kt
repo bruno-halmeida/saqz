@@ -62,6 +62,20 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertEquals(2500, context?.defaults?.gameFeeCents)
     }
 
+    @Test fun `deleted group rejects game reads and creation`() {
+        val fixture = fixture()
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")
+
+        assertNull(fixture.repository.creationContext(fixture.owner, fixture.group))
+        assertEquals(
+            GameCommandResult.GroupNotFound,
+            CreateGame(transaction(), fixture.repository).execute(
+                fixture.owner, fixture.group, UUID.randomUUID(), createInput(),
+            ),
+        )
+        assertEquals(0, int("SELECT count(*) FROM games"))
+    }
+
     @Test fun `organizer create persists exactly one draft snapshot`() {
         val fixture = fixture()
         val result = CreateGame(transaction(), fixture.repository).execute(

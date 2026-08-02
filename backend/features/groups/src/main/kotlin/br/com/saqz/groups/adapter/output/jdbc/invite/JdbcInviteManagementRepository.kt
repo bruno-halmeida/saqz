@@ -38,10 +38,12 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
     }
 
     private fun lockGroup(groupId: UUID) {
-        val locked = jdbc.sql("SELECT id FROM access_groups WHERE id = :groupId FOR UPDATE")
+        val locked = jdbc.sql(
+            "SELECT id FROM access_groups WHERE id = :groupId AND deleted_at IS NULL FOR UPDATE",
+        )
             .param("groupId", groupId)
             .query(UUID::class.java)
             .optional()
-        require(locked.isPresent) { "Group does not exist" }
+        require(locked.isPresent) { "Grupo excluído ou inexistente" }
     }
 }

@@ -153,8 +153,14 @@ class JdbcAthleteRosterRepository(
 
     private fun pendingChargeMemberIds(groupId: UUID, monthEnd: LocalDate): Set<UUID> = jdbc.sql(
         """
-        SELECT DISTINCT member_user_id FROM group_charges
-        WHERE group_id = :groupId AND status = 'PENDING' AND due_date <= :monthEnd
+        SELECT DISTINCT charges.member_user_id
+        FROM group_charges charges
+        JOIN access_groups groups
+            ON groups.id = charges.group_id
+            AND groups.deleted_at IS NULL
+        WHERE charges.group_id = :groupId
+          AND charges.status = 'PENDING'
+          AND charges.due_date <= :monthEnd
         """.trimIndent(),
     )
         .param("groupId", groupId)

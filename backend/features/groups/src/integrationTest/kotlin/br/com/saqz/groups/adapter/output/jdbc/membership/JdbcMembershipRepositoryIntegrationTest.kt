@@ -34,6 +34,7 @@ class JdbcMembershipRepositoryIntegrationTest {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         repository = JdbcMembershipRepository(dataSource)
     }
 
@@ -88,6 +89,22 @@ class JdbcMembershipRepositoryIntegrationTest {
         insertMembership(group, member, "ADMIN")
 
         assertEquals(GroupRole.ADMIN, repository.find(group, member)?.role)
+    }
+
+    @Test
+    fun `deleted group hides memberships and rejects role changes`() {
+        val owner = insertUser("deleted-membership-owner", "Owner Person")
+        val member = insertUser("deleted-membership-member", "Member Person")
+        val group = insertGroup(owner)
+        insertMembership(group, member, "ATHLETE")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
+
+        assertEquals(emptyList(), repository.list(group))
+        assertNull(repository.find(group, member))
+        assertFailsWith<RuntimeException> {
+            repository.change(ChangeMemberRoleCommand(group, member, PersistedMembershipRole.ADMIN))
+        }
+        assertEquals("ATHLETE", role(group, member))
     }
 
     @Test

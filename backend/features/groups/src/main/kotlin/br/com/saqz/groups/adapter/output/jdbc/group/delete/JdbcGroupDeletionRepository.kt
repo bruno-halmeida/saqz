@@ -26,6 +26,7 @@ class JdbcGroupDeletionRepository(
             .update()
         if (changed == 1) return DeleteGroupResult.Success
 
+        // Deliberately reads deleted rows to distinguish already-deleted/missing (404) from non-owner (403).
         val group = jdbc.sql(
             "SELECT owner_user_id, deleted_at FROM access_groups WHERE id = :groupId",
         )

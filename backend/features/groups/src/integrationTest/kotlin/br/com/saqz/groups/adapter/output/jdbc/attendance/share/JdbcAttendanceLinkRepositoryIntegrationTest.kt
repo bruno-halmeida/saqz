@@ -69,6 +69,22 @@ class JdbcAttendanceLinkRepositoryIntegrationTest {
     }
 
     @Test
+    fun `deleted group hides attendance link and rejects rotation`() {
+        val fixture = fixture("deleted-group")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")
+
+        assertNull(transaction.inTransaction {
+            repository.lockRotatableTarget(fixture.owner, fixture.group, fixture.game)
+        })
+        assertFailsWith<RuntimeException> {
+            transaction.inTransaction {
+                repository.rotate(RotateAttendanceLinkCommand(fixture.group, fixture.game, digest(9), fixture.owner))
+            }
+        }
+        assertEquals(0, linkCount(fixture.game))
+    }
+
+    @Test
     fun `admin target lock returns organizer role`() {
         val fixture = fixture("admin-target")
 

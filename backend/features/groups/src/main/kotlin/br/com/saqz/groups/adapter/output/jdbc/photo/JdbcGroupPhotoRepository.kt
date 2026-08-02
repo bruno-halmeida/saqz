@@ -20,6 +20,7 @@ class JdbcGroupPhotoRepository(dataSource: DataSource) : GroupPhotoRepository {
     override fun replace(command: ReplaceGroupPhotoCommand): GroupPhotoWriteResult = transaction.execute {
         val groupVersion = incrementGroupVersion(command.groupId, command.expectedGroupVersion)
             ?: return@execute GroupPhotoWriteResult.VersionConflict
+        // O incremento ativo acima bloqueia o grupo até o upsert da foto terminar.
         val photo = jdbc.sql(
             """
             INSERT INTO group_photos (
@@ -57,13 +58,16 @@ class JdbcGroupPhotoRepository(dataSource: DataSource) : GroupPhotoRepository {
     }
 
     override fun remove(groupId: UUID, expectedGroupVersion: Long): GroupPhotoWriteResult = transaction.execute {
-        val currentVersion = jdbc.sql("SELECT version FROM access_groups WHERE id = :groupId FOR UPDATE")
+        val currentVersion = jdbc.sql(
+            "SELECT version FROM access_groups WHERE id = :groupId AND deleted_at IS NULL FOR UPDATE",
+        )
             .param("groupId", groupId)
             .query(Long::class.java)
             .optional()
             .orElse(null)
             ?: return@execute GroupPhotoWriteResult.VersionConflict
         if (currentVersion != expectedGroupVersion) return@execute GroupPhotoWriteResult.VersionConflict
+        // O SELECT FOR UPDATE acima bloqueia o grupo até a remoção da foto terminar.
         val deleted = jdbc.sql("DELETE FROM group_photos WHERE group_id = :groupId")
             .param("groupId", groupId)
             .update()
@@ -75,10 +79,14 @@ class JdbcGroupPhotoRepository(dataSource: DataSource) : GroupPhotoRepository {
 
     override fun read(groupId: UUID): StoredGroupPhoto? = jdbc.sql(
         """
-        SELECT group_id, photo_bytes, media_type, byte_size, width, height,
-            sha256_digest, version, updated_by
+        SELECT group_photos.group_id, group_photos.photo_bytes, group_photos.media_type,
+            group_photos.byte_size, group_photos.width, group_photos.height,
+            group_photos.sha256_digest, group_photos.version, group_photos.updated_by
         FROM group_photos
-        WHERE group_id = :groupId
+        JOIN access_groups groups
+            ON groups.id = group_photos.group_id
+            AND groups.deleted_at IS NULL
+        WHERE group_photos.group_id = :groupId
         """.trimIndent(),
     )
         .param("groupId", groupId)
@@ -88,9 +96,13 @@ class JdbcGroupPhotoRepository(dataSource: DataSource) : GroupPhotoRepository {
 
     override fun readMetadata(groupId: UUID): GroupPhotoMetadata? = jdbc.sql(
         """
-        SELECT group_id, media_type, byte_size, width, height, version
+        SELECT group_photos.group_id, group_photos.media_type, group_photos.byte_size,
+            group_photos.width, group_photos.height, group_photos.version
         FROM group_photos
-        WHERE group_id = :groupId
+        JOIN access_groups groups
+            ON groups.id = group_photos.group_id
+            AND groups.deleted_at IS NULL
+        WHERE group_photos.group_id = :groupId
         """.trimIndent(),
     )
         .param("groupId", groupId)
@@ -111,7 +123,9 @@ class JdbcGroupPhotoRepository(dataSource: DataSource) : GroupPhotoRepository {
         """
         UPDATE access_groups
         SET version = version + 1, updated_at = now()
-        WHERE id = :groupId AND version = :expectedVersion
+        WHERE id = :groupId
+          AND deleted_at IS NULL
+          AND version = :expectedVersion
         RETURNING version
         """.trimIndent(),
     )

@@ -134,6 +134,16 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
     }
 
     @Test
+    fun `deleted group cannot be read or updated`() {
+        val owner = insertUser("settings-deleted-owner")
+        val group = insertGroup(owner)
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
+
+        assertSame(UpdateGroupSettingsResult.GroupNotFound, useCase.execute(owner, group, 1, "Deleted", "UTC"))
+        assertEquals("Original Group|America/Sao_Paulo|1", settings(group))
+    }
+
+    @Test
     fun `exactly one concurrent writer wins an expected version`() {
         val owner = insertUser("settings-concurrent-owner")
         val group = insertGroup(owner)

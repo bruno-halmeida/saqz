@@ -19,7 +19,11 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? {
-        val locked = jdbc.sql("SELECT id FROM games WHERE group_id=:group AND id=:game FOR UPDATE")
+        val locked = jdbc.sql(
+            "SELECT games.id FROM games " +
+                "JOIN access_groups ag ON ag.id = games.group_id AND ag.deleted_at IS NULL " +
+                "WHERE games.group_id=:group AND games.id=:game FOR UPDATE OF games, ag",
+        )
             .param("group", groupId)
             .param("game", gameId)
             .query(UUID::class.java)
@@ -39,7 +43,11 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
 
     override fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long =
         requireNotNull(
-            jdbc.sql("SELECT waitlist_sequence_allocator + 1 FROM games WHERE group_id=:group AND id=:game")
+            jdbc.sql(
+                "SELECT games.waitlist_sequence_allocator + 1 FROM games " +
+                    "JOIN access_groups ag ON ag.id = games.group_id AND ag.deleted_at IS NULL " +
+                    "WHERE games.group_id=:group AND games.id=:game",
+            )
                 .param("group", groupId)
                 .param("game", gameId)
                 .query(Long::class.java)
@@ -47,7 +55,11 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         )
 
     override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? {
-        val locked = jdbc.sql("SELECT id FROM games WHERE group_id=:group AND id=:game FOR UPDATE")
+        val locked = jdbc.sql(
+            "SELECT games.id FROM games " +
+                "JOIN access_groups ag ON ag.id = games.group_id AND ag.deleted_at IS NULL " +
+                "WHERE games.group_id=:group AND games.id=:game FOR UPDATE OF games, ag",
+        )
             .param("group", groupId)
             .param("game", gameId)
             .query(UUID::class.java)
@@ -113,7 +125,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
     }
 
     override fun append(event: AttendanceEvent) {
-        jdbc.sql(APPEND)
+        val appended = jdbc.sql(APPEND)
             .param("id", event.id)
             .param("game", event.gameId)
             .param("group", event.groupId)
@@ -125,10 +137,11 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .param("reason", event.reason, java.sql.Types.VARCHAR)
             .param("occurred", Timestamp.from(event.occurredAt))
             .update()
+        check(appended == 1) { "Grupo de presença excluído ou inexistente" }
     }
 
     override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean =
-        jdbc.sql("UPDATE games SET capacity=:capacity,version=version+1,updated_at=now() WHERE id=:game AND version=:version")
+        jdbc.sql("UPDATE games SET capacity=:capacity,version=version+1,updated_at=now() WHERE id=:game AND version=:version AND EXISTS (SELECT 1 FROM access_groups WHERE id=(SELECT group_id FROM games WHERE id=:game) AND deleted_at IS NULL)")
             .param("capacity", capacity)
             .param("game", gameId)
             .param("version", expectedVersion)
@@ -186,8 +199,12 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
 
     override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> = gameIds.associateWith { gameId ->
         jdbc.sql(
-            "SELECT count(*) FILTER (WHERE status='CONFIRMED') AS confirmed," +
-                "count(*) FILTER (WHERE status='WAITLISTED') AS waitlisted FROM game_attendance WHERE game_id=:game",
+            "SELECT count(*) FILTER (WHERE attendance.status='CONFIRMED') AS confirmed," +
+                "count(*) FILTER (WHERE attendance.status='WAITLISTED') AS waitlisted " +
+                "FROM game_attendance attendance " +
+                "JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id " +
+                "JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL " +
+                "WHERE attendance.game_id=:game",
         ).param("game", gameId).query { rs, _ -> GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted")) }.single()
     }
 
@@ -241,7 +258,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                    a.updated_at AS attendance_updated_at,a.version AS attendance_version,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g
-            JOIN access_groups ag ON ag.id=g.group_id
+            JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             JOIN group_memberships target ON target.group_id=g.group_id AND target.user_id=:member
             LEFT JOIN group_memberships actor ON actor.group_id=g.group_id AND actor.user_id=:actor
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:member
@@ -250,16 +267,29 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         const val SAVE = """
             INSERT INTO game_attendance
                 (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name)
-            VALUES (:game,:group,:member,:status,:sequence,:responded,:updated,:version,(SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member))
+            SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
+                   (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member)
+            WHERE EXISTS (
+                SELECT 1 FROM access_groups
+                WHERE id=:group AND deleted_at IS NULL
+            )
             ON CONFLICT (game_id,member_user_id) DO UPDATE SET
                 status=EXCLUDED.status,waitlist_sequence=EXCLUDED.waitlist_sequence,
                 updated_at=EXCLUDED.updated_at,version=EXCLUDED.version
             WHERE game_attendance.version=EXCLUDED.version-1
+              AND EXISTS (
+                  SELECT 1 FROM access_groups
+                  WHERE id=:group AND deleted_at IS NULL
+              )
         """
         const val APPEND = """
             INSERT INTO attendance_events
                 (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at)
-            VALUES (:id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred)
+            SELECT :id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred
+            WHERE EXISTS (
+                SELECT 1 FROM access_groups
+                WHERE id=:group AND deleted_at IS NULL
+            )
         """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
@@ -267,17 +297,20 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g
-            JOIN access_groups ag ON ag.id=g.group_id
+            JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships actor ON actor.group_id=g.group_id AND actor.user_id=:actor
             WHERE g.group_id=:group AND g.id=:game
         """
         const val EARLIEST_WAITLISTED = """
-            SELECT game_id,group_id,member_user_id,waitlist_sequence,responded_at,updated_at,version
-            FROM game_attendance
-            WHERE group_id=:group AND game_id=:game AND status='WAITLISTED'
-            ORDER BY waitlist_sequence
+            SELECT attendance.game_id,attendance.group_id,attendance.member_user_id,
+                   attendance.waitlist_sequence,attendance.responded_at,attendance.updated_at,attendance.version
+            FROM game_attendance attendance
+            JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id
+            JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL
+            WHERE attendance.group_id=:group AND attendance.game_id=:game AND attendance.status='WAITLISTED'
+            ORDER BY attendance.waitlist_sequence
             LIMIT 1
-            FOR UPDATE
+            FOR UPDATE OF attendance
         """
         const val DETAIL = """
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
@@ -285,7 +318,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
                    (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count
             FROM games g
-            JOIN access_groups ag ON ag.id=g.group_id
+            JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
             WHERE g.group_id=:group AND g.id=:game
@@ -294,7 +327,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         const val ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence
             FROM games g
-            JOIN access_groups ag ON ag.id=g.group_id
+            JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.group_id=g.group_id
                 AND a.status IN ('CONFIRMED','WAITLISTED')

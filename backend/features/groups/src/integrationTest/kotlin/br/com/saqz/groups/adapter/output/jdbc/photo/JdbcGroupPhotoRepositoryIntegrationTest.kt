@@ -36,6 +36,7 @@ class JdbcGroupPhotoRepositoryIntegrationTest {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         repository = JdbcGroupPhotoRepository(dataSource)
     }
 
@@ -101,6 +102,19 @@ class JdbcGroupPhotoRepositoryIntegrationTest {
 
         assertEquals(3, result.groupVersion)
         assertNull(repository.read(group))
+    }
+
+    @Test fun `deleted group hides photo and rejects photo replacement`() {
+        val owner = insertUser()
+        val group = insertGroup(owner)
+        repository.replace(command(group, owner, photo("first")))
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
+
+        assertNull(repository.read(group))
+        assertNull(repository.readMetadata(group))
+        assertEquals(GroupPhotoWriteResult.VersionConflict, repository.replace(command(group, owner, photo("second"), 2)))
+        assertEquals(2, groupVersion(group))
+        assertEquals("1", query("SELECT count(*) FROM group_photos WHERE group_id = '$group'"))
     }
 
     @Test fun `repeated removal is idempotent without another version increment`() {
