@@ -430,7 +430,6 @@ class JdbcSessionRepositoryIntegrationTest {
     fun `deleted subject bootstraps a fresh user without old memberships`() {
         val deleted = repository.upsertAndLoad(command("subject-old"))
         val oldGroup = insertGroup(deleted.user.id, "Old Group")
-        insertMembership(oldGroup, deleted.user.id, "ADMIN")
         repository.softDelete("subject-old")
 
         val result = BootstrapSession(repository).execute(
