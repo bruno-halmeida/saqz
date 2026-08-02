@@ -54,6 +54,10 @@ import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.MonthlyDraftReadResult
 import br.com.saqz.groups.port.MonthlyDraftWriteResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable
+import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
+import br.com.saqz.profile.domain.ProfilePhotoSelectionResult
 
 internal fun startTestSaqzKoin(
     dependencies: SaqzPlatformDependencies = testSaqzPlatformDependencies(),
@@ -74,6 +78,7 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
         localState = TestLocalAccessStatePort,
         share = TestSharePort,
         profilePhoto = TestProfilePhotoPort,
+        profilePhotoSelection = TestProfilePhotoPort,
     ),
     groups = GroupsRuntimeDependencies(
         attendanceShare = TestAttendanceSharePort,
@@ -135,13 +140,26 @@ private object TestSharePort : NativeSharePort {
     override fun share(text: String, done: ResultCallback) = done.complete(OperationResult.Success)
 }
 
-private object TestProfilePhotoPort : NativeProfilePhotoPort {
+private object TestProfilePhotoPort : NativeProfilePhotoPort, ProfilePhotoSelectionPort {
     override fun chooseCamera(done: ProfilePhotoCallback): Cancelable = unavailable(done)
     override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable = unavailable(done)
+
+    override fun chooseCamera(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable =
+        unavailable(done)
+
+    override fun chooseLibrary(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable =
+        unavailable(done)
 
     private fun unavailable(done: ProfilePhotoCallback): Cancelable {
         done.complete(ProfilePhotoResult.Failed)
         return TestCancelable
+    }
+
+    private fun unavailable(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable {
+        done.complete(ProfilePhotoSelectionResult.Failed)
+        return object : ProfilePhotoSelectionCancelable {
+            override fun cancel() = Unit
+        }
     }
 }
 

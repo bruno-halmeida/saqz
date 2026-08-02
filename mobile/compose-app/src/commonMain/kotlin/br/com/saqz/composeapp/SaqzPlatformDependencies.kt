@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
 
 class GroupPhotoRuntimeDependencies(
     val selection: GroupPhotoSelectionPort,
@@ -25,6 +26,7 @@ class AccessRuntimeDependencies(
     val localState: LocalAccessStatePort,
     val share: NativeSharePort,
     val profilePhoto: NativeProfilePhotoPort,
+    val profilePhotoSelection: ProfilePhotoSelectionPort,
 )
 
 class GroupsRuntimeDependencies(

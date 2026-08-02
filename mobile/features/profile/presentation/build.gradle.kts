@@ -22,6 +22,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":features:profile:domain"))
             api(project(":core:design-system"))
+            api(libs.navigation3.runtime)
             implementation(project(":core:domain"))
             implementation(project(":features:profile"))
             implementation(project(":core:common"))
