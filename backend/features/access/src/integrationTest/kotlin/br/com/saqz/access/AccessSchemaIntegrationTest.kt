@@ -144,7 +144,7 @@ class AccessSchemaIntegrationTest {
     }
 
     @Test
-    fun `v15 assigns ADMINS to a user that existed before the migration`() {
+    fun `v20 assigns ADMINS to a user that existed before the migration`() {
         val legacyPostgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
         legacyPostgres.startAndAwaitJdbc()
         try {
@@ -153,12 +153,12 @@ class AccessSchemaIntegrationTest {
                 legacyPostgres.username,
                 legacyPostgres.password,
             )
-            val beforeV15 = Flyway.configure()
+            val beforeV20 = Flyway.configure()
                 .dataSource(legacyDataSource)
                 .locations("classpath:db/migration")
                 .target("12")
                 .load()
-            assertEquals(7, beforeV15.migrate().migrationsExecuted)
+            assertEquals(7, beforeV20.migrate().migrationsExecuted)
 
             val userId = UUID.randomUUID()
             legacyDataSource.connection.use { connection ->
@@ -170,11 +170,11 @@ class AccessSchemaIntegrationTest {
                 }
             }
 
-            val afterV15 = Flyway.configure()
+            val afterV20 = Flyway.configure()
                 .dataSource(legacyDataSource)
                 .locations("classpath:db/migration")
                 .load()
-            assertEquals(1, afterV15.migrate().migrationsExecuted)
+            assertEquals(1, afterV20.migrate().migrationsExecuted)
 
             legacyDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
