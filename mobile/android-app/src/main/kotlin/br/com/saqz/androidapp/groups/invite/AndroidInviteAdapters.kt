@@ -88,6 +88,12 @@ internal class AndroidInviteShareAdapter(
     }
 
     override fun saveImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            // Android 6–9 exige WRITE_EXTERNAL_STORAGE em runtime para MediaStore.
+            // Este port não pede permissão; o share sheet genérico oferece o salvamento.
+            shareImage(image, done)
+            return
+        }
         runCatching {
             val resolver = context.contentResolver
             val values = ContentValues().apply {

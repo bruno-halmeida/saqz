@@ -39,7 +39,23 @@ class GroupInviteViewModel(
     private val sharePort: NativeInviteSharePort,
     private val clipboardPort: NativeInviteClipboardPort,
 ) : MviViewModel<GroupInviteState, GroupInviteIntent, GroupInviteEffect>(GroupInviteState()) {
-    private var generation = 0L
+    private enum class GenerationOperation {
+        Load,
+        Rotate,
+        Expire,
+        ToggleApproval,
+        Approve,
+        Reject,
+        CopyLink,
+        ShareImage,
+    }
+
+    private data class GenerationKey(
+        val operation: GenerationOperation,
+        val target: String = "",
+    )
+
+    private val generations = mutableMapOf<GenerationKey, Long>()
     private var versionToken: GroupVersionToken? = null
     private var groupName = ""
     private var timeZone = GroupTimeZone("")
@@ -65,28 +81,29 @@ class GroupInviteViewModel(
     }
 
     private fun load() {
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.Load)
+        val requestGeneration = nextGeneration(operation)
         update { it.copy(isLoading = true, loadFailed = false, error = null, toast = null) }
         viewModelScope.launch {
             val group = when (val result = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
             }
-            if (!isCurrent(requestGeneration)) return@launch
+            if (!isCurrent(operation, requestGeneration)) return@launch
             val metadata = when (val result = membershipGateway.readInviteMetadata(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
             }
             val cachedUrl = readCachedUrl()
             val requests = when (val result = entryRequestGateway.list(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
             }
             val roster = when (val result = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
             }
-            if (!isCurrent(requestGeneration)) return@launch
+            if (!isCurrent(operation, requestGeneration)) return@launch
             groupName = group.group.name
             timeZone = group.group.timeZone
             versionToken = group.versionToken
@@ -120,17 +137,18 @@ class GroupInviteViewModel(
 
     private fun rotate() {
         if (state.value.isGenerating) return
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.Rotate)
+        val requestGeneration = nextGeneration(operation)
         update { it.copy(isGenerating = true, error = null) }
         viewModelScope.launch {
             when (val result = membershipGateway.rotateInvite(GroupId(groupId))) {
-                is SaqzResult.Failure -> if (isCurrent(requestGeneration)) {
+                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
                     update { it.copy(isGenerating = false, error = GroupInviteError.Operation) }
                 }
-                is SaqzResult.Success -> if (isCurrent(requestGeneration)) {
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     val url = result.value.value
                     urlStore.write(groupId, url) { writeResult ->
-                        if (!isCurrent(requestGeneration)) return@write
+                        if (!isCurrent(operation, requestGeneration)) return@write
                         update { it.copy(isGenerating = false, inviteStatus = InviteStatus.Active, inviteUrl = url) }
                         if (writeResult is GroupInviteUrlWriteResult.Failure) {
                             update { it.copy(error = GroupInviteError.Operation) }
@@ -143,15 +161,16 @@ class GroupInviteViewModel(
 
     private fun expire() {
         if (state.value.isDeactivating) return
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.Expire)
+        val requestGeneration = nextGeneration(operation)
         update { it.copy(isDeactivating = true, error = null) }
         viewModelScope.launch {
             when (membershipGateway.expireInvite(GroupId(groupId))) {
-                is SaqzResult.Failure -> if (isCurrent(requestGeneration)) {
+                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
                     update { it.copy(isDeactivating = false, error = GroupInviteError.Operation) }
                 }
-                is SaqzResult.Success -> if (isCurrent(requestGeneration)) {
-                    urlStore.write(groupId, null) { if (isCurrent(requestGeneration)) {
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
+                    urlStore.write(groupId, null) { if (isCurrent(operation, requestGeneration)) {
                         update {
                             it.copy(
                                 isDeactivating = false,
@@ -168,7 +187,8 @@ class GroupInviteViewModel(
 
     private fun toggleApproval(enabled: Boolean) {
         if (state.value.isUpdatingApproval || versionToken == null) return
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.ToggleApproval)
+        val requestGeneration = nextGeneration(operation)
         val previous = state.value.entryRequiresApproval
         update { it.copy(entryRequiresApproval = enabled, isUpdatingApproval = true, error = null) }
         viewModelScope.launch {
@@ -181,7 +201,7 @@ class GroupInviteViewModel(
                     entryRequiresApproval = enabled,
                 ),
             )
-            if (!isCurrent(requestGeneration)) return@launch
+            if (!isCurrent(operation, requestGeneration)) return@launch
             when (result) {
                 is SaqzResult.Failure -> update {
                     it.copy(
@@ -205,17 +225,18 @@ class GroupInviteViewModel(
 
     private fun approve(userId: String) {
         if (userId in state.value.pendingActionIds) return
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.Approve, userId)
+        val requestGeneration = nextGeneration(operation)
         update { it.copy(pendingActionIds = it.pendingActionIds + userId, error = null) }
         viewModelScope.launch {
             when (entryRequestGateway.approve(GroupId(groupId), userId)) {
-                is SaqzResult.Failure -> if (isCurrent(requestGeneration)) update {
+                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) update {
                     it.copy(
                         pendingActionIds = it.pendingActionIds - userId,
                         error = GroupInviteError.Operation,
                     )
                 }
-                is SaqzResult.Success -> if (isCurrent(requestGeneration)) {
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     update { it.copy(pendingActionIds = it.pendingActionIds - userId) }
                     load()
                 }
@@ -225,17 +246,18 @@ class GroupInviteViewModel(
 
     private fun reject(userId: String) {
         if (userId in state.value.pendingActionIds) return
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.Reject, userId)
+        val requestGeneration = nextGeneration(operation)
         update { it.copy(pendingActionIds = it.pendingActionIds + userId, error = null) }
         viewModelScope.launch {
             when (entryRequestGateway.reject(GroupId(groupId), userId)) {
-                is SaqzResult.Failure -> if (isCurrent(requestGeneration)) update {
+                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) update {
                     it.copy(
                         pendingActionIds = it.pendingActionIds - userId,
                         error = GroupInviteError.Operation,
                     )
                 }
-                is SaqzResult.Success -> if (isCurrent(requestGeneration)) {
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     update {
                         it.copy(
                             pendingActionIds = it.pendingActionIds - userId,
@@ -249,9 +271,10 @@ class GroupInviteViewModel(
 
     private fun copyLink() {
         val url = state.value.inviteUrl ?: return
-        val requestGeneration = nextGeneration()
+        val operation = GenerationKey(GenerationOperation.CopyLink)
+        val requestGeneration = nextGeneration(operation)
         clipboardPort.copyText(url) { result ->
-            if (!isCurrent(requestGeneration)) return@copyText
+            if (!isCurrent(operation, requestGeneration)) return@copyText
             when (result) {
                 InviteNativeOperationResult.Success -> {
                     update { it.copy(toast = GroupInviteToast.LinkCopied) }
@@ -276,19 +299,28 @@ class GroupInviteViewModel(
 
     private fun shareImage() {
         val url = state.value.inviteUrl ?: return
+        val operation = GenerationKey(GenerationOperation.ShareImage)
+        val requestGeneration = nextGeneration(operation)
         sharePort.shareImage(InviteShareImage(renderQr(url))) { result ->
+            if (!isCurrent(operation, requestGeneration)) return@shareImage
             if (result !is InviteNativeOperationResult.Success) update { it.copy(error = GroupInviteError.Operation) }
         }
     }
 
-    private fun failLoad(requestGeneration: Long) {
-        if (isCurrent(requestGeneration)) update {
+    private fun failLoad(operation: GenerationKey, requestGeneration: Long) {
+        if (isCurrent(operation, requestGeneration)) update {
             it.copy(isLoading = false, loadFailed = true, error = GroupInviteError.Load)
         }
     }
 
-    private fun nextGeneration(): Long { generation += 1; return generation }
-    private fun isCurrent(requestGeneration: Long): Boolean = requestGeneration == generation
+    private fun nextGeneration(operation: GenerationKey): Long {
+        val next = (generations[operation] ?: 0L) + 1L
+        generations[operation] = next
+        return next
+    }
+
+    private fun isCurrent(operation: GenerationKey, requestGeneration: Long): Boolean =
+        requestGeneration == generations[operation]
 }
 
 class InvitePreviewMessageViewModel(
@@ -298,7 +330,7 @@ class InvitePreviewMessageViewModel(
 ) : MviViewModel<InvitePreviewState, InvitePreviewIntent, InvitePreviewEffect>(
     InvitePreviewState(groupName, inviteUrl),
 ) {
-    private var generation = 0L
+    private var shareGeneration = 0L
 
     override fun onIntent(intent: InvitePreviewIntent) {
         when (intent) {
@@ -315,10 +347,10 @@ class InvitePreviewMessageViewModel(
 
     private fun share() {
         if (state.value.isSharing) return
-        val requestGeneration = ++generation
+        val requestGeneration = ++shareGeneration
         update { it.copy(isSharing = true, error = null) }
         sharePort.shareText(state.value.composedText) { result ->
-            if (requestGeneration != generation) return@shareText
+            if (requestGeneration != shareGeneration) return@shareText
             when (result) {
                 InviteNativeOperationResult.Success -> {
                     update { it.copy(isSharing = false) }
@@ -341,7 +373,8 @@ class InviteQrViewModel(
 ) : MviViewModel<InviteQrState, InviteQrIntent, InviteQrEffect>(
     InviteQrState(groupName = groupName, inviteUrl = inviteUrl, pngBytes = renderQr(inviteUrl)),
 ) {
-    private var generation = 0L
+    private var shareGeneration = 0L
+    private var saveGeneration = 0L
 
     override fun onIntent(intent: InviteQrIntent) {
         when (intent) {
@@ -354,10 +387,10 @@ class InviteQrViewModel(
     private fun share() {
         val image = state.value.pngBytes?.let(::InviteShareImage) ?: return
         if (state.value.isSharing) return
-        val requestGeneration = ++generation
+        val requestGeneration = ++shareGeneration
         update { it.copy(isSharing = true, error = null) }
         sharePort.shareImage(image) { result ->
-            if (requestGeneration != generation) return@shareImage
+            if (requestGeneration != shareGeneration) return@shareImage
             when (result) {
                 InviteNativeOperationResult.Success -> {
                     update { it.copy(isSharing = false) }
@@ -373,10 +406,10 @@ class InviteQrViewModel(
     private fun save() {
         val image = state.value.pngBytes?.let(::InviteShareImage) ?: return
         if (state.value.isSaving) return
-        val requestGeneration = ++generation
+        val requestGeneration = ++saveGeneration
         update { it.copy(isSaving = true, error = null) }
         sharePort.saveImage(image) { result ->
-            if (requestGeneration != generation) return@saveImage
+            if (requestGeneration != saveGeneration) return@saveImage
             when (result) {
                 InviteNativeOperationResult.Success -> {
                     update { it.copy(isSaving = false) }

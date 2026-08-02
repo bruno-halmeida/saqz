@@ -35,8 +35,6 @@ import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import br.com.saqz.groups.domain.membership.InviteCode
-import br.com.saqz.groups.domain.membership.RedeemedMembership
 import br.com.saqz.groups.port.GroupInviteUrlReadCallback
 import br.com.saqz.groups.port.GroupInviteUrlReadResult
 import br.com.saqz.groups.port.GroupInviteUrlStorePort
@@ -48,6 +46,7 @@ import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -214,6 +213,26 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `concurrent approvals for different users both apply`() = runTest {
+        val entryGateway = ConcurrentApproveEntryGateway(
+            mutableListOf(request("first"), request("second")),
+        )
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("first"))
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("second"))
+        advanceUntilIdle()
+
+        entryGateway.complete("first")
+        entryGateway.complete("second")
+        advanceUntilIdle()
+
+        assertEquals(setOf("first", "second"), entryGateway.approvedUserIds.toSet())
+        assertTrue(viewModel.state.value.pendingRequests.isEmpty())
+    }
+
+    @Test
     fun `reject success removes request`() = runTest {
         val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
         val viewModel = groupViewModel(entryGateway = entryGateway)
@@ -376,7 +395,6 @@ class GroupInviteViewModelsTest {
         override suspend fun rotateInvite(groupId: GroupId) = rotateResult
         override suspend fun readInviteMetadata(groupId: GroupId) = metadataResult
         override suspend fun expireInvite(groupId: GroupId) = expireResult
-        override suspend fun redeem(code: InviteCode) = SaqzResult.Success(RedeemedMembership(GroupId("group-1"), GroupRole.ATHLETE))
     }
 
     private class FakeEntryGateway(
@@ -389,6 +407,34 @@ class GroupInviteViewModelsTest {
         override suspend fun list(groupId: GroupId) = SaqzResult.Success(requests.toList())
         override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> { approvedUserId = userId; requests.removeAll { it.userId == userId }; return approveResult }
         override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> { rejectedUserId = userId; if (rejectResult is SaqzResult.Success) requests.removeAll { it.userId == userId }; return rejectResult }
+    }
+
+    private class ConcurrentApproveEntryGateway(
+        private val requests: MutableList<GroupEntryRequest>,
+    ) : GroupEntryRequestGateway {
+        private val gates = mutableMapOf<String, CompletableDeferred<Unit>>()
+        val approvedUserIds = mutableListOf<String>()
+
+        override suspend fun list(groupId: GroupId) = SaqzResult.Success(requests.toList())
+
+        override suspend fun approve(
+            groupId: GroupId,
+            userId: String,
+        ): SaqzResult<GroupMembership, EntryRequestError> {
+            val gate = CompletableDeferred<Unit>()
+            gates[userId] = gate
+            gate.await()
+            approvedUserIds += userId
+            requests.removeAll { it.userId == userId }
+            return SaqzResult.Success(GroupMembership(userId, "Pessoa $userId", GroupRole.ATHLETE))
+        }
+
+        fun complete(userId: String) {
+            gates.getValue(userId).complete(Unit)
+        }
+
+        override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> =
+            SaqzResult.Success(Unit)
     }
 
     private class FakeAthleteGateway(private val roster: List<AthleteRosterEntry> = emptyList()) : AthleteGateway {

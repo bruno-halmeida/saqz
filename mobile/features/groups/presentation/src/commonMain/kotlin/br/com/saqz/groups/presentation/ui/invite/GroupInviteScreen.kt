@@ -61,6 +61,7 @@ import br.com.saqz.groups.resources.group_invite_share_image
 import br.com.saqz.groups.resources.group_invite_show_qr
 import br.com.saqz.groups.resources.group_invite_title
 import br.com.saqz.groups.resources.group_invite_whatsapp
+import br.com.saqz.groups.resources.group_invite_whatsapp_primary
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupInviteTags {
@@ -215,11 +216,17 @@ private fun InviteActiveCard(state: GroupInviteState, onIntent: (GroupInviteInte
         }
         state.inviteUrl?.let {
             SaqzButton(
-                label = stringResource(Res.string.group_invite_share),
-                onClick = { onIntent(GroupInviteIntent.OpenShareSheet) },
-                variant = SaqzButtonVariant.Ghost,
+                label = stringResource(Res.string.group_invite_whatsapp_primary),
+                onClick = { onIntent(GroupInviteIntent.OpenMessagePreview) },
                 fullWidth = true,
                 modifier = Modifier.testTag(GroupInviteTags.Share),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.group_invite_share),
+                onClick = { onIntent(GroupInviteIntent.OpenShareSheet) },
+                variant = SaqzButtonVariant.Secondary,
+                fullWidth = true,
+                modifier = Modifier.padding(top = SaqzTheme.metrics.grid),
             )
         }
         SaqzButton(

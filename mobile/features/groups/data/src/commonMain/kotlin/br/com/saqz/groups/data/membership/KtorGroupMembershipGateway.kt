@@ -54,6 +54,7 @@ private data class InviteMetadataDto(
     val createdByName: String? = null,
 )
 
+@Serializable
 private data class ChangeRoleRequestDto(val role: AssignableGroupRoleDto)
 
 class KtorGroupMembershipGateway(

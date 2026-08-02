@@ -7,6 +7,7 @@
     <string name="group_invite_copy_link">Copiar link</string>
     <string name="group_invite_copied_toast">Link copiado. Manda pra galera!</string>
     <string name="group_invite_share">Compartilhar convite</string>
+    <string name="group_invite_whatsapp_primary">Compartilhar no WhatsApp</string>
     <string name="group_invite_whatsapp">Enviar no WhatsApp</string>
     <string name="group_invite_show_qr">Mostrar QR</string>
     <string name="group_invite_share_image">Gerar imagem do convite</string>
