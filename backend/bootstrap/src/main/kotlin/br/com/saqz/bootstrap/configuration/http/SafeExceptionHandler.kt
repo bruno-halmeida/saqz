@@ -17,6 +17,7 @@ import br.com.saqz.groups.adapter.input.http.AthleteLimitExceededException
 import br.com.saqz.groups.adapter.input.http.GroupLimitExceededException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
+import br.com.saqz.groups.adapter.input.http.InviteGroupDeletedException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkInvalidOrExpiredException
@@ -226,6 +227,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(InviteInvalidOrExpiredException::class)
     fun inviteInvalidOrExpired(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.INVITE_INVALID_OR_EXPIRED)
+    }
+
+    @ExceptionHandler(InviteGroupDeletedException::class)
+    fun inviteGroupDeleted(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.INVITE_GROUP_DELETED)
     }
 
     @ExceptionHandler(InviteAttemptLimitException::class)

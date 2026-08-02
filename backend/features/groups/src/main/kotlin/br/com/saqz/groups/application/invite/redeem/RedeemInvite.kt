@@ -38,6 +38,7 @@ class RedeemInvite(
             )
             return@inTransaction RedeemInviteResult.InvalidOrExpired
         }
+        if (invite.groupDeleted) return@inTransaction RedeemInviteResult.GroupDeleted
 
         val occupancy = repository.loadAthleteOccupancy(invite.groupId)
             ?: return@inTransaction RedeemInviteResult.InvalidOrExpired

@@ -23,6 +23,8 @@ data class RedeemedInviteResponse(
 
 class InviteInvalidOrExpiredException : RuntimeException()
 
+class InviteGroupDeletedException : RuntimeException()
+
 class InviteAttemptLimitException(val retryAfterSeconds: Int) : RuntimeException()
 
 class AthleteLimitExceededException : RuntimeException()
@@ -40,6 +42,7 @@ class AccessInviteRedemptionController(
         val result = redeemInvite.execute(actor(identity), request.code.orEmpty())
     ) {
         RedeemInviteResult.InvalidOrExpired -> throw InviteInvalidOrExpiredException()
+        RedeemInviteResult.GroupDeleted -> throw InviteGroupDeletedException()
         is RedeemInviteResult.AttemptLimit -> throw InviteAttemptLimitException(result.retryAfterSeconds)
         RedeemInviteResult.AthleteLimitExceeded -> throw AthleteLimitExceededException()
         is RedeemInviteResult.Success -> RedeemedInviteResponse(result.groupId, result.role)

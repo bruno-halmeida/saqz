@@ -45,10 +45,20 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
     }
 
     override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? = jdbc.sql(
-        "SELECT group_id FROM group_invites WHERE token_digest = :tokenDigest",
+        """
+        SELECT invites.group_id, groups.deleted_at IS NOT NULL AS group_deleted
+        FROM group_invites invites
+        JOIN access_groups groups ON groups.id = invites.group_id
+        WHERE invites.token_digest = :tokenDigest
+        """.trimIndent(),
     )
         .param("tokenDigest", digest.toByteArray())
-        .query { result, _ -> RedeemableInvite(result.getObject("group_id", UUID::class.java)) }
+        .query { result, _ ->
+            RedeemableInvite(
+                groupId = result.getObject("group_id", UUID::class.java),
+                groupDeleted = result.getBoolean("group_deleted"),
+            )
+        }
         .optional()
         .orElse(null)
 
