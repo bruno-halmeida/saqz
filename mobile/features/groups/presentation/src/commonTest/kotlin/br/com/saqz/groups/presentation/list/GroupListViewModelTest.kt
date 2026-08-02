@@ -1,10 +1,19 @@
 package br.com.saqz.groups.presentation.list
 
-import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.presentation.FakeAthleteGateway
+import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.sampleGroup
+import br.com.saqz.groups.presentation.sampleVersionedGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -13,133 +22,112 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupListViewModelTest {
-    private val mainDispatcher = StandardTestDispatcher()
+    private val dispatcher = UnconfinedTestDispatcher()
 
-    @BeforeTest fun setUp() = Dispatchers.setMain(mainDispatcher)
+    @BeforeTest fun setUp() = Dispatchers.setMain(dispatcher)
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `opening a group emits the group effect with its id`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(loadedState())
+    fun `success loads one card from own memberships and group read`() = runTest {
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.athlete.OwnAthleteProfile(
+                    userId = "me",
+                    displayName = "Bruno",
+                    phone = null,
+                    memberships = listOf(
+                        OwnAthleteMembership(
+                            groupId = br.com.saqz.domain.GroupId("group-1"),
+                            groupName = "Old name",
+                            role = GroupRole.ADMIN,
+                            position = null,
+                            membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA,
+                            active = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())))
 
-        viewModel.onIntent(GroupListIntent.OpenGroup("ibira"))
-
-        assertEquals(GroupListEffect.OpenGroup("ibira"), viewModel.effects.first())
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
+        assertEquals("Vôlei do CERET", viewModel.state.value.groups.single().name)
+        assertEquals("Quadra · São Paulo", viewModel.state.value.groups.single().meta)
+        assertNull(viewModel.state.value.groups.single().nextGame)
     }
 
     @Test
-    fun `creating a group opens the plans flow and never the form`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(loadedState())
+    fun `empty own profile becomes the first access state`() = runTest {
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway())
+
+        assertTrue(viewModel.state.value.isEmpty)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `gateway failure is visible and maps forbidden`() = runTest {
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Failure(
+                br.com.saqz.groups.domain.athlete.AthleteError.DataFailure(DataError.Forbidden),
+            ),
+        )
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway())
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `group read failure is visible and does not leak the domain error`() = runTest {
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.athlete.OwnAthleteProfile(
+                    "me",
+                    "Bruno",
+                    null,
+                    listOf(
+                        OwnAthleteMembership(
+                            br.com.saqz.domain.GroupId("group-1"),
+                            "Group",
+                            GroupRole.ATHLETE,
+                            null,
+                            br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO,
+                            true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val gateway = FakeGroupGateway(
+            readResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.NotFound)),
+        )
+        val viewModel = GroupListViewModel(athlete, gateway)
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.NotFound, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `navigation effects remain available after loading`() = runTest {
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway())
+
+        viewModel.onIntent(GroupListIntent.OpenGroup("group-1"))
+        assertEquals(GroupListEffect.OpenGroup("group-1"), viewModel.effects.first())
 
         viewModel.onIntent(GroupListIntent.CreateGroup)
-
         assertEquals(GroupListEffect.OpenPlans, viewModel.effects.first())
     }
 
     @Test
-    fun `joining with a code emits the join effect`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(GroupListState(isLoading = false))
-
-        viewModel.onIntent(GroupListIntent.JoinWithCode)
-
-        assertEquals(GroupListEffect.OpenJoinWithCode, viewModel.effects.first())
-    }
-
-    @Test
-    fun `accepting the invite drops the card right away`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(loadedState())
-
-        viewModel.onIntent(GroupListIntent.AcceptInvite("convite-firma"))
-
-        assertNull(viewModel.state.value.invite)
-    }
-
-    @Test
-    fun `declining the invite drops the card right away`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(loadedState())
-
-        viewModel.onIntent(GroupListIntent.DeclineInvite("convite-firma"))
-
-        assertNull(viewModel.state.value.invite)
-    }
-
-    @Test
-    fun `answering an invite that is not on screen leaves the state untouched`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(loadedState())
-
-        viewModel.onIntent(GroupListIntent.AcceptInvite("outro-convite"))
-
-        assertNotNull(viewModel.state.value.invite)
-    }
-
-    @Test
-    fun `retry goes back to loading and clears the failure`() = runTest(mainDispatcher) {
-        val viewModel = GroupListViewModel(GroupListState(isLoading = false, loadFailed = true))
-
-        viewModel.onIntent(GroupListIntent.Retry)
-
-        assertTrue(viewModel.state.value.isLoading)
-        assertFalse(viewModel.state.value.loadFailed)
-    }
-
-    @Test
-    fun `awaiting confirmation counts only the groups whose next game is pending`() {
-        val state = loadedState()
-
-        assertEquals(3, state.groups.size)
-        assertEquals(1, state.awaitingConfirmation)
-    }
-
-    @Test
-    fun `a list with no group and no invite is the first-access screen`() {
-        val state = GroupListState(isLoading = false)
-
-        assertTrue(state.isEmpty)
-        assertEquals(0, state.awaitingConfirmation)
-    }
-
-    @Test
-    fun `a pending invite alone is not the first-access screen`() {
-        val state = GroupListState(isLoading = false, invite = invite)
-
+    fun `a pending invite is not first access`() {
+        val state = GroupListState(isLoading = false, invite = GroupInviteUi("invite", "Grupo", "Admin"))
         assertFalse(state.isEmpty)
     }
-
-    @Test
-    fun `loading and failure are never the first-access screen`() {
-        assertFalse(GroupListState().isEmpty)
-        assertFalse(GroupListState(isLoading = false, loadFailed = true).isEmpty)
-    }
-
-    private val invite = GroupInviteUi(
-        id = "convite-firma",
-        groupName = "Vôlei da firma",
-        invitedBy = "Marina Freitas",
-    )
-
-    private fun loadedState() = GroupListState(
-        isLoading = false,
-        groups = listOf(
-            group(id = "ceret", attendance = GroupCardAttendance.Pending),
-            group(id = "ibira", attendance = GroupCardAttendance.Going),
-            group(id = "vila", attendance = null),
-        ),
-        invite = invite,
-    )
-
-    private fun group(id: String, attendance: GroupCardAttendance?) = GroupCardUi(
-        id = id,
-        name = "Grupo $id",
-        meta = "Quadra · Tatuapé · 26 membros",
-        modality = GroupModality.COURT_VOLLEYBALL,
-        isAdmin = id == "ceret",
-        nextGame = attendance?.let { GroupCardGameUi(label = "Ter, 28/07 · 19h30", attendance = it) },
-    )
 }

@@ -39,6 +39,7 @@ kotlin {
             api(project(":features:profile:domain"))
             api(project(":features:subscriptions:domain"))
             implementation(project(":features:groups:presentation"))
+            implementation(project(":features:groups:data"))
             implementation(project(":features:profile:data"))
             implementation(project(":features:profile:presentation"))
             implementation(project(":features:access:data"))

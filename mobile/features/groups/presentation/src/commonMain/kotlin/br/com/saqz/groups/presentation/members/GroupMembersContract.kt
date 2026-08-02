@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.members
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.presentation.GroupUiError
 
 /** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2". */
 enum class GroupMembersFilter { All, Admins, Pending }
@@ -37,6 +38,8 @@ data class JoinRequestUi(
 @Immutable
 data class GroupMembersState(
     val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val error: GroupUiError? = null,
     val query: String = "",
     val filter: GroupMembersFilter = GroupMembersFilter.All,
     /** Todo mundo do grupo, admins inclusive — é o número da pílula "Todos". */
@@ -69,6 +72,8 @@ fun MemberUi.sheetActions(): List<GroupMemberAction> = if (isAdmin) {
 }
 
 sealed interface GroupMembersIntent {
+    data object Retry : GroupMembersIntent
+
     data class UpdateQuery(val value: String) : GroupMembersIntent
 
     data class SelectFilter(val filter: GroupMembersFilter) : GroupMembersIntent

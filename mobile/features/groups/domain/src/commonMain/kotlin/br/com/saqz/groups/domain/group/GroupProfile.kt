@@ -148,6 +148,7 @@ interface GroupGateway {
     suspend fun create(command: CreateGroupCommand): SaqzResult<Group, GroupProfileError>
     suspend fun read(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError>
     suspend fun update(command: UpdateGroupSettingsCommand): SaqzResult<VersionedGroup, GroupProfileError>
+    suspend fun delete(groupId: GroupId): SaqzResult<Unit, GroupProfileError>
 }
 
 interface GroupProfileGateway {

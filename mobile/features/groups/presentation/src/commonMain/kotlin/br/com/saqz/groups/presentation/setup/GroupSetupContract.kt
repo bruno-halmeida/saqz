@@ -9,6 +9,7 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.presentation.GroupUiError
 
 /** `2a` cria e `2i` edita: mesma tela, mesmos doze cards, modos diferentes. */
 sealed interface GroupSetupMode {
@@ -85,6 +86,7 @@ data class GroupSetupState(
     val isSaving: Boolean = false,
     val isDeleting: Boolean = false,
     val saveFailed: Boolean = false,
+    val gatewayError: GroupUiError? = null,
     val isOffline: Boolean = false,
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit

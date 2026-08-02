@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.details
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.presentation.GroupUiError
 
 /**
  * 2e e 2f do fluxo 2 — uma tela, duas visões. `isAdmin` não esconde um chip: ele troca
@@ -12,6 +13,8 @@ import androidx.compose.runtime.Immutable
 @Immutable
 data class GroupDetailsState(
     val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val error: GroupUiError? = null,
     val isAdmin: Boolean = false,
     val header: GroupHeaderUi? = null,
     val nextGame: NextGameUi? = null,
@@ -87,6 +90,8 @@ data class MemberPreviewUi(
 enum class MemberStatusUi { Admin, Going, Maybe }
 
 sealed interface GroupDetailsIntent {
+    data object Retry : GroupDetailsIntent
+
     // 2f — cabeçalho e gerenciamento
     data object CreateNextGame : GroupDetailsIntent
 

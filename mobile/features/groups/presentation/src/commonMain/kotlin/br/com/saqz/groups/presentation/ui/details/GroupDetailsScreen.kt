@@ -29,6 +29,7 @@ import br.com.saqz.groups.presentation.details.NextGameUi
 import br.com.saqz.groups.presentation.details.NoticeUi
 import br.com.saqz.groups.presentation.details.VenueUi
 import br.com.saqz.groups.presentation.ui.components.GroupVenueRow
+import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_details_venue_edit
 import br.com.saqz.groups.resources.group_details_venue_map
@@ -77,37 +78,41 @@ internal fun GroupDetailsScreen(
             }
             return@Column
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
-            verticalArrangement = Arrangement.spacedBy(metrics.blockSpacing),
-        ) {
-            state.header?.let { GroupHeaderCard(header = it, isAdmin = state.isAdmin, onIntent = onIntent) }
-            state.nextGame?.let { GroupNextGameCard(nextGame = it, onIntent = onIntent) }
-            state.attendance?.let { GroupAttendanceStats(attendance = it, onIntent = onIntent) }
-            state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
-            state.venue?.let { GroupVenueCard(venue = it, isAdmin = state.isAdmin, onIntent = onIntent) }
-            if (!state.isAdmin) {
-                GroupShortcutTiles(onIntent = onIntent)
-            }
-            state.latestNotice?.let { GroupLatestNoticeCard(notice = it) }
-            if (state.memberPreview.isNotEmpty()) {
-                GroupMemberPreview(members = state.memberPreview, onIntent = onIntent)
-            }
-            if (!state.isAdmin) {
-                GroupInviteCard(onIntent = onIntent)
-            }
-            if (state.isAdmin) {
-                GroupManageList(
-                    memberCount = state.memberCount,
-                    scheduleSummary = state.scheduleSummary,
-                    onIntent = onIntent,
-                )
-            }
-            if (!state.isAdmin) {
-                GroupLeaveButton(onIntent = onIntent)
+        if (state.loadFailed) {
+            GroupLoadFailure(error = state.error, onRetry = { onIntent(GroupDetailsIntent.Retry) })
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+                verticalArrangement = Arrangement.spacedBy(metrics.blockSpacing),
+            ) {
+                state.header?.let { GroupHeaderCard(header = it, isAdmin = state.isAdmin, onIntent = onIntent) }
+                state.nextGame?.let { GroupNextGameCard(nextGame = it, onIntent = onIntent) }
+                state.attendance?.let { GroupAttendanceStats(attendance = it, onIntent = onIntent) }
+                state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
+                state.venue?.let { GroupVenueCard(venue = it, isAdmin = state.isAdmin, onIntent = onIntent) }
+                if (!state.isAdmin) {
+                    GroupShortcutTiles(onIntent = onIntent)
+                }
+                state.latestNotice?.let { GroupLatestNoticeCard(notice = it) }
+                if (state.memberPreview.isNotEmpty()) {
+                    GroupMemberPreview(members = state.memberPreview, onIntent = onIntent)
+                }
+                if (!state.isAdmin) {
+                    GroupInviteCard(onIntent = onIntent)
+                }
+                if (state.isAdmin) {
+                    GroupManageList(
+                        memberCount = state.memberCount,
+                        scheduleSummary = state.scheduleSummary,
+                        onIntent = onIntent,
+                    )
+                }
+                if (!state.isAdmin) {
+                    GroupLeaveButton(onIntent = onIntent)
+                }
             }
         }
     }

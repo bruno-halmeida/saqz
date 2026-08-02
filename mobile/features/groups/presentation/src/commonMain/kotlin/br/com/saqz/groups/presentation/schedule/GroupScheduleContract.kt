@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.schedule
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.ui.components.SlotDraft
 
 /**
@@ -22,6 +23,8 @@ import br.com.saqz.groups.presentation.ui.components.SlotDraft
 @Immutable
 internal data class GroupScheduleState(
     val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val error: GroupUiError? = null,
     val recurring: Boolean = true,
     val slots: List<GroupRegularSlotForm> = emptyList(),
     val durationMinutes: Int = 120,
@@ -52,6 +55,8 @@ internal data class UpcomingGameUi(
 internal enum class UpcomingGameStatus { Published, Scheduled }
 
 internal sealed interface GroupScheduleIntent {
+    data object Retry : GroupScheduleIntent
+
     data class ToggleRecurring(val value: Boolean) : GroupScheduleIntent
 
     data object AddSlot : GroupScheduleIntent

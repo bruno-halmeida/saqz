@@ -44,6 +44,10 @@ sealed interface GroupMembershipError : SaqzError {
     data class DataFailure(val error: DataError) : GroupMembershipError
 }
 
+/** O roster é legível por qualquer membro; somente o 403 do endpoint administrativo é esperado. */
+fun GroupMembershipError.isExpectedRosterAccessFailure(): Boolean =
+    this is GroupMembershipError.DataFailure && error == DataError.Forbidden
+
 interface GroupMembershipGateway {
     suspend fun listMemberships(
         groupId: GroupId,

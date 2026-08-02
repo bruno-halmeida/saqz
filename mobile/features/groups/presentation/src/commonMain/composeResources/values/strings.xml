@@ -134,6 +134,10 @@
     <string name="group_system_toast_title">Toast de erro</string>
     <string name="group_system_toast">Não foi possível atualizar sua presença.</string>
     <string name="group_system_try">Tentar</string>
+    <string name="group_load_failure_title">Não foi possível carregar este grupo</string>
+    <string name="group_load_failure_body">Verifique sua conexão e tente de novo.</string>
+    <string name="group_load_access_denied">Você não tem acesso a este grupo</string>
+    <string name="group_load_not_found">Grupo não encontrado</string>
 
     <!-- 2c · picker -->
     <string name="group_slot_title">Dia e horário</string>

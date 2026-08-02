@@ -8,6 +8,13 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeGroupProfileGateway
+import br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort
+import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -90,8 +97,25 @@ class GroupSetupViewModelTest {
         viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
         runCurrent()
 
-        assertTrue(viewModel.state.value.isSaving)
-        assertEquals(listOf(GroupSetupEffect.Created(groupId = "")), effects)
+        assertTrue(!viewModel.state.value.isSaving)
+        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+    }
+
+    @Test
+    fun `falha da criacao fica visivel como erro tipado`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            profileGateway = FakeGroupProfileGateway(
+                createResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.NotFound)),
+            ),
+        )
+        val effects = collectEffects(viewModel)
+
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.saveFailed)
+        assertEquals(GroupUiError.NotFound, viewModel.state.value.gatewayError)
+        assertTrue(effects.isEmpty())
     }
 
     @Test
@@ -103,7 +127,7 @@ class GroupSetupViewModelTest {
         runCurrent()
 
         assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
-        assertTrue(viewModel.state.value.isSaving)
+        assertTrue(!viewModel.state.value.isSaving)
         assertEquals(listOf(GroupSetupEffect.Saved), effects)
     }
 
@@ -122,9 +146,25 @@ class GroupSetupViewModelTest {
         editing.onIntent(GroupSetupIntent.ConfirmDelete)
         runCurrent()
 
-        assertTrue(editing.state.value.isDeleting)
+        assertTrue(!editing.state.value.isDeleting)
         assertNull(editing.state.value.sheet)
         assertEquals(listOf(GroupSetupEffect.Deleted), editingEffects)
+    }
+
+    @Test
+    fun `falha do delete vira erro tipado visivel`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            groupGateway = FakeGroupGateway(
+                deleteResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Forbidden)),
+            ),
+        )
+
+        viewModel.onIntent(GroupSetupIntent.ConfirmDelete)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.saveFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.gatewayError)
     }
 
     @Test
@@ -402,6 +442,8 @@ class GroupSetupViewModelTest {
         recurring: Boolean = true,
         saveFailed: Boolean = false,
         savedState: SavedStateHandle = SavedStateHandle(),
+        groupGateway: FakeGroupGateway = FakeGroupGateway(),
+        profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
     ) = GroupSetupViewModel(
         initialState = GroupSetupState(
             mode = mode,
@@ -410,6 +452,9 @@ class GroupSetupViewModelTest {
             saveFailed = saveFailed,
         ),
         savedState = savedState,
+        groupGateway = groupGateway,
+        profileGateway = profileGateway,
+        timeZonePort = FakeGroupSystemTimeZonePort(),
     )
 
     private companion object {

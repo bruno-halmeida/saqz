@@ -20,6 +20,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":features:groups:domain"))
+            implementation(project(":core:domain"))
             api(project(":core:design-system"))
             implementation(project(":features:groups"))
             implementation(project(":core:common"))
@@ -34,6 +35,7 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.compose.ui.test)
+            implementation(libs.kotlinx.coroutines.test)
             implementation(libs.kotlinx.serialization.json)
         }
         getByName("androidHostTest").dependencies {

@@ -18,6 +18,7 @@ kotlin {
             implementation(project(":core:network"))
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -25,4 +26,10 @@ kotlin {
             implementation(libs.ktor.client.mock)
         }
     }
+}
+
+tasks.register("test") {
+    group = "verification"
+    description = "Runs all groups data feature tests."
+    dependsOn(":features:groups:data:iosSimulatorArm64Test")
 }
