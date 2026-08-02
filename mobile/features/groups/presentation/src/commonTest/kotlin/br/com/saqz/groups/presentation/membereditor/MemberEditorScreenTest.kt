@@ -41,6 +41,7 @@ class MemberEditorScreenTest {
             }
         }
 
+        onNodeWithText("Posição").assertDoesNotExist()
         onNodeWithTag(MemberEditorTags.position(AthletePosition.PONTA)).assertDoesNotExist()
         onNodeWithTag(MemberEditorTags.side(AthletePreferredSide.DIREITA)).assertDoesNotExist()
         onNodeWithTag(MemberEditorTags.level(AthleteLevel.AVANCADO)).assertExists()

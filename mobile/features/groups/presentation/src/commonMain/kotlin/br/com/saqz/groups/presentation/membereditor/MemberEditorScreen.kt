@@ -252,7 +252,7 @@ private fun MemberEditorIdentity(state: MemberEditorState, onIntent: (MemberEdit
 @Composable
 private fun MemberEditorAttributes(state: MemberEditorState, onIntent: (MemberEditorIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
-    MemberEditorSection(stringResource(Res.string.member_editor_position)) {
+    MemberEditorSection(state.modality?.let { stringResource(Res.string.member_editor_position) }) {
         when (state.modality) {
             GroupModality.COURT_VOLLEYBALL -> {
                 MemberEditorChoiceRow(
