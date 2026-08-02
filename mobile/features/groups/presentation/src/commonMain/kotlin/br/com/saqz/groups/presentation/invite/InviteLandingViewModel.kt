@@ -8,6 +8,8 @@ import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.domain.membership.InviteGateway
 import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
+import br.com.saqz.groups.port.GroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -17,11 +19,14 @@ import kotlin.time.Instant
 class InviteLandingViewModel(
     private val code: String,
     private val inviteGateway: InviteGateway,
-    private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    private val timeZonePort: GroupSystemTimeZonePort,
 ) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(InviteLandingState()) {
     private var generation = 0L
+    // UTC keeps invite instants renderable when the platform cannot provide a valid timezone.
+    private var timeZone: TimeZone = TimeZone.UTC
 
     init {
+        timeZonePort.detect { result -> timeZone = result.toTimeZoneOrUtc() }
         loadPreview()
     }
 
@@ -100,6 +105,12 @@ private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when
     InviteError.PlanLimit -> InviteLandingError.PlanLimit
     is InviteError.DataFailure -> InviteLandingError.Network
     InviteError.GroupDeleted -> InviteLandingError.Invalid
+}
+
+private fun GroupSystemTimeZoneResult.toTimeZoneOrUtc(): TimeZone = when (this) {
+    is GroupSystemTimeZoneResult.Available -> runCatching { TimeZone.of(value.id) }
+        .getOrDefault(TimeZone.UTC)
+    GroupSystemTimeZoneResult.Unavailable -> TimeZone.UTC
 }
 
 private fun formatDateTime(
