@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invite_landing_title">Convite recebido</string>
+    <string name="invite_landing_eyebrow">Você foi convidado</string>
+    <string name="invite_landing_members">%1$d membros</string>
+    <string name="invite_landing_schedule_empty">Sem dia regular informado</string>
+    <string name="invite_landing_invited_by">Convite de %1$s</string>
+    <string name="invite_landing_next_game">Próximo jogo</string>
+    <string name="invite_landing_approval_banner">O admin precisa aprovar sua entrada. Você recebe um aviso quando for aceito.</string>
+    <string name="invite_landing_open_banner">ENTRADA LIBERADA · Quem tem o link ou o QR entra na hora. Ninguém precisa aprovar.</string>
+    <string name="invite_landing_request_action">Pedir pra entrar</string>
+    <string name="invite_landing_join_action">Entrar no grupo</string>
+    <string name="invite_landing_other_groups">Ver outros grupos</string>
+</resources>

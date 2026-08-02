@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invite_error_invalid_title">Convite inválido</string>
+    <string name="invite_error_invalid_body">Peça um novo convite pra quem te convidou.</string>
+    <string name="invite_error_expired_title">Convite expirado</string>
+    <string name="invite_error_expired_body">O link do %1$s valeu até %2$s. Peça um novo pra quem te convidou.</string>
+    <string name="invite_error_rate_title">Muitas tentativas</string>
+    <string name="invite_error_rate_body">Aguarde %1$s antes de tentar de novo.</string>
+    <string name="invite_error_rate_unknown">alguns instantes</string>
+    <string name="invite_error_plan_title">Grupo sem vagas no plano</string>
+    <string name="invite_error_plan_body">Este grupo atingiu o limite de atletas do plano. Não há fila de espera.</string>
+    <string name="invite_error_network_title">Não foi possível carregar o convite</string>
+    <string name="invite_error_network_body">Confira sua conexão e tente novamente.</string>
+    <string name="invite_error_retry">Tentar novamente</string>
+    <string name="invite_error_new_invite">Pedir novo convite</string>
+    <string name="invite_error_other_group">Entrar em outro grupo</string>
+</resources>
