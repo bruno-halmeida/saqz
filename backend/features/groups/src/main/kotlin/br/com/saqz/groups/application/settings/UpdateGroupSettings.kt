@@ -51,6 +51,7 @@ class UpdateGroupSettings(
                         profile = validProfile,
                         defaultVenueId = input.defaultVenueId,
                         regularSlotIds = input.regularSlotIds,
+                        entryRequiresApproval = input.entryRequiresApproval,
                     ),
                 )
             ) {
@@ -64,6 +65,7 @@ class UpdateGroupSettings(
                         requireNotNull(current.role),
                         write.settings.version,
                         write.settings.profileStatus,
+                        write.settings.entryRequiresApproval,
                     ),
                 )
             }
@@ -76,6 +78,7 @@ class UpdateGroupSettings(
         expectedVersion: Long,
         name: String,
         timeZone: String,
+        entryRequiresApproval: Boolean? = null,
     ): UpdateGroupSettingsResult {
         val validName = runCatching { AccessName.from(name) }.getOrNull()
         val validTimeZone = runCatching { IanaTimeZone.from(timeZone) }.getOrNull()
@@ -103,6 +106,7 @@ class UpdateGroupSettings(
                         expectedVersion,
                         requireNotNull(validName),
                         requireNotNull(validTimeZone),
+                        entryRequiresApproval = entryRequiresApproval,
                     ),
                 )
             ) {
@@ -116,6 +120,7 @@ class UpdateGroupSettings(
                         requireNotNull(current.role),
                         write.settings.version,
                         write.settings.profileStatus,
+                        write.settings.entryRequiresApproval,
                     ),
                 )
             }

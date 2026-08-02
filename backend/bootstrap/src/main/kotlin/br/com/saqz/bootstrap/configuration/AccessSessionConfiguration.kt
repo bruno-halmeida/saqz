@@ -8,6 +8,7 @@ import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
 import br.com.saqz.groups.adapter.input.http.AccessInviteRedemptionController
 import br.com.saqz.groups.adapter.input.http.AccessInvitePreviewController
 import br.com.saqz.groups.adapter.input.http.AccessMembershipController
+import br.com.saqz.groups.adapter.input.http.AccessEntryRequestController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.adapter.input.http.PasswordResetController
@@ -61,6 +62,9 @@ import br.com.saqz.subscriptions.application.SubscriptionLimitsAdapter
 import br.com.saqz.subscriptions.application.SubscriptionPlanLookup
 import br.com.saqz.groups.application.membership.ChangeMemberRole
 import br.com.saqz.groups.application.membership.ListAccessMemberships
+import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
+import br.com.saqz.groups.application.entryrequest.ListEntryRequests
+import br.com.saqz.groups.application.entryrequest.RejectEntryRequest
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRosterRepository
 import br.com.saqz.groups.application.athlete.GetOwnAthleteProfile
@@ -184,6 +188,9 @@ class AccessSessionConfiguration {
                 membershipGroupIds(userId).forEach { groupId ->
                     athleteRepository.remove(groupId, userId)
                 }
+                jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :userId")
+                    .param("userId", userId)
+                    .update()
             }
 
             private fun ownedGroupIds(ownerUserId: UUID): List<UUID> = jdbc.sql(
@@ -394,6 +401,49 @@ class AccessSessionConfiguration {
         listAccessMemberships: ListAccessMemberships,
         changeMemberRole: ChangeMemberRole,
     ) = AccessMembershipController(verifiedGroupActorResolver, listAccessMemberships, changeMemberRole)
+
+    @Bean
+    fun listEntryRequests(
+        readRepository: JdbcGroupReadRepository,
+        repository: JdbcInviteRedemptionRepository,
+    ) = ListEntryRequests(readRepository, repository, GroupAccessPolicy())
+
+    @Bean
+    fun approveEntryRequest(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        repository: JdbcInviteRedemptionRepository,
+        membershipRepository: JdbcMembershipRepository,
+        subscriptionLimits: SubscriptionLimits,
+    ) = ApproveEntryRequest(
+        transaction,
+        readRepository,
+        repository,
+        membershipRepository,
+        subscriptionLimits,
+        GroupAccessPolicy(),
+        Clock.systemUTC(),
+    )
+
+    @Bean
+    fun rejectEntryRequest(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        repository: JdbcInviteRedemptionRepository,
+    ) = RejectEntryRequest(transaction, readRepository, repository, GroupAccessPolicy())
+
+    @Bean
+    fun accessEntryRequestController(
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
+        listEntryRequests: ListEntryRequests,
+        approveEntryRequest: ApproveEntryRequest,
+        rejectEntryRequest: RejectEntryRequest,
+    ) = AccessEntryRequestController(
+        verifiedGroupActorResolver,
+        listEntryRequests,
+        approveEntryRequest,
+        rejectEntryRequest,
+    )
 
     @Bean
     fun inviteManagementRepository(dataSource: DataSource) = JdbcInviteManagementRepository(dataSource)

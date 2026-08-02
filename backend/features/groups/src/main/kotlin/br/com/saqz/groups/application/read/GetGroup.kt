@@ -28,6 +28,7 @@ class GetGroup(
                     financeDefaults = snapshot.financeDefaults.takeIf {
                         snapshot.role == GroupRole.OWNER || snapshot.role == GroupRole.ADMIN
                     },
+                    entryRequiresApproval = snapshot.entryRequiresApproval,
                 ),
             )
         }

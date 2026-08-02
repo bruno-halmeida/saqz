@@ -49,6 +49,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
+        execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
         transaction = JdbcTransactionRunner(dataSource)
         useCase = UpdateGroupSettings(
             transaction,
@@ -80,6 +81,22 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
 
         assertEquals("New Group|Europe/Lisbon|2", settings(group))
         assertEquals(2, result.settings.version)
+    }
+
+    @Test
+    fun `admin can toggle entry approval through legacy settings and increments version`() {
+        val owner = insertUser("toggle-owner")
+        val admin = insertUser("toggle-admin")
+        val group = insertGroup(owner)
+        insertMembership(group, admin, "ADMIN")
+
+        val result = assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(admin, group, 1, "Admin Group", "UTC", entryRequiresApproval = true),
+        )
+
+        assertEquals(true, result.settings.entryRequiresApproval)
+        assertEquals(true, boolean("SELECT entry_requires_approval FROM access_groups WHERE id = '$group'"))
+        assertEquals("2", settings(group).substringAfterLast('|'))
     }
 
     @Test
@@ -213,6 +230,18 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         assertEquals(1500, number("SELECT default_game_fee_cents FROM access_groups WHERE id = '$group'"))
         assertEquals(7000, number("SELECT monthly_fee_cents FROM access_groups WHERE id = '$group'"))
         assertEquals(10, number("SELECT monthly_due_day FROM access_groups WHERE id = '$group'"))
+    }
+
+    @Test
+    fun `owner can toggle entry approval through complete profile update`() {
+        val owner = insertUser("profile-toggle-owner")
+        val group = insertGroup(owner)
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile(), entryRequiresApproval = true)),
+        )
+
+        assertEquals(true, boolean("SELECT entry_requires_approval FROM access_groups WHERE id = '$group'"))
     }
 
     @Test
@@ -442,6 +471,15 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
             statement.executeQuery(sql).use {
                 it.next()
                 it.getString(1)
+            }
+        }
+    }
+
+    private fun boolean(sql: String): Boolean = connection().use { connection ->
+        connection.createStatement().use { statement ->
+            statement.executeQuery(sql).use {
+                it.next()
+                it.getBoolean(1)
             }
         }
     }

@@ -29,16 +29,18 @@ class JdbcGroupSettingsRepository(
             SET
                 name = :name,
                 time_zone = :timeZone,
+                entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
                 AND deleted_at IS NULL
                 AND version = :expectedVersion
-            RETURNING id, name, time_zone, version, profile_status
+            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval
             """.trimIndent(),
         )
             .param("name", command.name.value)
             .param("timeZone", command.timeZone.value)
+            .param("entryRequiresApproval", command.entryRequiresApproval)
             .param("groupId", command.groupId)
             .param("expectedVersion", command.expectedVersion)
             .query { result, _ ->
@@ -74,13 +76,14 @@ class JdbcGroupSettingsRepository(
                 default_game_fee_cents = :defaultGameFeeCents,
                 monthly_fee_cents = :monthlyFeeCents,
                 monthly_due_day = :monthlyDueDay,
+                entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
                 default_venue_id = null,
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
                 AND deleted_at IS NULL
                 AND version = :expectedVersion
-            RETURNING id, name, time_zone, version, profile_status
+            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval
             """.trimIndent(),
         )
             .param("name", profile.name)
@@ -97,6 +100,7 @@ class JdbcGroupSettingsRepository(
             .param("defaultGameFeeCents", profile.defaultGameFeeCents)
             .param("monthlyFeeCents", profile.monthlyFeeCents)
             .param("monthlyDueDay", profile.monthlyDueDay)
+            .param("entryRequiresApproval", command.entryRequiresApproval)
             .param("groupId", command.groupId)
             .param("expectedVersion", command.expectedVersion)
             .query { result, _ -> result.toStoredSettings() }
@@ -169,5 +173,6 @@ class JdbcGroupSettingsRepository(
         timeZone = IanaTimeZone.from(getString("time_zone")),
         version = getLong("version"),
         profileStatus = GroupProfileStatus.valueOf(getString("profile_status")),
+        entryRequiresApproval = getBoolean("entry_requires_approval"),
     )
 }

@@ -17,12 +17,14 @@ data class UpdateGroupSettingsCommand(
     val profile: ValidGroupProfileDefaults? = null,
     val defaultVenueId: UUID? = null,
     val regularSlotIds: List<UUID?> = emptyList(),
+    val entryRequiresApproval: Boolean? = null,
 )
 
 data class UpdateGroupProfileInput(
     val profile: GroupProfileDefaultsInput,
     val defaultVenueId: UUID? = null,
     val regularSlotIds: List<UUID?> = emptyList(),
+    val entryRequiresApproval: Boolean? = null,
 )
 
 data class StoredGroupSettings(
@@ -31,6 +33,7 @@ data class StoredGroupSettings(
     val timeZone: IanaTimeZone,
     val version: Long,
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
+    val entryRequiresApproval: Boolean = false,
 )
 
 data class UpdatedGroupSettings(
@@ -40,6 +43,7 @@ data class UpdatedGroupSettings(
     val role: GroupRole,
     val version: Long,
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
+    val entryRequiresApproval: Boolean = false,
 )
 
 enum class UpdateGroupSettingsField {

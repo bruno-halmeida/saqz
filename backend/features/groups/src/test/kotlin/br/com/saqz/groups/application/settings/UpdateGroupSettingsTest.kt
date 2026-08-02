@@ -47,6 +47,19 @@ class UpdateGroupSettingsTest {
     }
 
     @Test
+    fun `admin can update entry approval with the same optimistic version`() {
+        val fixture = fixture(
+            GroupRole.ADMIN,
+            writeResult = SettingsWriteResult.Updated(stored().copy(entryRequiresApproval = true)),
+        )
+
+        val result = fixture.useCase.execute(actor, groupId, 3, "New Group", "UTC", entryRequiresApproval = true)
+
+        assertEquals(true, (result as UpdateGroupSettingsResult.Success).settings.entryRequiresApproval)
+        assertEquals(true, fixture.settings.commands.single().entryRequiresApproval)
+    }
+
+    @Test
     fun `athlete is forbidden without a write`() {
         val fixture = fixture(GroupRole.ATHLETE)
 

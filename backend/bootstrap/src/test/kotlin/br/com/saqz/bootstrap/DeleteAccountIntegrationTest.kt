@@ -71,6 +71,7 @@ class DeleteAccountIntegrationTest {
         val ownedGroup = insertGroup(deleted.user.id, "Owned Group")
         val thirdPartyGroup = insertGroup(thirdPartyOwner.user.id, "Third Party Group")
         insertMembership(thirdPartyGroup, deleted.user.id, "ADMIN")
+        insertEntryRequest(thirdPartyGroup, deleted.user.id)
         val game = insertGame(thirdPartyGroup)
         insertAttendance(game, thirdPartyGroup, deleted.user.id, "Deleted Public")
         insertCharge(thirdPartyGroup, deleted.user.id, thirdPartyOwner.user.id, "Deleted Public")
@@ -83,6 +84,7 @@ class DeleteAccountIntegrationTest {
         assertEquals(1, count("SELECT count(*) FROM access_groups WHERE id = '$ownedGroup' AND deleted_at IS NOT NULL"))
         assertEquals(1, count("SELECT count(*) FROM access_groups WHERE id = '$thirdPartyGroup' AND deleted_at IS NULL"))
         assertEquals(0, count("SELECT count(*) FROM group_memberships WHERE group_id = '$thirdPartyGroup' AND user_id = '${deleted.user.id}'"))
+        assertEquals(0, count("SELECT count(*) FROM group_entry_requests WHERE user_id = '${deleted.user.id}'"))
         assertEquals(1, count("SELECT count(*) FROM group_membership_removals WHERE group_id = '$thirdPartyGroup' AND user_id = '${deleted.user.id}'"))
         assertEquals("Deleted Public", text("SELECT member_display_name FROM game_attendance WHERE member_user_id = '${deleted.user.id}'"))
         assertEquals("Deleted Public", text("SELECT member_display_name FROM group_charges WHERE member_user_id = '${deleted.user.id}'"))
@@ -151,6 +153,9 @@ class DeleteAccountIntegrationTest {
                     .list()
                     .filterNotNull()
                     .forEach { groupId -> athletes.remove(groupId, userId) }
+                jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :userId")
+                    .param("userId", userId)
+                    .update()
             }
         }
         return DeleteAccount(
@@ -174,6 +179,11 @@ class DeleteAccountIntegrationTest {
     private fun insertMembership(group: UUID, user: UUID, role: String) = execute(
         "INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at) " +
             "VALUES ('$group', '$user', '$role', now(), now())",
+    )
+
+    private fun insertEntryRequest(group: UUID, user: UUID) = execute(
+        "INSERT INTO group_entry_requests (group_id, user_id, requested_at) " +
+            "VALUES ('$group', '$user', now())",
     )
 
     private fun insertGame(group: UUID): UUID {

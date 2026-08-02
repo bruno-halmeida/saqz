@@ -1,12 +1,16 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand
 import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
 import br.com.saqz.groups.application.invite.redeem.InviteRedemptionRepository
 import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.invite.redeem.RedeemableInvite
+import br.com.saqz.groups.application.entryrequest.EntryRequestRepository
+import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
+import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -15,7 +19,7 @@ import java.time.Instant
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionRepository {
+class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionRepository, EntryRequestRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow {
@@ -47,7 +51,9 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
     override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? = jdbc.sql(
         // Deliberately includes deleted groups so the use case can return its specific error.
         """
-        SELECT invites.group_id, groups.deleted_at IS NOT NULL AS group_deleted
+        SELECT invites.group_id,
+               groups.deleted_at IS NOT NULL AS group_deleted,
+               groups.entry_requires_approval
         FROM group_invites invites
         JOIN access_groups groups ON groups.id = invites.group_id
         WHERE invites.token_digest = :tokenDigest
@@ -58,10 +64,87 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             RedeemableInvite(
                 groupId = result.getObject("group_id", UUID::class.java),
                 groupDeleted = result.getBoolean("group_deleted"),
+                entryRequiresApproval = result.getBoolean("entry_requires_approval"),
             )
         }
         .optional()
         .orElse(null)
+
+    override fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = jdbc.sql(
+        """
+        SELECT CASE
+            WHEN groups.owner_user_id = :userId THEN 'OWNER'
+            ELSE memberships.role
+        END AS resolved_role
+        FROM access_groups groups
+        LEFT JOIN group_memberships memberships
+            ON memberships.group_id = groups.id
+            AND memberships.user_id = :userId
+        WHERE groups.id = :groupId
+          AND groups.deleted_at IS NULL
+          AND (groups.owner_user_id = :userId OR memberships.user_id IS NOT NULL)
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .param("userId", userId)
+        .query(String::class.java)
+        .optional()
+        .orElse(null)
+        ?.let(GroupRole::valueOf)
+
+    override fun createEntryRequest(command: CreateEntryRequestCommand) {
+        jdbc.sql(
+            """
+            INSERT INTO group_entry_requests (group_id, user_id, requested_at)
+            VALUES (:groupId, :userId, :requestedAt)
+            ON CONFLICT (group_id, user_id) DO NOTHING
+            """.trimIndent(),
+        )
+            .param("groupId", command.groupId)
+            .param("userId", command.userId)
+            .param("requestedAt", Timestamp.from(command.requestedAt))
+            .update()
+    }
+
+    override fun list(groupId: UUID): List<GroupEntryRequest> = jdbc.sql(
+        """
+        SELECT requests.user_id, users.display_name, requests.requested_at
+        FROM group_entry_requests requests
+        JOIN access_users users ON users.id = requests.user_id AND users.deleted_at IS NULL
+        WHERE requests.group_id = :groupId
+        ORDER BY requests.requested_at, requests.user_id
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .query(::mapEntryRequest)
+        .list()
+
+    override fun find(groupId: UUID, userId: UUID): GroupEntryRequest? = jdbc.sql(
+        """
+        SELECT requests.user_id, users.display_name, requests.requested_at
+        FROM group_entry_requests requests
+        JOIN access_users users ON users.id = requests.user_id AND users.deleted_at IS NULL
+        WHERE requests.group_id = :groupId
+          AND requests.user_id = :userId
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .param("userId", userId)
+        .query(::mapEntryRequest)
+        .optional()
+        .orElse(null)
+
+    override fun delete(groupId: UUID, userId: UUID) {
+        jdbc.sql(
+            """
+            DELETE FROM group_entry_requests
+            WHERE group_id = :groupId AND user_id = :userId
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("userId", userId)
+            .update()
+    }
 
     override fun recordInvalidAttempt(command: RecordInvalidInviteAttempt) {
         val changed = jdbc.sql(
@@ -187,4 +270,10 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         .query(String::class.java)
         .single()
         .let(GroupRole::valueOf)
+
+    private fun mapEntryRequest(result: java.sql.ResultSet, rowNumber: Int) = GroupEntryRequest(
+        userId = result.getObject("user_id", UUID::class.java),
+        displayName = AccessName.from(result.getString("display_name")),
+        requestedAt = result.getTimestamp("requested_at").toInstant(),
+    )
 }

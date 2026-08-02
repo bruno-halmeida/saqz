@@ -32,6 +32,7 @@ import java.time.LocalTime
 data class UpdateGroupSettingsRequest @JsonCreator constructor(
     @JsonProperty("name") val name: String,
     @JsonProperty("timeZone") val timeZone: String,
+    @JsonProperty("entryRequiresApproval") val entryRequiresApproval: Boolean? = null,
 )
 
 data class GroupSettingsResponse(
@@ -40,6 +41,7 @@ data class GroupSettingsResponse(
     val timeZone: String,
     val role: GroupRole,
     val version: Long,
+    val entryRequiresApproval: Boolean,
 )
 
 data class UpdateGroupProfileRequest @JsonCreator constructor(
@@ -59,6 +61,7 @@ data class UpdateGroupProfileRequest @JsonCreator constructor(
     @JsonProperty("defaultGameFeeCents") val defaultGameFeeCents: Long? = null,
     @JsonProperty("monthlyFeeCents") val monthlyFeeCents: Long? = null,
     @JsonProperty("monthlyDueDay") val monthlyDueDay: Int? = null,
+    @JsonProperty("entryRequiresApproval") val entryRequiresApproval: Boolean? = null,
 )
 
 data class UpdateGroupVenueRequest @JsonCreator constructor(
@@ -128,6 +131,7 @@ class AccessGroupSettingsController(
                 expectedVersion,
                 request.name,
                 request.timeZone,
+                request.entryRequiresApproval,
             )
         ) {
             UpdateGroupSettingsResult.GroupNotFound -> throw GroupNotFoundException()
@@ -207,6 +211,7 @@ private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(
     ),
     defaultVenueId = defaultVenue?.id,
     regularSlotIds = regularSlots.orEmpty().map { it.id },
+    entryRequiresApproval = entryRequiresApproval,
 )
 
 private fun UpdatedGroupSettings.toResponse() = GroupSettingsResponse(
@@ -215,4 +220,5 @@ private fun UpdatedGroupSettings.toResponse() = GroupSettingsResponse(
     timeZone = timeZone.value,
     role = role,
     version = version,
+    entryRequiresApproval = entryRequiresApproval,
 )
