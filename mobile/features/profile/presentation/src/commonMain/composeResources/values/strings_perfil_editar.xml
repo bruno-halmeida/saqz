@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_edit_title">Editar dados</string>
+    <string name="profile_edit_photo_title">Sua foto</string>
+    <string name="profile_edit_photo_hint">Aparece nas listas de presença e nos grupos.</string>
+    <string name="profile_edit_photo_action">Trocar foto</string>
+    <string name="profile_edit_name">Nome completo</string>
+    <string name="profile_edit_nickname">Como te chamam</string>
+    <string name="profile_edit_phone">Celular</string>
+    <string name="profile_edit_email">E-mail</string>
+    <string name="profile_edit_city">Cidade</string>
+    <string name="profile_edit_phone_visibility">Quem vê seu celular</string>
+    <string name="profile_edit_phone_visibility_hint">Vale para todos os grupos.</string>
+    <string name="profile_edit_visibility_everyone">A galera do grupo</string>
+    <string name="profile_edit_visibility_admins">Só admins</string>
+    <string name="profile_edit_visibility_nobody">Ninguém</string>
+    <string name="profile_edit_membership_note">A posição e o nível ficam no perfil de cada grupo, porque podem mudar de um pro outro.</string>
+    <string name="profile_edit_save">Salvar alterações</string>
+    <string name="profile_edit_error_name">Informe seu nome completo.</string>
+    <string name="profile_edit_error_phone">Informe seu celular.</string>
+    <string name="profile_edit_error_nickname">Confira seu apelido.</string>
+    <string name="profile_edit_error_city">Confira sua cidade.</string>
+    <string name="profile_edit_error_visibility">Escolha quem pode ver seu celular.</string>
+    <string name="profile_edit_load_error">Não foi possível carregar seus dados.</string>
+    <string name="profile_edit_save_error">Não foi possível salvar suas alterações.</string>
+    <string name="profile_edit_retry">Tentar novamente</string>
+</resources>

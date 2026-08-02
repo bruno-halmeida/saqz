@@ -23,6 +23,7 @@ kotlin {
             api(project(":core:design-system"))
             implementation(project(":core:domain"))
             implementation(project(":features:profile"))
+            implementation(project(":core:domain"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
             implementation(libs.kotlinx.coroutines.core)
