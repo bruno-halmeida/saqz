@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap.configuration.http
 
 import br.com.saqz.sharedkernel.ErrorCode
 import com.fasterxml.jackson.annotation.JsonInclude
+import java.time.Instant
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ApiProblem(
@@ -12,4 +13,5 @@ data class ApiProblem(
     val retryAfterSeconds: Int? = null,
     /** Quantas tentativas restam no código de recuperação — a tela 1k desenha o número. */
     val remainingAttempts: Int? = null,
+    val expiredAt: Instant? = null,
 )

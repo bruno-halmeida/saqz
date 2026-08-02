@@ -19,6 +19,9 @@ import br.com.saqz.groups.adapter.input.http.InvalidGroupRequestException
 import br.com.saqz.groups.adapter.input.http.InviteAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.InviteGroupDeletedException
 import br.com.saqz.groups.adapter.input.http.InviteInvalidOrExpiredException
+import br.com.saqz.groups.adapter.input.http.InvitePreviewAttemptLimitException
+import br.com.saqz.groups.adapter.input.http.InvitePreviewExpiredException
+import br.com.saqz.groups.adapter.input.http.InvitePreviewInvalidException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkInvalidOrExpiredException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkUnavailableException
@@ -227,6 +230,35 @@ class SafeExceptionHandler(
     @ExceptionHandler(InviteInvalidOrExpiredException::class)
     fun inviteInvalidOrExpired(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.INVITE_INVALID_OR_EXPIRED)
+    }
+
+    @ExceptionHandler(InvitePreviewInvalidException::class)
+    fun invitePreviewInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.INVITE_INVALID)
+    }
+
+    @ExceptionHandler(InvitePreviewExpiredException::class)
+    fun invitePreviewExpired(
+        failure: InvitePreviewExpiredException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(request, response, 410, ErrorCode.INVITE_EXPIRED, expiredAt = failure.expiredAt)
+    }
+
+    @ExceptionHandler(InvitePreviewAttemptLimitException::class)
+    fun invitePreviewAttemptLimit(
+        failure: InvitePreviewAttemptLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            429,
+            ErrorCode.INVITE_ATTEMPT_LIMIT,
+            retryAfterSeconds = failure.retryAfterSeconds,
+        )
     }
 
     @ExceptionHandler(InviteGroupDeletedException::class)
