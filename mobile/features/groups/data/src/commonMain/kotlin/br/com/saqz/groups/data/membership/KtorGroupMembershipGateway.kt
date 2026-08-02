@@ -44,7 +44,10 @@ private data class MembershipDto(
 )
 
 @Serializable
-private data class InviteUrlDto(val inviteUrl: String = "")
+private data class InviteUrlDto(
+    val inviteUrl: String = "",
+    val expiresAt: String? = null,
+)
 
 @Serializable
 private data class InviteMetadataDto(
@@ -132,7 +135,7 @@ private fun NetworkResult<InviteUrlDto>.toInviteUrlResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
     is NetworkResult.Success -> value.inviteUrl
         .takeIf(String::isNotBlank)
-        ?.let(::GroupInviteUrl)
+        ?.let { GroupInviteUrl(it, value.expiresAt) }
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
 }

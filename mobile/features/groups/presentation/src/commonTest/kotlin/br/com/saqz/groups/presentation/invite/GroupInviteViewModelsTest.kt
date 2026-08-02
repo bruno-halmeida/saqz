@@ -112,6 +112,44 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `rotate success updates expiration without reload`() = runTest {
+        val viewModel = groupViewModel(
+            membership = FakeMembershipGateway(
+                rotateResult = SaqzResult.Success(
+                    GroupInviteUrl("https://saqz.app/invite/rotated", "2099-08-10T23:59:00Z"),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
+        advanceUntilIdle()
+
+        assertEquals("10/08", viewModel.state.value.expiresLabel)
+    }
+
+    @Test
+    fun `rotate and expire serialize invite mutation`() = runTest {
+        val membership = ConcurrentInviteMutationGateway()
+        val viewModel = groupViewModel(membership = membership)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
+        viewModel.onIntent(GroupInviteIntent.DeactivateInvite)
+        advanceUntilIdle()
+
+        assertEquals(1, membership.rotateCalls)
+        assertEquals(0, membership.expireCalls)
+
+        membership.completeRotate()
+        advanceUntilIdle()
+
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertFalse(viewModel.state.value.isGenerating)
+        assertFalse(viewModel.state.value.isDeactivating)
+    }
+
+    @Test
     fun `rotate failure leaves operation error`() = runTest {
         val viewModel = groupViewModel(
             membership = FakeMembershipGateway(
@@ -395,6 +433,34 @@ class GroupInviteViewModelsTest {
         override suspend fun rotateInvite(groupId: GroupId) = rotateResult
         override suspend fun readInviteMetadata(groupId: GroupId) = metadataResult
         override suspend fun expireInvite(groupId: GroupId) = expireResult
+    }
+
+    private class ConcurrentInviteMutationGateway : GroupMembershipGateway {
+        private val rotateGate = CompletableDeferred<Unit>()
+        var rotateCalls = 0
+        var expireCalls = 0
+
+        override suspend fun listMemberships(groupId: GroupId) = SaqzResult.Success(emptyList<GroupMembership>())
+        override suspend fun changeRole(command: ChangeMembershipRoleCommand) =
+            SaqzResult.Success(GroupMembership("u", "U", GroupRole.ATHLETE))
+
+        override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> {
+            rotateCalls += 1
+            rotateGate.await()
+            return SaqzResult.Success(GroupInviteUrl("https://saqz.app/invite/rotated", "2099-08-10T23:59:00Z"))
+        }
+
+        override suspend fun readInviteMetadata(groupId: GroupId) =
+            SaqzResult.Success(GroupInviteMetadata(active = true, expiresAt = "2099-08-07T23:59:00Z"))
+
+        override suspend fun expireInvite(groupId: GroupId): EmptyResult<GroupMembershipError> {
+            expireCalls += 1
+            return SaqzResult.Success(Unit)
+        }
+
+        fun completeRotate() {
+            rotateGate.complete(Unit)
+        }
     }
 
     private class FakeEntryGateway(

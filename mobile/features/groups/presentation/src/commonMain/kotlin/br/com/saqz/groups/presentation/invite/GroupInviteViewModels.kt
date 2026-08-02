@@ -136,20 +136,34 @@ class GroupInviteViewModel(
     }
 
     private fun rotate() {
-        if (state.value.isGenerating) return
+        if (state.value.isGenerating || state.value.isDeactivating) return
         val operation = GenerationKey(GenerationOperation.Rotate)
         val requestGeneration = nextGeneration(operation)
-        update { it.copy(isGenerating = true, error = null) }
+        update { it.copy(isGenerating = true, isDeactivating = true, error = null) }
         viewModelScope.launch {
             when (val result = membershipGateway.rotateInvite(GroupId(groupId))) {
                 is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
-                    update { it.copy(isGenerating = false, error = GroupInviteError.Operation) }
+                    update {
+                        it.copy(
+                            isGenerating = false,
+                            isDeactivating = false,
+                            error = GroupInviteError.Operation,
+                        )
+                    }
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     val url = result.value.value
                     urlStore.write(groupId, url) { writeResult ->
                         if (!isCurrent(operation, requestGeneration)) return@write
-                        update { it.copy(isGenerating = false, inviteStatus = InviteStatus.Active, inviteUrl = url) }
+                        update {
+                            it.copy(
+                                isGenerating = false,
+                                isDeactivating = false,
+                                inviteStatus = InviteStatus.Active,
+                                inviteUrl = url,
+                                expiresLabel = result.value.expiresAt?.formatExpiry(),
+                            )
+                        }
                         if (writeResult is GroupInviteUrlWriteResult.Failure) {
                             update { it.copy(error = GroupInviteError.Operation) }
                         }
@@ -160,19 +174,26 @@ class GroupInviteViewModel(
     }
 
     private fun expire() {
-        if (state.value.isDeactivating) return
+        if (state.value.isGenerating || state.value.isDeactivating) return
         val operation = GenerationKey(GenerationOperation.Expire)
         val requestGeneration = nextGeneration(operation)
-        update { it.copy(isDeactivating = true, error = null) }
+        update { it.copy(isGenerating = true, isDeactivating = true, error = null) }
         viewModelScope.launch {
             when (membershipGateway.expireInvite(GroupId(groupId))) {
                 is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
-                    update { it.copy(isDeactivating = false, error = GroupInviteError.Operation) }
+                    update {
+                        it.copy(
+                            isGenerating = false,
+                            isDeactivating = false,
+                            error = GroupInviteError.Operation,
+                        )
+                    }
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     urlStore.write(groupId, null) { if (isCurrent(operation, requestGeneration)) {
                         update {
                             it.copy(
+                                isGenerating = false,
                                 isDeactivating = false,
                                 inviteStatus = InviteStatus.Empty,
                                 inviteUrl = null,

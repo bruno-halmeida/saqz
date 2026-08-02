@@ -99,8 +99,11 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
-    fun `rotate maps complete invite URL`() = runTest {
-        assertEquals(INVITE_URL, fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success().value)
+    fun `rotate maps invite URL and expiration`() = runTest {
+        val invite = fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success()
+
+        assertEquals(INVITE_URL, invite.value)
+        assertEquals(EXPIRES_AT, invite.expiresAt)
     }
 
     @Test
@@ -290,7 +293,7 @@ class KtorGroupMembershipGatewayTest {
     )
 
     private fun MockRequestHandleScope.inviteUrl() = respond(
-        """{"inviteUrl":"$INVITE_URL"}""",
+        """{"inviteUrl":"$INVITE_URL","expiresAt":"$EXPIRES_AT"}""",
         headers = jsonHeaders(),
     )
 
@@ -354,5 +357,6 @@ class KtorGroupMembershipGatewayTest {
         const val GROUP_ID = "group-1"
         const val USER_ID = "user-1"
         const val INVITE_URL = "https://join.example.test/invite/fake"
+        const val EXPIRES_AT = "2026-08-09T12:00:00Z"
     }
 }

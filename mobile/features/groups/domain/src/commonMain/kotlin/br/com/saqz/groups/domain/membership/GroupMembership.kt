@@ -27,8 +27,10 @@ data class GroupInviteMetadata(
     val createdByName: String? = null,
 )
 
-@JvmInline
-value class GroupInviteUrl(val value: String)
+data class GroupInviteUrl(
+    val value: String,
+    val expiresAt: String? = null,
+)
 
 data class ChangeMembershipRoleCommand(
     val groupId: GroupId,

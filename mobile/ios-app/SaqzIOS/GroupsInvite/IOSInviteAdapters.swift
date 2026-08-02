@@ -21,9 +21,12 @@ final class IOSInviteUrlStore: @preconcurrency GroupInviteUrlStorePort {
 }
 
 @MainActor
-final class IOSInviteShareAdapter: @preconcurrency NativeInviteSharePort, NativeInviteClipboardPort {
+final class IOSInviteShareAdapter: NSObject, @preconcurrency NativeInviteSharePort, NativeInviteClipboardPort {
     private let presenter: () -> UIViewController?
-    init(presenter: @escaping () -> UIViewController?) { self.presenter = presenter }
+    init(presenter: @escaping () -> UIViewController?) {
+        self.presenter = presenter
+        super.init()
+    }
 
     func shareText(text: String, done: @escaping (any InviteNativeOperationResult) -> Void) {
         present(items: [text], done: done)
@@ -42,8 +45,13 @@ final class IOSInviteShareAdapter: @preconcurrency NativeInviteSharePort, Native
             done(InviteNativeOperationResultFailure(code: .providerUnavailable))
             return
         }
-        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-        done(InviteNativeOperationResultSuccess.shared)
+        let context = Unmanaged.passRetained(SaveContext(done: done))
+        UIImageWriteToSavedPhotosAlbum(
+            image,
+            self,
+            #selector(image(_:didFinishSavingWithError:contextInfo:)),
+            context.toOpaque(),
+        )
     }
 
     func doCopyText(text: String, done: @escaping (any InviteNativeOperationResult) -> Void) {
@@ -58,6 +66,28 @@ final class IOSInviteShareAdapter: @preconcurrency NativeInviteSharePort, Native
         }
         presenter.present(UIActivityViewController(activityItems: items, applicationActivities: nil), animated: true)
         done(InviteNativeOperationResultSuccess.shared)
+    }
+
+    @objc private func image(
+        _ image: UIImage,
+        didFinishSavingWithError error: Error?,
+        contextInfo: UnsafeMutableRawPointer?,
+    ) {
+        guard let contextInfo else { return }
+        let context = Unmanaged<SaveContext>.fromOpaque(contextInfo).takeRetainedValue()
+        if error == nil {
+            context.done(InviteNativeOperationResultSuccess.shared)
+        } else {
+            context.done(InviteNativeOperationResultFailure(code: .providerUnavailable))
+        }
+    }
+
+    private final class SaveContext {
+        let done: (any InviteNativeOperationResult) -> Void
+
+        init(done: @escaping (any InviteNativeOperationResult) -> Void) {
+            self.done = done
+        }
     }
 }
 
