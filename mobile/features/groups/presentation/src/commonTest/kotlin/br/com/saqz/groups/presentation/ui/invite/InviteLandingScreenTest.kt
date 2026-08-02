@@ -9,7 +9,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.presentation.invite.InviteLandingEffect
 import br.com.saqz.groups.presentation.invite.InviteLandingIntent
 import br.com.saqz.groups.presentation.invite.InviteLandingState
 import kotlin.test.Test
