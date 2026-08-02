@@ -88,6 +88,26 @@ class KtorGroupGatewayTest {
             }.gateway.update(settings())
         }
 
+    @Test fun `settings update sends entry approval`() =
+        runTest {
+            fixture { req ->
+                assertEquals(true, req.bodyJson()["entryRequiresApproval"]?.jsonPrimitive?.boolean)
+                group()
+            }.gateway.update(settings(entryRequiresApproval = true))
+        }
+
+    @Test fun `read maps entry approval`() =
+        runTest {
+            assertEquals(
+                true,
+                fixture { group(baseJson().replace("\"role\":\"OWNER\"", "\"role\":\"OWNER\",\"entryRequiresApproval\":true")) }
+                    .gateway.read(GroupId(ID))
+                    .success<VersionedGroup>()
+                    .group
+                    .entryRequiresApproval,
+            )
+        }
+
     @Test fun `profile create maps complete form`() =
         runTest {
             fixture { req ->
@@ -357,7 +377,13 @@ class KtorGroupGatewayTest {
 
     private fun create() = CreateGroupCommand(KEY, "Group", GroupTimeZone("UTC"))
 
-    private fun settings() = UpdateGroupSettingsCommand(GroupId(ID), GroupVersionToken("\"6\""), "New", GroupTimeZone("UTC"))
+    private fun settings(entryRequiresApproval: Boolean = false) = UpdateGroupSettingsCommand(
+        GroupId(ID),
+        GroupVersionToken("\"6\""),
+        "New",
+        GroupTimeZone("UTC"),
+        entryRequiresApproval,
+    )
 
     private fun form() = GroupSetupForm("Group", GroupModality.COURT_VOLLEYBALL, GroupComposition.MIXED, defaultCapacity = 12)
 

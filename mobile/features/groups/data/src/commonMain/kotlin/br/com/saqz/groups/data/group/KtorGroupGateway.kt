@@ -90,13 +90,18 @@ internal data class GroupDto(
     val currency: GroupCurrencyDto = GroupCurrencyDto.BRL,
     val profile: GroupProfileDto? = null,
     val financeDefaults: GroupFinanceDefaultsDto? = null,
+    val entryRequiresApproval: Boolean = false,
 )
 
 @Serializable
 private data class CreateGroupRequestDto(val requestId: String, val name: String, val timeZone: String)
 
 @Serializable
-private data class UpdateGroupSettingsRequestDto(val name: String, val timeZone: String)
+private data class UpdateGroupSettingsRequestDto(
+    val name: String,
+    val timeZone: String,
+    val entryRequiresApproval: Boolean,
+)
 
 @Serializable
 private data class GroupVenueRequestDto(
@@ -166,7 +171,13 @@ class KtorGroupGateway(
             "api/groups/${command.groupId.value}/settings",
             GroupDto.serializer(),
             NetworkRequest(
-                json.encodeToString(UpdateGroupSettingsRequestDto(command.name, command.timeZone.id)),
+                json.encodeToString(
+                    UpdateGroupSettingsRequestDto(
+                        command.name,
+                        command.timeZone.id,
+                        command.entryRequiresApproval,
+                    ),
+                ),
                 mapOf(HttpHeaders.IfMatch to command.versionToken.value),
             ),
         ).toVersionedResult()
@@ -243,6 +254,7 @@ private fun GroupDto.toDomain(): Group? {
         financeDefaults = financeDefaults?.let {
             GroupFinanceDefaults(it.defaultGameFeeCents, it.monthlyFeeCents, it.monthlyDueDay)
         },
+        entryRequiresApproval = entryRequiresApproval,
     )
 }
 

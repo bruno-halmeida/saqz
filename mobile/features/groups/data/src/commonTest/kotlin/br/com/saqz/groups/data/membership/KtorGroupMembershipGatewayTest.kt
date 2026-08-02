@@ -104,6 +104,35 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
+    fun `metadata uses exact get route`() = runTest {
+        fixture { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/api/groups/$GROUP_ID/invite", request.url.encodedPath)
+            inviteMetadata()
+        }.gateway.readInviteMetadata(GroupId(GROUP_ID))
+    }
+
+    @Test
+    fun `metadata maps active fields without exposing a URL`() = runTest {
+        val metadata = fixture { inviteMetadata() }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertTrue(metadata.active)
+        assertEquals("2026-08-09T12:00:00Z", metadata.expiresAt)
+        assertEquals("2026-08-02T12:00:00Z", metadata.createdAt)
+        assertEquals("Owner Person", metadata.createdByName)
+    }
+
+    @Test
+    fun `inactive metadata accepts omitted optional fields`() = runTest {
+        val metadata = fixture { respond("{\"active\":false}", headers = jsonHeaders()) }
+            .gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertFalse(metadata.active)
+        assertEquals(null, metadata.expiresAt)
+        assertEquals(null, metadata.createdByName)
+    }
+
+    @Test
     fun `invite URL exposes no unrelated membership data`() = runTest {
         val url = fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success().value
 
@@ -262,6 +291,11 @@ class KtorGroupMembershipGatewayTest {
 
     private fun MockRequestHandleScope.inviteUrl() = respond(
         """{"inviteUrl":"$INVITE_URL"}""",
+        headers = jsonHeaders(),
+    )
+
+    private fun MockRequestHandleScope.inviteMetadata() = respond(
+        """{"active":true,"expiresAt":"2026-08-09T12:00:00Z","createdAt":"2026-08-02T12:00:00Z","createdByName":"Owner Person"}""",
         headers = jsonHeaders(),
     )
 
