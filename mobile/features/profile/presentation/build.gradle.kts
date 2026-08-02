@@ -28,6 +28,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)
+            implementation(libs.lifecycle.viewmodel.savedstate)
             implementation(libs.koin.compose.viewmodel)
         }
         commonTest.dependencies {
