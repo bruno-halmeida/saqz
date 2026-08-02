@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.athlete.AthleteStats
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
+import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -98,10 +99,12 @@ class FakeAthleteGateway(
     ),
     var rosterResult: SaqzResult<List<AthleteRosterEntry>, AthleteError> = SaqzResult.Success(emptyList()),
     var updateResult: SaqzResult<Athlete, AthleteError>? = null,
+    var updateOwnProfileResult: SaqzResult<Athlete, AthleteError>? = null,
     var removeResult: SaqzResult<Unit, AthleteError> = SaqzResult.Success(Unit),
     var statsResult: SaqzResult<AthleteStats, AthleteError> = SaqzResult.Success(AthleteStats(0, null, 0)),
 ) : AthleteGateway {
     var lastRosterFilter: AthleteRosterFilter? = null
+    var lastUpdateOwnProfileCommand: UpdateOwnAthleteProfileCommand? = null
     var lastRemovedUserId: String? = null
     var lastUpdateCommand: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand? = null
     var lastStatsUserId: String? = null
@@ -118,6 +121,27 @@ class FakeAthleteGateway(
         groupId: GroupId,
         position: AthletePosition?,
     ): SaqzResult<Athlete, AthleteError> = error("not used in this screen")
+
+    override suspend fun updateOwnProfile(
+        command: UpdateOwnAthleteProfileCommand,
+    ): SaqzResult<Athlete, AthleteError> {
+        lastUpdateOwnProfileCommand = command
+        return updateOwnProfileResult ?: SaqzResult.Success(
+            Athlete(
+                userId = "me",
+                displayName = "Bruno",
+                role = GroupRole.ATHLETE,
+                position = command.position,
+                membershipType = AthleteMembershipType.AVULSO,
+                active = true,
+                nickname = command.nickname,
+                secondaryPosition = command.secondaryPosition,
+                level = command.level,
+                preferredSide = command.preferredSide,
+                heightCm = command.heightCm,
+            ),
+        )
+    }
 
     override suspend fun updateAthlete(command: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand): SaqzResult<Athlete, AthleteError> {
         lastUpdateCommand = command
