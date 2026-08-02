@@ -147,6 +147,20 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     }
 
     @Test
+    fun `entry request queries hide a soft-deleted requester`() {
+        val fixture = inviteFixture("entry-request-deleted")
+        val user = insertUser("entry-request-deleted-user")
+
+        transaction.inTransaction {
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now))
+        }
+        execute("UPDATE access_users SET deleted_at = now() WHERE id = '$user'")
+
+        assertTrue(transaction.inTransaction { repository.list(fixture.group) }.isEmpty())
+        assertNull(transaction.inTransaction { repository.find(fixture.group, user) })
+    }
+
+    @Test
     fun `valid invite lookup keeps deleted group distinguishable from invalid invite`() {
         val fixture = inviteFixture("lookup-deleted")
         execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")

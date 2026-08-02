@@ -40,6 +40,9 @@ class ApproveEntryRequest(
         }
 
         if (entryRequestRepository.find(groupId, userId) == null) {
+            // The repository hides requests whose account was soft-deleted; clean that
+            // orphan as well as handling an actually missing request idempotently.
+            entryRequestRepository.delete(groupId, userId)
             return@inTransaction ApproveEntryRequestResult.RequestNotFound
         }
 

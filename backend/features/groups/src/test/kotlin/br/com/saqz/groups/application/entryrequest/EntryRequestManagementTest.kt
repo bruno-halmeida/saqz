@@ -103,6 +103,19 @@ class EntryRequestManagementTest {
     }
 
     @Test
+    fun `approval of a soft-deleted requester removes the hidden request`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+        fixture.entries.deletedUsers += applicantId
+
+        val result = fixture.approve.execute(ownerId, groupId, applicantId)
+
+        assertIs<ApproveEntryRequestResult.RequestNotFound>(result)
+        assertEquals(listOf(applicantId), fixture.entries.deleted)
+        assertTrue(fixture.membership.changes.isEmpty())
+        assertTrue(applicantId !in fixture.entries.requests)
+    }
+
+    @Test
     fun `rejection is idempotent and allows a later request`() {
         val fixture = fixture(role = GroupRole.ADMIN)
 
@@ -185,6 +198,7 @@ class EntryRequestManagementTest {
             requestedAt = now,
         )
         val requests = mutableMapOf(applicantId to request)
+        val deletedUsers = mutableSetOf<UUID>()
         val deleted = mutableListOf<UUID>()
         var occupancy: GroupAthleteOccupancy? = GroupAthleteOccupancy(
             ownerUserId = ownerId,
@@ -196,11 +210,11 @@ class EntryRequestManagementTest {
 
         override fun list(groupId: UUID): List<GroupEntryRequest> = requests.values.toList()
 
-        override fun find(groupId: UUID, userId: UUID): GroupEntryRequest? = requests[userId]
+        override fun find(groupId: UUID, userId: UUID): GroupEntryRequest? =
+            requests[userId].takeUnless { userId in deletedUsers }
 
         override fun delete(groupId: UUID, userId: UUID) {
-            deleted += userId
-            requests.remove(userId)
+            if (requests.remove(userId) != null) deleted += userId
         }
 
         override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {

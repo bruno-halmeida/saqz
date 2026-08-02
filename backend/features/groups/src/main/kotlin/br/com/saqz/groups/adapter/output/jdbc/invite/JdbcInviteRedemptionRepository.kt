@@ -110,7 +110,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         """
         SELECT requests.user_id, users.display_name, requests.requested_at
         FROM group_entry_requests requests
-        JOIN access_users users ON users.id = requests.user_id
+        JOIN access_users users ON users.id = requests.user_id AND users.deleted_at IS NULL
         WHERE requests.group_id = :groupId
         ORDER BY requests.requested_at, requests.user_id
         """.trimIndent(),
@@ -123,7 +123,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         """
         SELECT requests.user_id, users.display_name, requests.requested_at
         FROM group_entry_requests requests
-        JOIN access_users users ON users.id = requests.user_id
+        JOIN access_users users ON users.id = requests.user_id AND users.deleted_at IS NULL
         WHERE requests.group_id = :groupId
           AND requests.user_id = :userId
         """.trimIndent(),

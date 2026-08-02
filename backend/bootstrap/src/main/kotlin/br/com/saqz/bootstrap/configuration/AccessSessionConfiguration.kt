@@ -184,6 +184,9 @@ class AccessSessionConfiguration {
                 membershipGroupIds(userId).forEach { groupId ->
                     athleteRepository.remove(groupId, userId)
                 }
+                jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :userId")
+                    .param("userId", userId)
+                    .update()
             }
 
             private fun ownedGroupIds(ownerUserId: UUID): List<UUID> = jdbc.sql(
