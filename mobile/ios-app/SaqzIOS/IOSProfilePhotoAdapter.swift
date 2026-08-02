@@ -1,6 +1,5 @@
 import Foundation
 import AVFoundation
-import Photos
 import SaqzMobile
 
 /// A foto de perfil não tem pilha própria: quem escolhe é o `IOSPhotoSelectionAdapter` e quem
@@ -42,11 +41,7 @@ final class IOSProfilePhotoAdapter: NSObject, @preconcurrency NativeProfilePhoto
     }
 
     func chooseLibrary(done_ done: ProfilePhotoSelectionCallback) -> ProfilePhotoSelectionCancelable {
-        chooseProfile(
-            done,
-            denied: ProfilePhotoSelectionResultLibraryPermissionDenied.shared,
-            permissionDenied: permissions.libraryPermissionDenied
-        ) { self.selection.chooseLibrary(completionHandler: $0) }
+        openProfile(done) { self.selection.chooseLibrary(completionHandler: $0) }
     }
 
     private func choose(
@@ -73,6 +68,13 @@ final class IOSProfilePhotoAdapter: NSObject, @preconcurrency NativeProfilePhoto
             done.complete(result_______: denied)
             return IOSProfilePhotoSelectionCancellation()
         }
+        return openProfile(done, open)
+    }
+
+    private func openProfile(
+        _ done: ProfilePhotoSelectionCallback,
+        _ open: (@escaping (GroupPhotoSelectionResult?, Error?) -> Void) -> Void
+    ) -> ProfilePhotoSelectionCancelable {
         let request = IOSProfilePhotoSelectionRequest(done: done, selection: selection, encoder: encoder)
         open { result, _ in
             nonisolated(unsafe) let chosen = result
@@ -85,18 +87,12 @@ final class IOSProfilePhotoAdapter: NSObject, @preconcurrency NativeProfilePhoto
 @MainActor
 protocol IOSProfilePhotoPermissions {
     func cameraPermissionDenied() -> Bool
-    func libraryPermissionDenied() -> Bool
 }
 
 @MainActor
 struct IOSSystemProfilePhotoPermissions: IOSProfilePhotoPermissions {
     func cameraPermissionDenied() -> Bool {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
-        return status == .denied || status == .restricted
-    }
-
-    func libraryPermissionDenied() -> Bool {
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         return status == .denied || status == .restricted
     }
 }
