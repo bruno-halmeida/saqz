@@ -72,6 +72,8 @@ class PreviewInvite(
 /**
  * Process-local anonymous protection. It is intentionally independent from the database-backed
  * authenticated window because anonymous requests do not have a stable user id.
+ * ponytail: the 30-attempt/10-minute ceiling is for one instance; move this counter to a shared
+ * table-backed limiter if the API is deployed across multiple instances.
  */
 class AnonymousInvitePreviewRateLimiter {
     private val windows = mutableMapOf<String, Window>()
