@@ -122,6 +122,53 @@ class MemberEditorViewModelTest {
     }
 
     @Test
+    fun `monthly billing uses persisted profile and preserves the profile draft`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf(sampleRosterEntry().copy(nickname = "Salvo", heightCm = 180)),
+            ),
+        )
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.NicknameChanged("Rascunho"))
+        viewModel.onIntent(MemberEditorIntent.HeightChanged(""))
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(MemberEditorIntent.BillingAmountChanged("120,00"))
+        viewModel.onIntent(MemberEditorIntent.BillingDueDaySelected(15))
+        viewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+        assertEquals("Salvo", athlete.lastUpdateCommand?.nickname)
+        assertEquals(180, athlete.lastUpdateCommand?.heightCm)
+        assertEquals(AthleteMembershipType.MENSALISTA, athlete.lastUpdateCommand?.membershipType)
+        assertEquals(12000, athlete.lastUpdateCommand?.monthlyFeeCents)
+        assertEquals(15, athlete.lastUpdateCommand?.monthlyDueDay)
+        assertEquals("Rascunho", viewModel.state.value.nickname)
+        assertEquals("", viewModel.state.value.heightText)
+        assertNull(viewModel.state.value.heightCm)
+        assertFalse(viewModel.state.value.billingSheetOpen)
+    }
+
+    @Test
+    fun `billing rejects extra decimal places without truncating money`() = runTest {
+        val invalidAthlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val invalidViewModel = editor(invalidAthlete)
+        invalidViewModel.onIntent(MemberEditorIntent.BillingAmountChanged("12,345"))
+        invalidViewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+        assertEquals(GroupUiError.Validation, invalidViewModel.state.value.error)
+        assertNull(invalidAthlete.lastUpdateCommand)
+
+        listOf("12,3" to 1230L, "12,34" to 1234L, "12" to 1200L).forEach { (value, expectedCents) ->
+            val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+            val viewModel = editor(athlete)
+            viewModel.onIntent(MemberEditorIntent.BillingAmountChanged(value))
+            viewModel.onIntent(MemberEditorIntent.SaveBilling)
+
+            assertEquals(expectedCents, athlete.lastUpdateCommand?.monthlyFeeCents, value)
+        }
+    }
+
+    @Test
     fun `draft fields restore from SavedStateHandle`() = runTest {
         val savedState = SavedStateHandle()
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
@@ -131,6 +178,7 @@ class MemberEditorViewModelTest {
         viewModel.onIntent(MemberEditorIntent.PositionSelected(AthletePosition.PONTA))
         viewModel.onIntent(MemberEditorIntent.SecondaryPositionSelected(AthletePosition.CENTRAL))
         viewModel.onIntent(MemberEditorIntent.LevelSelected(AthleteLevel.AVANCADO))
+        viewModel.onIntent(MemberEditorIntent.PreferredSideSelected(AthletePreferredSide.ESQUERDA))
         viewModel.onIntent(MemberEditorIntent.HeightChanged("188"))
         viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
         viewModel.onIntent(MemberEditorIntent.BillingAmountChanged("120,00"))
@@ -142,6 +190,7 @@ class MemberEditorViewModelTest {
         assertEquals(AthletePosition.PONTA, restored.position)
         assertEquals(AthletePosition.CENTRAL, restored.secondaryPosition)
         assertEquals(AthleteLevel.AVANCADO, restored.level)
+        assertEquals(AthletePreferredSide.ESQUERDA, restored.preferredSide)
         assertEquals("188", restored.heightText)
         assertEquals(AthleteMembershipType.MENSALISTA, restored.membershipType)
         assertEquals("120,00", restored.billingAmountText)

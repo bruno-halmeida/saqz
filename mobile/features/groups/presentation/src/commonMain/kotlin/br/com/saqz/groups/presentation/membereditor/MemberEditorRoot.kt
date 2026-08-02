@@ -12,14 +12,14 @@ fun MemberEditorRoot(
     groupId: String,
     userId: String,
     onBack: () -> Unit,
-    onRemoved: () -> Unit,
+    onRemove: () -> Unit,
     viewModel: MemberEditorViewModel = koinViewModel(parameters = { parametersOf(groupId, userId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             MemberEditorEffect.Close -> onBack()
-            MemberEditorEffect.Removed -> onRemoved()
+            MemberEditorEffect.Removed -> onRemove()
         }
     }
     MemberEditorScreen(state = state, onIntent = viewModel::onIntent, onBack = onBack)

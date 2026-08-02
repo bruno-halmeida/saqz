@@ -61,7 +61,10 @@ class MemberEditorViewModel(
                 savedState[KEY_LEVEL] = intent.value?.name
                 update { it.copy(level = intent.value, error = null) }
             }
-            is MemberEditorIntent.PreferredSideSelected -> update { it.copy(preferredSide = intent.value, error = null) }
+            is MemberEditorIntent.PreferredSideSelected -> {
+                savedState[KEY_PREFERRED_SIDE] = intent.value?.name
+                update { it.copy(preferredSide = intent.value, error = null) }
+            }
             is MemberEditorIntent.HeightChanged -> {
                 savedState[KEY_HEIGHT] = intent.value
                 update { it.copy(heightText = intent.value, heightCm = intent.value.toIntOrNull(), error = null) }
@@ -185,9 +188,10 @@ class MemberEditorViewModel(
             update { it.copy(error = GroupUiError.Validation) }
             return
         }
+        val persisted = member ?: return
         patch(
             operation = MemberEditorOperation.Billing,
-            command = current.toUpdateCommand(
+            command = persisted.toBillingUpdateCommand(
                 membershipType = AthleteMembershipType.MENSALISTA,
                 monthlyFeeCents = amount,
                 monthlyDueDay = current.billingDueDay,
@@ -236,23 +240,34 @@ class MemberEditorViewModel(
             monthlyDueDay = athlete.monthlyDueDay,
         )
         update {
-            it.copy(
-                operation = null,
-                error = null,
-                name = athlete.nickname?.takeIf(String::isNotBlank) ?: it.displayName,
-                nickname = athlete.nickname.orEmpty(),
-                position = athlete.position,
-                secondaryPosition = athlete.secondaryPosition,
-                level = athlete.level,
-                preferredSide = athlete.preferredSide,
-                heightCm = athlete.heightCm,
-                heightText = athlete.heightCm?.toString().orEmpty(),
-                membershipType = athlete.membershipType,
-                active = athlete.active,
-                monthlyFeeOverrideCents = athlete.monthlyFeeCents,
-                monthlyDueDayOverride = athlete.monthlyDueDay,
-                billingSheetOpen = if (operation == MemberEditorOperation.Billing) false else it.billingSheetOpen,
-            )
+            if (operation == MemberEditorOperation.Billing) {
+                it.copy(
+                    operation = null,
+                    error = null,
+                    membershipType = athlete.membershipType,
+                    monthlyFeeOverrideCents = athlete.monthlyFeeCents,
+                    monthlyDueDayOverride = athlete.monthlyDueDay,
+                    billingSheetOpen = false,
+                )
+            } else {
+                it.copy(
+                    operation = null,
+                    error = null,
+                    name = athlete.nickname?.takeIf(String::isNotBlank) ?: it.displayName,
+                    nickname = athlete.nickname.orEmpty(),
+                    position = athlete.position,
+                    secondaryPosition = athlete.secondaryPosition,
+                    level = athlete.level,
+                    preferredSide = athlete.preferredSide,
+                    heightCm = athlete.heightCm,
+                    heightText = athlete.heightCm?.toString().orEmpty(),
+                    membershipType = athlete.membershipType,
+                    active = athlete.active,
+                    monthlyFeeOverrideCents = athlete.monthlyFeeCents,
+                    monthlyDueDayOverride = athlete.monthlyDueDay,
+                    billingSheetOpen = it.billingSheetOpen,
+                )
+            }
         }
         if (operation == MemberEditorOperation.Save) emit(MemberEditorEffect.Close)
         if (operation == MemberEditorOperation.Save) clearDraft()
@@ -328,6 +343,25 @@ class MemberEditorViewModel(
         monthlyDueDay = monthlyDueDay,
     )
 
+    private fun AthleteRosterEntry.toBillingUpdateCommand(
+        membershipType: AthleteMembershipType,
+        monthlyFeeCents: Long,
+        monthlyDueDay: Int,
+    ) = UpdateAthleteCommand(
+        groupId = GroupId(groupId),
+        userId = userId,
+        position = position,
+        membershipType = membershipType,
+        active = active,
+        nickname = nickname,
+        secondaryPosition = secondaryPosition,
+        level = level,
+        preferredSide = preferredSide,
+        heightCm = heightCm,
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
+    )
+
     private fun joinedAtMonth(joinedAt: String): String {
         val month = runCatching {
             Instant.parse(joinedAt).toLocalDateTime(TimeZone.UTC).month.ordinal + 1
@@ -348,8 +382,13 @@ class MemberEditorViewModel(
         val parts = normalized.replace('.', ',').split(',')
         if (parts.size > 2 || parts.any { it.isEmpty() }) return null
         val reais = parts[0].toLongOrNull() ?: return null
-        val centavos = parts.getOrNull(1)?.padEnd(2, '0')?.take(2)?.toLongOrNull() ?: 0
-        return reais * 100 + centavos
+        val fraction = parts.getOrNull(1)
+        val centavos = when {
+            fraction == null -> 0L
+            fraction.length > 2 -> null
+            else -> fraction.padEnd(2, '0').toLongOrNull()
+        }
+        return centavos?.let { reais * 100 + it }
     }
 
     private fun clearDraft() {
@@ -358,6 +397,7 @@ class MemberEditorViewModel(
             KEY_POSITION,
             KEY_SECONDARY_POSITION,
             KEY_LEVEL,
+            KEY_PREFERRED_SIDE,
             KEY_HEIGHT,
             KEY_MEMBERSHIP,
             KEY_BILLING_AMOUNT,
@@ -382,6 +422,7 @@ private fun MemberEditorState.restoreDraft(savedState: SavedStateHandle): Member
         position = savedState.restoreNullableEnum(KEY_POSITION, position),
         secondaryPosition = savedState.restoreNullableEnum(KEY_SECONDARY_POSITION, secondaryPosition),
         level = savedState.restoreNullableEnum(KEY_LEVEL, level),
+        preferredSide = savedState.restoreNullableEnum(KEY_PREFERRED_SIDE, preferredSide),
         heightText = restoredHeight ?: heightText,
         heightCm = restoredHeight?.toIntOrNull() ?: if (savedState.contains(KEY_HEIGHT)) null else heightCm,
         membershipType = if (savedState.contains(KEY_MEMBERSHIP)) restoredMembership ?: membershipType else membershipType,
@@ -402,6 +443,7 @@ private const val KEY_NICKNAME = "member-editor-nickname"
 private const val KEY_POSITION = "member-editor-position"
 private const val KEY_SECONDARY_POSITION = "member-editor-secondary-position"
 private const val KEY_LEVEL = "member-editor-level"
+private const val KEY_PREFERRED_SIDE = "member-editor-preferred-side"
 private const val KEY_HEIGHT = "member-editor-height"
 private const val KEY_MEMBERSHIP = "member-editor-membership"
 private const val KEY_BILLING_AMOUNT = "member-editor-billing-amount"
