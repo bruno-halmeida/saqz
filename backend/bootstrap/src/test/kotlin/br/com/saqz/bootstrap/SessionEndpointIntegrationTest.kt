@@ -3,6 +3,10 @@ package br.com.saqz.bootstrap
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.CompleteSessionProfile
+import br.com.saqz.access.application.session.AccountDeletionRepository
+import br.com.saqz.access.application.session.AccountGroupCleanup
+import br.com.saqz.access.application.session.AccountTransactionRunner
+import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionMembership
 import br.com.saqz.access.application.session.SessionRepository
@@ -96,6 +100,20 @@ class SessionEndpointIntegrationTest {
         val response = send(HttpRequest.newBuilder(uri()).header("Authorization", "Bearer session-token").GET().build())
 
         assertTrue(response.statusCode() == 404 || response.statusCode() == 405)
+    }
+
+    @Test
+    fun `DELETE session is idempotent and returns an empty 204 response`() {
+        putSession()
+
+        val first = deleteSession()
+        val second = deleteSession()
+
+        assertEquals(204, first.statusCode())
+        assertEquals(204, second.statusCode())
+        assertEquals("", first.body())
+        assertEquals("", second.body())
+        assertTrue(repository.deletedSubjects.contains("subject-session"))
     }
 
     @Test
@@ -479,6 +497,13 @@ class SessionEndpointIntegrationTest {
 
     private fun uri() = URI("http://127.0.0.1:$port/api/session")
 
+    private fun deleteSession(): HttpResponse<String> = send(
+        HttpRequest.newBuilder(uri())
+            .header("Authorization", "Bearer session-token")
+            .DELETE()
+            .build(),
+    )
+
     private fun send(request: HttpRequest): HttpResponse<String> =
         HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString())
 
@@ -511,8 +536,25 @@ class SessionEndpointIntegrationTest {
         fun completeSessionProfile(repository: RecordingSessionRepository) = CompleteSessionProfile(repository)
 
         @Bean
-        fun accessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
-            AccessSessionController(useCase, profile)
+        @Primary
+        fun testDeleteAccount(repository: RecordingSessionRepository) = DeleteAccount(
+            transactionRunner = object : AccountTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = block()
+            },
+            repository = repository,
+            groupCleanup = object : AccountGroupCleanup {
+                override fun deleteOwnedGroups(ownerUserId: UUID) = Unit
+
+                override fun removeMemberships(userId: UUID) = Unit
+            },
+        )
+
+        @Bean
+        fun accessSessionController(
+            useCase: BootstrapSession,
+            profile: CompleteSessionProfile,
+            deleteAccount: DeleteAccount,
+        ) = AccessSessionController(useCase, profile, deleteAccount)
     }
 
     class SessionVerifier : VerifyRequestIdentity {
@@ -521,7 +563,7 @@ class SessionEndpointIntegrationTest {
         override fun execute(token: RawIdentityToken) = TokenVerification.Verified(principal)
     }
 
-    class RecordingSessionRepository : SessionRepository {
+    class RecordingSessionRepository : SessionRepository, AccountDeletionRepository {
         val commands = mutableListOf<SessionUpsert>()
         val profileCommands = mutableListOf<ProfileCompletion>()
         private val ids = mutableMapOf<String, UUID>()
@@ -532,6 +574,7 @@ class SessionEndpointIntegrationTest {
         var memberships: List<SessionMembership> = emptyList()
         var photoDigest: String? = null
         var failure: RuntimeException? = null
+        val deletedSubjects = mutableSetOf<String>()
 
         fun reset() {
             commands.clear()
@@ -544,6 +587,13 @@ class SessionEndpointIntegrationTest {
             memberships = emptyList()
             photoDigest = null
             failure = null
+            deletedSubjects.clear()
+        }
+
+        override fun softDelete(subject: String): UUID? {
+            val id = ids[subject] ?: return null
+            if (!deletedSubjects.add(subject)) return null
+            return id
         }
 
         override fun upsertAndLoad(command: SessionUpsert): SessionView {

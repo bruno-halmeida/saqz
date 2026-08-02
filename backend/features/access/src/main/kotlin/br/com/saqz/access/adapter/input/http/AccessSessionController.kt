@@ -4,12 +4,15 @@ import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.CompleteSessionProfileResult
+import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.access.application.session.SessionView
 import br.com.saqz.access.application.session.hasVerifiedEmail
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -105,6 +108,7 @@ class AccountNotFoundException : RuntimeException()
 class AccessSessionController(
     private val bootstrapSession: BootstrapSession,
     private val completeSessionProfile: CompleteSessionProfile,
+    private val deleteAccount: DeleteAccount,
 ) {
     @PutMapping("/api/session")
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
@@ -143,6 +147,12 @@ class AccessSessionController(
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
             is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
+
+    @DeleteMapping("/api/session")
+    fun delete(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<Void> {
+        deleteAccount.execute(identity.subject)
+        return ResponseEntity.noContent().build()
+    }
 }
 
 private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionResponse(

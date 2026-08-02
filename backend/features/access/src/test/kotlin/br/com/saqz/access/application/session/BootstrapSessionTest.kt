@@ -8,6 +8,7 @@ import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -61,6 +62,22 @@ class BootstrapSessionTest {
     @Test
     fun `missing display name is rejected before write`() {
         assertBlocked(identity(displayName = null), BootstrapSessionResult.InvalidDisplayName)
+    }
+
+    @Test
+    fun `bootstrap delegates a previously deleted subject for a fresh session`() {
+        val freshView = SessionView(
+            UserAccount(UUID.randomUUID(), "subject-1", "person@example.test", AccessName.from("Person Name")),
+            emptyList(),
+        )
+        val repository = RecordingSessionRepository(freshView)
+
+        val result = BootstrapSession(repository).execute(identity())
+
+        assertEquals(BootstrapSessionResult.Success(freshView), result)
+        assertNotEquals(userId, (result as BootstrapSessionResult.Success).session.user.id)
+        assertTrue(result.session.memberships.isEmpty())
+        assertEquals(1, repository.commands.size)
     }
 
     @Test

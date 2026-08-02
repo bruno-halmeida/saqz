@@ -15,6 +15,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.security.MessageDigest
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.HexFormat
 import java.util.UUID
 import kotlin.test.assertContentEquals
@@ -34,7 +36,10 @@ class JdbcUserPhotoRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
+        Flyway.configure().dataSource(dataSource)
+            .locations("classpath:db/migration", groupMigrationLocation())
+            .load()
+            .migrate()
         photos = JdbcUserPhotoRepository(dataSource)
         sessions = JdbcSessionRepository(dataSource)
     }
@@ -198,6 +203,20 @@ class JdbcUserPhotoRepositoryIntegrationTest {
                 result.getInt(1)
             }
         }
+    }
+
+    private fun groupMigrationLocation(): String {
+        var directory = Path.of(System.getProperty("user.dir")).toAbsolutePath()
+        repeat(6) {
+            val candidates = listOf(
+                directory.resolve("backend/features/groups/src/main/resources/db/migration"),
+                directory.resolve("features/groups/src/main/resources/db/migration"),
+                directory.resolve("groups/src/main/resources/db/migration"),
+            )
+            candidates.firstOrNull(Files::isDirectory)?.let { return "filesystem:$it" }
+            directory = directory.parent ?: return@repeat
+        }
+        error("Cannot find groups migrations")
     }
 
     private companion object {

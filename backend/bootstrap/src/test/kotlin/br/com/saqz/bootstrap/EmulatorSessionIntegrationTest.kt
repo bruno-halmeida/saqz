@@ -3,6 +3,10 @@ package br.com.saqz.bootstrap
 import br.com.saqz.access.adapter.input.http.AccessSessionController
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.CompleteSessionProfile
+import br.com.saqz.access.application.session.AccountDeletionRepository
+import br.com.saqz.access.application.session.AccountGroupCleanup
+import br.com.saqz.access.application.session.AccountTransactionRunner
+import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.access.application.session.SessionRepository
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.application.session.SessionView
@@ -17,6 +21,7 @@ import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import java.net.URI
@@ -141,7 +146,26 @@ class EmulatorSessionIntegrationTest {
         fun emulatorCompleteSessionProfile(repository: SessionRepository) = CompleteSessionProfile(repository)
 
         @Bean
-        fun emulatorAccessSessionController(useCase: BootstrapSession, profile: CompleteSessionProfile) =
-            AccessSessionController(useCase, profile)
+        @Primary
+        fun emulatorDeleteAccount() = DeleteAccount(
+            transactionRunner = object : AccountTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = block()
+            },
+            repository = object : AccountDeletionRepository {
+                override fun softDelete(subject: String): UUID? = null
+            },
+            groupCleanup = object : AccountGroupCleanup {
+                override fun deleteOwnedGroups(ownerUserId: UUID) = Unit
+
+                override fun removeMemberships(userId: UUID) = Unit
+            },
+        )
+
+        @Bean
+        fun emulatorAccessSessionController(
+            useCase: BootstrapSession,
+            profile: CompleteSessionProfile,
+            deleteAccount: DeleteAccount,
+        ) = AccessSessionController(useCase, profile, deleteAccount)
     }
 }
