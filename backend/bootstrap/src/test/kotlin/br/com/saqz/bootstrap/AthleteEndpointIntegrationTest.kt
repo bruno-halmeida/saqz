@@ -68,6 +68,7 @@ class AthleteEndpointIntegrationTest {
     private val groupId = UUID.randomUUID()
     private val actorId = AthleteTestConfiguration.USER_ID
     private val memberId = UUID.randomUUID()
+    private val adminsOnlyId = UUID.randomUUID()
 
     @BeforeEach
     fun reset() {
@@ -84,6 +85,7 @@ class AthleteEndpointIntegrationTest {
                 AthletePosition.PONTA, AthleteMembershipType.AVULSO, true, FinancialStatus.PENDENTE,
             ),
         )
+        roster.calls = 0
         roster.profile = OwnAthleteProfile(
             actorId, AccessName.from("Owner Person"), "+5511987654321",
             listOf(
@@ -109,15 +111,64 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
-    fun `athlete cannot list roster`() {
+    fun `athlete lists roster with unknown financial status`() {
         read.role = GroupRole.ATHLETE
-        assertProblem(getRoster(groupId), 403, "ACCESS_FORBIDDEN")
+        val response = getRoster(groupId)
+        val entry = json(response)["athletes"][0]
+
+        assertEquals(200, response.statusCode())
+        assertEquals("DESCONHECIDO", entry["financialStatus"].stringValue())
     }
 
     @Test
-    fun `nonmember roster returns group not found`() {
+    fun `nonmember roster is hidden as not found`() {
         read.role = null
         assertProblem(getRoster(groupId), 404, "GROUP_NOT_FOUND")
+    }
+
+    @Test
+    fun `athlete cannot filter roster by financial status`() {
+        read.role = GroupRole.ATHLETE
+
+        assertProblem(
+            send(get("/api/groups/$groupId/athletes?financialStatus=PENDENTE")),
+            403,
+            "ACCESS_FORBIDDEN",
+        )
+        assertEquals(0, roster.calls)
+    }
+
+    @Test
+    fun `athlete reaches phone visibility through the HTTP roster`() {
+        read.role = GroupRole.ATHLETE
+        roster.entries = listOf(
+            AthleteRosterEntry(
+                memberId, AccessName.from("Everyone Person"), "+5511987654321",
+                AthletePosition.PONTA, AthleteMembershipType.AVULSO, true, FinancialStatus.EM_DIA,
+            ),
+            AthleteRosterEntry(
+                adminsOnlyId, AccessName.from("Admins Only Person"), null,
+                AthletePosition.CENTRAL, AthleteMembershipType.AVULSO, true, FinancialStatus.EM_DIA,
+            ),
+        )
+
+        val response = getRoster(groupId)
+        val entries = json(response)["athletes"]
+
+        assertEquals(200, response.statusCode())
+        assertEquals("+5511987654321", entries.first { it["displayName"].stringValue() == "Everyone Person" }["phone"].stringValue())
+        assertTrue(entries.first { it["displayName"].stringValue() == "Admins Only Person" }["phone"].isNull())
+    }
+
+    @Test
+    fun `admin lists roster with financial status`() {
+        read.role = GroupRole.ADMIN
+
+        val response = getRoster(groupId)
+        val entry = json(response)["athletes"][0]
+
+        assertEquals(200, response.statusCode())
+        assertEquals("PENDENTE", entry["financialStatus"].stringValue())
     }
 
     @Test
@@ -334,7 +385,13 @@ class AthleteEndpointIntegrationTest {
     class RecordingAthleteRosterRepository : AthleteRosterRepository {
         var entries: List<AthleteRosterEntry> = emptyList()
         var profile: OwnAthleteProfile? = null
-        override fun list(actorId: UUID, groupId: UUID, filter: AthleteRosterFilter) = entries
+        var calls = 0
+
+        override fun list(actorId: UUID, groupId: UUID, filter: AthleteRosterFilter): List<AthleteRosterEntry> {
+            calls++
+            return entries
+        }
+
         override fun findOwnProfile(actor: UUID) = profile
     }
 }

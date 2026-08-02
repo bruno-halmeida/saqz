@@ -8,6 +8,7 @@ import br.com.saqz.groups.application.athlete.GetOwnAthleteProfile
 import br.com.saqz.groups.application.athlete.GetOwnAthleteProfileResult
 import br.com.saqz.groups.application.athlete.ListAthletes
 import br.com.saqz.groups.application.athlete.ListAthletesResult
+import br.com.saqz.groups.application.athlete.ListAthletesSuccess
 import br.com.saqz.groups.application.athlete.RemoveAthlete
 import br.com.saqz.groups.application.athlete.RemoveAthleteResult
 import br.com.saqz.groups.application.athlete.UpdateAthlete
@@ -107,7 +108,12 @@ class AthleteController(
         return when (val result = listAthletes.execute(actor(identity), parseId(groupId), filter)) {
             ListAthletesResult.GroupNotFound -> throw GroupNotFoundException()
             ListAthletesResult.AccessForbidden -> throw AccessForbiddenException()
-            is ListAthletesResult.Success -> AthleteRosterResponse(result.athletes.map(AthleteRosterEntry::toResponse))
+            is ListAthletesSuccess -> AthleteRosterResponse(
+                result.athletes.map { it.toResponse(result.role) },
+            )
+            is ListAthletesResult.Success -> AthleteRosterResponse(
+                result.athletes.map { it.toResponse(null) },
+            )
         }
     }
 
@@ -200,12 +206,15 @@ private fun AthleteMembership.toResponse() = AthleteResponse(
     active = active,
 )
 
-private fun AthleteRosterEntry.toResponse() = AthleteRosterEntryResponse(
+private fun AthleteRosterEntry.toResponse(role: GroupRole?) = AthleteRosterEntryResponse(
     userId = userId,
     displayName = displayName.value,
     phone = phone,
     position = position?.name,
     membershipType = membershipType.name,
     active = active,
-    financialStatus = financialStatus.name,
+    financialStatus = when (role) {
+        GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
+        GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
+    },
 )
