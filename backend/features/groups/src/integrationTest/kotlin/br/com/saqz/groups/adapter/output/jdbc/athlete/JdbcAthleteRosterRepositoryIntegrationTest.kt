@@ -106,6 +106,9 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         assertEquals("+5511900000003", ownerView.getValue(adminsOnly).phone)
         assertEquals("+5511900000004", ownerView.getValue(everyone).phone)
         assertEquals("+5511900000000", ownerView.getValue(owner).phone)
+
+        assertEquals("+5511900000003", roster(adminsOnly).getValue(adminsOnly).phone)
+        assertEquals("+5511900000004", roster(everyone).getValue(everyone).phone)
     }
 
     @Test
