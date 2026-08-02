@@ -29,7 +29,7 @@ class JdbcAthleteRepository(
             m.active
         FROM group_memberships m
         JOIN access_users u ON u.id = m.user_id
-        JOIN access_groups g ON g.id = m.group_id
+        JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
         WHERE m.group_id = :groupId AND m.user_id = :userId
         """.trimIndent(),
     )
@@ -45,6 +45,10 @@ class JdbcAthleteRepository(
             UPDATE group_memberships
             SET position = :position, updated_at = now()
             WHERE group_id = :groupId AND user_id = :userId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups g
+                  WHERE g.id = :groupId AND g.deleted_at IS NULL
+              )
             RETURNING user_id, group_id, role, position, membership_type, active
         )
         SELECT
@@ -56,7 +60,7 @@ class JdbcAthleteRepository(
             updated.active
         FROM updated
         JOIN access_users u ON u.id = updated.user_id
-        JOIN access_groups g ON g.id = updated.group_id
+        JOIN access_groups g ON g.id = updated.group_id AND g.deleted_at IS NULL
         """.trimIndent(),
     )
         .param("groupId", groupId)
@@ -71,6 +75,10 @@ class JdbcAthleteRepository(
             UPDATE group_memberships
             SET position = :position, membership_type = :membershipType, active = :active, updated_at = now()
             WHERE group_id = :groupId AND user_id = :userId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups g
+                  WHERE g.id = :groupId AND g.deleted_at IS NULL
+              )
             RETURNING user_id, group_id, role, position, membership_type, active
         )
         SELECT
@@ -82,7 +90,7 @@ class JdbcAthleteRepository(
             updated.active
         FROM updated
         JOIN access_users u ON u.id = updated.user_id
-        JOIN access_groups g ON g.id = updated.group_id
+        JOIN access_groups g ON g.id = updated.group_id AND g.deleted_at IS NULL
         """.trimIndent(),
     )
         .param("groupId", command.groupId)
@@ -94,17 +102,31 @@ class JdbcAthleteRepository(
         .single()
 
     override fun remove(groupId: UUID, userId: UUID) {
+        val activeGroup = jdbc.sql(
+            "SELECT id FROM access_groups WHERE id = :groupId AND deleted_at IS NULL FOR UPDATE",
+        )
+            .param("groupId", groupId)
+            .query(UUID::class.java)
+            .optional()
+            .orElse(null)
+        check(activeGroup != null) { "Grupo excluído ou inexistente" }
         jdbc.sql(
             """
             INSERT INTO group_membership_removals (group_id, user_id, removed_at)
-            VALUES (:groupId, :userId, now())
+            SELECT :groupId, :userId, now()
+            FROM access_groups
+            WHERE id = :groupId AND deleted_at IS NULL
             ON CONFLICT (group_id, user_id) DO UPDATE SET removed_at = now()
             """.trimIndent(),
         )
             .param("groupId", groupId)
             .param("userId", userId)
             .update()
-        jdbc.sql("DELETE FROM group_memberships WHERE group_id = :groupId AND user_id = :userId")
+        jdbc.sql(
+            "DELETE FROM group_memberships " +
+                "WHERE group_id = :groupId AND user_id = :userId " +
+                "AND EXISTS (SELECT 1 FROM access_groups WHERE id = :groupId AND deleted_at IS NULL)",
+        )
             .param("groupId", groupId)
             .param("userId", userId)
             .update()

@@ -81,6 +81,20 @@ class InviteRedemptionEndpointIntegrationTest {
     }
 
     @Test
+    fun `deleted group invite returns its own problem`() {
+        repository.target = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            groupDeleted = true,
+        )
+
+        val response = redeem(RedemptionTestConfiguration.RAW_CODE)
+
+        assertProblem(response, 410, "INVITE_GROUP_DELETED")
+        assertTrue(repository.roles.isEmpty())
+        assertTrue(repository.windows.getValue(RedemptionTestConfiguration.USER_ID).invalidCount == 0)
+    }
+
+    @Test
     fun `admin redemption preserves admin response`() {
         repository.roles[RedemptionTestConfiguration.USER_ID] = GroupRole.ADMIN
 

@@ -48,6 +48,7 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         transaction = JdbcTransactionRunner(dataSource)
         repository = JdbcGroupCreationRepository(dataSource)
         useCase = CreateGroup(transaction, repository, UnlimitedSubscriptionLimits)
@@ -102,6 +103,16 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         assertEquals(1, count("SELECT count(*) FROM access_groups WHERE owner_user_id = '$owner'"))
         assertEquals("Original Group", text("SELECT name FROM access_groups WHERE id = '${first.id}'"))
         assertEquals("UTC", text("SELECT time_zone FROM access_groups WHERE id = '${first.id}'"))
+    }
+
+    @Test
+    fun `deleted group is excluded from the owner group limit`() {
+        val owner = insertUser("deleted-limit-owner")
+        val group = success(useCase.execute(owner, UUID.randomUUID(), validProfile(name = "Deleted Group"), "UTC")).group
+
+        assertEquals(1, repository.countOwnedGroups(owner))
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${group.id}'")
+        assertEquals(0, repository.countOwnedGroups(owner))
     }
 
     @Test

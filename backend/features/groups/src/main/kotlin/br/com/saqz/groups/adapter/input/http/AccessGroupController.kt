@@ -2,6 +2,8 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.create.CreateGroupResult
+import br.com.saqz.groups.application.delete.DeleteGroup
+import br.com.saqz.groups.application.delete.DeleteGroupResult
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.read.GetGroupResult
 import br.com.saqz.groups.domain.group.CourtPlayStyle
@@ -17,6 +19,8 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
@@ -68,6 +72,7 @@ class AccessGroupController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val createGroup: CreateGroup,
     private val getGroup: GetGroup,
+    private val deleteGroup: DeleteGroup,
 ) {
     @PostMapping("/api/groups")
     fun create(
@@ -89,6 +94,21 @@ class AccessGroupController(
                 result.errors.groupBy({ it.field }, { it.message }),
             )
             CreateGroupResult.GroupLimitExceeded -> throw GroupLimitExceededException()
+        }
+    }
+
+    @DeleteMapping("/api/groups/{groupId}")
+    fun delete(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable("groupId") groupId: String,
+    ): ResponseEntity<Void> {
+        val actor = actorResolver.resolve(identity)
+        val parsedGroupId = runCatching { UUID.fromString(groupId) }.getOrNull()
+            ?: throw GroupNotFoundException()
+        return when (deleteGroup.execute(actor, parsedGroupId)) {
+            DeleteGroupResult.Success -> ResponseEntity.noContent().build()
+            DeleteGroupResult.GroupNotFound -> throw GroupNotFoundException()
+            DeleteGroupResult.AccessForbidden -> throw AccessForbiddenException()
         }
     }
 

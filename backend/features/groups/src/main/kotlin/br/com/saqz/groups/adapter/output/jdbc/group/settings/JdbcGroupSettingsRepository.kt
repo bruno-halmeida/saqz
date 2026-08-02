@@ -32,6 +32,7 @@ class JdbcGroupSettingsRepository(
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
+                AND deleted_at IS NULL
                 AND version = :expectedVersion
             RETURNING id, name, time_zone, version, profile_status
             """.trimIndent(),
@@ -77,6 +78,7 @@ class JdbcGroupSettingsRepository(
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
+                AND deleted_at IS NULL
                 AND version = :expectedVersion
             RETURNING id, name, time_zone, version, profile_status
             """.trimIndent(),
@@ -111,6 +113,7 @@ class JdbcGroupSettingsRepository(
 
         val defaultVenueId = profile.defaultVenue?.let { venue ->
             val venueId = command.defaultVenueId ?: UUID.randomUUID()
+            // O UPDATE ativo acima mantém o lock do grupo até todos os filhos serem gravados.
             jdbc.sql(
                 """
                 INSERT INTO group_venues (
@@ -129,13 +132,14 @@ class JdbcGroupSettingsRepository(
             venueId
         }
         if (defaultVenueId != null) {
-            jdbc.sql("UPDATE access_groups SET default_venue_id = :venueId WHERE id = :groupId")
+            jdbc.sql("UPDATE access_groups SET default_venue_id = :venueId WHERE id = :groupId AND deleted_at IS NULL")
                 .param("venueId", defaultVenueId)
                 .param("groupId", command.groupId)
                 .update()
         }
 
         profile.regularSlots.forEachIndexed { index, slot ->
+            // O UPDATE ativo acima mantém o lock do grupo até todos os filhos serem gravados.
             jdbc.sql(
                 """
                 INSERT INTO group_regular_slots (

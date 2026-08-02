@@ -45,10 +45,21 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
     }
 
     override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? = jdbc.sql(
-        "SELECT group_id FROM group_invites WHERE token_digest = :tokenDigest",
+        // Deliberately includes deleted groups so the use case can return its specific error.
+        """
+        SELECT invites.group_id, groups.deleted_at IS NOT NULL AS group_deleted
+        FROM group_invites invites
+        JOIN access_groups groups ON groups.id = invites.group_id
+        WHERE invites.token_digest = :tokenDigest
+        """.trimIndent(),
     )
         .param("tokenDigest", digest.toByteArray())
-        .query { result, _ -> RedeemableInvite(result.getObject("group_id", UUID::class.java)) }
+        .query { result, _ ->
+            RedeemableInvite(
+                groupId = result.getObject("group_id", UUID::class.java),
+                groupDeleted = result.getBoolean("group_deleted"),
+            )
+        }
         .optional()
         .orElse(null)
 
@@ -70,7 +81,8 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
 
     override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
         val ownerUserId = jdbc.sql(
-            "SELECT owner_user_id FROM access_groups WHERE id = :groupId FOR UPDATE",
+            "SELECT owner_user_id FROM access_groups " +
+                "WHERE id = :groupId AND deleted_at IS NULL FOR UPDATE",
         )
             .param("groupId", groupId)
             .query(UUID::class.java)
@@ -84,6 +96,10 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             FROM group_memberships
             WHERE group_id = :groupId
               AND user_id <> :ownerUserId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups
+                  WHERE id = :groupId AND deleted_at IS NULL
+              )
             """.trimIndent(),
         )
             .param("groupId", groupId)
@@ -99,6 +115,10 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             WHERE group_id = :groupId
               AND status = 'WAITLISTED'
               AND member_user_id <> :ownerUserId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups
+                  WHERE id = :groupId AND deleted_at IS NULL
+              )
             """.trimIndent(),
         )
             .param("groupId", groupId)
@@ -114,6 +134,10 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             WHERE group_id = :groupId
               AND user_id <> :ownerUserId
               AND removed_at > now() - interval '30 days'
+              AND EXISTS (
+                  SELECT 1 FROM access_groups
+                  WHERE id = :groupId AND deleted_at IS NULL
+              )
             """.trimIndent(),
         )
             .param("groupId", groupId)
@@ -139,7 +163,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         WITH target_group AS (
             SELECT id, owner_user_id
             FROM access_groups
-            WHERE id = :groupId
+            WHERE id = :groupId AND deleted_at IS NULL
         ), persisted_membership AS (
             INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at)
             SELECT id, :userId, 'ATHLETE', now(), now()

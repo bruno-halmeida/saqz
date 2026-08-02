@@ -1,7 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.group.read
 
 import br.com.saqz.groups.testing.startAndAwaitJdbc
-import br.com.saqz.groups.testing.accessMigrationLocation
+import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.domain.group.GroupComposition
@@ -36,7 +36,7 @@ class JdbcGroupReadRepositoryIntegrationTest {
     fun startDatabase() {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).load().migrate()
         repository = JdbcGroupReadRepository(dataSource)
     }
 

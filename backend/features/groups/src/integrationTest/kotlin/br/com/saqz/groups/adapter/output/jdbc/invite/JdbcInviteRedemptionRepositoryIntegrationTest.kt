@@ -6,6 +6,7 @@ import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
+import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
@@ -34,6 +35,7 @@ import java.util.concurrent.Executors
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -96,6 +98,50 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
 
         assertEquals(fixture.group, found?.groupId)
+    }
+
+    @Test
+    fun `valid invite lookup keeps deleted group distinguishable from invalid invite`() {
+        val fixture = inviteFixture("lookup-deleted")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")
+
+        val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
+
+        assertEquals(fixture.group, found?.groupId)
+        assertEquals(true, found?.groupDeleted)
+        assertEquals(
+            RedeemInviteResult.GroupDeleted,
+            useCase().execute(insertUser("lookup-deleted-user"), code.value),
+        )
+    }
+
+    @Test
+    fun `occupancy lock rechecks deletion after invite lookup`() {
+        val fixture = inviteFixture("lookup-race")
+        val lookupDone = CountDownLatch(1)
+        val continueLookup = CountDownLatch(1)
+        val executor = Executors.newSingleThreadExecutor()
+
+        try {
+            val future = executor.submit<Pair<Boolean, GroupAthleteOccupancy?>> {
+                transaction.inTransaction {
+                    val found = requireNotNull(repository.findInvite(InviteTokenDigest.sha256(code)))
+                    lookupDone.countDown()
+                    continueLookup.await()
+                    found.groupDeleted to repository.loadAthleteOccupancy(fixture.group)
+                }
+            }
+
+            lookupDone.await()
+            execute("UPDATE access_groups SET deleted_at = now() WHERE id = '${fixture.group}'")
+            continueLookup.countDown()
+
+            val result = future.get()
+            assertFalse(result.first)
+            assertNull(result.second)
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     @Test

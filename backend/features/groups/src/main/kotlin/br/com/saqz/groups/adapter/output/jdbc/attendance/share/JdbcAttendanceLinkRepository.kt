@@ -43,12 +43,13 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
         .orElse(null)
 
     override fun rotate(command: RotateAttendanceLinkCommand) {
-        jdbc.sql(ROTATE)
+        val changed = jdbc.sql(ROTATE)
             .param("game", command.gameId)
             .param("group", command.groupId)
             .param("digest", command.digest.toByteArray())
             .param("createdByUserId", command.createdByUserId)
             .update()
+        check(changed == 1) { "Grupo do link de presença excluído ou inexistente" }
     }
 
     override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): AttendanceLinkAttemptWindow {
@@ -146,19 +147,21 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
             SELECT g.id, g.group_id, g.status, g.confirmation_deadline,
                    CASE WHEN ag.owner_user_id = :actor THEN 'OWNER' ELSE membership.role END AS actor_role
             FROM games g
-            JOIN access_groups ag ON ag.id = g.group_id
+            JOIN access_groups ag ON ag.id = g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships membership
                 ON membership.group_id = g.group_id AND membership.user_id = :actor
             WHERE g.group_id = :group AND g.id = :game
               AND (ag.owner_user_id = :actor OR membership.user_id IS NOT NULL)
-            FOR UPDATE OF g
+            FOR UPDATE OF g, ag
         """
 
         const val ROTATE = """
             INSERT INTO game_attendance_links (
                 game_id, group_id, token_digest, created_by_user_id, created_at, updated_at
             )
-            VALUES (:game, :group, :digest, :createdByUserId, now(), now())
+            SELECT :game, :group, :digest, :createdByUserId, now(), now()
+            FROM access_groups
+            WHERE id = :group AND deleted_at IS NULL
             ON CONFLICT (game_id) DO UPDATE SET
                 token_digest = EXCLUDED.token_digest,
                 updated_at = EXCLUDED.updated_at
@@ -188,7 +191,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
             SELECT g.group_id, g.id AS game_id, g.status, g.confirmation_deadline
             FROM game_attendance_links link
             JOIN games g ON g.id = link.game_id AND g.group_id = link.group_id
-            JOIN access_groups ag ON ag.id = link.group_id
+            JOIN access_groups ag ON ag.id = link.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id = link.group_id AND member.user_id = :actor
             WHERE link.token_digest = :digest
               AND (ag.owner_user_id = :actor OR member.user_id IS NOT NULL)
@@ -197,7 +200,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
         const val SNAPSHOT_ACCESS = """
             SELECT CASE WHEN ag.owner_user_id = :actor THEN 'OWNER' ELSE membership.role END AS actor_role
             FROM games g
-            JOIN access_groups ag ON ag.id = g.group_id
+            JOIN access_groups ag ON ag.id = g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships membership
                 ON membership.group_id = g.group_id AND membership.user_id = :actor
             WHERE g.group_id = :group AND g.id = :game
@@ -209,6 +212,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
                    attendance.member_user_id, attendance.status AS attendance_status,
                    attendance.waitlist_sequence, user_account.display_name
             FROM games g
+            JOIN access_groups ag ON ag.id = g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN game_attendance attendance
                 ON attendance.game_id = g.id AND attendance.group_id = g.group_id
                AND attendance.status IN ('CONFIRMED', 'WAITLISTED', 'DECLINED')

@@ -48,6 +48,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         postgres.startAndAwaitJdbc()
         dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
         Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         transaction = JdbcTransactionRunner(dataSource)
         useCase = UpdateGroupSettings(
             transaction,
@@ -130,6 +131,16 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
             UpdateGroupSettingsResult.GroupNotFound,
             useCase.execute(actor, UUID.randomUUID(), 1, "Missing", "UTC"),
         )
+    }
+
+    @Test
+    fun `deleted group cannot be read or updated`() {
+        val owner = insertUser("settings-deleted-owner")
+        val group = insertGroup(owner)
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
+
+        assertSame(UpdateGroupSettingsResult.GroupNotFound, useCase.execute(owner, group, 1, "Deleted", "UTC"))
+        assertEquals("Original Group|America/Sao_Paulo|1", settings(group))
     }
 
     @Test

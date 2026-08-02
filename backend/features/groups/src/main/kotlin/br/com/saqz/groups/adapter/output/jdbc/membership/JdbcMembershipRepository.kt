@@ -21,13 +21,17 @@ class JdbcMembershipRepository(
             SELECT users.id AS user_id, users.display_name, 'OWNER' AS role, 0 AS role_order
             FROM access_groups groups
             JOIN access_users users ON users.id = groups.owner_user_id
-            WHERE groups.id = :groupId
+            WHERE groups.id = :groupId AND groups.deleted_at IS NULL
             UNION ALL
             SELECT users.id AS user_id, users.display_name, memberships.role,
                 CASE memberships.role WHEN 'ADMIN' THEN 1 ELSE 2 END AS role_order
             FROM group_memberships memberships
             JOIN access_users users ON users.id = memberships.user_id
             WHERE memberships.group_id = :groupId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups groups
+                  WHERE groups.id = memberships.group_id AND groups.deleted_at IS NULL
+              )
         ) access_memberships
         ORDER BY role_order, display_name, user_id
         """.trimIndent(),
@@ -43,12 +47,19 @@ class JdbcMembershipRepository(
             SELECT users.id AS user_id, users.display_name, 'OWNER' AS role
             FROM access_groups groups
             JOIN access_users users ON users.id = groups.owner_user_id
-            WHERE groups.id = :groupId AND users.id = :userId
+            WHERE groups.id = :groupId
+              AND groups.deleted_at IS NULL
+              AND users.id = :userId
             UNION ALL
             SELECT users.id AS user_id, users.display_name, memberships.role
             FROM group_memberships memberships
             JOIN access_users users ON users.id = memberships.user_id
-            WHERE memberships.group_id = :groupId AND memberships.user_id = :userId
+            WHERE memberships.group_id = :groupId
+              AND memberships.user_id = :userId
+              AND EXISTS (
+                  SELECT 1 FROM access_groups groups
+                  WHERE groups.id = memberships.group_id AND groups.deleted_at IS NULL
+              )
         ) target_membership
         """.trimIndent(),
     )
@@ -64,7 +75,9 @@ class JdbcMembershipRepository(
             INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at)
             SELECT :groupId, :userId, :role, now(), now()
             FROM access_groups groups
-            WHERE groups.id = :groupId AND groups.owner_user_id <> :userId
+            WHERE groups.id = :groupId
+              AND groups.owner_user_id <> :userId
+              AND groups.deleted_at IS NULL
             ON CONFLICT (group_id, user_id) DO UPDATE SET
                 role = EXCLUDED.role,
                 updated_at = now()

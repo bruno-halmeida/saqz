@@ -65,7 +65,7 @@ class JdbcAthleteRosterRepository(
                    m.position, m.membership_type, m.active
             FROM group_memberships m
             JOIN access_users u ON u.id = m.user_id
-            JOIN access_groups groups ON groups.id = m.group_id
+            JOIN access_groups groups ON groups.id = m.group_id AND groups.deleted_at IS NULL
             WHERE ${conditions.joinToString(" AND ")}
             ORDER BY coalesce(u.nickname, u.display_name), m.user_id
             """.trimIndent(),
@@ -114,6 +114,7 @@ class JdbcAthleteRosterRepository(
                 m.active
             FROM group_memberships m
             JOIN access_groups g ON g.id = m.group_id
+                AND g.deleted_at IS NULL
             WHERE m.user_id = :actor
             ORDER BY g.name, m.group_id
             """.trimIndent(),
@@ -141,7 +142,9 @@ class JdbcAthleteRosterRepository(
 
     private fun fold(expr: String) = "lower(translate($expr, '$FOLD_FROM', '$FOLD_TO'))"
 
-    private fun groupZoneId(groupId: UUID): ZoneId = jdbc.sql("SELECT time_zone FROM access_groups WHERE id = :groupId")
+    private fun groupZoneId(groupId: UUID): ZoneId = jdbc.sql(
+        "SELECT time_zone FROM access_groups WHERE id = :groupId AND deleted_at IS NULL",
+    )
         .param("groupId", groupId)
         .query(String::class.java)
         .optional()
@@ -150,8 +153,14 @@ class JdbcAthleteRosterRepository(
 
     private fun pendingChargeMemberIds(groupId: UUID, monthEnd: LocalDate): Set<UUID> = jdbc.sql(
         """
-        SELECT DISTINCT member_user_id FROM group_charges
-        WHERE group_id = :groupId AND status = 'PENDING' AND due_date <= :monthEnd
+        SELECT DISTINCT charges.member_user_id
+        FROM group_charges charges
+        JOIN access_groups groups
+            ON groups.id = charges.group_id
+            AND groups.deleted_at IS NULL
+        WHERE charges.group_id = :groupId
+          AND charges.status = 'PENDING'
+          AND charges.due_date <= :monthEnd
         """.trimIndent(),
     )
         .param("groupId", groupId)

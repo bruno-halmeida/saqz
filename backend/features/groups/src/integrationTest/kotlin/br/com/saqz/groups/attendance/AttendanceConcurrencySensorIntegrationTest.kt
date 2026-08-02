@@ -87,5 +87,5 @@ class AttendanceConcurrencySensorIntegrationTest {
     private fun connection(): Connection = dataSource.connection
     private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private data class Fixture(val owner: UUID, val member: UUID, val group: UUID, val game: UUID, val responses: RespondAttendance, val capacities: AdjustGameCapacity, val waiters: List<UUID> = emptyList())
-    private companion object { val NOW: Instant = Instant.parse("2026-08-01T10:00:00Z") }
+    private companion object { val NOW: Instant = Instant.now().plusSeconds(300) }
 }

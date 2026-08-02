@@ -15,7 +15,10 @@ data class InviteAttemptWindow(
     }
 }
 
-data class RedeemableInvite(val groupId: UUID)
+data class RedeemableInvite(
+    val groupId: UUID,
+    val groupDeleted: Boolean = false,
+)
 
 data class RecordInvalidInviteAttempt(
     val userId: UUID,
@@ -41,6 +44,8 @@ sealed interface RedeemInviteResult {
     data class AttemptLimit(val retryAfterSeconds: Int) : RedeemInviteResult
 
     data object InvalidOrExpired : RedeemInviteResult
+
+    data object GroupDeleted : RedeemInviteResult
 
     data object AthleteLimitExceeded : RedeemInviteResult
 }

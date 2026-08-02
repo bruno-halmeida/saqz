@@ -143,7 +143,9 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             SELECT CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role END
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor
-            WHERE g.id = :groupId AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
+            WHERE g.id = :groupId
+              AND g.deleted_at IS NULL
+              AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
         """
 
         const val CREATION_CONTEXT = """
@@ -156,7 +158,9 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor
             LEFT JOIN group_venues v ON v.group_id = g.id AND v.id = g.default_venue_id
-            WHERE g.id = :groupId AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
+            WHERE g.id = :groupId
+              AND g.deleted_at IS NULL
+              AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
         """
 
         const val INSERT_GAME = """
@@ -165,12 +169,13 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 duration_minutes, confirmation_deadline, venue_id, venue_name,
                 venue_address, venue_court, capacity, game_fee_cents, notes,
                 status, detached_from_series, created_at, updated_at
-            ) VALUES (
+            ) SELECT
                 :id, :groupId, :title, :localDate, :localTime, :zoneId, :startsAt,
                 :durationMinutes, :confirmationDeadline, :venueId, :venueName,
                 :venueAddress, :venueCourt, :capacity, :gameFeeCents, :notes,
                 :status, :detachedFromSeries, now(), now()
-            )
+            FROM access_groups
+            WHERE id = :groupId AND deleted_at IS NULL
             ON CONFLICT (id) DO NOTHING
         """
 
@@ -183,7 +188,13 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 capacity = :capacity, game_fee_cents = :gameFeeCents, notes = :notes,
                 status = :status, detached_from_series = :detachedFromSeries,
                 version = version + 1, updated_at = now()
-            WHERE id = :id AND group_id = :groupId AND version = :expectedVersion
+            WHERE id = :id
+              AND group_id = :groupId
+              AND version = :expectedVersion
+              AND EXISTS (
+                  SELECT 1 FROM access_groups
+                  WHERE id = :groupId AND deleted_at IS NULL
+              )
         """
 
         const val SELECT_GAME = """
@@ -192,6 +203,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                    g.venue_name, g.venue_address, g.venue_court, g.capacity,
                    g.game_fee_cents, g.notes, g.status, g.version, g.detached_from_series
             FROM games g
+            JOIN access_groups groups ON groups.id = g.group_id AND groups.deleted_at IS NULL
         """
     }
 }

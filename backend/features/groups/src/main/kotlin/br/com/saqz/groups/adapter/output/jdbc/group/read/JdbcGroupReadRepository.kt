@@ -85,6 +85,7 @@ class JdbcGroupReadRepository(
         LEFT JOIN group_regular_slots slots
             ON slots.group_id = groups.id
         WHERE groups.id = :groupId
+          AND groups.deleted_at IS NULL
         ORDER BY slots.position, slots.weekday, slots.start_time
         """.trimIndent(),
         )

@@ -21,7 +21,9 @@ class JdbcGroupCreationRepository(
         """
         SELECT id, owner_user_id, creation_key, name, time_zone, version, profile_status
         FROM access_groups
-        WHERE owner_user_id = :ownerUserId AND creation_key = :creationKey
+        WHERE owner_user_id = :ownerUserId
+          AND creation_key = :creationKey
+          AND deleted_at IS NULL
         """.trimIndent(),
     )
         .param("ownerUserId", ownerUserId)
@@ -42,7 +44,7 @@ class JdbcGroupCreationRepository(
     }
 
     override fun countOwnedGroups(ownerUserId: UUID): Int = jdbc.sql(
-        "SELECT count(*)::int FROM access_groups WHERE owner_user_id = :ownerUserId",
+        "SELECT count(*)::int FROM access_groups WHERE owner_user_id = :ownerUserId AND deleted_at IS NULL",
     )
         .param("ownerUserId", ownerUserId)
         .query(Int::class.java)
@@ -55,6 +57,7 @@ class JdbcGroupCreationRepository(
             failureInjector.afterGroupInsert()
             val defaultVenueId = command.profile.defaultVenue?.let { venue ->
                 val venueId = UUID.randomUUID()
+                // O grupo acabou de ser criado na mesma transação; não pode estar apagado antes do commit.
                 jdbc.sql(
                     """
                     INSERT INTO group_venues (
@@ -78,6 +81,7 @@ class JdbcGroupCreationRepository(
                     UPDATE access_groups
                     SET default_venue_id = :defaultVenueId, updated_at = now()
                     WHERE id = :groupId
+                      AND deleted_at IS NULL
                     """.trimIndent(),
                 )
                     .param("defaultVenueId", defaultVenueId)
@@ -85,6 +89,7 @@ class JdbcGroupCreationRepository(
                     .update()
             }
             command.profile.regularSlots.forEachIndexed { index, slot ->
+                // As linhas filhas usam o grupo recém-criado, protegido pela transação de criação.
                 jdbc.sql(
                     """
                     INSERT INTO group_regular_slots (
@@ -137,7 +142,9 @@ class JdbcGroupCreationRepository(
         """
         SELECT id, owner_user_id, creation_key, name, time_zone, version, profile_status
         FROM access_groups
-        WHERE owner_user_id = :ownerUserId AND creation_key = :creationKey
+        WHERE owner_user_id = :ownerUserId
+          AND creation_key = :creationKey
+          AND deleted_at IS NULL
         """.trimIndent(),
     )
         .param("ownerUserId", command.ownerUserId)
