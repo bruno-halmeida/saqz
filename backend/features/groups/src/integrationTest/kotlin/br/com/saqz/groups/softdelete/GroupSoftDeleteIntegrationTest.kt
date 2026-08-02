@@ -49,7 +49,7 @@ class GroupSoftDeleteIntegrationTest {
     fun stopDatabase() = postgres.stop()
 
     @Test
-    fun `V16 adds nullable deleted_at and active-owner partial index`() {
+    fun `V21 adds nullable deleted_at and active-owner partial index`() {
         val group = fixture().group
 
         assertTrue(boolean("SELECT deleted_at IS NULL FROM access_groups WHERE id = '$group'"))
