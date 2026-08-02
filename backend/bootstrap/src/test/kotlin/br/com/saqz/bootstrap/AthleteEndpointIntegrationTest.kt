@@ -164,11 +164,14 @@ class AthleteEndpointIntegrationTest {
     @Test
     fun `athlete lists roster with unknown financial status`() {
         read.role = GroupRole.ATHLETE
+        roster.entries = listOf(roster.entries.single().copy(monthlyFeeCents = 12500, monthlyDueDay = 10))
         val response = getRoster(groupId)
         val entry = json(response)["athletes"][0]
 
         assertEquals(200, response.statusCode())
         assertEquals("DESCONHECIDO", entry["financialStatus"].stringValue())
+        assertTrue(entry["monthlyFeeCents"].isNull)
+        assertTrue(entry["monthlyDueDay"].isNull)
     }
 
     @Test

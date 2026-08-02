@@ -136,7 +136,7 @@ class JdbcGroupReadRepositoryIntegrationTest {
     }
 
     @Test
-    fun `query plan uses group and membership primary indexes`() {
+    fun `query plan uses indexed group and membership lookups`() {
         val owner = insertUser("plan-owner")
         val member = insertUser("plan-member")
         val group = insertGroup(owner, "Plan Group")
@@ -144,8 +144,15 @@ class JdbcGroupReadRepositoryIntegrationTest {
 
         val plan = explain(member, group)
 
+        // V24 widens group_memberships, which can make the planner choose the
+        // narrower user_id index for this one-row fixture. Both paths are
+        // indexed lookups; the invariant is that membership is never scanned.
         assertTrue(plan.contains("access_groups_pkey"), plan)
-        assertTrue(plan.contains("group_memberships_pkey"), plan)
+        assertTrue(
+            plan.contains("group_memberships_pkey") || plan.contains("ix_group_memberships_user_id"),
+            plan,
+        )
+        assertTrue(!plan.contains("Seq Scan on group_memberships"), plan)
     }
 
     @Test

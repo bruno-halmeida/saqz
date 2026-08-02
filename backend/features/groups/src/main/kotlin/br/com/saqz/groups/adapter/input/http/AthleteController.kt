@@ -301,25 +301,28 @@ private fun AthleteMembership.toResponse() = AthleteResponse(
     monthlyDueDay = monthlyDueDay,
 )
 
-private fun AthleteRosterEntry.toResponse(role: GroupRole?) = AthleteRosterEntryResponse(
-    userId = userId,
-    displayName = displayName.value,
-    phone = phone,
-    position = position?.name,
-    membershipType = membershipType.name,
-    active = active,
-    nickname = nickname,
-    secondaryPosition = secondaryPosition?.name,
-    level = level?.name,
-    preferredSide = preferredSide?.name,
-    heightCm = heightCm,
-    monthlyFeeCents = monthlyFeeCents,
-    monthlyDueDay = monthlyDueDay,
-    joinedAt = joinedAt,
-    financialStatus = when (role) {
-        GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
-        GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
-    },
-)
+private fun AthleteRosterEntry.toResponse(role: GroupRole?): AthleteRosterEntryResponse {
+    val canReadFinancial = role == GroupRole.OWNER || role == GroupRole.ADMIN
+    return AthleteRosterEntryResponse(
+        userId = userId,
+        displayName = displayName.value,
+        phone = phone,
+        position = position?.name,
+        membershipType = membershipType.name,
+        active = active,
+        nickname = nickname,
+        secondaryPosition = secondaryPosition?.name,
+        level = level?.name,
+        preferredSide = preferredSide?.name,
+        heightCm = heightCm,
+        monthlyFeeCents = monthlyFeeCents.takeIf { canReadFinancial },
+        monthlyDueDay = monthlyDueDay.takeIf { canReadFinancial },
+        joinedAt = joinedAt,
+        financialStatus = when (role) {
+            GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
+            GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
+        },
+    )
+}
 
 private fun AthleteStats.toResponse() = AthleteStatsResponse(games, attendanceRate, absences)
