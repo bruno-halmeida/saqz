@@ -41,6 +41,10 @@ import br.com.saqz.groups.presentation.ui.list.GroupListRoot
 import br.com.saqz.groups.presentation.ui.members.GroupMembersRoot
 import br.com.saqz.groups.presentation.ui.schedule.GroupScheduleRoot
 import br.com.saqz.groups.presentation.ui.setup.GroupSetupRoot
+import br.com.saqz.profile.presentation.edit.ui.EditProfileRoot
+import br.com.saqz.profile.presentation.exit.ProfileExitRoot
+import br.com.saqz.profile.presentation.navigation.ProfileRoute
+import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
 import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
@@ -59,7 +63,7 @@ internal const val SaqzDestinationHostTag = "authenticated-access-destination"
  *
  * O stack tem profundidade dos dois lados da sessão, e por motivos diferentes:
  *
- * - **acima da base**, as rotas de grupo empilham sobre o shell (VUL-72). Quem empilha são
+ * - **acima da base**, as rotas de grupo e de perfil empilham sobre o shell. Quem empilha são
  *   as lambdas que cada `Root` recebe — navegação entre features é callback (AGENTS.md §6),
  *   e o `Root` não conhece `NavDisplay`;
  * - **no lado deslogado**, as seis telas do fluxo 1 que a pessoa alcança clicando (1b a 1h)
@@ -162,8 +166,21 @@ internal fun SaqzNavHost(
             }
             entry<SaqzShellDestination> {
                 SaqzAppShell(
-                    onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                     catalogEnabled = catalogEnabled,
+                    profileTab = {
+                        OwnProfileRoot(
+                            onOpenEditor = { backStack.add(ProfileRoute.Edit) },
+                            onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
+                            onSignOut = {
+                                backStack.add(
+                                    ProfileRoute.Exit(
+                                        email = (state.session as? SessionAccessState.Ready)
+                                            ?.session?.user?.email.orEmpty(),
+                                    ),
+                                )
+                            },
+                        )
+                    },
                     banner = {
                         // A faixa do VUL-91 só existe com e-mail por confirmar, e some
                         // sozinha quando a sessão disser que confirmou.
@@ -190,6 +207,19 @@ internal fun SaqzNavHost(
                             onJoinWithCode = {},
                         )
                     },
+                )
+            }
+            entry<ProfileRoute.Edit> {
+                EditProfileRoot(
+                    onSave = pop,
+                    onBack = pop,
+                )
+            }
+            entry<ProfileRoute.Exit> { route ->
+                ProfileExitRoot(
+                    email = route.email,
+                    onClose = pop,
+                    onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
             entry<SubscriptionsRoute.PlanSelection> {

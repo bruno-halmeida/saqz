@@ -1,5 +1,6 @@
 package br.com.saqz.profile.presentation.photo
 
+import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.profile.domain.ProfileGateway
@@ -7,7 +8,6 @@ import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
 import br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable
 import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
 import br.com.saqz.profile.domain.ProfilePhotoSelectionResult
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
@@ -64,7 +64,12 @@ internal class ProfilePhotoViewModel(
             is SaqzResult.Success -> when (val refreshed = gateway.bootstrap()) {
                 is SaqzResult.Failure -> finish(ProfilePhotoError.UploadFailed)
                 is SaqzResult.Success -> update {
-                    it.copy(photoUrl = refreshed.value.user.photoUrl, isLoading = false, error = null)
+                    it.copy(
+                        photoUrl = refreshed.value.user.photoUrl,
+                        hasLocalUpdate = true,
+                        isLoading = false,
+                        error = null,
+                    )
                 }
             }
         }
@@ -76,7 +81,14 @@ internal class ProfilePhotoViewModel(
         viewModelScope.launch {
             when (gateway.deletePhoto()) {
                 is SaqzResult.Failure -> finish(ProfilePhotoError.RemovalFailed)
-                is SaqzResult.Success -> update { it.copy(photoUrl = null, isLoading = false, error = null) }
+                is SaqzResult.Success -> update {
+                    it.copy(
+                        photoUrl = null,
+                        hasLocalUpdate = true,
+                        isLoading = false,
+                        error = null,
+                    )
+                }
             }
         }
     }

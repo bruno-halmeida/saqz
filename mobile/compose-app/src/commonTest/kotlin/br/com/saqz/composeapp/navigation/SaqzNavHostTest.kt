@@ -6,6 +6,7 @@ import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -85,6 +86,8 @@ class SaqzNavHostTest {
         reconcileAccessStack(stack, ready)
         stack += GroupsRoute.Details("ceret")
         stack += GroupsRoute.Members("ceret")
+        stack += ProfileRoute.Edit
+        stack += ProfileRoute.Exit("atleta@example.test")
 
         reconcileAccessStack(stack, ready)
         reconcileAccessStack(stack, ready)
@@ -94,6 +97,8 @@ class SaqzNavHostTest {
                 SaqzShellDestination,
                 GroupsRoute.Details("ceret"),
                 GroupsRoute.Members("ceret"),
+                ProfileRoute.Edit,
+                ProfileRoute.Exit("atleta@example.test"),
             ),
             stack,
         )
@@ -130,6 +135,7 @@ class SaqzNavHostTest {
             SaqzShellDestination,
             GroupsRoute.Details("ceret"),
             GroupsRoute.Schedule("ceret"),
+            ProfileRoute.Exit("atleta@example.test"),
         )
         reconcileAccessStack(stack, SessionAccessState.SignedOut)
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)

@@ -104,13 +104,12 @@ class EmailVerificationBannerTest {
     // A faixa informa, não bloqueia: o conteúdo do shell continua alcançável com ela na tela.
     @Test
     fun theBannerDoesNotBlockTheShellContent() = runComposeUiTest {
-        var logouts = 0
         setContent {
             SaqzTheme {
                 SaqzAppShell(
-                    onLogout = { logouts++ },
                     banner = { EmailVerificationBanner(onRefresh = {}, auth = FakeAuthPort()) },
                     groupsTab = { Text(GroupsTab) },
+                    profileTab = { Text(ProfileTab) },
                 )
             }
         }
@@ -119,10 +118,7 @@ class EmailVerificationBannerTest {
         onNodeWithText(GroupsTab).assertIsDisplayed()
         onNodeWithText("Perfil").performClick()
         waitForIdle()
-        onNodeWithText("Sair").performClick()
-        waitForIdle()
-
-        assertEquals(1, logouts)
+        onNodeWithText(ProfileTab).assertIsDisplayed()
         onNodeWithTag(SaqzEmailBannerTag).assertIsDisplayed()
     }
 
@@ -151,6 +147,7 @@ class EmailVerificationBannerTest {
 
     private companion object {
         const val GroupsTab = "conteudo-grupos"
+        const val ProfileTab = "conteudo-perfil"
         const val Unverified = "Confirme seu e-mail para não perder o acesso à sua conta."
         const val Resent = "E-mail reenviado. Confira sua caixa de entrada."
         const val Failed = "Não foi possível reenviar agora. Tente de novo em instantes."

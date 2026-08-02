@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.catalog
 
+import androidx.compose.material.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
@@ -59,7 +60,12 @@ class SaqzCatalogBackTest {
             CompositionLocalProvider(
                 LocalCompatNavigationEventDispatcherOwner provides TestOwner(dispatcher),
             ) {
-                SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
+                SaqzTheme {
+                    SaqzAppShell(
+                        catalogEnabled = true,
+                        profileTab = { Text("Você está conectado.") },
+                    )
+                }
             }
         }
         openProfileTab()
@@ -94,7 +100,12 @@ class SaqzCatalogBackTest {
             CompositionLocalProvider(
                 LocalCompatNavigationEventDispatcherOwner provides TestOwner(dispatcher),
             ) {
-                SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
+                SaqzTheme {
+                    SaqzAppShell(
+                        catalogEnabled = true,
+                        profileTab = { Text("Você está conectado.") },
+                    )
+                }
             }
         }
         openProfileTab()
@@ -130,7 +141,12 @@ class SaqzCatalogBackTest {
             CompositionLocalProvider(
                 LocalCompatNavigationEventDispatcherOwner provides TestOwner(dispatcher),
             ) {
-                SaqzTheme { SaqzAppShell(onLogout = {}, catalogEnabled = true) }
+                SaqzTheme {
+                    SaqzAppShell(
+                        catalogEnabled = true,
+                        profileTab = { Text("Você está conectado.") },
+                    )
+                }
             }
         }
         openProfileTab()

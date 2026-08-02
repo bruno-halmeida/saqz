@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 @Immutable
 internal data class ProfilePhotoState(
     val photoUrl: String? = null,
+    val hasLocalUpdate: Boolean = false,
     val isLoading: Boolean = false,
     val error: ProfilePhotoError? = null,
 )

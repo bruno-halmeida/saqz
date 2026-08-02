@@ -9,14 +9,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class SaqzAppShellTest {
 
     @Test
     fun opensOnTheGroupsTab() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(onLogout = {}, groupsTab = { Text(GroupsTab) }) } }
+        setContent { SaqzTheme { SaqzAppShell(groupsTab = { Text(GroupsTab) }) } }
         onNodeWithTag(SaqzShellTabContentTag).assertIsDisplayed()
         onNodeWithText(GroupsTab).assertIsDisplayed()
         // A barra é do shell: os quatro itens do 10q estão aqui, não nas telas de grupo.
@@ -29,7 +28,7 @@ class SaqzAppShellTest {
     // pode trocar o conteúdo nem esconder a lista.
     @Test
     fun homeAndGamesTabsAreInert() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(onLogout = {}, groupsTab = { Text(GroupsTab) }) } }
+        setContent { SaqzTheme { SaqzAppShell(groupsTab = { Text(GroupsTab) }) } }
         onNodeWithText("Início").performClick()
         waitForIdle()
         onNodeWithText(GroupsTab).assertIsDisplayed()
@@ -43,19 +42,19 @@ class SaqzAppShellTest {
      * sair mora até o fluxo 7 existir, e sem ele o app perde a única saída de sessão.
      */
     @Test
-    fun profileTabCarriesLogout() = runComposeUiTest {
-        var logouts = 0
+    fun profileTabRendersTheProvidedContent() = runComposeUiTest {
         setContent {
-            SaqzTheme { SaqzAppShell(onLogout = { logouts++ }, groupsTab = { Text(GroupsTab) }) }
+            SaqzTheme {
+                SaqzAppShell(
+                    groupsTab = { Text(GroupsTab) },
+                    profileTab = { Text(ProfileTab) },
+                )
+            }
         }
         onNodeWithText("Perfil").performClick()
         waitForIdle()
         onNodeWithTag(SaqzShellContentTag).assertIsDisplayed()
-        onNodeWithText("Você está conectado.").assertIsDisplayed()
-
-        onNodeWithText("Sair").performClick()
-        waitForIdle()
-        assertEquals(1, logouts)
+        onNodeWithText(ProfileTab).assertIsDisplayed()
     }
 
     // A restauração de `rememberSaveable` não tem teste automatizado aqui: o
@@ -65,5 +64,6 @@ class SaqzAppShellTest {
 
     private companion object {
         const val GroupsTab = "conteúdo-da-aba-grupos"
+        const val ProfileTab = "conteúdo-da-aba-perfil"
     }
 }
