@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -60,6 +61,7 @@ import br.com.saqz.profile.fake.FakeProfileGateway
 import br.com.saqz.profile.presentation.own.OwnProfileGroupUi
 import br.com.saqz.profile.presentation.own.OwnProfileIntent
 import br.com.saqz.profile.presentation.own.OwnProfileState
+import br.com.saqz.profile.presentation.own.OwnProfileStatsUi
 import br.com.saqz.profile.presentation.own.OwnProfileUserUi
 import br.com.saqz.profile.presentation.own.OwnProfileViewModel
 import br.com.saqz.profile.presentation.own.toOwnProfileGroupUi
@@ -164,14 +166,10 @@ fun OwnProfileScreen(
                             item(key = "profile-card") {
                                 OwnProfileCard(
                                     user = user,
+                                    stats = state.stats,
                                     imageLoader = imageLoader,
                                     onEdit = { onIntent(OwnProfileIntent.EditData) },
                                 )
-                            }
-                        }
-                        state.stats?.let { stats ->
-                            item(key = "stats-card") {
-                                OwnProfileStatsCard(stats = stats)
                             }
                         }
                         item(key = "play-style-header") {
@@ -281,35 +279,38 @@ private fun OwnProfileFailure(onRetry: () -> Unit) {
 @Composable
 private fun OwnProfileCard(
     user: OwnProfileUserUi,
+    stats: OwnProfileStatsUi?,
     imageLoader: ImageLoader,
     onEdit: () -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
     SaqzCard {
-        Row(
+        OwnProfileAvatar(
+            user = user,
+            imageLoader = imageLoader,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
         ) {
-            OwnProfileAvatar(user = user, imageLoader = imageLoader)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
-            ) {
+            Text(
+                text = user.displayName,
+                style = SaqzTheme.typography.subtitle,
+                color = SaqzTheme.colors.textPrimary,
+                textAlign = TextAlign.Center,
+            )
+            user.subtitle?.let { subtitle ->
                 Text(
-                    text = user.displayName,
-                    style = SaqzTheme.typography.subtitle,
-                    color = SaqzTheme.colors.textPrimary,
+                    text = subtitle,
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                    textAlign = TextAlign.Center,
                 )
-                user.subtitle?.let { subtitle ->
-                    Text(
-                        text = subtitle,
-                        style = SaqzTheme.typography.support,
-                        color = SaqzTheme.colors.textSecondary,
-                    )
-                }
             }
         }
+        stats?.let { OwnProfileStatsRow(stats = it) }
         SaqzButton(
             label = stringResource(Res.string.profile_edit_data),
             onClick = onEdit,
@@ -321,13 +322,17 @@ private fun OwnProfileCard(
 }
 
 @Composable
-private fun OwnProfileAvatar(user: OwnProfileUserUi, imageLoader: ImageLoader) {
+private fun OwnProfileAvatar(
+    user: OwnProfileUserUi,
+    imageLoader: ImageLoader,
+    modifier: Modifier = Modifier,
+) {
     val metrics = SaqzTheme.metrics
     val description = stringResource(Res.string.profile_photo_content_description)
     SaqzAvatar(
         name = user.displayName,
-        size = metrics.sectionGap * 3,
-        modifier = Modifier
+        size = metrics.iconButtonSize * 2,
+        modifier = modifier
             .testTag("${OwnProfileTags.Screen}-photo")
             .semantics { contentDescription = description },
         photo = user.photoUrl?.let { url ->
@@ -361,40 +366,35 @@ private fun OwnProfileAvatarFallback(name: String) {
 }
 
 @Composable
-private fun OwnProfileStatsCard(stats: br.com.saqz.profile.presentation.own.OwnProfileStatsUi) {
+private fun OwnProfileStatsRow(stats: OwnProfileStatsUi) {
     val metrics = SaqzTheme.metrics
-    SaqzCard(
-        padded = false,
-        modifier = Modifier.testTag(OwnProfileTags.Stats),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .testTag(OwnProfileTags.Stats),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(metrics.horizontalPadding),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OwnProfileStat(
-                value = stats.gamesLabel,
-                label = stringResource(Res.string.profile_games),
-                modifier = Modifier.weight(1f),
-            )
-            if (stats.attendanceLabel != null) {
-                SaqzDivider(vertical = true, modifier = Modifier.padding(vertical = metrics.subGrid))
-                OwnProfileStat(
-                    value = stats.attendanceLabel,
-                    label = stringResource(Res.string.profile_attendance),
-                    valueColor = SaqzTheme.colors.success,
-                    modifier = Modifier.weight(1f).testTag(OwnProfileTags.Attendance),
-                )
-            }
+        OwnProfileStat(
+            value = stats.gamesLabel,
+            label = stringResource(Res.string.profile_games),
+            modifier = Modifier.weight(1f),
+        )
+        if (stats.attendanceLabel != null) {
             SaqzDivider(vertical = true, modifier = Modifier.padding(vertical = metrics.subGrid))
             OwnProfileStat(
-                value = stats.groupsLabel,
-                label = stringResource(Res.string.profile_groups),
-                modifier = Modifier.weight(1f),
+                value = stats.attendanceLabel,
+                label = stringResource(Res.string.profile_attendance),
+                valueColor = SaqzTheme.colors.success,
+                modifier = Modifier.weight(1f).testTag(OwnProfileTags.Attendance),
             )
         }
+        SaqzDivider(vertical = true, modifier = Modifier.padding(vertical = metrics.subGrid))
+        OwnProfileStat(
+            value = stats.groupsLabel,
+            label = stringResource(Res.string.profile_groups),
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -446,8 +446,7 @@ private fun OwnProfileGroupRow(
         }
         SaqzStatusChip(
             text = group.membershipLabel,
-            tone = if (group.isMonthly) br.com.saqz.designsystem.SaqzChipTone.Accent
-            else br.com.saqz.designsystem.SaqzChipTone.Neutral,
+            tone = br.com.saqz.designsystem.SaqzChipTone.Neutral,
         )
     }
 }
@@ -481,7 +480,7 @@ private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit) {
             label = stringResource(Res.string.profile_sign_out),
             onClick = { onIntent(OwnProfileIntent.SignOut) },
             modifier = Modifier.testTag(OwnProfileTags.SignOut),
-            danger = true,
+            muted = true,
         )
     }
 }
@@ -492,10 +491,10 @@ private fun OwnProfileAccountRow(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    danger: Boolean = false,
+    muted: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
-    val color = if (danger) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textPrimary
+    val color = if (muted) SaqzTheme.colors.textSecondary else SaqzTheme.colors.textPrimary
     Row(
         modifier = modifier
             .fillMaxWidth()

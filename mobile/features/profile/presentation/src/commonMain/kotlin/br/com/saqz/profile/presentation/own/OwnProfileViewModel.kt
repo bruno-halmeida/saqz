@@ -94,6 +94,8 @@ internal fun ProfileStats.toOwnProfileStatsUi() = OwnProfileStatsUi(
 internal fun AthleteMembership.toOwnProfileGroupUi() = OwnProfileGroupUi(
     id = groupId.value,
     name = groupName,
+    // TODO(Fluxo 3 · 3j): substituir o papel pelo nível do cadastro do atleta quando o contrato o expuser.
+    // O contrato atual traz `role`, não `level`; esta substituição é consciente e não inventa um nível.
     details = listOfNotNull(position?.toPositionLabel(), role.toRoleLabel())
         .joinToString(" · ")
         .takeIf(String::isNotBlank),
