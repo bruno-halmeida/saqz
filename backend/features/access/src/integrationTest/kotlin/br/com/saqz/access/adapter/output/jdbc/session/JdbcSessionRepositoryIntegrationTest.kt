@@ -223,6 +223,70 @@ class JdbcSessionRepositoryIntegrationTest {
         val session = repository.upsertAndLoad(command("subject-no-phone"))
 
         assertEquals(null, session.user.phone)
+        assertEquals(null, session.user.nickname)
+        assertEquals(null, session.user.city)
+        assertEquals("ADMINS", session.user.phoneVisibility)
+    }
+
+    @Test
+    fun `updateProfile persists all editable profile fields`() {
+        repository.upsertAndLoad(command("subject-profile-fields"))
+
+        val updated = repository.updateProfile(
+            ProfileCompletion(
+                subject = "subject-profile-fields",
+                phone = PhoneNumber.from("+5511911112222"),
+                displayName = AccessName.from("Rafael Costa"),
+                nickname = "Rafa",
+                city = "São Paulo, SP",
+                phoneVisibility = "EVERYONE",
+                phoneProvided = true,
+                displayNameProvided = true,
+                nicknameProvided = true,
+                cityProvided = true,
+                phoneVisibilityProvided = true,
+            ),
+        )!!
+
+        assertEquals("Rafael Costa", updated.user.displayName.value)
+        assertEquals("Rafa", updated.user.nickname)
+        assertEquals("São Paulo, SP", updated.user.city)
+        assertEquals("EVERYONE", updated.user.phoneVisibility)
+    }
+
+    @Test
+    fun `updateProfile preserves fields omitted from the patch`() {
+        repository.upsertAndLoad(command("subject-profile-omitted"))
+        repository.updateProfile(
+            ProfileCompletion(
+                subject = "subject-profile-omitted",
+                phone = PhoneNumber.from("+5511911112222"),
+                displayName = AccessName.from("Rafael Costa"),
+                nickname = "Rafa",
+                city = "São Paulo, SP",
+                phoneVisibility = "NOBODY",
+                phoneProvided = true,
+                displayNameProvided = true,
+                nicknameProvided = true,
+                cityProvided = true,
+                phoneVisibilityProvided = true,
+            ),
+        )
+
+        val unchanged = repository.updateProfile(
+            ProfileCompletion(
+                subject = "subject-profile-omitted",
+                phone = null,
+                displayName = null,
+                phoneProvided = false,
+            ),
+        )!!
+
+        assertEquals("+5511911112222", unchanged.user.phone?.value)
+        assertEquals("Rafael Costa", unchanged.user.displayName.value)
+        assertEquals("Rafa", unchanged.user.nickname)
+        assertEquals("São Paulo, SP", unchanged.user.city)
+        assertEquals("NOBODY", unchanged.user.phoneVisibility)
     }
 
     @Test

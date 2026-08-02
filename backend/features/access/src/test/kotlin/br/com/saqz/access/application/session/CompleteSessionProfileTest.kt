@@ -59,6 +59,61 @@ class CompleteSessionProfileTest {
     }
 
     @Test
+    fun `missing phone is not changed`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            phoneProvided = false,
+        )
+
+        assertEquals(CompleteSessionProfileResult.Success(view), result)
+        assertEquals(null, repository.commands.single().phone)
+        assertEquals(false, repository.commands.single().phoneProvided)
+    }
+
+    @Test
+    fun `explicit null phone is rejected before write`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            phoneProvided = true,
+        )
+
+        assertSame(CompleteSessionProfileResult.InvalidPhone, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `nickname and city can be cleared while visibility is forwarded`() {
+        val repository = RecordingSessionRepository(view)
+
+        CompleteSessionProfile(repository).execute(
+            subject = "subject-1",
+            rawPhone = null,
+            rawDisplayName = null,
+            rawNickname = null,
+            rawCity = null,
+            rawPhoneVisibility = "NOBODY",
+            phoneProvided = false,
+            nicknameProvided = true,
+            cityProvided = true,
+            phoneVisibilityProvided = true,
+        )
+
+        val command = repository.commands.single()
+        assertEquals(true, command.nicknameProvided)
+        assertEquals(true, command.cityProvided)
+        assertEquals("NOBODY", command.phoneVisibility)
+        assertEquals(true, command.phoneVisibilityProvided)
+    }
+
+    @Test
     fun `blank display name is rejected before write leaving phone unset`() {
         val repository = RecordingSessionRepository(view)
 

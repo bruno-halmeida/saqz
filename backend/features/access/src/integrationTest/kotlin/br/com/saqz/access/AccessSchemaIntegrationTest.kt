@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
@@ -29,7 +30,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(7, flyway.migrate().migrationsExecuted)
+        assertEquals(8, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -127,6 +128,66 @@ class AccessSchemaIntegrationTest {
                         "VALUES ('${UUID.randomUUID()}', 'phone-invalid-$phone', true, 'Valid Name', '$phone', now(), now())",
                 )
             }
+        }
+    }
+
+    @Test
+    fun `new profile fields use the defined defaults and constraints`() {
+        val user = insertUser("profile-defaults")
+
+        assertEquals("ADMINS", queryString("SELECT phone_visibility FROM access_users WHERE id = '$user'"))
+        assertSqlFails { execute("UPDATE access_users SET phone_visibility = 'FRIENDS' WHERE id = '$user'") }
+        assertSqlFails { execute("UPDATE access_users SET nickname = 'a' WHERE id = '$user'") }
+        assertSqlFails { execute("UPDATE access_users SET nickname = ' nickname' WHERE id = '$user'") }
+        execute("UPDATE access_users SET nickname = 'Rafa', city = 'São Paulo, SP' WHERE id = '$user'")
+        assertEquals("Rafa", queryString("SELECT nickname FROM access_users WHERE id = '$user'"))
+    }
+
+    @Test
+    fun `v13 assigns ADMINS to a user that existed before the migration`() {
+        val legacyPostgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+        legacyPostgres.startAndAwaitJdbc()
+        try {
+            val legacyDataSource = DriverManagerDataSource(
+                legacyPostgres.jdbcUrl,
+                legacyPostgres.username,
+                legacyPostgres.password,
+            )
+            val beforeV13 = Flyway.configure()
+                .dataSource(legacyDataSource)
+                .locations("classpath:db/migration")
+                .target("12")
+                .load()
+            assertEquals(7, beforeV13.migrate().migrationsExecuted)
+
+            val userId = UUID.randomUUID()
+            legacyDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute(
+                        "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) " +
+                            "VALUES ('$userId', 'legacy-profile-user', true, 'Legacy User', now(), now())",
+                    )
+                }
+            }
+
+            val afterV13 = Flyway.configure()
+                .dataSource(legacyDataSource)
+                .locations("classpath:db/migration")
+                .load()
+            assertEquals(1, afterV13.migrate().migrationsExecuted)
+
+            legacyDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery(
+                        "SELECT phone_visibility FROM access_users WHERE id = '$userId'",
+                    ).use { result ->
+                        result.next()
+                        assertEquals("ADMINS", result.getString(1))
+                    }
+                }
+            }
+        } finally {
+            legacyPostgres.stop()
         }
     }
 

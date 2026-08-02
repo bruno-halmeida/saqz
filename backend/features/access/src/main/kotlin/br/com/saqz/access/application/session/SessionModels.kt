@@ -13,6 +13,9 @@ data class UserAccount(
     val phone: PhoneNumber? = null,
     /** Digest da foto guardada, ou null quando a conta nao tem foto. */
     val photoDigest: String? = null,
+    val nickname: String? = null,
+    val city: String? = null,
+    val phoneVisibility: String = "ADMINS",
 )
 
 data class SessionMembership(
@@ -41,8 +44,16 @@ fun RequestIdentity.hasVerifiedEmail(): Boolean = emailVerified == true
 
 data class ProfileCompletion(
     val subject: String,
-    val phone: PhoneNumber,
+    val phone: PhoneNumber?,
     val displayName: AccessName?,
+    val nickname: String? = null,
+    val city: String? = null,
+    val phoneVisibility: String? = null,
+    val phoneProvided: Boolean = true,
+    val displayNameProvided: Boolean = displayName != null,
+    val nicknameProvided: Boolean = false,
+    val cityProvided: Boolean = false,
+    val phoneVisibilityProvided: Boolean = false,
 )
 
 sealed interface BootstrapSessionResult {

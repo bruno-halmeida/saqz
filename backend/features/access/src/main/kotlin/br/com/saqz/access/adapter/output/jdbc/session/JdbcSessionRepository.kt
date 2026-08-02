@@ -9,6 +9,7 @@ import br.com.saqz.access.application.session.UserAccount
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
 import org.springframework.jdbc.core.simple.JdbcClient
+import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -18,7 +19,7 @@ class JdbcSessionRepository(
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
-        val (userId, phone) = jdbc.sql(
+        val user = jdbc.sql(
             """
             INSERT INTO access_users (
                 id, firebase_subject, email, email_verified, display_name, created_at, updated_at
@@ -30,7 +31,7 @@ class JdbcSessionRepository(
                 email_verified = EXCLUDED.email_verified,
                 display_name = EXCLUDED.display_name,
                 updated_at = now()
-            RETURNING id, phone
+            RETURNING id, email, display_name, phone, nickname, city, phone_visibility
             """.trimIndent(),
         )
             .param("id", UUID.randomUUID())
@@ -38,41 +39,69 @@ class JdbcSessionRepository(
             .param("email", command.email)
             .param("emailVerified", command.emailVerified)
             .param("displayName", command.displayName.value)
-            .query { result, _ -> result.getObject("id", UUID::class.java) to result.getString("phone") }
+            .query { result, _ ->
+                SessionUserRow(
+                    id = result.getObject("id", UUID::class.java),
+                    email = result.getString("email"),
+                    displayName = result.getString("display_name"),
+                    phone = result.getString("phone"),
+                    nickname = result.getString("nickname"),
+                    city = result.getString("city"),
+                    phoneVisibility = result.getString("phone_visibility"),
+                )
+            }
             .single()
 
         return SessionView(
             user = UserAccount(
-                userId,
-                command.subject,
-                command.email,
-                command.displayName,
-                phone?.let(PhoneNumber::from),
-                loadPhotoDigest(userId),
+                id = user.id,
+                firebaseSubject = command.subject,
+                email = user.email,
+                displayName = AccessName.from(user.displayName),
+                phone = user.phone?.let(PhoneNumber::from),
+                photoDigest = loadPhotoDigest(user.id),
+                nickname = user.nickname,
+                city = user.city,
+                phoneVisibility = user.phoneVisibility,
             ),
-            memberships = loadMemberships(userId),
+            memberships = loadMemberships(user.id),
         )
     }
 
     override fun updateProfile(command: ProfileCompletion): SessionView? {
-        val (userId, email, displayName) = jdbc.sql(
+        val user = jdbc.sql(
             """
             UPDATE access_users
-            SET phone = :phone,
-                display_name = COALESCE(:displayName, display_name),
+            SET phone = CASE WHEN :phoneProvided THEN :phone ELSE phone END,
+                display_name = CASE WHEN :displayNameProvided THEN :displayName ELSE display_name END,
+                nickname = CASE WHEN :nicknameProvided THEN :nickname ELSE nickname END,
+                city = CASE WHEN :cityProvided THEN :city ELSE city END,
+                phone_visibility = CASE WHEN :phoneVisibilityProvided THEN :phoneVisibility ELSE phone_visibility END,
                 updated_at = now()
             WHERE firebase_subject = :subject
-            RETURNING id, email, display_name
+            RETURNING id, email, display_name, phone, nickname, city, phone_visibility
             """.trimIndent(),
         )
-            .param("phone", command.phone.value)
-            .param("displayName", command.displayName?.value)
+            .param("phone", command.phone?.value, Types.VARCHAR)
+            .param("phoneProvided", command.phoneProvided)
+            .param("displayName", command.displayName?.value, Types.VARCHAR)
+            .param("displayNameProvided", command.displayNameProvided)
+            .param("nickname", command.nickname, Types.VARCHAR)
+            .param("nicknameProvided", command.nicknameProvided)
+            .param("city", command.city, Types.VARCHAR)
+            .param("cityProvided", command.cityProvided)
+            .param("phoneVisibility", command.phoneVisibility, Types.VARCHAR)
+            .param("phoneVisibilityProvided", command.phoneVisibilityProvided)
             .param("subject", command.subject)
             .query { result, _ ->
-                Triple(
-                    result.getObject("id", UUID::class.java),
-                    result.getString("email"),
-                    result.getString("display_name"),
+                SessionUserRow(
+                    id = result.getObject("id", UUID::class.java),
+                    email = result.getString("email"),
+                    displayName = result.getString("display_name"),
+                    phone = result.getString("phone"),
+                    nickname = result.getString("nickname"),
+                    city = result.getString("city"),
+                    phoneVisibility = result.getString("phone_visibility"),
                 )
             }
             .optional()
@@ -80,14 +109,17 @@ class JdbcSessionRepository(
 
         return SessionView(
             user = UserAccount(
-                userId,
-                command.subject,
-                email,
-                AccessName.from(displayName),
-                command.phone,
-                loadPhotoDigest(userId),
+                id = user.id,
+                firebaseSubject = command.subject,
+                email = user.email,
+                displayName = AccessName.from(user.displayName),
+                phone = user.phone?.let(PhoneNumber::from),
+                photoDigest = loadPhotoDigest(user.id),
+                nickname = user.nickname,
+                city = user.city,
+                phoneVisibility = user.phoneVisibility,
             ),
-            memberships = loadMemberships(userId),
+            memberships = loadMemberships(user.id),
         )
     }
 
@@ -123,4 +155,14 @@ class JdbcSessionRepository(
             )
         }
         .list()
+
+    private data class SessionUserRow(
+        val id: UUID,
+        val email: String?,
+        val displayName: String,
+        val phone: String?,
+        val nickname: String?,
+        val city: String?,
+        val phoneVisibility: String,
+    )
 }
