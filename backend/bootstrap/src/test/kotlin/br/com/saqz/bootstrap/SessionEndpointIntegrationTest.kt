@@ -316,10 +316,21 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
-    fun `missing phone field returns a stable field validation problem`() {
+    fun `missing phone field preserves the existing phone`() {
         putSession()
 
         val response = patchProfile("""{"displayName":"New Name"}""")
+
+        assertEquals(200, response.statusCode())
+        assertTrue(json(response)["user"]["phone"].isNull)
+        assertEquals(false, repository.profileCommands.single().phoneProvided)
+    }
+
+    @Test
+    fun `blank phone field returns a stable field validation problem`() {
+        putSession()
+
+        val response = patchProfile("""{"phone":""}""")
 
         assertProblem(response, 400, "VALIDATION_FAILED")
         assertTrue(json(response)["fieldErrors"].has("phone"))
