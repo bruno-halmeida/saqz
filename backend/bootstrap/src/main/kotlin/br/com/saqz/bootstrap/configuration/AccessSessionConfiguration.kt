@@ -505,7 +505,8 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         repository: JdbcInviteRedemptionRepository,
         subscriptionLimits: SubscriptionLimits,
-    ) = RedeemInvite(transaction, repository, subscriptionLimits, Clock.systemUTC())
+        clock: Clock,
+    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock)
 
     @Bean
     fun accessInviteRedemptionController(
