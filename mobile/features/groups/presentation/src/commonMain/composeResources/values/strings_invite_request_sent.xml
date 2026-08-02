@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invite_request_sent_title">Pedido enviado</string>
+    <string name="invite_request_sent_body">%1$s já recebeu seu pedido. Você recebe um aviso quando for aceito.</string>
+    <string name="invite_request_sent_organizer">Organizador</string>
+    <string name="invite_request_sent_waiting">Aguardando</string>
+    <string name="invite_request_sent_explore">Explorar o app</string>
+    <string name="invite_request_sent_other_group">Entrar em outro grupo</string>
+</resources>

@@ -9,6 +9,24 @@ data class InvitePreview(
     val groupName: String,
     val inviterName: String,
     val entryRequiresApproval: Boolean,
+    val city: String? = null,
+    val composition: String? = null,
+    val level: String? = null,
+    val memberCount: Int = 0,
+    val regularSlots: List<InviteRegularSlot> = emptyList(),
+    val expiresAt: String? = null,
+    val nextGame: InviteNextGame? = null,
+)
+
+data class InviteRegularSlot(
+    val weekday: String,
+    val startTime: String,
+)
+
+data class InviteNextGame(
+    val startsAt: String,
+    val venueName: String,
+    val court: String?,
 )
 
 enum class InviteRedeemStatus {
@@ -24,6 +42,7 @@ data class InviteRedeem(
 
 sealed interface InviteError : SaqzError {
     data object InvalidOrExpired : InviteError
+    data class Expired(val expiredAt: String) : InviteError
     data object GroupDeleted : InviteError
     data class RateLimited(val retryAfterSeconds: Int?) : InviteError
     data object PlanLimit : InviteError
