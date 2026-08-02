@@ -8,13 +8,17 @@ import br.com.saqz.groups.domain.athlete.Athlete
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteFinancialStatus
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteLevel
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
+import br.com.saqz.groups.domain.athlete.AthleteStats
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.athlete.UpdateAthleteCommand
+import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
@@ -36,6 +40,13 @@ private data class AthleteDto(
     val position: String? = null,
     val membershipType: String = "",
     val active: Boolean = true,
+    val nickname: String? = null,
+    val secondaryPosition: String? = null,
+    val level: String? = null,
+    val preferredSide: String? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
 )
 
 @Serializable
@@ -46,7 +57,15 @@ private data class RosterEntryDto(
     val position: String? = null,
     val membershipType: String = "",
     val active: Boolean = true,
-    val financialStatus: String = "",
+    val financialStatus: String = "DESCONHECIDO",
+    val nickname: String? = null,
+    val secondaryPosition: String? = null,
+    val level: String? = null,
+    val preferredSide: String? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
+    val joinedAt: String = "",
 )
 
 @Serializable
@@ -60,6 +79,14 @@ private data class OwnMembershipDto(
     val position: String? = null,
     val membershipType: String = "",
     val active: Boolean = true,
+    val nickname: String? = null,
+    val secondaryPosition: String? = null,
+    val level: String? = null,
+    val preferredSide: String? = null,
+    val heightCm: Int? = null,
+    val monthlyFeeCents: Long? = null,
+    val monthlyDueDay: Int? = null,
+    val joinedAt: String = "",
 )
 
 @Serializable
@@ -71,13 +98,34 @@ private data class OwnProfileDto(
 )
 
 @Serializable
-private data class UpdateOwnPositionRequestDto(val position: String?)
+private data class UpdateOwnProfileRequestDto(
+    val nickname: String?,
+    val position: String?,
+    val secondaryPosition: String?,
+    val level: String?,
+    val preferredSide: String?,
+    val heightCm: Int?,
+)
 
 @Serializable
 private data class UpdateAthleteRequestDto(
+    val nickname: String?,
     val position: String?,
+    val secondaryPosition: String?,
+    val level: String?,
+    val preferredSide: String?,
+    val heightCm: Int?,
     val membershipType: String,
     val active: Boolean,
+    val monthlyFeeCents: Long?,
+    val monthlyDueDay: Int?,
+)
+
+@Serializable
+private data class AthleteStatsDto(
+    val games: Int = 0,
+    val attendanceRate: Int? = null,
+    val absences: Int = 0,
 )
 
 class KtorAthleteGateway(
@@ -100,11 +148,36 @@ class KtorAthleteGateway(
     override suspend fun updateOwnPosition(
         groupId: GroupId,
         position: AthletePosition?,
+    ): SaqzResult<Athlete, AthleteError> = updateOwnProfile(
+        UpdateOwnAthleteProfileCommand(
+            groupId = groupId,
+            nickname = null,
+            position = position,
+            secondaryPosition = null,
+            level = null,
+            preferredSide = null,
+            heightCm = null,
+        ),
+    )
+
+    override suspend fun updateOwnProfile(
+        command: UpdateOwnAthleteProfileCommand,
     ): SaqzResult<Athlete, AthleteError> = network.execute(
         HttpMethod.Patch,
-        "api/groups/${groupId.value}/athletes/me",
+        "api/groups/${command.groupId.value}/athletes/me",
         AthleteDto.serializer(),
-        NetworkRequest(json.encodeToString(UpdateOwnPositionRequestDto(position?.name))),
+        NetworkRequest(
+            json.encodeToString(
+                UpdateOwnProfileRequestDto(
+                    nickname = command.nickname,
+                    position = command.position?.name,
+                    secondaryPosition = command.secondaryPosition?.name,
+                    level = command.level?.name,
+                    preferredSide = command.preferredSide?.name,
+                    heightCm = command.heightCm,
+                ),
+            ),
+        ),
     ).mapResult { it.toDomain() ?: return@mapResult null }
 
     override suspend fun updateAthlete(
@@ -115,10 +188,32 @@ class KtorAthleteGateway(
         AthleteDto.serializer(),
         NetworkRequest(
             json.encodeToString(
-                UpdateAthleteRequestDto(command.position?.name, command.membershipType.name, command.active),
+                UpdateAthleteRequestDto(
+                    nickname = command.nickname,
+                    position = command.position?.name,
+                    secondaryPosition = command.secondaryPosition?.name,
+                    level = command.level?.name,
+                    preferredSide = command.preferredSide?.name,
+                    heightCm = command.heightCm,
+                    membershipType = command.membershipType.name,
+                    active = command.active,
+                    monthlyFeeCents = command.monthlyFeeCents,
+                    monthlyDueDay = command.monthlyDueDay,
+                ),
             ),
         ),
     ).mapResult { it.toDomain() ?: return@mapResult null }
+
+    override suspend fun stats(
+        groupId: GroupId,
+        userId: String,
+    ): SaqzResult<AthleteStats, AthleteError> = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+        network.execute(
+            HttpMethod.Get,
+            "api/groups/${groupId.value}/athletes/$userId/stats",
+            AthleteStatsDto.serializer(),
+        )
+    }.mapResult { AthleteStats(it.games, it.attendanceRate, it.absences) }
 
     override suspend fun removeAthlete(
         groupId: GroupId,
@@ -169,7 +264,13 @@ private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
     val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
     val parsedFinancial = enumOrNull<AthleteFinancialStatus>(financialStatus)
     val invalidPosition = position != null && parsedPosition == null
+    val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
+    val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
+    val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
     if (invalidPosition || parsedMembership == null || parsedFinancial == null) return null
+    if (secondaryPosition != null && parsedSecondaryPosition == null) return null
+    if (level != null && parsedLevel == null) return null
+    if (preferredSide != null && parsedPreferredSide == null) return null
     return AthleteRosterEntry(
         userId = userId,
         displayName = displayName,
@@ -178,6 +279,14 @@ private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
         membershipType = parsedMembership,
         active = active,
         financialStatus = parsedFinancial,
+        nickname = nickname,
+        secondaryPosition = parsedSecondaryPosition,
+        level = parsedLevel,
+        preferredSide = parsedPreferredSide,
+        heightCm = heightCm,
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
+        joinedAt = joinedAt,
     )
 }
 
@@ -188,6 +297,12 @@ private fun AthleteDto.toDomain(): Athlete? {
     val invalidPosition = position != null && parsedPosition == null
     if (parsedRole == null || invalidPosition) return null
     val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType) ?: return null
+    val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
+    val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
+    val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
+    if (secondaryPosition != null && parsedSecondaryPosition == null) return null
+    if (level != null && parsedLevel == null) return null
+    if (preferredSide != null && parsedPreferredSide == null) return null
     return Athlete(
         userId = userId,
         displayName = displayName,
@@ -195,6 +310,13 @@ private fun AthleteDto.toDomain(): Athlete? {
         position = parsedPosition,
         membershipType = parsedMembership,
         active = active,
+        nickname = nickname,
+        secondaryPosition = parsedSecondaryPosition,
+        level = parsedLevel,
+        preferredSide = parsedPreferredSide,
+        heightCm = heightCm,
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
     )
 }
 
@@ -204,7 +326,13 @@ private fun OwnMembershipDto.toDomain(): OwnAthleteMembership? {
     val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
     val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
     val invalidPosition = position != null && parsedPosition == null
+    val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
+    val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
+    val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
     if (parsedRole == null || invalidPosition || parsedMembership == null) return null
+    if (secondaryPosition != null && parsedSecondaryPosition == null) return null
+    if (level != null && parsedLevel == null) return null
+    if (preferredSide != null && parsedPreferredSide == null) return null
     return OwnAthleteMembership(
         groupId = GroupId(groupId),
         groupName = groupName,
@@ -212,6 +340,14 @@ private fun OwnMembershipDto.toDomain(): OwnAthleteMembership? {
         position = parsedPosition,
         membershipType = parsedMembership,
         active = active,
+        nickname = nickname,
+        secondaryPosition = parsedSecondaryPosition,
+        level = parsedLevel,
+        preferredSide = parsedPreferredSide,
+        heightCm = heightCm,
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
+        joinedAt = joinedAt,
     )
 }
 
