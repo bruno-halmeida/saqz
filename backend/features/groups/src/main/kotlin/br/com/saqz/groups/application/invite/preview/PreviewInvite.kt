@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.invite.InviteTokenDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.LinkedHashMap
 import java.util.UUID
 
 class PreviewInvite(
@@ -76,7 +77,7 @@ class PreviewInvite(
  * table-backed limiter if the API is deployed across multiple instances.
  */
 class AnonymousInvitePreviewRateLimiter {
-    private val windows = mutableMapOf<String, Window>()
+    private val windows = LinkedHashMap<String, Window>()
 
     @Synchronized
     fun retryAfterSeconds(ipAddress: String, now: Instant): Int? {
@@ -88,8 +89,8 @@ class AnonymousInvitePreviewRateLimiter {
 
     @Synchronized
     fun recordInvalid(ipAddress: String, now: Instant) {
-        windows.entries.removeIf { now >= it.value.startedAt.plus(WINDOW) }
         val current = activeWindow(ipAddress, now)
+        if (current == null) evictOverflow(now)
         val startedAt = current?.startedAt ?: now
         windows[ipAddress] = Window(startedAt, (current?.invalidCount ?: 0) + 1)
     }
@@ -108,6 +109,17 @@ class AnonymousInvitePreviewRateLimiter {
         return current
     }
 
+    private fun evictOverflow(now: Instant) {
+        if (windows.size < MAX_TRACKED_IP_WINDOWS) return
+        windows.entries.removeIf { now >= it.value.startedAt.plus(WINDOW) }
+        while (windows.size >= MAX_TRACKED_IP_WINDOWS) {
+            windows.entries.iterator().apply {
+                next()
+                remove()
+            }
+        }
+    }
+
     private data class Window(
         val startedAt: Instant,
         val invalidCount: Int,
@@ -115,6 +127,7 @@ class AnonymousInvitePreviewRateLimiter {
 
     private companion object {
         const val MAX_INVALID_ATTEMPTS = 30
+        const val MAX_TRACKED_IP_WINDOWS = 1_000
         val WINDOW: Duration = Duration.ofMinutes(10)
     }
 }

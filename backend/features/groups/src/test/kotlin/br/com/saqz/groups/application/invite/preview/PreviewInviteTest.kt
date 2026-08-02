@@ -126,6 +126,15 @@ class PreviewInviteTest {
         assertFalse(fixture.useCase.execute(null, ipAddress, "malformed") is PreviewInviteResult.AttemptLimit)
     }
 
+    @Test
+    fun `anonymous limiter evicts the oldest ip window at its tracking cap`() {
+        val fixture = fixture(target = null)
+        repeat(30) { fixture.useCase.execute(null, ipAddress, "old-$it") }
+        repeat(1_000) { fixture.useCase.execute(null, "198.51.100.$it", "new-$it") }
+
+        assertSame(PreviewInviteResult.Invalid, fixture.useCase.execute(null, ipAddress, "old-after-cap"))
+    }
+
     private fun fixture(target: PreviewableInvite?): Fixture {
         val repository = RecordingPreviewRepository(target)
         val limiter = AnonymousInvitePreviewRateLimiter()
