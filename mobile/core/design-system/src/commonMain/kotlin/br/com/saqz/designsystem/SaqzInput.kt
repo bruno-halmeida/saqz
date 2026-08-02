@@ -129,6 +129,7 @@ fun SaqzInput(
     minLines: Int = 1,
     showLabel: Boolean = true,
     revealable: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) = SaqzInputFrame(
     isEmpty = value.isEmpty(),
     label = label,
@@ -145,6 +146,7 @@ fun SaqzInput(
     placeholder = placeholder,
     showLabel = showLabel,
     revealable = revealable,
+    visualTransformation = visualTransformation,
 ) { fieldModifier, textStyle, transformation ->
     BasicTextField(
         value = value,
@@ -189,6 +191,7 @@ fun SaqzInput(
     minLines: Int = 1,
     showLabel: Boolean = true,
     revealable: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) = SaqzInputFrame(
     isEmpty = value.text.isEmpty(),
     label = label,
@@ -205,6 +208,7 @@ fun SaqzInput(
     placeholder = placeholder,
     showLabel = showLabel,
     revealable = revealable,
+    visualTransformation = visualTransformation,
 ) { fieldModifier, textStyle, transformation ->
     BasicTextField(
         value = value,
@@ -238,6 +242,7 @@ private fun SaqzInputFrame(
     placeholder: String?,
     showLabel: Boolean,
     revealable: Boolean,
+    visualTransformation: VisualTransformation,
     modifier: Modifier = Modifier,
     field: @Composable (Modifier, TextStyle, VisualTransformation) -> Unit,
 ) {
@@ -312,7 +317,11 @@ private fun SaqzInputFrame(
                             if (errorText != null) error(errorText)
                         },
                     SaqzTheme.typography.body.copy(color = content),
-                    visualTransformationFor(kind, revealed),
+                    if (kind == SaqzInputKind.Password && !revealed) {
+                        PasswordVisualTransformation()
+                    } else {
+                        visualTransformation
+                    },
                 )
             }
             // Sem olho o campo continua mascarado: `revealed` nunca sai de false, e é essa
