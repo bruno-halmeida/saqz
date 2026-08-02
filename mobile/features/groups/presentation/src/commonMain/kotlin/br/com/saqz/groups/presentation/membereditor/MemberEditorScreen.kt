@@ -416,7 +416,7 @@ private fun MemberEditorStats(state: MemberEditorState) {
 }
 
 @Composable
-private fun MemberEditorStatCell(value: String, label: String, modifier: Modifier) {
+private fun MemberEditorStatCell(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(vertical = SaqzTheme.metrics.blockGap),
         horizontalAlignment = Alignment.CenterHorizontally,

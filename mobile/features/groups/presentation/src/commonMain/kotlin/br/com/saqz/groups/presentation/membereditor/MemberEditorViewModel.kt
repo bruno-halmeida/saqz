@@ -383,9 +383,12 @@ class MemberEditorViewModel(
         if (parts.size > 2 || parts.any { it.isEmpty() }) return null
         val reais = parts[0].toLongOrNull() ?: return null
         val fraction = parts.getOrNull(1)
-        if (fraction != null && fraction.length > 2) return null
-        val centavos = fraction?.padEnd(2, '0')?.toLongOrNull() ?: 0
-        return reais * 100 + centavos
+        val centavos = when {
+            fraction == null -> 0L
+            fraction.length > 2 -> null
+            else -> fraction.padEnd(2, '0').toLongOrNull()
+        }
+        return centavos?.let { reais * 100 + it }
     }
 
     private fun clearDraft() {
