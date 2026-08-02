@@ -20,3 +20,14 @@ kotlin {
         }
     }
 }
+
+tasks.register("test") {
+    group = "verification"
+    description = "Runs all profile feature tests."
+    dependsOn(
+        ":features:profile:iosSimulatorArm64Test",
+        ":features:profile:domain:iosSimulatorArm64Test",
+        ":features:profile:data:iosSimulatorArm64Test",
+        ":features:profile:presentation:iosSimulatorArm64Test",
+    )
+}
