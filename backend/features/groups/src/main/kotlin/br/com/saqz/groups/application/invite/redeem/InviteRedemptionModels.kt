@@ -18,6 +18,7 @@ data class InviteAttemptWindow(
 data class RedeemableInvite(
     val groupId: UUID,
     val groupDeleted: Boolean = false,
+    val entryRequiresApproval: Boolean = false,
 )
 
 data class RecordInvalidInviteAttempt(
@@ -31,6 +32,12 @@ data class RedeemMembershipCommand(
     val userId: UUID,
 )
 
+data class CreateEntryRequestCommand(
+    val groupId: UUID,
+    val userId: UUID,
+    val requestedAt: Instant,
+)
+
 data class GroupAthleteOccupancy(
     val ownerUserId: UUID,
     val openMemberIds: Set<UUID>,
@@ -40,6 +47,8 @@ data class GroupAthleteOccupancy(
 
 sealed interface RedeemInviteResult {
     data class Success(val groupId: UUID, val role: GroupRole) : RedeemInviteResult
+
+    data class Pending(val groupId: UUID) : RedeemInviteResult
 
     data class AttemptLimit(val retryAfterSeconds: Int) : RedeemInviteResult
 
@@ -58,6 +67,10 @@ interface InviteRedemptionRepository {
     fun recordInvalidAttempt(command: RecordInvalidInviteAttempt)
 
     fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy?
+
+    fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = null
+
+    fun createEntryRequest(command: CreateEntryRequestCommand) = Unit
 
     fun redeemMembership(command: RedeemMembershipCommand): GroupRole
 }

@@ -40,6 +40,11 @@ class RedeemInvite(
         }
         if (invite.groupDeleted) return@inTransaction RedeemInviteResult.GroupDeleted
 
+        val existingRole = repository.findMembershipRole(invite.groupId, actor)
+        if (existingRole != null) {
+            return@inTransaction RedeemInviteResult.Success(invite.groupId, existingRole)
+        }
+
         val occupancy = repository.loadAthleteOccupancy(invite.groupId)
             ?: return@inTransaction RedeemInviteResult.InvalidOrExpired
         if (actor != occupancy.ownerUserId) {
@@ -54,6 +59,11 @@ class RedeemInvite(
             if (!PlanLimitPolicy.canEnterAsAthlete(currentlyOpen, occupying, actor, athleteLimit)) {
                 return@inTransaction RedeemInviteResult.AthleteLimitExceeded
             }
+        }
+
+        if (invite.entryRequiresApproval) {
+            repository.createEntryRequest(CreateEntryRequestCommand(invite.groupId, actor, now))
+            return@inTransaction RedeemInviteResult.Pending(invite.groupId)
         }
 
         val role = repository.redeemMembership(RedeemMembershipCommand(invite.groupId, actor))

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand
 import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
 import br.com.saqz.groups.application.invite.redeem.InviteRedemptionRepository
@@ -47,7 +48,9 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
     override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? = jdbc.sql(
         // Deliberately includes deleted groups so the use case can return its specific error.
         """
-        SELECT invites.group_id, groups.deleted_at IS NOT NULL AS group_deleted
+        SELECT invites.group_id,
+               groups.deleted_at IS NOT NULL AS group_deleted,
+               groups.entry_requires_approval
         FROM group_invites invites
         JOIN access_groups groups ON groups.id = invites.group_id
         WHERE invites.token_digest = :tokenDigest
@@ -58,10 +61,47 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             RedeemableInvite(
                 groupId = result.getObject("group_id", UUID::class.java),
                 groupDeleted = result.getBoolean("group_deleted"),
+                entryRequiresApproval = result.getBoolean("entry_requires_approval"),
             )
         }
         .optional()
         .orElse(null)
+
+    override fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = jdbc.sql(
+        """
+        SELECT CASE
+            WHEN groups.owner_user_id = :userId THEN 'OWNER'
+            ELSE memberships.role
+        END AS resolved_role
+        FROM access_groups groups
+        LEFT JOIN group_memberships memberships
+            ON memberships.group_id = groups.id
+            AND memberships.user_id = :userId
+        WHERE groups.id = :groupId
+          AND groups.deleted_at IS NULL
+          AND (groups.owner_user_id = :userId OR memberships.user_id IS NOT NULL)
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .param("userId", userId)
+        .query(String::class.java)
+        .optional()
+        .orElse(null)
+        ?.let(GroupRole::valueOf)
+
+    override fun createEntryRequest(command: CreateEntryRequestCommand) {
+        jdbc.sql(
+            """
+            INSERT INTO group_entry_requests (group_id, user_id, requested_at)
+            VALUES (:groupId, :userId, :requestedAt)
+            ON CONFLICT (group_id, user_id) DO NOTHING
+            """.trimIndent(),
+        )
+            .param("groupId", command.groupId)
+            .param("userId", command.userId)
+            .param("requestedAt", Timestamp.from(command.requestedAt))
+            .update()
+    }
 
     override fun recordInvalidAttempt(command: RecordInvalidInviteAttempt) {
         val changed = jdbc.sql(

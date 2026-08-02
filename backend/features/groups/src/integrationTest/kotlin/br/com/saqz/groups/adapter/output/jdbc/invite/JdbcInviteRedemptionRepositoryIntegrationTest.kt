@@ -7,6 +7,7 @@ import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.InviteAttemptWindow
 import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
+import br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand
 import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
@@ -98,6 +99,31 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
 
         assertEquals(fixture.group, found?.groupId)
+        assertEquals(false, found?.entryRequiresApproval)
+    }
+
+    @Test
+    fun `active invite lookup returns the group approval setting`() {
+        val fixture = inviteFixture("lookup-approval")
+        execute("UPDATE access_groups SET entry_requires_approval = true WHERE id = '${fixture.group}'")
+
+        val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
+
+        assertEquals(true, found?.entryRequiresApproval)
+    }
+
+    @Test
+    fun `entry request uniqueness preserves the original requested timestamp`() {
+        val fixture = inviteFixture("entry-request")
+        val user = insertUser("entry-request-user")
+
+        transaction.inTransaction {
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now))
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now.plusSeconds(30)))
+        }
+
+        assertEquals(1, number("SELECT count(*) FROM group_entry_requests WHERE group_id = '${fixture.group}' AND user_id = '$user'"))
+        assertEquals(now, timestamp("SELECT requested_at FROM group_entry_requests WHERE group_id = '${fixture.group}' AND user_id = '$user'"))
     }
 
     @Test
@@ -425,6 +451,9 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     private fun membershipCount(group: UUID, user: UUID) = number("SELECT count(*) FROM group_memberships WHERE group_id = '$group' AND user_id = '$user'")
     private fun membershipCountForUser(user: UUID) = number("SELECT count(*) FROM group_memberships WHERE user_id = '$user'")
     private fun inviteCount(group: UUID) = number("SELECT count(*) FROM group_invites WHERE group_id = '$group'")
+    private fun timestamp(sql: String): Instant = connection().use {
+        it.createStatement().use { statement -> statement.executeQuery(sql).use { result -> result.next(); result.getTimestamp(1).toInstant() } }
+    }
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }
     private fun text(sql: String): String? = connection().use { it.createStatement().use { statement -> statement.executeQuery(sql).use { result -> if (result.next()) result.getString(1) else null } } }
     private fun bytes(sql: String): ByteArray? = connection().use { it.createStatement().use { statement -> statement.executeQuery(sql).use { result -> if (result.next()) result.getBytes(1) else null } } }

@@ -37,6 +37,55 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `approval-enabled invite creates a pending request without membership`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true))
+
+        val result = fixture.useCase.execute(actor, code.value)
+
+        assertEquals(RedeemInviteResult.Pending(groupId), result)
+        assertTrue(fixture.repository.redemptions.isEmpty())
+        assertEquals(listOf(CreateEntryRequestCommand(groupId, actor, now)), fixture.repository.entryRequests)
+    }
+
+    @Test
+    fun `repeating approval-enabled redeem keeps the original request timestamp`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true))
+
+        assertEquals(RedeemInviteResult.Pending(groupId), fixture.useCase.execute(actor, code.value))
+        fixture.clock.current = now.plusSeconds(30)
+        assertEquals(RedeemInviteResult.Pending(groupId), fixture.useCase.execute(actor, code.value))
+
+        assertEquals(2, fixture.repository.entryRequests.size)
+        assertEquals(now, fixture.repository.entryRequests.first().requestedAt)
+        assertEquals(now, fixture.repository.persistedRequestAt[actor])
+    }
+
+    @Test
+    fun `existing member joins immediately even when approval is enabled`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true)).also {
+            it.repository.roles[actor] = GroupRole.ADMIN
+            it.repository.openMembers += actor
+        }
+
+        val result = fixture.useCase.execute(actor, code.value)
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ADMIN), result)
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `approval-enabled redeem checks athlete limit before creating the request`() {
+        val fixture = fixture(
+            target = RedeemableInvite(groupId, entryRequiresApproval = true),
+            athleteLimit = 0,
+        )
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+    }
+
+    @Test
     fun `invite for deleted group has its own outcome without invalid attempt or membership`() {
         val fixture = fixture(target = RedeemableInvite(groupId, groupDeleted = true))
 
@@ -178,7 +227,7 @@ class RedeemInviteTest {
             RedeemInviteResult.Success(groupId, GroupRole.OWNER),
             fixture.useCase.execute(ownerId, code.value),
         )
-        assertEquals(listOf(RedeemMembershipCommand(groupId, ownerId)), fixture.repository.redemptions)
+        assertTrue(fixture.repository.redemptions.isEmpty())
     }
 
     @Test
@@ -289,15 +338,17 @@ class RedeemInviteTest {
     ): Fixture {
         val repository = RecordingRedemptionRepository(target, ownerId)
         val transaction = RecordingTransactionRunner()
+        val clock = MutableClock(clockNow)
         return Fixture(
             RedeemInvite(
                 transaction,
                 repository,
                 FixedSubscriptionLimits(athleteLimit = athleteLimit),
-                Clock.fixed(clockNow, ZoneOffset.UTC),
+                clock,
             ),
             repository,
             transaction,
+            clock,
         )
     }
 
@@ -305,6 +356,7 @@ class RedeemInviteTest {
         val useCase: RedeemInvite,
         val repository: RecordingRedemptionRepository,
         val transaction: RecordingTransactionRunner,
+        val clock: MutableClock,
     )
 
     private class FixedSubscriptionLimits(
@@ -323,6 +375,16 @@ class RedeemInviteTest {
         }
     }
 
+    private class MutableClock(initial: Instant) : Clock() {
+        var current = initial
+
+        override fun getZone() = ZoneOffset.UTC
+
+        override fun withZone(zone: java.time.ZoneId) = this
+
+        override fun instant() = current
+    }
+
     private class RecordingRedemptionRepository(
         private val target: RedeemableInvite?,
         private val ownerUserId: UUID,
@@ -331,6 +393,8 @@ class RedeemInviteTest {
         val lookups = mutableListOf<InviteTokenDigest>()
         val invalidAttempts = mutableListOf<RecordInvalidInviteAttempt>()
         val redemptions = mutableListOf<RedeemMembershipCommand>()
+        val entryRequests = mutableListOf<CreateEntryRequestCommand>()
+        val persistedRequestAt = mutableMapOf<UUID, Instant>()
         val roles = mutableMapOf<UUID, GroupRole>()
         val openMembers = mutableSetOf<UUID>()
         val openWaitlist = mutableSetOf<UUID>()
@@ -357,6 +421,13 @@ class RedeemInviteTest {
                 openWaitlistIds = openWaitlist.toSet(),
                 closedOccupancies = closed.toList(),
             )
+        }
+
+        override fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = roles[userId]
+
+        override fun createEntryRequest(command: CreateEntryRequestCommand) {
+            entryRequests += command
+            persistedRequestAt.putIfAbsent(command.userId, command.requestedAt)
         }
 
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {

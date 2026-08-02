@@ -63,14 +63,48 @@ class InviteRedemptionEndpointIntegrationTest {
     fun reset() = repository.reset()
 
     @Test
-    fun `valid invite creates athlete and returns group and role only`() {
+    fun `valid invite creates athlete and returns joined status and role`() {
         val response = redeem(RedemptionTestConfiguration.RAW_CODE)
         val body = json(response)
 
         assertEquals(200, response.statusCode())
-        assertEquals(setOf("groupId", "role"), body.propertyNames().asSequence().toSet())
+        assertEquals(setOf("status", "groupId", "role"), body.propertyNames().asSequence().toSet())
+        assertEquals("JOINED", body["status"].stringValue())
         assertEquals(RedemptionTestConfiguration.GROUP_ID.toString(), body["groupId"].stringValue())
         assertEquals("ATHLETE", body["role"].stringValue())
+    }
+
+    @Test
+    fun `approval-enabled invite returns pending with a null role`() {
+        repository.target = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            entryRequiresApproval = true,
+        )
+
+        val response = redeem(RedemptionTestConfiguration.RAW_CODE)
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals("PENDING", body["status"].stringValue())
+        assertEquals(RedemptionTestConfiguration.GROUP_ID.toString(), body["groupId"].stringValue())
+        assertTrue(body["role"].isNull)
+        assertEquals(1, repository.entryRequests.size)
+    }
+
+    @Test
+    fun `repeating pending redeem keeps one request`() {
+        repository.target = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            entryRequiresApproval = true,
+        )
+
+        val first = redeem(RedemptionTestConfiguration.RAW_CODE)
+        val second = redeem(RedemptionTestConfiguration.RAW_CODE)
+
+        assertEquals(200, first.statusCode())
+        assertEquals(json(first), json(second))
+        assertEquals(2, repository.entryRequests.size)
+        assertEquals(repository.entryRequests.first(), repository.entryRequests[1])
     }
 
     @Test
@@ -276,6 +310,7 @@ class InviteRedemptionEndpointIntegrationTest {
         var failure: RuntimeException? = null
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
         val roles = mutableMapOf<UUID, GroupRole>()
+        val entryRequests = mutableListOf<br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand>()
         private val ownerId: UUID = UUID.randomUUID()
 
         fun reset() {
@@ -283,6 +318,7 @@ class InviteRedemptionEndpointIntegrationTest {
             failure = null
             windows.clear()
             roles.clear()
+            entryRequests.clear()
         }
 
         override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow {
@@ -304,6 +340,12 @@ class InviteRedemptionEndpointIntegrationTest {
                 openWaitlistIds = emptySet(),
                 closedOccupancies = emptyList(),
             )
+        }
+
+        override fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = roles[userId]
+
+        override fun createEntryRequest(command: br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand) {
+            entryRequests += command
         }
 
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole =

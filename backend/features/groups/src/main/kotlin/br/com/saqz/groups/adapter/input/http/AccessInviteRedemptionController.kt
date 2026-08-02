@@ -17,9 +17,15 @@ data class RedeemInviteRequest @JsonCreator constructor(
 )
 
 data class RedeemedInviteResponse(
+    val status: RedeemedInviteStatus,
     val groupId: UUID,
-    val role: GroupRole,
+    val role: GroupRole?,
 )
+
+enum class RedeemedInviteStatus {
+    JOINED,
+    PENDING,
+}
 
 class InviteInvalidOrExpiredException : RuntimeException()
 
@@ -45,7 +51,16 @@ class AccessInviteRedemptionController(
         RedeemInviteResult.GroupDeleted -> throw InviteGroupDeletedException()
         is RedeemInviteResult.AttemptLimit -> throw InviteAttemptLimitException(result.retryAfterSeconds)
         RedeemInviteResult.AthleteLimitExceeded -> throw AthleteLimitExceededException()
-        is RedeemInviteResult.Success -> RedeemedInviteResponse(result.groupId, result.role)
+        is RedeemInviteResult.Success -> RedeemedInviteResponse(
+            RedeemedInviteStatus.JOINED,
+            result.groupId,
+            result.role,
+        )
+        is RedeemInviteResult.Pending -> RedeemedInviteResponse(
+            RedeemedInviteStatus.PENDING,
+            result.groupId,
+            null,
+        )
     }
 
     private fun actor(identity: RequestIdentity): UUID = actorResolver.resolve(identity)
