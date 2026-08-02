@@ -143,7 +143,9 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             SELECT CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role END
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor
-            WHERE g.id = :groupId AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
+            WHERE g.id = :groupId
+              AND g.deleted_at IS NULL
+              AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
         """
 
         const val CREATION_CONTEXT = """
@@ -156,7 +158,9 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor
             LEFT JOIN group_venues v ON v.group_id = g.id AND v.id = g.default_venue_id
-            WHERE g.id = :groupId AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
+            WHERE g.id = :groupId
+              AND g.deleted_at IS NULL
+              AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
         """
 
         const val INSERT_GAME = """
@@ -192,6 +196,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                    g.venue_name, g.venue_address, g.venue_court, g.capacity,
                    g.game_fee_cents, g.notes, g.status, g.version, g.detached_from_series
             FROM games g
+            JOIN access_groups groups ON groups.id = g.group_id AND groups.deleted_at IS NULL
         """
     }
 }
