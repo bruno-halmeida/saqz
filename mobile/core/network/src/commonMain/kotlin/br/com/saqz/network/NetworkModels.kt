@@ -46,6 +46,7 @@ data class ApiProblem(
     val fieldErrors: Map<String, List<String>>? = null,
     val retryAfterSeconds: Int? = null,
     val remainingAttempts: Int? = null,
+    val expiredAt: String? = null,
 )
 
 sealed interface NetworkError {
