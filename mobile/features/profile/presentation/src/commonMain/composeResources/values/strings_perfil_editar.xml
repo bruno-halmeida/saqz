@@ -11,7 +11,7 @@
     <string name="profile_edit_city">Cidade</string>
     <string name="profile_edit_phone_visibility">Quem vê seu celular</string>
     <string name="profile_edit_phone_visibility_hint">Vale para todos os grupos.</string>
-    <string name="profile_edit_visibility_everyone">A galera do grupo</string>
+    <string name="profile_edit_visibility_everyone">A galera</string>
     <string name="profile_edit_visibility_admins">Só admins</string>
     <string name="profile_edit_visibility_nobody">Ninguém</string>
     <string name="profile_edit_membership_note">A posição e o nível ficam no perfil de cada grupo, porque podem mudar de um pro outro.</string>

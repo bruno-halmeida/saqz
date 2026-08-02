@@ -303,6 +303,7 @@ private fun EditProfilePrivacy(
     onSelect: (PhoneVisibility) -> Unit,
     errorText: String?,
 ) {
+    val metrics = SaqzTheme.metrics
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         Text(
             text = stringResource(Res.string.profile_edit_phone_visibility),
@@ -316,14 +317,13 @@ private fun EditProfilePrivacy(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+            horizontalArrangement = Arrangement.spacedBy(metrics.grid),
         ) {
             visibilityOptions().forEach { option ->
                 SaqzChoiceChip(
                     label = stringResource(option.label),
                     selected = selected == option.value,
                     onClick = { if (enabled) onSelect(option.value) },
-                    compact = true,
                     modifier = Modifier
                         .weight(1f)
                         .testTag(EditProfileTags.visibility(option.value)),
