@@ -61,7 +61,10 @@ class MemberEditorViewModel(
                 savedState[KEY_LEVEL] = intent.value?.name
                 update { it.copy(level = intent.value, error = null) }
             }
-            is MemberEditorIntent.PreferredSideSelected -> update { it.copy(preferredSide = intent.value, error = null) }
+            is MemberEditorIntent.PreferredSideSelected -> {
+                savedState[KEY_PREFERRED_SIDE] = intent.value?.name
+                update { it.copy(preferredSide = intent.value, error = null) }
+            }
             is MemberEditorIntent.HeightChanged -> {
                 savedState[KEY_HEIGHT] = intent.value
                 update { it.copy(heightText = intent.value, heightCm = intent.value.toIntOrNull(), error = null) }
@@ -389,6 +392,7 @@ class MemberEditorViewModel(
             KEY_POSITION,
             KEY_SECONDARY_POSITION,
             KEY_LEVEL,
+            KEY_PREFERRED_SIDE,
             KEY_HEIGHT,
             KEY_MEMBERSHIP,
             KEY_BILLING_AMOUNT,
@@ -413,6 +417,7 @@ private fun MemberEditorState.restoreDraft(savedState: SavedStateHandle): Member
         position = savedState.restoreNullableEnum(KEY_POSITION, position),
         secondaryPosition = savedState.restoreNullableEnum(KEY_SECONDARY_POSITION, secondaryPosition),
         level = savedState.restoreNullableEnum(KEY_LEVEL, level),
+        preferredSide = savedState.restoreNullableEnum(KEY_PREFERRED_SIDE, preferredSide),
         heightText = restoredHeight ?: heightText,
         heightCm = restoredHeight?.toIntOrNull() ?: if (savedState.contains(KEY_HEIGHT)) null else heightCm,
         membershipType = if (savedState.contains(KEY_MEMBERSHIP)) restoredMembership ?: membershipType else membershipType,
@@ -433,6 +438,7 @@ private const val KEY_NICKNAME = "member-editor-nickname"
 private const val KEY_POSITION = "member-editor-position"
 private const val KEY_SECONDARY_POSITION = "member-editor-secondary-position"
 private const val KEY_LEVEL = "member-editor-level"
+private const val KEY_PREFERRED_SIDE = "member-editor-preferred-side"
 private const val KEY_HEIGHT = "member-editor-height"
 private const val KEY_MEMBERSHIP = "member-editor-membership"
 private const val KEY_BILLING_AMOUNT = "member-editor-billing-amount"
