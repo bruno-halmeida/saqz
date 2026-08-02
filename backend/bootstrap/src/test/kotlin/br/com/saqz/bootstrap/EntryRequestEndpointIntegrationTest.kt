@@ -293,13 +293,13 @@ class EntryRequestEndpointIntegrationTest {
         private val ownerId: UUID,
         private val applicantId: UUID,
     ) : InviteRedemptionRepository, EntryRequestRepository {
-        var target: RedeemableInvite = RedeemableInvite(groupId, entryRequiresApproval = true)
+        var target: RedeemableInvite = RedeemableInvite(groupId, EntryRequestTestConfiguration.NOW.plusSeconds(60), entryRequiresApproval = true)
         val entryRequests = linkedMapOf<UUID, CreateEntryRequestCommand>()
         val roles = mutableMapOf(ownerId to GroupRole.OWNER)
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
 
         fun reset() {
-            target = RedeemableInvite(groupId, entryRequiresApproval = true)
+            target = RedeemableInvite(groupId, EntryRequestTestConfiguration.NOW.plusSeconds(60), entryRequiresApproval = true)
             entryRequests.clear()
             roles.clear()
             roles[ownerId] = GroupRole.OWNER

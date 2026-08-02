@@ -28,7 +28,7 @@ class RedeemInvite(
 
         val code = runCatching { InviteCode.from(rawCode) }.getOrNull()
         val invite = code?.let { repository.findInvite(InviteTokenDigest.sha256(it)) }
-        if (invite == null) {
+        if (invite == null || now.isAfter(invite.expiresAt)) {
             repository.recordInvalidAttempt(
                 RecordInvalidInviteAttempt(
                     actor,

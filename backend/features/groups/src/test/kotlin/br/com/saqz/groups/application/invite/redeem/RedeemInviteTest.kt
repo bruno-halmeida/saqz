@@ -38,7 +38,7 @@ class RedeemInviteTest {
 
     @Test
     fun `approval-enabled invite creates a pending request without membership`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true))
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true))
 
         val result = fixture.useCase.execute(actor, code.value)
 
@@ -49,7 +49,7 @@ class RedeemInviteTest {
 
     @Test
     fun `repeating approval-enabled redeem keeps the original request timestamp`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true))
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true))
 
         assertEquals(RedeemInviteResult.Pending(groupId), fixture.useCase.execute(actor, code.value))
         fixture.clock.current = now.plusSeconds(30)
@@ -62,7 +62,7 @@ class RedeemInviteTest {
 
     @Test
     fun `existing member joins immediately even when approval is enabled`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, entryRequiresApproval = true)).also {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true)).also {
             it.repository.roles[actor] = GroupRole.ADMIN
             it.repository.openMembers += actor
         }
@@ -77,7 +77,7 @@ class RedeemInviteTest {
     @Test
     fun `approval-enabled redeem checks athlete limit before creating the request`() {
         val fixture = fixture(
-            target = RedeemableInvite(groupId, entryRequiresApproval = true),
+            target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true),
             athleteLimit = 0,
         )
 
@@ -87,7 +87,7 @@ class RedeemInviteTest {
 
     @Test
     fun `invite for deleted group has its own outcome without invalid attempt or membership`() {
-        val fixture = fixture(target = RedeemableInvite(groupId, groupDeleted = true))
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), groupDeleted = true))
 
         assertSame(RedeemInviteResult.GroupDeleted, fixture.useCase.execute(actor, code.value))
         assertTrue(fixture.repository.invalidAttempts.isEmpty())
@@ -239,6 +239,28 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `expired invite is invalid and records one invalid attempt`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.minusSeconds(1)))
+
+        assertSame(RedeemInviteResult.InvalidOrExpired, fixture.useCase.execute(actor, code.value))
+        assertEquals(1, fixture.repository.invalidAttempts.size)
+        assertEquals(InviteAttemptWindow(now, 1), fixture.repository.windows[actor])
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `non-expired invite proceeds to membership redemption`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(1)))
+
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.ATHLETE),
+            fixture.useCase.execute(actor, code.value),
+        )
+        assertEquals(listOf(RedeemMembershipCommand(groupId, actor)), fixture.repository.redemptions)
+        assertTrue(fixture.repository.invalidAttempts.isEmpty())
+    }
+
+    @Test
     fun `malformed invite records failure without digest lookup`() {
         val fixture = fixture()
 
@@ -332,8 +354,8 @@ class RedeemInviteTest {
     }
 
     private fun fixture(
-        target: RedeemableInvite? = RedeemableInvite(groupId),
         clockNow: Instant = now,
+        target: RedeemableInvite? = RedeemableInvite(groupId, clockNow.plusSeconds(60), groupDeleted = false),
         athleteLimit: Int? = null,
     ): Fixture {
         val repository = RecordingRedemptionRepository(target, ownerId)

@@ -51,6 +51,7 @@ import br.com.saqz.groups.application.delete.DeleteGroupResult
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
+import br.com.saqz.groups.application.invite.manage.GetInviteMetadata
 import br.com.saqz.groups.application.invite.manage.RotateInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.preview.AnonymousInvitePreviewRateLimiter
@@ -464,6 +465,7 @@ class AccessSessionConfiguration {
         inviteRepository: JdbcInviteManagementRepository,
         tokenGenerator: JcaSecureTokenGenerator,
         linkFactory: BranchInviteLinkFactory,
+        clock: Clock,
     ) = RotateInvite(
         transaction,
         readRepository,
@@ -471,6 +473,7 @@ class AccessSessionConfiguration {
         GroupAccessPolicy(),
         tokenGenerator,
         linkFactory,
+        clock,
     )
 
     @Bean
@@ -481,11 +484,20 @@ class AccessSessionConfiguration {
     ) = ExpireInvite(transaction, readRepository, inviteRepository, GroupAccessPolicy())
 
     @Bean
+    fun getInviteMetadata(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        inviteRepository: JdbcInviteManagementRepository,
+        clock: Clock,
+    ) = GetInviteMetadata(transaction, readRepository, inviteRepository, GroupAccessPolicy(), clock)
+
+    @Bean
     fun accessInviteManagementController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         rotateInvite: RotateInvite,
         expireInvite: ExpireInvite,
-    ) = AccessInviteManagementController(verifiedGroupActorResolver, rotateInvite, expireInvite)
+        getInviteMetadata: GetInviteMetadata,
+    ) = AccessInviteManagementController(verifiedGroupActorResolver, rotateInvite, expireInvite, getInviteMetadata)
 
     @Bean
     fun inviteRedemptionRepository(dataSource: DataSource) = JdbcInviteRedemptionRepository(dataSource)
@@ -495,7 +507,8 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         repository: JdbcInviteRedemptionRepository,
         subscriptionLimits: SubscriptionLimits,
-    ) = RedeemInvite(transaction, repository, subscriptionLimits, Clock.systemUTC())
+        clock: Clock,
+    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock)
 
     @Bean
     fun accessInviteRedemptionController(

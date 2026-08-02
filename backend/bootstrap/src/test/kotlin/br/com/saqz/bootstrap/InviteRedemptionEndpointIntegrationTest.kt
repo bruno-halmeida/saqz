@@ -78,6 +78,7 @@ class InviteRedemptionEndpointIntegrationTest {
     fun `approval-enabled invite returns pending with a null role`() {
         repository.target = RedeemableInvite(
             RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
             entryRequiresApproval = true,
         )
 
@@ -95,6 +96,7 @@ class InviteRedemptionEndpointIntegrationTest {
     fun `repeating pending redeem keeps one request`() {
         repository.target = RedeemableInvite(
             RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
             entryRequiresApproval = true,
         )
 
@@ -118,6 +120,7 @@ class InviteRedemptionEndpointIntegrationTest {
     fun `deleted group invite returns its own problem`() {
         repository.target = RedeemableInvite(
             RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
             groupDeleted = true,
         )
 
@@ -177,6 +180,20 @@ class InviteRedemptionEndpointIntegrationTest {
 
         assertTrue(responses.all { it.statusCode() == 404 })
         assertEquals(10, repository.windows.getValue(RedemptionTestConfiguration.USER_ID).invalidCount)
+    }
+
+    @Test
+    fun `expired invite returns invalid problem and counts as an invalid attempt`() {
+        repository.target = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.minusSeconds(1),
+        )
+
+        val response = redeem(RedemptionTestConfiguration.RAW_CODE)
+
+        assertProblem(response, 404, "INVITE_INVALID_OR_EXPIRED")
+        assertEquals(1, repository.windows.getValue(RedemptionTestConfiguration.USER_ID).invalidCount)
+        assertTrue(repository.roles.isEmpty())
     }
 
     @Test
@@ -306,7 +323,10 @@ class InviteRedemptionEndpointIntegrationTest {
     }
 
     class RecordingHttpRedemptionRepository : InviteRedemptionRepository {
-        var target: RedeemableInvite? = RedeemableInvite(RedemptionTestConfiguration.GROUP_ID)
+        var target: RedeemableInvite? = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
+        )
         var failure: RuntimeException? = null
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
         val roles = mutableMapOf<UUID, GroupRole>()
@@ -314,7 +334,10 @@ class InviteRedemptionEndpointIntegrationTest {
         private val ownerId: UUID = UUID.randomUUID()
 
         fun reset() {
-            target = RedeemableInvite(RedemptionTestConfiguration.GROUP_ID)
+            target = RedeemableInvite(
+                RedemptionTestConfiguration.GROUP_ID,
+                RedemptionTestConfiguration.NOW.plusSeconds(60),
+            )
             failure = null
             windows.clear()
             roles.clear()

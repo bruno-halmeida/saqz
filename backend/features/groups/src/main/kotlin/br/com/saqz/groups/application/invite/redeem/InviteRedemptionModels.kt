@@ -17,6 +17,7 @@ data class InviteAttemptWindow(
 
 data class RedeemableInvite(
     val groupId: UUID,
+    val expiresAt: Instant,
     val groupDeleted: Boolean = false,
     val entryRequiresApproval: Boolean = false,
 )

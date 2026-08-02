@@ -16,6 +16,10 @@ import br.com.saqz.groups.domain.IanaTimeZone
 import org.junit.jupiter.api.Test
 import java.net.URI
 import java.security.MessageDigest
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -24,6 +28,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ManageInviteTest {
+    private val now = Instant.parse("2026-07-16T18:00:00Z")
     private val actor = UUID.randomUUID()
     private val groupId = UUID.randomUUID()
     private val firstToken = token(1)
@@ -35,8 +40,11 @@ class ManageInviteTest {
 
         val result = fixture.rotate.execute(actor, groupId)
 
-        assertEquals(RotateInviteResult.Success(inviteUri(firstToken.code)), result)
-        assertEquals(listOf(RotateInviteCommand(groupId, firstToken.digest, actor)), fixture.repository.rotations)
+        assertEquals(RotateInviteResult.Success(inviteUri(firstToken.code), now.plus(Duration.ofDays(7))), result)
+        assertEquals(
+            listOf(RotateInviteCommand(groupId, firstToken.digest, actor, now.plus(Duration.ofDays(7)))),
+            fixture.repository.rotations,
+        )
         assertEquals(listOf(firstToken.code), fixture.links.codes)
         assertEquals(1, fixture.transaction.calls)
     }
@@ -45,7 +53,10 @@ class ManageInviteTest {
     fun `admin rotates invite`() {
         val fixture = fixture(GroupRole.ADMIN)
 
-        assertEquals(RotateInviteResult.Success(inviteUri(firstToken.code)), fixture.rotate.execute(actor, groupId))
+        assertEquals(
+            RotateInviteResult.Success(inviteUri(firstToken.code), now.plus(Duration.ofDays(7))),
+            fixture.rotate.execute(actor, groupId),
+        )
         assertEquals(1, fixture.repository.rotations.size)
     }
 
@@ -82,6 +93,20 @@ class ManageInviteTest {
 
         assertEquals(secondToken.digest, fixture.repository.activeDigest)
         assertEquals(listOf(firstToken.digest, secondToken.digest), fixture.repository.rotations.map { it.digest })
+    }
+
+    @Test
+    fun `new rotation renews expiration from the current clock`() {
+        val fixture = fixture(GroupRole.OWNER, tokens = listOf(firstToken, secondToken))
+
+        fixture.rotate.execute(actor, groupId)
+        fixture.clock.current = now.plus(Duration.ofDays(1))
+        fixture.rotate.execute(actor, groupId)
+
+        assertEquals(
+            listOf(now.plus(Duration.ofDays(7)), now.plus(Duration.ofDays(8))),
+            fixture.repository.rotations.map { it.expiresAt },
+        )
     }
 
     @Test
@@ -139,15 +164,17 @@ class ManageInviteTest {
         val transaction = RecordingTransactionRunner()
         val repository = RecordingInviteManagementRepository()
         val links = RecordingInviteLinkFactory()
+        val clock = AdjustableClock(now)
         val policy = GroupAccessPolicy()
         val read = FixedGroupReadRepository(if (groupExists) role else null, groupExists)
         val generator = QueuedTokenGenerator(tokens)
         return Fixture(
-            RotateInvite(transaction, read, repository, policy, generator, links),
+            RotateInvite(transaction, read, repository, policy, generator, links, clock),
             ExpireInvite(transaction, read, repository, policy),
             transaction,
             repository,
             links,
+            clock,
         )
     }
 
@@ -172,6 +199,7 @@ class ManageInviteTest {
         val transaction: RecordingTransactionRunner,
         val repository: RecordingInviteManagementRepository,
         val links: RecordingInviteLinkFactory,
+        val clock: AdjustableClock,
     )
 
     private inner class FixedGroupReadRepository(
@@ -210,6 +238,8 @@ class ManageInviteTest {
             activeDigest = command.digest
         }
 
+        override fun findMetadata(groupId: UUID): InviteMetadata? = null
+
         override fun expire(groupId: UUID) {
             expirations += groupId
             activeDigest = null
@@ -220,6 +250,14 @@ class ManageInviteTest {
         private val remaining = ArrayDeque(tokens)
 
         override fun generate(): InviteToken = remaining.removeFirst()
+    }
+
+    private class AdjustableClock(var current: Instant) : Clock() {
+        override fun instant(): Instant = current
+
+        override fun getZone(): ZoneId = ZoneId.of("UTC")
+
+        override fun withZone(zone: ZoneId): Clock = this
     }
 
     private inner class RecordingInviteLinkFactory : InviteLinkFactory {

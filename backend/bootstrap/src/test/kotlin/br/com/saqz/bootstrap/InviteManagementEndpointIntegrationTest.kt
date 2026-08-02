@@ -11,7 +11,9 @@ import br.com.saqz.groups.application.invite.InviteToken
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.SecureTokenGenerator
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
+import br.com.saqz.groups.application.invite.manage.GetInviteMetadata
 import br.com.saqz.groups.application.invite.manage.InviteManagementRepository
+import br.com.saqz.groups.application.invite.manage.InviteMetadata
 import br.com.saqz.groups.application.invite.manage.RotateInvite
 import br.com.saqz.groups.application.invite.manage.RotateInviteCommand
 import br.com.saqz.access.application.session.BootstrapSession
@@ -46,6 +48,10 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -73,15 +79,20 @@ class InviteManagementEndpointIntegrationTest {
     }
 
     @Test
-    fun `owner rotates invite and receives only the URL`() {
+    fun `owner rotates invite and receives URL with expiration`() {
         val response = rotate(groupId)
         val body = json(response)
 
         assertEquals(200, response.statusCode())
-        assertEquals(setOf("inviteUrl"), body.propertyNames().asSequence().toSet())
+        assertEquals(setOf("inviteUrl", "expiresAt"), body.propertyNames().asSequence().toSet())
         assertEquals(InviteTestConfiguration.INVITE_URL.toString(), body["inviteUrl"].stringValue())
+        assertEquals(
+            InviteTestConfiguration.NOW.plus(Duration.ofDays(7)).toString(),
+            body["expiresAt"].stringValue(),
+        )
         assertEquals(groupId, repository.rotations.single().groupId)
         assertEquals(InviteTestConfiguration.USER_ID, repository.rotations.single().createdByUserId)
+        assertEquals(InviteTestConfiguration.NOW.plus(Duration.ofDays(7)), repository.rotations.single().expiresAt)
     }
 
     @Test
@@ -98,6 +109,68 @@ class InviteManagementEndpointIntegrationTest {
         assertFalse(inviteUrl.contains(InviteTestConfiguration.USER_ID.toString()))
         assertFalse(inviteUrl.contains("OWNER"))
         assertFalse(inviteUrl.contains("email"))
+    }
+
+    @Test
+    fun `owner reads active invite metadata without the invite link`() {
+        repository.metadata = InviteMetadata(
+            expiresAt = InviteTestConfiguration.NOW.plus(Duration.ofDays(7)),
+            createdAt = InviteTestConfiguration.NOW.minusSeconds(3_600),
+            createdByName = "Lucas Prado",
+        )
+
+        val response = get(groupId)
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals(
+            setOf("active", "expiresAt", "createdAt", "createdByName"),
+            body.propertyNames().asSequence().toSet(),
+        )
+        assertEquals(true, body["active"].booleanValue())
+        assertEquals(InviteTestConfiguration.NOW.plus(Duration.ofDays(7)).toString(), body["expiresAt"].stringValue())
+        assertEquals(InviteTestConfiguration.NOW.minusSeconds(3_600).toString(), body["createdAt"].stringValue())
+        assertEquals("Lucas Prado", body["createdByName"].stringValue())
+        assertFalse(response.body().contains("inviteUrl"))
+    }
+
+    @Test
+    fun `expired invite metadata is inactive and keeps its expiration`() {
+        val expiresAt = InviteTestConfiguration.NOW.minusSeconds(1)
+        repository.metadata = InviteMetadata(expiresAt, InviteTestConfiguration.NOW.minusSeconds(3_600), "Lucas Prado")
+
+        val response = get(groupId)
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals(setOf("active", "expiresAt"), body.propertyNames().asSequence().toSet())
+        assertEquals(false, body["active"].booleanValue())
+        assertEquals(expiresAt.toString(), body["expiresAt"].stringValue())
+        assertFalse(response.body().contains("createdByName"))
+    }
+
+    @Test
+    fun `missing invite metadata is inactive without returning not found`() {
+        val response = get(groupId)
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals(setOf("active"), body.propertyNames().asSequence().toSet())
+        assertEquals(false, body["active"].booleanValue())
+    }
+
+    @Test
+    fun `athlete cannot read invite metadata`() {
+        read.role = GroupRole.ATHLETE
+
+        assertProblem(get(groupId), 403, "ACCESS_FORBIDDEN")
+    }
+
+    @Test
+    fun `nonmember cannot read invite metadata`() {
+        read.role = null
+
+        assertProblem(get(groupId), 404, "GROUP_NOT_FOUND")
     }
 
     @Test
@@ -176,6 +249,7 @@ class InviteManagementEndpointIntegrationTest {
     fun `malformed group id follows non enumeration contract on both routes`() {
         assertProblem(rotate("not-a-uuid"), 404, "GROUP_NOT_FOUND")
         assertProblem(expire("not-a-uuid"), 404, "GROUP_NOT_FOUND")
+        assertProblem(get("not-a-uuid"), 404, "GROUP_NOT_FOUND")
         assertTrue(repository.rotations.isEmpty())
         assertTrue(repository.expirations.isEmpty())
     }
@@ -191,6 +265,13 @@ class InviteManagementEndpointIntegrationTest {
         HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/groups/$id/invite"))
             .header("Authorization", "Bearer invite-token")
             .DELETE()
+            .build(),
+    )
+
+    private fun get(id: Any): HttpResponse<String> = send(
+        HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/groups/$id/invite"))
+            .header("Authorization", "Bearer invite-token")
+            .GET()
             .build(),
     )
 
@@ -211,6 +292,7 @@ class InviteManagementEndpointIntegrationTest {
         @Bean fun httpInviteRepository() = RecordingHttpInviteRepository()
         @Bean fun httpInviteLinks() = ConfigurableHttpInviteLinkFactory()
         @Bean fun inviteTokenGenerator() = SecureTokenGenerator { INVITE_TOKEN }
+        @Bean fun inviteClock(): Clock = Clock.fixed(NOW, ZoneOffset.UTC)
         @Bean fun inviteTransaction() = object : TransactionRunner {
             override fun <T> inTransaction(block: () -> T): T = block()
         }
@@ -220,17 +302,25 @@ class InviteManagementEndpointIntegrationTest {
             repository: RecordingHttpInviteRepository,
             generator: SecureTokenGenerator,
             links: ConfigurableHttpInviteLinkFactory,
-        ) = RotateInvite(transaction, read, repository, GroupAccessPolicy(), generator, links)
+            clock: Clock,
+        ) = RotateInvite(transaction, read, repository, GroupAccessPolicy(), generator, links, clock)
         @Bean fun expireInvite(
             transaction: TransactionRunner,
             read: RecordingInviteGroupReadRepository,
             repository: RecordingHttpInviteRepository,
         ) = ExpireInvite(transaction, read, repository, GroupAccessPolicy())
+        @Bean fun getInviteMetadata(
+            transaction: TransactionRunner,
+            read: RecordingInviteGroupReadRepository,
+            repository: RecordingHttpInviteRepository,
+            clock: Clock,
+        ) = GetInviteMetadata(transaction, read, repository, GroupAccessPolicy(), clock)
         @Bean fun accessInviteManagementController(
             bootstrap: BootstrapSession,
             rotate: RotateInvite,
             expire: ExpireInvite,
-        ) = AccessInviteManagementController(verifiedGroupActorResolver(bootstrap), rotate, expire)
+            getInviteMetadata: GetInviteMetadata,
+        ) = AccessInviteManagementController(verifiedGroupActorResolver(bootstrap), rotate, expire, getInviteMetadata)
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()
@@ -238,6 +328,7 @@ class InviteManagementEndpointIntegrationTest {
             val INVITE_CODE = InviteCode.from(RAW_CODE)
             val INVITE_TOKEN = InviteToken(INVITE_CODE, InviteTokenDigest.from(ByteArray(32) { 9 }))
             val INVITE_URL: URI = URI("https://join.saqz.app/?saqz_invite=$RAW_CODE")
+            val NOW: Instant = Instant.parse("2026-07-16T18:00:00Z")
         }
     }
 
@@ -268,11 +359,16 @@ class InviteManagementEndpointIntegrationTest {
     class RecordingHttpInviteRepository : InviteManagementRepository {
         val rotations = mutableListOf<RotateInviteCommand>()
         val expirations = mutableListOf<UUID>()
+        var metadata: InviteMetadata? = null
         fun reset() {
             rotations.clear()
             expirations.clear()
+            metadata = null
         }
         override fun rotate(command: RotateInviteCommand) { rotations += command }
+
+        override fun findMetadata(groupId: UUID) = metadata
+
         override fun expire(groupId: UUID) { expirations += groupId }
     }
 
