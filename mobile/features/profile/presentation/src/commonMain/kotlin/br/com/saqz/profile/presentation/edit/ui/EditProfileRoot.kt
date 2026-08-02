@@ -3,9 +3,11 @@ package br.com.saqz.profile.presentation.edit.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.ImageLoader
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.profile.presentation.edit.EditProfileEffect
 import br.com.saqz.profile.presentation.edit.EditProfileViewModel
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -14,6 +16,7 @@ fun EditProfileRoot(
     onPickPhoto: () -> Unit,
     onBack: () -> Unit,
     viewModel: EditProfileViewModel = koinViewModel(),
+    imageLoader: ImageLoader = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
@@ -26,5 +29,6 @@ fun EditProfileRoot(
         onIntent = viewModel::onIntent,
         onPickPhoto = onPickPhoto,
         onBack = onBack,
+        imageLoader = imageLoader,
     )
 }

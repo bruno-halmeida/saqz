@@ -13,11 +13,14 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(libs.coil.core)
+            implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.okio)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.android)
