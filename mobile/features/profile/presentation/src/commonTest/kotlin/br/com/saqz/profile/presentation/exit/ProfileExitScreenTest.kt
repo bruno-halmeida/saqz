@@ -49,4 +49,27 @@ class ProfileExitScreenTest {
         onNodeWithTag(ProfileExitTags.CancelDelete).assertExists()
         onNodeWithText("Excluir sua conta de vez?").assertExists()
     }
+
+    @Test
+    fun `erro de exclusao fica visivel na segunda confirmacao`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                ProfileExitScreen(
+                    state = ProfileExitState(
+                        email = "person@example.com",
+                        sheet = ProfileExitSheet.ConfirmDelete,
+                        confirmationEmail = "person@example.com",
+                        error = ProfileExitError.DeleteFailed,
+                    ),
+                    onIntent = {},
+                    onClose = {},
+                    onLogout = {},
+                )
+            }
+        }
+
+        onNodeWithText(
+            "Não foi possível excluir sua conta agora. Sua sessão continua ativa. Tente de novo.",
+        ).assertExists()
+    }
 }

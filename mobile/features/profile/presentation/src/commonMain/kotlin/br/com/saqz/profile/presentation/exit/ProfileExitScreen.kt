@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
@@ -54,7 +53,6 @@ object ProfileExitTags {
     const val ConfirmationEmail = "profile-exit-confirmation-email"
     const val ConfirmDelete = "profile-exit-confirm-delete"
     const val CancelDelete = "profile-exit-cancel-delete"
-    const val DeleteError = "profile-exit-delete-error"
 }
 
 @Composable
@@ -201,15 +199,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.DeleteConfirmationCon
         enabled = !state.isDeleting,
         modifier = Modifier.testTag(ProfileExitTags.CancelDelete),
     )
-    if (state.error == ProfileExitError.DeleteFailed) {
-        Text(
-            text = stringResource(Res.string.profile_exit_delete_error),
-            style = SaqzTheme.typography.support,
-            color = colors.errorForeground,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.testTag(ProfileExitTags.DeleteError),
-        )
-    }
 }
 
 @Composable
