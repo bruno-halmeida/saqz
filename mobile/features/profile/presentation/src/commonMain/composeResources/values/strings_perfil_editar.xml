@@ -24,4 +24,13 @@
     <string name="profile_edit_load_error">Não foi possível carregar seus dados.</string>
     <string name="profile_edit_save_error">Não foi possível salvar suas alterações.</string>
     <string name="profile_edit_retry">Tentar novamente</string>
+    <string name="profile_photo_sheet_title">Sua foto</string>
+    <string name="profile_photo_take">Tirar foto</string>
+    <string name="profile_photo_gallery">Escolher da galeria</string>
+    <string name="profile_photo_remove">Remover foto</string>
+    <string name="profile_photo_camera_permission_denied">Permita o acesso à câmera nas configurações do celular para tirar uma foto.</string>
+    <string name="profile_photo_library_permission_denied">Permita o acesso às fotos nas configurações do celular para escolher uma imagem.</string>
+    <string name="profile_photo_selection_failed">Não foi possível escolher a foto. Tente novamente.</string>
+    <string name="profile_photo_upload_failed">Não foi possível atualizar sua foto. Tente novamente.</string>
+    <string name="profile_photo_removal_failed">Não foi possível remover sua foto. Tente novamente.</string>
 </resources>

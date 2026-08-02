@@ -28,6 +28,22 @@ final class IOSProfilePhotoAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.selection.calls, ["library"])
     }
 
+    func testCameraAndLibraryPermissionDenialsAreDistinct() {
+        let adapter = IOSProfilePhotoAdapter(
+            selection: StubSelectionPort(),
+            encoder: StubEncoderPort(),
+            permissions: DeniedPermissions()
+        )
+        let camera = SelectionRecordingCallback()
+        let library = SelectionRecordingCallback()
+
+        _ = adapter.chooseCamera(done_: camera)
+        _ = adapter.chooseLibrary(done_: library)
+
+        XCTAssertTrue(camera.result is ProfilePhotoSelectionResultCameraPermissionDenied)
+        XCTAssertTrue(library.result is ProfilePhotoSelectionResultLibraryPermissionDenied)
+    }
+
     func testPersonCancellationIsDistinctFromFailure() {
         let cancelled = Fixture()
         _ = cancelled.adapter.chooseCamera(done: cancelled.done)
@@ -174,6 +190,20 @@ final class IOSProfilePhotoAdapterTests: XCTestCase {
     private final class RecordingCallback: NSObject, ProfilePhotoCallback {
         private(set) var result: ProfilePhotoResult?
         func complete(result_ result: ProfilePhotoResult) { self.result = result }
+    }
+
+    @MainActor
+    private struct DeniedPermissions: IOSProfilePhotoPermissions {
+        func cameraPermissionDenied() -> Bool { true }
+        func libraryPermissionDenied() -> Bool { true }
+    }
+
+    private final class SelectionRecordingCallback: NSObject, ProfilePhotoSelectionCallback {
+        private(set) var result: ProfilePhotoSelectionResult?
+
+        func complete(result_______ result: ProfilePhotoSelectionResult) {
+            self.result = result
+        }
     }
 }
 

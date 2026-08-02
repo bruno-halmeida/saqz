@@ -17,7 +17,7 @@ internal sealed interface ProfilePhotoIntent {
 }
 
 /** Erros que a UI consegue traduzir sem depender de [br.com.saqz.domain.DataError]. */
-internal sealed interface ProfilePhotoError {
+sealed interface ProfilePhotoError {
     data object CameraPermissionDenied : ProfilePhotoError
     data object LibraryPermissionDenied : ProfilePhotoError
     data object SelectionFailed : ProfilePhotoError

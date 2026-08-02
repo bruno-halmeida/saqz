@@ -1,5 +1,7 @@
 package br.com.saqz.profile.presentation.photo
 
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable
 import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
 import br.com.saqz.profile.domain.ProfilePhotoSelectionResult
 import br.com.saqz.profile.fake.FakeProfileGateway
@@ -58,8 +60,13 @@ class ProfilePhotoViewModelTest {
     private class FakeSelection(
         private val result: ProfilePhotoSelectionResult,
     ) : ProfilePhotoSelectionPort {
-        override suspend fun chooseCamera(): ProfilePhotoSelectionResult = result
-        override suspend fun chooseLibrary(): ProfilePhotoSelectionResult = result
+        override fun chooseCamera(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable = deliver(done)
+        override fun chooseLibrary(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable = deliver(done)
+
+        private fun deliver(done: ProfilePhotoSelectionCallback) = object : ProfilePhotoSelectionCancelable {
+            init { done.complete(result) }
+            override fun cancel() = Unit
+        }
     }
 
     private companion object {

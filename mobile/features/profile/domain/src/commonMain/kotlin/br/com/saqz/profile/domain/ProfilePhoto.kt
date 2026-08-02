@@ -30,6 +30,14 @@ sealed interface ProfilePhotoSelectionResult {
 
 /** Capacidade nativa de escolher e preparar uma foto para o upload do perfil. */
 interface ProfilePhotoSelectionPort {
-    suspend fun chooseCamera(): ProfilePhotoSelectionResult
-    suspend fun chooseLibrary(): ProfilePhotoSelectionResult
+    fun chooseCamera(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable
+    fun chooseLibrary(done: ProfilePhotoSelectionCallback): ProfilePhotoSelectionCancelable
+}
+
+interface ProfilePhotoSelectionCallback {
+    fun complete(result: ProfilePhotoSelectionResult)
+}
+
+interface ProfilePhotoSelectionCancelable {
+    fun cancel()
 }

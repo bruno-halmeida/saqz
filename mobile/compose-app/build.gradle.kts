@@ -25,6 +25,7 @@ kotlin {
             export(project(":features:access:domain"))
             export(project(":features:groups"))
             export(project(":features:groups:domain"))
+            export(project(":features:profile:domain"))
         }
     }
 
@@ -35,6 +36,7 @@ kotlin {
             api(project(":features:access:domain"))
             api(project(":features:groups"))
             api(project(":features:groups:domain"))
+            api(project(":features:profile:domain"))
             api(project(":features:subscriptions:domain"))
             implementation(project(":features:groups:presentation"))
             implementation(project(":features:access:data"))

@@ -3,10 +3,14 @@ package br.com.saqz.profile.presentation.photo
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.profile.domain.ProfileGateway
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
+import br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable
 import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
 import br.com.saqz.profile.domain.ProfilePhotoSelectionResult
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.launch
+import kotlin.coroutines.resume
 
 internal class ProfilePhotoViewModel(
     private val gateway: ProfileGateway,
@@ -24,11 +28,13 @@ internal class ProfilePhotoViewModel(
         }
     }
 
-    private fun choose(open: suspend () -> ProfilePhotoSelectionResult) {
+    private fun choose(
+        open: (ProfilePhotoSelectionCallback) -> ProfilePhotoSelectionCancelable,
+    ) {
         if (state.value.isLoading) return
         update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            when (val selected = open()) {
+            when (val selected = awaitSelection(open)) {
                 is ProfilePhotoSelectionResult.Selected -> upload(selected)
                 ProfilePhotoSelectionResult.Cancelled -> finish()
                 ProfilePhotoSelectionResult.CameraPermissionDenied -> finish(ProfilePhotoError.CameraPermissionDenied)
@@ -36,6 +42,20 @@ internal class ProfilePhotoViewModel(
                 ProfilePhotoSelectionResult.Failed -> finish(ProfilePhotoError.SelectionFailed)
             }
         }
+    }
+
+    private suspend fun awaitSelection(
+        open: (ProfilePhotoSelectionCallback) -> ProfilePhotoSelectionCancelable,
+    ): ProfilePhotoSelectionResult = suspendCancellableCoroutine { continuation ->
+        lateinit var request: ProfilePhotoSelectionCancelable
+        request = open(
+            object : ProfilePhotoSelectionCallback {
+                override fun complete(result: ProfilePhotoSelectionResult) {
+                    if (continuation.isActive) continuation.resume(result)
+                }
+            },
+        )
+        continuation.invokeOnCancellation { request.cancel() }
     }
 
     private suspend fun upload(selected: ProfilePhotoSelectionResult.Selected) {
