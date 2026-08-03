@@ -20,6 +20,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -60,13 +62,15 @@ class GroupInviteCoordinator(
     private val storageWrites: Mutex = Mutex(),
     private val effectSink: (GroupInviteEffect) -> Unit = {},
 ) {
-    private val effectChannel = Channel<GroupInviteEffect>(Channel.BUFFERED)
+    private val effectChannel = Channel<QueuedEffect>(Channel.BUFFERED)
     private var generation = 0L
     private val authenticated = MutableStateFlow(false)
     private var linkCancelable: br.com.saqz.groups.port.GroupCancelable? = null
     private var started = false
 
     val effects: Flow<GroupInviteEffect> = effectChannel.receiveAsFlow()
+        .filter { it.generation == generation }
+        .map { it.effect }
     val isAuthenticated = authenticated.asStateFlow()
 
     fun start() {
@@ -225,7 +229,7 @@ class GroupInviteCoordinator(
 
     private fun emitIfCurrent(token: Long, effect: GroupInviteEffect) {
         if (isCurrent(token)) {
-            effectChannel.trySend(effect)
+            effectChannel.trySend(QueuedEffect(token, effect))
             effectSink(effect)
         }
     }
@@ -241,6 +245,11 @@ class GroupInviteCoordinator(
         data object Failed : PendingRead
         data class Value(val code: String?) : PendingRead
     }
+
+    private data class QueuedEffect(
+        val generation: Long,
+        val effect: GroupInviteEffect,
+    )
 }
 
 private fun InviteError.isTerminal(): Boolean = when (this) {

@@ -82,6 +82,22 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
+    fun `cold landing buffered before authentication is discarded after redeem`() = runTest {
+        val fixture = fixture()
+        fixture.coordinator.acceptInvite("invite-cold")
+        runCurrent()
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-cold"),
+            fixture.coordinator.effects.first(),
+        )
+        assertNull(withTimeoutOrNull(1) { fixture.coordinator.effects.first() })
+    }
+
+    @Test
     fun `persisted invite code is available before relaunch redeem`() = runTest {
         val fixture = fixture()
         fixture.local.pending = "invite-relaunch"
