@@ -9,6 +9,7 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.GroupUiError
 
 /** `2a` cria e `2i` edita: mesma tela, mesmos doze cards, modos diferentes. */
@@ -77,6 +78,8 @@ data class GroupSetupState(
     val memberCount: Int = 0,
     /** Só o OWNER pode excluir; enquanto o snapshot não chega, a ação fica escondida. */
     val canDelete: Boolean = false,
+    /** Configurações de jogo são visíveis apenas ao OWNER/ADMIN. */
+    val canManageGameConfig: Boolean = false,
     // NÃO se deriva de `form.regularSlots.isEmpty()`: ligado e sem horário é o `2g`.
     val recurring: Boolean = true,
     // Duração é do grupo no desenho e por slot no modelo; ver GroupSetupViewModel.
@@ -148,6 +151,12 @@ sealed interface GroupSetupIntent {
     data class SelectDuration(val minutes: Int) : GroupSetupIntent
 
     data class SelectConfirmationLead(val minutes: Int) : GroupSetupIntent
+
+    data class ToggleMensalistaPriority(val value: Boolean) : GroupSetupIntent
+
+    data class SelectPromotionMode(val value: PromotionMode) : GroupSetupIntent
+
+    data class ToggleAutoConfirm(val value: Boolean) : GroupSetupIntent
 
     data class ToggleRecurring(val value: Boolean) : GroupSetupIntent
 

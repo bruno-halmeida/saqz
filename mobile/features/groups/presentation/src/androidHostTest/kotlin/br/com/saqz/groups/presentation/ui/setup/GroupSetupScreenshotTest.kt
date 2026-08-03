@@ -13,6 +13,7 @@ import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
@@ -115,6 +116,34 @@ class GroupSetupScreenshotTest {
     }
 
     @Test
+    fun gameConfigOverrides() = capture("config-jogo-alterado", directory = "vul-157") {
+        GroupGameConfigSection(
+            mensalistaPriority = false,
+            promotionMode = PromotionMode.MANUAL,
+            confirmationLeadMinutes = 1_440,
+            autoConfirmEnabled = true,
+            onMensalistaPriorityChange = {},
+            onPromotionModeSelect = {},
+            onConfirmationLeadSelect = {},
+            onAutoConfirmChange = {},
+        )
+    }
+
+    @Test
+    fun gameConfigDefaults() = capture("config-jogo-padrao", directory = "vul-157") {
+        GroupGameConfigSection(
+            mensalistaPriority = true,
+            promotionMode = PromotionMode.FIFO,
+            confirmationLeadMinutes = GroupSetupDefaults.ConfirmationLeadMinutes,
+            autoConfirmEnabled = false,
+            onMensalistaPriorityChange = {},
+            onPromotionModeSelect = {},
+            onConfirmationLeadSelect = {},
+            onAutoConfirmChange = {},
+        )
+    }
+
+    @Test
     fun deleteSheet() = capture("2j-excluir-grupo") {
         GroupSetupScreen(
             state = createState(
@@ -141,11 +170,12 @@ class GroupSetupScreenshotTest {
         photoUrl = photoUrl,
         memberCount = 26,
         canDelete = mode is GroupSetupMode.Edit,
+        canManageGameConfig = mode is GroupSetupMode.Edit,
         durationMinutes = durationMinutes,
         sheet = sheet,
     )
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    private fun capture(name: String, directory: String = "vul-68", content: @Composable () -> Unit) {
         compose.setContent {
             SaqzTheme {
                 Box(modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -153,7 +183,7 @@ class GroupSetupScreenshotTest {
                 }
             }
         }
-        compose.onRoot().captureRoboImage("screenshots/vul-68/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 
     private companion object {
