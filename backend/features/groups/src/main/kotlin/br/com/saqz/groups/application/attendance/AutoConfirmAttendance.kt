@@ -77,7 +77,9 @@ class AutoConfirmAttendance(
             occurrence.localDate,
             occurrence.slot.slotKey,
         ) ?: return@inTransaction 0
-        if (!game.autoConfirmEnabled) return@inTransaction 0
+        if (!game.autoConfirmEnabled || game.status == GameStatus.CANCELLED || game.status == GameStatus.COMPLETED) {
+            return@inTransaction 0
+        }
         confirm(game, game.ownerId)
     }
 
