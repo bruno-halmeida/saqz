@@ -166,7 +166,9 @@ internal fun SaqzNavHost(
                         ),
                     )
                 }
-                GroupInviteEffect.PendingInviteStorageFailed -> Unit
+                is GroupInviteEffect.PendingInviteStorageFailed -> {
+                    backStack.add(pendingInviteStorageFailureRoute(effect.code, pendingInviteCode))
+                }
             }
         }
     }
@@ -490,6 +492,14 @@ private fun InviteError.toRouteError(): InviteLandingRouteError = when (this) {
 internal fun NavBackStack<NavKey>.openInviteExplore() {
     resetTo(SaqzShellDestination)
 }
+
+internal fun pendingInviteStorageFailureRoute(
+    code: String?,
+    fallbackCode: String?,
+): GroupsRoute.InviteLanding = GroupsRoute.InviteLanding(
+    code = code ?: fallbackCode.orEmpty(),
+    redeemError = InviteLandingRouteError.Network,
+)
 
 /**
  * O 1g→1h. A troca **consome** o ticket, então o que sobrou da recuperação sai do stack em

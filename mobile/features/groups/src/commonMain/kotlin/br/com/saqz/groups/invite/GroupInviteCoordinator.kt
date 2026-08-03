@@ -44,7 +44,7 @@ sealed interface GroupInviteEffect {
         val willRetry: Boolean,
     ) : GroupInviteEffect
 
-    data object PendingInviteStorageFailed : GroupInviteEffect
+    data class PendingInviteStorageFailed(val code: String? = null) : GroupInviteEffect
 }
 
 /**
@@ -145,14 +145,14 @@ class GroupInviteCoordinator(
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val token = generation
             when (val pending = readPending()) {
-                PendingRead.Failed -> emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+                PendingRead.Failed -> emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
                 is PendingRead.Value -> {
                     if (pending.code != null && pending.code != code) {
                         onCleared()
                     } else if (clearPending(token)) {
                         onCleared()
                     } else {
-                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
                     }
                 }
             }
@@ -167,7 +167,9 @@ class GroupInviteCoordinator(
         if (!isCurrent(token)) return null
         val result = inviteGateway.preview(InviteCode(code))
         if (isCurrent(token) && result is SaqzResult.Failure && result.error.isTerminal()) {
-            clearPending(token)
+            if (!clearPending(token)) {
+                emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
+            }
         }
         return result.takeIf { isCurrent(token) }
     }
@@ -176,7 +178,7 @@ class GroupInviteCoordinator(
         val pending = readPending()
         val code = when (pending) {
             PendingRead.Failed -> {
-                emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+                emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed())
                 return
             }
             is PendingRead.Value -> pending.code
@@ -191,7 +193,10 @@ class GroupInviteCoordinator(
             is SaqzResult.Success -> when (val result = inviteGateway.redeem(code)) {
                 is SaqzResult.Failure -> finishFailure(token, code, result.error)
                 is SaqzResult.Success -> {
-                    if (!clearPending(token)) return
+                    if (!clearPending(token)) {
+                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
+                        return
+                    }
                     emitIfCurrent(
                         token,
                         GroupInviteEffect.NavigateToGroup(
@@ -208,7 +213,10 @@ class GroupInviteCoordinator(
     private suspend fun finishFailure(token: Long, code: InviteCode, error: InviteError) {
         if (!isCurrent(token)) return
         val terminal = error.isTerminal()
-        if (terminal && !clearPending(token)) return
+        if (terminal && !clearPending(token)) {
+            emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
+            return
+        }
         emitIfCurrent(
             token,
             GroupInviteEffect.RedeemFailed(code.value, error, willRetry = !terminal),
@@ -219,7 +227,7 @@ class GroupInviteCoordinator(
         if (!isCurrent(token)) return@withLock false
         val result = writePending(code)
         if (!result || !isCurrent(token)) {
-            if (!result) emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+            if (!result) emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
             return@withLock false
         }
         true

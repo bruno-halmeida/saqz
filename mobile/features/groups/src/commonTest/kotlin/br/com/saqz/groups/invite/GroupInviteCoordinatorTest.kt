@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
+import br.com.saqz.groups.port.GroupNativeFailureCode
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -111,6 +112,21 @@ class GroupInviteCoordinatorTest {
         assertEquals(2, clearedCount)
         assertNull(fixture.local.pending)
         assertEquals(listOf("read", "write:null", "read", "write:null"), fixture.local.actions)
+    }
+
+    @Test
+    fun `pending storage failure keeps the invite code in its effect`() = runTest {
+        val fixture = fixture()
+        fixture.local.writeSucceeds = false
+        val effect = async { fixture.coordinator.effects.first() }
+
+        fixture.coordinator.acceptInvite("invite-storage")
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.PendingInviteStorageFailed("invite-storage"),
+            effect.await(),
+        )
     }
 
     @Test
@@ -320,6 +336,7 @@ class GroupInviteCoordinatorTest {
 
     private class FakeLocalState(private val events: MutableList<String>) : LocalGroupStatePort {
         var pending: String? = null
+        var writeSucceeds = true
         val actions = mutableListOf<String>()
 
         override fun readSelectedGroupId(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
@@ -334,8 +351,12 @@ class GroupInviteCoordinatorTest {
         override fun writePendingInvite(value: String?, done: GroupResultCallback) {
             actions += "write:${value ?: "null"}"
             events += "write:${value ?: "null"}"
-            pending = value
-            done.complete(GroupOperationResult.Success)
+            if (writeSucceeds) {
+                pending = value
+                done.complete(GroupOperationResult.Success)
+            } else {
+                done.complete(GroupOperationResult.Failure(GroupNativeFailureCode.UNKNOWN))
+            }
         }
 
         override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
