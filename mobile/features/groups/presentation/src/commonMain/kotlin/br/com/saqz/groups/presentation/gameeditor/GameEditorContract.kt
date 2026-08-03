@@ -49,6 +49,7 @@ enum class GameEditorFieldError {
     VenueAddressMissing,
     VenueNameTooLong,
     VenueAddressTooLong,
+    NotesInvalid,
 }
 
 sealed interface GameEditorIntent {

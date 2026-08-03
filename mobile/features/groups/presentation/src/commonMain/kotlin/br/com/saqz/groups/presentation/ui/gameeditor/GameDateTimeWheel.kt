@@ -137,7 +137,7 @@ private fun WheelColumn(
             scrollState.animateScrollTo(target)
         }
     }
-    LaunchedEffect(scrollState.value, items.size) {
+    LaunchedEffect(scrollState.value, scrollState.isScrollInProgress, items.size) {
         if (items.isNotEmpty() && !scrollState.isScrollInProgress) {
             val index = (scrollState.value / itemPx).roundToInt().coerceIn(0, items.lastIndex)
             if (index != currentSelectedIndex.value) currentOnSelect.value(index)

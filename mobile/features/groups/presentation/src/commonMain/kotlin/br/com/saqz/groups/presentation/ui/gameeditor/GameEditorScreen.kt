@@ -71,6 +71,7 @@ import br.com.saqz.groups.resources.game_editor_error_venue_address
 import br.com.saqz.groups.resources.game_editor_error_venue_address_too_long
 import br.com.saqz.groups.resources.game_editor_error_venue_name
 import br.com.saqz.groups.resources.game_editor_error_venue_name_too_long
+import br.com.saqz.groups.resources.game_editor_error_notes_length
 import br.com.saqz.groups.resources.game_editor_group_name
 import br.com.saqz.groups.resources.game_editor_notes_hint
 import br.com.saqz.groups.resources.game_editor_notes_label
@@ -277,6 +278,9 @@ private fun FormScroll(
                 placeholder = stringResource(Res.string.game_editor_notes_hint),
                 singleLine = false,
                 minLines = 3,
+                errorText = if (GameEditorFieldError.NotesInvalid in errors) {
+                    stringResource(Res.string.game_editor_error_notes_length)
+                } else null,
             )
         }
     }
@@ -687,7 +691,7 @@ internal fun pickerRangeStart(today: LocalDate, selectedDate: String): LocalDate
     val lastDate = today.plus(DatePeriod(days = 29))
     return when {
         selected < today -> selected
-        selected > lastDate -> selected.minus(DatePeriod(days = 29))
+        selected >= lastDate -> selected.minus(DatePeriod(days = 14))
         else -> today
     }
 }

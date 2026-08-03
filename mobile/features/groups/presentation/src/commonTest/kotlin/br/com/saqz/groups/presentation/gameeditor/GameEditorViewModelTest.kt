@@ -349,6 +349,12 @@ class GameEditorViewModelTest {
         vm.onIntent(GameEditorIntent.UpdateNotes("   "))
         vm.onIntent(GameEditorIntent.Submit)
         assertNull(gateway.lastCreateCommand?.notes)
+        vm.onIntent(GameEditorIntent.UpdateNotes("x"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(GameEditorFieldError.NotesInvalid in vm.state.value.validationErrors)
+        vm.onIntent(GameEditorIntent.UpdateNotes("x".repeat(501)))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(GameEditorFieldError.NotesInvalid in vm.state.value.validationErrors)
     }
 
     @Test
@@ -373,6 +379,7 @@ class GameEditorViewModelTest {
         val start = pickerRangeStart(today, selected)
         val days = buildWheelDays(start, 30, List(7) { "weekday" }, List(12) { "month" })
         assertTrue(days.any { it.isoDate == selected })
+        assertTrue(days.indexOfFirst { it.isoDate == selected } < days.lastIndex)
     }
 
     @Test
