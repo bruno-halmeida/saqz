@@ -22,6 +22,7 @@ data class AttendanceAggregate(
     val gameFeeCents: Long?,
     val gameDate: LocalDate,
     val membershipType: AthleteMembershipType,
+    val mensalistaPriority: Boolean = true,
 )
 
 data class AttendanceRecord(
@@ -75,6 +76,7 @@ data class CapacityAggregate(
     val version: Long,
     val gameFeeCents: Long?,
     val gameDate: LocalDate,
+    val mensalistaPriority: Boolean = true,
 )
 
 data class AttendanceDetail(

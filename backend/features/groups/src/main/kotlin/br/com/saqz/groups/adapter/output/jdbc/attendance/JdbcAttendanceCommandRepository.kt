@@ -84,6 +84,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                     rs.getLong("version"),
                     rs.getObject("game_fee_cents", Long::class.javaObjectType),
                     rs.getObject("local_date", java.time.LocalDate::class.java),
+                    rs.getBoolean("mensalista_priority"),
                 )
             }
             .optional()
@@ -245,6 +246,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             rs.getObject("game_fee_cents", Long::class.javaObjectType),
             rs.getObject("local_date", java.time.LocalDate::class.java),
             AthleteMembershipType.valueOf(rs.getString("membership_type")),
+            rs.getBoolean("mensalista_priority"),
         )
     }
 
@@ -252,6 +254,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         const val AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
                    g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
+                   ag.mensalista_priority,
                    :actor::uuid AS actor_id,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
@@ -293,7 +296,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
-                   g.version,g.game_fee_cents,g.local_date,
+                   g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g
@@ -325,15 +328,25 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
         """
         const val ROSTER = """
-            SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence
+            SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,
+                   m.membership_type
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.group_id=g.group_id
                 AND a.status IN ('CONFIRMED','WAITLISTED')
+            LEFT JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
             WHERE g.group_id=:group AND g.id=:game
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
-            ORDER BY a.waitlist_sequence NULLS FIRST,
+            ORDER BY CASE
+                       WHEN a.status='CONFIRMED' THEN 0
+                       WHEN a.status='WAITLISTED' AND g.confirmation_deadline >= now() AND ag.mensalista_priority
+                            AND m.membership_type='MENSALISTA' THEN 1
+                       WHEN a.status='WAITLISTED' AND g.confirmation_deadline >= now() AND ag.mensalista_priority
+                            AND (m.membership_type IS NULL OR m.membership_type<>'MENSALISTA') THEN 2
+                       ELSE 1
+                     END,
+                     a.waitlist_sequence NULLS FIRST,
                      lower(a.member_display_name),a.member_display_name,a.member_user_id
         """
     }

@@ -18,6 +18,7 @@ data class AttendanceDecisionContext(
     val source: AttendanceSource,
     val reason: String? = null,
     val membershipType: AthleteMembershipType,
+    val mensalistaPriority: Boolean = true,
 )
 
 enum class AttendanceDenial {
@@ -83,9 +84,10 @@ object AttendanceTransitionPolicy {
         AttendanceStatus.CONFIRMED -> AttendanceStatus.CONFIRMED
         AttendanceStatus.WAITLISTED -> AttendanceStatus.WAITLISTED
         AttendanceStatus.DECLINED, null -> when {
-            // O avulso nunca toma vaga por conta própria: entra na espera e só é confirmado por
-            // promoção do sistema (FIFO) ou por decisão do organizador.
-            context.source == AttendanceSource.SELF && context.membershipType == AthleteMembershipType.AVULSO ->
+            // A promoção é responsabilidade do motor FIFO/MANUAL (VUL-155); a política de
+            // confirmação apenas decide quem toma vaga direto e quem entra na reserva.
+            context.source == AttendanceSource.SELF && context.membershipType == AthleteMembershipType.AVULSO &&
+                context.mensalistaPriority ->
                 AttendanceStatus.WAITLISTED
             context.confirmedCount < context.capacity -> AttendanceStatus.CONFIRMED
             else -> AttendanceStatus.WAITLISTED

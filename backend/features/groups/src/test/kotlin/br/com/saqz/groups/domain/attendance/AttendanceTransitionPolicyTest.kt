@@ -46,6 +46,28 @@ class AttendanceTransitionPolicyTest {
     @Test fun `avulso may decline like any member`() = transition(context(membership = AthleteMembershipType.AVULSO, current = AttendanceStatus.WAITLISTED), AttendanceIntent.DECLINE, AttendanceStatus.DECLINED, changed = true)
     @Test fun `organizer confirms an avulso within capacity`() = transition(organizer(membership = AthleteMembershipType.AVULSO, reason = "Autorizado"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Autorizado")
     @Test fun `organizer confirmation of an avulso still respects full capacity`() = transition(organizer(membership = AthleteMembershipType.AVULSO, confirmed = 2, reason = "Lista de espera"), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true, reason = "Lista de espera")
+
+    // --- VUL-152: matriz de prioridade configurável ---
+    // Prioridade ligada (default): mensalista toma vaga direto; avulso sempre espera.
+    @Test fun `prioridade on - mensalista com vaga confirma`() = transition(context(membership = AthleteMembershipType.MENSALISTA, confirmed = 0, capacity = 2), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true)
+    @Test fun `prioridade on - mensalista sem vaga espera`() = transition(context(membership = AthleteMembershipType.MENSALISTA, confirmed = 2, capacity = 2), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `prioridade on - avulso com vaga ainda espera`() = transition(context(membership = AthleteMembershipType.AVULSO, confirmed = 0, capacity = 2), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `prioridade on - avulso sem vaga espera`() = transition(context(membership = AthleteMembershipType.AVULSO, confirmed = 2, capacity = 2), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+
+    // Prioridade desligada: qualquer membro toma vaga direto se houver.
+    @Test fun `prioridade off - mensalista com vaga confirma`() = transition(context(membership = AthleteMembershipType.MENSALISTA, confirmed = 0, capacity = 2, mensalistaPriority = false), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true)
+    @Test fun `prioridade off - mensalista sem vaga espera`() = transition(context(membership = AthleteMembershipType.MENSALISTA, confirmed = 2, capacity = 2, mensalistaPriority = false), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `prioridade off - avulso com vaga confirma`() = transition(context(membership = AthleteMembershipType.AVULSO, confirmed = 0, capacity = 2, mensalistaPriority = false), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true)
+    @Test fun `prioridade off - avulso sem vaga espera`() = transition(context(membership = AthleteMembershipType.AVULSO, confirmed = 2, capacity = 2, mensalistaPriority = false), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+
+    // Organizador ignora a prioridade — decide a vaga diretamente.
+    @Test fun `prioridade on - organizador confirma avulso com vaga`() = transition(organizer(membership = AthleteMembershipType.AVULSO, confirmed = 0, capacity = 2, reason = "Autorizado"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Autorizado")
+    @Test fun `prioridade off - organizador confirma mensalista sem vaga espera`() = transition(organizer(membership = AthleteMembershipType.MENSALISTA, confirmed = 2, capacity = 2, mensalistaPriority = false, reason = "Sem vaga"), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true, reason = "Sem vaga")
+
+    // A virada do prazo afeta apenas a ordenação da reserva (roster/promoção), não o confirmationTarget:
+    // self response já é barrada pelo DEADLINE_PASSED antes de chegar aqui; organizer não enxerga faixa.
+    @Test fun `prioridade on - mensalista promovido mantem confirmado apos prazo via organizer`() = transition(organizer(now = DEADLINE.plusSeconds(1), current = AttendanceStatus.CONFIRMED, confirmed = 1, capacity = 2, reason = "Pós-prazo"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, reason = "Pós-prazo")
+
     @Test fun `only a newly confirmed transition requests a charge`() { transition(context(current = AttendanceStatus.DECLINED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true); transition(context(current = AttendanceStatus.CONFIRMED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, charge = false) }
 
     private fun transition(
@@ -76,7 +98,8 @@ class AttendanceTransitionPolicyTest {
         current: AttendanceStatus? = null,
         reason: String? = null,
         membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership)
+        mensalistaPriority: Boolean = true,
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership, mensalistaPriority)
 
     private fun organizer(
         status: GameStatus = GameStatus.PUBLISHED,
@@ -86,7 +109,8 @@ class AttendanceTransitionPolicyTest {
         current: AttendanceStatus? = null,
         reason: String? = "Ajuste do organizador",
         membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.ORGANIZER, reason, membership)
+        mensalistaPriority: Boolean = true,
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.ORGANIZER, reason, membership, mensalistaPriority)
 
     private companion object { val DEADLINE: Instant = Instant.parse("2026-08-11T22:30:00Z") }
 }

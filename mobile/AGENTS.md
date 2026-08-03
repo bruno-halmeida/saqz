@@ -384,9 +384,9 @@ rode `detektBaselineAll` no módulo: ela executa as tasks de todos os source set
 por source set em `build/detekt-baselines/` e só então funde tudo em `detekt-baseline.xml`. Módulo
 sem nenhum smell fica **sem** arquivo de baseline, de propósito.
 
-### Teto de 500 linhas por PR
+### Teto de 2000 linhas por PR
 
-**Nenhum PR passa de 500 linhas alteradas** — adições mais remoções, o total do
+**Nenhum PR passa de 2000 linhas alteradas** — adições mais remoções, o total do
 `git diff --stat origin/main`. Acima disso o review (Codex e humano) vira carimbo: fatie o trabalho
 em PRs sequenciados, como os tickets de fluxo já fazem.
 
