@@ -19,6 +19,10 @@ class GroupsRouteTest {
             GroupsRoute.InviteQr("Vôlei do CERET", "https://saqz.app/invite/code"),
             GroupsRoute.InviteLanding("invite-code"),
             GroupsRoute.InviteLanding("invite-pending", requestSent = true),
+            GroupsRoute.InviteLanding(
+                "invite-plan-limit",
+                redeemError = InviteLandingRouteError.PlanLimit,
+            ),
             GroupsRoute.AthleteRegistration("group-6"),
             GroupsRoute.MemberEditor("group-7", "user-8"),
         )
@@ -27,5 +31,20 @@ class GroupsRouteTest {
             val encoded = Json.encodeToString(GroupsRoute.serializer(), route)
             assertEquals(route, Json.decodeFromString(GroupsRoute.serializer(), encoded))
         }
+    }
+
+    @Test
+    fun inviteLandingPreservesRedeemErrorAcrossRecreation() {
+        val route = GroupsRoute.InviteLanding(
+            code = "invite-recreated",
+            redeemError = InviteLandingRouteError.RateLimited(23),
+        )
+
+        val restored = Json.decodeFromString<GroupsRoute>(
+            Json.encodeToString(GroupsRoute.serializer(), route),
+        )
+
+        assertEquals(route, restored)
+        assertEquals(InviteLandingRouteError.RateLimited(23), (restored as GroupsRoute.InviteLanding).redeemError)
     }
 }

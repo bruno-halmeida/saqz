@@ -45,6 +45,7 @@ import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.invite.GroupInviteCoordinator
 import br.com.saqz.groups.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -113,7 +114,6 @@ internal fun SaqzNavHost(
     val restoring = remember { booleanArrayOf(true) }
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingInviteError by remember { mutableStateOf<InviteError?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
@@ -136,7 +136,6 @@ internal fun SaqzNavHost(
             when (effect) {
                 is GroupInviteEffect.OpenInviteLanding -> {
                     pendingInviteCode = effect.code
-                    pendingInviteError = null
                     if (state.session is SessionAccessState.Ready) {
                         backStack.add(GroupsRoute.InviteLanding(effect.code))
                     } else {
@@ -148,29 +147,26 @@ internal fun SaqzNavHost(
                 is GroupInviteEffect.NavigateToGroup -> when (effect.status) {
                     InviteRedeemStatus.JOINED -> {
                         pendingInviteCode = null
-                        pendingInviteError = null
                         inviteContext = null
                         backStack.add(GroupsRoute.AthleteRegistration(effect.groupId))
                     }
                     InviteRedeemStatus.PENDING -> {
-                        pendingInviteError = null
                         backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))
                     }
                 }
                 is GroupInviteEffect.RedeemFailed -> {
-                    pendingInviteCode = effect.code
-                    pendingInviteError = effect.error
-                    backStack.add(GroupsRoute.InviteLanding(effect.code))
+                    backStack.add(
+                        GroupsRoute.InviteLanding(
+                            code = effect.code,
+                            redeemError = effect.error.toRouteError(),
+                        ),
+                    )
                 }
                 GroupInviteEffect.PendingInviteStorageFailed -> Unit
             }
         }
     }
-    LaunchedEffect(pendingInviteCode, pendingInviteError) {
-        if (pendingInviteError != null) {
-            inviteContext = RegisterInviteContext.Generic
-            return@LaunchedEffect
-        }
+    LaunchedEffect(pendingInviteCode) {
         if (pendingInviteCode == null) {
             inviteContext = null
             return@LaunchedEffect
@@ -393,27 +389,23 @@ internal fun SaqzNavHost(
                     code = route.code,
                     onJoin = { groupId ->
                         pendingInviteCode = null
-                        pendingInviteError = null
                         inviteContext = null
                         pop()
                         backStack.add(GroupsRoute.AthleteRegistration(groupId))
                     },
                     onRequest = {},
                     onBrowseOtherGroups = {
-                        pendingInviteError = null
                         backStack.resetTo(SaqzShellDestination)
                     },
                     onExploreApp = {
-                        pendingInviteError = null
                         backStack.openInviteExplore()
                     },
                     onOpenAnotherGroup = {
-                        pendingInviteError = null
                         backStack.resetTo(SaqzShellDestination)
                     },
                     onRequestNewInvite = pop,
                     initialRequestSent = route.requestSent,
-                    initialRedeemError = pendingInviteError,
+                    initialRedeemError = route.redeemError,
                 )
             }
             entry<GroupsRoute.AthleteRegistration> { route ->
@@ -477,6 +469,16 @@ private fun AccessSkeleton(name: String, vararg next: Pair<String, () -> Unit>) 
 private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
     clear()
     add(route)
+}
+
+private fun InviteError.toRouteError(): InviteLandingRouteError = when (this) {
+    InviteError.InvalidOrExpired,
+    InviteError.GroupDeleted,
+    -> InviteLandingRouteError.Invalid
+    is InviteError.Expired -> InviteLandingRouteError.Expired(expiredAt)
+    is InviteError.RateLimited -> InviteLandingRouteError.RateLimited(retryAfterSeconds)
+    InviteError.PlanLimit -> InviteLandingRouteError.PlanLimit
+    is InviteError.DataFailure -> InviteLandingRouteError.Network
 }
 
 internal fun NavBackStack<NavKey>.openInviteExplore() {

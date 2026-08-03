@@ -37,7 +37,11 @@ sealed interface GroupsRoute : NavKey {
 
     /** 3d/3e/3f/3l: the landing ViewModel owns the visible state. */
     @Serializable
-    data class InviteLanding(val code: String, val requestSent: Boolean = false) : GroupsRoute
+    data class InviteLanding(
+        val code: String,
+        val requestSent: Boolean = false,
+        val redeemError: InviteLandingRouteError? = null,
+    ) : GroupsRoute
 
     /** 3j/3k: first athlete profile after a successful invite redemption. */
     @Serializable
@@ -46,4 +50,22 @@ sealed interface GroupsRoute : NavKey {
     /** 3g: member editor. */
     @Serializable
     data class MemberEditor(val groupId: String, val userId: String) : GroupsRoute
+}
+
+@Serializable
+sealed interface InviteLandingRouteError {
+    @Serializable
+    data object Invalid : InviteLandingRouteError
+
+    @Serializable
+    data class Expired(val expiredAt: String) : InviteLandingRouteError
+
+    @Serializable
+    data class RateLimited(val retryAfterSeconds: Int?) : InviteLandingRouteError
+
+    @Serializable
+    data object PlanLimit : InviteLandingRouteError
+
+    @Serializable
+    data object Network : InviteLandingRouteError
 }

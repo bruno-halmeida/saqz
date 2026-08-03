@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.membership.InviteRegularSlot
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -136,7 +137,7 @@ class InviteLandingViewModelTest {
             INVITE_CODE,
             FakeInviteGateway(previewResult = SaqzResult.Success(preview())),
             FIXED_TIME_ZONE_PORT,
-            initialRedeemError = InviteError.RateLimited(23),
+            initialRedeemError = InviteLandingRouteError.RateLimited(23),
         )
 
         assertFalse(viewModel.state.value.isLoading)

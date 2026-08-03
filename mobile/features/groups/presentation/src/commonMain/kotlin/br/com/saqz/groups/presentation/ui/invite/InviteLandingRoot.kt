@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
-import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.presentation.invite.InviteLandingEffect
 import br.com.saqz.groups.presentation.invite.InviteLandingIntent
 import br.com.saqz.groups.presentation.invite.InviteLandingViewModel
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -21,7 +21,7 @@ fun InviteLandingRoot(
     onOpenAnotherGroup: () -> Unit,
     onRequestNewInvite: () -> Unit,
     initialRequestSent: Boolean = false,
-    initialRedeemError: InviteError? = null,
+    initialRedeemError: InviteLandingRouteError? = null,
     viewModel: InviteLandingViewModel = koinViewModel(
         parameters = { parametersOf(code, initialRequestSent, initialRedeemError) },
     ),

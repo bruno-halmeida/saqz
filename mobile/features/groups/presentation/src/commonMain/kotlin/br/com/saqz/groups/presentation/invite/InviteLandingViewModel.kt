@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -21,7 +22,7 @@ class InviteLandingViewModel(
     private val inviteGateway: InviteGateway,
     private val timeZonePort: GroupSystemTimeZonePort,
     private val initialRequestSent: Boolean = false,
-    private val initialRedeemError: InviteError? = null,
+    private val initialRedeemError: InviteLandingRouteError? = null,
 ) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(
     InviteLandingState(
         isLoading = initialRedeemError != null,
@@ -125,6 +126,14 @@ private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when
     InviteError.PlanLimit -> InviteLandingError.PlanLimit
     is InviteError.DataFailure -> InviteLandingError.Network
     InviteError.GroupDeleted -> InviteLandingError.Invalid
+}
+
+private fun InviteLandingRouteError.toUiError(timeZone: TimeZone): InviteLandingError = when (this) {
+    InviteLandingRouteError.Invalid -> InviteLandingError.Invalid
+    is InviteLandingRouteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
+    is InviteLandingRouteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
+    InviteLandingRouteError.PlanLimit -> InviteLandingError.PlanLimit
+    InviteLandingRouteError.Network -> InviteLandingError.Network
 }
 
 private fun GroupSystemTimeZoneResult.toTimeZoneOrUtc(): TimeZone = when (this) {
