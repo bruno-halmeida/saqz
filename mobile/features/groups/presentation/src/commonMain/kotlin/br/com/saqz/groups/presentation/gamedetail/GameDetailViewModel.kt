@@ -73,6 +73,7 @@ class GameDetailViewModel(
         }
     }
     private fun cancel() {
+        if (state.value.cancelling) return
         val token = versionToken ?: return
         update { it.copy(cancelling = true, cancelFailed = false) }
         viewModelScope.launch {

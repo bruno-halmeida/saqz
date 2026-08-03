@@ -109,6 +109,25 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `second confirm while cancellation is in flight is ignored`() = runTest {
+        val lifecycle = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val gateway = FakeGameGateway(
+            lifecycleDeferreds = ArrayDeque(listOf(lifecycle)),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+
+        assertTrue(viewModel.state.value.cancelling)
+        assertEquals(1, gateway.lifecycleVersions.size)
+
+        lifecycle.complete(SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))))
+        assertFalse(viewModel.state.value.cancelling)
+    }
+
+    @Test
     fun `draft game does not open cancellation confirmation`() = runTest {
         val draft = sampleVersionedGame().copy(
             game = sampleVersionedGame().game.copy(status = GameStatus.Draft),
