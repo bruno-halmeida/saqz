@@ -43,6 +43,8 @@ data class AttendanceDetail(
     val waitlistCount: Int,
     val capacity: Int,
     val declinedCount: Int = 0,
+    val pendingCount: Int = 0,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 data class AttendanceRosterMember(

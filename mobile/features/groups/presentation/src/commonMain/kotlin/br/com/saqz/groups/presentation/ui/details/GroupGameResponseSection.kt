@@ -29,6 +29,8 @@ import br.com.saqz.groups.resources.game_response_day_member_fee
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_question
 import br.com.saqz.groups.resources.game_response_request_failed
+import br.com.saqz.groups.resources.game_response_retry_roster
+import br.com.saqz.groups.resources.game_response_roster_stale
 import br.com.saqz.groups.resources.game_response_waitlisted
 import br.com.saqz.groups.resources.game_response_waitlisted_unknown
 import br.com.saqz.groups.resources.game_response_yes
@@ -105,6 +107,21 @@ internal fun GroupGameResponseSection(
                 text = stringResource(Res.string.game_response_request_failed),
                 color = SaqzTheme.colors.errorForeground,
                 style = SaqzTheme.typography.support,
+            )
+        }
+        if (state.rosterStale) {
+            Text(
+                text = stringResource(Res.string.game_response_roster_stale),
+                color = SaqzTheme.colors.errorForeground,
+                style = SaqzTheme.typography.support,
+            )
+            SaqzButton(
+                label = stringResource(Res.string.game_response_retry_roster),
+                onClick = { onIntent(GroupDetailsIntent.RetryRoster) },
+                variant = SaqzButtonVariant.Ghost,
+                enabled = !state.rosterRefreshing,
+                loading = state.rosterRefreshing,
+                fullWidth = true,
             )
         }
         if (state.autoConfirmationVisible) {

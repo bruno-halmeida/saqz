@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.details
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
@@ -125,6 +126,7 @@ class GroupDetailsViewModelTest {
                 detailResult = SaqzResult.Success(
                     sampleAttendanceDetail().copy(
                         ownAttendance = AttendanceEntry("me", AttendanceStatus.Confirmed, version = 1),
+                        autoConfirmEnabled = true,
                     ),
                 ),
             ),
@@ -133,7 +135,8 @@ class GroupDetailsViewModelTest {
 
         assertEquals("game-1", vm.state.value.nextGame?.gameId)
         assertEquals(GroupDetailsResponseStatus.Confirmed, vm.state.value.memberResponse?.status)
-        assertTrue(vm.state.value.autoConfirmationVisible)
+        assertTrue(vm.state.value.autoConfirmationVisible, "switch should be visible")
+        assertTrue(vm.state.value.autoConfirmationEnabled, "persisted switch value should load")
         assertEquals(8, vm.state.value.attendance?.going)
         assertEquals(4, vm.state.value.nextGame?.availableSpots)
     }
@@ -151,6 +154,7 @@ class GroupDetailsViewModelTest {
                             availableSpots = 3,
                             waitlistCount = 1,
                             declinedCount = 3,
+                            pendingCount = 0,
                         ),
                     ),
                 ),
@@ -174,7 +178,7 @@ class GroupDetailsViewModelTest {
 
         assertEquals(9, vm.state.value.attendance?.going)
         assertEquals(3, vm.state.value.attendance?.notGoing)
-        assertEquals(1, vm.state.value.attendance?.pending)
+        assertEquals(0, vm.state.value.attendance?.pending)
         assertEquals(3, vm.state.value.attendance?.availableSpots)
         assertEquals(3, vm.state.value.nextGame?.availableSpots)
         assertEquals(listOf("Promovido"), vm.state.value.nextGame?.confirmedNames)
@@ -194,6 +198,7 @@ class GroupDetailsViewModelTest {
                     availableSpots = 3,
                     waitlistCount = 2,
                     declinedCount = 2,
+                    pendingCount = 0,
                 ),
             ),
             respondResult = SaqzResult.Success(
@@ -205,6 +210,7 @@ class GroupDetailsViewModelTest {
                             availableSpots = 3,
                             waitlistCount = 1,
                             declinedCount = 3,
+                            pendingCount = 0,
                         ),
                     ),
                 ),
@@ -226,7 +232,7 @@ class GroupDetailsViewModelTest {
         assertEquals(GroupDetailsResponseStatus.Declined, vm.state.value.memberResponse?.status)
         assertEquals(9, vm.state.value.attendance?.going)
         assertEquals(3, vm.state.value.attendance?.notGoing)
-        assertEquals(1, vm.state.value.attendance?.pending)
+        assertEquals(0, vm.state.value.attendance?.pending)
         assertEquals(3, vm.state.value.nextGame?.availableSpots)
         assertEquals(listOf("Caio"), vm.state.value.nextGame?.confirmedNames)
         assertEquals(2, attendance.rosterCalls)
@@ -275,6 +281,58 @@ class GroupDetailsViewModelTest {
 
         assertFalse(vm.state.value.autoConfirmationEnabled)
         assertTrue(vm.state.value.autoConfirmationFailed)
+    }
+
+    @Test
+    fun `roster failure after response keeps authoritative counts and offers retry`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            respondResult = SaqzResult.Success(sampleVersionedAttendanceMutation()),
+        )
+        attendance.rosterResults = mutableListOf(
+            SaqzResult.Success(sampleAttendanceRoster()),
+            SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+            SaqzResult.Success(AttendanceRoster(confirmed = listOf(AttendanceRosterMember("promoted", "Promovido")), waitlisted = emptyList())),
+        )
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(9, vm.state.value.attendance?.going)
+        assertTrue(vm.state.value.rosterStale)
+        assertFalse(vm.state.value.responseFailed)
+
+        vm.onIntent(GroupDetailsIntent.RetryRoster)
+
+        assertFalse(vm.state.value.rosterStale)
+        assertEquals(listOf("Promovido"), vm.state.value.nextGame?.confirmedNames)
+        assertEquals(3, attendance.rosterCalls)
+    }
+
+    @Test
+    fun `own profile failure blocks response until retry loads membership`() = runTest {
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Connectivity)),
+        )
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            athleteGateway = athlete,
+        )
+
+        assertTrue(vm.state.value.loadFailed)
+        assertEquals(GroupUiError.Network, vm.state.value.error)
+        assertEquals(null, vm.state.value.memberResponse)
+
+        athlete.ownProfileResult = monthlyAthleteGateway().ownProfileResult
+        vm.onIntent(GroupDetailsIntent.Retry)
+
+        assertFalse(vm.state.value.loadFailed)
+        assertEquals(AthleteMembershipType.MENSALISTA, vm.state.value.membershipType)
     }
 
     private fun viewModel(

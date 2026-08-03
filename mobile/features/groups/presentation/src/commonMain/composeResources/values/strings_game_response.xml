@@ -14,4 +14,6 @@
     <string name="game_response_auto_confirmation">Confirmar presença automaticamente</string>
     <string name="game_response_request_failed">Não foi possível salvar sua resposta. Tente novamente.</string>
     <string name="game_response_auto_confirmation_failed">Não foi possível atualizar a auto-confirmação. Tente novamente.</string>
+    <string name="game_response_roster_stale">A lista de presença pode estar desatualizada.</string>
+    <string name="game_response_retry_roster">Tentar novamente</string>
 </resources>

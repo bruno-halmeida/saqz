@@ -212,6 +212,9 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                 AttendanceDetail(
                     own, confirmed, (capacity - confirmed).coerceAtLeast(0),
                     rs.getInt("waitlist_count"), capacity, rs.getLong("game_version"),
+                    rs.getInt("declined_count"),
+                    rs.getInt("pending_count"),
+                    rs.getBoolean("auto_confirm_enabled"),
                 )
             }
             .optional()
@@ -388,7 +391,15 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
                    a.responded_at,a.updated_at AS attendance_updated_at,a.version AS attendance_version,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
-                   (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count
+                   (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count,
+                   (SELECT count(*) FROM game_attendance d WHERE d.game_id=g.id AND d.status='DECLINED') AS declined_count,
+                   (SELECT count(*) FROM group_memberships pending
+                    WHERE pending.group_id=g.group_id AND pending.role='ATHLETE' AND pending.active
+                      AND NOT EXISTS (
+                          SELECT 1 FROM game_attendance response
+                          WHERE response.game_id=g.id AND response.member_user_id=pending.user_id
+                      )) AS pending_count,
+                   COALESCE(member.auto_confirm_enabled, false) AS auto_confirm_enabled
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor

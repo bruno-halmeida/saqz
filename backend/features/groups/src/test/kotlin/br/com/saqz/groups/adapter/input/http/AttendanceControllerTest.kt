@@ -37,7 +37,20 @@ class AttendanceControllerTest {
         )
     }
 
-    @Test fun `athlete read returns no response and authoritative counts`() { actor = member; val response = controller.read(ID, "$group", "$game"); assertNull(response.ownAttendance); assertEquals(0, response.confirmedCount); assertEquals(2, response.availableSpots) }
+    @Test fun `athlete read returns no response and authoritative counts`() {
+        actor = member
+        repository.record(second, AttendanceStatus.DECLINED)
+        repository.autoConfirmEnabled = true
+
+        val response = controller.read(ID, "$group", "$game")
+
+        assertNull(response.ownAttendance)
+        assertEquals(0, response.confirmedCount)
+        assertEquals(2, response.availableSpots)
+        assertEquals(1, response.declinedCount)
+        assertEquals(1, response.pendingCount)
+        assertTrue(response.autoConfirmEnabled)
+    }
     @Test fun `athlete read returns only own confirmed response`() { actor = member; repository.record(member, AttendanceStatus.CONFIRMED); repository.record(second, AttendanceStatus.DECLINED); val own = controller.read(ID, "$group", "$game").ownAttendance!!; assertEquals(member, own.memberId); assertEquals("CONFIRMED", own.status) }
     @Test fun `athlete read returns own stable waitlist position`() { actor = member; repository.record(member, AttendanceStatus.WAITLISTED, 7); val response = controller.read(ID, "$group", "$game"); assertEquals(7, response.ownAttendance!!.waitlistPosition) }
     @Test fun `nonmember attendance read is privacy hidden`() { actor = UUID.randomUUID(); assertFailsWith<GameNotFoundException> { controller.read(ID, "$group", "$game") } }
@@ -187,7 +200,18 @@ class AttendanceControllerTest {
             return AttendancePromotionReplay(records.getValue(event.memberId), event)
         }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }
-        override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? = if (groupId == group && gameId == game && role(actorId) != null) AttendanceDetail(records[actorId], confirmed(), (capacity - confirmed()).coerceAtLeast(0), records.values.count { it.status == AttendanceStatus.WAITLISTED }, capacity, version) else null
+        var autoConfirmEnabled = false
+        override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? = if (groupId == group && gameId == game && role(actorId) != null) AttendanceDetail(
+            records[actorId],
+            confirmed(),
+            (capacity - confirmed()).coerceAtLeast(0),
+            records.values.count { it.status == AttendanceStatus.WAITLISTED },
+            capacity,
+            version,
+            records.values.count { it.status == AttendanceStatus.DECLINED },
+            members.count { it !in records },
+            actorId == member && autoConfirmEnabled,
+        ) else null
         override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
             if (groupId != group || gameId != game || role(actorId) == null) return null
             fun entries(status: AttendanceStatus) = records.values.filter { it.status == status }

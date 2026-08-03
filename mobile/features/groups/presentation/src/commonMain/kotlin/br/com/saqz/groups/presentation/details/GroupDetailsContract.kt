@@ -31,6 +31,8 @@ data class GroupDetailsState(
     val memberResponse: GroupDetailsResponseUi? = null,
     val responding: Boolean = false,
     val responseFailed: Boolean = false,
+    val rosterStale: Boolean = false,
+    val rosterRefreshing: Boolean = false,
     val membershipType: AthleteMembershipType? = null,
     val autoConfirmationVisible: Boolean = false,
     val autoConfirmationEnabled: Boolean = false,
@@ -151,6 +153,8 @@ sealed interface GroupDetailsIntent {
     data object OpenCashbox : GroupDetailsIntent
 
     data object Leave : GroupDetailsIntent
+
+    data object RetryRoster : GroupDetailsIntent
 
     data class Respond(val intent: AttendanceIntent) : GroupDetailsIntent
 

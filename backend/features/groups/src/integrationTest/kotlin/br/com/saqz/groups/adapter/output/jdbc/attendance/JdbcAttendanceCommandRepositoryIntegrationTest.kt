@@ -51,6 +51,18 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `roster of a game without responses is empty for a member`() { val f = fixture(); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(emptyList(), roster.confirmed); assertEquals(emptyList(), roster.waitlisted) }
     @Test fun `roster stays visible to the owner and hidden from nonmembers`() { val f = fixture(); attendance(f, f.member, "CONFIRMED", "Ana"); assertEquals(listOf("Ana"), requireNotNull(rosterOf(f, f.owner)).confirmed.map { it.displayName }); assertNull(rosterOf(f, user("outsider"))); assertNull(rosterOf(fixture("other"), f.member)) }
     @Test fun `roster names survive a member rename`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='${f.member}'"); assertEquals(listOf("User"), requireNotNull(rosterOf(f, f.member)).confirmed.map { it.displayName }) }
+    @Test fun `detail exposes declined pending and own auto confirmation`() {
+        val f = fixture()
+        attendance(f, member(f.group, "declined"), "DECLINED")
+        waitlist(f, member(f.group, "waitlisted"), 1)
+        execute("UPDATE group_memberships SET auto_confirm_enabled=true WHERE group_id='${f.group}' AND user_id='${f.member}'")
+
+        val detail = requireNotNull(JdbcAttendanceCommandRepository(dataSource).find(f.member, f.group, f.game))
+
+        assertEquals(1, detail.declinedCount)
+        assertEquals(1, detail.pendingCount)
+        assertEquals(true, detail.autoConfirmEnabled)
+    }
 
     // --- VUL-152: ordenação da reserva por faixa + FIFO e colapso pós-prazo ---
     @Test fun `roster with priority on lists mensalistas before avulsos in fifo within each tier`() {

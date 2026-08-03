@@ -65,11 +65,16 @@ class GameDetailViewModelTest {
     @Test
     fun `loads game details`() = runTest {
         val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame()))
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(sampleAttendanceDetail().copy(declinedCount = 2, pendingCount = 3)),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), attendance, FakeAthleteGateway())
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(1, gateway.readCalls)
         assertNotNull(viewModel.state.value.header)
         assertNotNull(viewModel.state.value.attendance)
+        assertEquals(2, viewModel.state.value.attendance?.declined)
+        assertEquals(3, viewModel.state.value.attendance?.pending)
     }
 
     @Test

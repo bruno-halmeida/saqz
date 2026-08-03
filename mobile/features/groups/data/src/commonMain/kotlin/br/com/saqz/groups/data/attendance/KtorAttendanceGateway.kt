@@ -75,6 +75,8 @@ internal data class AttendanceDetailTransport(
     val waitlistCount: Int,
     val capacity: Int,
     val declinedCount: Int = 0,
+    val pendingCount: Int = 0,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 @Serializable
@@ -374,6 +376,8 @@ private fun AttendanceDetailTransport.toDomain() = AttendanceDetail(
     waitlistCount = waitlistCount,
     capacity = capacity,
     declinedCount = declinedCount,
+    pendingCount = pendingCount,
+    autoConfirmEnabled = autoConfirmEnabled,
 )
 
 private fun AttendanceMutationTransport.toDomain() = AttendanceMutation(

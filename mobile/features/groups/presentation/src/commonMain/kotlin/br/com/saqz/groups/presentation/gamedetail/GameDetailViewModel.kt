@@ -370,8 +370,8 @@ class GameDetailViewModel(
         confirmed = confirmedCount,
         capacity = capacity,
         availableSpots = availableSpots,
-        declined = 0,
-        pending = waitlistCount,
+        declined = declinedCount,
+        pending = pendingCount,
     )
 
     private fun AttendanceRosterMember.toConfirmed(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(

@@ -5,6 +5,7 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
@@ -47,6 +48,7 @@ class GroupDetailsViewModel(
     private var loadGeneration = 0
     private var responseGeneration = 0L
     private var autoConfirmationGeneration = 0L
+    private var rosterGeneration = 0L
 
     init {
         load()
@@ -70,6 +72,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
             GroupDetailsIntent.OpenVenueMap -> emit(GroupDetailsEffect.OpenMap)
             GroupDetailsIntent.Leave -> emit(GroupDetailsEffect.Left)
+            GroupDetailsIntent.RetryRoster -> retryRoster()
             GroupDetailsIntent.ConfirmAttendance,
             GroupDetailsIntent.ViewGame,
             GroupDetailsIntent.NotifyPending,
@@ -85,6 +88,7 @@ class GroupDetailsViewModel(
         val generation = ++loadGeneration
         responseGeneration++
         autoConfirmationGeneration++
+        rosterGeneration++
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
             when (val groupResult = groupGateway.read(GroupId(groupId))) {
@@ -126,11 +130,12 @@ class GroupDetailsViewModel(
         when {
             detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError())
             rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError())
+            profileResult is SaqzResult.Failure -> showFailure(generation, profileResult.error.toUiError())
             else -> {
                 val detail = (detailResult as SaqzResult.Success).value
                 val roster = (rosterResult as SaqzResult.Success).value
-                val membershipType = (profileResult as? SaqzResult.Success)?.value?.memberships
-                    ?.firstOrNull { it.groupId == GroupId(groupId) }
+                val membershipType = (profileResult as SaqzResult.Success).value.memberships
+                    .firstOrNull { it.groupId == GroupId(groupId) }
                     ?.membershipType
                 update {
                     it.copy(
@@ -146,9 +151,11 @@ class GroupDetailsViewModel(
                         autoConfirmationVisible = group.role == GroupRole.ATHLETE &&
                             membershipType == AthleteMembershipType.MENSALISTA &&
                             group.gameConfig.autoConfirmEnabled,
-                        autoConfirmationEnabled = false,
+                        autoConfirmationEnabled = detail.autoConfirmEnabled,
                         autoConfirmationUpdating = false,
                         autoConfirmationFailed = false,
+                        rosterStale = false,
+                        rosterRefreshing = false,
                     ).from(group)
                 }
             }
@@ -189,6 +196,8 @@ class GroupDetailsViewModel(
                             memberResponse = result.value.value.attendance.toResponse(roster),
                             responding = false,
                             responseFailed = false,
+                            rosterStale = rosterResult is SaqzResult.Failure,
+                            rosterRefreshing = false,
                         )
                     }
                 }
@@ -201,6 +210,30 @@ class GroupDetailsViewModel(
                             it.nextGame?.copy(confirmationOpen = false)
                         } else it.nextGame,
                     )
+                }
+            }
+        }
+    }
+
+    private fun retryRoster() {
+        val game = state.value.nextGame ?: return
+        if (!state.value.rosterStale || state.value.rosterRefreshing) return
+        val generation = ++rosterGeneration
+        val loadAtStart = loadGeneration
+        update { it.copy(rosterRefreshing = true) }
+        viewModelScope.launch {
+            when (val result = attendanceGateway.roster(GroupId(groupId), game.gameId)) {
+                is SaqzResult.Success -> if (generation == rosterGeneration && loadAtStart == loadGeneration) {
+                    update {
+                        it.copy(
+                            nextGame = it.nextGame?.reconcileRoster(result.value),
+                            rosterStale = false,
+                            rosterRefreshing = false,
+                        )
+                    }
+                }
+                is SaqzResult.Failure -> if (generation == rosterGeneration && loadAtStart == loadGeneration) {
+                    update { it.copy(rosterStale = true, rosterRefreshing = false) }
                 }
             }
         }
@@ -254,7 +287,7 @@ class GroupDetailsViewModel(
         ratio = "$confirmedCount/$capacity",
         going = confirmedCount,
         notGoing = declinedCount,
-        pending = waitlistCount,
+        pending = pendingCount,
         availableSpots = availableSpots,
     )
 
@@ -273,6 +306,10 @@ class GroupDetailsViewModel(
         confirmedSummary = "${detail.confirmedCount} de ${detail.capacity} confirmados",
         confirmedNames = roster?.confirmed?.map { it.displayName } ?: confirmedNames,
         availableSpots = detail.availableSpots,
+    )
+
+    private fun NextGameUi.reconcileRoster(roster: AttendanceRoster) = copy(
+        confirmedNames = roster.confirmed.map { it.displayName },
     )
 
     private fun AttendanceEntry.toResponse(roster: AttendanceRoster?) = GroupDetailsResponseUi(
@@ -397,4 +434,9 @@ private fun AttendanceError.toUiError(): GroupUiError = when (this) {
     is AttendanceError.Validation,
     is AttendanceError.Data,
     -> GroupUiError.Network
+}
+
+private fun AthleteError.toUiError(): GroupUiError = when (this) {
+    is AthleteError.Validation -> GroupUiError.Validation
+    is AthleteError.DataFailure -> GroupUiError.Network
 }
