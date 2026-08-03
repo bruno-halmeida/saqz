@@ -35,6 +35,7 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.domain.PhoneVisibility
@@ -293,6 +294,7 @@ private fun EditProfileFieldsCard(
             onValueChange = { onIntent(EditProfileIntent.UpdatePhone(it)) },
             label = stringResource(Res.string.profile_edit_phone),
             kind = SaqzInputKind.Phone,
+            visualTransformation = PhoneVisualTransformation(),
             errorText = state.fieldError(
                 Res.string.profile_edit_error_phone,
                 EditProfileFieldError.PhoneRequired,

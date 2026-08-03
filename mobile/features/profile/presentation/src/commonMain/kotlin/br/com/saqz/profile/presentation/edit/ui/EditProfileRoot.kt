@@ -24,6 +24,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun EditProfileRoot(
     onSave: () -> Unit,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: EditProfileViewModel = koinViewModel(),
     imageLoader: ImageLoader = koinInject(),
 ) {
@@ -45,7 +46,7 @@ fun EditProfileRoot(
             EditProfileEffect.Saved -> onSave()
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize()) {
         EditProfileScreen(
             state = state.copy(photoUrl = photoUrl),
             onIntent = viewModel::onIntent,

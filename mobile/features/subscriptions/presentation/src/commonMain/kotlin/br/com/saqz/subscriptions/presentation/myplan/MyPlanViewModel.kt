@@ -54,7 +54,10 @@ class MyPlanViewModel(
             MyPlanIntent.Retry -> load()
             MyPlanIntent.OpenChangePlan -> update { it.copy(isChangeSheetOpen = true, changeError = null) }
             MyPlanIntent.DismissChangePlan -> update { it.copy(isChangeSheetOpen = false, changeError = null) }
-            is MyPlanIntent.SelectPlan -> changePlan(intent.planId)
+            is MyPlanIntent.SelectPlan -> {
+                update { it.copy(isChangeSheetOpen = false) }
+                changePlan(intent.planId)
+            }
             MyPlanIntent.OpenReceipts -> update { it.copy(isReceiptsSheetOpen = true) }
             MyPlanIntent.DismissReceipts -> update { it.copy(isReceiptsSheetOpen = false) }
             MyPlanIntent.RetryReceipts -> loadReceipts()
@@ -192,7 +195,15 @@ class MyPlanViewModel(
         viewModelScope.launch {
             gateway.changePlan(ChangePlanCommand(requestId = newRequestId(), targetPlanId = planId))
                 .onSuccess(::applyChangeResult)
-                .onFailure { error -> update { it.copy(isChangingPlan = false, changeError = changeErrorMessage(error, planId)) } }
+                .onFailure { error ->
+                    update {
+                        it.copy(
+                            isChangingPlan = false,
+                            isChangeSheetOpen = true,
+                            changeError = changeErrorMessage(error, planId),
+                        )
+                    }
+                }
         }
     }
 

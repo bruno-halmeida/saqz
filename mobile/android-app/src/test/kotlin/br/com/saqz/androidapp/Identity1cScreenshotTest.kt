@@ -38,7 +38,10 @@ class Identity1cScreenshotTest {
 
     @Test
     fun identityCompletion() = capture("1c-completar-cadastro") {
-        IdentityCompletionScreen(state = IdentityCompletionState(name = "Ana Costa"), onIntent = {})
+        IdentityCompletionScreen(
+            state = IdentityCompletionState(name = "Ana Costa", phone = "11999990000"),
+            onIntent = {},
+        )
     }
 
     // A foto que não subiu: o aviso entra acima dos campos e o botão continua clicável.

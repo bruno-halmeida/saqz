@@ -74,16 +74,13 @@ sealed interface EditProfileEffect {
 internal fun Profile.toEditProfileForm(): EditProfileForm = EditProfileForm(
     displayName = user.displayName,
     nickname = user.nickname.orEmpty(),
-    phone = user.phone?.let(::formatPhoneForDisplay).orEmpty(),
+    phone = user.phone?.let(::phoneDigitsForInput).orEmpty(),
     email = user.email.orEmpty(),
     city = user.city.orEmpty(),
     phoneVisibility = user.phoneVisibility,
 )
 
-internal fun formatPhoneForDisplay(phone: String): String {
-    val digits = phone.filter(Char::isDigit).removePrefix("55")
-    return when {
-        digits.length == 11 -> "(${digits.take(2)}) ${digits.drop(2).take(5)}-${digits.takeLast(4)}"
-        else -> phone
-    }
+internal fun phoneDigitsForInput(phone: String): String {
+    val digits = phone.filter(Char::isDigit)
+    return if (digits.length == 13 && digits.startsWith("55")) digits.drop(2) else digits
 }

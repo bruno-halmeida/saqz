@@ -75,9 +75,9 @@ class GroupSetupViewModel(
                 onTextChange(KeyVenueAddress, intent.value, GroupTextLimits.VenueAddressMax) { value ->
                     withVenue { copy(address = value) }
                 }
-            is GroupSetupIntent.SelectModality -> onFormChange { copy(modality = intent.value) }
+            is GroupSetupIntent.SelectModality -> onFormChange(closeSheet = true) { copy(modality = intent.value) }
             is GroupSetupIntent.SelectComposition -> onFormChange { copy(composition = intent.value) }
-            is GroupSetupIntent.SelectLevel -> onFormChange { copy(level = intent.value) }
+            is GroupSetupIntent.SelectLevel -> onFormChange(closeSheet = true) { copy(level = intent.value) }
             is GroupSetupIntent.SelectPlayStyle -> onFormChange { copy(playStyle = intent.value) }
             is GroupSetupIntent.UpdateCapacity -> onFormChange { copy(defaultCapacity = intent.value) }
             is GroupSetupIntent.SelectConfirmationLead ->
@@ -326,9 +326,16 @@ class GroupSetupViewModel(
         onFormChange { edit(capped) }
     }
 
-    private fun onFormChange(transform: GroupSetupForm.() -> GroupSetupForm) {
+    private fun onFormChange(
+        closeSheet: Boolean = false,
+        transform: GroupSetupForm.() -> GroupSetupForm,
+    ) {
         discardCreationKey()
-        update { it.withForm(transform).copy(creationCommandKey = null).revalidated() }
+        update {
+            it.withForm(transform)
+                .copy(creationCommandKey = null, sheet = if (closeSheet) null else it.sheet)
+                .revalidated()
+        }
     }
 }
 

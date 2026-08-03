@@ -111,5 +111,10 @@ class EditProfileScreenshotTest {
         compose.onRoot().captureRoboImage("screenshots/vul-129/$name.png")
     }
 
-    private fun loadedState() = EditProfileState.loaded(FakeProfileGateway().profile)
+    private fun loadedState() = EditProfileState.loaded(FakeProfileGateway().profile).let { state ->
+        state.copy(
+            form = state.form.copy(phone = "11987654321"),
+            originalForm = state.originalForm.copy(phone = "11987654321"),
+        )
+    }
 }

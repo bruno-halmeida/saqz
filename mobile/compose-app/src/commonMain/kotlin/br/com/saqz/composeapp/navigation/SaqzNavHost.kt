@@ -379,9 +379,6 @@ private fun GroupSetupDestination(mode: GroupSetupMode, backStack: NavBackStack<
         // Apagou: `Details` e `Edit` do grupo morto ficam para trás; volta para a lista.
         onGroupDelete = { while (backStack.size > 1) backStack.removeLastOrNull() },
         onDraftSave = pop,
-        // TODO(Fluxo 2 · Grupos, 2h): a foto passa pelo `GroupPhotoSelectionPort`, que é
-        // port nativo e não rota — a ligação é do ticket que trouxer o gateway.
-        onPickPhoto = {},
         onBack = pop,
     )
 }

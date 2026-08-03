@@ -5,10 +5,15 @@ import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
+import br.com.saqz.groups.domain.photo.GroupPhotoGateway
+import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
+import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
+import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
 import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
@@ -43,4 +48,13 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupDetailsViewModel(params.get(), get()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
+    viewModel {
+        GroupPhotoViewModel(
+            profileGateway = get(),
+            photoGateway = get<GroupPhotoGateway>(),
+            selection = get<GroupPhotoSelectionPort>(),
+            encoder = get<GroupPhotoEncoderPort>(),
+            previews = get<GroupPhotoPreviewPort>(),
+        )
+    }
 }

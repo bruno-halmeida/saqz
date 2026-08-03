@@ -128,6 +128,8 @@ interface GroupPhotoGateway {
 sealed interface GroupPhotoSelectionResult {
     data class Selected(val value: GroupPhotoSelection) : GroupPhotoSelectionResult
     data object Cancelled : GroupPhotoSelectionResult
+    data object CameraPermissionDenied : GroupPhotoSelectionResult
+    data object LibraryPermissionDenied : GroupPhotoSelectionResult
     data object Failed : GroupPhotoSelectionResult
 }
 

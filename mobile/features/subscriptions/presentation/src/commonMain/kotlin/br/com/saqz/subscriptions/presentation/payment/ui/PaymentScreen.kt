@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.CpfVisualTransformation
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -177,6 +178,7 @@ private fun PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) ->
             onValueChange = { onIntent(PaymentIntent.UpdateCpfCnpj(it)) },
             label = stringResource(Res.string.payment_cpf_cnpj_label),
             kind = SaqzInputKind.Text,
+            visualTransformation = CpfVisualTransformation(),
             errorText = state.cpfCnpjError?.asString(),
             invalid = state.cpfCnpjError != null,
             modifier = Modifier.testTag(PaymentTags.CpfCnpj),

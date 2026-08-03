@@ -284,6 +284,21 @@ class GroupSetupViewModelTest {
         assertNull(viewModel.state.value.sheet)
     }
 
+    @Test
+    fun `escolher modalidade ou categoria aplica e fecha a folha`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Modality))
+        viewModel.onIntent(GroupSetupIntent.SelectModality(GroupModality.BEACH_VOLLEYBALL))
+        assertEquals(GroupModality.BEACH_VOLLEYBALL, viewModel.state.value.form.modality)
+        assertNull(viewModel.state.value.sheet)
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Level))
+        viewModel.onIntent(GroupSetupIntent.SelectLevel(GroupLevel.ADVANCED))
+        assertEquals(GroupLevel.ADVANCED, viewModel.state.value.form.level)
+        assertNull(viewModel.state.value.sheet)
+    }
+
     /** Folha fechada, intent inválido: o segundo toque em Salvar não pode duplicar. */
     @Test
     fun `confirmar o horario duas vezes seguidas entra uma vez so`() = runTest(mainDispatcher) {

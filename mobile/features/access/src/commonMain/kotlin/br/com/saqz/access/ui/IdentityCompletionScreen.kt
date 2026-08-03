@@ -47,6 +47,7 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
@@ -156,6 +157,7 @@ fun IdentityCompletionScreen(
         onValueChange = { onIntent(IdentityCompletionIntent.UpdatePhone(it)) },
         label = stringResource(Res.string.register_phone_placeholder),
         kind = SaqzInputKind.Phone,
+        visualTransformation = PhoneVisualTransformation(),
         enabled = !state.isLoading,
         inlineLabel = true,
         helperText = stringResource(Res.string.identity_phone_privacy),
