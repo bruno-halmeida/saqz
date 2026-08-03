@@ -351,6 +351,10 @@ class GroupDetailsViewModel(
                 status = GroupDetailsResponseStatus.Waitlisted,
                 waitlistPosition = roster.waitlisted.indexOfFirst { it.memberId == id } + 1L,
             )
+            status != GroupDetailsResponseStatus.Declined -> copy(
+                status = GroupDetailsResponseStatus.Declined,
+                waitlistPosition = null,
+            )
             else -> this
         }
     }

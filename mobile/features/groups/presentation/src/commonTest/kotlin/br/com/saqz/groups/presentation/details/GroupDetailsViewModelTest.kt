@@ -406,6 +406,35 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `roster retry reconciles an absent active response as declined`() = runTest {
+        val mutation = sampleVersionedAttendanceMutation().copy(
+            value = sampleVersionedAttendanceMutation().value.copy(
+                attendance = AttendanceEntry("me", AttendanceStatus.Confirmed, version = 2),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Success(mutation))
+        attendance.rosterResults = mutableListOf(
+            SaqzResult.Success(sampleAttendanceRoster()),
+            SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+            SaqzResult.Success(sampleAttendanceRoster()),
+        )
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(GroupDetailsResponseStatus.Confirmed, vm.state.value.memberResponse?.status)
+
+        vm.onIntent(GroupDetailsIntent.RetryRoster)
+
+        assertFalse(vm.state.value.rosterStale)
+        assertEquals(GroupDetailsResponseStatus.Declined, vm.state.value.memberResponse?.status)
+    }
+
+    @Test
     fun `successful roster read reconciles a waitlisted response promoted concurrently`() = runTest {
         val mutation = sampleVersionedAttendanceMutation().copy(
             value = sampleVersionedAttendanceMutation().value.copy(
