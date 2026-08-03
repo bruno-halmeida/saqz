@@ -32,6 +32,7 @@ import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSpinner
@@ -242,15 +243,20 @@ private fun FormScroll(
             onNameChange = { onIntent(GameEditorIntent.UpdateVenueName(it)) },
             onAddressChange = { onIntent(GameEditorIntent.UpdateVenueAddress(it)) },
         )
-        SaqzCard {
-            SaqzSectionHeader(title = stringResource(Res.string.game_editor_capacity_label))
-            SaqzStepper(
-                value = state.form.capacity,
-                onValueChange = { onIntent(GameEditorIntent.UpdateCapacity(it)) },
-                min = 2,
-                max = 100,
-            )
-            HelperText(stringResource(Res.string.game_editor_capacity_helper))
+        SaqzCard(padded = false) {
+            Column(
+                modifier = Modifier.padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+                verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            ) {
+                SaqzStepper(
+                    value = state.form.capacity,
+                    onValueChange = { onIntent(GameEditorIntent.UpdateCapacity(it)) },
+                    min = 2,
+                    max = 100,
+                    label = stringResource(Res.string.game_editor_capacity_label),
+                )
+                HelperText(stringResource(Res.string.game_editor_capacity_helper))
+            }
         }
         ConfirmationLeadChips(
             selected = state.form.confirmationLeadMinutes,
@@ -379,19 +385,18 @@ private fun DateTimeFields(
     val dateDisplay = if (form.localDate.isNotBlank()) formatDisplayDate(form.localDate) else ""
     val timeDisplay = if (form.localTime.isNotBlank()) formatDisplayTime(form.localTime) else ""
     Column(verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
-        SaqzCard {
-            SaqzSectionHeader(title = stringResource(Res.string.game_editor_date_label))
+        SaqzCard(padded = false) {
             PickerRow(
+                label = stringResource(Res.string.game_editor_date_label),
                 value = dateDisplay,
                 placeholder = stringResource(Res.string.game_editor_date_placeholder),
                 errorText = dateError,
                 tag = GameEditorTags.Date,
                 onClick = onOpenPicker,
             )
-        }
-        SaqzCard {
-            SaqzSectionHeader(title = stringResource(Res.string.game_editor_time_label))
+            SaqzDivider()
             PickerRow(
+                label = stringResource(Res.string.game_editor_time_label),
                 value = timeDisplay,
                 placeholder = stringResource(Res.string.game_editor_time_placeholder),
                 errorText = timeError,
@@ -404,6 +409,7 @@ private fun DateTimeFields(
 
 @Composable
 private fun PickerRow(
+    label: String,
     value: String,
     placeholder: String,
     errorText: String?,
@@ -417,25 +423,39 @@ private fun PickerRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
-            .testTag(tag)
-            .background(colors.surface, shape)
-            .then(
-                if (errorText == null) Modifier else Modifier.border(1.dp, colors.errorForeground, shape),
-            )
-            .padding(metrics.horizontalPadding),
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+                .testTag(tag)
+                .background(colors.surface, shape)
+                .then(
+                    if (errorText == null) Modifier else Modifier.border(1.dp, colors.errorForeground, shape),
+                )
+                .padding(horizontal = metrics.horizontalPadding, vertical = metrics.subGrid),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = value.ifBlank { placeholder },
-                style = SaqzTheme.typography.body,
-                color = if (value.isBlank()) colors.textPlaceholder else colors.textPrimary,
+            Column(
                 modifier = Modifier.weight(1f),
-            )
+                verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            ) {
+                Text(label, style = SaqzTheme.typography.caption, color = colors.textSecondary)
+                Text(
+                    text = value.ifBlank { placeholder },
+                    style = SaqzTheme.typography.body,
+                    color = if (value.isBlank()) colors.textPlaceholder else colors.textPrimary,
+                )
+            }
             br.com.saqz.designsystem.SaqzIcon(br.com.saqz.designsystem.SaqzIcons.ChevronRight, tint = colors.textSecondary)
         }
         if (errorText != null) {
-            Text(errorText, style = SaqzTheme.typography.caption, color = colors.errorForeground)
+            Text(
+                errorText,
+                style = SaqzTheme.typography.caption,
+                color = colors.errorForeground,
+                modifier = Modifier.padding(
+                    start = metrics.horizontalPadding,
+                    end = metrics.horizontalPadding,
+                    bottom = metrics.subGrid,
+                ),
+            )
         }
     }
 }
@@ -471,23 +491,28 @@ private fun VenueFields(
     onAddressChange: (String) -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
-    SaqzCard {
-        SaqzSectionHeader(title = stringResource(Res.string.game_editor_venue_label))
-        SaqzInput(
-            value = venue?.name.orEmpty(),
-            onValueChange = onNameChange,
-            label = stringResource(Res.string.game_editor_venue_label),
-            showLabel = false,
-            placeholder = stringResource(Res.string.game_editor_venue_name_hint),
-        )
-        SaqzInput(
-            value = venue?.address.orEmpty(),
-            onValueChange = onAddressChange,
-            label = stringResource(Res.string.game_editor_venue_address_label),
-            showLabel = false,
-            placeholder = stringResource(Res.string.game_editor_venue_address_hint),
-        )
-        HelperText(stringResource(Res.string.game_editor_venue_helper))
+    SaqzCard(padded = false) {
+        Column(
+            modifier = Modifier.padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+            verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+        ) {
+            SaqzSectionHeader(title = stringResource(Res.string.game_editor_venue_label))
+            SaqzInput(
+                value = venue?.name.orEmpty(),
+                onValueChange = onNameChange,
+                label = stringResource(Res.string.game_editor_venue_label),
+                showLabel = false,
+                placeholder = stringResource(Res.string.game_editor_venue_name_hint),
+            )
+            SaqzInput(
+                value = venue?.address.orEmpty(),
+                onValueChange = onAddressChange,
+                label = stringResource(Res.string.game_editor_venue_address_label),
+                showLabel = false,
+                placeholder = stringResource(Res.string.game_editor_venue_address_hint),
+            )
+            HelperText(stringResource(Res.string.game_editor_venue_helper))
+        }
     }
 }
 
