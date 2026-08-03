@@ -53,8 +53,6 @@ sealed interface GroupListIntent {
 
     data object CreateGroup : GroupListIntent
 
-    data object JoinWithCode : GroupListIntent
-
     data class AcceptInvite(val id: String) : GroupListIntent
 
     data class DeclineInvite(val id: String) : GroupListIntent
@@ -71,5 +69,4 @@ sealed interface GroupListEffect {
      */
     data object OpenPlans : GroupListEffect
 
-    data object OpenJoinWithCode : GroupListEffect
 }

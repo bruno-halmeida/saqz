@@ -26,7 +26,6 @@ import br.com.saqz.groups.presentation.list.GroupListState
 internal object GroupListTags {
     const val Create = "group-list-create"
     const val Empty = "group-list-empty"
-    const val EmptyJoin = "group-list-empty-join"
     const val Failure = "group-list-failure"
     const val InviteAccept = "group-list-invite-accept"
     const val InviteDecline = "group-list-invite-decline"
@@ -67,10 +66,7 @@ fun GroupListScreen(
                 error = state.error,
                 onRetry = { onIntent(GroupListIntent.Retry) },
             )
-            state.isEmpty -> GroupListEmpty(
-                onCreate = onCreate,
-                onJoinWithCode = { onIntent(GroupListIntent.JoinWithCode) },
-            )
+            state.isEmpty -> GroupListEmpty(onCreate = onCreate)
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),

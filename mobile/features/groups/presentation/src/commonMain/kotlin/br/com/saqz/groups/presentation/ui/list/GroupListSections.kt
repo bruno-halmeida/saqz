@@ -52,7 +52,6 @@ import br.com.saqz.groups.resources.groups_attendance_going
 import br.com.saqz.groups.resources.groups_confirm
 import br.com.saqz.groups.resources.groups_empty_body
 import br.com.saqz.groups.resources.groups_empty_create
-import br.com.saqz.groups.resources.groups_empty_join
 import br.com.saqz.groups.resources.groups_empty_title
 import br.com.saqz.groups.resources.groups_invite_accept
 import br.com.saqz.groups.resources.groups_invite_decline
@@ -338,7 +337,6 @@ internal fun GroupInviteCard(
 @Composable
 internal fun GroupListEmpty(
     onCreate: () -> Unit,
-    onJoinWithCode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -355,12 +353,6 @@ internal fun GroupListEmpty(
             action = stringResource(Res.string.groups_empty_create),
             onAction = onCreate,
             modifier = Modifier.testTag(GroupListTags.Empty),
-        )
-        SaqzButton(
-            label = stringResource(Res.string.groups_empty_join),
-            onClick = onJoinWithCode,
-            variant = SaqzButtonVariant.Secondary,
-            modifier = Modifier.testTag(GroupListTags.EmptyJoin),
         )
     }
 }

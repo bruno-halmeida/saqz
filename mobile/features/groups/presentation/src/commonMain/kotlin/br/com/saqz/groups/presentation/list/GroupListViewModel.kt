@@ -27,7 +27,6 @@ class GroupListViewModel(
         when (intent) {
             is GroupListIntent.OpenGroup -> emit(GroupListEffect.OpenGroup(intent.id))
             GroupListIntent.CreateGroup -> emit(GroupListEffect.OpenPlans)
-            GroupListIntent.JoinWithCode -> emit(GroupListEffect.OpenJoinWithCode)
             is GroupListIntent.AcceptInvite -> dismissInvite(intent.id)
             is GroupListIntent.DeclineInvite -> dismissInvite(intent.id)
             GroupListIntent.Retry -> load()
