@@ -334,7 +334,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.group_id=g.group_id
-                 AND a.status IN ('CONFIRMED','WAITLISTED')
+                AND a.status IN ('CONFIRMED','WAITLISTED')
             LEFT JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
             WHERE g.group_id=:group AND g.id=:game
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
@@ -343,7 +343,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                        WHEN a.status='WAITLISTED' AND g.confirmation_deadline >= now() AND ag.mensalista_priority
                             AND m.membership_type='MENSALISTA' THEN 1
                        WHEN a.status='WAITLISTED' AND g.confirmation_deadline >= now() AND ag.mensalista_priority
-                            AND m.membership_type<>'MENSALISTA' THEN 2
+                            AND (m.membership_type IS NULL OR m.membership_type<>'MENSALISTA') THEN 2
                        ELSE 1
                      END,
                      a.waitlist_sequence NULLS FIRST,

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.attendance
 
+import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.*
@@ -97,6 +98,19 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         waitlist(f, mensalistaLate, 2, "Mensalista2")
         val roster = requireNotNull(rosterOf(f, f.member))
         assertEquals(listOf("Mensalista2", "Avulso1"), roster.waitlisted.map { it.displayName })
+    }
+
+    @Test fun `roster puts removed membership in the non-priority tier`() {
+        val f = fixture(capacity = 2)
+        val avulsoEarly = member(f.group, "avulso-early", "AVULSO")
+        val mensalista = member(f.group, "mensalista")
+        val removedMensalista = member(f.group, "removed-mensalista")
+        waitlist(f, avulsoEarly, 1, "Avulso1")
+        waitlist(f, mensalista, 2, "Mensalista2")
+        waitlist(f, removedMensalista, 3, "Removido3")
+        JdbcAthleteRepository(dataSource).remove(f.group, removedMensalista)
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(listOf("Mensalista2", "Avulso1", "Removido3"), roster.waitlisted.map { it.displayName })
     }
 
     @Test fun `paid confirmation creates exactly one pending charge`() { val f = fixture(fee = 2500); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(1, count("group_charges")); assertEquals("PENDING", string("SELECT status FROM group_charges")) }
