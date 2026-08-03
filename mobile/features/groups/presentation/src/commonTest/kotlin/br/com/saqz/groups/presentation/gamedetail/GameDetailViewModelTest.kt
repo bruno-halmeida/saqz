@@ -81,4 +81,38 @@ class GameDetailViewModelTest {
         assertEquals(GameDetailEffect.Cancelled, viewModel.effects.first())
     }
 
+    @Test
+    fun `conflict reloads the game before allowing another cancel`() = runTest {
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Success(sampleVersionedGame()),
+                    SaqzResult.Success(sampleVersionedGame().copy(version = GameVersionToken("etag-3"))),
+                ),
+            ),
+            lifecycleResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Failure(GameError.Conflict),
+                    SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-4"))),
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+
+        assertEquals(GameVersionToken("etag-1"), gateway.lifecycleVersions[0])
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.cancelDialogOpen)
+        assertEquals(GameDetailStatusTone.Published, viewModel.state.value.header?.statusTone)
+
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+
+        assertEquals(GameVersionToken("etag-3"), gateway.lifecycleVersions[1])
+        assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
+        assertEquals(GameDetailEffect.Cancelled, viewModel.effects.first())
+    }
+
 }

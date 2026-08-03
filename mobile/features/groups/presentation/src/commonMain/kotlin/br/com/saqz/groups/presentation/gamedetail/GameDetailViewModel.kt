@@ -4,6 +4,7 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.Game
+import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameStatus
@@ -33,7 +34,9 @@ class GameDetailViewModel(
         when (intent) {
             GameDetailIntent.Retry -> load()
             GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)
-            GameDetailIntent.RequestCancel -> update { it.copy(cancelDialogOpen = true, cancelFailed = false) }
+            GameDetailIntent.RequestCancel -> if (state.value.header?.statusTone?.isTerminal() != true) {
+                update { it.copy(cancelDialogOpen = true, cancelFailed = false) }
+            }
             GameDetailIntent.DismissCancel -> update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
             GameDetailIntent.ConfirmCancel -> cancel()
         }
@@ -69,14 +72,20 @@ class GameDetailViewModel(
         update { it.copy(cancelling = true, cancelFailed = false) }
         viewModelScope.launch {
             val result = gameGateway.lifecycle(GroupId(groupId), gameId, token, GameLifecycleAction.Cancel)
-            if (result is SaqzResult.Success) {
-                versionToken = result.value.version
-                update {
-                    it.copy(cancelling = false, cancelDialogOpen = false, header = result.value.game.toHeader())
+            when (result) {
+                is SaqzResult.Success -> {
+                    versionToken = result.value.version
+                    update {
+                        it.copy(cancelling = false, cancelDialogOpen = false, header = result.value.game.toHeader())
+                    }
+                    emit(GameDetailEffect.Cancelled)
                 }
-                emit(GameDetailEffect.Cancelled)
-            } else {
-                update { it.copy(cancelling = false, cancelFailed = true) }
+                is SaqzResult.Failure -> if (result.error == GameError.Conflict) {
+                    update { it.copy(cancelling = false, cancelDialogOpen = false, cancelFailed = false) }
+                    load()
+                } else {
+                    update { it.copy(cancelling = false, cancelFailed = true) }
+                }
             }
         }
     }
@@ -99,22 +108,21 @@ class GameDetailViewModel(
         return GameDetailHeaderUi(
             statusTone = status.toTone(),
             confirmationDeadline = deadline,
-            weekday = local?.let { GroupWeekday.entries[it.date.dayOfWeek.ordinal] } ?: GroupWeekday.MONDAY,
+            weekday = local?.let { GroupWeekday.entries[it.date.dayOfWeek.ordinal] },
             dateTime = dateTime,
             venue = venueLine.ifBlank { venue.name },
             durationMinutes = durationMinutes,
             availableSpots = availableSpots,
         )
     }
-    // ponytail: o domínio não expõe declinedCount nem pendingCount, então "Não vou" e
-    // "Pendentes" chegam nulos e a UI omite. Quando o AttendanceGateway entregar as
-    // contagens por status, estes campos passam a ser derivados aqui.
+    // ponytail: o domínio de Game ainda não expõe declinedCount nem pendingCount. As três
+    // células continuam visíveis com zero até a leitura de attendance fornecer esses valores.
     private fun Game.toAttendance() = GameDetailAttendanceUi(
         confirmed = confirmedCount,
         capacity = capacity,
         availableSpots = availableSpots,
-        out = null,
-        pending = null,
+        declined = 0,
+        pending = 0,
     )
     private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 }

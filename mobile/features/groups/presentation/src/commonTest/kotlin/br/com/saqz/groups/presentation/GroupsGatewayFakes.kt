@@ -182,15 +182,18 @@ class FakeGameGateway(
     var readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
     var lifecycleResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
     private val reads: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
+    private val readResults: ArrayDeque<SaqzResult<VersionedGame, GameError>>? = null,
+    private val lifecycleResults: ArrayDeque<SaqzResult<VersionedGame, GameError>>? = null,
 ) : GameGateway {
     var readCalls = 0
     var lastLifecycleAction: GameLifecycleAction? = null
+    val lifecycleVersions = mutableListOf<GameVersionToken>()
 
     override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listResult
 
     override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<VersionedGame, GameError> {
         readCalls += 1
-        return reads?.getOrNull(readCalls - 1)?.await() ?: readResult
+        return reads?.getOrNull(readCalls - 1)?.await() ?: readResults?.removeFirstOrNull() ?: readResult
     }
 
     fun completeRead(index: Int, value: SaqzResult<VersionedGame, GameError>) {
@@ -214,7 +217,8 @@ class FakeGameGateway(
         action: GameLifecycleAction,
     ): SaqzResult<VersionedGame, GameError> {
         lastLifecycleAction = action
-        return lifecycleResult
+        lifecycleVersions += version
+        return lifecycleResults?.removeFirstOrNull() ?: lifecycleResult
     }
 
     override suspend fun createSeries(

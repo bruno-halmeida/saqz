@@ -29,13 +29,17 @@ data class GameDetailHeaderUi(
     val availableSpots: Int,
 )
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }
+
+fun GameDetailStatusTone.isTerminal(): Boolean = this == GameDetailStatusTone.Cancelled ||
+    this == GameDetailStatusTone.Completed
+
 @Immutable
 data class GameDetailAttendanceUi(
     val confirmed: Int,
     val capacity: Int,
     val availableSpots: Int,
-    val out: Int? = null,
-    val pending: Int? = null,
+    val declined: Int = 0,
+    val pending: Int = 0,
 )
 @Immutable
 data class GameDetailConfirmedUi(

@@ -38,6 +38,7 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailHeaderUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
+import br.com.saqz.groups.presentation.gamedetail.isTerminal
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.shortLabel
@@ -93,7 +94,13 @@ internal fun GameDetailScreen(
                 state.header?.let { GameDetailHeader(it) }
                 state.attendance?.let { GameDetailAttendance(it) }
                 state.confirmedRoster.takeIf { it.isNotEmpty() }?.let { GameDetailConfirmedList(it) }
-                if (state.isAdmin) GameDetailAdminActions(state.cancelling, onIntent)
+                if (state.isAdmin) {
+                    GameDetailAdminActions(
+                        cancelling = state.cancelling,
+                        canCancel = state.header?.statusTone?.isTerminal() != true,
+                        onIntent = onIntent,
+                    )
+                }
             }
         }
         if (state.cancelDialogOpen) GameDetailCancelSheet(state, onIntent)
@@ -153,13 +160,20 @@ private fun GameDetailAttendance(attendance: GameDetailAttendanceUi) {
                 colors.success,
                 Modifier.weight(1f),
             )
-            listOfNotNull(
-                attendance.out?.let { it to DsRes.string.attendance_out },
-                attendance.pending?.let { it to Res.string.group_details_pending },
-            ).forEach { (value, label) ->
-                SaqzDivider(vertical = true)
-                Counter(value, stringResource(label), colors.textSecondary, Modifier.weight(1f))
-            }
+            SaqzDivider(vertical = true)
+            Counter(
+                attendance.declined,
+                stringResource(DsRes.string.attendance_out),
+                colors.textSecondary,
+                Modifier.weight(1f),
+            )
+            SaqzDivider(vertical = true)
+            Counter(
+                attendance.pending,
+                stringResource(Res.string.group_details_pending),
+                colors.textSecondary,
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -193,7 +207,11 @@ private fun GameDetailConfirmedList(confirmed: List<GameDetailConfirmedUi>) {
     }
 }
 @Composable
-private fun GameDetailAdminActions(cancelling: Boolean, onIntent: (GameDetailIntent) -> Unit) = Column(
+private fun GameDetailAdminActions(
+    cancelling: Boolean,
+    canCancel: Boolean,
+    onIntent: (GameDetailIntent) -> Unit,
+) = Column(
     Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
 ) {
@@ -203,14 +221,16 @@ private fun GameDetailAdminActions(cancelling: Boolean, onIntent: (GameDetailInt
         variant = SaqzButtonVariant.Secondary,
         fullWidth = true,
     )
-    SaqzButton(
-        stringResource(Res.string.game_detail_cancel),
-        { onIntent(GameDetailIntent.RequestCancel) },
-        variant = SaqzButtonVariant.Danger,
-        fullWidth = true,
-        enabled = !cancelling,
-        loading = cancelling,
-    )
+    if (canCancel) {
+        SaqzButton(
+            stringResource(Res.string.game_detail_cancel),
+            { onIntent(GameDetailIntent.RequestCancel) },
+            variant = SaqzButtonVariant.Danger,
+            fullWidth = true,
+            enabled = !cancelling,
+            loading = cancelling,
+        )
+    }
 }
 @Composable
 private fun GameDetailCancelSheet(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) = SaqzBottomSheet(
@@ -267,7 +287,7 @@ internal object GameDetailPreviewData {
         120,
         12,
     )
-    val attendance = GameDetailAttendanceUi(4, 12, 8)
+    val attendance = GameDetailAttendanceUi(4, 12, 8, 1, 2)
     val confirmed = listOf(
         GameDetailConfirmedUi("1", "Lucas Prado", true, "Levantadora"),
         GameDetailConfirmedUi("2", "Bia Souza", false, "Ponteira"),

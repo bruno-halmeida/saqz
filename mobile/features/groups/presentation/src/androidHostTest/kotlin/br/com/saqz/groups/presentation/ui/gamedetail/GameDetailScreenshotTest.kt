@@ -55,7 +55,6 @@ class GameDetailScreenshotTest {
         "game-detail-cancelled",
         GameDetailPreviewData.admin.copy(
             header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Cancelled),
-            isAdmin = false,
         ),
     )
 
