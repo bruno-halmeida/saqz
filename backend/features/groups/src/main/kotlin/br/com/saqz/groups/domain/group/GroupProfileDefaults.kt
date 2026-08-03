@@ -57,9 +57,9 @@ data class ValidGroupProfileDefaults(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
-    val mensalistaPriority: Boolean,
-    val promotionMode: PromotionMode,
-    val autoConfirmEnabled: Boolean,
+    val mensalistaPriority: Boolean?,
+    val promotionMode: PromotionMode?,
+    val autoConfirmEnabled: Boolean?,
 )
 
 data class ValidGroupVenue(
@@ -91,9 +91,9 @@ data class GroupProfileDefaultsInput(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
-    val mensalistaPriority: Boolean = true,
-    val promotionMode: PromotionMode = PromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = false,
+    val mensalistaPriority: Boolean? = null,
+    val promotionMode: PromotionMode? = null,
+    val autoConfirmEnabled: Boolean? = null,
 )
 
 data class GroupVenueInput(

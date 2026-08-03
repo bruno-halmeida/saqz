@@ -140,7 +140,9 @@ class JdbcGroupCreationRepository(
             :city, :level, :customLevel, :playStyle, :customPlayStyle,
             :defaultCapacity, :defaultConfirmationLeadMinutes, :defaultGameFeeCents,
             :monthlyFeeCents, :monthlyDueDay,
-            :mensalistaPriority, :promotionMode, :autoConfirmEnabled,
+            COALESCE(CAST(:mensalistaPriority AS boolean), true),
+            COALESCE(:promotionMode, 'FIFO'),
+            COALESCE(CAST(:autoConfirmEnabled AS boolean), false),
             now(), now()
         )
         ON CONFLICT (owner_user_id, creation_key) DO NOTHING
@@ -190,7 +192,7 @@ class JdbcGroupCreationRepository(
             .param("monthlyFeeCents", profile.monthlyFeeCents)
             .param("monthlyDueDay", profile.monthlyDueDay)
             .param("mensalistaPriority", profile.mensalistaPriority)
-            .param("promotionMode", profile.promotionMode.name)
+            .param("promotionMode", profile.promotionMode?.name)
             .param("autoConfirmEnabled", profile.autoConfirmEnabled)
     }
 
