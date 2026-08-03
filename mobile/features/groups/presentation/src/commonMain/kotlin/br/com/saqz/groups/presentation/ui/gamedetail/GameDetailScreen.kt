@@ -38,7 +38,6 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailHeaderUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
-import br.com.saqz.groups.presentation.gamedetail.isTerminal
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.shortLabel
@@ -99,7 +98,7 @@ internal fun GameDetailScreen(
                     if (state.isAdmin) {
                         GameDetailAdminActions(
                             cancelling = state.cancelling,
-                            canCancel = state.header?.statusTone?.isTerminal() != true,
+                            canCancel = state.header?.statusTone == GameDetailStatusTone.Published,
                             onIntent = onIntent,
                         )
                     }

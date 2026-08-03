@@ -41,6 +41,15 @@ class GameDetailScreenshotTest {
     fun member() = capture("game-detail-member", GameDetailPreviewData.admin.copy(isAdmin = false))
 
     @Test
+    @Config(qualifiers = "+h1400dp")
+    fun draft() = capture(
+        "game-detail-draft",
+        GameDetailPreviewData.admin.copy(
+            header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Draft),
+        ),
+    )
+
+    @Test
     fun loading() = capture("game-detail-loading", GameDetailState())
 
     @Test

@@ -31,9 +31,6 @@ data class GameDetailHeaderUi(
 )
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }
 
-fun GameDetailStatusTone.isTerminal(): Boolean = this == GameDetailStatusTone.Cancelled ||
-    this == GameDetailStatusTone.Completed
-
 @Immutable
 data class GameDetailAttendanceUi(
     val confirmed: Int,

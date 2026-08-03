@@ -34,7 +34,7 @@ class GameDetailViewModel(
         when (intent) {
             GameDetailIntent.Retry -> load()
             GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)
-            GameDetailIntent.RequestCancel -> if (state.value.header?.statusTone?.isTerminal() != true) {
+            GameDetailIntent.RequestCancel -> if (state.value.header?.statusTone == GameDetailStatusTone.Published) {
                 update { it.copy(cancelDialogOpen = true, cancelFailed = false) }
             }
             GameDetailIntent.DismissCancel -> if (!state.value.cancelling) {

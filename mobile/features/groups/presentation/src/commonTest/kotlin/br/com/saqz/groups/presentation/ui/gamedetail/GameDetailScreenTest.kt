@@ -31,6 +31,14 @@ class GameDetailScreenTest {
     }
 
     @Test
+    fun `cancel action is hidden for draft games`() = runComposeUiTest {
+        setScreen(GameDetailStatusTone.Draft)
+
+        onAllNodesWithText("Cancelar jogo").assertCountEquals(0)
+        onNodeWithText("Editar jogo").assertExists()
+    }
+
+    @Test
     fun `cancel sheet is hosted as a full screen overlay`() = runComposeUiTest {
         setScreen(cancelDialogOpen = true)
 

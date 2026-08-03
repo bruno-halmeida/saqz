@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
+import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupProfileError
@@ -105,6 +106,23 @@ class GameDetailViewModelTest {
         assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
         assertFalse(viewModel.state.value.cancelDialogOpen)
         assertEquals(GameDetailEffect.Cancelled, viewModel.effects.first())
+    }
+
+    @Test
+    fun `draft game does not open cancellation confirmation`() = runTest {
+        val draft = sampleVersionedGame().copy(
+            game = sampleVersionedGame().game.copy(status = GameStatus.Draft),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(draft)),
+            FakeGroupGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+
+        assertFalse(viewModel.state.value.cancelDialogOpen)
     }
 
     @Test
