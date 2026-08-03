@@ -12,6 +12,8 @@ import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleGame
+import br.com.saqz.groups.presentation.ui.gameeditor.GameDateTimeWheel
+import br.com.saqz.groups.presentation.ui.gameeditor.WheelItem
 import br.com.saqz.groups.presentation.ui.gameeditor.buildWheelDays
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerRangeStart
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerTodayAt
@@ -32,6 +34,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -179,6 +182,37 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `retry without form changes reuses the command key`() = runTest {
+        val gateway = FakeGameGateway(
+            createResult = SaqzResult.Failure(GameError.Data(DataError.Server)),
+        )
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        val firstKey = gateway.lastCreateCommand?.requestId
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(firstKey, gateway.lastCreateCommand?.requestId)
+    }
+
+    @Test
+    fun `changing the form rotates the command key before retry`() = runTest {
+        val gateway = FakeGameGateway(
+            createResult = SaqzResult.Failure(GameError.Data(DataError.Server)),
+        )
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        val firstKey = gateway.lastCreateCommand?.requestId
+
+        gateway.createResult = SaqzResult.Success(sampleVersionedGame())
+        vm.onIntent(GameEditorIntent.UpdateNotes("Nota atualizada"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertNotEquals(firstKey, gateway.lastCreateCommand?.requestId)
+    }
+
+    @Test
     fun `venue validation requires the backend minimum lengths`() {
         val errors = validateGameEditor(
             GameEditorFields(
@@ -190,6 +224,20 @@ class GameEditorViewModelTest {
 
         assertTrue(GameEditorFieldError.VenueNameMissing in errors)
         assertTrue(GameEditorFieldError.VenueAddressMissing in errors)
+    }
+
+    @Test
+    fun `venue validation requires the backend maximum lengths`() {
+        val errors = validateGameEditor(
+            GameEditorFields(
+                localDate = "2026-08-04",
+                localTime = "19:30",
+                venue = GameVenue(name = "N".repeat(121), address = "R".repeat(301)),
+            ),
+        )
+
+        assertTrue(GameEditorFieldError.VenueNameTooLong in errors)
+        assertTrue(GameEditorFieldError.VenueAddressTooLong in errors)
     }
 
     @Test
@@ -337,6 +385,19 @@ class GameEditorViewModelTest {
     @Test
     fun `picker accepts local time with seconds`() {
         assertEquals(19 to 30, pickerTimeParts("19:30:45"))
+    }
+
+    @Test
+    fun `picker preserves a minute outside the fifteen minute grid`() {
+        val state = GameDateTimeWheel.state(
+            days = listOf(WheelItem("2026-08-04", "terça, 4 de agosto")),
+            selectedDate = "2026-08-04",
+            selectedHour = 19,
+            selectedMinute = 37,
+        )
+
+        assertEquals(listOf(0, 15, 30, 37, 45), state.minutes)
+        assertEquals(37, state.selectedMinute)
     }
 
     @Test

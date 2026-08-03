@@ -68,7 +68,9 @@ import br.com.saqz.groups.resources.game_editor_error_save_body
 import br.com.saqz.groups.resources.game_editor_error_save_title
 import br.com.saqz.groups.resources.game_editor_error_time
 import br.com.saqz.groups.resources.game_editor_error_venue_address
+import br.com.saqz.groups.resources.game_editor_error_venue_address_too_long
 import br.com.saqz.groups.resources.game_editor_error_venue_name
+import br.com.saqz.groups.resources.game_editor_error_venue_name_too_long
 import br.com.saqz.groups.resources.game_editor_group_name
 import br.com.saqz.groups.resources.game_editor_notes_hint
 import br.com.saqz.groups.resources.game_editor_notes_label
@@ -495,15 +497,15 @@ private fun VenueFields(
     onAddressChange: (String) -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
-    val nameError = if (GameEditorFieldError.VenueNameMissing in errors) {
-        stringResource(Res.string.game_editor_error_venue_name)
-    } else {
-        null
+    val nameError = when {
+        GameEditorFieldError.VenueNameMissing in errors -> stringResource(Res.string.game_editor_error_venue_name)
+        GameEditorFieldError.VenueNameTooLong in errors -> stringResource(Res.string.game_editor_error_venue_name_too_long)
+        else -> null
     }
-    val addressError = if (GameEditorFieldError.VenueAddressMissing in errors) {
-        stringResource(Res.string.game_editor_error_venue_address)
-    } else {
-        null
+    val addressError = when {
+        GameEditorFieldError.VenueAddressMissing in errors -> stringResource(Res.string.game_editor_error_venue_address)
+        GameEditorFieldError.VenueAddressTooLong in errors -> stringResource(Res.string.game_editor_error_venue_address_too_long)
+        else -> null
     }
     SaqzCard(padded = false) {
         Column(

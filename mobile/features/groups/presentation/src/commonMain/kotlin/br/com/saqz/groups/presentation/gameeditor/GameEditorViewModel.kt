@@ -273,6 +273,9 @@ class GameEditorViewModel(
     private fun updateForm(transform: GameEditorFields.() -> GameEditorFields) {
         update { state ->
             val form = state.form.transform()
+            if (form.copy(venueEditable = false) != state.form.copy(venueEditable = false)) {
+                savedState.remove<String>(KeyCommand)
+            }
             persistForm(form)
             state.copy(form = form, validationErrors = emptySet())
         }

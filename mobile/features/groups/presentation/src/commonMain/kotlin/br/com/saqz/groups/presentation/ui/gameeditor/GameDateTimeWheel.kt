@@ -56,14 +56,14 @@ internal object GameDateTimeWheel {
         selectedMinute: Int,
     ): GameDateTimeWheelState {
         val dayIndex = days.indexOfFirst { it.isoDate == selectedDate }.let { if (it < 0) 0 else it }
-        val snappedMinute = (selectedMinute / MINUTE_STEP) * MINUTE_STEP
+        val preservedMinute = selectedMinute.coerceIn(0, 59)
         return GameDateTimeWheelState(
             days = days,
             hours = (0..23).toList(),
-            minutes = (0..59 step MINUTE_STEP).toList(),
+            minutes = ((0..59 step MINUTE_STEP) + preservedMinute).distinct().sorted(),
             selectedDayIndex = dayIndex,
             selectedHour = selectedHour.coerceIn(0, 23),
-            selectedMinute = snappedMinute,
+            selectedMinute = preservedMinute,
         )
     }
 
