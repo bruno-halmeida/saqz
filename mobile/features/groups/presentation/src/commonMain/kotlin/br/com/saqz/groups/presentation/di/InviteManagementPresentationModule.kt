@@ -7,7 +7,7 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-/** Grafo próprio das telas 3a/3b/3c; o registro no app pertence ao fecho da navegação. */
+/** Grafo próprio das telas 3a/3b/3c, registrado pelo bootstrap no fecho da navegação. */
 fun inviteManagementPresentationModule(): Module = module {
     viewModel { params ->
         GroupInviteViewModel(

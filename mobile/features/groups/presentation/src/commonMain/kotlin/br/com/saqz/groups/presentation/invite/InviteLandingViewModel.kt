@@ -20,7 +20,10 @@ class InviteLandingViewModel(
     private val code: String,
     private val inviteGateway: InviteGateway,
     private val timeZonePort: GroupSystemTimeZonePort,
-) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(InviteLandingState()) {
+    private val initialRequestSent: Boolean = false,
+) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(
+    InviteLandingState(requestSent = initialRequestSent),
+) {
     private var generation = 0L
     // UTC keeps invite instants renderable when the platform cannot provide a valid timezone.
     private var timeZone: TimeZone = TimeZone.UTC
@@ -47,7 +50,15 @@ class InviteLandingViewModel(
 
     private fun loadPreview() {
         val requestGeneration = ++generation
-        update { it.copy(isLoading = true, isRedeeming = false, preview = null, requestSent = false, error = null) }
+        update {
+            it.copy(
+                isLoading = true,
+                isRedeeming = false,
+                preview = null,
+                requestSent = initialRequestSent,
+                error = null,
+            )
+        }
         viewModelScope.launch {
             when (val result = inviteGateway.preview(InviteCode(code))) {
                 is SaqzResult.Success -> if (isCurrent(requestGeneration)) {

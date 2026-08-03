@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSerializable
@@ -26,6 +27,7 @@ import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.emailVerified
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
@@ -37,10 +39,20 @@ import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.EmailVerificationBanner
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.membership.InviteRedeemStatus
+import br.com.saqz.groups.invite.GroupInviteCoordinator
+import br.com.saqz.groups.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
+import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
+import br.com.saqz.groups.presentation.ui.invite.InviteLandingRoot
+import br.com.saqz.groups.presentation.ui.invite.InvitePreviewMessageRoot
+import br.com.saqz.groups.presentation.ui.invite.InviteQrRoot
 import br.com.saqz.groups.presentation.ui.list.GroupListRoot
 import br.com.saqz.groups.presentation.ui.members.GroupMembersRoot
 import br.com.saqz.groups.presentation.ui.schedule.GroupScheduleRoot
@@ -55,6 +67,7 @@ import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
 import br.com.saqz.subscriptions.presentation.planselection.ui.PlanSelectionRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import br.com.saqz.subscriptions.presentation.ui.planactive.PlanActiveRoot
+import org.koin.compose.koinInject
 
 // Legacy observable contract carried over from the product host: exactly one active
 // destination host in the tree (rotation/recreation tests count this tag).
@@ -98,9 +111,64 @@ internal fun SaqzNavHost(
     // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
     val restoring = remember { booleanArrayOf(true) }
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
+    var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
+    var coordinatorAuthenticated by remember { mutableStateOf(false) }
+    val inviteCoordinator = koinInject<GroupInviteCoordinator>()
     LaunchedEffect(state.session) {
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
         restoring[0] = false
+        if (state.session is SessionAccessState.Ready && !coordinatorAuthenticated) {
+            coordinatorAuthenticated = true
+            inviteCoordinator.onAuthenticated()
+        } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {
+            coordinatorAuthenticated = false
+            inviteCoordinator.onSignedOut()
+        }
+    }
+    LaunchedEffect(inviteCoordinator, state.session) {
+        inviteCoordinator.effects.collect { effect ->
+            when (effect) {
+                is GroupInviteEffect.OpenInviteLanding -> {
+                    pendingInviteCode = effect.code
+                    if (state.session is SessionAccessState.Ready) {
+                        backStack.add(GroupsRoute.InviteLanding(effect.code))
+                    } else {
+                        // The access roots already expose the login-to-register path. The
+                        // coordinator keeps the invite in secure storage while it is used.
+                        backStack.resetTo(AccessRoute.Login)
+                    }
+                }
+                is GroupInviteEffect.NavigateToGroup -> when (effect.status) {
+                    InviteRedeemStatus.JOINED -> {
+                        pendingInviteCode = null
+                        inviteContext = null
+                        backStack.add(GroupsRoute.AthleteRegistration(effect.groupId))
+                    }
+                    InviteRedeemStatus.PENDING -> pendingInviteCode?.let { code ->
+                        backStack.add(GroupsRoute.InviteLanding(code, requestSent = true))
+                    }
+                }
+                is GroupInviteEffect.RedeemFailed -> pendingInviteCode?.let { code ->
+                    backStack.add(GroupsRoute.InviteLanding(code))
+                }
+                GroupInviteEffect.PendingInviteStorageFailed -> Unit
+            }
+        }
+    }
+    LaunchedEffect(pendingInviteCode) {
+        val code = pendingInviteCode ?: run {
+            inviteContext = null
+            return@LaunchedEffect
+        }
+        inviteContext = when (val preview = inviteCoordinator.previewPending()) {
+            is SaqzResult.Success -> RegisterInviteContext.preview(
+                groupName = preview.value.groupName,
+                inviterName = preview.value.inviterName,
+                entryRequiresApproval = preview.value.entryRequiresApproval,
+            )
+            else -> RegisterInviteContext.Generic
+        }
     }
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     NavDisplay(
@@ -124,7 +192,11 @@ internal fun SaqzNavHost(
                 // leva o e-mail junto) já aconteceu na ViewModel, no formulário que a 1a
                 // projeta. Cadastrar não empilha a 1c: vira sessão, e quem reage a sessão é
                 // o `reconcileAccessStack`.
-                RegisterRoot(onBack = pop, onOpenLogin = pop)
+                RegisterRoot(
+                    onBack = pop,
+                    onOpenLogin = pop,
+                    inviteContext = inviteContext,
+                )
             }
             entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
             entry<AccessRoute.ForgotPassword> {
@@ -209,8 +281,6 @@ internal fun SaqzNavHost(
                             // (GroupListContract.OpenPlans) — nunca atalha para
                             // `GroupsRoute.Create`.
                             onOpenPlans = { backStack.add(SubscriptionsRoute.PlanSelection) },
-                            // TODO(Fluxo 3 · Convite): entrar por código.
-                            onJoinWithCode = {},
                         )
                     },
                 )
@@ -278,16 +348,79 @@ internal fun SaqzNavHost(
                     onEffect = { effect -> backStack.onDetailsEffect(effect, pop) },
                 )
             }
+            entry<GroupsRoute.Invite> { route ->
+                GroupInviteRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onOpenMessagePreview = { groupName, inviteUrl ->
+                        backStack.add(GroupsRoute.InviteMessagePreview(groupName, inviteUrl))
+                    },
+                    onOpenQr = { groupName, inviteUrl ->
+                        backStack.add(GroupsRoute.InviteQr(groupName, inviteUrl))
+                    },
+                )
+            }
+            entry<GroupsRoute.InviteMessagePreview> { route ->
+                InvitePreviewMessageRoot(
+                    groupName = route.groupName,
+                    inviteUrl = route.inviteUrl,
+                    onBack = pop,
+                )
+            }
+            entry<GroupsRoute.InviteQr> { route ->
+                InviteQrRoot(
+                    groupName = route.groupName,
+                    inviteUrl = route.inviteUrl,
+                    onBack = pop,
+                )
+            }
+            entry<GroupsRoute.InviteLanding> { route ->
+                InviteLandingRoot(
+                    code = route.code,
+                    onJoin = { groupId ->
+                        pendingInviteCode = null
+                        inviteContext = null
+                        pop()
+                        backStack.add(GroupsRoute.AthleteRegistration(groupId))
+                    },
+                    onRequest = {},
+                    onBrowseOtherGroups = { backStack.resetTo(SaqzShellDestination) },
+                    onExploreApp = { backStack.resetTo(AccessRoute.Register) },
+                    onOpenAnotherGroup = { backStack.resetTo(SaqzShellDestination) },
+                    onRequestNewInvite = pop,
+                    initialRequestSent = route.requestSent,
+                )
+            }
+            entry<GroupsRoute.AthleteRegistration> { route ->
+                AthleteRegistrationRoot(
+                    groupId = route.groupId,
+                    onSave = {
+                        pop()
+                        backStack.add(GroupsRoute.Details(route.groupId))
+                    },
+                    onBack = pop,
+                )
+            }
+            entry<GroupsRoute.MemberEditor> { route ->
+                MemberEditorRoot(
+                    groupId = route.groupId,
+                    userId = route.userId,
+                    onBack = pop,
+                    onRemove = pop,
+                )
+            }
             entry<GroupsRoute.Members> { route ->
                 GroupMembersRoot(
                     groupId = route.groupId,
                     onBack = pop,
                     // TODO(Fluxo 7 · Perfil): ver perfil do membro.
                     onOpenProfile = {},
-                    // TODO(Fluxo 3 · Convite, 3g): editor de membro.
-                    onOpenMemberEditor = {},
-                    // TODO(Fluxo 3 · Convite, 3a): link de convite.
-                    onOpenInvite = {},
+                    onOpenMemberEditor = { userId ->
+                        backStack.add(GroupsRoute.MemberEditor(route.groupId, userId))
+                    },
+                    onOpenInvite = { groupId ->
+                        backStack.add(GroupsRoute.Invite(groupId))
+                    },
                 )
             }
             entry<GroupsRoute.Schedule> { route ->
@@ -398,8 +531,7 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         is GroupDetailsEffect.OpenCreateGame -> Unit
         // TODO(Fluxo 5 · Financeiro, 5b)
         is GroupDetailsEffect.OpenCashbox -> Unit
-        // TODO(Fluxo 3 · Convite, 3a)
-        is GroupDetailsEffect.OpenInviteLink -> Unit
+        is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
         // TODO(Fluxo 9 · Quadra): abrir a quadra no mapa é port nativo, não rota.
         GroupDetailsEffect.OpenMap -> Unit
     }

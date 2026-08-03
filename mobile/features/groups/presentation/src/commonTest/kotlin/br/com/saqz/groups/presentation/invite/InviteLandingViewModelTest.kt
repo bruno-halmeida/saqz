@@ -118,6 +118,19 @@ class InviteLandingViewModelTest {
     }
 
     @Test
+    fun `initial request sent mode survives preview loading`() = runTest {
+        val viewModel = InviteLandingViewModel(
+            INVITE_CODE,
+            FakeInviteGateway(previewResult = SaqzResult.Success(preview())),
+            FIXED_TIME_ZONE_PORT,
+            initialRequestSent = true,
+        )
+
+        assertTrue(viewModel.state.value.requestSent)
+        assertTrue(viewModel.state.value.preview != null)
+    }
+
+    @Test
     fun `redeem maps each typed error to a distinguishable state`() = runTest {
         assertEquals(
             InviteLandingError.Invalid,

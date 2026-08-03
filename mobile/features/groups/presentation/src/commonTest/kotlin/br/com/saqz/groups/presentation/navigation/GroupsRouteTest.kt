@@ -18,6 +18,7 @@ class GroupsRouteTest {
             GroupsRoute.InviteMessagePreview("Vôlei do CERET", "https://saqz.app/invite/code"),
             GroupsRoute.InviteQr("Vôlei do CERET", "https://saqz.app/invite/code"),
             GroupsRoute.InviteLanding("invite-code"),
+            GroupsRoute.InviteLanding("invite-pending", requestSent = true),
             GroupsRoute.AthleteRegistration("group-6"),
             GroupsRoute.MemberEditor("group-7", "user-8"),
         )

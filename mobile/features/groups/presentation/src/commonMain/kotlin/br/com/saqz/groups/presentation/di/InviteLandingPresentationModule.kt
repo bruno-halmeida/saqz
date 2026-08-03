@@ -6,7 +6,14 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-/** Módulo instalável pelo fecho do Fluxo 3; não entra no bootstrap comum. */
+/** Módulo do landing instalado pelo bootstrap no fecho do Fluxo 3. */
 fun inviteLandingPresentationModule(): Module = module {
-    viewModel { params -> InviteLandingViewModel(params.get(), get(), get<GroupSystemTimeZonePort>()) }
+    viewModel { params ->
+        InviteLandingViewModel(
+            code = params.get(),
+            inviteGateway = get(),
+            timeZonePort = get<GroupSystemTimeZonePort>(),
+            initialRequestSent = params.getOrNull<Boolean>() ?: false,
+        )
+    }
 }

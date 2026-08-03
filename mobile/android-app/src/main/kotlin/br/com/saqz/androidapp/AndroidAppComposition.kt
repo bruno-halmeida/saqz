@@ -19,6 +19,8 @@ import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
 import br.com.saqz.androidapp.groups.attendance.share.AndroidAttendanceShareAdapter
 import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
+import br.com.saqz.androidapp.groups.invite.AndroidInviteShareAdapter
+import br.com.saqz.androidapp.groups.invite.AndroidInviteUrlStore
 import br.com.saqz.composeapp.AccessRuntimeDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.GroupsRuntimeDependencies
@@ -63,6 +65,8 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val localState = AndroidLocalAccessStateAdapter(store)
         val share = AndroidShareAdapter(ActivityShareLauncher(activity))
         val attendanceShare = AndroidAttendanceShareAdapter(context.applicationContext)
+        val inviteUrlStore = AndroidInviteUrlStore(context.applicationContext)
+        val inviteShare = AndroidInviteShareAdapter(context.applicationContext)
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
         val profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope)
@@ -86,6 +90,9 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                     ),
                     links = links,
                     state = AndroidLocalGroupStateAdapter(store),
+                    inviteUrlStore = inviteUrlStore,
+                    inviteShare = inviteShare,
+                    inviteClipboard = inviteShare,
                 ),
                 drafts = SaqzDraftStores(
                     groupDrafts = drafts.setup,

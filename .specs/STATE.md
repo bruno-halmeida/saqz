@@ -9,5 +9,14 @@
 ## Handoff
 
 - Feature: VUL-146
-- Status: implementation in progress
+- Status: ready for review (manual deferred-link step blocked by missing Branch test key)
 - Branch: `vul-146-fecho`
+
+## Verification notes
+
+- Required Kotlin/Compose gates and Android devDebug compilation pass with JDK 21.
+- Detekt passes for compose-app, groups, groups/domain, groups/presentation, and android-app.
+- groups/data detekt remains red on three pre-existing ReturnCount findings in
+  `KtorAthleteGateway.kt`, which is unchanged by VUL-146.
+- Manual deferred deep-link execution is blocked by the fallback-only Branch test key; this was
+  reported on VUL-146 before review.

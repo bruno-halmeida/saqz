@@ -37,7 +37,7 @@ sealed interface GroupsRoute : NavKey {
 
     /** 3d/3e/3f/3l: the landing ViewModel owns the visible state. */
     @Serializable
-    data class InviteLanding(val code: String) : GroupsRoute
+    data class InviteLanding(val code: String, val requestSent: Boolean = false) : GroupsRoute
 
     /** 3j/3k: first athlete profile after a successful invite redemption. */
     @Serializable

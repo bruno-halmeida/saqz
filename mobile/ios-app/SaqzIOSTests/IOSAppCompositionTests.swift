@@ -76,12 +76,15 @@ final class IOSAppCompositionTests: XCTestCase {
         let auth = IOSAuthAdapter(firebase: firebase, google: google); let links = IOSLinkAdapter(branch: branch)
         let local = IOSLocalAccessStateAdapter(store: store); let groupState = IOSLocalGroupStateAdapter(store: store); let shareAdapter = IOSShareAdapter(launcher: share)
         let attendanceShare = IOSAttendanceShareAdapter(presenter: { nil })
+        let inviteUrlStore = IOSInviteUrlStore()
+        let inviteShare = IOSInviteShareAdapter(presenter: { nil })
         let drafts = IOSGroupDraftAdapters.make(files: FakeDraftFiles())
         let photos = IOSGroupPhotoAdapters.makeLive(presenter: { nil })
         let composition = IOSAppComposition.make(
             configuration: IOSAppConfiguration(environment: "dev", apiBaseURL: "http://127.0.0.1:8080"),
             auth: auth, links: links, localState: local, groupState: groupState,
-            share: shareAdapter, attendanceShare: attendanceShare, photos: photos, drafts: drafts
+            share: shareAdapter, attendanceShare: attendanceShare, inviteUrlStore: inviteUrlStore,
+            inviteShare: inviteShare, photos: photos, drafts: drafts
         )
         return Fixture(composition: composition, google: google, branch: branch)
     }

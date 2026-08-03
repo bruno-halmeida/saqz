@@ -19,7 +19,10 @@ fun InviteLandingRoot(
     onExploreApp: () -> Unit,
     onOpenAnotherGroup: () -> Unit,
     onRequestNewInvite: () -> Unit,
-    viewModel: InviteLandingViewModel = koinViewModel(parameters = { parametersOf(code) }),
+    initialRequestSent: Boolean = false,
+    viewModel: InviteLandingViewModel = koinViewModel(
+        parameters = { parametersOf(code, initialRequestSent) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

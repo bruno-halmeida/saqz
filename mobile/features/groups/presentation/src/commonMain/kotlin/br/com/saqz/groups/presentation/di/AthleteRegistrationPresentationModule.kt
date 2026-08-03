@@ -5,7 +5,7 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-/** Grafo isolado da tela 3j/3k; a ligação ao bootstrap pertence ao fecho do fluxo. */
+/** Grafo isolado da tela 3j/3k, instalado pelo bootstrap do app no fecho do fluxo. */
 fun athleteRegistrationPresentationModule(): Module = module {
     viewModel { params ->
         AthleteRegistrationViewModel(

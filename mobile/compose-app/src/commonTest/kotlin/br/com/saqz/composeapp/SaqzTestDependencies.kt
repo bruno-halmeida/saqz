@@ -41,6 +41,11 @@ import br.com.saqz.groups.port.GameDraftReadResult
 import br.com.saqz.groups.port.GameDraftStorePort
 import br.com.saqz.groups.port.GameDraftWriteResult
 import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteUrlReadCallback
+import br.com.saqz.groups.port.GroupInviteUrlReadResult
+import br.com.saqz.groups.port.GroupInviteUrlStorePort
+import br.com.saqz.groups.port.GroupInviteUrlWriteCallback
+import br.com.saqz.groups.port.GroupInviteUrlWriteResult
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
@@ -54,6 +59,10 @@ import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.MonthlyDraftReadResult
 import br.com.saqz.groups.port.MonthlyDraftWriteResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.InviteNativeOperationResult
+import br.com.saqz.groups.port.InviteShareImage
+import br.com.saqz.groups.port.NativeInviteClipboardPort
+import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.profile.domain.ProfilePhotoSelectionCallback
 import br.com.saqz.profile.domain.ProfilePhotoSelectionCancelable
 import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
@@ -89,6 +98,9 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
         ),
         links = TestGroupLinkPort,
         state = TestLocalGroupStatePort,
+        inviteUrlStore = TestInviteUrlStorePort,
+        inviteShare = TestInviteSharePort,
+        inviteClipboard = TestInviteClipboardPort,
     ),
     drafts = SaqzDraftStores(
         groupDrafts = TestGroupDraftStore,
@@ -192,6 +204,30 @@ private object TestLocalGroupStatePort : LocalGroupStatePort {
     override fun writePendingInvite(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
     override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
     override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) = done.complete(GroupOperationResult.Success)
+}
+
+private object TestInviteUrlStorePort : GroupInviteUrlStorePort {
+    override fun read(groupId: String, done: GroupInviteUrlReadCallback) =
+        done.complete(GroupInviteUrlReadResult.Success(null))
+
+    override fun write(groupId: String, cache: br.com.saqz.groups.port.GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) =
+        done.complete(GroupInviteUrlWriteResult.Success)
+}
+
+private object TestInviteSharePort : NativeInviteSharePort {
+    override fun shareText(text: String, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+
+    override fun shareImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+
+    override fun saveImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+}
+
+private object TestInviteClipboardPort : NativeInviteClipboardPort {
+    override fun copyText(text: String, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
 }
 
 private object TestGroupDraftStore : GroupDraftStorePort {

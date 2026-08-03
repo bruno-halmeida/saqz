@@ -53,6 +53,11 @@ import br.com.saqz.groups.port.GameDraftReadResult
 import br.com.saqz.groups.port.GameDraftStorePort
 import br.com.saqz.groups.port.GameDraftWriteResult
 import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteUrlReadCallback
+import br.com.saqz.groups.port.GroupInviteUrlReadResult
+import br.com.saqz.groups.port.GroupInviteUrlStorePort
+import br.com.saqz.groups.port.GroupInviteUrlWriteCallback
+import br.com.saqz.groups.port.GroupInviteUrlWriteResult
 import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
@@ -66,6 +71,10 @@ import br.com.saqz.groups.port.MonthlyChargeDraftStorePort
 import br.com.saqz.groups.port.MonthlyDraftReadResult
 import br.com.saqz.groups.port.MonthlyDraftWriteResult
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.InviteNativeOperationResult
+import br.com.saqz.groups.port.InviteShareImage
+import br.com.saqz.groups.port.NativeInviteClipboardPort
+import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
@@ -133,6 +142,9 @@ class SaqzKoinModulesTest {
                     ),
                     links = FakeGroupLinkPort,
                     state = FakeLocalGroupStatePort,
+                    inviteUrlStore = FakeInviteUrlStorePort,
+                    inviteShare = FakeInviteSharePort,
+                    inviteClipboard = FakeInviteClipboardPort,
                 ),
             )
         }
@@ -486,6 +498,30 @@ private object FakeLocalGroupStatePort : LocalGroupStatePort {
     override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
     override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) =
         done.complete(GroupOperationResult.Success)
+}
+
+private object FakeInviteUrlStorePort : GroupInviteUrlStorePort {
+    override fun read(groupId: String, done: GroupInviteUrlReadCallback) =
+        done.complete(GroupInviteUrlReadResult.Success(null))
+
+    override fun write(groupId: String, cache: br.com.saqz.groups.port.GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) =
+        done.complete(GroupInviteUrlWriteResult.Success)
+}
+
+private object FakeInviteSharePort : NativeInviteSharePort {
+    override fun shareText(text: String, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+
+    override fun shareImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+
+    override fun saveImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+}
+
+private object FakeInviteClipboardPort : NativeInviteClipboardPort {
+    override fun copyText(text: String, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
 }
 
 private object FakeGroupDraftStore : GroupDraftStorePort {
