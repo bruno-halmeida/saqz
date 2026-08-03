@@ -455,9 +455,9 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         defaultGameFeeCents: Long? = 1500,
         monthlyFeeCents: Long? = null,
         monthlyDueDay: Int? = null,
-        mensalistaPriority: Boolean = true,
-        promotionMode: GroupPromotionMode = GroupPromotionMode.FIFO,
-        autoConfirmEnabled: Boolean = false,
+        mensalistaPriority: Boolean? = null,
+        promotionMode: GroupPromotionMode? = null,
+        autoConfirmEnabled: Boolean? = null,
     ) = GroupProfileDefaultsInput(
         name = name,
         modality = modality,

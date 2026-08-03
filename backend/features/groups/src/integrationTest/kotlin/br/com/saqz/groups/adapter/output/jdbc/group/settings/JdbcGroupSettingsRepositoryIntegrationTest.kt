@@ -217,7 +217,18 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         val group = insertGroup(owner)
 
         val result = assertIs<UpdateGroupSettingsResult.Success>(
-            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile())),
+            useCase.execute(
+                owner,
+                group,
+                1,
+                UpdateGroupProfileInput(
+                    profile(
+                        mensalistaPriority = true,
+                        promotionMode = GroupPromotionMode.FIFO,
+                        autoConfirmEnabled = false,
+                    ),
+                ),
+            ),
         )
 
         assertEquals(2, result.settings.version)
@@ -234,6 +245,24 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         assertEquals(true, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
         assertEquals("FIFO", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
         assertEquals(false, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
+    }
+
+    @Test
+    fun `profile update omitting game config preserves the stored values`() {
+        val owner = insertUser("game-config-preserve-owner")
+        val group = insertGroup(owner)
+        execute(
+            "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL', " +
+                "auto_confirm_enabled = true WHERE id = '$group'",
+        )
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile())),
+        )
+
+        assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
+        assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
+        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
     }
 
     @Test
@@ -476,9 +505,9 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         customPlayStyle: String? = null,
         defaultVenue: GroupVenueInput? = null,
         regularSlots: List<RegularSlotInput> = emptyList(),
-        mensalistaPriority: Boolean = true,
-        promotionMode: GroupPromotionMode = GroupPromotionMode.FIFO,
-        autoConfirmEnabled: Boolean = false,
+        mensalistaPriority: Boolean? = null,
+        promotionMode: GroupPromotionMode? = null,
+        autoConfirmEnabled: Boolean? = null,
     ) = GroupProfileDefaultsInput(
         name = name,
         modality = modality,

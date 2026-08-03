@@ -141,9 +141,9 @@ private fun CreateGroupRequest.profileInput() = GroupProfileDefaultsInput(
     defaultCapacity = defaultCapacity,
     defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
     defaultGameFeeCents = defaultGameFeeCents,
-    monthlyFeeCents = monthlyFeeCents,
-    monthlyDueDay = monthlyDueDay,
-    mensalistaPriority = mensalistaPriority ?: true,
-    promotionMode = promotionMode ?: PromotionMode.FIFO,
-    autoConfirmEnabled = autoConfirmEnabled ?: false,
-)
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
+        mensalistaPriority = mensalistaPriority,
+        promotionMode = promotionMode,
+        autoConfirmEnabled = autoConfirmEnabled,
+    )
