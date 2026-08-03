@@ -42,6 +42,11 @@ import br.com.saqz.composeapp.GroupsRuntimeDependencies
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.composeapp.di.SaqzDraftStores
 import br.com.saqz.groups.port.GroupCancelable
+import br.com.saqz.groups.port.GroupInviteUrlReadCallback
+import br.com.saqz.groups.port.GroupInviteUrlReadResult
+import br.com.saqz.groups.port.GroupInviteUrlStorePort
+import br.com.saqz.groups.port.GroupInviteUrlWriteCallback
+import br.com.saqz.groups.port.GroupInviteUrlWriteResult
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.GroupOperationResult
@@ -50,6 +55,10 @@ import br.com.saqz.groups.port.GroupValueCallback
 import br.com.saqz.groups.port.GroupValueResult
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.InviteNativeOperationResult
+import br.com.saqz.groups.port.InviteShareImage
+import br.com.saqz.groups.port.NativeInviteClipboardPort
+import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.toNetworkEnvironment
 import java.io.FileInputStream
@@ -283,6 +292,9 @@ private class LifecycleCompositionFactory(
                 photos = lifecycleGroupPhotos,
                 links = fixture.links,
                 state = fixture.local,
+                inviteUrlStore = LifecycleInviteUrlStorePort,
+                inviteShare = LifecycleInviteSharePort,
+                inviteClipboard = LifecycleInviteClipboardPort,
             ),
             drafts = SaqzDraftStores(
                 groupDrafts = LifecycleGroupDraftStore,
@@ -308,6 +320,30 @@ private class LifecycleFixture {
         const val RESTORED_INVITE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         const val NEW_INVITE = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBE"
     }
+}
+
+private object LifecycleInviteUrlStorePort : GroupInviteUrlStorePort {
+    override fun read(groupId: String, done: GroupInviteUrlReadCallback) =
+        done.complete(GroupInviteUrlReadResult.Success(null))
+
+    override fun write(groupId: String, cache: br.com.saqz.groups.port.GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) =
+        done.complete(GroupInviteUrlWriteResult.Success)
+}
+
+private object LifecycleInviteSharePort : NativeInviteSharePort {
+    override fun shareText(text: String, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+
+    override fun shareImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+
+    override fun saveImage(image: InviteShareImage, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
+}
+
+private object LifecycleInviteClipboardPort : NativeInviteClipboardPort {
+    override fun copyText(text: String, done: (InviteNativeOperationResult) -> Unit) =
+        done(InviteNativeOperationResult.Success)
 }
 
 private class LifecycleAuthPort : NativeAuthPort {

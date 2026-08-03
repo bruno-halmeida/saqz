@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.membership.InviteRegularSlot
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -115,6 +116,33 @@ class InviteLandingViewModelTest {
 
         assertEquals(InviteLandingEffect.RequestSent, viewModel.effects.first())
         assertTrue(viewModel.state.value.requestSent)
+    }
+
+    @Test
+    fun `initial request sent mode survives preview loading`() = runTest {
+        val viewModel = InviteLandingViewModel(
+            INVITE_CODE,
+            FakeInviteGateway(previewResult = SaqzResult.Success(preview())),
+            FIXED_TIME_ZONE_PORT,
+            initialRequestSent = true,
+        )
+
+        assertTrue(viewModel.state.value.requestSent)
+        assertTrue(viewModel.state.value.preview != null)
+    }
+
+    @Test
+    fun `initial coordinator error is visible without reloading the landing`() = runTest {
+        val viewModel = InviteLandingViewModel(
+            INVITE_CODE,
+            FakeInviteGateway(previewResult = SaqzResult.Success(preview())),
+            FIXED_TIME_ZONE_PORT,
+            initialRedeemError = InviteLandingRouteError.RateLimited(23),
+        )
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertNull(viewModel.state.value.preview)
+        assertEquals(InviteLandingError.RateLimited(23), viewModel.state.value.error)
     }
 
     @Test

@@ -12,6 +12,9 @@ import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.GroupInviteUrlStorePort
+import br.com.saqz.groups.port.NativeInviteClipboardPort
+import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
 
 class GroupPhotoRuntimeDependencies(
@@ -34,6 +37,9 @@ class GroupsRuntimeDependencies(
     val photos: GroupPhotoRuntimeDependencies,
     val links: NativeGroupLinkPort,
     val state: LocalGroupStatePort,
+    val inviteUrlStore: GroupInviteUrlStorePort,
+    val inviteShare: NativeInviteSharePort,
+    val inviteClipboard: NativeInviteClipboardPort,
 )
 
 class SaqzPlatformDependencies(

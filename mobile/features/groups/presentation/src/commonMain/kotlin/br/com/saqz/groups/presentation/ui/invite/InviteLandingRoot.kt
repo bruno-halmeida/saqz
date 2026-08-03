@@ -7,6 +7,7 @@ import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.invite.InviteLandingEffect
 import br.com.saqz.groups.presentation.invite.InviteLandingIntent
 import br.com.saqz.groups.presentation.invite.InviteLandingViewModel
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -19,7 +20,11 @@ fun InviteLandingRoot(
     onExploreApp: () -> Unit,
     onOpenAnotherGroup: () -> Unit,
     onRequestNewInvite: () -> Unit,
-    viewModel: InviteLandingViewModel = koinViewModel(parameters = { parametersOf(code) }),
+    initialRequestSent: Boolean = false,
+    initialRedeemError: InviteLandingRouteError? = null,
+    viewModel: InviteLandingViewModel = koinViewModel(
+        parameters = { parametersOf(code, initialRequestSent, initialRedeemError) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

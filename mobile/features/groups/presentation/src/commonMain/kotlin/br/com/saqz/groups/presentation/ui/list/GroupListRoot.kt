@@ -16,7 +16,6 @@ import org.koin.compose.viewmodel.koinViewModel
 fun GroupListRoot(
     onOpenGroup: (String) -> Unit,
     onOpenPlans: () -> Unit,
-    onJoinWithCode: () -> Unit,
     viewModel: GroupListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -24,7 +23,6 @@ fun GroupListRoot(
         when (effect) {
             is GroupListEffect.OpenGroup -> onOpenGroup(effect.id)
             GroupListEffect.OpenPlans -> onOpenPlans()
-            GroupListEffect.OpenJoinWithCode -> onJoinWithCode()
         }
     }
     GroupListScreen(state = state, onIntent = viewModel::onIntent)

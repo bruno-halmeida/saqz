@@ -13,11 +13,22 @@ import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.data.di.groupsDataModule
+import br.com.saqz.groups.data.di.inviteJourneyDataModule
+import br.com.saqz.groups.data.di.inviteManagementDataModule
+import br.com.saqz.groups.invite.GroupInviteCoordinator
+import br.com.saqz.groups.invite.groupsInviteModule
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupInviteUrlStorePort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
+import br.com.saqz.groups.port.NativeInviteClipboardPort
+import br.com.saqz.groups.port.NativeInviteSharePort
+import br.com.saqz.groups.presentation.di.athleteRegistrationPresentationModule
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
+import br.com.saqz.groups.presentation.di.inviteLandingPresentationModule
+import br.com.saqz.groups.presentation.di.inviteManagementPresentationModule
+import br.com.saqz.groups.presentation.membereditor.memberEditorPresentationModule
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.authenticatedImageLoaderModule
 import br.com.saqz.network.toNetworkEnvironment
@@ -63,6 +74,13 @@ private val commonModules = listOf(
     ownProfilePresentationModule(),
     groupsDataModule(),
     groupsPresentationModule(),
+    inviteJourneyDataModule(),
+    inviteManagementDataModule(),
+    inviteManagementPresentationModule(),
+    inviteLandingPresentationModule(),
+    athleteRegistrationPresentationModule(),
+    memberEditorPresentationModule(),
+    groupsInviteModule(),
 )
 
 internal fun startSaqzKoin() {
@@ -96,8 +114,11 @@ fun loadSaqzPlatformDependencies(
     dependencies: SaqzPlatformDependencies,
     imageLoaderContext: PlatformContext? = null,
 ) {
-    checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) { "Koin must be started before loading platform dependencies" }
+    val koin = checkNotNull(KoinPlatformTools.defaultContext().getOrNull()) {
+        "Koin must be started before loading platform dependencies"
+    }
     if (platformModules.isNotEmpty()) {
+        koin.getOrNull<GroupInviteCoordinator>()?.stop()
         unloadKoinModules(commonModules + platformModules)
         loadKoinModules(commonModules)
     }
@@ -109,9 +130,13 @@ fun loadSaqzPlatformDependencies(
         ),
         imageLoaderContext?.let(::authenticatedImageLoaderModule),
     ).filterNotNull().also(::loadKoinModules)
+    koin.get<GroupInviteCoordinator>().start()
 }
 
 internal fun stopSaqzKoin() {
+    if (platformModules.isNotEmpty()) {
+        KoinPlatformTools.defaultContext().getOrNull()?.getOrNull<GroupInviteCoordinator>()?.stop()
+    }
     platformModules = emptyList()
     stopKoin()
 }
@@ -135,6 +160,9 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<GroupPhotoPreviewPort> { get<SaqzNativePorts>().groups.photos.previews }
     single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
     single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
+    single<GroupInviteUrlStorePort> { get<SaqzNativePorts>().groups.inviteUrlStore }
+    single<NativeInviteSharePort> { get<SaqzNativePorts>().groups.inviteShare }
+    single<NativeInviteClipboardPort> { get<SaqzNativePorts>().groups.inviteClipboard }
     single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
     single { dependencies.drafts }
 }

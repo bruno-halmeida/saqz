@@ -7,7 +7,7 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-/** Grafo isolado do VUL-144; o fecho instala este módulo junto da rota 3g. */
+/** Grafo isolado do VUL-144, instalado pelo bootstrap junto da rota 3g. */
 fun memberEditorPresentationModule(): Module = module {
     viewModel { params ->
         MemberEditorViewModel(

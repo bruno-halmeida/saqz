@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
+import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -20,14 +21,26 @@ class InviteLandingViewModel(
     private val code: String,
     private val inviteGateway: InviteGateway,
     private val timeZonePort: GroupSystemTimeZonePort,
-) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(InviteLandingState()) {
+    private val initialRequestSent: Boolean = false,
+    private val initialRedeemError: InviteLandingRouteError? = null,
+) : MviViewModel<InviteLandingState, InviteLandingIntent, InviteLandingEffect>(
+    InviteLandingState(
+        isLoading = initialRedeemError != null,
+        requestSent = initialRequestSent,
+    ),
+) {
     private var generation = 0L
     // UTC keeps invite instants renderable when the platform cannot provide a valid timezone.
     private var timeZone: TimeZone = TimeZone.UTC
 
     init {
-        timeZonePort.detect { result -> timeZone = result.toTimeZoneOrUtc() }
-        loadPreview()
+        timeZonePort.detect { result ->
+            timeZone = result.toTimeZoneOrUtc()
+            initialRedeemError?.let { error ->
+                update { it.copy(isLoading = false, error = error.toUiError(timeZone)) }
+            }
+        }
+        if (initialRedeemError == null) loadPreview()
     }
 
     override fun onIntent(intent: InviteLandingIntent) {
@@ -47,7 +60,15 @@ class InviteLandingViewModel(
 
     private fun loadPreview() {
         val requestGeneration = ++generation
-        update { it.copy(isLoading = true, isRedeeming = false, preview = null, requestSent = false, error = null) }
+        update {
+            it.copy(
+                isLoading = true,
+                isRedeeming = false,
+                preview = null,
+                requestSent = initialRequestSent,
+                error = null,
+            )
+        }
         viewModelScope.launch {
             when (val result = inviteGateway.preview(InviteCode(code))) {
                 is SaqzResult.Success -> if (isCurrent(requestGeneration)) {
@@ -105,6 +126,14 @@ private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when
     InviteError.PlanLimit -> InviteLandingError.PlanLimit
     is InviteError.DataFailure -> InviteLandingError.Network
     InviteError.GroupDeleted -> InviteLandingError.Invalid
+}
+
+private fun InviteLandingRouteError.toUiError(timeZone: TimeZone): InviteLandingError = when (this) {
+    InviteLandingRouteError.Invalid -> InviteLandingError.Invalid
+    is InviteLandingRouteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
+    is InviteLandingRouteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
+    InviteLandingRouteError.PlanLimit -> InviteLandingError.PlanLimit
+    InviteLandingRouteError.Network -> InviteLandingError.Network
 }
 
 private fun GroupSystemTimeZoneResult.toTimeZoneOrUtc(): TimeZone = when (this) {

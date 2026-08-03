@@ -20,6 +20,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -33,14 +35,16 @@ sealed interface GroupInviteEffect {
     data class NavigateToGroup(
         val groupId: String,
         val status: InviteRedeemStatus,
+        val inviteCode: String,
     ) : GroupInviteEffect
 
     data class RedeemFailed(
+        val code: String,
         val error: InviteError,
         val willRetry: Boolean,
     ) : GroupInviteEffect
 
-    data object PendingInviteStorageFailed : GroupInviteEffect
+    data class PendingInviteStorageFailed(val code: String? = null) : GroupInviteEffect
 }
 
 /**
@@ -58,13 +62,15 @@ class GroupInviteCoordinator(
     private val storageWrites: Mutex = Mutex(),
     private val effectSink: (GroupInviteEffect) -> Unit = {},
 ) {
-    private val effectChannel = Channel<GroupInviteEffect>(Channel.BUFFERED)
+    private val effectChannel = Channel<QueuedEffect>(Channel.BUFFERED)
     private var generation = 0L
     private val authenticated = MutableStateFlow(false)
     private var linkCancelable: br.com.saqz.groups.port.GroupCancelable? = null
     private var started = false
 
     val effects: Flow<GroupInviteEffect> = effectChannel.receiveAsFlow()
+        .filter { it.generation == generation }
+        .map { it.effect }
     val isAuthenticated = authenticated.asStateFlow()
 
     fun start() {
@@ -95,10 +101,17 @@ class GroupInviteCoordinator(
     /** Chamado pelo fecho depois que login ou registro entrega uma sessão. */
     fun onAuthenticated() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            if (authenticated.value) return@launch
             authenticated.value = true
             val token = nextGeneration()
             redeemPending(token)
         }
+    }
+
+    /** Recupera o convite persistido antes de uma troca de sessão consumir o pending. */
+    suspend fun readPendingInviteCode(): String? = when (val pending = readPending()) {
+        PendingRead.Failed -> null
+        is PendingRead.Value -> pending.code
     }
 
     /**
@@ -119,6 +132,33 @@ class GroupInviteCoordinator(
         }
     }
 
+    /**
+     * A landing pode concluir um redeem que começou fora do coordinator. O coordinator continua
+     * dono do pending persistido: só depois da limpeza confirmada a navegação pode sair da landing.
+     * Se o código já não estiver persistido, a operação é idempotente e também conclui.
+     */
+    fun clearPendingInvite(code: String, onCleared: () -> Unit = {}) {
+        if (code.isBlank()) {
+            onCleared()
+            return
+        }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val token = generation
+            when (val pending = readPending()) {
+                PendingRead.Failed -> emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
+                is PendingRead.Value -> {
+                    if (pending.code != null && pending.code != code) {
+                        onCleared()
+                    } else if (clearPending(token)) {
+                        onCleared()
+                    } else {
+                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
+                    }
+                }
+            }
+        }
+    }
+
     /** O modo-convite do registro usa este preview enquanto a sessão ainda é anônima. */
     suspend fun previewPending(): SaqzResult<InvitePreview, InviteError>? {
         val token = generation
@@ -127,7 +167,9 @@ class GroupInviteCoordinator(
         if (!isCurrent(token)) return null
         val result = inviteGateway.preview(InviteCode(code))
         if (isCurrent(token) && result is SaqzResult.Failure && result.error.isTerminal()) {
-            clearPending(token)
+            if (!clearPending(token)) {
+                emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
+            }
         }
         return result.takeIf { isCurrent(token) }
     }
@@ -136,7 +178,7 @@ class GroupInviteCoordinator(
         val pending = readPending()
         val code = when (pending) {
             PendingRead.Failed -> {
-                emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+                emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed())
                 return
             }
             is PendingRead.Value -> pending.code
@@ -147,16 +189,20 @@ class GroupInviteCoordinator(
 
     private suspend fun redeem(token: Long, code: InviteCode) {
         when (val preview = inviteGateway.preview(code)) {
-            is SaqzResult.Failure -> finishFailure(token, preview.error)
+            is SaqzResult.Failure -> finishFailure(token, code, preview.error)
             is SaqzResult.Success -> when (val result = inviteGateway.redeem(code)) {
-                is SaqzResult.Failure -> finishFailure(token, result.error)
+                is SaqzResult.Failure -> finishFailure(token, code, result.error)
                 is SaqzResult.Success -> {
-                    if (!clearPending(token)) return
+                    if (!clearPending(token)) {
+                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
+                        return
+                    }
                     emitIfCurrent(
                         token,
                         GroupInviteEffect.NavigateToGroup(
                             groupId = result.value.groupId.value,
                             status = result.value.status,
+                            inviteCode = code.value,
                         ),
                     )
                 }
@@ -164,18 +210,24 @@ class GroupInviteCoordinator(
         }
     }
 
-    private suspend fun finishFailure(token: Long, error: InviteError) {
+    private suspend fun finishFailure(token: Long, code: InviteCode, error: InviteError) {
         if (!isCurrent(token)) return
         val terminal = error.isTerminal()
-        if (terminal && !clearPending(token)) return
-        emitIfCurrent(token, GroupInviteEffect.RedeemFailed(error, willRetry = !terminal))
+        if (terminal && !clearPending(token)) {
+            emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
+            return
+        }
+        emitIfCurrent(
+            token,
+            GroupInviteEffect.RedeemFailed(code.value, error, willRetry = !terminal),
+        )
     }
 
     private suspend fun persistPending(token: Long, code: String): Boolean = storageWrites.withLock {
         if (!isCurrent(token)) return@withLock false
         val result = writePending(code)
         if (!result || !isCurrent(token)) {
-            if (!result) emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+            if (!result) emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
             return@withLock false
         }
         true
@@ -212,7 +264,7 @@ class GroupInviteCoordinator(
 
     private fun emitIfCurrent(token: Long, effect: GroupInviteEffect) {
         if (isCurrent(token)) {
-            effectChannel.trySend(effect)
+            effectChannel.trySend(QueuedEffect(token, effect))
             effectSink(effect)
         }
     }
@@ -228,6 +280,11 @@ class GroupInviteCoordinator(
         data object Failed : PendingRead
         data class Value(val code: String?) : PendingRead
     }
+
+    private data class QueuedEffect(
+        val generation: Long,
+        val effect: GroupInviteEffect,
+    )
 }
 
 private fun InviteError.isTerminal(): Boolean = when (this) {

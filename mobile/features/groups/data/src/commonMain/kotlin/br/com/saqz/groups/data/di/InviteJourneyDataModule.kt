@@ -7,7 +7,7 @@ import br.com.saqz.network.NetworkClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-/** Grafo isolado do convite; o fecho instala este módulo quando liga o Fluxo 3. */
+/** Grafo isolado do convite; o bootstrap do app instala este módulo ao ligar o Fluxo 3. */
 fun inviteJourneyDataModule(): Module = module {
     single<InviteGateway> {
         KtorInviteGateway(

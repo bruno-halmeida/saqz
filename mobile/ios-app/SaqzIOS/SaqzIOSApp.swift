@@ -36,9 +36,11 @@ struct IOSAppComposition {
         let groupState = IOSLocalGroupStateAdapter(store: store)
         let share = IOSLocalAccessComposition.makeShare { IOSPresentationRoot.current }
         let attendanceShare = IOSAttendanceShareAdapter(presenter: { IOSPresentationRoot.current })
+        let inviteUrlStore = IOSInviteUrlStore()
+        let inviteShare = IOSInviteShareAdapter(presenter: { IOSPresentationRoot.current })
         let photos = IOSGroupPhotoAdapters.makeLive(presenter: { IOSPresentationRoot.current })
         let drafts = IOSGroupDraftAdapters.makeLive()
-        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts)
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, inviteUrlStore: inviteUrlStore, inviteShare: inviteShare, photos: photos, drafts: drafts)
     }
 
     static func make(
@@ -49,6 +51,8 @@ struct IOSAppComposition {
         groupState: IOSLocalGroupStateAdapter,
         share: IOSShareAdapter,
         attendanceShare: IOSAttendanceShareAdapter,
+        inviteUrlStore: IOSInviteUrlStore,
+        inviteShare: IOSInviteShareAdapter,
         photos: IOSGroupPhotoAdapters,
         drafts: IOSGroupDraftAdapters
     ) -> IOSAppComposition {
@@ -73,7 +77,10 @@ struct IOSAppComposition {
                     previews: photos.previews
                 ),
                 links: links,
-                state: groupState
+                state: groupState,
+                inviteUrlStore: inviteUrlStore,
+                inviteShare: inviteShare,
+                inviteClipboard: inviteShare
             ),
             drafts: SaqzDraftStores(
                 groupDrafts: drafts.setup,

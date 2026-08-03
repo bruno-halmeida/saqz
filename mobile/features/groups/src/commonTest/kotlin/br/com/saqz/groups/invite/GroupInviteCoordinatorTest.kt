@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
+import br.com.saqz.groups.port.GroupNativeFailureCode
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -52,7 +53,7 @@ class GroupInviteCoordinatorTest {
             fixture.events,
         )
         assertEquals(
-            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED),
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-authenticated"),
             fixture.coordinator.effects.first(),
         )
         assertNull(fixture.local.pending)
@@ -74,8 +75,108 @@ class GroupInviteCoordinatorTest {
         fixture.coordinator.onAuthenticated()
         runCurrent()
 
-        assertEquals(GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING), fixture.coordinator.effects.first())
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING, "invite-login"),
+            fixture.coordinator.effects.first(),
+        )
         assertNull(fixture.local.pending)
+    }
+
+    @Test
+    fun `cold landing buffered before authentication is discarded after redeem`() = runTest {
+        val fixture = fixture()
+        fixture.coordinator.acceptInvite("invite-cold")
+        runCurrent()
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-cold"),
+            fixture.coordinator.effects.first(),
+        )
+        assertNull(withTimeoutOrNull(1) { fixture.coordinator.effects.first() })
+    }
+
+    @Test
+    fun `landing success clears persisted invite idempotently`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-landing"
+        var clearedCount = 0
+
+        fixture.coordinator.clearPendingInvite("invite-landing") { clearedCount++ }
+        runCurrent()
+        fixture.coordinator.clearPendingInvite("invite-landing") { clearedCount++ }
+        runCurrent()
+
+        assertEquals(2, clearedCount)
+        assertNull(fixture.local.pending)
+        assertEquals(listOf("read", "write:null", "read", "write:null"), fixture.local.actions)
+    }
+
+    @Test
+    fun `pending storage failure keeps the invite code in its effect`() = runTest {
+        val fixture = fixture()
+        fixture.local.writeSucceeds = false
+        val effect = async { fixture.coordinator.effects.first() }
+
+        fixture.coordinator.acceptInvite("invite-storage")
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.PendingInviteStorageFailed("invite-storage"),
+            effect.await(),
+        )
+    }
+
+    @Test
+    fun `signed out relaunch restores pending code and preview before redeem`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-relaunch"
+        fixture.gateway.redeemResult = SaqzResult.Success(
+            InviteRedeem(InviteRedeemStatus.PENDING, GroupId("group-1"), "ATHLETE"),
+        )
+
+        assertEquals("invite-relaunch", fixture.coordinator.readPendingInviteCode())
+        assertEquals(
+            InvitePreview("Vôlei do CERET", "Ana", entryRequiresApproval = false),
+            assertIs<SaqzResult.Success<InvitePreview>>(fixture.coordinator.previewPending()).value,
+        )
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        val effect = assertIs<GroupInviteEffect.NavigateToGroup>(fixture.coordinator.effects.first())
+        assertEquals(InviteRedeemStatus.PENDING, effect.status)
+        assertEquals("invite-relaunch", effect.inviteCode)
+    }
+
+    @Test
+    fun `repeated authentication does not start a second redeem generation`() = runTest {
+        val redeemRelease = CompletableDeferred<Unit>()
+        val fixture = fixture(
+            redeem = {
+                redeemRelease.await()
+                SaqzResult.Success(InviteRedeem(InviteRedeemStatus.JOINED, GroupId("group-1"), "ATHLETE"))
+            },
+        )
+        fixture.local.pending = "invite-idempotent"
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(listOf("preview", "redeem"), fixture.gateway.actions)
+
+        redeemRelease.complete(Unit)
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-idempotent"),
+            fixture.coordinator.effects.first(),
+        )
+        assertNull(withTimeoutOrNull(1) { fixture.coordinator.effects.first() })
     }
 
     @Test
@@ -101,7 +202,10 @@ class GroupInviteCoordinatorTest {
         fixture.coordinator.onAuthenticated()
         runCurrent()
 
-        assertEquals(GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING), fixture.coordinator.effects.first())
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING, "invite-register"),
+            fixture.coordinator.effects.first(),
+        )
         assertNull(fixture.local.pending)
     }
 
@@ -116,6 +220,7 @@ class GroupInviteCoordinatorTest {
         runCurrent()
 
         val result = assertIs<GroupInviteEffect.RedeemFailed>(effect.await())
+        assertEquals("invite-terminal", result.code)
         assertEquals(InviteError.InvalidOrExpired, result.error)
         assertTrue(!result.willRetry)
         assertNull(fixture.local.pending)
@@ -176,7 +281,10 @@ class GroupInviteCoordinatorTest {
         releaseOldRedeem.complete(Unit)
         runCurrent()
 
-        assertEquals(GroupInviteEffect.NavigateToGroup("group-new", InviteRedeemStatus.JOINED), fixture.coordinator.effects.first())
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-new", InviteRedeemStatus.JOINED, "invite-new"),
+            fixture.coordinator.effects.first(),
+        )
         assertNull(withTimeoutOrNull(1) { fixture.coordinator.effects.first() })
         assertNull(fixture.local.pending)
     }
@@ -228,6 +336,7 @@ class GroupInviteCoordinatorTest {
 
     private class FakeLocalState(private val events: MutableList<String>) : LocalGroupStatePort {
         var pending: String? = null
+        var writeSucceeds = true
         val actions = mutableListOf<String>()
 
         override fun readSelectedGroupId(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
@@ -242,8 +351,12 @@ class GroupInviteCoordinatorTest {
         override fun writePendingInvite(value: String?, done: GroupResultCallback) {
             actions += "write:${value ?: "null"}"
             events += "write:${value ?: "null"}"
-            pending = value
-            done.complete(GroupOperationResult.Success)
+            if (writeSucceeds) {
+                pending = value
+                done.complete(GroupOperationResult.Success)
+            } else {
+                done.complete(GroupOperationResult.Failure(GroupNativeFailureCode.UNKNOWN))
+            }
         }
 
         override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))

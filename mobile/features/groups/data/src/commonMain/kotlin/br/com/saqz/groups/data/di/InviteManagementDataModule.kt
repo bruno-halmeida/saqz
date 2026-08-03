@@ -5,7 +5,7 @@ import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-/** Módulo do ticket; o fecho instala-o quando liga as telas 3a/3b/3c. */
+/** Módulo do ticket, instalado pelo bootstrap quando liga as telas 3a/3b/3c. */
 fun inviteManagementDataModule(): Module = module {
     single<GroupEntryRequestGateway> { KtorEntryRequestGateway(get()) }
 }
