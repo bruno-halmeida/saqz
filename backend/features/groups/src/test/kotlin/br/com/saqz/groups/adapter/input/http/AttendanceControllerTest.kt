@@ -72,8 +72,9 @@ class AttendanceControllerTest {
         val names = mutableMapOf<UUID, String>()
         val membership = linkedMapOf<UUID, AthleteMembershipType>()
         var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
-        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? = if (groupId == group && gameId == game && memberId in members) AttendanceAggregate(group, game, memberId, actorId, role(actorId), status, deadline, capacity, confirmed(), records[memberId], 2500, LocalDate.of(2026, 8, 12), membership[memberId] ?: AthleteMembershipType.MENSALISTA) else null
-        override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? = if (groupId == group && gameId == game) CapacityAggregate(group, game, actorId, role(actorId), status, deadline, capacity, confirmed(), version, 2500, LocalDate.of(2026, 8, 12)) else null
+        var mensalistaPriority = true
+        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? = if (groupId == group && gameId == game && memberId in members) AttendanceAggregate(group, game, memberId, actorId, role(actorId), status, deadline, capacity, confirmed(), records[memberId], 2500, LocalDate.of(2026, 8, 12), membership[memberId] ?: AthleteMembershipType.MENSALISTA, mensalistaPriority) else null
+        override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? = if (groupId == group && gameId == game) CapacityAggregate(group, game, actorId, role(actorId), status, deadline, capacity, confirmed(), version, 2500, LocalDate.of(2026, 8, 12), mensalistaPriority) else null
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator
         override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
         override fun save(record: AttendanceRecord) { records[record.memberId] = record }
