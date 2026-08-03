@@ -98,6 +98,22 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
+    fun `landing success clears persisted invite idempotently`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-landing"
+        var clearedCount = 0
+
+        fixture.coordinator.clearPendingInvite("invite-landing") { clearedCount++ }
+        runCurrent()
+        fixture.coordinator.clearPendingInvite("invite-landing") { clearedCount++ }
+        runCurrent()
+
+        assertEquals(2, clearedCount)
+        assertNull(fixture.local.pending)
+        assertEquals(listOf("read", "write:null", "read", "write:null"), fixture.local.actions)
+    }
+
+    @Test
     fun `persisted invite code is available before relaunch redeem`() = runTest {
         val fixture = fixture()
         fixture.local.pending = "invite-relaunch"

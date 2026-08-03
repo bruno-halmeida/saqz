@@ -388,10 +388,12 @@ internal fun SaqzNavHost(
                 InviteLandingRoot(
                     code = route.code,
                     onJoin = { groupId ->
-                        pendingInviteCode = null
-                        inviteContext = null
-                        pop()
-                        backStack.add(GroupsRoute.AthleteRegistration(groupId))
+                        inviteCoordinator.clearPendingInvite(route.code) {
+                            pendingInviteCode = null
+                            inviteContext = null
+                            pop()
+                            backStack.add(GroupsRoute.AthleteRegistration(groupId))
+                        }
                     },
                     onRequest = {},
                     onBrowseOtherGroups = {

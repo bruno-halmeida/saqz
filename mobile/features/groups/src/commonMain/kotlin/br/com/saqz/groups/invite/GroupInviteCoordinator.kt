@@ -132,6 +132,33 @@ class GroupInviteCoordinator(
         }
     }
 
+    /**
+     * A landing pode concluir um redeem que começou fora do coordinator. O coordinator continua
+     * dono do pending persistido: só depois da limpeza confirmada a navegação pode sair da landing.
+     * Se o código já não estiver persistido, a operação é idempotente e também conclui.
+     */
+    fun clearPendingInvite(code: String, onCleared: () -> Unit = {}) {
+        if (code.isBlank()) {
+            onCleared()
+            return
+        }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val token = generation
+            when (val pending = readPending()) {
+                PendingRead.Failed -> emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+                is PendingRead.Value -> {
+                    if (pending.code != null && pending.code != code) {
+                        onCleared()
+                    } else if (clearPending(token)) {
+                        onCleared()
+                    } else {
+                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed)
+                    }
+                }
+            }
+        }
+    }
+
     /** O modo-convite do registro usa este preview enquanto a sessão ainda é anônima. */
     suspend fun previewPending(): SaqzResult<InvitePreview, InviteError>? {
         val token = generation
