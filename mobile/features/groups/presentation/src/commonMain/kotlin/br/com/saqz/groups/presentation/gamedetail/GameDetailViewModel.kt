@@ -3,6 +3,19 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteError
+import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
+import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
+import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceError
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
+import br.com.saqz.groups.domain.attendance.AttendanceRoster
+import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -11,6 +24,7 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
@@ -19,13 +33,20 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+
+@OptIn(ExperimentalUuidApi::class)
 class GameDetailViewModel(
     val groupId: String,
     val gameId: String,
     private val gameGateway: GameGateway,
     private val groupGateway: GroupGateway,
+    private val attendanceGateway: AttendanceGateway,
+    private val athleteGateway: AthleteGateway,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
+    private var operationGeneration = 0
     private var versionToken: GameVersionToken? = null
     init {
         load()
@@ -41,10 +62,20 @@ class GameDetailViewModel(
                 update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
             }
             GameDetailIntent.ConfirmCancel -> cancel()
+            is GameDetailIntent.Promote -> promote(intent.memberId)
+            GameDetailIntent.OpenCapacitySheet -> openCapacitySheet()
+            is GameDetailIntent.UpdateCapacity -> update {
+                it.copy(capacityDraft = intent.value.coerceIn(MIN_CAPACITY, MAX_CAPACITY), capacityFailed = false)
+            }
+            GameDetailIntent.SaveCapacity -> saveCapacity()
+            GameDetailIntent.DismissCapacitySheet -> if (!state.value.savingCapacity) {
+                update { it.copy(capacitySheetOpen = false, capacityFailed = false) }
+            }
         }
     }
     private fun load() {
         val generation = ++loadGeneration
+        operationGeneration++
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
             val gameResult = gameGateway.read(GroupId(groupId), gameId)
@@ -57,16 +88,198 @@ class GameDetailViewModel(
                     if (generation != loadGeneration) return@launch
                     when (groupResult) {
                         is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
-                        is SaqzResult.Success -> update {
-                            it.copy(
-                                isLoading = false,
-                                loadFailed = false,
-                                error = null,
-                                header = gameResult.value.game.toHeader(),
-                                attendance = gameResult.value.game.toAttendance(),
-                                isAdmin = groupResult.value.group.role != GroupRole.ATHLETE,
-                            )
-                        }
+                        is SaqzResult.Success -> loadAttendance(
+                            generation,
+                            gameResult.value.game,
+                            groupResult.value.group.role != GroupRole.ATHLETE,
+                            groupResult.value.group.gameConfig.mensalistaPriority,
+                            groupResult.value.group.gameConfig.promotionMode,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun loadAttendance(
+        generation: Int,
+        game: Game,
+        isAdmin: Boolean,
+        mensalistaPriority: Boolean,
+        promotionMode: PromotionMode,
+    ) {
+        val detailResult = attendanceGateway.read(GroupId(groupId), gameId)
+        if (generation != loadGeneration) return
+        val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)
+        if (generation != loadGeneration) return
+        val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
+        if (generation != loadGeneration) return
+        when {
+            detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError())
+            rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError())
+            athletesResult is SaqzResult.Failure -> showFailure(generation, athletesResult.error.toUiError())
+            else -> {
+                val detail = (detailResult as SaqzResult.Success).value
+                val roster = (rosterResult as SaqzResult.Success).value
+                val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
+                update {
+                    it.copy(
+                        isLoading = false,
+                        loadFailed = false,
+                        error = null,
+                        header = game.toHeader().copy(availableSpots = detail.availableSpots),
+                        attendance = detail.toAttendance(),
+                        confirmedRoster = roster.confirmed.map { member -> member.toConfirmed(athletes[member.memberId]) },
+                        waitlist = roster.waitlisted.map { member -> member.toWaitlist(athletes[member.memberId]) },
+                        mensalistaPriority = mensalistaPriority,
+                        promotionMode = promotionMode,
+                        isAdmin = isAdmin,
+                        promotingMemberId = null,
+                        promotionFailed = false,
+                        capacitySheetOpen = false,
+                        savingCapacity = false,
+                        capacityFailed = false,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun promote(memberId: String) {
+        val current = state.value
+        if (!current.isAdmin || current.promotionMode != PromotionMode.MANUAL || current.promotingMemberId != null) return
+        val previousWaitlist = current.waitlist
+        val previousAttendance = current.attendance
+        if (previousWaitlist.none { it.id == memberId }) return
+        val loadAtStart = loadGeneration
+        val generation = ++operationGeneration
+        update {
+            it.copy(
+                waitlist = it.waitlist.filterNot { member -> member.id == memberId },
+                attendance = it.attendance?.let { attendance ->
+                    attendance.copy(
+                        confirmed = attendance.confirmed + 1,
+                        availableSpots = (attendance.availableSpots - 1).coerceAtLeast(0),
+                    )
+                },
+                promotingMemberId = memberId,
+                promotionFailed = false,
+            )
+        }
+        viewModelScope.launch {
+            val result = attendanceGateway.promote(
+                GroupId(groupId),
+                gameId,
+                AttendancePromotionCommand(Uuid.random().toString(), memberId),
+            )
+            if (generation != operationGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    update {
+                        it.copy(
+                            attendance = result.value.value.detail.toAttendance(),
+                            promotingMemberId = null,
+                            promotionFailed = false,
+                        )
+                    }
+                    refreshRoster(generation, loadAtStart)
+                }
+                is SaqzResult.Failure -> update {
+                    it.copy(
+                        waitlist = previousWaitlist,
+                        attendance = previousAttendance,
+                        promotingMemberId = null,
+                        promotionFailed = true,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun openCapacitySheet() {
+        val capacity = state.value.attendance?.capacity ?: return
+        update { it.copy(capacitySheetOpen = true, capacityDraft = capacity, capacityFailed = false) }
+    }
+
+    private fun saveCapacity() {
+        val current = state.value
+        if (current.savingCapacity) return
+        val version = versionToken ?: return
+        val previousAttendance = current.attendance
+        val previousHeader = current.header
+        val loadAtStart = loadGeneration
+        val generation = ++operationGeneration
+        val capacity = current.capacityDraft
+        update {
+            it.copy(
+                savingCapacity = true,
+                capacityFailed = false,
+                attendance = it.attendance?.let { attendance ->
+                    attendance.copy(
+                        capacity = capacity,
+                        availableSpots = (capacity - attendance.confirmed).coerceAtLeast(0),
+                    )
+                },
+                header = it.header?.copy(
+                    availableSpots = (capacity - (it.attendance?.confirmed ?: 0)).coerceAtLeast(0),
+                ),
+            )
+        }
+        viewModelScope.launch {
+            val result = attendanceGateway.capacity(
+                GroupId(groupId),
+                gameId,
+                AttendanceVersionToken(version.value),
+                AttendanceCapacityCommand(Uuid.random().toString(), capacity),
+            )
+            if (generation != operationGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    versionToken = GameVersionToken(result.value.version.value)
+                    update {
+                        it.copy(
+                            savingCapacity = false,
+                            capacitySheetOpen = false,
+                            capacityFailed = false,
+                            attendance = result.value.value.detail.toAttendance(),
+                            header = it.header?.copy(availableSpots = result.value.value.detail.availableSpots),
+                        )
+                    }
+                    if (result.value.value.promotedCount > 0) refreshRoster(generation, loadAtStart)
+                }
+                is SaqzResult.Failure -> if (result.error == AttendanceError.Conflict) {
+                    update { it.copy(savingCapacity = false, capacitySheetOpen = false, capacityFailed = false) }
+                    load()
+                } else {
+                    update {
+                        it.copy(
+                            savingCapacity = false,
+                            attendance = previousAttendance,
+                            header = previousHeader,
+                            capacityFailed = true,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun refreshRoster(operation: Int, loadAtStart: Int) {
+        viewModelScope.launch {
+            val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)
+            val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
+            if (operation != operationGeneration || loadAtStart != loadGeneration) return@launch
+            when {
+                rosterResult is SaqzResult.Failure -> showFailure(loadAtStart, rosterResult.error.toUiError())
+                athletesResult is SaqzResult.Failure -> showFailure(loadAtStart, athletesResult.error.toUiError())
+                else -> {
+                    val roster = (rosterResult as SaqzResult.Success).value
+                    val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
+                    update {
+                        it.copy(
+                            confirmedRoster = roster.confirmed.map { member -> member.toConfirmed(athletes[member.memberId]) },
+                            waitlist = roster.waitlisted.map { member -> member.toWaitlist(athletes[member.memberId]) },
+                        )
                     }
                 }
             }
@@ -128,17 +341,49 @@ class GameDetailViewModel(
             availableSpots = availableSpots,
         )
     }
-    // ponytail: o domínio de Game ainda não expõe declinedCount nem pendingCount. As três
-    // células continuam visíveis com zero até a leitura de attendance fornecer esses valores.
-    private fun Game.toAttendance() = GameDetailAttendanceUi(
+    private fun AttendanceDetail.toAttendance() = GameDetailAttendanceUi(
         confirmed = confirmedCount,
         capacity = capacity,
         availableSpots = availableSpots,
         declined = 0,
         pending = 0,
     )
+
+    private fun AttendanceRosterMember.toConfirmed(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(
+        id = memberId,
+        name = displayName,
+        isYou = false,
+        position = athlete?.position?.name.orEmpty(),
+    )
+
+    private fun AttendanceRosterMember.toWaitlist(athlete: AthleteRosterEntry?) = GameDetailWaitlistUi(
+        id = memberId,
+        name = displayName,
+        queuePosition = waitlistPosition,
+        athletePosition = athlete?.position,
+        isMensalista = athlete?.membershipType == AthleteMembershipType.MENSALISTA,
+    )
     private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 }
+
+private fun AttendanceError.toUiError(): GroupUiError = when (this) {
+    AttendanceError.HiddenResource -> GroupUiError.NotFound
+    AttendanceError.Conflict -> GroupUiError.Conflict
+    AttendanceError.Authentication -> GroupUiError.AccessDenied
+    AttendanceError.DeadlinePassed,
+    AttendanceError.Frozen,
+    is AttendanceError.Validation,
+    is AttendanceError.Data,
+    -> GroupUiError.Network
+}
+
+private fun AthleteError.toUiError(): GroupUiError = when (this) {
+    is AthleteError.Validation -> GroupUiError.Validation
+    is AthleteError.DataFailure -> GroupUiError.Network
+}
+
+private const val MIN_CAPACITY = 2
+private const val MAX_CAPACITY = 100
 private fun GameStatus.toTone(): GameDetailStatusTone = when (this) {
     GameStatus.Draft -> GameDetailStatusTone.Draft
     GameStatus.Published -> GameDetailStatusTone.Published

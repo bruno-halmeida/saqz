@@ -2,14 +2,19 @@ package br.com.saqz.groups.presentation.gamedetail
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
+import br.com.saqz.groups.presentation.FakeAttendanceGateway
+import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleCancelledGame
@@ -40,7 +45,7 @@ class GameDetailViewModelTest {
     @Test
     fun `loads game details`() = runTest {
         val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame()))
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(1, gateway.readCalls)
         assertNotNull(viewModel.state.value.header)
@@ -53,6 +58,8 @@ class GameDetailViewModelTest {
             "group-1", "game-1",
             FakeGameGateway(readResult = SaqzResult.Failure(GameError.Data(DataError.Forbidden))),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
@@ -68,6 +75,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(),
             groupGateway,
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         assertTrue(viewModel.state.value.loadFailed)
@@ -86,7 +95,7 @@ class GameDetailViewModelTest {
         val old = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val fresh = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val gateway = FakeGameGateway(reads = ArrayDeque(listOf(old, fresh)))
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
         viewModel.onIntent(GameDetailIntent.Retry)
         gateway.completeRead(1, SaqzResult.Success(sampleVersionedGame()))
         old.complete(SaqzResult.Failure(GameError.Data(DataError.Forbidden)))
@@ -99,7 +108,7 @@ class GameDetailViewModelTest {
         val gateway = FakeGameGateway(
             lifecycleResult = SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))),
         )
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
         viewModel.onIntent(GameDetailIntent.RequestCancel)
         viewModel.onIntent(GameDetailIntent.ConfirmCancel)
         assertEquals(GameLifecycleAction.Cancel, gateway.lastLifecycleAction)
@@ -114,7 +123,7 @@ class GameDetailViewModelTest {
         val gateway = FakeGameGateway(
             lifecycleDeferreds = ArrayDeque(listOf(lifecycle)),
         )
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
         viewModel.onIntent(GameDetailIntent.ConfirmCancel)
@@ -137,6 +146,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(readResult = SaqzResult.Success(draft)),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
@@ -152,6 +163,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(lifecycleDeferreds = ArrayDeque(listOf(lifecycle))),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
@@ -175,6 +188,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(readResult = SaqzResult.Success(VersionedGame(game, GameVersionToken("etag-1")))),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         val header = viewModel.state.value.header
@@ -198,7 +213,7 @@ class GameDetailViewModelTest {
                 ),
             ),
         )
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
         viewModel.onIntent(GameDetailIntent.ConfirmCancel)
@@ -214,6 +229,119 @@ class GameDetailViewModelTest {
         assertEquals(GameVersionToken("etag-3"), gateway.lifecycleVersions[1])
         assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
         assertEquals(GameDetailEffect.Cancelled, viewModel.effects.first())
+    }
+
+    @Test
+    fun `loads waitlist in backend order and exposes manual priority config`() = runTest {
+        val group = sampleVersionedGroup().copy(
+            group = sampleVersionedGroup().group.copy(
+                gameConfig = GroupGameConfig(
+                    mensalistaPriority = true,
+                    promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+                ),
+            ),
+        )
+        val athletes = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf(
+                    br.com.saqz.groups.presentation.sampleRosterEntry("wait-1"),
+                    br.com.saqz.groups.presentation.sampleRosterEntry("wait-2")
+                        .copy(membershipType = AthleteMembershipType.AVULSO),
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(SaqzResult.Success(group)),
+            FakeAttendanceGateway(), athletes,
+        )
+
+        assertEquals(listOf("wait-1", "wait-2"), viewModel.state.value.waitlist.map { it.id })
+        assertTrue(viewModel.state.value.mensalistaPriority)
+        assertEquals(
+            br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+            viewModel.state.value.promotionMode,
+        )
+        assertTrue(viewModel.state.value.waitlist.first().isMensalista)
+    }
+
+    @Test
+    fun `fifo promotion intent is ignored`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1"))
+
+        assertEquals(0, attendance.promoteCalls)
+        assertEquals(2, viewModel.state.value.waitlist.size)
+    }
+
+    @Test
+    fun `promotion rolls back waitlist on failure`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val deferred = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation, AttendanceError>>()
+        attendance.promoteDeferred = deferred
+        val group = sampleVersionedGroup().copy(
+            group = sampleVersionedGroup().group.copy(
+                gameConfig = GroupGameConfig(
+                    promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(SaqzResult.Success(group)),
+            attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1"))
+        assertEquals(listOf("wait-2"), viewModel.state.value.waitlist.map { it.id })
+
+        deferred.complete(SaqzResult.Failure(AttendanceError.Data(DataError.Server)))
+
+        assertEquals(listOf("wait-1", "wait-2"), viewModel.state.value.waitlist.map { it.id })
+        assertTrue(viewModel.state.value.promotionFailed)
+    }
+
+    @Test
+    fun `capacity rollback restores optimistic value`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val deferred = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity, AttendanceError>>()
+        attendance.capacityDeferred = deferred
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+        viewModel.onIntent(GameDetailIntent.UpdateCapacity(14))
+        viewModel.onIntent(GameDetailIntent.SaveCapacity)
+        assertEquals(14, viewModel.state.value.attendance?.capacity)
+
+        deferred.complete(SaqzResult.Failure(AttendanceError.Data(DataError.Server)))
+
+        assertEquals(12, viewModel.state.value.attendance?.capacity)
+        assertTrue(viewModel.state.value.capacityFailed)
+    }
+
+    @Test
+    fun `capacity conflict closes sheet and reloads`() = runTest {
+        val attendance = FakeAttendanceGateway(capacityResult = SaqzResult.Failure(AttendanceError.Conflict))
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(
+                listOf(SaqzResult.Success(sampleVersionedGame()), SaqzResult.Success(sampleVersionedGame())),
+            ),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", gateway, FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+        viewModel.onIntent(GameDetailIntent.UpdateCapacity(14))
+        viewModel.onIntent(GameDetailIntent.SaveCapacity)
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.capacitySheetOpen)
+        assertEquals(12, viewModel.state.value.attendance?.capacity)
     }
 
 }
