@@ -45,7 +45,7 @@ internal object GameResponseTags {
 internal fun GameResponseSection(
     state: GameDetailState,
     onRespond: (AttendanceIntent) -> Unit,
-    onAutoConfirmationChanged: (Boolean) -> Unit,
+    onAutoConfirmationChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -86,7 +86,7 @@ internal fun GameResponseSection(
                 loading = state.responding && response?.status == GameDetailResponseStatus.Declined,
             )
         }
-        responseFeedback(response)
+        ResponseFeedback(response)
         if (!state.header?.confirmationOpen.orFalse()) {
             Text(
                 text = stringResource(Res.string.game_response_deadline_closed),
@@ -111,7 +111,7 @@ internal fun GameResponseSection(
         if (state.autoConfirmationVisible) {
             SaqzSwitch(
                 checked = state.autoConfirmationEnabled,
-                onCheckedChange = onAutoConfirmationChanged,
+                onCheckedChange = onAutoConfirmationChange,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = metrics.subGrid)
@@ -131,7 +131,7 @@ internal fun GameResponseSection(
 }
 
 @Composable
-private fun responseFeedback(response: GameDetailResponseUi?) {
+private fun ResponseFeedback(response: GameDetailResponseUi?) {
     val text = when (response?.status) {
         GameDetailResponseStatus.Confirmed -> stringResource(Res.string.game_response_confirmed)
         GameDetailResponseStatus.Declined -> stringResource(Res.string.game_response_declined)

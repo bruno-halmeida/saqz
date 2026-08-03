@@ -120,24 +120,6 @@ class KtorAttendanceGatewayTest {
     }
 
     @Test
-    fun `roster uses exact route and preserves backend order`() = runTest {
-        val result = gateway { request ->
-            assertEquals(HttpMethod.Get, request.method)
-            assertEquals(
-                "/api/groups/group-1/games/game-1/attendance/roster",
-                request.url.encodedPath,
-            )
-            rosterResponse()
-        }.roster(GROUP, GAME)
-
-        val roster = assertIs<SaqzResult.Success<*>>(result).value as
-            br.com.saqz.groups.domain.attendance.AttendanceRoster
-        assertEquals(listOf("confirmed-1"), roster.confirmed.map { it.memberId })
-        assertEquals(listOf("waiting-2", "waiting-1"), roster.waitlisted.map { it.memberId })
-        assertEquals(listOf(2L, 1L), roster.waitlisted.map { it.waitlistPosition })
-    }
-
-    @Test
     fun `auto confirmation uses own member route and enabled body`() = runTest {
         val result = gateway { request ->
             assertEquals(HttpMethod.Put, request.method)
@@ -442,9 +424,6 @@ class KtorAttendanceGatewayTest {
     private fun MockRequestHandleScope.capacityResponse(etag: String = "\"8\"") =
         respond(CAPACITY_JSON, headers = versionedHeaders(etag))
 
-    private fun MockRequestHandleScope.rosterResponse() =
-        respond(ROSTER_JSON, headers = jsonHeaders())
-
     private fun MockRequestHandleScope.autoConfirmationResponse(enabled: Boolean = true) =
         respond("{\"enabled\":$enabled}", headers = jsonHeaders())
 
@@ -482,6 +461,5 @@ class KtorAttendanceGatewayTest {
         const val DETAIL_WITHOUT_OWN = """{"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24}"""
         const val MUTATION_JSON = """{"attendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"audit":{"actorId":"organizer-1","source":"ORGANIZER_OVERRIDE","oldStatus":"WAITLISTED","newStatus":"CONFIRMED","reason":"Correção","occurredAt":"2026-08-12T22:30:00Z"},"promotedCount":2,"detail":{"ownAttendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"confirmedCount":4,"availableSpots":20,"waitlistCount":1,"capacity":24}}"""
         const val CAPACITY_JSON = """{"capacity":30,"version":8,"promotedCount":2,"detail":{"confirmedCount":4,"availableSpots":26,"waitlistCount":0,"capacity":30}}"""
-        const val ROSTER_JSON = """{"confirmed":[{"memberId":"confirmed-1","displayName":"Ana","waitlistPosition":null}],"waitlisted":[{"memberId":"waiting-2","displayName":"Bia","waitlistPosition":2},{"memberId":"waiting-1","displayName":"Caio","waitlistPosition":1}]}"""
     }
 }

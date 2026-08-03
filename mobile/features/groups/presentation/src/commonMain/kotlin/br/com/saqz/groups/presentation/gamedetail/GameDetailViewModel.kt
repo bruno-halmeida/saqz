@@ -44,6 +44,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
+@Suppress("LargeClass")
 class GameDetailViewModel(
     val groupId: String,
     val gameId: String,

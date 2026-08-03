@@ -101,7 +101,7 @@ internal fun GameDetailScreen(
                         GameResponseSection(
                             state = state,
                             onRespond = { onIntent(GameDetailIntent.Respond(it)) },
-                            onAutoConfirmationChanged = {
+                            onAutoConfirmationChange = {
                                 onIntent(GameDetailIntent.ToggleAutoConfirmation(it))
                             },
                         )
