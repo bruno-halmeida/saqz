@@ -47,6 +47,7 @@ class RespondAttendance(
                 source,
                 reason,
                 aggregate.membershipType,
+                aggregate.mensalistaPriority,
             ),
             intent,
         )) {
@@ -61,6 +62,7 @@ class RespondAttendance(
     ): AttendanceCommandResult {
         if (!decision.changed) return AttendanceCommandResult.Success(requireNotNull(aggregate.current))
         val timestamp = now()
+        val respondedAt = aggregate.current?.respondedAt ?: timestamp
         val record = AttendanceRecord(
             aggregate.gameId,
             aggregate.groupId,
@@ -69,8 +71,8 @@ class RespondAttendance(
             if (decision.allocateWaitlistSequence) {
                 repository.nextWaitlistSequence(aggregate.groupId, aggregate.gameId)
             } else null,
-            aggregate.current?.respondedAt ?: timestamp,
-            timestamp,
+            respondedAt,
+            maxOf(timestamp, respondedAt),
             (aggregate.current?.version ?: 0) + 1,
         )
         repository.save(record)
@@ -100,7 +102,7 @@ class RespondAttendance(
         val promoted = waiting.copy(
             status = AttendanceStatus.CONFIRMED,
             waitlistSequence = null,
-            updatedAt = timestamp,
+            updatedAt = maxOf(timestamp, waiting.respondedAt),
             version = waiting.version + 1,
         )
         repository.save(promoted)
