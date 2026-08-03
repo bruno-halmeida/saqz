@@ -148,7 +148,7 @@ class KtorGameGatewayTest {
     @Test fun `validation maps safely`() = errorCase(400, "VALIDATION_FAILED", GameError.Validation::class.simpleName)
     @Test fun `hidden game maps safely`() = errorCase(404, "GAME_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `hidden group maps safely`() = errorCase(404, "GROUP_NOT_FOUND", GameError.HiddenResource::class.simpleName)
-    @Test fun `conflict maps safely`() = errorCase(409, "VERSION_CONFLICT", GameError.Conflict::class.simpleName)
+    @Test fun `version conflict maps safely`() = errorCase(409, "VERSION_CONFLICT", GameError.VersionConflict::class.simpleName)
     @Test fun `invalid lifecycle maps safely`() = errorCase(409, "INVALID_GAME_TRANSITION", GameError.InvalidLifecycle::class.simpleName)
     @Test fun `authentication maps safely`() = errorCase(401, "AUTHENTICATION_REQUIRED", GameError.Authentication::class.simpleName)
     @Test fun `forbidden maps safely`() = errorCase(403, "FORBIDDEN", GameError.Data(DataError.Forbidden)::class.simpleName)

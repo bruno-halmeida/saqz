@@ -193,7 +193,7 @@ class GameDetailViewModelTest {
             ),
             lifecycleResults = ArrayDeque(
                 listOf(
-                    SaqzResult.Failure(GameError.Conflict),
+                    SaqzResult.Failure(GameError.Conflict()),
                     SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-4"))),
                 ),
             ),

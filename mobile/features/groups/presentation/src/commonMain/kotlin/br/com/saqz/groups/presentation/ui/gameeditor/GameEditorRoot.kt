@@ -14,12 +14,14 @@ fun GameEditorRoot(
     groupId: String,
     gameId: String?,
     onBack: () -> Unit,
+    onOpenGameDetail: (String) -> Unit,
     viewModel: GameEditorViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             GameEditorEffect.Saved -> onBack()
+            is GameEditorEffect.OpenGameDetail -> onOpenGameDetail(effect.gameId)
         }
     }
     GameEditorScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)

@@ -86,7 +86,7 @@ class GameDetailViewModel(
                     }
                     emit(GameDetailEffect.Cancelled)
                 }
-                is SaqzResult.Failure -> if (result.error == GameError.Conflict) {
+                is SaqzResult.Failure -> if (result.error is GameError.Conflict) {
                     update { it.copy(cancelling = false, cancelDialogOpen = false, cancelFailed = false) }
                     load()
                 } else {

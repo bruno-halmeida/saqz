@@ -50,7 +50,9 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupDetailsViewModel(params.get(), get()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
-    viewModel { params -> GameEditorViewModel(params.get(), params.get(), get()) }
+    viewModel {
+        params -> GameEditorViewModel(params.get(), params.get(), params.get(), get(), get())
+    }
     viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get()) }
     viewModel {
         GroupPhotoViewModel(

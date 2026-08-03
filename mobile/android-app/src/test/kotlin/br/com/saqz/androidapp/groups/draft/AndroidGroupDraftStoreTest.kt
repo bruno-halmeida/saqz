@@ -190,6 +190,7 @@ class AndroidGroupDraftStoreTest {
                     "2026-08-12T19:00:00Z",
                     "25,00",
                     "Notas",
+                    gameFeeCents = 2500,
                 ),
         )
 
