@@ -4,8 +4,8 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceSource
-import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
 import java.util.UUID
 
@@ -46,32 +46,34 @@ class AdjustGameCapacity(
         if (aggregate.gameStatus != GameStatus.PUBLISHED) return@inTransaction CapacityCommandResult.Frozen
         if (aggregate.version != expectedVersion) return@inTransaction CapacityCommandResult.Conflict
         if (!repository.updateCapacity(gameId, expectedVersion, capacity)) return@inTransaction CapacityCommandResult.Conflict
-        val promoted = promote(aggregate, (capacity - aggregate.confirmedCount).coerceAtLeast(0))
+        val promoted = promote(aggregate, (capacity - aggregate.confirmedCount).coerceAtLeast(0), capacity)
         CapacityCommandResult.Success(capacity, expectedVersion + 1, promoted)
     }
 
-    private fun promote(aggregate: CapacityAggregate, spots: Int): List<AttendanceRecord> {
-        if (spots == 0) return emptyList()
+    private fun promote(aggregate: CapacityAggregate, spots: Int, targetCapacity: Int): List<AttendanceRecord> {
+        if (spots == 0 || aggregate.promotionMode != PromotionMode.FIFO) {
+            return emptyList()
+        }
         val timestamp = now()
+        var confirmedCount = aggregate.confirmedCount
         return buildList {
             repeat(spots) {
                 val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return@buildList
-                val promoted = waiting.copy(
-                    status = AttendanceStatus.CONFIRMED,
-                    waitlistSequence = null,
-                    updatedAt = maxOf(timestamp, waiting.respondedAt),
-                    version = waiting.version + 1,
-                )
-                repository.save(promoted)
-                repository.append(
-                    AttendanceEvent(
-                        ids(), aggregate.gameId, aggregate.groupId, promoted.memberId,
-                        aggregate.actorId, AttendanceSource.SYSTEM, AttendanceStatus.WAITLISTED,
-                        AttendanceStatus.CONFIRMED, null, timestamp,
-                    ),
-                )
-                charges.promoted(aggregate.forMember(waiting), aggregate.actorId)
-                add(promoted)
+                when (val result = promoteAttendance(
+                    aggregate.forMember(waiting).copy(capacity = targetCapacity, confirmedCount = confirmedCount),
+                    AttendanceSource.SYSTEM,
+                    reason = null,
+                    repository = repository,
+                    charges = charges,
+                    timestamp = timestamp,
+                    ids = ids,
+                )) {
+                    is AttendancePromotionResult.Denied -> return@buildList
+                    is AttendancePromotionResult.Success -> {
+                        add(result.attendance)
+                        confirmedCount++
+                    }
+                }
             }
         }
     }
@@ -82,5 +84,6 @@ class AdjustGameCapacity(
         confirmationDeadline, capacity, confirmedCount, record, gameFeeCents, gameDate,
         AthleteMembershipType.MENSALISTA,
         mensalistaPriority,
+        promotionMode,
     )
 }

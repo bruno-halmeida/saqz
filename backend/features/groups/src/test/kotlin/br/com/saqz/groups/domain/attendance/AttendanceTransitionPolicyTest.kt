@@ -46,6 +46,29 @@ class AttendanceTransitionPolicyTest {
     @Test fun `avulso may decline like any member`() = transition(context(membership = AthleteMembershipType.AVULSO, current = AttendanceStatus.WAITLISTED), AttendanceIntent.DECLINE, AttendanceStatus.DECLINED, changed = true)
     @Test fun `organizer confirms an avulso within capacity`() = transition(organizer(membership = AthleteMembershipType.AVULSO, reason = "Autorizado"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Autorizado")
     @Test fun `organizer confirmation of an avulso still respects full capacity`() = transition(organizer(membership = AthleteMembershipType.AVULSO, confirmed = 2, reason = "Lista de espera"), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true, reason = "Lista de espera")
+    @Test
+    fun `promotion confirms a waitlisted member and requests a charge`() = transition(
+        organizer(current = AttendanceStatus.WAITLISTED, confirmed = 1, reason = "Promovido manualmente"),
+        AttendanceIntent.PROMOTE,
+        AttendanceStatus.CONFIRMED,
+        changed = true,
+        charge = true,
+        reason = "Promovido manualmente",
+    )
+
+    @Test
+    fun `promotion rejects a member outside the waitlist`() = denied(
+        organizer(current = AttendanceStatus.DECLINED),
+        AttendanceIntent.PROMOTE,
+        AttendanceDenial.NOT_WAITLISTED,
+    )
+
+    @Test
+    fun `promotion rejects a full game`() = denied(
+        organizer(current = AttendanceStatus.WAITLISTED, confirmed = 2),
+        AttendanceIntent.PROMOTE,
+        AttendanceDenial.NO_CAPACITY,
+    )
 
     // --- VUL-152: matriz de prioridade configurável ---
     // Prioridade ligada (default): mensalista toma vaga direto; avulso sempre espera.

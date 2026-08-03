@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.application.game.GameAttendanceCountSource
 import br.com.saqz.groups.application.game.GameAttendanceCounts
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -85,6 +86,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                     rs.getObject("game_fee_cents", Long::class.javaObjectType),
                     rs.getObject("local_date", java.time.LocalDate::class.java),
                     rs.getBoolean("mensalista_priority"),
+                    PromotionMode.valueOf(rs.getString("promotion_mode")),
                 )
             }
             .optional()
@@ -109,6 +111,46 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             }
             .optional()
             .orElse(null)
+
+    override fun findPromotionReplay(
+        groupId: UUID,
+        gameId: UUID,
+        actorId: UUID,
+        requestId: UUID,
+    ): AttendancePromotionReplay? = jdbc.sql(PROMOTION_REPLAY)
+        .param("group", groupId)
+        .param("game", gameId)
+        .param("actor", actorId)
+        .param("request", requestId)
+        .query { rs, _ ->
+            AttendancePromotionReplay(
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    AttendanceStatus.valueOf(rs.getString("attendance_status")),
+                    rs.getObject("attendance_waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("attendance_responded_at").toInstant(),
+                    rs.getTimestamp("attendance_updated_at").toInstant(),
+                    rs.getLong("attendance_version"),
+                ),
+                AttendanceEvent(
+                    rs.getObject("event_id", UUID::class.java),
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    rs.getObject("actor_user_id", UUID::class.java),
+                    AttendanceSource.valueOf(rs.getString("source")),
+                    rs.getString("old_status")?.let(AttendanceStatus::valueOf),
+                    AttendanceStatus.valueOf(rs.getString("new_status")),
+                    rs.getString("reason"),
+                    rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getObject("request_id", UUID::class.java),
+                ),
+            )
+        }
+        .optional()
+        .orElse(null)
 
     override fun save(record: AttendanceRecord) {
         check(
@@ -137,6 +179,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .param("new", event.newStatus.name)
             .param("reason", event.reason, java.sql.Types.VARCHAR)
             .param("occurred", Timestamp.from(event.occurredAt))
+            .param("request", event.requestId, java.sql.Types.OTHER)
             .update()
         check(appended == 1) { "Grupo de presença excluído ou inexistente" }
     }
@@ -247,6 +290,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             rs.getObject("local_date", java.time.LocalDate::class.java),
             AthleteMembershipType.valueOf(rs.getString("membership_type")),
             rs.getBoolean("mensalista_priority"),
+            PromotionMode.valueOf(rs.getString("promotion_mode")),
         )
     }
 
@@ -254,7 +298,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         const val AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
                    g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
-                   ag.mensalista_priority,
+                   ag.mensalista_priority,ag.promotion_mode,
                    :actor::uuid AS actor_id,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
@@ -287,16 +331,34 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         """
         const val APPEND = """
             INSERT INTO attendance_events
-                (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at)
-            SELECT :id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred
+                (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at,request_id)
+            SELECT :id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred,:request
             WHERE EXISTS (
                 SELECT 1 FROM access_groups
                 WHERE id=:group AND deleted_at IS NULL
             )
         """
+        const val PROMOTION_REPLAY = """
+            SELECT event.id AS event_id,event.game_id,event.group_id,event.member_user_id,event.actor_user_id,
+                   event.source,event.old_status,event.new_status,event.reason,event.occurred_at,event.request_id,
+                   attendance.status AS attendance_status,
+                   attendance.waitlist_sequence AS attendance_waitlist_sequence,
+                   attendance.responded_at AS attendance_responded_at,
+                   attendance.updated_at AS attendance_updated_at,
+                   attendance.version AS attendance_version
+            FROM attendance_events event
+            JOIN game_attendance attendance
+              ON attendance.game_id=event.game_id AND attendance.member_user_id=event.member_user_id
+            JOIN access_groups ag ON ag.id=event.group_id AND ag.deleted_at IS NULL
+            WHERE event.group_id=:group AND event.game_id=:game
+              AND event.actor_user_id=:actor AND event.request_id=:request
+              AND event.source='ORGANIZER' AND event.new_status='CONFIRMED'
+            ORDER BY event.occurred_at,event.id
+            LIMIT 1
+        """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
-                   g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,
+                   g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,ag.promotion_mode,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g
@@ -310,8 +372,15 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             FROM game_attendance attendance
             JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id
             JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL
+            LEFT JOIN group_memberships membership
+                ON membership.group_id = attendance.group_id AND membership.user_id = attendance.member_user_id
             WHERE attendance.group_id=:group AND attendance.game_id=:game AND attendance.status='WAITLISTED'
-            ORDER BY attendance.waitlist_sequence
+            ORDER BY CASE
+                       WHEN game.confirmation_deadline >= now() AND ag.mensalista_priority
+                            AND membership.membership_type='MENSALISTA' THEN 0
+                       ELSE 1
+                     END,
+                     attendance.waitlist_sequence
             LIMIT 1
             FOR UPDATE OF attendance
         """

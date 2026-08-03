@@ -21,6 +21,11 @@ data class AttendanceOverrideRequest @JsonCreator constructor(
     @JsonProperty("intent") val intent: String?,
     @JsonProperty("reason") val reason: String?,
 )
+data class AttendancePromotionRequest @JsonCreator constructor(
+    @JsonProperty("requestId") val requestId: UUID?,
+    @JsonProperty("memberId") val memberId: UUID?,
+    @JsonProperty("reason") val reason: String?,
+)
 data class CapacityRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
     @JsonProperty("capacity") val capacity: Int?,
@@ -124,6 +129,22 @@ class AttendanceController(
         )
     }
 
+    @PostMapping("/api/groups/{groupId}/games/{gameId}/attendance/promote")
+    fun promote(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+        @PathVariable gameId: String,
+        @RequestBody request: AttendancePromotionRequest,
+    ): ResponseEntity<AttendanceMutationResponse> {
+        val member = required(request.memberId, "memberId")
+        val requestId = required(request.requestId, "requestId")
+        val actor = actors.resolve(identity)
+        return mutation(
+            responses.promote(actor, uuid(groupId), uuid(gameId), member, requestId, request.reason),
+            actor, uuid(groupId), uuid(gameId),
+        )
+    }
+
     @PutMapping("/api/groups/{groupId}/games/{gameId}/capacity")
     fun capacity(
         @AuthenticationPrincipal identity: RequestIdentity,
@@ -158,6 +179,8 @@ class AttendanceController(
         )
         is AttendanceCommandResult.Denied -> when (result.reason) {
             AttendanceDenial.REASON_REQUIRED, AttendanceDenial.REASON_INVALID -> invalid("reason")
+            AttendanceDenial.NOT_WAITLISTED, AttendanceDenial.NO_CAPACITY -> invalid("promotion")
+            AttendanceDenial.MANUAL_PROMOTION_ONLY -> invalid("promotionMode")
             AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
             AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
         }
@@ -167,7 +190,10 @@ class AttendanceController(
 
     private fun detail(actor: UUID, group: UUID, game: UUID): AttendanceDetailResponse =
         details.find(actor, group, game)?.response() ?: throw GameNotFoundException()
-    private fun intent(value: String?): AttendanceIntent = value?.let { runCatching { AttendanceIntent.valueOf(it) }.getOrNull() } ?: invalid("intent")
+    private fun intent(value: String?): AttendanceIntent = value
+        ?.let { runCatching { AttendanceIntent.valueOf(it) }.getOrNull() }
+        ?.takeUnless { it == AttendanceIntent.PROMOTE }
+        ?: invalid("intent")
     private fun uuid(value: String): UUID = runCatching { UUID.fromString(value) }.getOrElse { throw GameNotFoundException() }
     private fun version(value: String?): Long { if (value == null) throw PreconditionRequiredException(); return Regex("\"([1-9][0-9]*)\"").matchEntire(value)?.groupValues?.get(1)?.toLong() ?: invalid("ifMatch") }
     private fun <T : Any> required(value: T?, field: String): T = value ?: invalid(field)

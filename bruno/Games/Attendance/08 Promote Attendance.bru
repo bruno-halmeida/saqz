@@ -1,0 +1,13 @@
+meta {
+  name: Promote Attendance (MANUAL mode only)
+  type: http
+  seq: 8
+}
+post {
+  url: {{baseUrl}}/api/groups/{{groupId}}/games/{{gameId}}/attendance/promote
+  body: json
+  auth: bearer
+}
+body:json { {"requestId":"{{$guid}}","memberId":"{{memberId}}","reason":"Escolha do organizador"} }
+  test("directed promotion is audited and idempotent", function () { expect(res.status).to.equal(200); expect(res.body.audit.source).to.equal("ORGANIZER"); expect(res.body.promotedCount).to.equal(1); });
+}

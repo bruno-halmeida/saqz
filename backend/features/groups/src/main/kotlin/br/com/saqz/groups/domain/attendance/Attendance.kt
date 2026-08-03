@@ -5,7 +5,7 @@ import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
 
 enum class AttendanceStatus { CONFIRMED, DECLINED, WAITLISTED }
-enum class AttendanceIntent { CONFIRM, DECLINE }
+enum class AttendanceIntent { CONFIRM, DECLINE, PROMOTE }
 enum class AttendanceSource { SELF, ORGANIZER, SYSTEM }
 
 data class AttendanceDecisionContext(
@@ -27,6 +27,9 @@ enum class AttendanceDenial {
     DEADLINE_PASSED,
     REASON_REQUIRED,
     REASON_INVALID,
+    NOT_WAITLISTED,
+    NO_CAPACITY,
+    MANUAL_PROMOTION_ONLY,
 }
 
 sealed interface AttendanceDecision {
@@ -67,6 +70,14 @@ object AttendanceTransitionPolicy {
         val target = when (intent) {
             AttendanceIntent.DECLINE -> AttendanceStatus.DECLINED
             AttendanceIntent.CONFIRM -> confirmationTarget(context)
+            AttendanceIntent.PROMOTE -> when (context.currentStatus) {
+                AttendanceStatus.WAITLISTED -> if (context.confirmedCount < context.capacity) {
+                    AttendanceStatus.CONFIRMED
+                } else {
+                    return AttendanceDecision.Denied(AttendanceDenial.NO_CAPACITY)
+                }
+                else -> return AttendanceDecision.Denied(AttendanceDenial.NOT_WAITLISTED)
+            }
         }
         val changed = context.currentStatus != target
         return AttendanceDecision.Transition(

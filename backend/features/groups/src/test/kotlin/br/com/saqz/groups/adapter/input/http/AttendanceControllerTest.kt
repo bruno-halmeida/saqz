@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -46,9 +47,71 @@ class AttendanceControllerTest {
     @Test fun `avulso self confirm waits even with a free spot`() { actor = member; repository.membership[member] = AthleteMembershipType.AVULSO; val response = controller.respond(ID, "$group", "$game", self()); assertEquals("WAITLISTED", response.body!!.attendance.status); assertEquals(1, response.body!!.attendance.waitlistPosition); assertEquals(0, response.body!!.detail.confirmedCount) }
     @Test fun `confirmed withdrawal promotes the earliest waiting avulso`() { repository.membership[second] = AthleteMembershipType.AVULSO; actor = second; controller.respond(ID, "$group", "$game", self()); actor = member; controller.respond(ID, "$group", "$game", self()); controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE")); assertEquals(AttendanceStatus.CONFIRMED, repository.records[second]!!.status); assertNull(repository.records[second]!!.waitlistSequence) }
     @Test fun `organizer override confirms an avulso into a free spot`() { repository.membership[member] = AthleteMembershipType.AVULSO; val response = controller.override(ID, "$group", "$game", override()); assertEquals("CONFIRMED", response.body!!.attendance.status); assertEquals("ORGANIZER", response.body!!.audit!!.source) }
+    @Test
+    fun `manual promotion selects the requested waitlisted member and audits organizer`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        val response = controller.promote(ID, "$group", "$game", promotion(second))
+        assertEquals(second, response.body!!.attendance.memberId)
+        assertEquals("CONFIRMED", response.body!!.attendance.status)
+        assertEquals(1, response.body!!.promotedCount)
+        assertEquals("ORGANIZER", response.body!!.audit!!.source)
+    }
+
+    @Test
+    fun `manual mode does not promote automatically after withdrawal`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        actor = member
+        controller.respond(ID, "$group", "$game", self().copy(intent = "DECLINE"))
+        assertEquals(AttendanceStatus.WAITLISTED, repository.records[second]!!.status)
+    }
+
+    @Test
+    fun `directed promotion is rejected in fifo mode`() {
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        val failure = assertFailsWith<InvalidGroupRequestException> {
+            controller.promote(ID, "$group", "$game", promotion(second))
+        }
+        assertEquals(setOf("promotionMode"), failure.fieldErrors.keys)
+    }
+
+    @Test
+    fun `manual promotion retry with the same request id replays the original result`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        val request = promotion(second)
+        val first = controller.promote(ID, "$group", "$game", request)
+        val replay = controller.promote(ID, "$group", "$game", request.copy(reason = "Outro motivo"))
+        assertEquals(first.body!!.attendance, replay.body!!.attendance)
+        assertEquals(first.body!!.audit, replay.body!!.audit)
+        assertEquals(1, repository.events.size)
+    }
+
+    @Test
+    fun `athlete cannot use manual promotion endpoint`() {
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        actor = member
+        assertFailsWith<AccessForbiddenException> {
+            controller.promote(ID, "$group", "$game", promotion(second))
+        }
+    }
+
+    @Test
+    fun `manual promotion endpoint requires an audit reason`() {
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        assertFailsWith<InvalidGroupRequestException> {
+            controller.promote(ID, "$group", "$game", promotion(second).copy(reason = null))
+        }
+    }
     @Test fun `self request exposes no client authored capacity queue charge actor or timestamp`() { assertEquals(setOf("requestId", "intent"), AttendanceSelfRequest::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }.toSet()) }
     @Test fun `self response requires request id`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(requestId = null)) } }
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
+    @Test fun `self response rejects promotion intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "PROMOTE")) } }
     @Test fun `self response retry is equivalent without duplicate audit`() { actor = member; val first = controller.respond(ID, "$group", "$game", self()); val retry = controller.respond(ID, "$group", "$game", self()); assertEquals(first.body!!.attendance, retry.body!!.attendance); assertNull(retry.body!!.audit); assertEquals(1, repository.events.size) }
     @Test fun `self response after deadline is distinct`() { actor = member; repository.deadline = NOW.minusSeconds(1); assertFailsWith<AttendanceDeadlinePassedException> { controller.respond(ID, "$group", "$game", self()) } }
     @Test fun `cancelled game response is distinctly frozen`() { actor = member; repository.status = GameStatus.CANCELLED; assertFailsWith<AttendanceFrozenException> { controller.respond(ID, "$group", "$game", self()) } }
@@ -66,6 +129,7 @@ class AttendanceControllerTest {
 
     private fun self() = AttendanceSelfRequest(UUID.randomUUID(), "CONFIRM")
     private fun override() = AttendanceOverrideRequest(UUID.randomUUID(), member, "CONFIRM", "Chegou após o prazo")
+    private fun promotion(memberId: UUID) = AttendancePromotionRequest(UUID.randomUUID(), memberId, "Escolha do organizador")
 
     private inner class MemoryRepository : AttendanceCommandRepository, AttendanceDetailQuery, AttendanceRosterQuery {
         val members = linkedSetOf(member, second); val records = linkedMapOf<UUID, AttendanceRecord>(); val events = mutableListOf<AttendanceEvent>()
@@ -73,12 +137,55 @@ class AttendanceControllerTest {
         val membership = linkedMapOf<UUID, AthleteMembershipType>()
         var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
         var mensalistaPriority = true
-        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? = if (groupId == group && gameId == game && memberId in members) AttendanceAggregate(group, game, memberId, actorId, role(actorId), status, deadline, capacity, confirmed(), records[memberId], 2500, LocalDate.of(2026, 8, 12), membership[memberId] ?: AthleteMembershipType.MENSALISTA, mensalistaPriority) else null
-        override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? = if (groupId == group && gameId == game) CapacityAggregate(group, game, actorId, role(actorId), status, deadline, capacity, confirmed(), version, 2500, LocalDate.of(2026, 8, 12), mensalistaPriority) else null
+        var promotionMode = PromotionMode.FIFO
+        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? =
+            if (groupId == group && gameId == game && memberId in members) {
+                AttendanceAggregate(
+                    group,
+                    game,
+                    memberId,
+                    actorId,
+                    role(actorId),
+                    status,
+                    deadline,
+                    capacity,
+                    confirmed(),
+                    records[memberId],
+                    2500,
+                    LocalDate.of(2026, 8, 12),
+                    membership[memberId] ?: AthleteMembershipType.MENSALISTA,
+                    mensalistaPriority,
+                    promotionMode,
+                )
+            } else null
+        override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? =
+            if (groupId == group && gameId == game) {
+                CapacityAggregate(
+                    group,
+                    game,
+                    actorId,
+                    role(actorId),
+                    status,
+                    deadline,
+                    capacity,
+                    confirmed(),
+                    version,
+                    2500,
+                    LocalDate.of(2026, 8, 12),
+                    mensalistaPriority,
+                    promotionMode,
+                )
+            } else null
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator
         override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
         override fun save(record: AttendanceRecord) { records[record.memberId] = record }
         override fun append(event: AttendanceEvent) { events += event }
+        override fun findPromotionReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendancePromotionReplay? {
+            val event = events.firstOrNull {
+                it.groupId == groupId && it.gameId == gameId && it.actorId == actorId && it.requestId == requestId
+            } ?: return null
+            return AttendancePromotionReplay(records.getValue(event.memberId), event)
+        }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }
         override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? = if (groupId == group && gameId == game && role(actorId) != null) AttendanceDetail(records[actorId], confirmed(), (capacity - confirmed()).coerceAtLeast(0), records.values.count { it.status == AttendanceStatus.WAITLISTED }, capacity, version) else null
         override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
