@@ -634,7 +634,16 @@ class AccessSessionConfiguration {
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
     )
     @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
-    @Bean fun applySeriesBoundary(repository: JdbcSeriesBoundaryRepository, ids: GameIdFactory) = ApplySeriesBoundary(repository, ids::create, Clock.systemUTC())
+    @Bean fun applySeriesBoundary(
+        repository: JdbcSeriesBoundaryRepository,
+        ids: GameIdFactory,
+        autoConfirm: AutoConfirmAttendance,
+    ) = ApplySeriesBoundary(
+        repository,
+        ids::create,
+        Clock.systemUTC(),
+        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+    )
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
