@@ -25,6 +25,9 @@ class GroupsRouteTest {
             ),
             GroupsRoute.AthleteRegistration("group-6"),
             GroupsRoute.MemberEditor("group-7", "user-8"),
+            GroupsRoute.GameEditor("group-9"),
+            GroupsRoute.GameEditor("group-9", "game-1"),
+            GroupsRoute.GameDetail("group-9", "game-1"),
         )
 
         routes.forEach { route ->

@@ -80,6 +80,8 @@ import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
+import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
+import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
@@ -296,6 +298,10 @@ class SaqzKoinModulesTest {
         koin.get<ResetCodeViewModel> { parametersOf("ana@exemplo.com") }
         koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
         koin.get<GroupMembersViewModel> { parametersOf("ceret") }
+        // VUL-151: editor (criar/editar) e detalhe do jogo resolvem com os ids da rota.
+        koin.get<GameEditorViewModel> { parametersOf("ceret", null) }
+        koin.get<GameEditorViewModel> { parametersOf("ceret", "game-1") }
+        koin.get<GameDetailViewModel> { parametersOf("ceret", "game-1") }
 
         app.close()
     }

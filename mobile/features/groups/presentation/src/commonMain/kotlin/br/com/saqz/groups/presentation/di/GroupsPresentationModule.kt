@@ -11,6 +11,8 @@ import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
+import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
+import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
@@ -48,6 +50,8 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupDetailsViewModel(params.get(), get()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
+    viewModel { params -> GameEditorViewModel(params.get(), params.get(), get()) }
+    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get()) }
     viewModel {
         GroupPhotoViewModel(
             profileGateway = get(),
