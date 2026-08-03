@@ -23,6 +23,7 @@ internal fun promoteAttendance(
     source: AttendanceSource,
     reason: String?,
     confirmedCount: Int = aggregate.confirmedCount,
+    requestId: UUID? = null,
     repository: AttendanceCommandRepository,
     charges: AttendanceChargePort,
     timestamp: Instant,
@@ -65,6 +66,7 @@ internal fun promoteAttendance(
         transition.newStatus,
         transition.reason,
         timestamp,
+        requestId,
     )
     repository.append(event)
     if (transition.createGameCharge) charges.promoted(aggregate, aggregate.actorId)

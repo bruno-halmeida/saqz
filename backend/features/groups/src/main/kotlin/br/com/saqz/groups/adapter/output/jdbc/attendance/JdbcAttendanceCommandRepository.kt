@@ -112,6 +112,46 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .optional()
             .orElse(null)
 
+    override fun findPromotionReplay(
+        groupId: UUID,
+        gameId: UUID,
+        actorId: UUID,
+        requestId: UUID,
+    ): AttendancePromotionReplay? = jdbc.sql(PROMOTION_REPLAY)
+        .param("group", groupId)
+        .param("game", gameId)
+        .param("actor", actorId)
+        .param("request", requestId)
+        .query { rs, _ ->
+            AttendancePromotionReplay(
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    AttendanceStatus.valueOf(rs.getString("attendance_status")),
+                    rs.getObject("attendance_waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("attendance_responded_at").toInstant(),
+                    rs.getTimestamp("attendance_updated_at").toInstant(),
+                    rs.getLong("attendance_version"),
+                ),
+                AttendanceEvent(
+                    rs.getObject("event_id", UUID::class.java),
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    rs.getObject("actor_user_id", UUID::class.java),
+                    AttendanceSource.valueOf(rs.getString("source")),
+                    rs.getString("old_status")?.let(AttendanceStatus::valueOf),
+                    AttendanceStatus.valueOf(rs.getString("new_status")),
+                    rs.getString("reason"),
+                    rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getObject("request_id", UUID::class.java),
+                ),
+            )
+        }
+        .optional()
+        .orElse(null)
+
     override fun save(record: AttendanceRecord) {
         check(
             jdbc.sql(SAVE)
@@ -139,6 +179,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .param("new", event.newStatus.name)
             .param("reason", event.reason, java.sql.Types.VARCHAR)
             .param("occurred", Timestamp.from(event.occurredAt))
+            .param("request", event.requestId, java.sql.Types.OTHER)
             .update()
         check(appended == 1) { "Grupo de presença excluído ou inexistente" }
     }
@@ -290,12 +331,30 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         """
         const val APPEND = """
             INSERT INTO attendance_events
-                (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at)
-            SELECT :id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred
+                (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at,request_id)
+            SELECT :id,:game,:group,:member,:actor,:source,:old,:new,:reason,:occurred,:request
             WHERE EXISTS (
                 SELECT 1 FROM access_groups
                 WHERE id=:group AND deleted_at IS NULL
             )
+        """
+        const val PROMOTION_REPLAY = """
+            SELECT event.id AS event_id,event.game_id,event.group_id,event.member_user_id,event.actor_user_id,
+                   event.source,event.old_status,event.new_status,event.reason,event.occurred_at,event.request_id,
+                   attendance.status AS attendance_status,
+                   attendance.waitlist_sequence AS attendance_waitlist_sequence,
+                   attendance.responded_at AS attendance_responded_at,
+                   attendance.updated_at AS attendance_updated_at,
+                   attendance.version AS attendance_version
+            FROM attendance_events event
+            JOIN game_attendance attendance
+              ON attendance.game_id=event.game_id AND attendance.member_user_id=event.member_user_id
+            JOIN access_groups ag ON ag.id=event.group_id AND ag.deleted_at IS NULL
+            WHERE event.group_id=:group AND event.game_id=:game
+              AND event.actor_user_id=:actor AND event.request_id=:request
+              AND event.source='ORGANIZER' AND event.new_status='CONFIRMED'
+            ORDER BY event.occurred_at,event.id
+            LIMIT 1
         """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,

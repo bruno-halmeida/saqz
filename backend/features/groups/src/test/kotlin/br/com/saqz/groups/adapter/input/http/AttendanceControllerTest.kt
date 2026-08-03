@@ -70,6 +70,29 @@ class AttendanceControllerTest {
     }
 
     @Test
+    fun `directed promotion is rejected in fifo mode`() {
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        val failure = assertFailsWith<InvalidGroupRequestException> {
+            controller.promote(ID, "$group", "$game", promotion(second))
+        }
+        assertEquals(setOf("promotionMode"), failure.fieldErrors.keys)
+    }
+
+    @Test
+    fun `manual promotion retry with the same request id replays the original result`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1)
+        val request = promotion(second)
+        val first = controller.promote(ID, "$group", "$game", request)
+        val replay = controller.promote(ID, "$group", "$game", request.copy(reason = "Outro motivo"))
+        assertEquals(first.body!!.attendance, replay.body!!.attendance)
+        assertEquals(first.body!!.audit, replay.body!!.audit)
+        assertEquals(1, repository.events.size)
+    }
+
+    @Test
     fun `athlete cannot use manual promotion endpoint`() {
         repository.record(second, AttendanceStatus.WAITLISTED, 1)
         actor = member
@@ -157,6 +180,12 @@ class AttendanceControllerTest {
         override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
         override fun save(record: AttendanceRecord) { records[record.memberId] = record }
         override fun append(event: AttendanceEvent) { events += event }
+        override fun findPromotionReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendancePromotionReplay? {
+            val event = events.firstOrNull {
+                it.groupId == groupId && it.gameId == gameId && it.actorId == actorId && it.requestId == requestId
+            } ?: return null
+            return AttendancePromotionReplay(records.getValue(event.memberId), event)
+        }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }
         override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? = if (groupId == group && gameId == game && role(actorId) != null) AttendanceDetail(records[actorId], confirmed(), (capacity - confirmed()).coerceAtLeast(0), records.values.count { it.status == AttendanceStatus.WAITLISTED }, capacity, version) else null
         override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {

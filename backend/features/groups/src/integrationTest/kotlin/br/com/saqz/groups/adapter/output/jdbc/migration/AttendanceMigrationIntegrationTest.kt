@@ -22,6 +22,7 @@ class AttendanceMigrationIntegrationTest {
     @AfterAll fun stop() = postgres.stop()
 
     @Test fun `v6 creates current attendance and event tables`() = assertEquals(2, int("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('game_attendance','attendance_events')"))
+    @Test fun `v29 adds the promotion request idempotency column`() = assertEquals(1, int("SELECT count(*) FROM information_schema.columns WHERE table_name='attendance_events' AND column_name='request_id'"))
     @Test fun `one current row stores status response update and version`() { val f = fixture(); attendance(f, "CONFIRMED"); assertEquals("CONFIRMED", string("SELECT status FROM game_attendance")); assertEquals(1, int("SELECT version FROM game_attendance")) }
     @Test fun `one row per game and member is unique`() { val f = fixture(); attendance(f, "DECLINED"); fails { attendance(f, "CONFIRMED") } }
     @Test fun `waitlisted attendance requires sequence`() { val f = fixture(); fails { attendance(f, "WAITLISTED") } }

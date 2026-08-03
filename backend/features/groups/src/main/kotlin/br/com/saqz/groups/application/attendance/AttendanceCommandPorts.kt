@@ -49,6 +49,12 @@ data class AttendanceEvent(
     val newStatus: AttendanceStatus,
     val reason: String?,
     val occurredAt: Instant,
+    val requestId: UUID? = null,
+)
+
+data class AttendancePromotionReplay(
+    val attendance: AttendanceRecord,
+    val event: AttendanceEvent,
 )
 
 interface AttendanceCommandRepository {
@@ -59,6 +65,7 @@ interface AttendanceCommandRepository {
     fun save(record: AttendanceRecord)
     fun append(event: AttendanceEvent)
     fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean
+    fun findPromotionReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendancePromotionReplay? = null
 }
 
 fun interface AttendanceChargePort {

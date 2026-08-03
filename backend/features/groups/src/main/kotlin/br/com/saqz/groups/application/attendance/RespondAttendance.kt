@@ -63,28 +63,35 @@ class RespondAttendance(
         groupId: UUID,
         gameId: UUID,
         memberId: UUID,
+        requestId: UUID,
         reason: String?,
     ): AttendanceCommandResult = transaction.inTransaction {
+        repository.findPromotionReplay(groupId, gameId, actorId, requestId)?.let {
+            return@inTransaction it.result()
+        }
         val aggregate = repository.lock(groupId, gameId, memberId, actorId)
             ?: return@inTransaction AttendanceCommandResult.Hidden
+        repository.findPromotionReplay(groupId, gameId, actorId, requestId)?.let {
+            return@inTransaction it.result()
+        }
         if (!aggregate.authorized(AttendanceSource.ORGANIZER)) {
             return@inTransaction aggregate.denied(AttendanceSource.ORGANIZER)
+        }
+        if (aggregate.promotionMode != PromotionMode.MANUAL) {
+            return@inTransaction AttendanceCommandResult.Denied(AttendanceDenial.MANUAL_PROMOTION_ONLY)
         }
         when (val result = promoteAttendance(
             aggregate,
             AttendanceSource.ORGANIZER,
             reason,
+            requestId = requestId,
             repository = repository,
             charges = charges,
             timestamp = now(),
             ids = ids,
         )) {
             is AttendancePromotionResult.Denied -> AttendanceCommandResult.Denied(result.reason)
-            is AttendancePromotionResult.Success -> AttendanceCommandResult.Success(
-                result.attendance,
-                listOf(result.attendance),
-                result.event,
-            )
+            is AttendancePromotionResult.Success -> result.result()
         }
     }
 
@@ -146,10 +153,16 @@ class RespondAttendance(
             timestamp = timestamp,
             ids = ids,
         )) {
-            is AttendancePromotionResult.Denied -> error("automatic attendance promotion denied: ${result.reason}")
+            is AttendancePromotionResult.Denied -> null
             is AttendancePromotionResult.Success -> result.attendance
         }
     }
+
+    private fun AttendancePromotionResult.Success.result() =
+        AttendanceCommandResult.Success(attendance, listOf(attendance), event)
+
+    private fun AttendancePromotionReplay.result() =
+        AttendanceCommandResult.Success(attendance, listOf(attendance), event)
 
     private fun AttendanceAggregate.authorized(source: AttendanceSource): Boolean = when (source) {
         AttendanceSource.SELF -> actorId == memberId && actorRole != null

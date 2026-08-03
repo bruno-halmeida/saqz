@@ -136,11 +136,11 @@ class AttendanceController(
         @PathVariable gameId: String,
         @RequestBody request: AttendancePromotionRequest,
     ): ResponseEntity<AttendanceMutationResponse> {
-        required(request.requestId, "requestId")
         val member = required(request.memberId, "memberId")
+        val requestId = required(request.requestId, "requestId")
         val actor = actors.resolve(identity)
         return mutation(
-            responses.promote(actor, uuid(groupId), uuid(gameId), member, request.reason),
+            responses.promote(actor, uuid(groupId), uuid(gameId), member, requestId, request.reason),
             actor, uuid(groupId), uuid(gameId),
         )
     }
@@ -180,6 +180,7 @@ class AttendanceController(
         is AttendanceCommandResult.Denied -> when (result.reason) {
             AttendanceDenial.REASON_REQUIRED, AttendanceDenial.REASON_INVALID -> invalid("reason")
             AttendanceDenial.NOT_WAITLISTED, AttendanceDenial.NO_CAPACITY -> invalid("promotion")
+            AttendanceDenial.MANUAL_PROMOTION_ONLY -> invalid("promotionMode")
             AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
             AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
         }

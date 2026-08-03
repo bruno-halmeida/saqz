@@ -239,7 +239,14 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         waitlist(f, selected, 2)
         f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
         val result = assertIs<AttendanceCommandResult.Success>(
-            f.service.promote(f.owner, f.group, f.game, selected, "Escolha do organizador"),
+            f.service.promote(
+                f.owner,
+                f.group,
+                f.game,
+                selected,
+                UUID.randomUUID(),
+                "Escolha do organizador",
+            ),
         )
         assertEquals(selected, result.attendance.memberId)
         assertEquals("CONFIRMED", status(selected))
@@ -247,9 +254,43 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals("ORGANIZER", string("SELECT source FROM attendance_events WHERE member_user_id='$selected'"))
         assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='$selected'"))
     }
+
+    @Test
+    fun `manual promotion retry with the same request id replays without another event or charge`() {
+        val f = fullFixture()
+        execute("UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='${f.group}'")
+        val selected = member(f.group, "selected", "AVULSO")
+        waitlist(f, selected, 1)
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
+        val requestId = UUID.randomUUID()
+        val first = f.service.promote(f.owner, f.group, f.game, selected, requestId, "Escolha do organizador")
+        val replay = f.service.promote(f.owner, f.group, f.game, selected, requestId, "Outro motivo")
+        assertEquals(first, replay)
+        assertEquals(2, count("attendance_events"))
+        assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='$selected'"))
+    }
+
+    @Test
+    fun `directed promotion is rejected in fifo mode`() {
+        val f = fixture()
+        attendance(f, f.member, "CONFIRMED")
+        val selected = member(f.group, "selected")
+        waitlist(f, selected, 1)
+        val result = f.service.promote(
+            f.owner,
+            f.group,
+            f.game,
+            selected,
+            UUID.randomUUID(),
+            "Escolha do organizador",
+        )
+        assertEquals(AttendanceCommandResult.Denied(AttendanceDenial.MANUAL_PROMOTION_ONLY), result)
+        assertEquals("WAITLISTED", status(selected))
+    }
     @Test fun `capacity increase stops when fifo is empty`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val result = assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 6)); assertEquals(listOf(waiting), result.promoted.map { it.memberId }); assertEquals(3, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")) }
     @Test fun `capacity decrease silently demotes nobody`() { val f = fullFixture(capacity = 4, confirmed = 4); assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 2)); assertEquals(4, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")); assertEquals(2, int("SELECT capacity FROM games")) }
     @Test fun `capacity below confirmed count blocks new confirmation`() { val f = fullFixture(capacity = 4, confirmed = 4); capacity(f).execute(f.owner, f.group, f.game, 1, 2); val newcomer = member(f.group, "newcomer"); assertEquals(AttendanceStatus.WAITLISTED, success(f.service.execute(newcomer, f.group, f.game, intent = AttendanceIntent.CONFIRM)).status) }
+    @Test fun `confirmed withdrawal succeeds when reduced capacity cannot promote`() { val f = fullFixture(capacity = 4, confirmed = 4); capacity(f).execute(f.owner, f.group, f.game, 1, 2); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val result = assertIs<AttendanceCommandResult.Success>(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); assertEquals(AttendanceStatus.DECLINED, result.attendance.status); assertEquals(emptyList(), result.promoted); assertEquals("WAITLISTED", status(waiting)); assertEquals(1, count("attendance_events")) }
     @Test fun `stale capacity version changes nothing`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); assertSame(CapacityCommandResult.Conflict, capacity(f).execute(f.owner, f.group, f.game, 2, 3)); assertEquals(2, int("SELECT capacity FROM games")); assertEquals("WAITLISTED", status(waiting)) }
     @Test fun `capacity rejects values outside game bounds`() { val f = fixture(); assertSame(CapacityCommandResult.InvalidCapacity, capacity(f).execute(f.owner, f.group, f.game, 1, 1)); assertSame(CapacityCommandResult.InvalidCapacity, capacity(f).execute(f.owner, f.group, f.game, 1, 101)) }
     @Test fun `athlete cannot adjust capacity`() { val f = fixture(); assertSame(CapacityCommandResult.Forbidden, capacity(f).execute(f.member, f.group, f.game, 1, 3)) }

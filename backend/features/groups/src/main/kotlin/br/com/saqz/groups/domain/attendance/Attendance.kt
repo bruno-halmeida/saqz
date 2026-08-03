@@ -29,6 +29,7 @@ enum class AttendanceDenial {
     REASON_INVALID,
     NOT_WAITLISTED,
     NO_CAPACITY,
+    MANUAL_PROMOTION_ONLY,
 }
 
 sealed interface AttendanceDecision {
