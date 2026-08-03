@@ -46,7 +46,8 @@ class GameDetailViewModel(
     private val athleteGateway: AthleteGateway,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
-    private var operationGeneration = 0
+    private var promotionGeneration = 0
+    private var capacityGeneration = 0
     private var versionToken: GameVersionToken? = null
     init {
         load()
@@ -75,7 +76,8 @@ class GameDetailViewModel(
     }
     private fun load() {
         val generation = ++loadGeneration
-        operationGeneration++
+        promotionGeneration++
+        capacityGeneration++
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
             val gameResult = gameGateway.read(GroupId(groupId), gameId)
@@ -157,7 +159,7 @@ class GameDetailViewModel(
         val previousAttendance = current.attendance
         if (previousWaitlist.none { it.id == memberId }) return
         val loadAtStart = loadGeneration
-        val generation = ++operationGeneration
+        val generation = ++promotionGeneration
         update {
             it.copy(
                 waitlist = it.waitlist.filterNot { member -> member.id == memberId },
@@ -177,17 +179,19 @@ class GameDetailViewModel(
                 gameId,
                 AttendancePromotionCommand(Uuid.random().toString(), memberId, reason),
             )
-            if (generation != operationGeneration || loadAtStart != loadGeneration) return@launch
+            if (!isCurrent(Operation.Promotion, generation, loadAtStart)) return@launch
             when (result) {
                 is SaqzResult.Success -> {
+                    val detail = result.value.value.detail.toAttendance()
                     update {
                         it.copy(
-                            attendance = result.value.value.detail.toAttendance(),
+                            attendance = detail,
+                            header = it.header?.copy(availableSpots = detail.availableSpots),
                             promotingMemberId = null,
                             promotionFailed = false,
                         )
                     }
-                    refreshRoster(generation, loadAtStart)
+                    refreshRoster(Operation.Promotion, generation, loadAtStart)
                 }
                 is SaqzResult.Failure -> update {
                     it.copy(
@@ -214,7 +218,7 @@ class GameDetailViewModel(
         val previousAttendance = current.attendance
         val previousHeader = current.header
         val loadAtStart = loadGeneration
-        val generation = ++operationGeneration
+        val generation = ++capacityGeneration
         val capacity = current.capacityDraft
         update {
             it.copy(
@@ -238,7 +242,7 @@ class GameDetailViewModel(
                 AttendanceVersionToken(version.value),
                 AttendanceCapacityCommand(Uuid.random().toString(), capacity),
             )
-            if (generation != operationGeneration || loadAtStart != loadGeneration) return@launch
+            if (!isCurrent(Operation.Capacity, generation, loadAtStart)) return@launch
             when (result) {
                 is SaqzResult.Success -> {
                     versionToken = GameVersionToken(result.value.version.value)
@@ -251,7 +255,9 @@ class GameDetailViewModel(
                             header = it.header?.copy(availableSpots = result.value.value.detail.availableSpots),
                         )
                     }
-                    if (result.value.value.promotedCount > 0) refreshRoster(generation, loadAtStart)
+                    if (result.value.value.promotedCount > 0) {
+                        refreshRoster(Operation.Capacity, generation, loadAtStart)
+                    }
                 }
                 is SaqzResult.Failure -> if (result.error == AttendanceError.Conflict) {
                     update { it.copy(savingCapacity = false, capacitySheetOpen = false, capacityFailed = false) }
@@ -270,11 +276,11 @@ class GameDetailViewModel(
         }
     }
 
-    private fun refreshRoster(operation: Int, loadAtStart: Int) {
+    private fun refreshRoster(operation: Operation, generation: Int, loadAtStart: Int) {
         viewModelScope.launch {
             val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)
             val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
-            if (operation != operationGeneration || loadAtStart != loadGeneration) return@launch
+            if (!isCurrent(operation, generation, loadAtStart)) return@launch
             when {
                 rosterResult is SaqzResult.Failure -> showFailure(loadAtStart, rosterResult.error.toUiError())
                 athletesResult is SaqzResult.Failure -> showFailure(loadAtStart, athletesResult.error.toUiError())
@@ -291,6 +297,14 @@ class GameDetailViewModel(
             }
         }
     }
+
+    private fun isCurrent(operation: Operation, generation: Int, loadAtStart: Int): Boolean =
+        generation == when (operation) {
+            Operation.Promotion -> promotionGeneration
+            Operation.Capacity -> capacityGeneration
+        } && loadAtStart == loadGeneration
+
+    private enum class Operation { Promotion, Capacity }
     private fun cancel() {
         if (state.value.cancelling) return
         val token = versionToken ?: return

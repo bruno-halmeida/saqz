@@ -34,6 +34,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -343,5 +344,70 @@ class GameDetailViewModelTest {
         assertFalse(viewModel.state.value.capacitySheetOpen)
         assertEquals(12, viewModel.state.value.attendance?.capacity)
     }
+
+    @Test
+    fun `promotion reconciles header while capacity is in flight`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val promotion = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation, AttendanceError>>()
+        val capacity = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity, AttendanceError>>()
+        attendance.promoteDeferred = promotion
+        attendance.capacityDeferred = capacity
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), manualGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+        viewModel.onIntent(GameDetailIntent.UpdateCapacity(14))
+        viewModel.onIntent(GameDetailIntent.SaveCapacity)
+
+        promotion.complete(SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation()))
+
+        assertEquals(3, viewModel.state.value.attendance?.availableSpots)
+        assertEquals(3, viewModel.state.value.header?.availableSpots)
+        assertNull(viewModel.state.value.promotingMemberId)
+
+        capacity.complete(SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedAttendanceCapacity()))
+        assertFalse(viewModel.state.value.savingCapacity)
+    }
+
+    @Test
+    fun `capacity reconciles while promotion is in flight`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val promotion = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation, AttendanceError>>()
+        val capacity = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity, AttendanceError>>()
+        attendance.promoteDeferred = promotion
+        attendance.capacityDeferred = capacity
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), manualGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+        viewModel.onIntent(GameDetailIntent.UpdateCapacity(14))
+        viewModel.onIntent(GameDetailIntent.SaveCapacity)
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
+
+        capacity.complete(SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedAttendanceCapacity()))
+
+        assertFalse(viewModel.state.value.savingCapacity)
+        assertTrue(viewModel.state.value.promotingMemberId == "wait-1")
+
+        promotion.complete(SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation()))
+
+        assertNull(viewModel.state.value.promotingMemberId)
+        assertEquals(3, viewModel.state.value.header?.availableSpots)
+    }
+
+    private fun manualGroupGateway() = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            sampleVersionedGroup().copy(
+                group = sampleVersionedGroup().group.copy(
+                    gameConfig = GroupGameConfig(
+                        promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+                    ),
+                ),
+            ),
+        ),
+    )
 
 }
