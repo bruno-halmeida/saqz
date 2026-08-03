@@ -36,6 +36,7 @@ sealed interface GroupInviteEffect {
     ) : GroupInviteEffect
 
     data class RedeemFailed(
+        val code: String,
         val error: InviteError,
         val willRetry: Boolean,
     ) : GroupInviteEffect
@@ -101,6 +102,12 @@ class GroupInviteCoordinator(
         }
     }
 
+    /** Recupera o convite persistido antes de uma troca de sessão consumir o pending. */
+    suspend fun readPendingInviteCode(): String? = when (val pending = readPending()) {
+        PendingRead.Failed -> null
+        is PendingRead.Value -> pending.code
+    }
+
     /**
      * Entrada pública para o adapter ou para o fecho quando o port já entregou um evento.
      * Persistir termina antes de qualquer efeito de navegação ou chamada autenticada.
@@ -147,9 +154,9 @@ class GroupInviteCoordinator(
 
     private suspend fun redeem(token: Long, code: InviteCode) {
         when (val preview = inviteGateway.preview(code)) {
-            is SaqzResult.Failure -> finishFailure(token, preview.error)
+            is SaqzResult.Failure -> finishFailure(token, code, preview.error)
             is SaqzResult.Success -> when (val result = inviteGateway.redeem(code)) {
-                is SaqzResult.Failure -> finishFailure(token, result.error)
+                is SaqzResult.Failure -> finishFailure(token, code, result.error)
                 is SaqzResult.Success -> {
                     if (!clearPending(token)) return
                     emitIfCurrent(
@@ -164,11 +171,14 @@ class GroupInviteCoordinator(
         }
     }
 
-    private suspend fun finishFailure(token: Long, error: InviteError) {
+    private suspend fun finishFailure(token: Long, code: InviteCode, error: InviteError) {
         if (!isCurrent(token)) return
         val terminal = error.isTerminal()
         if (terminal && !clearPending(token)) return
-        emitIfCurrent(token, GroupInviteEffect.RedeemFailed(error, willRetry = !terminal))
+        emitIfCurrent(
+            token,
+            GroupInviteEffect.RedeemFailed(code.value, error, willRetry = !terminal),
+        )
     }
 
     private suspend fun persistPending(token: Long, code: String): Boolean = storageWrites.withLock {

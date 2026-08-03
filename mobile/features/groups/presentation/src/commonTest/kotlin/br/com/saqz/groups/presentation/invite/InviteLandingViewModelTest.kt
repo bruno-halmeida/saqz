@@ -131,6 +131,20 @@ class InviteLandingViewModelTest {
     }
 
     @Test
+    fun `initial coordinator error is visible without reloading the landing`() = runTest {
+        val viewModel = InviteLandingViewModel(
+            INVITE_CODE,
+            FakeInviteGateway(previewResult = SaqzResult.Success(preview())),
+            FIXED_TIME_ZONE_PORT,
+            initialRedeemError = InviteError.RateLimited(23),
+        )
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertNull(viewModel.state.value.preview)
+        assertEquals(InviteLandingError.RateLimited(23), viewModel.state.value.error)
+    }
+
+    @Test
     fun `redeem maps each typed error to a distinguishable state`() = runTest {
         assertEquals(
             InviteLandingError.Invalid,

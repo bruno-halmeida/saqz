@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.di
 
+import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.presentation.invite.InviteLandingViewModel
 import org.koin.core.module.Module
@@ -14,6 +15,7 @@ fun inviteLandingPresentationModule(): Module = module {
             inviteGateway = get(),
             timeZonePort = get<GroupSystemTimeZonePort>(),
             initialRequestSent = params.getOrNull<Boolean>() ?: false,
+            initialRedeemError = params.getOrNull<InviteError>(),
         )
     }
 }

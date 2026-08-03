@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.navigation
 
+import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
@@ -49,6 +50,18 @@ class SaqzNavHostTest {
     @Test
     fun readyRoutesToTheEmptyShell() {
         assertEquals(listOf(SaqzShellDestination), stackFor(SessionAccessState.Ready(session)))
+    }
+
+    @Test
+    fun authenticatedInviteExploreReturnsToTheShell() {
+        val stack = NavBackStack<NavKey>(
+            SaqzShellDestination,
+            GroupsRoute.InviteLanding("invite-explore"),
+        )
+
+        stack.openInviteExplore()
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination), stack.toList())
     }
 
     // VUL-72: fora de `Ready` o gate continua colapsando -- é ele que impede tela

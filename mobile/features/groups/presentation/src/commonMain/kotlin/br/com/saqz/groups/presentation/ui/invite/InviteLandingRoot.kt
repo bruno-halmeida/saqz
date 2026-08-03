@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.presentation.invite.InviteLandingEffect
 import br.com.saqz.groups.presentation.invite.InviteLandingIntent
 import br.com.saqz.groups.presentation.invite.InviteLandingViewModel
@@ -20,8 +21,9 @@ fun InviteLandingRoot(
     onOpenAnotherGroup: () -> Unit,
     onRequestNewInvite: () -> Unit,
     initialRequestSent: Boolean = false,
+    initialRedeemError: InviteError? = null,
     viewModel: InviteLandingViewModel = koinViewModel(
-        parameters = { parametersOf(code, initialRequestSent) },
+        parameters = { parametersOf(code, initialRequestSent, initialRedeemError) },
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()

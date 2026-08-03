@@ -79,6 +79,25 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
+    fun `persisted invite code is available before relaunch redeem`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-relaunch"
+        fixture.gateway.redeemResult = SaqzResult.Success(
+            InviteRedeem(InviteRedeemStatus.PENDING, GroupId("group-1"), "ATHLETE"),
+        )
+
+        assertEquals("invite-relaunch", fixture.coordinator.readPendingInviteCode())
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING),
+            fixture.coordinator.effects.first(),
+        )
+    }
+
+    @Test
     fun `registration preview feeds the invite header and registration then redeems`() = runTest {
         val fixture = fixture()
         fixture.gateway.previewResult = SaqzResult.Success(
@@ -116,6 +135,7 @@ class GroupInviteCoordinatorTest {
         runCurrent()
 
         val result = assertIs<GroupInviteEffect.RedeemFailed>(effect.await())
+        assertEquals("invite-terminal", result.code)
         assertEquals(InviteError.InvalidOrExpired, result.error)
         assertTrue(!result.willRetry)
         assertNull(fixture.local.pending)
