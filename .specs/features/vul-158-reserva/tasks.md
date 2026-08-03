@@ -1,6 +1,6 @@
 # Tasks — VUL-158
 
-## T1 — Contrato e transporte de roster/promoção
+## T1 — Contrato e transporte de roster/promoção ✅
 
 **Onde**: domínio e `KtorAttendanceGateway`.
 
@@ -10,7 +10,7 @@ testes de transporte verificam rota, body, ETag e retry.
 
 **Gate**: `cd mobile && ./gradlew :features:groups:data:iosSimulatorArm64Test`
 
-## T2 — Estado e coordenação do detalhe
+## T2 — Estado e coordenação do detalhe ✅
 
 **Onde**: Contract, ViewModel, fakes e módulo de apresentação.
 
@@ -20,7 +20,7 @@ de capacidade dispara reload.
 
 **Gate**: `cd mobile && ./gradlew :features:groups:presentation:iosSimulatorArm64Test`
 
-## T3 — Seção e controles visuais
+## T3 — Seção e controles visuais ✅
 
 **Onde**: `GameWaitlistSection.kt`, strings próprias e pontos mínimos do Screen.
 
@@ -29,7 +29,7 @@ ação de capacidade e bottom-sheet PT-BR aparecem com componentes do DS; FIFO n
 
 **Gate**: `cd mobile && ./gradlew :features:groups:presentation:iosSimulatorArm64Test`
 
-## T4 — Cobertura visual e gate final
+## T4 — Cobertura visual e gate final ✅
 
 **Onde**: testes da tela/ViewModel, screenshot test e PNGs Roborazzi.
 
