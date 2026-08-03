@@ -199,7 +199,7 @@ final class IOSPhotoSelectionAdapter: NSObject, @preconcurrency GroupPhotoSelect
 
     func chooseCamera(completionHandler: @escaping Completion) {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            completionHandler(GroupPhotoSelectionResultFailed.shared, nil); return
+            completionHandler(GroupPhotoSelectionResultCameraPermissionDenied.shared, nil); return
         }
         guard begin(.camera, completionHandler) else {
             completionHandler(GroupPhotoSelectionResultFailed.shared, nil); return

@@ -62,12 +62,14 @@ class MyPlanViewModelTest {
         )
         val viewModel = MyPlanViewModel(gateway)
 
+        viewModel.onIntent(MyPlanIntent.OpenChangePlan)
         viewModel.onIntent(MyPlanIntent.SelectPlan(Plan.Titular))
 
         assertEquals(
             UiText.Res(Res.string.myplan_downgrade_blocked, listOf(3, "Amador", 1)),
             viewModel.state.value.changeError,
         )
+        assertEquals(true, viewModel.state.value.isChangeSheetOpen)
         assertEquals(false, viewModel.state.value.isChangingPlan)
         assertEquals(Plan.Titular, gateway.changePlanCommands.single().targetPlanId)
     }

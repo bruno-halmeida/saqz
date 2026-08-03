@@ -75,9 +75,10 @@ class Payment8cScreenshotTest {
         cycle = SubscriptionCycle.Monthly,
         planName = "Organizador",
         priceCents = 4_990L,
+        cpfCnpj = "12345678901",
     )
 
-    // Pix escolhido (default), CPF/CNPJ vazio — o que o export desenha ao abrir a tela.
+    // Pix escolhido (default), com CPF/CNPJ preenchido para conferir a máscara.
     @Test
     fun formPix() = screen(base)
 

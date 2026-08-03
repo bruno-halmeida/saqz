@@ -24,6 +24,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,6 +67,7 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
@@ -423,6 +425,7 @@ private fun RegisterInput(
     onValueChange = onValueChange,
     label = label,
     kind = kind,
+    visualTransformation = if (kind == SaqzInputKind.Phone) PhoneVisualTransformation() else VisualTransformation.None,
     enabled = enabled,
     invalid = invalid,
     errorText = errorText,

@@ -1,8 +1,8 @@
 package br.com.saqz.designsystem
 
-/** Exibe CPF/CNPJ como `XXX.XXX.XXX-XX` sem alterar o valor do campo. */
+/** Exibe CPF como `XXX.XXX.XXX-XX` sem alterar o valor do campo. */
 class CpfVisualTransformation : DigitMaskVisualTransformation(
-    maximumDigits = 14,
+    maximumDigits = 11,
     format = ::formatCpfCnpj,
 )
 

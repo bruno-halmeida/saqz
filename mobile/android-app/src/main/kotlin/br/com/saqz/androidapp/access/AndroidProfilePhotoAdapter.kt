@@ -64,6 +64,8 @@ internal class AndroidProfilePhotoAdapter(
             -> ProfilePhotoResult.Failed
         }
         GroupPhotoSelectionResult.Cancelled -> ProfilePhotoResult.Cancelled
+        GroupPhotoSelectionResult.CameraPermissionDenied -> ProfilePhotoResult.Failed
+        GroupPhotoSelectionResult.LibraryPermissionDenied -> ProfilePhotoResult.Failed
         GroupPhotoSelectionResult.Failed -> ProfilePhotoResult.Failed
     }
 
@@ -84,6 +86,8 @@ internal class AndroidProfilePhotoAdapter(
     private suspend fun chosenProfile(selected: GroupPhotoSelectionResult): ProfilePhotoSelectionResult = when (selected) {
         is GroupPhotoSelectionResult.Selected -> encoded(selected.value.source.value)
         GroupPhotoSelectionResult.Cancelled -> ProfilePhotoSelectionResult.Cancelled
+        GroupPhotoSelectionResult.CameraPermissionDenied -> ProfilePhotoSelectionResult.CameraPermissionDenied
+        GroupPhotoSelectionResult.LibraryPermissionDenied -> ProfilePhotoSelectionResult.LibraryPermissionDenied
         GroupPhotoSelectionResult.Failed -> ProfilePhotoSelectionResult.Failed
     }
 

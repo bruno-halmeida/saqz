@@ -39,7 +39,12 @@ class Register1bScreenshotTest {
 
     @Test
     fun register1b() = capture("1b-criar-conta") {
-        RegisterScreen(state = RegisterState(), onIntent = {}, onBack = {}, onSignIn = {})
+        RegisterScreen(
+            state = RegisterState(phone = "11999990000"),
+            onIntent = {},
+            onBack = {},
+            onSignIn = {},
+        )
     }
 
     // O mockup do 1j diz "Revise 3 campos" e desenha quatro campos errados; a tela conta em

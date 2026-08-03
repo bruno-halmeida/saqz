@@ -25,6 +25,13 @@ class MaskedVisualTransformationTest {
     }
 
     @Test
+    fun cpf_does_not_show_digits_beyond_the_mask() {
+        val transformed = CpfVisualTransformation().filter(AnnotatedString("123456789012"))
+
+        assertEquals("123.456.789-01", transformed.text.text)
+    }
+
+    @Test
     fun phone_offset_mapping_skips_mask_separators_in_both_directions() {
         val transformed = PhoneVisualTransformation().filter(AnnotatedString("11999990000"))
         val mapping = transformed.offsetMapping
