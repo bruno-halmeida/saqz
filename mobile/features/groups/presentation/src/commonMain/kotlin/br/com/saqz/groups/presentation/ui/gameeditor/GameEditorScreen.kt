@@ -67,6 +67,8 @@ import br.com.saqz.groups.resources.game_editor_error_retry
 import br.com.saqz.groups.resources.game_editor_error_save_body
 import br.com.saqz.groups.resources.game_editor_error_save_title
 import br.com.saqz.groups.resources.game_editor_error_time
+import br.com.saqz.groups.resources.game_editor_error_venue_address
+import br.com.saqz.groups.resources.game_editor_error_venue_name
 import br.com.saqz.groups.resources.game_editor_group_name
 import br.com.saqz.groups.resources.game_editor_notes_hint
 import br.com.saqz.groups.resources.game_editor_notes_label
@@ -240,6 +242,7 @@ private fun FormScroll(
         )
         VenueFields(
             venue = state.form.venue,
+            errors = errors,
             onNameChange = { onIntent(GameEditorIntent.UpdateVenueName(it)) },
             onAddressChange = { onIntent(GameEditorIntent.UpdateVenueAddress(it)) },
         )
@@ -487,10 +490,21 @@ private fun DurationChips(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun VenueFields(
     venue: GameVenue?,
+    errors: Set<GameEditorFieldError>,
     onNameChange: (String) -> Unit,
     onAddressChange: (String) -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
+    val nameError = if (GameEditorFieldError.VenueNameMissing in errors) {
+        stringResource(Res.string.game_editor_error_venue_name)
+    } else {
+        null
+    }
+    val addressError = if (GameEditorFieldError.VenueAddressMissing in errors) {
+        stringResource(Res.string.game_editor_error_venue_address)
+    } else {
+        null
+    }
     SaqzCard(padded = false) {
         Column(
             modifier = Modifier.padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
@@ -503,6 +517,7 @@ private fun VenueFields(
                 label = stringResource(Res.string.game_editor_venue_label),
                 showLabel = false,
                 placeholder = stringResource(Res.string.game_editor_venue_name_hint),
+                errorText = nameError,
             )
             SaqzInput(
                 value = venue?.address.orEmpty(),
@@ -510,6 +525,7 @@ private fun VenueFields(
                 label = stringResource(Res.string.game_editor_venue_address_label),
                 showLabel = false,
                 placeholder = stringResource(Res.string.game_editor_venue_address_hint),
+                errorText = addressError,
             )
             HelperText(stringResource(Res.string.game_editor_venue_helper))
         }
@@ -603,8 +619,7 @@ private fun DateTimePickerSheet(
     val days = remember(rangeStart, weekdayLabels, monthLabels) {
         buildWheelDays(rangeStart, 30, weekdayLabels, monthLabels)
     }
-    val initialHour = state.form.localTime.substringBefore(':').toIntOrNull() ?: 19
-    val initialMinute = state.form.localTime.substringAfter(':').toIntOrNull() ?: 0
+    val (initialHour, initialMinute) = pickerTimeParts(state.form.localTime)
     val wheelState = remember(open, state.form.localDate, initialHour, initialMinute) {
         GameDateTimeWheel.state(days, state.form.localDate, initialHour, initialMinute)
     }
@@ -653,6 +668,14 @@ internal fun formatDisplayTime(time: String): String {
     val minute = parts[1].toIntOrNull() ?: return time
     return "${hour.toString().padStart(2, '0')}h${minute.toString().padStart(2, '0')}"
 }
+
+internal fun pickerTimeParts(time: String): Pair<Int, Int> = runCatching {
+    kotlinx.datetime.LocalTime.parse(time)
+}.recoverCatching {
+    kotlinx.datetime.LocalTime.parse("${time.trim()}:00")
+}.getOrElse {
+    kotlinx.datetime.LocalTime(19, 0)
+}.let { it.hour to it.minute }
 
 internal fun pickerTodayAt(now: Instant, zoneId: String): LocalDate =
     now.toLocalDateTime(TimeZone.of(zoneId)).date

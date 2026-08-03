@@ -117,6 +117,7 @@ class GameEditorViewModel(
                         localDate = game.localDate,
                         localTime = game.localTime,
                         durationMinutes = game.durationMinutes,
+                        gameFeeCents = game.gameFeeCents,
                         venue = game.venue,
                         capacity = game.capacity,
                         confirmationLeadMinutes = confirmationLeadMinutes(
@@ -238,6 +239,7 @@ class GameEditorViewModel(
                 capacity = state.form.capacity.toString(),
                 confirmationDeadline = deadline.orEmpty(),
                 notes = state.form.notes,
+                gameFeeCents = state.form.gameFeeCents,
             ),
         )
     }
@@ -254,6 +256,8 @@ class GameEditorViewModel(
             durationMinutes = draft.form.durationMinutes.toIntOrNull(),
             capacity = draft.form.capacity.toIntOrNull(),
             confirmationDeadline = draft.form.confirmationDeadline,
+            gameFeeCents = draft.form.gameFeeCents,
+            useDefaultGameFee = draft.form.gameFeeCents == null,
             notes = draft.form.notes.takeIf(String::isNotBlank),
         )
 

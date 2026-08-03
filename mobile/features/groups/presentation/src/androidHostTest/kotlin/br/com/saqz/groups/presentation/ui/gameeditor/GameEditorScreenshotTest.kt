@@ -49,6 +49,23 @@ class GameEditorScreenshotTest {
     }
 
     @Test
+    fun missingVenue() = capture("4e-editor-missing-venue") {
+        GameEditorScreen(
+            state = previewState().copy(
+                form = previewState().form.copy(
+                    venue = GameVenue(name = "A", address = "Rua"),
+                ),
+                validationErrors = setOf(
+                    GameEditorFieldError.VenueNameMissing,
+                    GameEditorFieldError.VenueAddressMissing,
+                ),
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    @Test
     fun conflict() = capture("4e-editor-conflict") {
         GameEditorScreen(
             state = previewState().copy(hasConflict = true, conflictGameId = "game-existing"),

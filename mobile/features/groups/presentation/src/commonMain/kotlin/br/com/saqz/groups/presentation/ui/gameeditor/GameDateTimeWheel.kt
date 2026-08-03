@@ -27,6 +27,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /**
@@ -126,6 +127,7 @@ private fun WheelColumn(
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
     val itemPx = with(density) { itemHeight.toPx() }
+    val centerPaddingPx = with(density) { ((wheelHeight - itemHeight) / 2).toPx() }
     val safeIndex = selectedIndex.coerceIn(0, items.lastIndex)
     val currentOnSelect = androidx.compose.runtime.rememberUpdatedState(onSelect)
     val currentSelectedIndex = androidx.compose.runtime.rememberUpdatedState(selectedIndex)
@@ -148,7 +150,13 @@ private fun WheelColumn(
             .background(colors.surface)
             .pointerInput(items) {
                 detectTapGestures { offset ->
-                    val index = (offset.y / itemPx).roundToInt().coerceIn(0, items.lastIndex)
+                    val index = wheelIndexForTap(
+                        scrollOffsetPx = scrollState.value,
+                        tapOffsetPx = offset.y,
+                        centerPaddingPx = centerPaddingPx,
+                        itemHeightPx = itemPx,
+                        itemCount = items.size,
+                    )
                     onSelect(index)
                 }
             },
@@ -175,6 +183,19 @@ private fun WheelColumn(
             }
         }
     }
+}
+
+internal fun wheelIndexForTap(
+    scrollOffsetPx: Int,
+    tapOffsetPx: Float,
+    centerPaddingPx: Float,
+    itemHeightPx: Float,
+    itemCount: Int,
+): Int {
+    if (itemCount == 0) return 0
+    return floor((scrollOffsetPx + tapOffsetPx - centerPaddingPx) / itemHeightPx)
+        .toInt()
+        .coerceIn(0, itemCount - 1)
 }
 
 internal fun buildWheelDays(

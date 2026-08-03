@@ -32,6 +32,7 @@ data class GameEditorFields(
     val localDate: String = "",
     val localTime: String = "",
     val durationMinutes: Int = 0,
+    val gameFeeCents: Long? = null,
     val venue: GameVenue? = null,
     val venueEditable: Boolean = false,
     val capacity: Int = 0,
@@ -41,7 +42,12 @@ data class GameEditorFields(
     val hasDateTime: Boolean get() = localDate.isNotBlank() && localTime.isNotBlank()
 }
 
-enum class GameEditorFieldError { DateMissing, TimeMissing }
+enum class GameEditorFieldError {
+    DateMissing,
+    TimeMissing,
+    VenueNameMissing,
+    VenueAddressMissing,
+}
 
 sealed interface GameEditorIntent {
     data object Retry : GameEditorIntent

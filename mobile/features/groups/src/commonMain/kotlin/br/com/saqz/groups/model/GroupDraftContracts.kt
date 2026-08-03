@@ -62,6 +62,7 @@ data class GameEditorForm(
     val notes: String = "",
     val localEndDate: String = "",
     val slots: List<WeeklySlot> = emptyList(),
+    val gameFeeCents: Long? = null,
 )
 
 data class GameEditorDraft(

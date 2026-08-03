@@ -4,15 +4,19 @@ import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
+import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleVersionedGame
+import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.presentation.ui.gameeditor.buildWheelDays
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerRangeStart
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerTodayAt
+import br.com.saqz.groups.presentation.ui.gameeditor.pickerTimeParts
+import br.com.saqz.groups.presentation.ui.gameeditor.wheelIndexForTap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,6 +68,19 @@ class GameEditorViewModelTest {
         assertEquals("Jogo de terça", vm.state.value.form.title)
         assertEquals("2026-08-04", vm.state.value.form.localDate)
         assertEquals("19:30", vm.state.value.form.localTime)
+    }
+
+    @Test
+    fun `edit mode preserves the existing game fee in the write command`() = runTest {
+        val game = sampleGame().copy(gameFeeCents = 2500)
+        val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(game)))
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+
+        assertEquals(2500, vm.state.value.form.gameFeeCents)
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(2500, gateway.lastEditCommand?.gameFeeCents)
+        assertFalse(gateway.lastEditCommand?.useDefaultGameFee ?: true)
     }
 
     @Test
@@ -159,6 +176,20 @@ class GameEditorViewModelTest {
         assertEquals("2026-08-04", command?.localDate)
         assertEquals("19:30", command?.localTime)
         assertEquals(120, command?.durationMinutes)
+    }
+
+    @Test
+    fun `venue validation requires the backend minimum lengths`() {
+        val errors = validateGameEditor(
+            GameEditorFields(
+                localDate = "2026-08-04",
+                localTime = "19:30",
+                venue = GameVenue(name = "A", address = "Rua"),
+            ),
+        )
+
+        assertTrue(GameEditorFieldError.VenueNameMissing in errors)
+        assertTrue(GameEditorFieldError.VenueAddressMissing in errors)
     }
 
     @Test
@@ -301,5 +332,24 @@ class GameEditorViewModelTest {
         val now = Instant.parse("2026-08-04T01:00:00Z")
         assertEquals(LocalDate.parse("2026-08-03"), pickerTodayAt(now, "America/Sao_Paulo"))
         assertEquals(LocalDate.parse("2026-08-04"), pickerTodayAt(now, "Asia/Tokyo"))
+    }
+
+    @Test
+    fun `picker accepts local time with seconds`() {
+        assertEquals(19 to 30, pickerTimeParts("19:30:45"))
+    }
+
+    @Test
+    fun `wheel tap index accounts for scroll and center padding`() {
+        assertEquals(
+            12,
+            wheelIndexForTap(
+                scrollOffsetPx = 480,
+                tapOffsetPx = 100f,
+                centerPaddingPx = 80f,
+                itemHeightPx = 40f,
+                itemCount = 24,
+            ),
+        )
     }
 }
