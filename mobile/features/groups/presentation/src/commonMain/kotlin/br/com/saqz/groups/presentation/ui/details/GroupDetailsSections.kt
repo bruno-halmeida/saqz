@@ -89,6 +89,9 @@ import br.com.saqz.groups.resources.group_details_view_game
 import br.com.saqz.groups.resources.group_member_attendance_going
 import br.com.saqz.groups.resources.group_member_attendance_maybe
 import br.com.saqz.groups.resources.game_response_no
+import br.com.saqz.groups.resources.game_response_confirmed_ratio
+import br.com.saqz.groups.resources.game_response_confirmed_summary
+import br.com.saqz.groups.resources.game_response_next_game
 import br.com.saqz.groups.resources.game_response_spots
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -263,7 +266,7 @@ internal fun GroupNextGameCard(
             SaqzAvatarStack(names = nextGame.confirmedNames)
             Column(verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
                 Text(
-                    text = nextGame.confirmedSummary,
+                    text = stringResource(Res.string.game_response_confirmed_summary, nextGame.confirmedCount, nextGame.capacity),
                     style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.textSecondary,
                 )
@@ -309,12 +312,12 @@ internal fun GroupAttendanceStats(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = attendance.title,
+                text = stringResource(Res.string.game_response_next_game),
                 style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.Bold),
                 color = colors.textPrimary,
             )
             Text(
-                text = attendance.ratio,
+                text = stringResource(Res.string.game_response_confirmed_ratio, attendance.confirmedCount, attendance.capacity),
                 style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
                 color = colors.primary,
             )

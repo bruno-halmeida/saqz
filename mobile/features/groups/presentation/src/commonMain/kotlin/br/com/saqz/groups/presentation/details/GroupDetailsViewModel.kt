@@ -283,8 +283,8 @@ class GroupDetailsViewModel(
     }
 
     private fun AttendanceDetail.toAttendance() = AttendanceSummaryUi(
-        title = "Próximo jogo",
-        ratio = "$confirmedCount/$capacity",
+        confirmedCount = confirmedCount,
+        capacity = capacity,
         going = confirmedCount,
         notGoing = declinedCount,
         pending = pendingCount,
@@ -296,14 +296,16 @@ class GroupDetailsViewModel(
         date = displayDate(),
         venue = listOfNotNull(venue.name, venue.court).joinToString(" — "),
         deadline = displayDeadline(),
-        confirmedSummary = "${detail.confirmedCount} de ${detail.capacity} confirmados",
+        confirmedCount = detail.confirmedCount,
+        capacity = detail.capacity,
         confirmedNames = roster.confirmed.map { it.displayName },
         availableSpots = detail.availableSpots,
         confirmationOpen = status == GameStatus.Published && deadlineIsOpen(),
     )
 
     private fun NextGameUi.reconcile(detail: AttendanceDetail, roster: AttendanceRoster?): NextGameUi = copy(
-        confirmedSummary = "${detail.confirmedCount} de ${detail.capacity} confirmados",
+        confirmedCount = detail.confirmedCount,
+        capacity = detail.capacity,
         confirmedNames = roster?.confirmed?.map { it.displayName } ?: confirmedNames,
         availableSpots = detail.availableSpots,
     )
@@ -364,7 +366,6 @@ private fun List<Game>.nextPublishedGame(): Game? {
         .filter { it.first >= now }
         .minByOrNull { it.first }
         ?.second
-        ?: published.minByOrNull { it.startsAt }
 }
 
 private fun GroupDetailsState.from(group: Group): GroupDetailsState {

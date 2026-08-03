@@ -62,7 +62,8 @@ data class NextGameUi(
     val date: String,
     val venue: String,
     val deadline: String,
-    val confirmedSummary: String,
+    val confirmedCount: Int,
+    val capacity: Int,
     val confirmedNames: List<String> = emptyList(),
     val availableSpots: Int = 0,
     val confirmationOpen: Boolean = true,
@@ -71,8 +72,8 @@ data class NextGameUi(
 /** Os contadores 9 / 3 / 4 do 2f, com o título da própria linha e o "9/12" azul. */
 @Immutable
 data class AttendanceSummaryUi(
-    val title: String,
-    val ratio: String,
+    val confirmedCount: Int,
+    val capacity: Int,
     val going: Int,
     val notGoing: Int,
     val pending: Int,

@@ -169,8 +169,8 @@ internal object GroupDetailsPreviewData {
         isOwner = true,
         header = header,
         attendance = AttendanceSummaryUi(
-            title = "Próximo jogo · terça",
-            ratio = "9/12",
+            confirmedCount = 9,
+            capacity = 12,
             going = 9,
             notGoing = 3,
             pending = 4,
@@ -191,7 +191,8 @@ internal object GroupDetailsPreviewData {
             date = "Ter, 28/07 · 19h30",
             venue = "CERET — Quadra 2 · Tatuapé",
             deadline = "Encerra hoje · 18h",
-            confirmedSummary = "9 de 12 confirmados",
+            confirmedCount = 9,
+            capacity = 12,
             confirmedNames = listOf(
                 "Lucas Prado",
                 "Bia Souza",
@@ -206,8 +207,8 @@ internal object GroupDetailsPreviewData {
             availableSpots = 3,
         ),
         attendance = AttendanceSummaryUi(
-            title = "Próximo jogo · terça",
-            ratio = "9/12",
+            confirmedCount = 9,
+            capacity = 12,
             going = 9,
             notGoing = 3,
             pending = 4,

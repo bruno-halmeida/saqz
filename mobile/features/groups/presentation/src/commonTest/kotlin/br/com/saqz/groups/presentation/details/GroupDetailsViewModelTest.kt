@@ -142,6 +142,20 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `published games only in the past do not create a next game response card`() = runTest {
+        val pastGame = sampleGame().copy(startsAt = "2020-08-04T19:30:00-03:00")
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(pastGame))),
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        assertEquals(null, vm.state.value.nextGame)
+        assertEquals(null, vm.state.value.attendance)
+        assertEquals(null, vm.state.value.memberResponse)
+    }
+
+    @Test
     fun `response reconciles group counters and next game vacancies`() = runTest {
         val attendance = FakeAttendanceGateway(
             detailResult = SaqzResult.Success(sampleAttendanceDetail()),
