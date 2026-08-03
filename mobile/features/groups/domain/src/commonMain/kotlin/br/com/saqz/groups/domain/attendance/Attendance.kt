@@ -44,6 +44,17 @@ data class AttendanceDetail(
     val capacity: Int,
 )
 
+data class AttendanceRosterMember(
+    val memberId: String,
+    val displayName: String,
+    val waitlistPosition: Long? = null,
+)
+
+data class AttendanceRoster(
+    val confirmed: List<AttendanceRosterMember>,
+    val waitlisted: List<AttendanceRosterMember>,
+)
+
 data class AttendanceMutation(
     val attendance: AttendanceEntry,
     val audit: AttendanceAudit? = null,
@@ -85,6 +96,10 @@ data class AttendanceCapacityCommand(
     val capacity: Int,
 )
 
+data class AutoConfirmationCommand(val enabled: Boolean)
+
+data class AutoConfirmationUpdate(val enabled: Boolean)
+
 sealed interface AttendanceError : SaqzError {
     data class Validation(val error: DataError.Validation) : AttendanceError
     data object HiddenResource : AttendanceError
@@ -107,6 +122,11 @@ interface AttendanceGateway {
         command: SelfAttendanceCommand,
     ): SaqzResult<VersionedAttendanceMutation, AttendanceError>
 
+    suspend fun roster(
+        groupId: GroupId,
+        gameId: String,
+    ): SaqzResult<AttendanceRoster, AttendanceError>
+
     suspend fun override(
         groupId: GroupId,
         gameId: String,
@@ -119,4 +139,9 @@ interface AttendanceGateway {
         version: AttendanceVersionToken,
         command: AttendanceCapacityCommand,
     ): SaqzResult<VersionedAttendanceCapacity, AttendanceError>
+
+    suspend fun updateAutoConfirmation(
+        groupId: GroupId,
+        command: AutoConfirmationCommand,
+    ): SaqzResult<AutoConfirmationUpdate, AttendanceError>
 }
