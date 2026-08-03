@@ -9,7 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseStatus
+import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -81,6 +84,41 @@ class GameDetailScreenshotTest {
         GameDetailPreviewData.admin.copy(cancelDialogOpen = true, cancelFailed = true),
     )
 
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseConfirmedWithAutoConfirmation() = capture(
+        "game-detail-response-confirmed-auto",
+        GameDetailPreviewData.admin.copy(
+            isAdmin = false,
+            memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Confirmed),
+            membershipType = AthleteMembershipType.MENSALISTA,
+            autoConfirmationVisible = true,
+            autoConfirmationEnabled = true,
+        ),
+    )
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseWaitlisted() = capture(
+        "game-detail-response-waitlisted",
+        GameDetailPreviewData.admin.copy(
+            isAdmin = false,
+            memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Waitlisted, 3),
+            membershipType = AthleteMembershipType.AVULSO,
+        ),
+    )
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseClosed() = capture(
+        "game-detail-response-closed",
+        GameDetailPreviewData.admin.copy(
+            isAdmin = false,
+            header = GameDetailPreviewData.header.copy(confirmationOpen = false),
+            memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Confirmed),
+        ),
+    )
+
     private fun capture(name: String, state: GameDetailState) = capture(name) {
         GameDetailScreen(state = state, onBack = {}, onIntent = {})
     }
@@ -97,6 +135,7 @@ class GameDetailScreenshotTest {
                 }
             }
         }
-        compose.onRoot().captureRoboImage("screenshots/vul-154/$name.png")
+        val snapshotSet = if (name.startsWith("game-detail-response")) "vul-159" else "vul-154"
+        compose.onRoot().captureRoboImage("screenshots/$snapshotSet/$name.png")
     }
 }

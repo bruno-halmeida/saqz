@@ -2,6 +2,25 @@ package br.com.saqz.groups.presentation.gamedetail
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
+import br.com.saqz.groups.domain.attendance.AttendanceEntry
+import br.com.saqz.groups.domain.attendance.AttendanceError
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendanceRoster
+import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
+import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.AttendanceMutation
+import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
+import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
+import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
+import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameStatus
@@ -11,6 +30,7 @@ import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleCancelledGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
@@ -40,11 +60,128 @@ class GameDetailViewModelTest {
     @Test
     fun `loads game details`() = runTest {
         val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame()))
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(1, gateway.readCalls)
         assertNotNull(viewModel.state.value.header)
         assertNotNull(viewModel.state.value.attendance)
+    }
+
+    @Test
+    fun `uses ordered roster to show member waitlist position`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(
+                AttendanceDetail(
+                    ownAttendance = AttendanceEntry("me", AttendanceStatus.Waitlisted, 99, 1),
+                    confirmedCount = 12,
+                    availableSpots = 0,
+                    waitlistCount = 4,
+                    capacity = 12,
+                ),
+            ),
+            rosterResult = SaqzResult.Success(
+                AttendanceRoster(
+                    confirmed = emptyList(),
+                    waitlisted = listOf(
+                        AttendanceRosterMember("other", "Outra pessoa", 1),
+                        AttendanceRosterMember("me", "Bruno", 2),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        assertEquals(GameDetailResponseStatus.Waitlisted, viewModel.state.value.memberResponse?.status)
+        assertEquals(2L, viewModel.state.value.memberResponse?.waitlistPosition)
+    }
+
+    @Test
+    fun `shows auto confirmation only for mensalista when group enables it`() = runTest {
+        val group = sampleVersionedGroup().group.copy(
+            gameConfig = sampleVersionedGroup().group.gameConfig.copy(autoConfirmEnabled = true),
+        )
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                OwnAthleteProfile(
+                    userId = "me",
+                    displayName = "Bruno",
+                    phone = null,
+                    memberships = listOf(
+                        OwnAthleteMembership(
+                            groupId = br.com.saqz.domain.GroupId("group-1"),
+                            groupName = "Vôlei do CERET",
+                            role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE,
+                            position = null,
+                            membershipType = AthleteMembershipType.MENSALISTA,
+                            active = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(group))),
+            FakeAttendanceGateway(), athlete,
+        )
+
+        assertTrue(viewModel.state.value.autoConfirmationVisible)
+    }
+
+    @Test
+    fun `response failure rolls back optimistic selection`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(
+                AttendanceDetail(
+                    ownAttendance = AttendanceEntry("me", AttendanceStatus.Confirmed, null, 1),
+                    confirmedCount = 1,
+                    availableSpots = 11,
+                    waitlistCount = 0,
+                    capacity = 12,
+                ),
+            ),
+            respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        assertEquals(GameDetailResponseStatus.Confirmed, viewModel.state.value.memberResponse?.status)
+        assertTrue(viewModel.state.value.responseFailed)
+        assertFalse(viewModel.state.value.responding)
+    }
+
+    @Test
+    fun `auto confirmation failure rolls back optimistic switch`() = runTest {
+        val group = sampleVersionedGroup().group.copy(
+            gameConfig = sampleVersionedGroup().group.gameConfig.copy(autoConfirmEnabled = true),
+        )
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                OwnAthleteProfile("me", "Bruno", null, listOf(
+                    OwnAthleteMembership(
+                        br.com.saqz.domain.GroupId("group-1"), "Grupo",
+                        br.com.saqz.groups.domain.group.GroupRole.ATHLETE, null,
+                        AthleteMembershipType.MENSALISTA, true,
+                    ),
+                )),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(
+            autoConfirmationResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(),
+            FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(group))), attendance, athlete,
+        )
+
+        viewModel.onIntent(GameDetailIntent.ToggleAutoConfirmation(true))
+
+        assertFalse(viewModel.state.value.autoConfirmationEnabled)
+        assertTrue(viewModel.state.value.autoConfirmationFailed)
     }
 
     @Test
@@ -53,6 +190,8 @@ class GameDetailViewModelTest {
             "group-1", "game-1",
             FakeGameGateway(readResult = SaqzResult.Failure(GameError.Data(DataError.Forbidden))),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
@@ -68,6 +207,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(),
             groupGateway,
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         assertTrue(viewModel.state.value.loadFailed)
@@ -86,7 +227,7 @@ class GameDetailViewModelTest {
         val old = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val fresh = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val gateway = FakeGameGateway(reads = ArrayDeque(listOf(old, fresh)))
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
         viewModel.onIntent(GameDetailIntent.Retry)
         gateway.completeRead(1, SaqzResult.Success(sampleVersionedGame()))
         old.complete(SaqzResult.Failure(GameError.Data(DataError.Forbidden)))
@@ -99,7 +240,7 @@ class GameDetailViewModelTest {
         val gateway = FakeGameGateway(
             lifecycleResult = SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))),
         )
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
         viewModel.onIntent(GameDetailIntent.RequestCancel)
         viewModel.onIntent(GameDetailIntent.ConfirmCancel)
         assertEquals(GameLifecycleAction.Cancel, gateway.lastLifecycleAction)
@@ -114,7 +255,7 @@ class GameDetailViewModelTest {
         val gateway = FakeGameGateway(
             lifecycleDeferreds = ArrayDeque(listOf(lifecycle)),
         )
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
         viewModel.onIntent(GameDetailIntent.ConfirmCancel)
@@ -137,6 +278,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(readResult = SaqzResult.Success(draft)),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
@@ -152,6 +295,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(lifecycleDeferreds = ArrayDeque(listOf(lifecycle))),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
@@ -175,6 +320,8 @@ class GameDetailViewModelTest {
             "game-1",
             FakeGameGateway(readResult = SaqzResult.Success(VersionedGame(game, GameVersionToken("etag-1")))),
             FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
         )
 
         val header = viewModel.state.value.header
@@ -198,7 +345,7 @@ class GameDetailViewModelTest {
                 ),
             ),
         )
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway())
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
 
         viewModel.onIntent(GameDetailIntent.RequestCancel)
         viewModel.onIntent(GameDetailIntent.ConfirmCancel)
@@ -216,4 +363,76 @@ class GameDetailViewModelTest {
         assertEquals(GameDetailEffect.Cancelled, viewModel.effects.first())
     }
 
+}
+
+private class FakeAttendanceGateway(
+    var readResult: SaqzResult<AttendanceDetail, AttendanceError> = SaqzResult.Success(
+        AttendanceDetail(
+            ownAttendance = null,
+            confirmedCount = 4,
+            availableSpots = 8,
+            waitlistCount = 0,
+            capacity = 12,
+        ),
+    ),
+    var rosterResult: SaqzResult<AttendanceRoster, AttendanceError> = SaqzResult.Success(
+        AttendanceRoster(emptyList(), emptyList()),
+    ),
+    var respondResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> = SaqzResult.Success(
+        VersionedAttendanceMutation(
+            value = AttendanceMutation(
+                attendance = AttendanceEntry("me", AttendanceStatus.Confirmed, null, 1),
+                promotedCount = 0,
+                detail = AttendanceDetail(null, 5, 7, 0, 12),
+            ),
+            version = AttendanceVersionToken("etag-1"),
+        ),
+    ),
+    var autoConfirmationResult: SaqzResult<AutoConfirmationUpdate, AttendanceError> =
+        SaqzResult.Success(AutoConfirmationUpdate(false)),
+) : AttendanceGateway {
+    var respondCalls = 0
+    var autoConfirmationCalls = 0
+    var lastResponse: SelfAttendanceCommand? = null
+    var lastAutoConfirmation: AutoConfirmationCommand? = null
+
+    override suspend fun read(groupId: br.com.saqz.domain.GroupId, gameId: String) = readResult
+
+    override suspend fun respond(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        command: SelfAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
+        respondCalls++
+        lastResponse = command
+        return respondResult
+    }
+
+    override suspend fun roster(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+    ) = rosterResult
+
+    override suspend fun override(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        command: OverrideAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> = error("not used in this screen")
+
+    override suspend fun capacity(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        version: AttendanceVersionToken,
+        command: AttendanceCapacityCommand,
+    ): SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity, AttendanceError> =
+        error("not used in this screen")
+
+    override suspend fun updateAutoConfirmation(
+        groupId: br.com.saqz.domain.GroupId,
+        command: AutoConfirmationCommand,
+    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> {
+        autoConfirmationCalls++
+        lastAutoConfirmation = command
+        return autoConfirmationResult
+    }
 }
