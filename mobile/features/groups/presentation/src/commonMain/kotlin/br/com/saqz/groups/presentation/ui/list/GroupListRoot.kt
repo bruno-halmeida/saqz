@@ -10,11 +10,14 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Navegação entre features é callback (AGENTS.md §6): quem conhece o `NavDisplay` é o
- * `:compose-app`. [onOpenPlans] é o Fluxo 8 · Planos — não o formulário de criação.
+ * `:compose-app`. [onCreateGroup] é o formulário 2a — o "+" de 2n atalha para ele quando
+ * há plano ativo com vaga de grupo; [onOpenPlans] é o Fluxo 8 · Planos, o destino quando
+ * não há plano entitulador.
  */
 @Composable
 fun GroupListRoot(
     onOpenGroup: (String) -> Unit,
+    onCreateGroup: () -> Unit,
     onOpenPlans: () -> Unit,
     viewModel: GroupListViewModel = koinViewModel(),
 ) {
@@ -22,6 +25,7 @@ fun GroupListRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupListEffect.OpenGroup -> onOpenGroup(effect.id)
+            GroupListEffect.OpenCreateGroup -> onCreateGroup()
             GroupListEffect.OpenPlans -> onOpenPlans()
         }
     }

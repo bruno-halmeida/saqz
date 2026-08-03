@@ -293,9 +293,11 @@ internal fun SaqzNavHost(
                         // a lista só enquanto o shell é quem a desenha.
                         GroupListRoot(
                             onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                            // Criar grupo exige plano: o "+" sempre abre a 8a, incondicional
-                            // (GroupListContract.OpenPlans) — nunca atalha para
-                            // `GroupsRoute.Create`.
+                            // Com plano ativo com vaga de grupo o "+" de 2n atalha direto
+                            // para o 2a (`GroupListEffect.OpenCreateGroup`); sem plano
+                            // entitulador — ou limite atingido — ele abre o Fluxo 8 ·
+                            // Planos, e o `PlanActive` traz a pessoa de volta ao 2a.
+                            onCreateGroup = { backStack.add(GroupsRoute.Create) },
                             onOpenPlans = { backStack.add(SubscriptionsRoute.PlanSelection) },
                         )
                     },

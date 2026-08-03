@@ -10,6 +10,7 @@ import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleVersionedGroup
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -28,6 +29,9 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupListViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
+
+    // Sem plano entitulador: o "+" cai no Fluxo 8, como antes da porta existir.
+    private val noPlan = GroupCreationEntitlement { false }
 
     @BeforeTest fun setUp() = Dispatchers.setMain(dispatcher)
 
@@ -54,7 +58,7 @@ class GroupListViewModelTest {
                 ),
             ),
         )
-        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())))
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())), noPlan)
 
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
@@ -65,7 +69,7 @@ class GroupListViewModelTest {
 
     @Test
     fun `empty own profile becomes the first access state`() = runTest {
-        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway())
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan)
 
         assertTrue(viewModel.state.value.isEmpty)
         assertFalse(viewModel.state.value.isLoading)
@@ -78,7 +82,7 @@ class GroupListViewModelTest {
                 br.com.saqz.groups.domain.athlete.AthleteError.DataFailure(DataError.Forbidden),
             ),
         )
-        val viewModel = GroupListViewModel(athlete, FakeGroupGateway())
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan)
 
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
@@ -108,7 +112,7 @@ class GroupListViewModelTest {
         val gateway = FakeGroupGateway(
             readResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.NotFound)),
         )
-        val viewModel = GroupListViewModel(athlete, gateway)
+        val viewModel = GroupListViewModel(athlete, gateway, noPlan)
 
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(GroupUiError.NotFound, viewModel.state.value.error)
@@ -116,13 +120,42 @@ class GroupListViewModelTest {
 
     @Test
     fun `navigation effects remain available after loading`() = runTest {
-        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway())
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan)
 
         viewModel.onIntent(GroupListIntent.OpenGroup("group-1"))
         assertEquals(GroupListEffect.OpenGroup("group-1"), viewModel.effects.first())
 
         viewModel.onIntent(GroupListIntent.CreateGroup)
         assertEquals(GroupListEffect.OpenPlans, viewModel.effects.first())
+    }
+
+    // Com plano ativo e vaga, o "+" de 2n atalha para o formulário 2a.
+    @Test
+    fun `entitled member creating a group goes straight to the form`() = runTest {
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), GroupCreationEntitlement { true })
+
+        viewModel.onIntent(GroupListIntent.CreateGroup)
+
+        assertEquals(GroupListEffect.OpenCreateGroup, viewModel.effects.first())
+    }
+
+    // O segundo toque enquanto a checagem está em voo é descartado — uma consulta, um efeito.
+    @Test
+    fun `tapping create again while the check is in flight emits exactly one effect`() = runTest {
+        val gate = CompletableDeferred<Boolean>()
+        var calls = 0
+        val viewModel = GroupListViewModel(
+            FakeAthleteGateway(),
+            FakeGroupGateway(),
+            GroupCreationEntitlement { calls++; gate.await() },
+        )
+
+        viewModel.onIntent(GroupListIntent.CreateGroup)
+        viewModel.onIntent(GroupListIntent.CreateGroup)
+        gate.complete(true)
+
+        assertEquals(1, calls)
+        assertEquals(GroupListEffect.OpenCreateGroup, viewModel.effects.first())
     }
 
     @Test

@@ -64,9 +64,12 @@ sealed interface GroupListEffect {
     data class OpenGroup(val id: String) : GroupListEffect
 
     /**
-     * Criar grupo exige plano: o "+" de 2n abre o Fluxo 8 · Planos e o app só volta para o
-     * formulário 2a com o plano ativo. Atalhar para `GroupsRoute.Create` apaga a regra.
+     * Sem plano entitulador (ou limite atingido): o "+" de 2n abre o Fluxo 8 · Planos e o
+     * app só volta para o formulário 2a com o plano ativo. Com plano e vaga de grupo o "+"
+     * emite [OpenCreateGroup] — o Fluxo 8 fica para quem não pode criar.
      */
     data object OpenPlans : GroupListEffect
 
+    /** Plano ativo com vaga de grupo: o "+" de 2n atalha para o formulário 2a. */
+    data object OpenCreateGroup : GroupListEffect
 }
