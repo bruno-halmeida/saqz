@@ -42,6 +42,9 @@ body:json {
     "defaultGameFeeCents": 1500,
     "monthlyFeeCents": 7000,
     "monthlyDueDay": 10,
+    "mensalistaPriority": true,
+    "promotionMode": "FIFO",
+    "autoConfirmEnabled": false,
     "timeZone": "America/Sao_Paulo"
   }
 }
@@ -58,5 +61,8 @@ tests {
     expect(res.getBody().profile.defaultVenue.name).to.equal("Arena Central");
     expect(res.getBody().profile.regularSlots[0].durationMinutes).to.equal(120);
     expect(res.getBody().financeDefaults.defaultGameFeeCents).to.equal(1500);
+    expect(res.getBody().gameConfig.mensalistaPriority).to.equal(true);
+    expect(res.getBody().gameConfig.promotionMode).to.equal("FIFO");
+    expect(res.getBody().gameConfig.autoConfirmEnabled).to.equal(false);
   });
 }

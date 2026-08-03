@@ -2,6 +2,7 @@ package br.com.saqz.groups.domain.game
 
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -161,6 +162,9 @@ data class GroupGameDefaults(
     val capacity: Int? = null,
     val confirmationLeadMinutes: Int? = null,
     val gameFeeCents: Long? = null,
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 sealed interface NullableGameFeeOverride {

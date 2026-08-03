@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.game.GameSnapshot
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.groups.domain.game.GroupGameDefaults
+import br.com.saqz.groups.domain.group.PromotionMode
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
@@ -42,6 +43,9 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                     capacity = rs.getObject("default_capacity", Integer::class.java)?.toInt(),
                     confirmationLeadMinutes = rs.getObject("default_confirmation_lead_minutes", Integer::class.java)?.toInt(),
                     gameFeeCents = rs.getObject("default_game_fee_cents", java.lang.Long::class.java)?.toLong(),
+                    mensalistaPriority = rs.getBoolean("mensalista_priority"),
+                    promotionMode = PromotionMode.valueOf(rs.getString("promotion_mode")),
+                    autoConfirmEnabled = rs.getBoolean("auto_confirm_enabled"),
                 ),
             )
         }
@@ -151,6 +155,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         const val CREATION_CONTEXT = """
             SELECT g.name, g.default_venue_id, g.default_capacity,
                    g.default_confirmation_lead_minutes, g.default_game_fee_cents,
+                   g.mensalista_priority, g.promotion_mode, g.auto_confirm_enabled,
                    v.name AS venue_name, v.address AS venue_address, v.court AS venue_court,
                    (SELECT s.duration_minutes FROM group_regular_slots s
                     WHERE s.group_id = g.id ORDER BY s.position, s.weekday, s.start_time LIMIT 1) AS default_duration,

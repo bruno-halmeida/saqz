@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
+import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.domain.group.RegularSlotInput
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
@@ -230,6 +231,34 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         assertEquals(1500, number("SELECT default_game_fee_cents FROM access_groups WHERE id = '$group'"))
         assertEquals(7000, number("SELECT monthly_fee_cents FROM access_groups WHERE id = '$group'"))
         assertEquals(10, number("SELECT monthly_due_day FROM access_groups WHERE id = '$group'"))
+        assertEquals(true, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
+        assertEquals("FIFO", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
+        assertEquals(false, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
+    }
+
+    @Test
+    fun `owner updates game config fields and increments version`() {
+        val owner = insertUser("game-config-settings-owner")
+        val group = insertGroup(owner)
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                1,
+                UpdateGroupProfileInput(
+                    profile(
+                        mensalistaPriority = false,
+                        promotionMode = GroupPromotionMode.MANUAL,
+                        autoConfirmEnabled = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
+        assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
+        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
     }
 
     @Test
@@ -447,6 +476,9 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         customPlayStyle: String? = null,
         defaultVenue: GroupVenueInput? = null,
         regularSlots: List<RegularSlotInput> = emptyList(),
+        mensalistaPriority: Boolean = true,
+        promotionMode: GroupPromotionMode = GroupPromotionMode.FIFO,
+        autoConfirmEnabled: Boolean = false,
     ) = GroupProfileDefaultsInput(
         name = name,
         modality = modality,
@@ -464,6 +496,9 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         defaultGameFeeCents = 1500,
         monthlyFeeCents = 7000,
         monthlyDueDay = 10,
+        mensalistaPriority = mensalistaPriority,
+        promotionMode = promotionMode,
+        autoConfirmEnabled = autoConfirmEnabled,
     )
 
     private fun text(sql: String): String = connection().use { connection ->

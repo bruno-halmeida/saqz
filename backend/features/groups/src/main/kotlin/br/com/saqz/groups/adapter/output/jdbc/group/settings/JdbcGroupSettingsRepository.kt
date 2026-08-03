@@ -76,6 +76,9 @@ class JdbcGroupSettingsRepository(
                 default_game_fee_cents = :defaultGameFeeCents,
                 monthly_fee_cents = :monthlyFeeCents,
                 monthly_due_day = :monthlyDueDay,
+                mensalista_priority = :mensalistaPriority,
+                promotion_mode = :promotionMode,
+                auto_confirm_enabled = :autoConfirmEnabled,
                 entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
                 default_venue_id = null,
                 version = version + 1,
@@ -100,6 +103,9 @@ class JdbcGroupSettingsRepository(
             .param("defaultGameFeeCents", profile.defaultGameFeeCents)
             .param("monthlyFeeCents", profile.monthlyFeeCents)
             .param("monthlyDueDay", profile.monthlyDueDay)
+            .param("mensalistaPriority", profile.mensalistaPriority)
+            .param("promotionMode", profile.promotionMode.name)
+            .param("autoConfirmEnabled", profile.autoConfirmEnabled)
             .param("entryRequiresApproval", command.entryRequiresApproval)
             .param("groupId", command.groupId)
             .param("expectedVersion", command.expectedVersion)

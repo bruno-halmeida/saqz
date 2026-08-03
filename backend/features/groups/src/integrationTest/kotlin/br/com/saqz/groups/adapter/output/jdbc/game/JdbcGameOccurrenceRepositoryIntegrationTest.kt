@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.game.CreateGameInput
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameDraftInput
+import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.testing.startAndAwaitJdbc
 import org.flywaydb.core.Flyway
@@ -60,6 +61,23 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertEquals(24, context?.defaults?.capacity)
         assertEquals(180, context?.defaults?.confirmationLeadMinutes)
         assertEquals(2500, context?.defaults?.gameFeeCents)
+        assertEquals(true, context?.defaults?.mensalistaPriority)
+        assertEquals(GroupPromotionMode.FIFO, context?.defaults?.promotionMode)
+        assertEquals(false, context?.defaults?.autoConfirmEnabled)
+    }
+
+    @Test fun `creation context reads back custom game config fields`() {
+        val fixture = fixture()
+        execute(
+            "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL', " +
+                "auto_confirm_enabled = true WHERE id = '${fixture.group}'",
+        )
+
+        val context = fixture.repository.creationContext(fixture.owner, fixture.group)
+
+        assertEquals(false, context?.defaults?.mensalistaPriority)
+        assertEquals(GroupPromotionMode.MANUAL, context?.defaults?.promotionMode)
+        assertEquals(true, context?.defaults?.autoConfirmEnabled)
     }
 
     @Test fun `deleted group rejects game reads and creation`() {

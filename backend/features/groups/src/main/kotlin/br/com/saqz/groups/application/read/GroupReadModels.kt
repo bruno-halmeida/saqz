@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.util.UUID
@@ -26,6 +27,7 @@ data class GroupReadSnapshot(
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
     val profile: GroupProfileReadModel? = null,
     val financeDefaults: GroupFinanceDefaultsReadModel? = null,
+    val gameConfig: GroupGameConfigReadModel? = null,
     val entryRequiresApproval: Boolean = false,
 )
 
@@ -38,6 +40,7 @@ data class GroupView(
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
     val profile: GroupProfileReadModel? = null,
     val financeDefaults: GroupFinanceDefaultsReadModel? = null,
+    val gameConfig: GroupGameConfigReadModel? = null,
     val entryRequiresApproval: Boolean = false,
 )
 
@@ -74,6 +77,12 @@ data class GroupFinanceDefaultsReadModel(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+)
+
+data class GroupGameConfigReadModel(
+    val mensalistaPriority: Boolean,
+    val promotionMode: PromotionMode,
+    val autoConfirmEnabled: Boolean,
 )
 
 sealed interface GetGroupResult {

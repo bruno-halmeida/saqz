@@ -29,7 +29,10 @@ body:json {
     "defaultConfirmationLeadMinutes": 120,
     "defaultGameFeeCents": 1800,
     "monthlyFeeCents": 7500,
-    "monthlyDueDay": 10
+    "monthlyDueDay": 10,
+    "mensalistaPriority": false,
+    "promotionMode": "MANUAL",
+    "autoConfirmEnabled": true
   }
 }
 
@@ -42,5 +45,8 @@ tests {
     expect(res.getBody().currency).to.equal("BRL");
     expect(res.getBody().profile.defaultCapacity).to.equal(20);
     expect(res.getBody().financeDefaults.defaultGameFeeCents).to.equal(1800);
+    expect(res.getBody().gameConfig.mensalistaPriority).to.equal(false);
+    expect(res.getBody().gameConfig.promotionMode).to.equal("MANUAL");
+    expect(res.getBody().gameConfig.autoConfirmEnabled).to.equal(true);
   });
 }

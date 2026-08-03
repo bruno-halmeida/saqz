@@ -4,6 +4,7 @@ import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
 import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
+import br.com.saqz.groups.application.read.GroupGameConfigReadModel
 import br.com.saqz.groups.application.read.GroupProfileReadModel
 import br.com.saqz.groups.application.read.GroupRegularSlotReadModel
 import br.com.saqz.groups.application.read.GroupVenueReadModel
@@ -15,6 +16,7 @@ import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.PromotionMode
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.time.DayOfWeek
@@ -64,6 +66,9 @@ class JdbcGroupReadRepository(
                     THEN groups.monthly_due_day
                 ELSE NULL
             END AS monthly_due_day,
+            groups.mensalista_priority,
+            groups.promotion_mode,
+            groups.auto_confirm_enabled,
             default_venue.id AS default_venue_id,
             default_venue.name AS default_venue_name,
             default_venue.address AS default_venue_address,
@@ -120,6 +125,11 @@ class JdbcGroupReadRepository(
                 defaultConfirmationLeadMinutes = first.defaultConfirmationLeadMinutes,
             ),
             financeDefaults = first.financeDefaults,
+            gameConfig = GroupGameConfigReadModel(
+                mensalistaPriority = first.mensalistaPriority,
+                promotionMode = first.promotionMode,
+                autoConfirmEnabled = first.autoConfirmEnabled,
+            ),
         )
     }
 
@@ -162,6 +172,9 @@ class JdbcGroupReadRepository(
             monthlyFeeCents = getNullableLong("monthly_fee_cents"),
             monthlyDueDay = getNullableInt("monthly_due_day"),
         ),
+        mensalistaPriority = getBoolean("mensalista_priority"),
+        promotionMode = PromotionMode.valueOf(getString("promotion_mode")),
+        autoConfirmEnabled = getBoolean("auto_confirm_enabled"),
     )
 
     private fun ResultSet.getNullableInt(column: String): Int? {
@@ -195,5 +208,8 @@ class JdbcGroupReadRepository(
         val defaultCapacity: Int?,
         val defaultConfirmationLeadMinutes: Int?,
         val financeDefaults: GroupFinanceDefaultsReadModel,
+        val mensalistaPriority: Boolean,
+        val promotionMode: PromotionMode,
+        val autoConfirmEnabled: Boolean,
     )
 }

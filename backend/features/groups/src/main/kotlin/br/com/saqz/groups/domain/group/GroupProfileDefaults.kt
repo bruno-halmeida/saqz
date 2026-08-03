@@ -30,6 +30,11 @@ enum class CourtPlayStyle {
     CUSTOM,
 }
 
+enum class PromotionMode {
+    FIFO,
+    MANUAL,
+}
+
 data class GroupValidationError(
     val field: String,
     val message: String,
@@ -52,6 +57,9 @@ data class ValidGroupProfileDefaults(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+    val mensalistaPriority: Boolean,
+    val promotionMode: PromotionMode,
+    val autoConfirmEnabled: Boolean,
 )
 
 data class ValidGroupVenue(
@@ -83,6 +91,9 @@ data class GroupProfileDefaultsInput(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 data class GroupVenueInput(
@@ -145,6 +156,9 @@ object GroupProfileDefaultsValidator {
                     defaultGameFeeCents = input.defaultGameFeeCents,
                     monthlyFeeCents = input.monthlyFeeCents,
                     monthlyDueDay = input.monthlyDueDay,
+                    mensalistaPriority = input.mensalistaPriority,
+                    promotionMode = input.promotionMode,
+                    autoConfirmEnabled = input.autoConfirmEnabled,
                 ),
             )
         }
