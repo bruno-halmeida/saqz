@@ -7,6 +7,7 @@ import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.GroupInviteUrl
+import br.com.saqz.groups.domain.membership.GroupInviteMetadata
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
@@ -43,7 +44,18 @@ private data class MembershipDto(
 )
 
 @Serializable
-private data class InviteUrlDto(val inviteUrl: String = "")
+private data class InviteUrlDto(
+    val inviteUrl: String = "",
+    val expiresAt: String? = null,
+)
+
+@Serializable
+private data class InviteMetadataDto(
+    val active: Boolean = false,
+    val expiresAt: String? = null,
+    val createdAt: String? = null,
+    val createdByName: String? = null,
+)
 
 @Serializable
 private data class ChangeRoleRequestDto(val role: AssignableGroupRoleDto)
@@ -83,6 +95,19 @@ class KtorGroupMembershipGateway(
         InviteUrlDto.serializer(),
     ).toInviteUrlResult()
 
+    override suspend fun readInviteMetadata(
+        groupId: GroupId,
+    ): SaqzResult<GroupInviteMetadata, GroupMembershipError> = retryTransport(
+        RetrySafety.Read,
+        delayMillis = retryDelay,
+    ) {
+        network.execute(
+            HttpMethod.Get,
+            "api/groups/${groupId.value}/invite",
+            InviteMetadataDto.serializer(),
+        )
+    }.toInviteMetadataResult()
+
     override suspend fun expireInvite(
         groupId: GroupId,
     ) = network.executeNoContent(
@@ -110,9 +135,14 @@ private fun NetworkResult<InviteUrlDto>.toInviteUrlResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
     is NetworkResult.Success -> value.inviteUrl
         .takeIf(String::isNotBlank)
-        ?.let(::GroupInviteUrl)
+        ?.let { GroupInviteUrl(it, value.expiresAt) }
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
+}
+
+private fun NetworkResult<InviteMetadataDto>.toInviteMetadataResult() = when (this) {
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
+    is NetworkResult.Success -> value.toDomain()?.let { SaqzResult.Success(it) } ?: invalidResponse()
 }
 
 private fun NetworkResult<Unit>.toEmptyResult() = when (this) {
@@ -124,6 +154,12 @@ private fun MembershipDto.toDomain(): GroupMembership? {
     val domainRole = role ?: return null
     if (userId.isBlank() || displayName.isBlank()) return null
     return GroupMembership(userId, displayName, GroupRole.valueOf(domainRole.name))
+}
+
+private fun InviteMetadataDto.toDomain(): GroupInviteMetadata? {
+    if (active && expiresAt.isNullOrBlank()) return null
+    if (!active && listOf(createdAt, createdByName).any { it != null && it.isBlank() }) return null
+    return GroupInviteMetadata(active, expiresAt, createdAt, createdByName)
 }
 
 private fun NetworkError.toDomainError(): GroupMembershipError = when (this) {

@@ -99,8 +99,40 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
-    fun `rotate maps complete invite URL`() = runTest {
-        assertEquals(INVITE_URL, fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success().value)
+    fun `rotate maps invite URL and expiration`() = runTest {
+        val invite = fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success()
+
+        assertEquals(INVITE_URL, invite.value)
+        assertEquals(EXPIRES_AT, invite.expiresAt)
+    }
+
+    @Test
+    fun `metadata uses exact get route`() = runTest {
+        fixture { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/api/groups/$GROUP_ID/invite", request.url.encodedPath)
+            inviteMetadata()
+        }.gateway.readInviteMetadata(GroupId(GROUP_ID))
+    }
+
+    @Test
+    fun `metadata maps active fields without exposing a URL`() = runTest {
+        val metadata = fixture { inviteMetadata() }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertTrue(metadata.active)
+        assertEquals("2026-08-09T12:00:00Z", metadata.expiresAt)
+        assertEquals("2026-08-02T12:00:00Z", metadata.createdAt)
+        assertEquals("Owner Person", metadata.createdByName)
+    }
+
+    @Test
+    fun `inactive metadata accepts omitted optional fields`() = runTest {
+        val metadata = fixture { respond("{\"active\":false}", headers = jsonHeaders()) }
+            .gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertFalse(metadata.active)
+        assertEquals(null, metadata.expiresAt)
+        assertEquals(null, metadata.createdByName)
     }
 
     @Test
@@ -261,7 +293,12 @@ class KtorGroupMembershipGatewayTest {
     )
 
     private fun MockRequestHandleScope.inviteUrl() = respond(
-        """{"inviteUrl":"$INVITE_URL"}""",
+        """{"inviteUrl":"$INVITE_URL","expiresAt":"$EXPIRES_AT"}""",
+        headers = jsonHeaders(),
+    )
+
+    private fun MockRequestHandleScope.inviteMetadata() = respond(
+        """{"active":true,"expiresAt":"2026-08-09T12:00:00Z","createdAt":"2026-08-02T12:00:00Z","createdByName":"Owner Person"}""",
         headers = jsonHeaders(),
     )
 
@@ -320,5 +357,6 @@ class KtorGroupMembershipGatewayTest {
         const val GROUP_ID = "group-1"
         const val USER_ID = "user-1"
         const val INVITE_URL = "https://join.example.test/invite/fake"
+        const val EXPIRES_AT = "2026-08-09T12:00:00Z"
     }
 }

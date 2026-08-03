@@ -20,8 +20,17 @@ data class GroupMembership(
     val role: GroupRole,
 )
 
-@JvmInline
-value class GroupInviteUrl(val value: String)
+data class GroupInviteMetadata(
+    val active: Boolean,
+    val expiresAt: String? = null,
+    val createdAt: String? = null,
+    val createdByName: String? = null,
+)
+
+data class GroupInviteUrl(
+    val value: String,
+    val expiresAt: String? = null,
+)
 
 data class ChangeMembershipRoleCommand(
     val groupId: GroupId,
@@ -55,6 +64,10 @@ interface GroupMembershipGateway {
     suspend fun rotateInvite(
         groupId: GroupId,
     ): SaqzResult<GroupInviteUrl, GroupMembershipError>
+
+    suspend fun readInviteMetadata(
+        groupId: GroupId,
+    ): SaqzResult<GroupInviteMetadata, GroupMembershipError>
 
     suspend fun expireInvite(
         groupId: GroupId,

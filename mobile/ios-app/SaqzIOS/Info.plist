@@ -37,6 +37,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Use a câmera para escolher a foto privada do grupo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Permita salvar a imagem do convite na sua fototeca.</string>
 	<key>SaqzAPIBaseURL</key>
 	<string>$(SAQZ_API_BASE_URL)</string>
 	<key>SaqzEnvironment</key>

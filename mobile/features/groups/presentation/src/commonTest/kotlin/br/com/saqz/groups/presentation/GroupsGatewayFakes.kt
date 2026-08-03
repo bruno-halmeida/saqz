@@ -40,6 +40,7 @@ import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.GroupInviteUrl
+import br.com.saqz.groups.domain.membership.GroupInviteMetadata
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
@@ -232,6 +233,9 @@ class FakeGroupMembershipGateway(
     }
 
     override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> =
+        error("not used in this screen")
+
+    override suspend fun readInviteMetadata(groupId: GroupId): SaqzResult<GroupInviteMetadata, GroupMembershipError> =
         error("not used in this screen")
 
     override suspend fun expireInvite(groupId: GroupId): SaqzResult<Unit, GroupMembershipError> =

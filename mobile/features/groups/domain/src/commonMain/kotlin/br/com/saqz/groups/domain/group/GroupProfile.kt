@@ -66,6 +66,7 @@ data class Group(
     val currency: GroupCurrency = GroupCurrency.BRL,
     val profile: GroupProfile? = null,
     val financeDefaults: GroupFinanceDefaults? = null,
+    val entryRequiresApproval: Boolean = false,
 ) {
     constructor(
         id: String,
@@ -124,6 +125,7 @@ data class UpdateGroupSettingsCommand(
     val versionToken: GroupVersionToken,
     val name: String,
     val timeZone: GroupTimeZone,
+    val entryRequiresApproval: Boolean = false,
 )
 
 data class CreateGroupProfileCommand(

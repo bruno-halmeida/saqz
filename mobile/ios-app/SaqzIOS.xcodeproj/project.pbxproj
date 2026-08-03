@@ -34,6 +34,7 @@
 		D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */; };
 		D80000000000000000000002 /* IOSProfilePhotoAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */; };
 		C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */; };
+		E90000000000000000000001 /* IOSInviteAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000011 /* IOSInviteAdapters.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +83,7 @@
 		C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupDraftAdaptersTests.swift; sourceTree = "<group>"; };
 		D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapter.swift; sourceTree = "<group>"; };
 		D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapterTests.swift; sourceTree = "<group>"; };
+		E90000000000000000000011 /* IOSInviteAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsInvite/IOSInviteAdapters.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,6 +137,7 @@
 				B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */,
 				C70000000000000000000011 /* IOSGroupDraftAdapters.swift */,
 				D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */,
+				E90000000000000000000011 /* IOSInviteAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
 			);
@@ -367,6 +370,7 @@
 				B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */,
 				C70000000000000000000001 /* IOSGroupDraftAdapters.swift in Sources */,
 				D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */,
+				E90000000000000000000001 /* IOSInviteAdapters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

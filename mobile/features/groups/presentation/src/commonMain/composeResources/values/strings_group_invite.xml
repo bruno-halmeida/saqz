@@ -1,0 +1,29 @@
+<resources>
+    <string name="group_invite_title">Convidar</string>
+    <string name="group_invite_active_expires">Link expira em %1$s</string>
+    <string name="group_invite_generate_link">Gerar novo link</string>
+    <string name="group_invite_generate_code">Gerar novo código</string>
+    <string name="group_invite_rotate_warning">O antigo para de valer</string>
+    <string name="group_invite_copy_link">Copiar link</string>
+    <string name="group_invite_copied_toast">Link copiado. Manda pra galera!</string>
+    <string name="group_invite_share">Compartilhar convite</string>
+    <string name="group_invite_whatsapp_primary">Compartilhar no WhatsApp</string>
+    <string name="group_invite_whatsapp">Enviar no WhatsApp</string>
+    <string name="group_invite_show_qr">Mostrar QR</string>
+    <string name="group_invite_share_image">Gerar imagem do convite</string>
+    <string name="group_invite_deactivate">Desativar link</string>
+    <string name="group_invite_approval">Aprovar quem entrar</string>
+    <string name="group_invite_people">Quem entrou</string>
+    <string name="group_invite_pending">Pedidos para entrar</string>
+    <string name="group_invite_approve">Aprovar</string>
+    <string name="group_invite_reject">Recusar</string>
+    <string name="group_invite_joined_recently">Entrou · recentemente</string>
+    <string name="group_invite_joined_minutes">Entrou · há %1$dmin</string>
+    <string name="group_invite_joined_hours">Entrou · há %1$dh</string>
+    <string name="group_invite_joined_days">Entrou · há %1$dd</string>
+    <string name="group_invite_load_error">Não foi possível carregar os convites</string>
+    <string name="group_invite_operation_error">Não foi possível concluir essa ação</string>
+    <string name="group_invite_retry">Tentar novamente</string>
+    <string name="group_invite_empty_title">Crie um link para convidar a galera</string>
+    <string name="group_invite_empty_description">O convite fica ativo por 7 dias.</string>
+</resources>

@@ -19,6 +19,7 @@ junit = "4.13.2"
 kotlin = "2.4.10"
 kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.8.0"
+kotlin-qrcode = "4.5.0"
 koin-bom = "4.2.2"
 ktor = "3.5.1"
 lucide = "1.1.0"
@@ -75,6 +76,7 @@ firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "fir
 google-id = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "google-id" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kotlin-qrcode = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "kotlin-qrcode" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization-json" }

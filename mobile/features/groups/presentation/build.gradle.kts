@@ -27,6 +27,7 @@ kotlin {
             implementation(libs.bundles.compose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlin.qrcode)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)
             implementation(libs.lifecycle.viewmodel.savedstate)
