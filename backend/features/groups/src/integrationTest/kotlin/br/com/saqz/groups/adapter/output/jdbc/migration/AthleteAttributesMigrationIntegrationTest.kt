@@ -44,6 +44,7 @@ class AthleteAttributesMigrationIntegrationTest {
 
         assertEquals("AVULSO", string("SELECT membership_type FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertEquals(true, bool("SELECT active FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(false, bool("SELECT auto_confirm_enabled FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertNull(stringOrNull("SELECT position FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertNull(stringOrNull("SELECT level FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertNull(stringOrNull("SELECT nickname FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))

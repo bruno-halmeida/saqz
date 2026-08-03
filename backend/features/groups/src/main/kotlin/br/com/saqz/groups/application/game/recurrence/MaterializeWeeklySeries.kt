@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.game.recurrence
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.recurrence.RecurrenceValidationError
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResolver
@@ -34,6 +35,7 @@ class MaterializeWeeklySeries(
     private val repository: OccurrenceMaterializationRepository,
     private val ids: GameIdFactory,
     private val clock: Clock,
+    private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
 ) {
     fun execute(rule: WeeklySeriesRule, from: LocalDate): MaterializeWeeklySeriesResult {
         val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, from)) {
@@ -43,7 +45,9 @@ class MaterializeWeeklySeries(
         val createdAt = clock.instant()
         val materialized = resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, createdAt) }
         return transactionRunner.inTransaction {
-            MaterializeWeeklySeriesResult.Success(materialized.size, repository.insertIfAbsent(materialized))
+            val inserted = repository.insertIfAbsent(materialized)
+            autoConfirmation.apply(materialized)
+            MaterializeWeeklySeriesResult.Success(materialized.size, inserted)
         }
     }
 }

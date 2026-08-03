@@ -1,5 +1,7 @@
 package br.com.saqz.groups.application.game.series
 
+import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
+import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.game.GameSnapshot
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
@@ -71,11 +73,27 @@ class ApplySeriesBoundaryTest {
         assertEquals(SeriesBoundaryAction.CANCEL, fixture.repository.future?.action)
     }
 
-    private fun fixture(): Fixture {
+    @Test fun `future application sends materialized occurrences to auto confirmation`() {
+        val calls = mutableListOf<List<MaterializedGameOccurrence>>()
+        val fixture = fixture(AutoConfirmationMaterializationPort { calls += it })
+
+        assertEquals(SeriesBoundaryResult.Applied, fixture.future(fixture.rule))
+        assertEquals(12, calls.single().size)
+    }
+
+    @Test fun `future cancellation does not send occurrences to auto confirmation`() {
+        val calls = mutableListOf<List<MaterializedGameOccurrence>>()
+        val fixture = fixture(AutoConfirmationMaterializationPort { calls += it })
+
+        assertEquals(SeriesBoundaryResult.Applied, fixture.future(fixture.rule, SeriesBoundaryAction.CANCEL))
+        assertTrue(calls.isEmpty())
+    }
+
+    private fun fixture(autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { }): Fixture {
         val group = UUID.randomUUID(); val lineage = UUID.randomUUID(); val successor = UUID.randomUUID()
         val rule = WeeklySeriesRule(group, lineage, successor, "America/Sao_Paulo", DATE, slots = listOf(slot()))
         val repository = RecordingRepository()
-        return Fixture(group, UUID.randomUUID(), rule, repository, ApplySeriesBoundary(repository, UUID::randomUUID, CLOCK))
+        return Fixture(group, UUID.randomUUID(), rule, repository, ApplySeriesBoundary(repository, UUID::randomUUID, CLOCK, autoConfirmation))
     }
 
     private fun slot() = WeeklySlotRule(UUID.randomUUID(), DayOfWeek.WEDNESDAY, LocalTime.of(19, 30), 90, venue(), 24, 180, 2500, "Treino semanal")

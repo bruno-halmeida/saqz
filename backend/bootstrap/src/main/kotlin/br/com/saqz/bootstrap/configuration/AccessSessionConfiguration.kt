@@ -81,16 +81,21 @@ import br.com.saqz.groups.adapter.input.http.GameController
 import br.com.saqz.groups.adapter.input.http.ChargeController
 import br.com.saqz.groups.adapter.input.http.ExpenseController
 import br.com.saqz.groups.adapter.input.http.AttendanceController
+import br.com.saqz.groups.adapter.input.http.AutoConfirmationController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
+import br.com.saqz.groups.adapter.output.jdbc.game.JdbcOccurrenceMaterializationRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesBoundaryRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
+import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAutoConfirmationRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
 import br.com.saqz.groups.application.attendance.AdjustGameCapacity
+import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
+import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
 import br.com.saqz.groups.application.attendance.AttendanceRosterQuery
 import br.com.saqz.groups.application.attendance.RespondAttendance
@@ -99,9 +104,11 @@ import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
 import br.com.saqz.groups.application.game.GameAttendanceCountSource
 import br.com.saqz.groups.application.game.GameSideEffectPort
+import br.com.saqz.groups.application.game.GameSideEffects
 import br.com.saqz.groups.application.game.GetGame
 import br.com.saqz.groups.application.game.ListGames
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
+import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeries
 import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
 import br.com.saqz.groups.application.game.series.WeeklySeriesService
 import br.com.saqz.groups.application.finance.charge.ChargeManagement
@@ -602,18 +609,56 @@ class AccessSessionConfiguration {
         attendance: AttendanceDetailQuery,
     ) = GameController(actor, create, edit, lifecycle, list, get, attendance)
     @Bean fun gameIdFactory() = GameIdFactory(java.util.UUID::randomUUID)
+    @Bean fun occurrenceMaterializationRepository(dataSource: DataSource) = JdbcOccurrenceMaterializationRepository(dataSource)
+    @Bean fun materializeWeeklySeries(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcOccurrenceMaterializationRepository,
+        ids: GameIdFactory,
+        autoConfirm: AutoConfirmAttendance,
+    ) = MaterializeWeeklySeries(
+        transaction,
+        repository,
+        ids,
+        Clock.systemUTC(),
+        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+    )
     @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
-    @Bean fun weeklySeriesService(repository: JdbcWeeklySeriesRepository, ids: GameIdFactory) = WeeklySeriesService(repository, ids, Clock.systemUTC())
+    @Bean fun weeklySeriesService(
+        repository: JdbcWeeklySeriesRepository,
+        ids: GameIdFactory,
+        autoConfirm: AutoConfirmAttendance,
+    ) = WeeklySeriesService(
+        repository,
+        ids,
+        Clock.systemUTC(),
+        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+    )
     @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
-    @Bean fun applySeriesBoundary(repository: JdbcSeriesBoundaryRepository, ids: GameIdFactory) = ApplySeriesBoundary(repository, ids::create, Clock.systemUTC())
+    @Bean fun applySeriesBoundary(
+        repository: JdbcSeriesBoundaryRepository,
+        ids: GameIdFactory,
+        autoConfirm: AutoConfirmAttendance,
+    ) = ApplySeriesBoundary(
+        repository,
+        ids::create,
+        Clock.systemUTC(),
+        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+    )
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
-    @Bean fun gameSideEffects(charges: ChargeTransactions): GameSideEffectPort = GameFinanceSideEffects(charges)
+    @Bean fun autoConfirmationRepository(dataSource: DataSource) = JdbcAutoConfirmationRepository(dataSource)
+    @Bean fun autoConfirmAttendance(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcAutoConfirmationRepository,
+    ) = AutoConfirmAttendance(transaction, repository, Instant::now)
+    @Bean fun gameSideEffects(charges: ChargeTransactions, autoConfirm: AutoConfirmAttendance): GameSideEffectPort =
+        GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm))
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
     @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery) = AttendanceController(actor, responses, capacities, details, rosters)
+    @Bean fun autoConfirmationController(actor: VerifiedGroupActorResolver, autoConfirm: AutoConfirmAttendance) = AutoConfirmationController(actor, autoConfirm)
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)
