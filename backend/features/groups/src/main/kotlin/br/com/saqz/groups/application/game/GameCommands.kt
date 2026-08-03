@@ -43,6 +43,12 @@ fun interface GameSideEffectPort {
     fun apply(game: Game, actorId: UUID, effects: Set<GameSideEffect>)
 }
 
+class GameSideEffects(private val delegates: List<GameSideEffectPort>) : GameSideEffectPort {
+    override fun apply(game: Game, actorId: UUID, effects: Set<GameSideEffect>) {
+        delegates.forEach { it.apply(game, actorId, effects) }
+    }
+}
+
 sealed interface GameCommandResult {
     data class Success(val game: Game) : GameCommandResult
     data class Invalid(val errors: List<GameValidationError>) : GameCommandResult

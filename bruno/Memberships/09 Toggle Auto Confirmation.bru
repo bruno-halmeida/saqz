@@ -1,0 +1,37 @@
+meta {
+  name: Toggle Own Auto Confirmation
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{backendUrl}}/api/groups/{{groupId}}/athletes/me/auto-confirmation
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+  content-type: application/json
+}
+
+body:json {
+  {
+    "enabled": true
+  }
+}
+
+docs {
+  Este endpoint altera somente o opt-in do membro autenticado.
+  O grupo precisa estar com auto-confirmation habilitada e o membro precisa ser MENSALISTA.
+  O valor enviado fica persistido mesmo se a configuração do grupo for desligada depois.
+  Membros AVULSO e grupos com o recurso desligado recebem 422 VALIDATION_FAILED.
+  A auditoria de confirmações automáticas usa source SYSTEM; o membro ainda pode responder DECLINE normalmente.
+}
+
+tests {
+  test("own auto confirmation is updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().enabled).to.equal(true);
+  });
+}

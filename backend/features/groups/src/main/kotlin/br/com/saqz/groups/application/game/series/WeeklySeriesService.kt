@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.game.series
 
+import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.domain.GroupRole
@@ -28,7 +29,12 @@ interface WeeklySeriesRepository {
     fun find(groupId: UUID, lineageId: UUID): WeeklySeriesView?
 }
 
-class WeeklySeriesService(private val repository: WeeklySeriesRepository, private val ids: GameIdFactory, private val clock: Clock) {
+class WeeklySeriesService(
+    private val repository: WeeklySeriesRepository,
+    private val ids: GameIdFactory,
+    private val clock: Clock,
+    private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
+) {
     fun authorizeOrganizer(actor: UUID, groupId: UUID): WeeklySeriesResult? = when (repository.role(actor, groupId)) {
         null -> WeeklySeriesResult.NotFound
         GroupRole.ATHLETE -> WeeklySeriesResult.Forbidden
@@ -42,7 +48,9 @@ class WeeklySeriesService(private val repository: WeeklySeriesRepository, privat
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }
         val now = clock.instant()
-        val inserted = repository.create(rule, resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) })
+        val materialized = resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
+        val inserted = repository.create(rule, materialized)
+        autoConfirmation.apply(materialized)
         val stored = repository.find(rule.groupId, rule.seriesId) ?: error("created series not readable")
         return WeeklySeriesResult.Success(stored, replay = !inserted)
     }
