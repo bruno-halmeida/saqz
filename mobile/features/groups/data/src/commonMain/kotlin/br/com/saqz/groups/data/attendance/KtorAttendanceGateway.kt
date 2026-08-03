@@ -13,6 +13,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceMutation
+import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -119,6 +120,13 @@ internal data class OverrideAttendanceRequest(
 )
 
 @Serializable
+internal data class AttendancePromotionRequest(
+    val requestId: String,
+    val memberId: String,
+    val reason: String? = null,
+)
+
+@Serializable
 internal data class AttendanceCapacityRequest(
     val requestId: String,
     val capacity: Int,
@@ -188,6 +196,20 @@ class KtorAttendanceGateway(
             )
         }.mutationResult()
 
+    override suspend fun promote(
+        groupId: GroupId,
+        gameId: String,
+        command: AttendancePromotionCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        retryTransport(command.requestId.safety(), delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Post,
+                "${attendanceRoute(groupId, gameId)}/promote",
+                AttendanceMutationTransport.serializer(),
+                NetworkRequest(json.encodeToString(command.toRequest())),
+            )
+        }.mutationResult()
+
     override suspend fun capacity(
         groupId: GroupId,
         gameId: String,
@@ -239,6 +261,12 @@ private fun OverrideAttendanceCommand.toRequest() = OverrideAttendanceRequest(
     requestId = requestId,
     memberId = memberId,
     intent = AttendanceIntentTransport.entries[intent.ordinal],
+    reason = reason,
+)
+
+private fun AttendancePromotionCommand.toRequest() = AttendancePromotionRequest(
+    requestId = requestId,
+    memberId = memberId,
     reason = reason,
 )
 

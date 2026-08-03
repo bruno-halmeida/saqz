@@ -100,6 +100,12 @@ data class AutoConfirmationCommand(val enabled: Boolean)
 
 data class AutoConfirmationUpdate(val enabled: Boolean)
 
+data class AttendancePromotionCommand(
+    val requestId: String,
+    val memberId: String,
+    val reason: String,
+)
+
 sealed interface AttendanceError : SaqzError {
     data class Validation(val error: DataError.Validation) : AttendanceError
     data object HiddenResource : AttendanceError
@@ -126,6 +132,12 @@ interface AttendanceGateway {
         groupId: GroupId,
         gameId: String,
     ): SaqzResult<AttendanceRoster, AttendanceError>
+
+    suspend fun promote(
+        groupId: GroupId,
+        gameId: String,
+        command: AttendancePromotionCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError>
 
     suspend fun override(
         groupId: GroupId,

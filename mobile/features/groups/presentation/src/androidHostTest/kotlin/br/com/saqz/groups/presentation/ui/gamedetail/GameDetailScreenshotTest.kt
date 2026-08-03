@@ -37,7 +37,15 @@ class GameDetailScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h1400dp")
-    fun admin() = capture("game-detail-admin", GameDetailPreviewData.admin)
+    fun admin() = capture("game-detail-admin", GameDetailPreviewData.admin, directory = "vul-158")
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun capacitySheet() = capture(
+        "game-detail-capacity",
+        GameDetailPreviewData.admin.copy(capacitySheetOpen = true, capacityDraft = 14),
+        directory = "vul-158",
+    )
 
     @Test
     @Config(qualifiers = "+h1400dp")
@@ -95,6 +103,7 @@ class GameDetailScreenshotTest {
             autoConfirmationVisible = true,
             autoConfirmationEnabled = true,
         ),
+        directory = "vul-159",
     )
 
     @Test
@@ -106,6 +115,7 @@ class GameDetailScreenshotTest {
             memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Waitlisted, 3),
             membershipType = AthleteMembershipType.AVULSO,
         ),
+        directory = "vul-159",
     )
 
     @Test
@@ -117,13 +127,14 @@ class GameDetailScreenshotTest {
             header = GameDetailPreviewData.header.copy(confirmationOpen = false),
             memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Confirmed),
         ),
+        directory = "vul-159",
     )
 
-    private fun capture(name: String, state: GameDetailState) = capture(name) {
+    private fun capture(name: String, state: GameDetailState, directory: String = "vul-154") = capture(name, directory) {
         GameDetailScreen(state = state, onBack = {}, onIntent = {})
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    private fun capture(name: String, directory: String, content: @Composable () -> Unit) {
         compose.setContent {
             SaqzTheme {
                 Box(
@@ -135,7 +146,6 @@ class GameDetailScreenshotTest {
                 }
             }
         }
-        val snapshotSet = if (name.startsWith("game-detail-response")) "vul-159" else "vul-154"
-        compose.onRoot().captureRoboImage("screenshots/$snapshotSet/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 }

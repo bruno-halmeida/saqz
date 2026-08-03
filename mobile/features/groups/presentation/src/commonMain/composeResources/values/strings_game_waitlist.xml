@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- VUL-158 · reserva no detalhe do jogo -->
+    <string name="game_waitlist_section">Reserva</string>
+    <string name="game_waitlist_queue_position">%1$dº na fila</string>
+    <string name="game_waitlist_queue_unknown">Posição indisponível</string>
+    <string name="game_waitlist_position_unknown">Posição não informada</string>
+    <string name="game_waitlist_position_libero">Líbero</string>
+    <string name="game_waitlist_position_ponta">Ponta</string>
+    <string name="game_waitlist_position_central">Central</string>
+    <string name="game_waitlist_position_oposto">Oposto</string>
+    <string name="game_waitlist_position_levantador">Levantador</string>
+    <string name="game_waitlist_mensalista">Mensalista</string>
+    <string name="game_waitlist_promote">Promover</string>
+    <string name="game_waitlist_promotion_reason">Escolha do organizador</string>
+    <string name="game_waitlist_promotion_failed">Não foi possível promover. Tente novamente.</string>
+    <string name="game_waitlist_adjust_capacity">Ajustar vagas</string>
+    <string name="game_waitlist_capacity_title">Ajustar vagas</string>
+    <string name="game_waitlist_capacity_description">Escolha quantas pessoas cabem neste jogo.</string>
+    <string name="game_waitlist_capacity_label">Vagas neste jogo</string>
+    <string name="game_waitlist_capacity_save">Salvar vagas</string>
+    <string name="game_waitlist_capacity_cancel">Voltar</string>
+    <string name="game_waitlist_capacity_failed">Não foi possível ajustar as vagas. Tente novamente.</string>
+</resources>

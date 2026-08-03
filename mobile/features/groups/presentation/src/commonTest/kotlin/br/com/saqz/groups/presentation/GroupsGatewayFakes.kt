@@ -12,6 +12,19 @@ import br.com.saqz.groups.domain.athlete.AthleteStats
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
+import br.com.saqz.groups.domain.attendance.AttendanceCapacity
+import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceError
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
+import br.com.saqz.groups.domain.attendance.AttendanceRoster
+import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
+import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -253,6 +266,78 @@ class FakeGameGateway(
     ): SaqzResult<VersionedSeries, GameError> = error("not used in this screen")
 }
 
+class FakeAttendanceGateway(
+    var detailResult: SaqzResult<AttendanceDetail, AttendanceError> = SaqzResult.Success(sampleAttendanceDetail()),
+    var rosterResult: SaqzResult<AttendanceRoster, AttendanceError> = SaqzResult.Success(sampleAttendanceRoster()),
+    var promoteResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        SaqzResult.Success(sampleVersionedAttendanceMutation()),
+    var capacityResult: SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
+        SaqzResult.Success(sampleVersionedAttendanceCapacity()),
+    var autoConfirmationResult: SaqzResult<AutoConfirmationUpdate, AttendanceError> =
+        SaqzResult.Success(AutoConfirmationUpdate(false)),
+) : AttendanceGateway {
+    var readCalls = 0
+    var rosterCalls = 0
+    var promoteCalls = 0
+    var capacityCalls = 0
+    var lastPromotionCommand: AttendancePromotionCommand? = null
+    var lastCapacityCommand: AttendanceCapacityCommand? = null
+    var lastCapacityVersion: AttendanceVersionToken? = null
+    var promoteDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
+    var capacityDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceCapacity, AttendanceError>>? = null
+
+    override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<AttendanceDetail, AttendanceError> {
+        readCalls++
+        return detailResult
+    }
+
+    override suspend fun roster(groupId: GroupId, gameId: String): SaqzResult<AttendanceRoster, AttendanceError> {
+        rosterCalls++
+        return rosterResult
+    }
+
+    override suspend fun respond(
+        groupId: GroupId,
+        gameId: String,
+        command: br.com.saqz.groups.domain.attendance.SelfAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        error("not used in this screen")
+
+    override suspend fun promote(
+        groupId: GroupId,
+        gameId: String,
+        command: AttendancePromotionCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
+        promoteCalls++
+        lastPromotionCommand = command
+        return promoteDeferred?.await() ?: promoteResult
+    }
+
+    override suspend fun override(
+        groupId: GroupId,
+        gameId: String,
+        command: br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        error("not used in this screen")
+
+    override suspend fun capacity(
+        groupId: GroupId,
+        gameId: String,
+        version: AttendanceVersionToken,
+        command: AttendanceCapacityCommand,
+    ): SaqzResult<VersionedAttendanceCapacity, AttendanceError> {
+        capacityCalls++
+        lastCapacityVersion = version
+        lastCapacityCommand = command
+        return capacityDeferred?.await() ?: capacityResult
+    }
+
+    override suspend fun updateAutoConfirmation(
+        groupId: GroupId,
+        command: AutoConfirmationCommand,
+    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> = autoConfirmationResult
+}
+
 class FakeGroupMembershipGateway(
     var listResult: SaqzResult<List<GroupMembership>, GroupMembershipError> = SaqzResult.Success(emptyList()),
     var changeRoleResult: SaqzResult<GroupMembership, GroupMembershipError> =
@@ -360,5 +445,43 @@ fun sampleGame() = Game(
 )
 
 fun sampleVersionedGame(game: Game = sampleGame()) = VersionedGame(game, GameVersionToken("etag-1"))
+
+fun sampleAttendanceDetail() = AttendanceDetail(
+    confirmedCount = 8,
+    availableSpots = 4,
+    waitlistCount = 2,
+    capacity = 12,
+)
+
+fun sampleAttendanceRoster() = AttendanceRoster(
+    confirmed = listOf(AttendanceRosterMember("confirmed-1", "Ana")),
+    waitlisted = listOf(
+        AttendanceRosterMember("wait-1", "Caio", 1),
+        AttendanceRosterMember("wait-2", "Duda", 2),
+    ),
+)
+
+fun sampleVersionedAttendanceMutation() = VersionedAttendanceMutation(
+    value = br.com.saqz.groups.domain.attendance.AttendanceMutation(
+        attendance = br.com.saqz.groups.domain.attendance.AttendanceEntry(
+            memberId = "wait-1",
+            status = br.com.saqz.groups.domain.attendance.AttendanceStatus.Confirmed,
+            version = 2,
+        ),
+        promotedCount = 1,
+        detail = sampleAttendanceDetail().copy(confirmedCount = 9, availableSpots = 3, waitlistCount = 1),
+    ),
+    version = AttendanceVersionToken("\"2\""),
+)
+
+fun sampleVersionedAttendanceCapacity() = VersionedAttendanceCapacity(
+    value = AttendanceCapacity(
+        capacity = 14,
+        version = 2,
+        promotedCount = 0,
+        detail = sampleAttendanceDetail().copy(capacity = 14, availableSpots = 6),
+    ),
+    version = AttendanceVersionToken("\"2\""),
+)
 
 fun sampleCancelledGame() = sampleGame().copy(status = GameStatus.Cancelled, version = 2)

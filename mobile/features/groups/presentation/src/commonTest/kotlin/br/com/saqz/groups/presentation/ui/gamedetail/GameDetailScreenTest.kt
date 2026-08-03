@@ -9,10 +9,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseStatus
 import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
+import br.com.saqz.groups.presentation.gamedetail.GameDetailWaitlistUi
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class)
@@ -94,17 +97,79 @@ class GameDetailScreenTest {
         onNodeWithTag(GameResponseTags.AutoConfirmation).assertExists()
     }
 
+    @Test
+    fun `waitlist renders queue position athlete position and manual action`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameDetailScreen(
+                    state = GameDetailPreviewData.admin.copy(
+                        waitlist = listOf(
+                            GameDetailWaitlistUi("wait-1", "Caio Lima", 1, AthletePosition.CENTRAL, true),
+                        ),
+                        mensalistaPriority = true,
+                        promotionMode = PromotionMode.MANUAL,
+                    ),
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Reserva").assertExists()
+        onNodeWithText("1º na fila").assertExists()
+        onAllNodesWithText("Central").assertCountEquals(2)
+        onNodeWithText("Mensalista").assertExists()
+        onNodeWithText("Promover").assertExists()
+    }
+
+    @Test
+    fun `fifo waitlist hides promote action while keeping capacity action`() = runComposeUiTest {
+        setScreen()
+
+        onNodeWithText("Reserva").assertExists()
+        onAllNodesWithText("Promover").assertCountEquals(0)
+        onNodeWithText("Ajustar vagas").assertExists()
+    }
+
+    @Test
+    fun `empty waitlist does not render its section`() = runComposeUiTest {
+        setScreen(waitlist = emptyList())
+
+        onAllNodesWithText("Reserva").assertCountEquals(0)
+    }
+
+    @Test
+    fun `capacity sheet renders stepper controls`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameDetailScreen(
+                    state = GameDetailPreviewData.admin.copy(capacitySheetOpen = true, capacityDraft = 14),
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithTag(GameWaitlistTags.CapacitySheet).assertExists()
+        onAllNodesWithText("Ajustar vagas").assertCountEquals(2)
+        onNodeWithText("14").assertExists()
+        onNodeWithText("Salvar vagas").assertExists()
+    }
+
     private fun ComposeUiTest.setScreen(
         status: GameDetailStatusTone = GameDetailStatusTone.Published,
         cancelDialogOpen: Boolean = false,
+        waitlist: List<GameDetailWaitlistUi> = GameDetailPreviewData.admin.waitlist,
         state: GameDetailState? = null,
     ) = setContent {
         SaqzTheme {
             GameDetailScreen(
                 state = state ?: GameDetailPreviewData.admin.copy(
-                        header = GameDetailPreviewData.header.copy(statusTone = status),
-                        cancelDialogOpen = cancelDialogOpen,
-                    ),
+                    header = GameDetailPreviewData.header.copy(statusTone = status),
+                    cancelDialogOpen = cancelDialogOpen,
+                    waitlist = waitlist,
+                    promotionMode = PromotionMode.FIFO,
+                ),
                 onBack = {},
                 onIntent = {},
             )
