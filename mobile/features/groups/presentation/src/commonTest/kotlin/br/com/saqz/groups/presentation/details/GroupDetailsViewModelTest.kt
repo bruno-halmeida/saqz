@@ -278,6 +278,19 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `frozen response closes the response block without retry error`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            respondResult = SaqzResult.Failure(AttendanceError.Frozen),
+        )
+        val vm = viewModel(groupGateway = athleteGroupGateway(), gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))), attendanceGateway = attendance, athleteGateway = monthlyAthleteGateway())
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        assertFalse(vm.state.value.nextGame?.confirmationOpen ?: true)
+        assertFalse(vm.state.value.responseFailed)
+    }
+
+    @Test
     fun `auto confirmation failure rolls back optimistic switch`() = runTest {
         val group = sampleGroup(role = GroupRole.ATHLETE).copy(
             gameConfig = GroupGameConfig(autoConfirmEnabled = true),
@@ -326,6 +339,28 @@ class GroupDetailsViewModelTest {
         assertFalse(vm.state.value.rosterStale)
         assertEquals(listOf("Promovido"), vm.state.value.nextGame?.confirmedNames)
         assertEquals(3, attendance.rosterCalls)
+    }
+
+    @Test
+    fun `roster retry promotes own waitlisted response to confirmed`() = runTest {
+        val mutation = sampleVersionedAttendanceMutation().copy(
+            value = sampleVersionedAttendanceMutation().value.copy(
+                attendance = AttendanceEntry("me", AttendanceStatus.Waitlisted, waitlistPosition = 2, version = 2),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Success(mutation))
+        attendance.rosterResults = mutableListOf(
+            SaqzResult.Success(sampleAttendanceRoster()),
+            SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+            SaqzResult.Success(AttendanceRoster(confirmed = listOf(AttendanceRosterMember("me", "Member")), waitlisted = emptyList())),
+        )
+        val vm = viewModel(groupGateway = athleteGroupGateway(), gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))), attendanceGateway = attendance, athleteGateway = monthlyAthleteGateway())
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        vm.onIntent(GroupDetailsIntent.RetryRoster)
+
+        assertEquals(GroupDetailsResponseStatus.Confirmed, vm.state.value.memberResponse?.status)
+        assertEquals(null, vm.state.value.memberResponse?.waitlistPosition)
     }
 
     @Test

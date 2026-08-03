@@ -211,8 +211,8 @@ class GroupDetailsViewModel(
                     it.copy(
                         memberResponse = previousResponse,
                         responding = false,
-                        responseFailed = true,
-                        nextGame = if (result.error == AttendanceError.DeadlinePassed) {
+                        responseFailed = result.error != AttendanceError.Frozen,
+                        nextGame = if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
                             it.nextGame?.copy(confirmationOpen = false)
                         } else it.nextGame,
                     )
@@ -338,12 +338,20 @@ class GroupDetailsViewModel(
         Instant.parse(confirmationDeadline) > now.now()
     }.getOrDefault(false)
 
-    private fun GroupDetailsResponseUi.withWaitlistPosition(roster: AttendanceRoster) =
-        if (status != GroupDetailsResponseStatus.Waitlisted || memberId == null) this else copy(
-            waitlistPosition = roster.waitlisted.indexOfFirst { it.memberId == memberId }
-                .takeIf { it >= 0 }
-                ?.plus(1L),
-        )
+    private fun GroupDetailsResponseUi.withWaitlistPosition(roster: AttendanceRoster): GroupDetailsResponseUi {
+        val id = memberId ?: return this
+        return when {
+            roster.confirmed.any { it.memberId == id } -> copy(
+                status = GroupDetailsResponseStatus.Confirmed,
+                waitlistPosition = null,
+            )
+            roster.waitlisted.any { it.memberId == id } -> copy(
+                status = GroupDetailsResponseStatus.Waitlisted,
+                waitlistPosition = roster.waitlisted.indexOfFirst { it.memberId == id } + 1L,
+            )
+            else -> this
+        }
+    }
 
     private fun AttendanceIntent.toResponseStatus() = when (this) {
         AttendanceIntent.Confirm -> GroupDetailsResponseStatus.Confirmed
