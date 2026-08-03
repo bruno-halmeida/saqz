@@ -250,6 +250,7 @@ class GroupDetailsViewModel(
     private fun toggleAutoConfirmation(enabled: Boolean) {
         val current = state.value
         if (!current.autoConfirmationVisible || current.autoConfirmationUpdating) return
+        val gameId = current.nextGame?.gameId
         val generation = ++autoConfirmationGeneration
         val loadAtStart = loadGeneration
         val previous = current.autoConfirmationEnabled
@@ -274,14 +275,50 @@ class GroupDetailsViewModel(
                         autoConfirmationFailed = false,
                     )
                 }
-                is SaqzResult.Failure -> update {
+                is SaqzResult.Failure -> reconcileAutoConfirmationFailure(
+                    error = result.error,
+                    gameId = gameId,
+                    generation = generation,
+                    loadAtStart = loadAtStart,
+                    previous = previous,
+                )
+            }
+        }
+    }
+
+    private suspend fun reconcileAutoConfirmationFailure(
+        error: AttendanceError,
+        gameId: String?,
+        generation: Long,
+        loadAtStart: Int,
+        previous: Boolean,
+    ) {
+        if (error !is AttendanceError.Data || gameId == null) {
+            rollbackAutoConfirmation(previous, generation, loadAtStart)
+            return
+        }
+        when (val detail = attendanceGateway.read(GroupId(groupId), gameId)) {
+            is SaqzResult.Success -> if (generation == autoConfirmationGeneration && loadAtStart == loadGeneration) {
+                update {
                     it.copy(
-                        autoConfirmationEnabled = previous,
+                        autoConfirmationEnabled = detail.value.autoConfirmEnabled,
                         autoConfirmationUpdating = false,
-                        autoConfirmationFailed = true,
+                        autoConfirmationFailed = false,
                     )
                 }
             }
+            is SaqzResult.Failure -> rollbackAutoConfirmation(previous, generation, loadAtStart)
+        }
+    }
+
+    private fun rollbackAutoConfirmation(previous: Boolean, generation: Long, loadAtStart: Int) {
+        if (generation != autoConfirmationGeneration || loadAtStart != loadGeneration) return
+        update {
+            it.copy(
+                autoConfirmationEnabled = previous,
+                autoConfirmationUpdating = false,
+                autoConfirmationFailed = true,
+            )
         }
     }
 
