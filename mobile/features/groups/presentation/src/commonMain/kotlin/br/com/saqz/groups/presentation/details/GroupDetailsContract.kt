@@ -62,6 +62,7 @@ data class NextGameUi(
     val date: String,
     val venue: String,
     val deadline: String,
+    val confirmationDeadline: String = "",
     val confirmedCount: Int,
     val capacity: Int,
     val confirmedNames: List<String> = emptyList(),
@@ -84,6 +85,7 @@ data class AttendanceSummaryUi(
 data class GroupDetailsResponseUi(
     val status: GroupDetailsResponseStatus,
     val waitlistPosition: Long? = null,
+    val memberId: String? = null,
 )
 
 enum class GroupDetailsResponseStatus { Confirmed, Declined, Waitlisted }

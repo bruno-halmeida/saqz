@@ -167,6 +167,10 @@ class GroupDetailsViewModel(
         val current = state.value
         val game = current.nextGame ?: return
         if (current.isAdmin || !game.confirmationOpen || current.responding) return
+        if (!game.confirmationIsOpen()) {
+            update { it.copy(nextGame = game.copy(confirmationOpen = false)) }
+            return
+        }
         val generation = ++responseGeneration
         rosterGeneration++
         val loadAtStart = loadGeneration
@@ -229,6 +233,7 @@ class GroupDetailsViewModel(
                     update {
                         it.copy(
                             nextGame = it.nextGame?.reconcileRoster(result.value),
+                            memberResponse = it.memberResponse?.withWaitlistPosition(result.value),
                             rosterStale = false,
                             rosterRefreshing = false,
                         )
@@ -298,6 +303,7 @@ class GroupDetailsViewModel(
         date = displayDate(),
         venue = listOfNotNull(venue.name, venue.court).joinToString(" — "),
         deadline = displayDeadline(),
+        confirmationDeadline = confirmationDeadline,
         confirmedCount = detail.confirmedCount,
         capacity = detail.capacity,
         confirmedNames = roster.confirmed.map { it.displayName },
@@ -318,6 +324,7 @@ class GroupDetailsViewModel(
 
     private fun AttendanceEntry.toResponse(roster: AttendanceRoster?) = GroupDetailsResponseUi(
         status = status.toResponseStatus(),
+        memberId = memberId,
         waitlistPosition = if (status == AttendanceStatus.Waitlisted) {
             roster?.waitlisted
                 ?.indexOfFirst { it.memberId == memberId }
@@ -326,6 +333,17 @@ class GroupDetailsViewModel(
                 ?: waitlistPosition
         } else null,
     )
+
+    private fun NextGameUi.confirmationIsOpen() = runCatching {
+        Instant.parse(confirmationDeadline) > now.now()
+    }.getOrDefault(false)
+
+    private fun GroupDetailsResponseUi.withWaitlistPosition(roster: AttendanceRoster) =
+        if (status != GroupDetailsResponseStatus.Waitlisted || memberId == null) this else copy(
+            waitlistPosition = roster.waitlisted.indexOfFirst { it.memberId == memberId }
+                .takeIf { it >= 0 }
+                ?.plus(1L),
+        )
 
     private fun AttendanceIntent.toResponseStatus() = when (this) {
         AttendanceIntent.Confirm -> GroupDetailsResponseStatus.Confirmed
