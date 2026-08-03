@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 4c · detalhe do jogo -->
+    <string name="game_detail_title">Jogo</string>
+    <string name="game_detail_status_draft">Rascunho</string>
+    <string name="game_detail_status_published">Jogo criado</string>
+    <string name="game_detail_status_cancelled">Cancelado</string>
+    <string name="game_detail_status_completed">Encerrado</string>
+    <string name="game_detail_confirmation_deadline">Confirmações até %1$s</string>
+    <string name="game_detail_duration">%1$s de jogo</string>
+    <string name="game_detail_duration_hours">%1$dh</string>
+    <string name="game_detail_duration_minutes">%1$d min</string>
+    <string name="game_detail_spots">%1$d vagas</string>
+    <string name="game_detail_confirmed_summary">%1$d de %2$d confirmados · %3$d vagas abertas</string>
+    <string name="game_detail_stat_going">Vou</string>
+    <string name="game_detail_confirmed_section">Confirmados</string>
+    <string name="game_detail_you">· você</string>
+    <string name="game_detail_edit">Editar jogo</string>
+    <string name="game_detail_cancel">Cancelar jogo</string>
+    <string name="game_detail_cancel_title">Cancelar o jogo?</string>
+    <string name="game_detail_cancel_body">Os confirmados recebem um aviso e o jogo some da agenda. Isso não pode ser desfeito.</string>
+    <string name="game_detail_cancel_failed">Não foi possível cancelar o jogo. Tente novamente.</string>
+</resources>

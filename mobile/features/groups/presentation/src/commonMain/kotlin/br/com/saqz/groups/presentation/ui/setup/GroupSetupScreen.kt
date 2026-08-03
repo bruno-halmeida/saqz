@@ -32,6 +32,7 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
@@ -70,6 +71,10 @@ internal object GroupSetupTags {
     const val Capacity = "group-setup-capacity"
     const val Duration = "group-setup-duration"
     const val ConfirmationLead = "group-setup-confirmation-lead"
+    const val GameConfigConfirmationLead = "group-game-config-confirmation-lead"
+    const val MensalistaPriority = "group-game-config-mensalista-priority"
+    const val PromotionMode = "group-game-config-promotion-mode"
+    const val AutoConfirm = "group-game-config-auto-confirm"
     const val VenueName = "group-setup-venue-name"
     const val VenueAddress = "group-setup-venue-address"
     const val Recurrence = "group-setup-recurrence"
@@ -223,10 +228,14 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
         minutes = state.durationMinutes,
         onSelect = { onIntent(GroupSetupIntent.SelectDuration(it)) },
     )
-    GroupConfirmationLeadSection(
-        minutes = form.defaultConfirmationLeadMinutes,
-        onSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
-    )
+    // VUL-157: no editar o prazo de confirmação vive dentro da seção de configurações
+    // de jogo; no criar ele continua como card solto, onde sempre esteve.
+    if (!state.isEditing) {
+        GroupConfirmationLeadSection(
+            minutes = form.defaultConfirmationLeadMinutes,
+            onSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
+        )
+    }
     GroupVenueSection(
         name = form.defaultVenue?.name.orEmpty(),
         address = form.defaultVenue?.address.orEmpty(),
@@ -249,6 +258,18 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
         onAddSlot = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null))) },
         onRemoveSlot = { onIntent(GroupSetupIntent.RemoveSlot(it)) },
     )
+    if (state.isEditing && state.canManageGameConfig) {
+        GroupGameConfigSection(
+            mensalistaPriority = form.mensalistaPriority,
+            promotionMode = form.promotionMode,
+            confirmationLeadMinutes = form.defaultConfirmationLeadMinutes,
+            autoConfirmEnabled = form.autoConfirmEnabled,
+            onMensalistaPriorityChange = { onIntent(GroupSetupIntent.ToggleMensalistaPriority(it)) },
+            onPromotionModeSelect = { onIntent(GroupSetupIntent.SelectPromotionMode(it)) },
+            onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
+            onAutoConfirmChange = { onIntent(GroupSetupIntent.ToggleAutoConfirm(it)) },
+        )
+    }
 }
 
 @Composable
@@ -368,6 +389,7 @@ private fun GroupSetupEditPreview() = SaqzTheme {
             photoUrl = "https://saqz.example/ceret.png",
             memberCount = 26,
             canDelete = true,
+            canManageGameConfig = true,
         ),
         onIntent = {},
         onBack = {},

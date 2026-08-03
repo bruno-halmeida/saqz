@@ -40,6 +40,9 @@ internal enum class GroupCurrencyDto { BRL }
 internal enum class GroupWeekdayDto { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
 
 @Serializable
+internal enum class PromotionModeDto { FIFO, MANUAL }
+
+@Serializable
 internal data class GroupVenueDto(
     val id: String? = null,
     val name: String = "",
@@ -79,6 +82,13 @@ internal data class GroupFinanceDefaultsDto(
 )
 
 @Serializable
+internal data class GroupGameConfigDto(
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionModeDto = PromotionModeDto.FIFO,
+    val autoConfirmEnabled: Boolean = false,
+)
+
+@Serializable
 internal data class GroupDto(
     val id: String = "",
     val name: String = "",
@@ -90,6 +100,7 @@ internal data class GroupDto(
     val currency: GroupCurrencyDto = GroupCurrencyDto.BRL,
     val profile: GroupProfileDto? = null,
     val financeDefaults: GroupFinanceDefaultsDto? = null,
+    val gameConfig: GroupGameConfigDto = GroupGameConfigDto(),
     val entryRequiresApproval: Boolean = false,
 )
 
@@ -139,6 +150,9 @@ private data class CompleteGroupRequestDto(
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
     val timeZone: String? = null,
+    val mensalistaPriority: Boolean? = null,
+    val promotionMode: String? = null,
+    val autoConfirmEnabled: Boolean? = null,
 )
 
 class KtorGroupGateway(
@@ -254,6 +268,11 @@ private fun GroupDto.toDomain(): Group? {
         financeDefaults = financeDefaults?.let {
             GroupFinanceDefaults(it.defaultGameFeeCents, it.monthlyFeeCents, it.monthlyDueDay)
         },
+        gameConfig = GroupGameConfig(
+            mensalistaPriority = gameConfig.mensalistaPriority,
+            promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
+            autoConfirmEnabled = gameConfig.autoConfirmEnabled,
+        ),
         entryRequiresApproval = entryRequiresApproval,
     )
 }
@@ -307,6 +326,9 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
         monthlyFeeCents = form.monthlyFeeCents,
         monthlyDueDay = form.monthlyDueDay,
         timeZone = timeZone,
+        mensalistaPriority = form.mensalistaPriority,
+        promotionMode = form.promotionMode.name,
+        autoConfirmEnabled = form.autoConfirmEnabled,
     )
 }
 

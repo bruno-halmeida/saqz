@@ -12,6 +12,8 @@ enum class GroupPlayStyle { SIX_ZERO, FOUR_TWO, FIVE_ONE, CUSTOM }
 
 enum class GroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
 
+enum class PromotionMode { FIFO, MANUAL }
+
 data class GroupVenueForm(
     val id: String? = null,
     val name: String,
@@ -43,6 +45,9 @@ data class GroupSetupForm(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

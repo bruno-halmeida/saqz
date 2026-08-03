@@ -101,6 +101,22 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
+    fun `retry refreshes the retained schedule after a game is cancelled`() = runTest {
+        val gateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
+        val viewModel = GroupScheduleViewModel(
+            "group-1",
+            gateway,
+            FakeGroupGateway(),
+            todayInZone = { "2026-08-02" },
+        )
+
+        gateway.listResult = SaqzResult.Success(listOf(sampleGame().copy(status = GameStatus.Cancelled)))
+        viewModel.onIntent(GroupScheduleIntent.Retry)
+
+        assertTrue(viewModel.state.value.upcoming.isEmpty())
+    }
+
+    @Test
     fun `gateway failure is visible and typed`() = runTest {
         val viewModel = GroupScheduleViewModel(
             "group-1",

@@ -59,7 +59,7 @@ class AdjustGameCapacity(
                 val promoted = waiting.copy(
                     status = AttendanceStatus.CONFIRMED,
                     waitlistSequence = null,
-                    updatedAt = timestamp,
+                    updatedAt = maxOf(timestamp, waiting.respondedAt),
                     version = waiting.version + 1,
                 )
                 repository.save(promoted)
@@ -81,5 +81,6 @@ class AdjustGameCapacity(
         groupId, gameId, record.memberId, actorId, actorRole, gameStatus,
         confirmationDeadline, capacity, confirmedCount, record, gameFeeCents, gameDate,
         AthleteMembershipType.MENSALISTA,
+        mensalistaPriority,
     )
 }

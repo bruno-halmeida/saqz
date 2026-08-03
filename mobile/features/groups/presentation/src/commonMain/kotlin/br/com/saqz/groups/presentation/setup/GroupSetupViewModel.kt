@@ -8,6 +8,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTimeZone as DomainGroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
@@ -20,6 +21,7 @@ import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.presentation.GroupUiError
@@ -82,6 +84,12 @@ class GroupSetupViewModel(
             is GroupSetupIntent.UpdateCapacity -> onFormChange { copy(defaultCapacity = intent.value) }
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
+            is GroupSetupIntent.ToggleMensalistaPriority ->
+                onGameConfigChange { copy(mensalistaPriority = intent.value) }
+            is GroupSetupIntent.SelectPromotionMode ->
+                onGameConfigChange { copy(promotionMode = intent.value) }
+            is GroupSetupIntent.ToggleAutoConfirm ->
+                onGameConfigChange { copy(autoConfirmEnabled = intent.value) }
             is GroupSetupIntent.SelectDuration -> onDurationChange(intent.minutes)
             is GroupSetupIntent.ToggleRecurring -> onRecurringChange(intent.value)
             is GroupSetupIntent.OpenSheet -> onOpenSheet(intent.sheet)
@@ -127,7 +135,8 @@ class GroupSetupViewModel(
                             isLoading = false,
                             gatewayError = null,
                             saveFailed = false,
-                            canDelete = group.role == br.com.saqz.groups.domain.group.GroupRole.OWNER,
+                            canDelete = group.role == GroupRole.OWNER,
+                            canManageGameConfig = group.role != GroupRole.ATHLETE,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
                             form = group.toForm().withSavedText(savedState),
@@ -337,6 +346,14 @@ class GroupSetupViewModel(
                 .revalidated()
         }
     }
+
+    private fun onGameConfigChange(transform: GroupSetupForm.() -> GroupSetupForm) {
+        onFormChange(transform = transform)
+        val form = state.value.form
+        savedState[KeyMensalistaPriority] = form.mensalistaPriority
+        savedState[KeyPromotionMode] = form.promotionMode.name
+        savedState[KeyAutoConfirm] = form.autoConfirmEnabled
+    }
 }
 
 private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupForm) = copy(form = form.transform())
@@ -354,6 +371,8 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
     val customLevel = handle.get<String>(KeyCustomLevel)
     val venueName = handle.get<String>(KeyVenueName)
     val venueAddress = handle.get<String>(KeyVenueAddress)
+    val promotionMode = handle.get<String>(KeyPromotionMode)
+        ?.let { runCatching { PromotionMode.valueOf(it) }.getOrNull() }
     val venue = when {
         venueName == null && venueAddress == null -> defaultVenue
         else -> (defaultVenue ?: EmptyVenue).copy(
@@ -366,6 +385,9 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
         description = description ?: this.description,
         customLevel = customLevel ?: this.customLevel,
         defaultVenue = venue,
+        mensalistaPriority = handle.get<Boolean>(KeyMensalistaPriority) ?: this.mensalistaPriority,
+        promotionMode = promotionMode ?: this.promotionMode,
+        autoConfirmEnabled = handle.get<Boolean>(KeyAutoConfirm) ?: this.autoConfirmEnabled,
     )
 }
 
@@ -400,6 +422,9 @@ private fun GroupSetupForm.toDomain(
     defaultGameFeeCents = defaultGameFeeCents,
     monthlyFeeCents = monthlyFeeCents,
     monthlyDueDay = monthlyDueDay,
+    mensalistaPriority = mensalistaPriority,
+    promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
+    autoConfirmEnabled = autoConfirmEnabled,
 ).cleaned()
 
 private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
@@ -421,6 +446,9 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     defaultGameFeeCents = financeDefaults?.defaultGameFeeCents,
     monthlyFeeCents = financeDefaults?.monthlyFeeCents,
     monthlyDueDay = financeDefaults?.monthlyDueDay,
+    mensalistaPriority = gameConfig.mensalistaPriority,
+    promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
+    autoConfirmEnabled = gameConfig.autoConfirmEnabled,
 )
 
 private fun GroupTimeZone.toDomain() = DomainGroupTimeZone(id)
@@ -443,4 +471,7 @@ private const val KeyDescription = "group-setup-description"
 private const val KeyCustomLevel = "group-setup-custom-level"
 private const val KeyVenueName = "group-setup-venue-name"
 private const val KeyVenueAddress = "group-setup-venue-address"
+private const val KeyMensalistaPriority = "group-setup-mensalista-priority"
+private const val KeyPromotionMode = "group-setup-promotion-mode"
+private const val KeyAutoConfirm = "group-setup-auto-confirm"
 private const val KeyCreationCommand = "group-setup-create-command-key"

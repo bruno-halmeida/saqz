@@ -16,6 +16,7 @@ enum class GroupProfileStatus { COMPLETE, INCOMPLETE }
 enum class GroupPrivacy { PRIVATE }
 enum class GroupCurrency { BRL }
 enum class GroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
+enum class PromotionMode { FIFO, MANUAL }
 
 @JvmInline value class GroupVersionToken(val value: String)
 @JvmInline value class GroupTimeZone(val id: String)
@@ -49,6 +50,12 @@ data class GroupProfile(
     val defaultConfirmationLeadMinutes: Int?,
 )
 
+data class GroupGameConfig(
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
+)
+
 data class GroupFinanceDefaults(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
@@ -66,6 +73,7 @@ data class Group(
     val currency: GroupCurrency = GroupCurrency.BRL,
     val profile: GroupProfile? = null,
     val financeDefaults: GroupFinanceDefaults? = null,
+    val gameConfig: GroupGameConfig = GroupGameConfig(),
     val entryRequiresApproval: Boolean = false,
 ) {
     constructor(
@@ -96,6 +104,9 @@ data class GroupSetupForm(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

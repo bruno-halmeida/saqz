@@ -91,6 +91,9 @@ private enum class IOSPersistedGroupLevel { BEGINNER, INTERMEDIATE, ADVANCED, MI
 private enum class IOSPersistedGroupPlayStyle { SIX_ZERO, FOUR_TWO, FIVE_ONE, CUSTOM }
 
 @Serializable
+private enum class IOSPersistedPromotionMode { FIFO, MANUAL }
+
+@Serializable
 private enum class IOSPersistedGroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
 
 @Serializable
@@ -133,6 +136,9 @@ private data class IOSPersistedGroupSetupForm(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: IOSPersistedPromotionMode = IOSPersistedPromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 @Serializable
@@ -246,6 +252,9 @@ private fun GroupSetupForm.toIOSPersisted() = IOSPersistedGroupSetupForm(
     defaultGameFeeCents,
     monthlyFeeCents,
     monthlyDueDay,
+    mensalistaPriority,
+    IOSPersistedPromotionMode.valueOf(promotionMode.name),
+    autoConfirmEnabled,
 )
 
 private fun IOSPersistedGroupSetupForm.toDomain() = GroupSetupForm(
@@ -272,6 +281,9 @@ private fun IOSPersistedGroupSetupForm.toDomain() = GroupSetupForm(
     defaultGameFeeCents,
     monthlyFeeCents,
     monthlyDueDay,
+    mensalistaPriority,
+    PromotionMode.valueOf(promotionMode.name),
+    autoConfirmEnabled,
 )
 
 private fun MonthlyChargeDraft.toIOSPersisted() = IOSPersistedMonthlyChargeDraft(

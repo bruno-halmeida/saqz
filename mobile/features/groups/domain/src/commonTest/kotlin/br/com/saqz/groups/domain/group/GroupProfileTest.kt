@@ -14,6 +14,11 @@ class GroupProfileTest {
     @Test fun `all levels remain explicit`() = assertEquals(5, GroupLevel.entries.size)
     @Test fun `all play styles remain explicit`() = assertEquals(4, GroupPlayStyle.entries.size)
     @Test fun `all weekdays remain explicit`() = assertEquals(7, GroupWeekday.entries.size)
+    @Test fun `promotion modes remain explicit`() = assertEquals(2, PromotionMode.entries.size)
+    @Test fun `game config defaults preserve backend defaults`() = assertEquals(
+        GroupGameConfig(),
+        GroupGameConfig(mensalistaPriority = true, promotionMode = PromotionMode.FIFO, autoConfirmEnabled = false),
+    )
     @Test fun `profile status remains explicit`() = assertEquals(listOf("COMPLETE", "INCOMPLETE"), GroupProfileStatus.entries.map { it.name })
     @Test fun `privacy remains private`() = assertEquals(listOf(GroupPrivacy.PRIVATE), GroupPrivacy.entries)
     @Test fun `currency remains BRL`() = assertEquals(listOf(GroupCurrency.BRL), GroupCurrency.entries)

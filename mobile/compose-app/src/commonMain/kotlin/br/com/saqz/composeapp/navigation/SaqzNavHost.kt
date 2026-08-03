@@ -115,6 +115,7 @@ internal fun SaqzNavHost(
     // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
     val restoring = remember { booleanArrayOf(true) }
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -458,6 +459,7 @@ internal fun SaqzNavHost(
                     onBack = pop,
                     // 4 · Detalhe do jogo da agenda.
                     onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                    refreshVersion = scheduleRefreshVersion,
                 )
             }
             entry<GroupsRoute.GameEditor> { route ->
@@ -474,6 +476,10 @@ internal fun SaqzNavHost(
                     gameId = route.gameId,
                     onBack = pop,
                     onOpenEditor = { backStack.add(GroupsRoute.GameEditor(route.groupId, route.gameId)) },
+                    onCancel = {
+                        scheduleRefreshVersion++
+                        pop()
+                    },
                 )
             }
         },

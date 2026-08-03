@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.attendance
 
+import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.*
@@ -50,12 +51,75 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `roster of a game without responses is empty for a member`() { val f = fixture(); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(emptyList(), roster.confirmed); assertEquals(emptyList(), roster.waitlisted) }
     @Test fun `roster stays visible to the owner and hidden from nonmembers`() { val f = fixture(); attendance(f, f.member, "CONFIRMED", "Ana"); assertEquals(listOf("Ana"), requireNotNull(rosterOf(f, f.owner)).confirmed.map { it.displayName }); assertNull(rosterOf(f, user("outsider"))); assertNull(rosterOf(fixture("other"), f.member)) }
     @Test fun `roster names survive a member rename`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='${f.member}'"); assertEquals(listOf("User"), requireNotNull(rosterOf(f, f.member)).confirmed.map { it.displayName }) }
+
+    // --- VUL-152: ordenação da reserva por faixa + FIFO e colapso pós-prazo ---
+    @Test fun `roster with priority on lists mensalistas before avulsos in fifo within each tier`() {
+        val f = fixture(capacity = 2)
+        // Mensalista com seq 2 entra na faixa alta; avulso com seq 1 fica abaixo mesmo chegando antes.
+        val mensalistaLate = member(f.group, "mensalista-late")
+        val mensalistaEarly = member(f.group, "mensalista-early")
+        val avulsoEarly = member(f.group, "avulso-early", "AVULSO")
+        waitlist(f, avulsoEarly, 1, "Avulso1")
+        waitlist(f, mensalistaLate, 2, "Mensalista2")
+        waitlist(f, mensalistaEarly, 3, "Mensalista3")
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(listOf("Mensalista2", "Mensalista3", "Avulso1"), roster.waitlisted.map { it.displayName })
+        assertEquals(listOf(2L, 3L, 1L), roster.waitlisted.map { it.waitlistPosition })
+    }
+
+    @Test fun `roster with priority off collapses to single fifo tier`() {
+        val f = fixture(capacity = 2)
+        execute("UPDATE access_groups SET mensalista_priority = false WHERE id = '${f.group}'")
+        val mensalistaLate = member(f.group, "mensalista-late")
+        val avulsoEarly = member(f.group, "avulso-early", "AVULSO")
+        waitlist(f, avulsoEarly, 1, "Avulso1")
+        waitlist(f, mensalistaLate, 2, "Mensalista2")
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(listOf("Avulso1", "Mensalista2"), roster.waitlisted.map { it.displayName })
+    }
+
+    @Test fun `roster collapses tiers into pure fifo after the confirmation deadline`() {
+        val f = fixtureWithDeadline("past")
+        // Avulso com seq 1 e mensalista com seq 2: antes do prazo o mensalista viria primeiro,
+        // mas após o prazo as faixas colapsam em FIFO pura pela sequência.
+        val avulsoEarly = member(f.group, "avulso-early", "AVULSO")
+        val mensalistaLate = member(f.group, "mensalista-late")
+        waitlist(f, avulsoEarly, 1, "Avulso1")
+        waitlist(f, mensalistaLate, 2, "Mensalista2")
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(listOf("Avulso1", "Mensalista2"), roster.waitlisted.map { it.displayName })
+    }
+
+    @Test fun `roster keeps mensalista tier before deadline even when avulso has lower sequence`() {
+        val f = fixtureWithDeadline("future")
+        val avulsoEarly = member(f.group, "avulso-early", "AVULSO")
+        val mensalistaLate = member(f.group, "mensalista-late")
+        waitlist(f, avulsoEarly, 1, "Avulso1")
+        waitlist(f, mensalistaLate, 2, "Mensalista2")
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(listOf("Mensalista2", "Avulso1"), roster.waitlisted.map { it.displayName })
+    }
+
+    @Test fun `roster puts removed membership in the non-priority tier`() {
+        val f = fixture(capacity = 2)
+        val avulsoEarly = member(f.group, "avulso-early", "AVULSO")
+        val mensalista = member(f.group, "mensalista")
+        val removedMensalista = member(f.group, "removed-mensalista")
+        waitlist(f, avulsoEarly, 1, "Avulso1")
+        waitlist(f, mensalista, 2, "Mensalista2")
+        waitlist(f, removedMensalista, 3, "Removido3")
+        JdbcAthleteRepository(dataSource).remove(f.group, removedMensalista)
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(listOf("Mensalista2", "Avulso1", "Removido3"), roster.waitlisted.map { it.displayName })
+    }
+
     @Test fun `paid confirmation creates exactly one pending charge`() { val f = fixture(fee = 2500); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(1, count("group_charges")); assertEquals("PENDING", string("SELECT status FROM group_charges")) }
     @Test fun `paid confirmation retry creates no duplicate charge or charge audit`() { val f = fixture(fee = 2500); repeat(2) { f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM) }; assertEquals(1, count("group_charges")); assertEquals(1, count("group_charge_events")) }
     @Test fun `free game confirmation creates no charge`() { val f = fixture(fee = null); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(0, count("group_charges")) }
     @Test fun `waitlisted paid game response creates no charge`() { val f = fixture(capacity = 2, fee = 2500); repeat(2) { attendance(f, member(f.group, "confirmed-$it"), "CONFIRMED") }; f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(0, count("group_charges")) }
     @Test fun `declined member becoming confirmed receives one charge`() { val f = fixture(fee = 2500); attendance(f, f.member, "DECLINED"); val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.CONFIRMED, saved.status); assertEquals(2, saved.version); assertEquals(1, count("group_charges")) }
     @Test fun `avulso self confirmation waits even with free spots`() { val f = fixture(); val avulso = member(f.group, "avulso", "AVULSO"); val saved = success(f.service.execute(avulso, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.WAITLISTED, saved.status); assertEquals(1, saved.waitlistSequence); assertEquals(0, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")) }
+    @Test fun `avulso self confirmation takes a free spot when priority is off`() { val f = fixture(); execute("UPDATE access_groups SET mensalista_priority = false WHERE id = '${f.group}'"); val avulso = member(f.group, "avulso", "AVULSO"); val saved = success(f.service.execute(avulso, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.CONFIRMED, saved.status); assertNull(saved.waitlistSequence) }
     @Test fun `waiting avulso is promoted when a confirmed member withdraws`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val avulso = member(f.group, "avulso", "AVULSO"); success(f.service.execute(avulso, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val result = assertIs<AttendanceCommandResult.Success>(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); assertEquals(listOf(avulso), result.promoted.map { it.memberId }); assertEquals("CONFIRMED", status(avulso)) }
     @Test fun `organizer override confirms an avulso within capacity`() { val f = fixture(); val avulso = member(f.group, "avulso", "AVULSO"); val saved = success(f.service.execute(f.owner, f.group, f.game, avulso, AttendanceIntent.CONFIRM, AttendanceSource.ORGANIZER, "Autorizado pelo organizador")); assertEquals(AttendanceStatus.CONFIRMED, saved.status) }
     @Test fun `nonmember self response is privacy hidden`() { val f = fixture(); val outsider = user("outsider"); assertSame(AttendanceCommandResult.Hidden, f.service.execute(outsider, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(0, count("game_attendance")) }
@@ -126,6 +190,18 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         val member = member(group, "$subject-member")
         val game = UUID.randomUUID()
         execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$game','$group','Treino',DATE '2026-08-12',TIME '19:30','America/Sao_Paulo',TIMESTAMPTZ '2026-08-12 22:30Z',90,TIMESTAMPTZ '2026-08-11 22:30Z','Arena','Rua Central 100',$capacity,${fee ?: "NULL"},'PUBLISHED',now(),now())")
+        return Fixture(owner, member, group, game, service())
+    }
+    // `deadlineRelative` controls whether the game's confirmation deadline is in the past ("past")
+    // or in the future ("future") relative to the Postgres now(), exercising the tier collapse.
+    private fun fixtureWithDeadline(deadlineRelative: String, capacity: Int = 2, fee: Long? = 2500): Fixture {
+        val owner = user("deadline-$deadlineRelative-owner")
+        val group = UUID.randomUUID()
+        execute("INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,created_at,updated_at) VALUES ('$group','$owner','${UUID.randomUUID()}','Deadline Group','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',now(),now())")
+        val member = member(group, "deadline-$deadlineRelative-member")
+        val game = UUID.randomUUID()
+        val deadline = if (deadlineRelative == "past") "now() - interval '1 hour'" else "now() + interval '1 hour'"
+        execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$game','$group','Treino',DATE '2026-08-12',TIME '19:30','America/Sao_Paulo',TIMESTAMPTZ '2026-08-12 22:30Z',90,$deadline,'Arena','Rua Central 100',$capacity,${fee ?: "NULL"},'PUBLISHED',now(),now())")
         return Fixture(owner, member, group, game, service())
     }
     private fun service(repository: AttendanceCommandRepository = JdbcAttendanceCommandRepository(dataSource)) = RespondAttendance(JdbcTransactionRunner(dataSource), repository, chargePort(), { now() })

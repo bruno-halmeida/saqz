@@ -101,6 +101,9 @@ private enum class PersistedGroupLevel { BEGINNER, INTERMEDIATE, ADVANCED, MIXED
 private enum class PersistedGroupPlayStyle { SIX_ZERO, FOUR_TWO, FIVE_ONE, CUSTOM }
 
 @Serializable
+private enum class PersistedPromotionMode { FIFO, MANUAL }
+
+@Serializable
 private enum class PersistedGroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
 
 @Serializable
@@ -143,6 +146,9 @@ private data class PersistedGroupSetupForm(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val mensalistaPriority: Boolean = true,
+    val promotionMode: PersistedPromotionMode = PersistedPromotionMode.FIFO,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 @Serializable
@@ -283,6 +289,9 @@ private fun GroupSetupForm.toPersisted() = PersistedGroupSetupForm(
     defaultGameFeeCents,
     monthlyFeeCents,
     monthlyDueDay,
+    mensalistaPriority,
+    PersistedPromotionMode.valueOf(promotionMode.name),
+    autoConfirmEnabled,
 )
 
 private fun PersistedGroupSetupForm.toDomain() = GroupSetupForm(
@@ -309,6 +318,9 @@ private fun PersistedGroupSetupForm.toDomain() = GroupSetupForm(
     defaultGameFeeCents,
     monthlyFeeCents,
     monthlyDueDay,
+    mensalistaPriority,
+    PromotionMode.valueOf(promotionMode.name),
+    autoConfirmEnabled,
 )
 
 private fun MonthlyChargeDraft.toPersisted() = PersistedMonthlyChargeDraft(

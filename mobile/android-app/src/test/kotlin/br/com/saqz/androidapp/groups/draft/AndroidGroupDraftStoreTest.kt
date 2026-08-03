@@ -17,6 +17,21 @@ class AndroidGroupDraftStoreTest {
         assertEquals(draft, success(f.store.readSetup(GroupDraftKey(GroupDraftResource.UPDATE_GROUP, GROUP))))
     }
 
+    @Test fun oldSetupDraftDefaultsMissingGameConfigFields() {
+        val f = fixture()
+        assertTrue(f.store.writeSetup(setup()))
+        val key = f.preferences.values.keys.single()
+        f.preferences.values[key] = f.preferences.values.getValue(key)
+            .replace(",\"mensalistaPriority\":false", "")
+            .replace(",\"promotionMode\":\"MANUAL\"", "")
+            .replace(",\"autoConfirmEnabled\":true", "")
+
+        val form = success(f.store.readSetup(GroupDraftKey(GroupDraftResource.UPDATE_GROUP, GROUP))).form
+        assertTrue(form.mensalistaPriority)
+        assertEquals(PromotionMode.FIFO, form.promotionMode)
+        assertFalse(form.autoConfirmEnabled)
+    }
+
     @Test fun gameDraftRoundTripsExactResourceEtagKeyAndAllowedValues() {
         val f = fixture()
         val draft = game()
@@ -148,6 +163,9 @@ class AndroidGroupDraftStoreTest {
                     defaultCapacity = 24,
                     monthlyFeeCents = 7000,
                     monthlyDueDay = 10,
+                    mensalistaPriority = false,
+                    promotionMode = PromotionMode.MANUAL,
+                    autoConfirmEnabled = true,
                 ),
         )
 
