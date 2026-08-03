@@ -80,6 +80,7 @@ import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
+import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -280,6 +281,9 @@ class SaqzKoinModulesTest {
                 composePresentationModule,
                 groupsDataModule(),
                 groupsPresentationModule(),
+                // Quem provê a porta no app real é o groupCreationEntitlementModule, que
+                // depende do gateway de assinaturas — fora deste grafo de fixture.
+                module { single<GroupCreationEntitlement> { GroupCreationEntitlement { false } } },
             )
         }
         val koin = app.koin

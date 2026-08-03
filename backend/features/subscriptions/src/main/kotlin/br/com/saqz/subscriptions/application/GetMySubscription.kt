@@ -17,6 +17,8 @@ data class SubscriptionUsage(
 
 data class MySubscriptionView(
     val status: SubscriptionStatus,
+    /** [Subscription.isEntitlingAt] — a mesma regra do POST de criação, exposta para o app rotear. */
+    val entitled: Boolean,
     val plan: Plan,
     val cycle: SubscriptionCycle,
     val pendingPlan: Plan?,
@@ -46,6 +48,7 @@ class GetMySubscription(
         return GetMySubscriptionResult.Found(
             MySubscriptionView(
                 status = subscription.status,
+                entitled = subscription.isEntitlingAt(now),
                 plan = subscription.plan,
                 cycle = subscription.cycle,
                 pendingPlan = subscription.pendingPlan,

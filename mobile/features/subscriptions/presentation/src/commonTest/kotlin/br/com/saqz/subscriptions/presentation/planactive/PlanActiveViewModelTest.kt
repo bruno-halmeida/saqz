@@ -173,6 +173,7 @@ class PlanActiveViewModelTest {
 
 private val subscription = MySubscription(
     status = SubscriptionStatus.Active,
+    entitled = true,
     plan = Plan.Organizador,
     cycle = SubscriptionCycle.Monthly,
     pendingPlan = null,

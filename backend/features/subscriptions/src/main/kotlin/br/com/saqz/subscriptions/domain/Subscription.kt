@@ -28,4 +28,15 @@ data class Subscription(
     /** Upgrade awaiting one-off charge confirmation (webhook applies plan). */
     val pendingUpgradePlan: Plan? = null,
     val pendingUpgradeChargeId: String? = null,
-)
+) {
+    /**
+     * Espelho em Kotlin do predicado de `JdbcSubscriptionPlanLookup.findEntitlingPlan` —
+     * mudou lá, muda aqui. É o que o `/subscriptions/me` expõe para o app rotear o "+"
+     * sem reinventar a regra no cliente.
+     */
+    fun isEntitlingAt(now: Instant): Boolean = when (status) {
+        SubscriptionStatus.ACTIVE -> true
+        SubscriptionStatus.PAST_DUE -> firstConfirmedAt != null
+        SubscriptionStatus.CANCELED -> firstConfirmedAt != null && currentPeriodEnd.isAfter(now)
+    }
+}

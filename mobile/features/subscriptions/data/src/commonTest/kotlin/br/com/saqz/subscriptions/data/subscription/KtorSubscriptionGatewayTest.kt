@@ -399,7 +399,7 @@ class KtorSubscriptionGatewayTest {
         const val COUPON_APPLIED_MISSING_CODE = """{"status":"APPLIED","planId":"TITULAR","cycle":"MONTHLY","discountPercent":10,"listPriceCents":1990,"finalPriceCents":1791}"""
         const val COUPON_NOT_FOUND = """{"status":"NOT_FOUND"}"""
         const val COUPON_EXPIRED = """{"status":"EXPIRED"}"""
-        const val MY_SUBSCRIPTION = """{"status":"ACTIVE","plan":"ORGANIZADOR","cycle":"MONTHLY","pendingPlan":"ILIMITADO","pendingPlanEffectiveAt":"2026-09-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z","paymentMethod":"PIX","usage":{"groupsUsed":2,"groupsLimit":3},"readOnly":false,"pastDueSince":null,"canceledAt":null}"""
+        const val MY_SUBSCRIPTION = """{"status":"ACTIVE","entitled":true,"plan":"ORGANIZADOR","cycle":"MONTHLY","pendingPlan":"ILIMITADO","pendingPlanEffectiveAt":"2026-09-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z","paymentMethod":"PIX","usage":{"groupsUsed":2,"groupsLimit":3},"readOnly":false,"pastDueSince":null,"canceledAt":null}"""
         const val CREATED_PIX = """{"ownerUserId":"owner-1","planId":"TITULAR","cycle":"MONTHLY","status":"ACTIVE","asaasSubscriptionId":"sub-1","currentPeriodEnd":"2026-08-30T00:00:00Z","billingType":"PIX","pixCopyPaste":"00020126chavepix","invoiceUrl":null}"""
         const val CHANGE_PLAN = """{"planId":"ILIMITADO","pendingPlanId":null,"pendingPlanEffectiveAt":null,"pendingUpgradePlanId":"ILIMITADO","status":"ACTIVE","chargedCents":3000,"pixCopyPaste":"00020126chavepix","invoiceUrl":null}"""
         const val CANCELED = """{"status":"CANCELED","canceledAt":"2026-08-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z"}"""
