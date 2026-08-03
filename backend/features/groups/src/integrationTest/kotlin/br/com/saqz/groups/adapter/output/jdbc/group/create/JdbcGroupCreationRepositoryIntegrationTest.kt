@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
+import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.domain.group.RegularSlotInput
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.flywaydb.core.Flyway
@@ -243,6 +244,30 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         assertEquals(2500, count("SELECT default_game_fee_cents FROM access_groups WHERE id = '${group.id}'"))
         assertEquals(9000, count("SELECT monthly_fee_cents FROM access_groups WHERE id = '${group.id}'"))
         assertEquals(7, count("SELECT monthly_due_day FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals(true, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals("FIFO", text("SELECT promotion_mode FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals(false, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '${group.id}'"))
+    }
+
+    @Test
+    fun `creates game config fields from explicit input`() {
+        val owner = insertUser("game-config-owner")
+        val group = success(
+            useCase.execute(
+                owner,
+                UUID.randomUUID(),
+                validProfile(
+                    mensalistaPriority = false,
+                    promotionMode = GroupPromotionMode.MANUAL,
+                    autoConfirmEnabled = true,
+                ),
+                "UTC",
+            ),
+        ).group
+
+        assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '${group.id}'"))
     }
 
     @Test
@@ -430,6 +455,9 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         defaultGameFeeCents: Long? = 1500,
         monthlyFeeCents: Long? = null,
         monthlyDueDay: Int? = null,
+        mensalistaPriority: Boolean = true,
+        promotionMode: GroupPromotionMode = GroupPromotionMode.FIFO,
+        autoConfirmEnabled: Boolean = false,
     ) = GroupProfileDefaultsInput(
         name = name,
         modality = modality,
@@ -447,6 +475,9 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         defaultGameFeeCents = defaultGameFeeCents,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
+        mensalistaPriority = mensalistaPriority,
+        promotionMode = promotionMode,
+        autoConfirmEnabled = autoConfirmEnabled,
     )
 
     private fun execute(sql: String) {
@@ -479,6 +510,16 @@ class JdbcGroupCreationRepositoryIntegrationTest {
                 statement.executeQuery(sql).use { result ->
                     result.next()
                     result.getString(1)
+                }
+            }
+        }
+
+    private fun boolean(sql: String): Boolean =
+        connection().use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery(sql).use { result ->
+                    result.next()
+                    result.getBoolean(1)
                 }
             }
         }

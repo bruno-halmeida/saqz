@@ -131,13 +131,17 @@ class JdbcGroupCreationRepository(
             privacy, currency, profile_status, modality, composition, description,
             city, level, custom_level, play_style, custom_play_style,
             default_capacity, default_confirmation_lead_minutes, default_game_fee_cents,
-            monthly_fee_cents, monthly_due_day, created_at, updated_at
+            monthly_fee_cents, monthly_due_day,
+            mensalista_priority, promotion_mode, auto_confirm_enabled,
+            created_at, updated_at
         ) VALUES (
             :id, :ownerUserId, :creationKey, :name, :timeZone, 1,
             'PRIVATE', 'BRL', 'COMPLETE', :modality, :composition, :description,
             :city, :level, :customLevel, :playStyle, :customPlayStyle,
             :defaultCapacity, :defaultConfirmationLeadMinutes, :defaultGameFeeCents,
-            :monthlyFeeCents, :monthlyDueDay, now(), now()
+            :monthlyFeeCents, :monthlyDueDay,
+            :mensalistaPriority, :promotionMode, :autoConfirmEnabled,
+            now(), now()
         )
         ON CONFLICT (owner_user_id, creation_key) DO NOTHING
         RETURNING id, owner_user_id, creation_key, name, time_zone, version, profile_status
@@ -185,6 +189,9 @@ class JdbcGroupCreationRepository(
             .param("defaultGameFeeCents", profile.defaultGameFeeCents)
             .param("monthlyFeeCents", profile.monthlyFeeCents)
             .param("monthlyDueDay", profile.monthlyDueDay)
+            .param("mensalistaPriority", profile.mensalistaPriority)
+            .param("promotionMode", profile.promotionMode.name)
+            .param("autoConfirmEnabled", profile.autoConfirmEnabled)
     }
 
     private fun ResultSet.toStoredGroup() = StoredGroup(

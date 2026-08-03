@@ -13,6 +13,7 @@ import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.domain.group.RegularSlotInput
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
@@ -61,6 +62,9 @@ data class UpdateGroupProfileRequest @JsonCreator constructor(
     @JsonProperty("defaultGameFeeCents") val defaultGameFeeCents: Long? = null,
     @JsonProperty("monthlyFeeCents") val monthlyFeeCents: Long? = null,
     @JsonProperty("monthlyDueDay") val monthlyDueDay: Int? = null,
+    @JsonProperty("mensalistaPriority") val mensalistaPriority: Boolean? = null,
+    @JsonProperty("promotionMode") val promotionMode: PromotionMode? = null,
+    @JsonProperty("autoConfirmEnabled") val autoConfirmEnabled: Boolean? = null,
     @JsonProperty("entryRequiresApproval") val entryRequiresApproval: Boolean? = null,
 )
 
@@ -208,6 +212,9 @@ private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(
         defaultGameFeeCents = defaultGameFeeCents,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
+        mensalistaPriority = mensalistaPriority ?: true,
+        promotionMode = promotionMode ?: PromotionMode.FIFO,
+        autoConfirmEnabled = autoConfirmEnabled ?: false,
     ),
     defaultVenueId = defaultVenue?.id,
     regularSlotIds = regularSlots.orEmpty().map { it.id },

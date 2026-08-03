@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.domain.GroupRole
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.AfterAll
@@ -190,6 +191,25 @@ class JdbcGroupReadRepositoryIntegrationTest {
         assertEquals(1500, snapshot.financeDefaults?.defaultGameFeeCents)
         assertEquals(7000, snapshot.financeDefaults?.monthlyFeeCents)
         assertEquals(10, snapshot.financeDefaults?.monthlyDueDay)
+        assertEquals(true, snapshot.gameConfig?.mensalistaPriority)
+        assertEquals(GroupPromotionMode.FIFO, snapshot.gameConfig?.promotionMode)
+        assertEquals(false, snapshot.gameConfig?.autoConfirmEnabled)
+    }
+
+    @Test
+    fun `game config fields read back from explicit column values`() {
+        val owner = insertUser("game-config-read-owner")
+        val group = insertCompleteGroup(owner)
+        execute(
+            "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL', " +
+                "auto_confirm_enabled = true WHERE id = '$group'",
+        )
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(owner, group)))
+
+        assertEquals(false, snapshot.gameConfig?.mensalistaPriority)
+        assertEquals(GroupPromotionMode.MANUAL, snapshot.gameConfig?.promotionMode)
+        assertEquals(true, snapshot.gameConfig?.autoConfirmEnabled)
     }
 
     @Test

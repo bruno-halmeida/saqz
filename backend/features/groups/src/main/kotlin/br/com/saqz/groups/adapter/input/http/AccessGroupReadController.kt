@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.input.http
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.read.GetGroupResult
 import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
+import br.com.saqz.groups.application.read.GroupGameConfigReadModel
 import br.com.saqz.groups.application.read.GroupProfileReadModel
 import br.com.saqz.groups.application.read.GroupRegularSlotReadModel
 import br.com.saqz.groups.application.read.GroupVenueReadModel
@@ -13,6 +14,7 @@ import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.RequestIdentity
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -34,6 +36,7 @@ data class GroupReadResponse(
     val currency: String = "BRL",
     val profile: GroupProfileReadResponse?,
     val financeDefaults: GroupFinanceDefaultsReadResponse?,
+    val gameConfig: GroupGameConfigReadResponse,
     val entryRequiresApproval: Boolean,
 )
 
@@ -70,6 +73,12 @@ data class GroupFinanceDefaultsReadResponse(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+)
+
+data class GroupGameConfigReadResponse(
+    val mensalistaPriority: Boolean,
+    val promotionMode: PromotionMode,
+    val autoConfirmEnabled: Boolean,
 )
 
 class GroupNotFoundException : RuntimeException()
@@ -111,6 +120,11 @@ fun GroupView.toResponse() = GroupReadResponse(
     currency = "BRL",
     profile = profile?.toResponse(),
     financeDefaults = financeDefaults?.toResponse(),
+    gameConfig = GroupGameConfigReadResponse(
+        mensalistaPriority = gameConfig?.mensalistaPriority ?: true,
+        promotionMode = gameConfig?.promotionMode ?: PromotionMode.FIFO,
+        autoConfirmEnabled = gameConfig?.autoConfirmEnabled ?: false,
+    ),
     entryRequiresApproval = entryRequiresApproval,
 )
 

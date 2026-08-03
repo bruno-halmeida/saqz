@@ -30,7 +30,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(9, flyway.migrate().migrationsExecuted)
+        assertEquals(10, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -190,6 +190,17 @@ class AccessSchemaIntegrationTest {
         } finally {
             legacyPostgres.stop()
         }
+    }
+
+    @Test
+    fun `v27 seeds game config defaults and constrains promotion mode`() {
+        val owner = insertUser("game-config-owner")
+        val group = insertGroup(owner)
+
+        assertEquals(true, queryBoolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
+        assertEquals("FIFO", queryString("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
+        assertEquals(false, queryBoolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
+        assertSqlFails { execute("UPDATE access_groups SET promotion_mode = 'LIFO' WHERE id = '$group'") }
     }
 
     @Test
@@ -453,6 +464,16 @@ class AccessSchemaIntegrationTest {
                 statement.executeQuery(sql).use { result ->
                     result.next()
                     result.getString(1)
+                }
+            }
+        }
+
+    private fun queryBoolean(sql: String): Boolean =
+        connection().use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery(sql).use { result ->
+                    result.next()
+                    result.getBoolean(1)
                 }
             }
         }

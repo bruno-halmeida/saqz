@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.PromotionMode
 import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -134,6 +135,19 @@ class GetGroupTest {
     }
 
     @Test
+    fun `game config is propagated from the snapshot to the view`() {
+        val config = GroupGameConfigReadModel(
+            mensalistaPriority = false,
+            promotionMode = PromotionMode.MANUAL,
+            autoConfirmEnabled = true,
+        )
+
+        val result = fixture(snapshot(GroupRole.ATHLETE, gameConfig = config)).useCase.execute(actorId, groupId)
+
+        assertEquals(config, (result as GetGroupResult.Success).group.gameConfig)
+    }
+
+    @Test
     fun `athlete receives profile but no finance defaults`() {
         val result = fixture(
             snapshot(GroupRole.ATHLETE, profile = profile(), financeDefaults = finance()),
@@ -165,6 +179,7 @@ class GetGroupTest {
         profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
         profile: GroupProfileReadModel? = null,
         financeDefaults: GroupFinanceDefaultsReadModel? = null,
+        gameConfig: GroupGameConfigReadModel? = null,
     ) = GroupReadSnapshot(
         id = id,
         name = AccessName.from("Training Club"),
@@ -174,6 +189,7 @@ class GetGroupTest {
         profileStatus = profileStatus,
         profile = profile,
         financeDefaults = financeDefaults,
+        gameConfig = gameConfig,
     )
 
     private fun profile(
