@@ -4,10 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeGroupProfileGateway
@@ -476,7 +478,106 @@ class GroupSetupViewModelTest {
             assertEquals(90, viewModel.state.value.durationMinutes)
             assertEquals(listOf(90), viewModel.state.value.form.regularSlots.map { it.durationMinutes })
             assertTrue(viewModel.state.value.canDelete)
+            assertTrue(viewModel.state.value.canManageGameConfig)
         }
+
+    @Test
+    fun `edicao hidrata a configuracao de jogo do grupo`() = runTest(mainDispatcher) {
+        val group = br.com.saqz.groups.presentation.sampleGroup().copy(
+            gameConfig = br.com.saqz.groups.domain.group.GroupGameConfig(
+                mensalistaPriority = false,
+                promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+                autoConfirmEnabled = true,
+            ),
+        )
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = FakeGroupProfileGateway(
+                readResult = SaqzResult.Success(
+                    br.com.saqz.groups.presentation.sampleVersionedGroup(group),
+                ),
+            ),
+        )
+        runCurrent()
+
+        val form = viewModel.state.value.form
+        assertEquals(false, form.mensalistaPriority)
+        assertEquals(PromotionMode.MANUAL, form.promotionMode)
+        assertEquals(true, form.autoConfirmEnabled)
+    }
+
+    @Test
+    fun `atleta nao recebe a secao de configuracoes de jogo`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = FakeGroupProfileGateway(
+                readResult = SaqzResult.Success(
+                    br.com.saqz.groups.presentation.sampleVersionedGroup(
+                        br.com.saqz.groups.presentation.sampleGroup(
+                            role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        runCurrent()
+
+        assertEquals(false, viewModel.state.value.canManageGameConfig)
+    }
+
+    @Test
+    fun `alterar a prioridade de mensalista atualiza o formulario`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+
+        viewModel.onIntent(GroupSetupIntent.ToggleMensalistaPriority(false))
+        runCurrent()
+
+        assertEquals(false, viewModel.state.value.form.mensalistaPriority)
+    }
+
+    @Test
+    fun `alterar a promocao da reserva atualiza o formulario`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+
+        viewModel.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
+        runCurrent()
+
+        assertEquals(PromotionMode.MANUAL, viewModel.state.value.form.promotionMode)
+    }
+
+    @Test
+    fun `alterar a auto-confirmacao atualiza o formulario`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+
+        viewModel.onIntent(GroupSetupIntent.ToggleAutoConfirm(true))
+        runCurrent()
+
+        assertEquals(true, viewModel.state.value.form.autoConfirmEnabled)
+    }
+
+    @Test
+    fun `editar envia a configuracao de jogo no comando de update`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = profileGateway,
+        )
+        viewModel.onIntent(GroupSetupIntent.ToggleMensalistaPriority(false))
+        viewModel.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
+        viewModel.onIntent(GroupSetupIntent.ToggleAutoConfirm(true))
+        runCurrent()
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        val form = profileGateway.lastUpdateCommand?.form
+        assertEquals(false, form?.mensalistaPriority)
+        assertEquals(
+            br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+            form?.promotionMode,
+        )
+        assertEquals(true, form?.autoConfirmEnabled)
+    }
 
     /**
      * Teto de digitação: o estado para no máximo do backend em vez de deixar digitar e

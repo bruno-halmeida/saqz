@@ -8,6 +8,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTimeZone as DomainGroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
@@ -20,6 +21,7 @@ import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.presentation.GroupUiError
@@ -82,6 +84,12 @@ class GroupSetupViewModel(
             is GroupSetupIntent.UpdateCapacity -> onFormChange { copy(defaultCapacity = intent.value) }
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
+            is GroupSetupIntent.ToggleMensalistaPriority ->
+                onFormChange { copy(mensalistaPriority = intent.value) }
+            is GroupSetupIntent.SelectPromotionMode ->
+                onFormChange { copy(promotionMode = intent.value) }
+            is GroupSetupIntent.ToggleAutoConfirm ->
+                onFormChange { copy(autoConfirmEnabled = intent.value) }
             is GroupSetupIntent.SelectDuration -> onDurationChange(intent.minutes)
             is GroupSetupIntent.ToggleRecurring -> onRecurringChange(intent.value)
             is GroupSetupIntent.OpenSheet -> onOpenSheet(intent.sheet)
@@ -127,7 +135,8 @@ class GroupSetupViewModel(
                             isLoading = false,
                             gatewayError = null,
                             saveFailed = false,
-                            canDelete = group.role == br.com.saqz.groups.domain.group.GroupRole.OWNER,
+                            canDelete = group.role == GroupRole.OWNER,
+                            canManageGameConfig = group.role != GroupRole.ATHLETE,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
                             form = group.toForm().withSavedText(savedState),
@@ -400,6 +409,9 @@ private fun GroupSetupForm.toDomain(
     defaultGameFeeCents = defaultGameFeeCents,
     monthlyFeeCents = monthlyFeeCents,
     monthlyDueDay = monthlyDueDay,
+    mensalistaPriority = mensalistaPriority,
+    promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
+    autoConfirmEnabled = autoConfirmEnabled,
 ).cleaned()
 
 private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
@@ -421,6 +433,9 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     defaultGameFeeCents = financeDefaults?.defaultGameFeeCents,
     monthlyFeeCents = financeDefaults?.monthlyFeeCents,
     monthlyDueDay = financeDefaults?.monthlyDueDay,
+    mensalistaPriority = gameConfig.mensalistaPriority,
+    promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
+    autoConfirmEnabled = gameConfig.autoConfirmEnabled,
 )
 
 private fun GroupTimeZone.toDomain() = DomainGroupTimeZone(id)

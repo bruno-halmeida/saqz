@@ -35,13 +35,16 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSegmented
+import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzStepper
+import br.com.saqz.designsystem.SaqzSwitch
 import br.com.saqz.designsystem.saqzInitials
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.components.GroupFormCard
@@ -50,6 +53,16 @@ import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
 import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_game_config_auto_confirm_hint
+import br.com.saqz.groups.resources.group_game_config_auto_confirm_label
+import br.com.saqz.groups.resources.group_game_config_confirmation_lead_label
+import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint
+import br.com.saqz.groups.resources.group_game_config_mensalista_priority_label
+import br.com.saqz.groups.resources.group_game_config_promotion_fifo
+import br.com.saqz.groups.resources.group_game_config_promotion_hint
+import br.com.saqz.groups.resources.group_game_config_promotion_label
+import br.com.saqz.groups.resources.group_game_config_promotion_manual
+import br.com.saqz.groups.resources.group_game_config_title
 import br.com.saqz.groups.resources.group_setup_add_slot
 import br.com.saqz.groups.resources.group_setup_capacity_beach_hint
 import br.com.saqz.groups.resources.group_setup_capacity_hint
@@ -637,3 +650,89 @@ private fun Modifier.errorOutline(color: Color, radius: Dp, ringWidth: Dp) = dra
 }
 
 private const val DescriptionMinLines = 3
+
+// Ordem do export: FIFO à esquerda, Manual à direita.
+private val PromotionModeOptions = listOf(PromotionMode.FIFO, PromotionMode.MANUAL)
+
+/**
+ * VUL-157 — `2i` apenas. A seção agrupa os quatro campos que o dono/admin controla:
+ * prioridade de mensalista, promoção da reserva, prazo de confirmação padrão e
+ * auto-confirmação. O prazo já existia como card solto no formulário; aqui ele entra
+ * na seção de jogo para o editar, e o card solto continua no criar.
+ */
+@Composable
+internal fun GroupGameConfigSection(
+    mensalistaPriority: Boolean,
+    promotionMode: PromotionMode,
+    confirmationLeadMinutes: Int?,
+    autoConfirmEnabled: Boolean,
+    onMensalistaPriorityChange: (Boolean) -> Unit,
+    onPromotionModeSelect: (PromotionMode) -> Unit,
+    onConfirmationLeadSelect: (Int) -> Unit,
+    onAutoConfirmChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val metrics = SaqzTheme.metrics
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
+        SaqzSectionHeader(title = stringResource(Res.string.group_game_config_title))
+        SaqzCard {
+            SaqzSwitch(
+                checked = mensalistaPriority,
+                onCheckedChange = onMensalistaPriorityChange,
+                label = stringResource(Res.string.group_game_config_mensalista_priority_label),
+                modifier = Modifier.testTag(GroupSetupTags.MensalistaPriority),
+            )
+            Text(
+                text = stringResource(Res.string.group_game_config_mensalista_priority_hint),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
+        GroupFormCard(
+            title = stringResource(Res.string.group_game_config_promotion_label),
+            hint = stringResource(Res.string.group_game_config_promotion_hint),
+        ) {
+            SaqzSegmented(
+                options = PromotionModeOptions.map { it.label() },
+                selected = PromotionModeOptions.indexOfOrNone(promotionMode),
+                onSelect = { onPromotionModeSelect(PromotionModeOptions[it]) },
+                modifier = Modifier.testTag(GroupSetupTags.PromotionMode),
+            )
+        }
+        GroupFormCard(
+            title = stringResource(Res.string.group_game_config_confirmation_lead_label),
+        ) {
+            GroupChoiceChipRow(
+                values = GroupSetupDefaults.ConfirmationLeadOptions,
+                selectedValue = confirmationLeadMinutes,
+                label = { confirmationLeadLabel(it) },
+                onSelect = onConfirmationLeadSelect,
+                modifier = Modifier.testTag(GroupSetupTags.GameConfigConfirmationLead),
+            )
+        }
+        SaqzCard {
+            SaqzSwitch(
+                checked = autoConfirmEnabled,
+                onCheckedChange = onAutoConfirmChange,
+                label = stringResource(Res.string.group_game_config_auto_confirm_label),
+                modifier = Modifier.testTag(GroupSetupTags.AutoConfirm),
+            )
+            Text(
+                text = stringResource(Res.string.group_game_config_auto_confirm_hint),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PromotionMode.label(): String = stringResource(
+    when (this) {
+        PromotionMode.FIFO -> Res.string.group_game_config_promotion_fifo
+        PromotionMode.MANUAL -> Res.string.group_game_config_promotion_manual
+    },
+)

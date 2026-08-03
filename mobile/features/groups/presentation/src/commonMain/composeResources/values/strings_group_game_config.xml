@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- VUL-157 · Configurações de jogo no editar grupo -->
+    <string name="group_game_config_title">Configurações de jogo</string>
+    <string name="group_game_config_mensalista_priority_label">Prioridade de mensalista</string>
+    <string name="group_game_config_mensalista_priority_hint">Mensalista confirma direto e fica no topo da reserva. Desligado, todo mundo disputa igual.</string>
+    <string name="group_game_config_promotion_label">Promoção da reserva</string>
+    <string name="group_game_config_promotion_hint">FIFO promove quem entrou primeiro; Manual deixa você escolher quem entra.</string>
+    <string name="group_game_config_promotion_fifo">FIFO</string>
+    <string name="group_game_config_promotion_manual">Manual</string>
+    <string name="group_game_config_confirmation_lead_label">Prazo de confirmação padrão</string>
+    <string name="group_game_config_auto_confirm_label">Auto-confirmação de mensalistas</string>
+    <string name="group_game_config_auto_confirm_hint">Mensalistas podem ativar confirmação automática de presença.</string>
+</resources>
