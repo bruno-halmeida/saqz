@@ -38,6 +38,9 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailHeaderUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
+import br.com.saqz.groups.presentation.gamedetail.GameDetailWaitlistUi
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.shortLabel
@@ -95,7 +98,11 @@ internal fun GameDetailScreen(
                     state.header?.let { GameDetailHeader(it) }
                     state.attendance?.let { GameDetailAttendance(it) }
                     state.confirmedRoster.takeIf { it.isNotEmpty() }?.let { GameDetailConfirmedList(it) }
+                    state.waitlist.takeIf { it.isNotEmpty() }?.let { GameWaitlistSection(state, onIntent) }
                     if (state.isAdmin) {
+                        if (state.header?.statusTone == GameDetailStatusTone.Published) {
+                            GameWaitlistAdminActions(onIntent = onIntent)
+                        }
                         GameDetailAdminActions(
                             cancelling = state.cancelling,
                             canCancel = state.header?.statusTone == GameDetailStatusTone.Published,
@@ -106,6 +113,7 @@ internal fun GameDetailScreen(
             }
         }
         if (state.cancelDialogOpen) GameDetailCancelSheet(state, onIntent)
+        if (state.capacitySheetOpen) GameWaitlistCapacitySheet(state, onIntent)
     }
 }
 @Composable
@@ -301,7 +309,20 @@ internal object GameDetailPreviewData {
         GameDetailConfirmedUi("2", "Bia Souza", false, "Ponteira"),
         GameDetailConfirmedUi("3", "Thiago Melo", false, "Central"),
     )
-    val admin = GameDetailState(false, header = header, attendance = attendance, confirmedRoster = confirmed, isAdmin = true)
+    val waitlist = listOf(
+        GameDetailWaitlistUi("wait-1", "Caio Lima", 1, AthletePosition.CENTRAL, true),
+        GameDetailWaitlistUi("wait-2", "Duda Alves", 2, AthletePosition.PONTA, false),
+    )
+    val admin = GameDetailState(
+        isLoading = false,
+        header = header,
+        attendance = attendance,
+        confirmedRoster = confirmed,
+        waitlist = waitlist,
+        mensalistaPriority = true,
+        promotionMode = PromotionMode.MANUAL,
+        isAdmin = true,
+    )
 }
 @Preview
 @Composable

@@ -71,7 +71,7 @@ sealed interface GameDetailIntent {
     data object RequestCancel : GameDetailIntent
     data object ConfirmCancel : GameDetailIntent
     data object DismissCancel : GameDetailIntent
-    data class Promote(val memberId: String) : GameDetailIntent
+    data class Promote(val memberId: String, val reason: String) : GameDetailIntent
     data object OpenCapacitySheet : GameDetailIntent
     data class UpdateCapacity(val value: Int) : GameDetailIntent
     data object SaveCapacity : GameDetailIntent

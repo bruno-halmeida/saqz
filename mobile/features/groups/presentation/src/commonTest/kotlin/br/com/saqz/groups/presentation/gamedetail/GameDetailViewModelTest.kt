@@ -271,7 +271,7 @@ class GameDetailViewModelTest {
             "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(), attendance, FakeAthleteGateway(),
         )
 
-        viewModel.onIntent(GameDetailIntent.Promote("wait-1"))
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
 
         assertEquals(0, attendance.promoteCalls)
         assertEquals(2, viewModel.state.value.waitlist.size)
@@ -294,7 +294,7 @@ class GameDetailViewModelTest {
             attendance, FakeAthleteGateway(),
         )
 
-        viewModel.onIntent(GameDetailIntent.Promote("wait-1"))
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
         assertEquals(listOf("wait-2"), viewModel.state.value.waitlist.map { it.id })
 
         deferred.complete(SaqzResult.Failure(AttendanceError.Data(DataError.Server)))

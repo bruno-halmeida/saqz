@@ -175,7 +175,7 @@ class KtorAttendanceGatewayTest {
     @Test
     fun `promote preserves returned etag`() = runTest {
         val result = gateway { mutationResponse(etag = "\"11\"") }
-            .promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member-2"))
+            .promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member-2", "Escolha do organizador"))
 
         assertEquals(
             "\"11\"",
@@ -321,7 +321,7 @@ class KtorAttendanceGatewayTest {
         gateway(delay = {}) {
             calls++
             respond("", HttpStatusCode.ServiceUnavailable)
-        }.promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member"))
+        }.promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member", "Escolha do organizador"))
 
         assertEquals(4, calls)
     }

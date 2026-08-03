@@ -62,7 +62,7 @@ class GameDetailViewModel(
                 update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
             }
             GameDetailIntent.ConfirmCancel -> cancel()
-            is GameDetailIntent.Promote -> promote(intent.memberId)
+            is GameDetailIntent.Promote -> promote(intent.memberId, intent.reason)
             GameDetailIntent.OpenCapacitySheet -> openCapacitySheet()
             is GameDetailIntent.UpdateCapacity -> update {
                 it.copy(capacityDraft = intent.value.coerceIn(MIN_CAPACITY, MAX_CAPACITY), capacityFailed = false)
@@ -145,9 +145,14 @@ class GameDetailViewModel(
         }
     }
 
-    private fun promote(memberId: String) {
+    private fun promote(memberId: String, reason: String) {
         val current = state.value
-        if (!current.isAdmin || current.promotionMode != PromotionMode.MANUAL || current.promotingMemberId != null) return
+        if (
+            !current.isAdmin ||
+            current.header?.statusTone != GameDetailStatusTone.Published ||
+            current.promotionMode != PromotionMode.MANUAL ||
+            current.promotingMemberId != null
+        ) return
         val previousWaitlist = current.waitlist
         val previousAttendance = current.attendance
         if (previousWaitlist.none { it.id == memberId }) return
@@ -170,7 +175,7 @@ class GameDetailViewModel(
             val result = attendanceGateway.promote(
                 GroupId(groupId),
                 gameId,
-                AttendancePromotionCommand(Uuid.random().toString(), memberId),
+                AttendancePromotionCommand(Uuid.random().toString(), memberId, reason),
             )
             if (generation != operationGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {
@@ -197,6 +202,7 @@ class GameDetailViewModel(
     }
 
     private fun openCapacitySheet() {
+        if (!state.value.isAdmin || state.value.header?.statusTone != GameDetailStatusTone.Published) return
         val capacity = state.value.attendance?.capacity ?: return
         update { it.copy(capacitySheetOpen = true, capacityDraft = capacity, capacityFailed = false) }
     }

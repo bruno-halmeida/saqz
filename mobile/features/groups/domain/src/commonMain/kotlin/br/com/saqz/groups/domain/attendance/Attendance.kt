@@ -99,7 +99,7 @@ data class AttendanceCapacityCommand(
 data class AttendancePromotionCommand(
     val requestId: String,
     val memberId: String,
-    val reason: String? = null,
+    val reason: String,
 )
 
 sealed interface AttendanceError : SaqzError {
