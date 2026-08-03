@@ -35,6 +35,7 @@ import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.port.GroupInviteUrlCache
 import br.com.saqz.groups.port.GroupInviteUrlReadCallback
 import br.com.saqz.groups.port.GroupInviteUrlReadResult
 import br.com.saqz.groups.port.GroupInviteUrlStorePort
@@ -45,11 +46,11 @@ import br.com.saqz.groups.port.InviteNativeOperationResult
 import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -85,6 +86,23 @@ class GroupInviteViewModelsTest {
         assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
         assertEquals("https://saqz.app/invite/new", viewModel.state.value.inviteUrl)
         assertEquals(listOf("new", "old"), viewModel.state.value.recentMembers.map { it.userId })
+    }
+
+    @Test
+    fun `load discards cached link when metadata expiration changed`() = runTest {
+        val store = FakeUrlStore(
+            initial = "https://saqz.app/invite/old",
+            expiresAt = "2099-08-07T23:59:00Z",
+        )
+        val viewModel = groupViewModel(
+            urlStore = store,
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = true, expiresAt = "2099-08-08T23:59:00Z")),
+        )
+        advanceUntilIdle()
+
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteUrl)
+        assertNull(store.value)
     }
 
     @Test
@@ -232,6 +250,28 @@ class GroupInviteViewModelsTest {
 
         assertTrue(viewModel.state.value.pendingRequests.isEmpty())
         assertEquals("pending", entryGateway.approvedUserId)
+    }
+
+    @Test
+    fun `approval refreshes requests without reloading group during toggle`() = runTest {
+        val groupGateway = DelayedToggleGroupGateway()
+        val viewModel = groupViewModel(
+            groupGateway = groupGateway,
+            entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending"))),
+        )
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ToggleApproval(true))
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        advanceUntilIdle()
+
+        assertEquals(1, groupGateway.readCalls)
+        groupGateway.completeUpdate()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.entryRequiresApproval)
+        assertTrue(viewModel.state.value.pendingRequests.isEmpty())
+        assertEquals(1, groupGateway.readCalls)
     }
 
     @Test
@@ -405,6 +445,28 @@ class GroupInviteViewModelsTest {
         return GroupInviteViewModel("group-1", groupGateway, resolvedMembership, entryGateway, athleteGateway, urlStore, share, clipboard)
     }
 
+    private class DelayedToggleGroupGateway : GroupGateway {
+        private val updateGate = CompletableDeferred<Unit>()
+        var readCalls = 0
+
+        override suspend fun create(command: CreateGroupCommand) = SaqzResult.Success(sampleGroup())
+        override suspend fun read(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> {
+            readCalls += 1
+            return SaqzResult.Success(sampleVersionedGroup())
+        }
+        override suspend fun update(command: UpdateGroupSettingsCommand): SaqzResult<VersionedGroup, GroupProfileError> {
+            updateGate.await()
+            return SaqzResult.Success(
+                sampleVersionedGroup().copy(group = sampleGroup().copy(entryRequiresApproval = command.entryRequiresApproval)),
+            )
+        }
+        override suspend fun delete(groupId: GroupId) = SaqzResult.Success(Unit)
+
+        fun completeUpdate() {
+            updateGate.complete(Unit)
+        }
+    }
+
     private class FakeInviteGroupGateway(
         var updateResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(sampleVersionedGroup()),
     ) : GroupGateway {
@@ -513,10 +575,23 @@ class GroupInviteViewModelsTest {
         override suspend fun ownProfile() = error("unused")
     }
 
-    private class FakeUrlStore(initial: String? = null) : GroupInviteUrlStorePort {
+    private class FakeUrlStore(
+        initial: String? = null,
+        private var expiresAt: String? = DEFAULT_EXPIRES_AT,
+    ) : GroupInviteUrlStorePort {
         var value: String? = initial
-        override fun read(groupId: String, done: GroupInviteUrlReadCallback) { done.complete(GroupInviteUrlReadResult.Success(value)) }
-        override fun write(groupId: String, inviteUrl: String?, done: GroupInviteUrlWriteCallback) { value = inviteUrl; done.complete(GroupInviteUrlWriteResult.Success) }
+        override fun read(groupId: String, done: GroupInviteUrlReadCallback) {
+            done.complete(
+                GroupInviteUrlReadResult.Success(
+                    value?.let { GroupInviteUrlCache(it, expiresAt) },
+                ),
+            )
+        }
+        override fun write(groupId: String, cache: GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) {
+            value = cache?.inviteUrl
+            expiresAt = cache?.expiresAt
+            done.complete(GroupInviteUrlWriteResult.Success)
+        }
     }
 
     private class FakeShare(
@@ -539,6 +614,7 @@ class GroupInviteViewModelsTest {
     private companion object {
         fun sampleGroup() = Group("group-1", "CERET", "America/Sao_Paulo", 2, GroupRole.OWNER)
         fun sampleVersionedGroup() = VersionedGroup(sampleGroup(), GroupVersionToken("etag-2"))
+        const val DEFAULT_EXPIRES_AT = "2099-08-07T23:59:00Z"
         fun roster(id: String, joinedAt: String) = AthleteRosterEntry(id, id, null, null, br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO, true, br.com.saqz.groups.domain.athlete.AthleteFinancialStatus.DESCONHECIDO, joinedAt = joinedAt)
         fun request(id: String) = GroupEntryRequest(id, "Pessoa $id", "2026-08-01T10:00:00Z")
     }

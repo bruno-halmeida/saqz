@@ -8,16 +8,26 @@ final class IOSInviteUrlStore: @preconcurrency GroupInviteUrlStorePort {
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     func read(groupId: String, done: GroupInviteUrlReadCallback) {
-        done.complete(result_____: GroupInviteUrlReadResultSuccess(inviteUrl: defaults.string(forKey: key(groupId))))
+        let cache = defaults.string(forKey: urlKey(groupId)).map {
+            GroupInviteUrlCache(inviteUrl: $0, expiresAt: defaults.string(forKey: expiresAtKey(groupId)))
+        }
+        done.complete(result_____: GroupInviteUrlReadResultSuccess(cache: cache))
     }
 
-    func write(groupId: String, inviteUrl: String?, done: GroupInviteUrlWriteCallback) {
-        if let inviteUrl { defaults.set(inviteUrl, forKey: key(groupId)) }
-        else { defaults.removeObject(forKey: key(groupId)) }
+    func write(groupId: String, cache: GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) {
+        if let cache {
+            defaults.set(cache.inviteUrl, forKey: urlKey(groupId))
+            if let expiresAt = cache.expiresAt { defaults.set(expiresAt, forKey: expiresAtKey(groupId)) }
+            else { defaults.removeObject(forKey: expiresAtKey(groupId)) }
+        } else {
+            defaults.removeObject(forKey: urlKey(groupId))
+            defaults.removeObject(forKey: expiresAtKey(groupId))
+        }
         done.complete(result______: GroupInviteUrlWriteResultSuccess.shared)
     }
 
-    private func key(_ groupId: String) -> String { "invite-url:\(groupId)" }
+    private func urlKey(_ groupId: String) -> String { "invite-url:\(groupId)" }
+    private func expiresAtKey(_ groupId: String) -> String { "invite-expires-at:\(groupId)" }
 }
 
 @MainActor
@@ -64,7 +74,12 @@ final class IOSInviteShareAdapter: NSObject, @preconcurrency NativeInviteSharePo
             done(InviteNativeOperationResultFailure(code: .providerUnavailable))
             return
         }
-        presenter.present(UIActivityViewController(activityItems: items, applicationActivities: nil), animated: true)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = presenter.view
+            popover.sourceRect = presenter.view.bounds
+        }
+        presenter.present(controller, animated: true)
         done(InviteNativeOperationResultSuccess.shared)
     }
 

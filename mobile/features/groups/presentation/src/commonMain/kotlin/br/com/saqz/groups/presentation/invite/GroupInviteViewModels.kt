@@ -13,8 +13,8 @@ import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.membership.GroupInviteMetadata
-import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.port.GroupInviteUrlCache
 import br.com.saqz.groups.port.GroupInviteUrlReadResult
 import br.com.saqz.groups.port.GroupInviteUrlStorePort
 import br.com.saqz.groups.port.GroupInviteUrlWriteResult
@@ -46,6 +46,7 @@ class GroupInviteViewModel(
         ToggleApproval,
         Approve,
         Reject,
+        RefreshRequests,
         CopyLink,
         ShareImage,
     }
@@ -94,7 +95,11 @@ class GroupInviteViewModel(
                 is SaqzResult.Success -> result.value
                 is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
             }
-            val cachedUrl = readCachedUrl()
+            val cachedInvite = readCachedInvite()
+            val validCachedInvite = cachedInvite?.takeIf { it.expiresAt == metadata.expiresAt } ?: run {
+                if (cachedInvite != null) clearCachedInvite()
+                null
+            }
             val requests = when (val result = entryRequestGateway.list(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
                 is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
@@ -116,7 +121,7 @@ class GroupInviteViewModel(
                     groupName = group.group.name,
                     inviteStatus = if (active) InviteStatus.Active else InviteStatus.Empty,
                     expiresLabel = metadata.expiresAt?.takeIf { active }?.formatExpiry(),
-                    inviteUrl = cachedUrl.takeIf { active },
+                    inviteUrl = validCachedInvite?.inviteUrl?.takeIf { active },
                     entryRequiresApproval = group.group.entryRequiresApproval,
                     pendingRequests = requests.map(GroupEntryRequest::toUi),
                     recentMembers = roster.sortedByDescending { it.joinedAt }
@@ -126,13 +131,19 @@ class GroupInviteViewModel(
         }
     }
 
-    private suspend fun readCachedUrl(): String? {
+    private suspend fun readCachedInvite(): GroupInviteUrlCache? {
         val result = CompletableDeferred<GroupInviteUrlReadResult>()
         urlStore.read(groupId) { result.complete(it) }
         return when (val value = result.await()) {
-            is GroupInviteUrlReadResult.Success -> value.inviteUrl?.takeIf(String::isNotBlank)
+            is GroupInviteUrlReadResult.Success -> value.cache?.takeIf { it.inviteUrl.isNotBlank() }
             GroupInviteUrlReadResult.Failure -> null
         }
+    }
+
+    private suspend fun clearCachedInvite() {
+        val result = CompletableDeferred<GroupInviteUrlWriteResult>()
+        urlStore.write(groupId, null) { result.complete(it) }
+        result.await()
     }
 
     private fun rotate() {
@@ -153,7 +164,7 @@ class GroupInviteViewModel(
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     val url = result.value.value
-                    urlStore.write(groupId, url) { writeResult ->
+                    urlStore.write(groupId, GroupInviteUrlCache(url, result.value.expiresAt)) { writeResult ->
                         if (!isCurrent(operation, requestGeneration)) return@write
                         update {
                             it.copy(
@@ -259,7 +270,7 @@ class GroupInviteViewModel(
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     update { it.copy(pendingActionIds = it.pendingActionIds - userId) }
-                    load()
+                    refreshPendingRequests()
                 }
             }
         }
@@ -282,9 +293,24 @@ class GroupInviteViewModel(
                     update {
                         it.copy(
                             pendingActionIds = it.pendingActionIds - userId,
-                            pendingRequests = it.pendingRequests.filterNot { request -> request.userId == userId },
                         )
                     }
+                    refreshPendingRequests()
+                }
+            }
+        }
+    }
+
+    private fun refreshPendingRequests() {
+        val operation = GenerationKey(GenerationOperation.RefreshRequests)
+        val requestGeneration = nextGeneration(operation)
+        viewModelScope.launch {
+            when (val result = entryRequestGateway.list(GroupId(groupId))) {
+                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
+                    update { it.copy(error = GroupInviteError.Operation) }
+                }
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
+                    update { it.copy(pendingRequests = result.value.map(GroupEntryRequest::toUi)) }
                 }
             }
         }

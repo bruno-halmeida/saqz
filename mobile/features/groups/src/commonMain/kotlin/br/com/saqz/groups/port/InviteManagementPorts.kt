@@ -1,7 +1,12 @@
 package br.com.saqz.groups.port
 
+data class GroupInviteUrlCache(
+    val inviteUrl: String,
+    val expiresAt: String?,
+)
+
 sealed interface GroupInviteUrlReadResult {
-    data class Success(val inviteUrl: String?) : GroupInviteUrlReadResult
+    data class Success(val cache: GroupInviteUrlCache?) : GroupInviteUrlReadResult
     data object Failure : GroupInviteUrlReadResult
 }
 
@@ -20,7 +25,7 @@ fun interface GroupInviteUrlWriteCallback {
 
 interface GroupInviteUrlStorePort {
     fun read(groupId: String, done: GroupInviteUrlReadCallback)
-    fun write(groupId: String, inviteUrl: String?, done: GroupInviteUrlWriteCallback)
+    fun write(groupId: String, cache: GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback)
 }
 
 enum class InviteNativeFailureCode { PROVIDER_UNAVAILABLE }

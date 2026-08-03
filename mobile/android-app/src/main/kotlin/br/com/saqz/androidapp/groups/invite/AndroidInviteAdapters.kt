@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
+import br.com.saqz.groups.port.GroupInviteUrlCache
 import br.com.saqz.groups.port.GroupInviteUrlReadCallback
 import br.com.saqz.groups.port.GroupInviteUrlReadResult
 import br.com.saqz.groups.port.GroupInviteUrlStorePort
@@ -27,27 +28,39 @@ internal class AndroidInviteUrlStore(context: Context) : GroupInviteUrlStorePort
     private val preferences = context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
     override fun read(groupId: String, done: GroupInviteUrlReadCallback) {
-        runCatching { preferences.getString(key(groupId), null) }
+        runCatching {
+            preferences.getString(urlKey(groupId), null)?.let { inviteUrl ->
+                GroupInviteUrlCache(inviteUrl, preferences.getString(expiresAtKey(groupId), null))
+            }
+        }
             .fold(
                 onSuccess = { done.complete(GroupInviteUrlReadResult.Success(it)) },
                 onFailure = { done.complete(GroupInviteUrlReadResult.Failure) },
             )
     }
 
-    override fun write(groupId: String, inviteUrl: String?, done: GroupInviteUrlWriteCallback) {
+    override fun write(groupId: String, cache: GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) {
         val committed = runCatching {
             val editor = preferences.edit()
-            if (inviteUrl == null) editor.remove(key(groupId)) else editor.putString(key(groupId), inviteUrl)
+            if (cache == null) {
+                editor.remove(urlKey(groupId)).remove(expiresAtKey(groupId))
+            } else {
+                editor.putString(urlKey(groupId), cache.inviteUrl)
+                cache.expiresAt?.let { editor.putString(expiresAtKey(groupId), it) }
+                    ?: editor.remove(expiresAtKey(groupId))
+            }
             editor.commit()
         }.getOrDefault(false)
         done.complete(if (committed) GroupInviteUrlWriteResult.Success else GroupInviteUrlWriteResult.Failure)
     }
 
-    private fun key(groupId: String) = "$KEY_PREFIX$groupId"
+    private fun urlKey(groupId: String) = "$KEY_PREFIX$groupId"
+    private fun expiresAtKey(groupId: String) = "$EXPIRES_AT_PREFIX$groupId"
 
     private companion object {
         const val NAME = "saqz_group_invites_v1"
         const val KEY_PREFIX = "invite-url:"
+        const val EXPIRES_AT_PREFIX = "invite-expires-at:"
     }
 }
 
