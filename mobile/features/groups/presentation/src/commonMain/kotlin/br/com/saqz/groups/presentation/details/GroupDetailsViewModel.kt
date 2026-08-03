@@ -26,11 +26,11 @@ import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
+import br.com.saqz.groups.port.GroupNowPort
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -43,6 +43,7 @@ class GroupDetailsViewModel(
     private val gameGateway: GameGateway,
     private val attendanceGateway: AttendanceGateway,
     private val athleteGateway: AthleteGateway,
+    private val now: GroupNowPort,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -104,7 +105,7 @@ class GroupDetailsViewModel(
     @Suppress("ReturnCount")
     private suspend fun loadNextGame(generation: Int, group: Group, games: List<Game>) {
         if (generation != loadGeneration) return
-        val game = games.nextPublishedGame()
+        val game = games.nextPublishedGame(now.now())
         if (game == null) {
             update {
                 it.copy(
@@ -167,6 +168,7 @@ class GroupDetailsViewModel(
         val game = current.nextGame ?: return
         if (current.isAdmin || !game.confirmationOpen || current.responding) return
         val generation = ++responseGeneration
+        rosterGeneration++
         val loadAtStart = loadGeneration
         val previousResponse = current.memberResponse
         update {
@@ -353,14 +355,13 @@ class GroupDetailsViewModel(
     }
 
     private fun Game.deadlineIsOpen(): Boolean {
-        return runCatching { Instant.parse(confirmationDeadline) > Clock.System.now() }
+        return runCatching { Instant.parse(confirmationDeadline) > now.now() }
             .getOrDefault(true)
     }
 }
 
-private fun List<Game>.nextPublishedGame(): Game? {
+private fun List<Game>.nextPublishedGame(now: Instant): Game? {
     val published = filter { it.status == GameStatus.Published }
-    val now = Clock.System.now()
     return published
         .mapNotNull { game -> runCatching { Instant.parse(game.startsAt) to game }.getOrNull() }
         .filter { it.first >= now }

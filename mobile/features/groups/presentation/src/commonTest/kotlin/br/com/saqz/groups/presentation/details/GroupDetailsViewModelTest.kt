@@ -26,6 +26,7 @@ import br.com.saqz.groups.presentation.sampleAttendanceRoster
 import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation
 import br.com.saqz.groups.presentation.sampleVersionedGroup
+import br.com.saqz.groups.port.GroupNowPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -354,7 +355,7 @@ class GroupDetailsViewModelTest {
         gameGateway: FakeGameGateway = FakeGameGateway(),
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),
         athleteGateway: FakeAthleteGateway = FakeAthleteGateway(),
-    ) = GroupDetailsViewModel(GROUP_ID, groupGateway, gameGateway, attendanceGateway, athleteGateway)
+    ) = GroupDetailsViewModel(GROUP_ID, groupGateway, gameGateway, attendanceGateway, athleteGateway, GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") })
 
     private fun athleteGroupGateway() = FakeGroupGateway(
         readResult = SaqzResult.Success(

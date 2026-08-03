@@ -51,7 +51,7 @@ internal fun GroupGameResponseSection(
 ) {
     val metrics = SaqzTheme.metrics
     val response = state.memberResponse
-    val canRespond = state.nextGame?.confirmationOpen == true && !state.responding
+    val canRespond = state.nextGame?.confirmationOpen == true && !state.responding && !state.rosterRefreshing
     SaqzCard(modifier = modifier.testTag(GroupGameResponseTags.Section)) {
         Text(
             text = stringResource(Res.string.game_response_question),
