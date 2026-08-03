@@ -66,7 +66,6 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_details_admin
 import br.com.saqz.groups.resources.group_details_cash
 import br.com.saqz.groups.resources.group_details_chat
-import br.com.saqz.groups.resources.group_details_confirm_attendance
 import br.com.saqz.groups.resources.group_details_create_next_game
 import br.com.saqz.groups.resources.group_details_edit_group
 import br.com.saqz.groups.resources.group_details_going
@@ -78,7 +77,6 @@ import br.com.saqz.groups.resources.group_details_leave
 import br.com.saqz.groups.resources.group_details_manage
 import br.com.saqz.groups.resources.group_details_manage_members
 import br.com.saqz.groups.resources.group_details_manage_schedule
-import br.com.saqz.groups.resources.group_details_maybe
 import br.com.saqz.groups.resources.group_details_members
 import br.com.saqz.groups.resources.group_details_next_game
 import br.com.saqz.groups.resources.group_details_notices
@@ -90,6 +88,8 @@ import br.com.saqz.groups.resources.group_details_view_all
 import br.com.saqz.groups.resources.group_details_view_game
 import br.com.saqz.groups.resources.group_member_attendance_going
 import br.com.saqz.groups.resources.group_member_attendance_maybe
+import br.com.saqz.groups.resources.game_response_no
+import br.com.saqz.groups.resources.game_response_spots
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import br.com.saqz.designsystem.resources.Res as DesignSystemRes
@@ -261,27 +261,27 @@ internal fun GroupNextGameCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SaqzAvatarStack(names = nextGame.confirmedNames)
-            Text(
-                text = nextGame.confirmedSummary,
-                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.textSecondary,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
+                Text(
+                    text = nextGame.confirmedSummary,
+                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.textSecondary,
+                )
+                Text(
+                    text = stringResource(Res.string.game_response_spots, nextGame.availableSpots),
+                    style = SaqzTheme.typography.caption,
+                    color = colors.textSecondary,
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
         ) {
             SaqzButton(
-                label = stringResource(Res.string.group_details_confirm_attendance),
-                onClick = { onIntent(GroupDetailsIntent.ConfirmAttendance) },
-                modifier = Modifier.weight(1f).testTag(GroupDetailsTags.ConfirmAttendance),
-                size = SaqzButtonSize.Sm,
-                fullWidth = true,
-            )
-            SaqzButton(
                 label = stringResource(Res.string.group_details_view_game),
                 onClick = { onIntent(GroupDetailsIntent.ViewGame) },
-                modifier = Modifier.weight(1f).testTag(GroupDetailsTags.ViewGame),
+                modifier = Modifier.fillMaxWidth().testTag(GroupDetailsTags.ViewGame),
                 variant = SaqzButtonVariant.Secondary,
                 size = SaqzButtonSize.Sm,
                 fullWidth = true,
@@ -297,6 +297,7 @@ internal fun GroupNextGameCard(
 @Composable
 internal fun GroupAttendanceStats(
     attendance: AttendanceSummaryUi,
+    isAdmin: Boolean,
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -325,7 +326,7 @@ internal fun GroupAttendanceStats(
         ) {
             GroupAttendanceStat(attendance.going, stringResource(Res.string.group_details_going), colors.success)
             SaqzDivider(vertical = true)
-            GroupAttendanceStat(attendance.maybe, stringResource(Res.string.group_details_maybe), colors.warning)
+            GroupAttendanceStat(attendance.notGoing, stringResource(Res.string.game_response_no), colors.errorForeground)
             SaqzDivider(vertical = true)
             GroupAttendanceStat(
                 value = attendance.pending,
@@ -333,14 +334,16 @@ internal fun GroupAttendanceStats(
                 color = colors.textSecondary,
             )
         }
-        SaqzButton(
-            label = stringResource(Res.string.group_details_notify_pending),
-            onClick = { onIntent(GroupDetailsIntent.NotifyPending) },
-            modifier = Modifier.testTag(GroupDetailsTags.NotifyPending),
-            variant = SaqzButtonVariant.Ghost,
-            fullWidth = true,
-            leadingContent = { tint -> SaqzIcon(SaqzIcons.Megaphone, tint = tint) },
-        )
+        if (isAdmin) {
+            SaqzButton(
+                label = stringResource(Res.string.group_details_notify_pending),
+                onClick = { onIntent(GroupDetailsIntent.NotifyPending) },
+                modifier = Modifier.testTag(GroupDetailsTags.NotifyPending),
+                variant = SaqzButtonVariant.Ghost,
+                fullWidth = true,
+                leadingContent = { tint -> SaqzIcon(SaqzIcons.Megaphone, tint = tint) },
+            )
+        }
     }
 }
 

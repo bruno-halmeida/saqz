@@ -4,6 +4,7 @@
     <string name="game_response_question">Você vai jogar?</string>
     <string name="game_response_yes">Vou</string>
     <string name="game_response_no">Não vou</string>
+    <string name="game_response_spots">%1$d vagas</string>
     <string name="game_response_confirmed">Você está confirmado na vaga.</string>
     <string name="game_response_declined">Você não vai jogar.</string>
     <string name="game_response_waitlisted">Você é o %1$dº da reserva.</string>

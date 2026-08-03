@@ -97,15 +97,6 @@ internal fun GameDetailScreen(
                 ) {
                     state.header?.let { GameDetailHeader(it) }
                     state.attendance?.let { GameDetailAttendance(it) }
-                    if (state.header?.statusTone == GameDetailStatusTone.Published) {
-                        GameResponseSection(
-                            state = state,
-                            onRespond = { onIntent(GameDetailIntent.Respond(it)) },
-                            onAutoConfirmationChange = {
-                                onIntent(GameDetailIntent.ToggleAutoConfirmation(it))
-                            },
-                        )
-                    }
                     state.confirmedRoster.takeIf { it.isNotEmpty() }?.let { GameDetailConfirmedList(it) }
                     state.waitlist.takeIf { it.isNotEmpty() }?.let { GameWaitlistSection(state, onIntent) }
                     if (state.isAdmin) {

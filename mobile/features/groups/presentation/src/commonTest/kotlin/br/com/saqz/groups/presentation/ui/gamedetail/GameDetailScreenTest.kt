@@ -8,11 +8,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.group.PromotionMode
-import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseStatus
-import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import br.com.saqz.groups.presentation.gamedetail.GameDetailWaitlistUi
@@ -50,51 +47,6 @@ class GameDetailScreenTest {
 
         onNodeWithTag(GameDetailTags.CancelSheet).assertExists()
         onNodeWithText("Cancelar o jogo?").assertExists()
-    }
-
-    @Test
-    fun `member response shows vou and nao vou without maybe`() = runComposeUiTest {
-        setScreen(
-            state = GameDetailPreviewData.admin.copy(
-                isAdmin = false,
-                memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Waitlisted, 3),
-                membershipType = AthleteMembershipType.AVULSO,
-            ),
-        )
-
-        onNodeWithText("Você vai jogar?").assertExists()
-        onNodeWithTag(GameResponseTags.Going).assertExists()
-        onNodeWithTag(GameResponseTags.NotGoing).assertExists()
-        onNodeWithText("Você é o 3º da reserva.").assertExists()
-        onNodeWithText("Ao confirmar, a cobrança deste jogo será gerada.").assertExists()
-        onAllNodesWithText("Talvez").assertCountEquals(0)
-    }
-
-    @Test
-    fun `member response is locked after deadline`() = runComposeUiTest {
-        setScreen(
-            state = GameDetailPreviewData.admin.copy(
-                header = GameDetailPreviewData.header.copy(confirmationOpen = false),
-                memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Confirmed),
-            ),
-        )
-
-        onNodeWithText("As confirmações estão encerradas.").assertExists()
-        onNodeWithTag(GameResponseTags.Going).assertExists()
-        onNodeWithTag(GameResponseTags.NotGoing).assertExists()
-    }
-
-    @Test
-    fun `auto confirmation is visible only for eligible member`() = runComposeUiTest {
-        setScreen(
-            state = GameDetailPreviewData.admin.copy(
-                isAdmin = false,
-                membershipType = AthleteMembershipType.MENSALISTA,
-                autoConfirmationVisible = true,
-            ),
-        )
-
-        onNodeWithTag(GameResponseTags.AutoConfirmation).assertExists()
     }
 
     @Test
@@ -136,6 +88,14 @@ class GameDetailScreenTest {
         setScreen(waitlist = emptyList())
 
         onAllNodesWithText("Reserva").assertCountEquals(0)
+    }
+
+    @Test
+    fun `game detail does not render member response controls`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(isAdmin = false))
+
+        onAllNodesWithText("Você vai jogar?").assertCountEquals(0)
+        onAllNodesWithText("Confirmar presença automaticamente").assertCountEquals(0)
     }
 
     @Test

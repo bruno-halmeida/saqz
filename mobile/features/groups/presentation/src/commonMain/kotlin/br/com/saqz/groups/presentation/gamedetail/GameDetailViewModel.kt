@@ -10,17 +10,12 @@ import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
-import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
-import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
-import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
-import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -56,8 +51,6 @@ class GameDetailViewModel(
     private var loadGeneration = 0
     private var promotionGeneration = 0
     private var capacityGeneration = 0
-    private var responseGeneration = 0L
-    private var autoConfirmationGeneration = 0L
     private var versionToken: GameVersionToken? = null
     init {
         load()
@@ -82,16 +75,12 @@ class GameDetailViewModel(
             GameDetailIntent.DismissCapacitySheet -> if (!state.value.savingCapacity) {
                 update { it.copy(capacitySheetOpen = false, capacityFailed = false) }
             }
-            is GameDetailIntent.Respond -> respond(intent.intent)
-            is GameDetailIntent.ToggleAutoConfirmation -> toggleAutoConfirmation(intent.enabled)
         }
     }
     private fun load() {
         val generation = ++loadGeneration
         promotionGeneration++
         capacityGeneration++
-        responseGeneration++
-        autoConfirmationGeneration++
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
             val gameResult = gameGateway.read(GroupId(groupId), gameId)
@@ -110,7 +99,6 @@ class GameDetailViewModel(
                             groupResult.value.group.role != GroupRole.ATHLETE,
                             groupResult.value.group.gameConfig.mensalistaPriority,
                             groupResult.value.group.gameConfig.promotionMode,
-                            groupResult.value.group.gameConfig.autoConfirmEnabled,
                         )
                     }
                 }
@@ -124,20 +112,12 @@ class GameDetailViewModel(
         isAdmin: Boolean,
         mensalistaPriority: Boolean,
         promotionMode: PromotionMode,
-        autoConfirmationGroupEnabled: Boolean,
     ) {
         val detailResult = attendanceGateway.read(GroupId(groupId), gameId)
         if (generation != loadGeneration) return
         val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)
         if (generation != loadGeneration) return
         val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
-        if (generation != loadGeneration) return
-        val membershipType = when (val profileResult = athleteGateway.ownProfile()) {
-            is SaqzResult.Success -> profileResult.value.memberships
-                .firstOrNull { it.groupId == GroupId(groupId) }
-                ?.membershipType
-            is SaqzResult.Failure -> null
-        }
         if (generation != loadGeneration) return
         when {
             detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError())
@@ -154,15 +134,6 @@ class GameDetailViewModel(
                         error = null,
                         header = game.toHeader().copy(availableSpots = detail.availableSpots),
                         attendance = detail.toAttendance(),
-                        memberResponse = detail.ownAttendance?.toResponse(roster),
-                        responding = false,
-                        responseFailed = false,
-                        membershipType = membershipType,
-                        autoConfirmationVisible = membershipType == AthleteMembershipType.MENSALISTA &&
-                            autoConfirmationGroupEnabled,
-                        autoConfirmationEnabled = false,
-                        autoConfirmationUpdating = false,
-                        autoConfirmationFailed = false,
                         confirmedRoster = roster.confirmed.map { member -> member.toConfirmed(athletes[member.memberId]) },
                         waitlist = roster.waitlisted.map { member -> member.toWaitlist(athletes[member.memberId]) },
                         mensalistaPriority = mensalistaPriority,
@@ -173,92 +144,6 @@ class GameDetailViewModel(
                         capacitySheetOpen = false,
                         savingCapacity = false,
                         capacityFailed = false,
-                    )
-                }
-            }
-        }
-    }
-
-    private fun respond(intent: AttendanceIntent) {
-        val current = state.value
-        if (current.header?.confirmationOpen != true || current.responding) return
-        val generation = ++responseGeneration
-        val previous = current.memberResponse
-        update {
-            it.copy(
-                memberResponse = GameDetailResponseUi(intent.toResponseStatus()),
-                responding = true,
-                responseFailed = false,
-            )
-        }
-        viewModelScope.launch {
-            val result = attendanceGateway.respond(
-                GroupId(groupId),
-                gameId,
-                SelfAttendanceCommand(Uuid.random().toString(), intent),
-            )
-            if (generation != responseGeneration) return@launch
-            when (result) {
-                is SaqzResult.Success -> {
-                    val roster = when (val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)) {
-                        is SaqzResult.Success -> rosterResult.value
-                        is SaqzResult.Failure -> null
-                    }
-                    if (generation != responseGeneration) return@launch
-                    update {
-                        it.copy(
-                            memberResponse = result.value.value.attendance.toResponse(roster),
-                            attendance = result.value.value.detail.toAttendance(),
-                            responding = false,
-                            responseFailed = false,
-                        )
-                    }
-                }
-                is SaqzResult.Failure -> update {
-                    it.copy(
-                        memberResponse = previous,
-                        responding = false,
-                        responseFailed = true,
-                        header = if (result.error == AttendanceError.DeadlinePassed) {
-                            it.header?.copy(confirmationOpen = false)
-                        } else it.header,
-                    )
-                }
-            }
-        }
-    }
-
-    private fun toggleAutoConfirmation(enabled: Boolean) {
-        val current = state.value
-        if (!current.autoConfirmationVisible || current.autoConfirmationUpdating) return
-        val generation = ++autoConfirmationGeneration
-        val previous = current.autoConfirmationEnabled
-        update {
-            it.copy(
-                autoConfirmationEnabled = enabled,
-                autoConfirmationUpdating = true,
-                autoConfirmationFailed = false,
-            )
-        }
-        viewModelScope.launch {
-            val result = attendanceGateway.updateAutoConfirmation(
-                GroupId(groupId),
-                AutoConfirmationCommand(enabled),
-            )
-            if (generation != autoConfirmationGeneration) return@launch
-            when (result) {
-                is SaqzResult.Success -> update {
-                    it.copy(
-                        autoConfirmationEnabled = result.value.enabled,
-                        autoConfirmationUpdating = false,
-                        autoConfirmationFailed = false,
-                    )
-                }
-                is SaqzResult.Failure -> update {
-                    it.copy(
-                        autoConfirmationEnabled = previous,
-                        autoConfirmationUpdating = false,
-                        autoConfirmationFailed = true,
                     )
                 }
             }
@@ -488,28 +373,6 @@ class GameDetailViewModel(
         declined = 0,
         pending = waitlistCount,
     )
-
-    private fun AttendanceEntry.toResponse(roster: AttendanceRoster?) = GameDetailResponseUi(
-        status = status.toResponseStatus(),
-        waitlistPosition = if (status == AttendanceStatus.Waitlisted) {
-            roster?.waitlisted
-                ?.indexOfFirst { it.memberId == memberId }
-                ?.takeIf { it >= 0 }
-                ?.let { it + 1L }
-                ?: waitlistPosition
-        } else null,
-    )
-
-    private fun AttendanceIntent.toResponseStatus() = when (this) {
-        AttendanceIntent.Confirm -> GameDetailResponseStatus.Confirmed
-        AttendanceIntent.Decline -> GameDetailResponseStatus.Declined
-    }
-
-    private fun AttendanceStatus.toResponseStatus() = when (this) {
-        AttendanceStatus.Confirmed -> GameDetailResponseStatus.Confirmed
-        AttendanceStatus.Declined -> GameDetailResponseStatus.Declined
-        AttendanceStatus.Waitlisted -> GameDetailResponseStatus.Waitlisted
-    }
 
     private fun AttendanceRosterMember.toConfirmed(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(
         id = memberId,

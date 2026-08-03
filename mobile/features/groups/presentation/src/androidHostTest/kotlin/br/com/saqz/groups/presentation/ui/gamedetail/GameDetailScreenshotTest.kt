@@ -9,10 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseStatus
-import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -54,6 +51,14 @@ class GameDetailScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h1400dp")
+    fun memberWithoutResponse() = capture(
+        "game-detail-member-without-response",
+        GameDetailPreviewData.admin.copy(isAdmin = false),
+        directory = "vul-159",
+    )
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
     fun draft() = capture(
         "game-detail-draft",
         GameDetailPreviewData.admin.copy(
@@ -91,44 +96,6 @@ class GameDetailScreenshotTest {
     fun cancelFailed() = capture(
         "game-detail-cancel-failed",
         GameDetailPreviewData.admin.copy(cancelDialogOpen = true, cancelFailed = true),
-    )
-
-    @Test
-    @Config(qualifiers = "+h1400dp")
-    fun responseConfirmedWithAutoConfirmation() = capture(
-        "game-detail-response-confirmed-auto",
-        GameDetailPreviewData.admin.copy(
-            isAdmin = false,
-            memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Confirmed),
-            membershipType = AthleteMembershipType.MENSALISTA,
-            autoConfirmationVisible = true,
-            autoConfirmationEnabled = true,
-        ),
-        directory = "vul-159",
-    )
-
-    @Test
-    @Config(qualifiers = "+h1400dp")
-    fun responseWaitlisted() = capture(
-        "game-detail-response-waitlisted",
-        GameDetailPreviewData.admin.copy(
-            isAdmin = false,
-            memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Waitlisted, 3),
-            membershipType = AthleteMembershipType.AVULSO,
-        ),
-        directory = "vul-159",
-    )
-
-    @Test
-    @Config(qualifiers = "+h1400dp")
-    fun responseClosed() = capture(
-        "game-detail-response-closed",
-        GameDetailPreviewData.admin.copy(
-            isAdmin = false,
-            header = GameDetailPreviewData.header.copy(confirmationOpen = false),
-            memberResponse = GameDetailResponseUi(GameDetailResponseStatus.Confirmed),
-        ),
-        directory = "vul-159",
     )
 
     private fun capture(name: String, state: GameDetailState, directory: String = "vul-154") = capture(name, directory) {

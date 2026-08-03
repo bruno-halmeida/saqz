@@ -1,6 +1,8 @@
 package br.com.saqz.groups.presentation.details
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.presentation.GroupUiError
 
 /**
@@ -26,6 +28,14 @@ data class GroupDetailsState(
     val memberPreview: List<MemberPreviewUi> = emptyList(),
     val memberCount: Int = 0,
     val scheduleSummary: String? = null,
+    val memberResponse: GroupDetailsResponseUi? = null,
+    val responding: Boolean = false,
+    val responseFailed: Boolean = false,
+    val membershipType: AthleteMembershipType? = null,
+    val autoConfirmationVisible: Boolean = false,
+    val autoConfirmationEnabled: Boolean = false,
+    val autoConfirmationUpdating: Boolean = false,
+    val autoConfirmationFailed: Boolean = false,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -46,11 +56,14 @@ data class GroupSummaryChipUi(val text: String, val highlighted: Boolean = false
 /** O card de destaque do 2e: data grande, local numa linha, pilha de avatares. */
 @Immutable
 data class NextGameUi(
+    val gameId: String = "",
     val date: String,
     val venue: String,
     val deadline: String,
     val confirmedSummary: String,
     val confirmedNames: List<String> = emptyList(),
+    val availableSpots: Int = 0,
+    val confirmationOpen: Boolean = true,
 )
 
 /** Os contadores 9 / 3 / 4 do 2f, com o título da própria linha e o "9/12" azul. */
@@ -59,9 +72,18 @@ data class AttendanceSummaryUi(
     val title: String,
     val ratio: String,
     val going: Int,
-    val maybe: Int,
+    val notGoing: Int,
     val pending: Int,
+    val availableSpots: Int = 0,
 )
+
+@Immutable
+data class GroupDetailsResponseUi(
+    val status: GroupDetailsResponseStatus,
+    val waitlistPosition: Long? = null,
+)
+
+enum class GroupDetailsResponseStatus { Confirmed, Declined, Waitlisted }
 
 /** A linha de caixa do 2f — saldo e mensalidades já num texto só. */
 @Immutable
@@ -129,6 +151,10 @@ sealed interface GroupDetailsIntent {
     data object OpenCashbox : GroupDetailsIntent
 
     data object Leave : GroupDetailsIntent
+
+    data class Respond(val intent: AttendanceIntent) : GroupDetailsIntent
+
+    data class ToggleAutoConfirmation(val enabled: Boolean) : GroupDetailsIntent
 }
 
 /**

@@ -2,8 +2,6 @@ package br.com.saqz.groups.presentation.gamedetail
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthletePosition
-import br.com.saqz.groups.domain.athlete.AthleteMembershipType
-import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
@@ -16,14 +14,6 @@ data class GameDetailState(
     val error: GroupUiError? = null,
     val header: GameDetailHeaderUi? = null,
     val attendance: GameDetailAttendanceUi? = null,
-    val memberResponse: GameDetailResponseUi? = null,
-    val responding: Boolean = false,
-    val responseFailed: Boolean = false,
-    val membershipType: AthleteMembershipType? = null,
-    val autoConfirmationVisible: Boolean = false,
-    val autoConfirmationEnabled: Boolean = false,
-    val autoConfirmationUpdating: Boolean = false,
-    val autoConfirmationFailed: Boolean = false,
     val confirmedRoster: List<GameDetailConfirmedUi> = emptyList(),
     val waitlist: List<GameDetailWaitlistUi> = emptyList(),
     val mensalistaPriority: Boolean = false,
@@ -76,12 +66,6 @@ data class GameDetailWaitlistUi(
     val athletePosition: AthletePosition?,
     val isMensalista: Boolean,
 )
-@Immutable
-data class GameDetailResponseUi(
-    val status: GameDetailResponseStatus,
-    val waitlistPosition: Long? = null,
-)
-enum class GameDetailResponseStatus { Confirmed, Declined, Waitlisted }
 sealed interface GameDetailIntent {
     data object Retry : GameDetailIntent
     data object Edit : GameDetailIntent
@@ -93,8 +77,6 @@ sealed interface GameDetailIntent {
     data class UpdateCapacity(val value: Int) : GameDetailIntent
     data object SaveCapacity : GameDetailIntent
     data object DismissCapacitySheet : GameDetailIntent
-    data class Respond(val intent: AttendanceIntent) : GameDetailIntent
-    data class ToggleAutoConfirmation(val enabled: Boolean) : GameDetailIntent
 }
 sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect

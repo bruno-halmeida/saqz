@@ -42,6 +42,7 @@ data class AttendanceDetail(
     val availableSpots: Int,
     val waitlistCount: Int,
     val capacity: Int,
+    val declinedCount: Int = 0,
 )
 
 data class AttendanceRosterMember(

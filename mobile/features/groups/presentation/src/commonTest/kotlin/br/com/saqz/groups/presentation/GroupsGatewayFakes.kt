@@ -23,6 +23,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
+import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.game.Game
@@ -269,6 +270,8 @@ class FakeGameGateway(
 class FakeAttendanceGateway(
     var detailResult: SaqzResult<AttendanceDetail, AttendanceError> = SaqzResult.Success(sampleAttendanceDetail()),
     var rosterResult: SaqzResult<AttendanceRoster, AttendanceError> = SaqzResult.Success(sampleAttendanceRoster()),
+    var respondResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        SaqzResult.Success(sampleVersionedAttendanceMutation()),
     var promoteResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> =
         SaqzResult.Success(sampleVersionedAttendanceMutation()),
     var capacityResult: SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
@@ -278,9 +281,13 @@ class FakeAttendanceGateway(
 ) : AttendanceGateway {
     var readCalls = 0
     var rosterCalls = 0
+    var respondCalls = 0
     var promoteCalls = 0
     var capacityCalls = 0
     var lastPromotionCommand: AttendancePromotionCommand? = null
+    var lastAttendanceCommand: SelfAttendanceCommand? = null
+    var rosterResults: MutableList<SaqzResult<AttendanceRoster, AttendanceError>> = mutableListOf()
+    var respondDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
     var lastCapacityCommand: AttendanceCapacityCommand? = null
     var lastCapacityVersion: AttendanceVersionToken? = null
     var promoteDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
@@ -293,15 +300,18 @@ class FakeAttendanceGateway(
 
     override suspend fun roster(groupId: GroupId, gameId: String): SaqzResult<AttendanceRoster, AttendanceError> {
         rosterCalls++
-        return rosterResult
+        return if (rosterResults.isNotEmpty()) rosterResults.removeAt(0) else rosterResult
     }
 
     override suspend fun respond(
         groupId: GroupId,
         gameId: String,
-        command: br.com.saqz.groups.domain.attendance.SelfAttendanceCommand,
-    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> =
-        error("not used in this screen")
+        command: SelfAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
+        respondCalls++
+        lastAttendanceCommand = command
+        return respondDeferred?.await() ?: respondResult
+    }
 
     override suspend fun promote(
         groupId: GroupId,

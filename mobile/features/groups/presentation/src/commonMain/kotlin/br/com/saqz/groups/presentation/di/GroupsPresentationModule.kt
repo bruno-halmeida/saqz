@@ -47,7 +47,7 @@ fun groupsPresentationModule(): Module = module {
             timeZonePort = get<GroupSystemTimeZonePort>(),
         )
     }
-    viewModel { params -> GroupDetailsViewModel(params.get(), get()) }
+    viewModel { params -> GroupDetailsViewModel(params.get(), get(), get(), get(), get()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel {
