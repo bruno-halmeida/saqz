@@ -184,6 +184,7 @@ class FakeGameGateway(
     private val reads: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
     private val readResults: ArrayDeque<SaqzResult<VersionedGame, GameError>>? = null,
     private val lifecycleResults: ArrayDeque<SaqzResult<VersionedGame, GameError>>? = null,
+    private val lifecycleDeferreds: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
 ) : GameGateway {
     var readCalls = 0
     var lastLifecycleAction: GameLifecycleAction? = null
@@ -218,7 +219,9 @@ class FakeGameGateway(
     ): SaqzResult<VersionedGame, GameError> {
         lastLifecycleAction = action
         lifecycleVersions += version
-        return lifecycleResults?.removeFirstOrNull() ?: lifecycleResult
+        return lifecycleDeferreds?.removeFirstOrNull()?.await()
+            ?: lifecycleResults?.removeFirstOrNull()
+            ?: lifecycleResult
     }
 
     override suspend fun createSeries(

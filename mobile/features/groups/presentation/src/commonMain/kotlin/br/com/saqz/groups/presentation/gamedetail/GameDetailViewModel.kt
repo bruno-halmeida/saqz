@@ -37,7 +37,9 @@ class GameDetailViewModel(
             GameDetailIntent.RequestCancel -> if (state.value.header?.statusTone?.isTerminal() != true) {
                 update { it.copy(cancelDialogOpen = true, cancelFailed = false) }
             }
-            GameDetailIntent.DismissCancel -> update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
+            GameDetailIntent.DismissCancel -> if (!state.value.cancelling) {
+                update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
+            }
             GameDetailIntent.ConfirmCancel -> cancel()
         }
     }
@@ -51,17 +53,20 @@ class GameDetailViewModel(
                 is SaqzResult.Failure -> showFailure(generation, gameResult.error.toUiError())
                 is SaqzResult.Success -> {
                     versionToken = gameResult.value.version
-                    val role = groupGateway.read(GroupId(groupId))
+                    val groupResult = groupGateway.read(GroupId(groupId))
                     if (generation != loadGeneration) return@launch
-                    update {
-                        it.copy(
-                            isLoading = false,
-                            loadFailed = false,
-                            error = null,
-                            header = gameResult.value.game.toHeader(),
-                            attendance = gameResult.value.game.toAttendance(),
-                            isAdmin = role is SaqzResult.Success && role.value.group.role != GroupRole.ATHLETE,
-                        )
+                    when (groupResult) {
+                        is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
+                        is SaqzResult.Success -> update {
+                            it.copy(
+                                isLoading = false,
+                                loadFailed = false,
+                                error = null,
+                                header = gameResult.value.game.toHeader(),
+                                attendance = gameResult.value.game.toAttendance(),
+                                isAdmin = groupResult.value.group.role != GroupRole.ATHLETE,
+                            )
+                        }
                     }
                 }
             }
@@ -101,13 +106,20 @@ class GameDetailViewModel(
         } else {
             title
         }
-        val deadline = runCatching { Instant.parse(confirmationDeadline) }
+        val deadlineLocal = runCatching { Instant.parse(confirmationDeadline) }
             .getOrNull()?.toLocalDateTime(zone)
-            ?.let { "${it.hour.pad()}:${it.minute.pad()}" } ?: confirmationDeadline
+        val deadlineDateDiffers = deadlineLocal?.date != local?.date
+        val deadline = deadlineLocal?.let {
+            val date = if (deadlineDateDiffers) "${formatDatePtBr(it.date)} · " else ""
+            "$date${it.hour.pad()}:${it.minute.pad()}"
+        } ?: confirmationDeadline
         val venueLine = listOfNotNull(venue.name, venue.court).joinToString(" — ")
         return GameDetailHeaderUi(
             statusTone = status.toTone(),
             confirmationDeadline = deadline,
+            confirmationDeadlineWeekday = deadlineLocal?.date
+                ?.takeIf { deadlineDateDiffers }
+                ?.let { GroupWeekday.entries[it.dayOfWeek.ordinal] },
             weekday = local?.let { GroupWeekday.entries[it.date.dayOfWeek.ordinal] },
             dateTime = dateTime,
             venue = venueLine.ifBlank { venue.name },

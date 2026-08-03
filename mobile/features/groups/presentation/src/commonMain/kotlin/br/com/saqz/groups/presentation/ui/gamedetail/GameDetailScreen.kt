@@ -66,6 +66,7 @@ import br.com.saqz.groups.resources.group_details_pending
 import org.jetbrains.compose.resources.stringResource
 internal object GameDetailTags {
     const val Screen = "game-detail"
+    const val CancelSheet = "game-detail-cancel-sheet"
 }
 @Composable
 internal fun GameDetailScreen(
@@ -75,31 +76,33 @@ internal fun GameDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
-    Column(modifier.fillMaxSize().testTag(GameDetailTags.Screen)) {
-        SaqzTopAppBar(title = stringResource(Res.string.game_detail_title), onBack = onBack)
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { SaqzSpinner() }
-            state.loadFailed -> GroupLoadFailure(
-                error = state.error,
-                onRetry = { onIntent(GameDetailIntent.Retry) },
-                modifier = Modifier.fillMaxSize(),
-            )
-            else -> Column(
-                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(
-                    horizontal = metrics.horizontalPadding,
-                    vertical = metrics.blockGap,
-                ),
-                verticalArrangement = Arrangement.spacedBy(metrics.grid * 2),
-            ) {
-                state.header?.let { GameDetailHeader(it) }
-                state.attendance?.let { GameDetailAttendance(it) }
-                state.confirmedRoster.takeIf { it.isNotEmpty() }?.let { GameDetailConfirmedList(it) }
-                if (state.isAdmin) {
-                    GameDetailAdminActions(
-                        cancelling = state.cancelling,
-                        canCancel = state.header?.statusTone?.isTerminal() != true,
-                        onIntent = onIntent,
-                    )
+    Box(modifier.fillMaxSize().testTag(GameDetailTags.Screen)) {
+        Column(Modifier.fillMaxSize()) {
+            SaqzTopAppBar(title = stringResource(Res.string.game_detail_title), onBack = onBack)
+            when {
+                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { SaqzSpinner() }
+                state.loadFailed -> GroupLoadFailure(
+                    error = state.error,
+                    onRetry = { onIntent(GameDetailIntent.Retry) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                else -> Column(
+                    Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(
+                        horizontal = metrics.horizontalPadding,
+                        vertical = metrics.blockGap,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(metrics.grid * 2),
+                ) {
+                    state.header?.let { GameDetailHeader(it) }
+                    state.attendance?.let { GameDetailAttendance(it) }
+                    state.confirmedRoster.takeIf { it.isNotEmpty() }?.let { GameDetailConfirmedList(it) }
+                    if (state.isAdmin) {
+                        GameDetailAdminActions(
+                            cancelling = state.cancelling,
+                            canCancel = state.header?.statusTone?.isTerminal() != true,
+                            onIntent = onIntent,
+                        )
+                    }
                 }
             }
         }
@@ -115,7 +118,12 @@ private fun GameDetailHeader(header: GameDetailHeaderUi) {
             tone = header.statusTone.chipTone(),
         )
         Text(
-            stringResource(Res.string.game_detail_confirmation_deadline, header.confirmationDeadline),
+            stringResource(
+                Res.string.game_detail_confirmation_deadline,
+                header.confirmationDeadlineWeekday?.shortLabel()?.let {
+                    "$it, ${header.confirmationDeadline}"
+                } ?: header.confirmationDeadline,
+            ),
             color = colors.textSecondary,
             style = SaqzTheme.typography.support,
         )
@@ -236,6 +244,7 @@ private fun GameDetailAdminActions(
 private fun GameDetailCancelSheet(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) = SaqzBottomSheet(
     open = true,
     onClose = { onIntent(GameDetailIntent.DismissCancel) },
+    modifier = Modifier.testTag(GameDetailTags.CancelSheet),
     title = stringResource(Res.string.game_detail_cancel_title),
     description = stringResource(
         if (state.cancelFailed) Res.string.game_detail_cancel_failed else Res.string.game_detail_cancel_body,

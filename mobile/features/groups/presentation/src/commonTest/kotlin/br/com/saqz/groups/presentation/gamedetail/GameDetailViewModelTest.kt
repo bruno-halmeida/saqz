@@ -6,10 +6,13 @@ import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleCancelledGame
+import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +58,29 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `group failure is visible instead of silently removing admin actions`() = runTest {
+        val groupGateway = FakeGroupGateway(
+            readResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Forbidden)),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            FakeGameGateway(),
+            groupGateway,
+        )
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isAdmin)
+
+        groupGateway.readResult = SaqzResult.Success(sampleVersionedGroup())
+        viewModel.onIntent(GameDetailIntent.Retry)
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertTrue(viewModel.state.value.isAdmin)
+    }
+
+    @Test
     fun `retry and generation guard work`() = runTest {
         val old = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val fresh = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
@@ -79,6 +105,44 @@ class GameDetailViewModelTest {
         assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
         assertFalse(viewModel.state.value.cancelDialogOpen)
         assertEquals(GameDetailEffect.Cancelled, viewModel.effects.first())
+    }
+
+    @Test
+    fun `dismiss is ignored while cancellation is in flight`() = runTest {
+        val lifecycle = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val viewModel = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            FakeGameGateway(lifecycleDeferreds = ArrayDeque(listOf(lifecycle))),
+            FakeGroupGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+        viewModel.onIntent(GameDetailIntent.DismissCancel)
+
+        assertTrue(viewModel.state.value.cancelling)
+        assertTrue(viewModel.state.value.cancelDialogOpen)
+
+        lifecycle.complete(SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))))
+
+        assertFalse(viewModel.state.value.cancelling)
+        assertFalse(viewModel.state.value.cancelDialogOpen)
+    }
+
+    @Test
+    fun `deadline includes its date when it is before the game day`() = runTest {
+        val game = sampleVersionedGame().game.copy(confirmationDeadline = "2026-08-03T22:30:00Z")
+        val viewModel = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(VersionedGame(game, GameVersionToken("etag-1")))),
+            FakeGroupGateway(),
+        )
+
+        val header = viewModel.state.value.header
+        assertEquals("03/08/2026 · 19:30", header?.confirmationDeadline)
+        assertEquals(GroupWeekday.MONDAY, header?.confirmationDeadlineWeekday)
     }
 
     @Test
