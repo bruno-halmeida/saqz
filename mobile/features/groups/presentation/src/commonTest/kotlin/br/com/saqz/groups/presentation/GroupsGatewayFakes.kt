@@ -180,9 +180,11 @@ class FakeAthleteGateway(
 class FakeGameGateway(
     var listResult: SaqzResult<List<Game>, GameError> = SaqzResult.Success(emptyList()),
     var readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
+    var lifecycleResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
     private val reads: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
 ) : GameGateway {
     var readCalls = 0
+    var lastLifecycleAction: GameLifecycleAction? = null
 
     override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listResult
 
@@ -210,7 +212,10 @@ class FakeGameGateway(
         gameId: String,
         version: GameVersionToken,
         action: GameLifecycleAction,
-    ): SaqzResult<VersionedGame, GameError> = error("not used in this screen")
+    ): SaqzResult<VersionedGame, GameError> {
+        lastLifecycleAction = action
+        return lifecycleResult
+    }
 
     override suspend fun createSeries(
         groupId: GroupId,
@@ -335,3 +340,5 @@ fun sampleGame() = Game(
 )
 
 fun sampleVersionedGame(game: Game = sampleGame()) = VersionedGame(game, GameVersionToken("etag-1"))
+
+fun sampleCancelledGame() = sampleGame().copy(status = GameStatus.Cancelled, version = 2)

@@ -15,12 +15,14 @@ fun GameDetailRoot(
     gameId: String,
     onBack: () -> Unit,
     onOpenEditor: () -> Unit,
+    onCancel: () -> Unit = onBack,
     viewModel: GameDetailViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             GameDetailEffect.OpenEditor -> onOpenEditor()
+            GameDetailEffect.Cancelled -> onCancel()
         }
     }
     GameDetailScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
