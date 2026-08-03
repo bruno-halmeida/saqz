@@ -50,6 +50,14 @@ sealed interface GroupsRoute : NavKey {
     /** 3g: member editor. */
     @Serializable
     data class MemberEditor(val groupId: String, val userId: String) : GroupsRoute
+
+    /** 4: editor de jogo. `gameId` null cria; presente edita. */
+    @Serializable
+    data class GameEditor(val groupId: String, val gameId: String? = null) : GroupsRoute
+
+    /** 4: detalhe do jogo. */
+    @Serializable
+    data class GameDetail(val groupId: String, val gameId: String) : GroupsRoute
 }
 
 @Serializable

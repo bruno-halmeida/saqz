@@ -51,6 +51,8 @@ import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
+import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
+import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
 import br.com.saqz.groups.presentation.ui.invite.InviteLandingRoot
 import br.com.saqz.groups.presentation.ui.invite.InvitePreviewMessageRoot
@@ -454,8 +456,23 @@ internal fun SaqzNavHost(
                 GroupScheduleRoot(
                     groupId = route.groupId,
                     onBack = pop,
-                    // TODO(Fluxo 4 · Jogos): abrir o jogo da agenda.
-                    onOpenGame = {},
+                    // 4 · Detalhe do jogo da agenda.
+                    onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                )
+            }
+            entry<GroupsRoute.GameEditor> { route ->
+                GameEditorRoot(
+                    groupId = route.groupId,
+                    gameId = route.gameId,
+                    onBack = pop,
+                )
+            }
+            entry<GroupsRoute.GameDetail> { route ->
+                GameDetailRoot(
+                    groupId = route.groupId,
+                    gameId = route.gameId,
+                    onBack = pop,
+                    onOpenEditor = { backStack.add(GroupsRoute.GameEditor(route.groupId, route.gameId)) },
                 )
             }
         },
@@ -576,8 +593,8 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         is GroupDetailsEffect.OpenSchedule -> add(GroupsRoute.Schedule(effect.groupId))
         // Sair do grupo devolve à lista; o efeito é a confirmação, não a pergunta.
         GroupDetailsEffect.Left -> pop()
-        // TODO(Fluxo 4 · Criar jogo)
-        is GroupDetailsEffect.OpenCreateGame -> Unit
+        // 4 · Criar jogo: abre o editor com gameId null.
+        is GroupDetailsEffect.OpenCreateGame -> add(GroupsRoute.GameEditor(effect.groupId))
         // TODO(Fluxo 5 · Financeiro, 5b)
         is GroupDetailsEffect.OpenCashbox -> Unit
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
