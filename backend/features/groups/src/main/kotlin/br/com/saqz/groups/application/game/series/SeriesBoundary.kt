@@ -80,13 +80,14 @@ class ApplySeriesBoundary(
         }
         val now = clock.instant()
         val materialized = resolved.map { MaterializedGameOccurrence(ids(), it, GameStatus.DRAFT, now) }
-        val result = repository.applyThisAndFuture(
-            FutureBoundaryCommand(
-                groupId, currentRevisionId, expectedVersion, successorRule, revisionNumber,
-                boundary, action, materialized,
-            ),
+        val command = FutureBoundaryCommand(
+            groupId, currentRevisionId, expectedVersion, successorRule, revisionNumber,
+            boundary, action, materialized,
         )
-        if (result == SeriesBoundaryResult.Applied || result == SeriesBoundaryResult.Replay) {
+        val result = repository.applyThisAndFuture(command)
+        if (command.action != SeriesBoundaryAction.CANCEL &&
+            (result == SeriesBoundaryResult.Applied || result == SeriesBoundaryResult.Replay)
+        ) {
             autoConfirmation.apply(materialized)
         }
         return result

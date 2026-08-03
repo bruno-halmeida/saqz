@@ -81,6 +81,14 @@ class ApplySeriesBoundaryTest {
         assertEquals(12, calls.single().size)
     }
 
+    @Test fun `future cancellation does not send occurrences to auto confirmation`() {
+        val calls = mutableListOf<List<MaterializedGameOccurrence>>()
+        val fixture = fixture(AutoConfirmationMaterializationPort { calls += it })
+
+        assertEquals(SeriesBoundaryResult.Applied, fixture.future(fixture.rule, SeriesBoundaryAction.CANCEL))
+        assertTrue(calls.isEmpty())
+    }
+
     private fun fixture(autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { }): Fixture {
         val group = UUID.randomUUID(); val lineage = UUID.randomUUID(); val successor = UUID.randomUUID()
         val rule = WeeklySeriesRule(group, lineage, successor, "America/Sao_Paulo", DATE, slots = listOf(slot()))
