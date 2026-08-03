@@ -152,9 +152,9 @@ internal fun SaqzNavHost(
                         inviteContext = null
                         backStack.add(GroupsRoute.AthleteRegistration(effect.groupId))
                     }
-                    InviteRedeemStatus.PENDING -> pendingInviteCode?.let { code ->
+                    InviteRedeemStatus.PENDING -> {
                         pendingInviteError = null
-                        backStack.add(GroupsRoute.InviteLanding(code, requestSent = true))
+                        backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))
                     }
                 }
                 is GroupInviteEffect.RedeemFailed -> {

@@ -52,7 +52,7 @@ class GroupInviteCoordinatorTest {
             fixture.events,
         )
         assertEquals(
-            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED),
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-authenticated"),
             fixture.coordinator.effects.first(),
         )
         assertNull(fixture.local.pending)
@@ -74,7 +74,10 @@ class GroupInviteCoordinatorTest {
         fixture.coordinator.onAuthenticated()
         runCurrent()
 
-        assertEquals(GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING), fixture.coordinator.effects.first())
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING, "invite-login"),
+            fixture.coordinator.effects.first(),
+        )
         assertNull(fixture.local.pending)
     }
 
@@ -91,10 +94,9 @@ class GroupInviteCoordinatorTest {
         fixture.coordinator.onAuthenticated()
         runCurrent()
 
-        assertEquals(
-            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING),
-            fixture.coordinator.effects.first(),
-        )
+        val effect = assertIs<GroupInviteEffect.NavigateToGroup>(fixture.coordinator.effects.first())
+        assertEquals(InviteRedeemStatus.PENDING, effect.status)
+        assertEquals("invite-relaunch", effect.inviteCode)
     }
 
     @Test
@@ -120,7 +122,10 @@ class GroupInviteCoordinatorTest {
         fixture.coordinator.onAuthenticated()
         runCurrent()
 
-        assertEquals(GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING), fixture.coordinator.effects.first())
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING, "invite-register"),
+            fixture.coordinator.effects.first(),
+        )
         assertNull(fixture.local.pending)
     }
 
@@ -196,7 +201,10 @@ class GroupInviteCoordinatorTest {
         releaseOldRedeem.complete(Unit)
         runCurrent()
 
-        assertEquals(GroupInviteEffect.NavigateToGroup("group-new", InviteRedeemStatus.JOINED), fixture.coordinator.effects.first())
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-new", InviteRedeemStatus.JOINED, "invite-new"),
+            fixture.coordinator.effects.first(),
+        )
         assertNull(withTimeoutOrNull(1) { fixture.coordinator.effects.first() })
         assertNull(fixture.local.pending)
     }

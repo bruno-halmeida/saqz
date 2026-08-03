@@ -33,6 +33,7 @@ sealed interface GroupInviteEffect {
     data class NavigateToGroup(
         val groupId: String,
         val status: InviteRedeemStatus,
+        val inviteCode: String,
     ) : GroupInviteEffect
 
     data class RedeemFailed(
@@ -164,6 +165,7 @@ class GroupInviteCoordinator(
                         GroupInviteEffect.NavigateToGroup(
                             groupId = result.value.groupId.value,
                             status = result.value.status,
+                            inviteCode = code.value,
                         ),
                     )
                 }
