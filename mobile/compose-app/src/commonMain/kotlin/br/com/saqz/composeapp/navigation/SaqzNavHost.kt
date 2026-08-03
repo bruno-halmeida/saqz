@@ -117,13 +117,17 @@ internal fun SaqzNavHost(
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
+    LaunchedEffect(inviteCoordinator) {
+        if (pendingInviteCode == null) {
+            // This must run before the session gate as well: a signed-out relaunch needs the
+            // preview to reach RegisterRoot when the user chooses the registration path.
+            pendingInviteCode = inviteCoordinator.readPendingInviteCode()
+        }
+    }
     LaunchedEffect(state.session) {
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
         restoring[0] = false
         if (state.session is SessionAccessState.Ready && !coordinatorAuthenticated) {
-            if (pendingInviteCode == null) {
-                pendingInviteCode = inviteCoordinator.readPendingInviteCode()
-            }
             coordinatorAuthenticated = true
             inviteCoordinator.onAuthenticated()
         } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {

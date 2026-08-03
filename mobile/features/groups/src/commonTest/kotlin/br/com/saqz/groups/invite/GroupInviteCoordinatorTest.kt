@@ -114,7 +114,7 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
-    fun `persisted invite code is available before relaunch redeem`() = runTest {
+    fun `signed out relaunch restores pending code and preview before redeem`() = runTest {
         val fixture = fixture()
         fixture.local.pending = "invite-relaunch"
         fixture.gateway.redeemResult = SaqzResult.Success(
@@ -122,6 +122,10 @@ class GroupInviteCoordinatorTest {
         )
 
         assertEquals("invite-relaunch", fixture.coordinator.readPendingInviteCode())
+        assertEquals(
+            InvitePreview("Vôlei do CERET", "Ana", entryRequiresApproval = false),
+            assertIs<SaqzResult.Success<InvitePreview>>(fixture.coordinator.previewPending()).value,
+        )
 
         fixture.coordinator.onAuthenticated()
         runCurrent()
