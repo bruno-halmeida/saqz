@@ -22,6 +22,7 @@ data class SubscriptionUsageResponse(
 
 data class MySubscriptionResponse(
     val status: SubscriptionStatus,
+    val entitled: Boolean,
     val plan: Plan,
     val cycle: SubscriptionCycle,
     val pendingPlan: Plan?,
@@ -53,6 +54,7 @@ class SubscriptionQueryController(
 
 private fun MySubscriptionView.toResponse() = MySubscriptionResponse(
     status = status,
+    entitled = entitled,
     plan = plan,
     cycle = cycle,
     pendingPlan = pendingPlan,

@@ -64,6 +64,7 @@ internal data class SubscriptionUsageTransport(
 @Serializable
 internal data class MySubscriptionTransport(
     val status: SubscriptionStatusTransport,
+    val entitled: Boolean,
     val plan: PlanTransport,
     val cycle: SubscriptionCycleTransport,
     val pendingPlan: PlanTransport? = null,
@@ -279,6 +280,7 @@ private fun PlanResponseTransport.toDomain() = PlanDetails(
 
 private fun MySubscriptionTransport.toDomain() = MySubscription(
     status = status.toDomain(),
+    entitled = entitled,
     plan = plan.toDomain(),
     cycle = cycle.toDomain(),
     pendingPlan = pendingPlan?.toDomain(),

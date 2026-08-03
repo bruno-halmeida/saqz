@@ -142,6 +142,42 @@ class GetMySubscriptionTest {
         assertTrue(GetMySubscription.isReadOnly(subscription, Instant.parse("2026-07-27T00:00:01Z")))
     }
 
+    /**
+     * `entitled` segue `Subscription.isEntitlingAt` — a regra do POST de criação — e não
+     * `readOnly`: PAST_DUE nunca confirmada fica dentro da carência de leitura mas não
+     * cria grupo (achado do Codex no PR #132).
+     */
+    @Test
+    fun `entitled mirrors the creation predicate not the read-only grace`() {
+        fun viewFor(subscription: Subscription): MySubscriptionView {
+            val useCase = GetMySubscription(MemorySubscriptions(subscription), FixedOwnedGroups(0), clock)
+            return assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId)).subscription
+        }
+
+        assertTrue(viewFor(baseSubscription()).entitled)
+
+        val pastDueNeverConfirmed = baseSubscription().copy(
+            status = SubscriptionStatus.PAST_DUE,
+            pastDueSince = Instant.parse("2026-07-28T12:00:00Z"),
+            firstConfirmedAt = null,
+        )
+        assertFalse(viewFor(pastDueNeverConfirmed).readOnly)
+        assertFalse(viewFor(pastDueNeverConfirmed).entitled)
+        assertTrue(viewFor(pastDueNeverConfirmed.copy(firstConfirmedAt = now.minusSeconds(60))).entitled)
+
+        val canceledPeriodExpired = baseSubscription().copy(
+            status = SubscriptionStatus.CANCELED,
+            canceledAt = Instant.parse("2026-07-28T12:00:00Z"),
+            currentPeriodEnd = Instant.parse("2026-07-29T00:00:00Z"),
+            firstConfirmedAt = now.minusSeconds(60),
+        )
+        assertFalse(viewFor(canceledPeriodExpired).readOnly)
+        assertFalse(viewFor(canceledPeriodExpired).entitled)
+        assertTrue(
+            viewFor(canceledPeriodExpired.copy(currentPeriodEnd = Instant.parse("2026-08-30T00:00:00Z"))).entitled,
+        )
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,

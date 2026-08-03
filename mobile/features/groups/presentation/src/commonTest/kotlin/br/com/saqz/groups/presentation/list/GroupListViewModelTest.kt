@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.list
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway

@@ -80,7 +80,7 @@ import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
-import br.com.saqz.groups.presentation.list.GroupCreationEntitlement
+import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode

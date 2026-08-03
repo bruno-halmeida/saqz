@@ -403,6 +403,7 @@ private val PLAN_DETAILS = listOf(
 
 private val ACTIVE_SUBSCRIPTION = MySubscription(
     status = SubscriptionStatus.Active,
+    entitled = true,
     plan = Plan.Organizador,
     cycle = SubscriptionCycle.Monthly,
     pendingPlan = null,

@@ -44,6 +44,8 @@ data class SubscriptionUsage(val groupsUsed: Int, val groupsLimit: Int?)
 
 data class MySubscription(
     val status: SubscriptionStatus,
+    /** Regra do backend (`Subscription.isEntitlingAt`): pode criar grupo se também houver vaga. */
+    val entitled: Boolean,
     val plan: Plan,
     val cycle: SubscriptionCycle,
     val pendingPlan: Plan?,

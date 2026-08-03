@@ -6,6 +6,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
 import br.com.saqz.groups.domain.group.Group
+import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.presentation.GroupUiError

@@ -1,4 +1,4 @@
-package br.com.saqz.groups.presentation.list
+package br.com.saqz.groups.domain.group
 
 /**
  * Porta para o Fluxo 8: quem sabe se o dono tem plano ativo com vaga de grupo é o
