@@ -61,6 +61,23 @@ class MaskedVisualTransformationTest {
     }
 
     @Test
+    fun inserting_in_the_middle_uses_raw_offsets_and_keeps_the_mask_consistent() {
+        val raw = "1199990000"
+        val transformed = PhoneVisualTransformation().filter(AnnotatedString(raw))
+        val mapping = transformed.offsetMapping
+        val cursorInTransformedText = mapping.originalToTransformed(6)
+        val cursorInRawText = mapping.transformedToOriginal(cursorInTransformedText)
+        val editedRaw = raw.substring(0, cursorInRawText) + "9" + raw.substring(cursorInRawText)
+
+        assertEquals(6, cursorInRawText)
+        assertEquals("11999990000", editedRaw)
+        assertEquals(
+            "(11) 99999-0000",
+            PhoneVisualTransformation().filter(AnnotatedString(editedRaw)).text.text,
+        )
+    }
+
+    @Test
     fun cpf_offset_mapping_stays_before_separators() {
         val mapping = CpfVisualTransformation()
             .filter(AnnotatedString("12345678901"))
