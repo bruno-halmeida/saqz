@@ -68,7 +68,17 @@ class GameEditorViewModel(
 
     private fun load() {
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, loadFailed = false, error = null) }
+        update {
+            it.copy(
+                isLoading = true,
+                loadFailed = false,
+                error = null,
+                isSaving = false,
+                saveFailed = false,
+                hasConflict = false,
+                conflictGameId = null,
+            )
+        }
         viewModelScope.launch {
             val groupResult = groupGateway.read(GroupId(groupId))
             if (generation != loadGeneration) return@launch
@@ -78,19 +88,20 @@ class GameEditorViewModel(
             }
             val group = (groupResult as SaqzResult.Success).value.group
             val profile = group.profile
-            val baseForm = restoreForm(GameEditorFields(
+            val defaultForm = GameEditorFields(
+                title = if (gameId == null) DEFAULT_TITLE else "",
                 durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes ?: DEFAULT_DURATION,
                 venue = profile?.defaultVenue?.toGameVenue(),
                 capacity = profile?.defaultCapacity ?: DEFAULT_CAPACITY,
                 confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes ?: DEFAULT_LEAD,
-            ))
+            )
             if (gameId == null) {
                 update {
                     it.copy(
                         isLoading = false,
                         groupName = group.name,
                         zoneId = group.timeZone.id,
-                        form = baseForm,
+                        form = restoreForm(defaultForm),
                     )
                 }
                 return@launch
@@ -101,24 +112,26 @@ class GameEditorViewModel(
                 is SaqzResult.Failure -> showLoadFailure(generation, gameResult.error.toUiError())
                 is SaqzResult.Success -> {
                     val game = gameResult.value.game
+                    val serverForm = defaultForm.copy(
+                        title = game.title,
+                        localDate = game.localDate,
+                        localTime = game.localTime,
+                        durationMinutes = game.durationMinutes,
+                        venue = game.venue,
+                        capacity = game.capacity,
+                        confirmationLeadMinutes = confirmationLeadMinutes(
+                            game.startsAt,
+                            game.confirmationDeadline,
+                        ) ?: defaultForm.confirmationLeadMinutes,
+                        notes = game.notes.orEmpty(),
+                    )
                     update {
                         it.copy(
                             isLoading = false,
                             loadFailed = false,
                             groupName = group.name,
                             zoneId = group.timeZone.id,
-                            form = baseForm.copy(
-                                localDate = game.localDate,
-                                localTime = game.localTime,
-                                durationMinutes = game.durationMinutes,
-                                venue = game.venue,
-                                capacity = game.capacity,
-                                confirmationLeadMinutes = confirmationLeadMinutes(
-                                    game.startsAt,
-                                    game.confirmationDeadline,
-                                ) ?: baseForm.confirmationLeadMinutes,
-                                notes = game.notes.orEmpty(),
-                            ),
+                            form = restoreForm(serverForm),
                             versionToken = gameResult.value.version.value,
                         )
                     }
@@ -162,16 +175,20 @@ class GameEditorViewModel(
                 }
                 is SaqzResult.Failure -> {
                     val error = result.error
-                    if (error is GameError.Conflict) {
-                        update {
+                    when (error) {
+                        is GameError.Conflict -> update {
                             it.copy(
                                 isSaving = false,
                                 hasConflict = true,
                                 conflictGameId = error.conflictGameId,
                             )
                         }
-                    } else {
-                        update {
+                        GameError.VersionConflict -> if (gameId == null) {
+                            update { it.copy(isSaving = false, saveFailed = true, error = error.toUiError()) }
+                        } else {
+                            load()
+                        }
+                        else -> update {
                             it.copy(isSaving = false, saveFailed = true, error = error.toUiError())
                         }
                     }
@@ -211,6 +228,7 @@ class GameEditorViewModel(
             version = state.versionToken?.let(::GameVersionToken),
             mode = GameEditorMode.ONE_TIME,
             form = GameEditorForm(
+                title = state.form.title,
                 venue = state.form.venue,
                 localDate = state.form.localDate,
                 localTime = state.form.localTime,
@@ -258,6 +276,7 @@ class GameEditorViewModel(
 
     private fun persistForm(form: GameEditorFields) {
         savedState[KeyDate] = form.localDate
+        savedState[KeyTitle] = form.title
         savedState[KeyTime] = form.localTime
         savedState[KeyDuration] = form.durationMinutes
         savedState[KeyCapacity] = form.capacity
@@ -270,6 +289,7 @@ class GameEditorViewModel(
     }
 
     private fun restoreForm(form: GameEditorFields): GameEditorFields = form.copy(
+        title = savedState.get<String>(KeyTitle) ?: form.title,
         localDate = savedState.get<String>(KeyDate) ?: form.localDate,
         localTime = savedState.get<String>(KeyTime) ?: form.localTime,
         durationMinutes = savedState.get<Int>(KeyDuration) ?: form.durationMinutes,
@@ -297,6 +317,7 @@ class GameEditorViewModel(
         const val DEFAULT_LEAD = 360
         const val KeyCommand = "game-editor-command-key"
         const val KeyDate = "game-editor-date"
+        const val KeyTitle = "game-editor-title"
         const val KeyTime = "game-editor-time"
         const val KeyDuration = "game-editor-duration"
         const val KeyCapacity = "game-editor-capacity"
@@ -304,6 +325,7 @@ class GameEditorViewModel(
         const val KeyNotes = "game-editor-notes"
         const val KeyVenueName = "game-editor-venue-name"
         const val KeyVenueAddress = "game-editor-venue-address"
+        const val DEFAULT_TITLE = "Jogo fora da recorrência"
     }
 }
 

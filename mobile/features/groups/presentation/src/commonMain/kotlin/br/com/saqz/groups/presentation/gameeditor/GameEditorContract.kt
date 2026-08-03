@@ -28,6 +28,7 @@ data class GameEditorState(
 /** Campos editáveis. Strings formatadas já vêm prontas para a UI (AGENTS.md §8). */
 @Immutable
 data class GameEditorFields(
+    val title: String = "",
     val localDate: String = "",
     val localTime: String = "",
     val durationMinutes: Int = 0,

@@ -110,9 +110,14 @@ import br.com.saqz.groups.resources.group_lead_three_hours
 import br.com.saqz.groups.resources.group_lead_twelve_hours
 import br.com.saqz.groups.resources.group_lead_twenty_four_hours
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
 
 internal object GameEditorTags {
@@ -542,7 +547,8 @@ private fun DateTimePickerSheet(
     onClose: () -> Unit,
     onSave: (date: String, time: String) -> Unit,
 ) {
-    val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+    val pickerZoneId = state.zoneId.ifBlank { TimeZone.currentSystemDefault().id }
+    val today = remember(pickerZoneId) { pickerTodayAt(Clock.System.now(), pickerZoneId) }
     val weekdayLabels = listOf(
         stringResource(Res.string.group_weekday_monday),
         stringResource(Res.string.group_weekday_tuesday),
@@ -566,8 +572,11 @@ private fun DateTimePickerSheet(
         stringResource(Res.string.game_picker_month_november),
         stringResource(Res.string.game_picker_month_december),
     )
-    val days = remember(today, weekdayLabels, monthLabels) {
-        buildWheelDays(today, 30, weekdayLabels, monthLabels)
+    val rangeStart = remember(today, state.form.localDate) {
+        pickerRangeStart(today, state.form.localDate)
+    }
+    val days = remember(rangeStart, weekdayLabels, monthLabels) {
+        buildWheelDays(rangeStart, 30, weekdayLabels, monthLabels)
     }
     val initialHour = state.form.localTime.substringBefore(':').toIntOrNull() ?: 19
     val initialMinute = state.form.localTime.substringAfter(':').toIntOrNull() ?: 0
@@ -618,6 +627,19 @@ internal fun formatDisplayTime(time: String): String {
     val hour = parts[0].toIntOrNull() ?: return time
     val minute = parts[1].toIntOrNull() ?: return time
     return "${hour.toString().padStart(2, '0')}h${minute.toString().padStart(2, '0')}"
+}
+
+internal fun pickerTodayAt(now: Instant, zoneId: String): LocalDate =
+    now.toLocalDateTime(TimeZone.of(zoneId)).date
+
+internal fun pickerRangeStart(today: LocalDate, selectedDate: String): LocalDate {
+    val selected = runCatching { LocalDate.parse(selectedDate) }.getOrNull() ?: return today
+    val lastDate = today.plus(DatePeriod(days = 29))
+    return when {
+        selected < today -> selected
+        selected > lastDate -> selected.minus(DatePeriod(days = 29))
+        else -> today
+    }
 }
 
 @Preview

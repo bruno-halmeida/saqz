@@ -38,6 +38,7 @@ fun GameError.toUiError(): GroupUiError = when (this) {
     is GameError.Validation -> GroupUiError.Validation
     GameError.HiddenResource -> GroupUiError.NotFound
     is GameError.Conflict -> GroupUiError.Conflict
+    GameError.VersionConflict -> GroupUiError.Conflict
     GameError.InvalidLifecycle -> GroupUiError.Validation
     GameError.Authentication -> GroupUiError.AccessDenied
     is GameError.Data -> error.toUiError()

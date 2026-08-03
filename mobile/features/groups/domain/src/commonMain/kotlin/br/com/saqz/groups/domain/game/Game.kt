@@ -129,6 +129,7 @@ sealed interface GameError : SaqzError {
     data class Validation(val error: DataError.Validation) : GameError
     data object HiddenResource : GameError
     data class Conflict(val conflictGameId: String? = null) : GameError
+    data object VersionConflict : GameError
     data object InvalidLifecycle : GameError
     data object Authentication : GameError
     data class Data(val error: DataError) : GameError

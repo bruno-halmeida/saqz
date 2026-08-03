@@ -4,13 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
-import br.com.saqz.groups.domain.game.GameWriteCommand
+import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleVersionedGame
-import br.com.saqz.groups.presentation.sampleVersionedGroup
+import br.com.saqz.groups.presentation.ui.gameeditor.buildWheelDays
+import br.com.saqz.groups.presentation.ui.gameeditor.pickerRangeStart
+import br.com.saqz.groups.presentation.ui.gameeditor.pickerTodayAt
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +21,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -36,9 +40,10 @@ class GameEditorViewModelTest {
 
     private fun viewModel(
         gameId: String? = null,
+        savedState: SavedStateHandle = SavedStateHandle(),
         gameGateway: FakeGameGateway = FakeGameGateway(),
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
-    ) = GameEditorViewModel("group-1", gameId, SavedStateHandle(), gameGateway, groupGateway)
+    ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway)
 
     @Test
     fun `create mode loads group defaults and does not read a game`() = runTest {
@@ -56,6 +61,7 @@ class GameEditorViewModelTest {
         val vm = viewModel(gameId = "game-1", gameGateway = gateway)
         assertFalse(vm.state.value.isLoading)
         assertEquals(1, gateway.readCalls)
+        assertEquals("Jogo de terça", vm.state.value.form.title)
         assertEquals("2026-08-04", vm.state.value.form.localDate)
         assertEquals("19:30", vm.state.value.form.localTime)
     }
@@ -104,6 +110,27 @@ class GameEditorViewModelTest {
         gateway.completeRead(1, SaqzResult.Success(sampleVersionedGame()))
         old.complete(SaqzResult.Failure(GameError.Data(DataError.Forbidden)))
         assertFalse(vm.state.value.run { loadFailed || isLoading })
+    }
+
+    @Test
+    fun `version conflict reloads the current game version instead of showing duplicate game`() = runTest {
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(sampleVersionedGame()),
+            editResult = SaqzResult.Failure(GameError.VersionConflict),
+        )
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+        gateway.readResult = SaqzResult.Success(
+            sampleVersionedGame().copy(
+                game = sampleVersionedGame().game.copy(title = "Título atualizado"),
+                version = GameVersionToken("etag-new"),
+            ),
+        )
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(2, gateway.readCalls)
+        assertEquals("etag-new", vm.state.value.versionToken)
+        assertEquals("Título atualizado", vm.state.value.form.title)
+        assertFalse(vm.state.value.hasConflict)
+        assertFalse(vm.state.value.isLoading)
     }
 
     @Test
@@ -219,6 +246,20 @@ class GameEditorViewModelTest {
         assertEquals(0, gateway.createCalls)
         assertEquals(1, gateway.editCalls)
         assertEquals("2026-08-05", gateway.lastEditCommand?.localDate)
+        assertEquals("Jogo de terça", gateway.lastEditCommand?.title)
+    }
+
+    @Test
+    fun `saved form edits are restored over the server response`() = runTest {
+        val savedState = SavedStateHandle()
+        val first = viewModel(gameId = "game-1", savedState = savedState)
+        first.onIntent(GameEditorIntent.SaveDateTime("2026-08-10", "20:15"))
+        first.onIntent(GameEditorIntent.UpdateNotes("Nota preservada"))
+
+        val recreated = viewModel(gameId = "game-1", savedState = savedState)
+        assertEquals("2026-08-10", recreated.state.value.form.localDate)
+        assertEquals("20:15", recreated.state.value.form.localTime)
+        assertEquals("Nota preservada", recreated.state.value.form.notes)
     }
 
     @Test
@@ -244,5 +285,21 @@ class GameEditorViewModelTest {
         val vm = viewModel(gameGateway = gateway)
         vm.onIntent(GameEditorIntent.Retry)
         assertFalse(vm.state.value.isLoading)
+    }
+
+    @Test
+    fun `picker range contains a date more than thirty days ahead`() {
+        val today = LocalDate.parse("2026-08-04")
+        val selected = "2026-10-01"
+        val start = pickerRangeStart(today, selected)
+        val days = buildWheelDays(start, 30, List(7) { "weekday" }, List(12) { "month" })
+        assertTrue(days.any { it.isoDate == selected })
+    }
+
+    @Test
+    fun `picker today uses the group timezone`() {
+        val now = Instant.parse("2026-08-04T01:00:00Z")
+        assertEquals(LocalDate.parse("2026-08-03"), pickerTodayAt(now, "America/Sao_Paulo"))
+        assertEquals(LocalDate.parse("2026-08-04"), pickerTodayAt(now, "Asia/Tokyo"))
     }
 }
