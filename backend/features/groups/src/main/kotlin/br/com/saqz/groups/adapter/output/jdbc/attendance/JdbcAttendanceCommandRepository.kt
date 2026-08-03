@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.application.game.GameAttendanceCountSource
 import br.com.saqz.groups.application.game.GameAttendanceCounts
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -85,6 +86,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                     rs.getObject("game_fee_cents", Long::class.javaObjectType),
                     rs.getObject("local_date", java.time.LocalDate::class.java),
                     rs.getBoolean("mensalista_priority"),
+                    PromotionMode.valueOf(rs.getString("promotion_mode")),
                 )
             }
             .optional()
@@ -247,6 +249,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             rs.getObject("local_date", java.time.LocalDate::class.java),
             AthleteMembershipType.valueOf(rs.getString("membership_type")),
             rs.getBoolean("mensalista_priority"),
+            PromotionMode.valueOf(rs.getString("promotion_mode")),
         )
     }
 
@@ -254,7 +257,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         const val AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
                    g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
-                   ag.mensalista_priority,
+                   ag.mensalista_priority,ag.promotion_mode,
                    :actor::uuid AS actor_id,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
@@ -296,7 +299,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
-                   g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,
+                   g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,ag.promotion_mode,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g
@@ -310,8 +313,15 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             FROM game_attendance attendance
             JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id
             JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL
+            LEFT JOIN group_memberships membership
+                ON membership.group_id = attendance.group_id AND membership.user_id = attendance.member_user_id
             WHERE attendance.group_id=:group AND attendance.game_id=:game AND attendance.status='WAITLISTED'
-            ORDER BY attendance.waitlist_sequence
+            ORDER BY CASE
+                       WHEN game.confirmation_deadline >= now() AND ag.mensalista_priority
+                            AND membership.membership_type='MENSALISTA' THEN 0
+                       ELSE 1
+                     END,
+                     attendance.waitlist_sequence
             LIMIT 1
             FOR UPDATE OF attendance
         """

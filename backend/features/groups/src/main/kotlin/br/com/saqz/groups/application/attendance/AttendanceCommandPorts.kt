@@ -4,6 +4,7 @@ import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -23,6 +24,7 @@ data class AttendanceAggregate(
     val gameDate: LocalDate,
     val membershipType: AthleteMembershipType,
     val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
 )
 
 data class AttendanceRecord(
@@ -77,6 +79,7 @@ data class CapacityAggregate(
     val gameFeeCents: Long?,
     val gameDate: LocalDate,
     val mensalistaPriority: Boolean = true,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
 )
 
 data class AttendanceDetail(

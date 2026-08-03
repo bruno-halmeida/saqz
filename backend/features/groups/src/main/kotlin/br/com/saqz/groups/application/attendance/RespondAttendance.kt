@@ -3,6 +3,7 @@ package br.com.saqz.groups.application.attendance
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
 import java.util.UUID
 
@@ -33,6 +34,7 @@ class RespondAttendance(
         source: AttendanceSource = AttendanceSource.SELF,
         reason: String? = null,
     ): AttendanceCommandResult = transaction.inTransaction {
+        if (intent == AttendanceIntent.PROMOTE) return@inTransaction AttendanceCommandResult.Forbidden
         val aggregate = repository.lock(groupId, gameId, memberId, actorId)
             ?: return@inTransaction AttendanceCommandResult.Hidden
         if (!aggregate.authorized(source)) return@inTransaction aggregate.denied(source)
@@ -53,6 +55,36 @@ class RespondAttendance(
         )) {
             is AttendanceDecision.Denied -> AttendanceCommandResult.Denied(decision.reason)
             is AttendanceDecision.Transition -> apply(aggregate, decision)
+        }
+    }
+
+    fun promote(
+        actorId: UUID,
+        groupId: UUID,
+        gameId: UUID,
+        memberId: UUID,
+        reason: String?,
+    ): AttendanceCommandResult = transaction.inTransaction {
+        val aggregate = repository.lock(groupId, gameId, memberId, actorId)
+            ?: return@inTransaction AttendanceCommandResult.Hidden
+        if (!aggregate.authorized(AttendanceSource.ORGANIZER)) {
+            return@inTransaction aggregate.denied(AttendanceSource.ORGANIZER)
+        }
+        when (val result = promoteAttendance(
+            aggregate,
+            AttendanceSource.ORGANIZER,
+            reason,
+            repository = repository,
+            charges = charges,
+            timestamp = now(),
+            ids = ids,
+        )) {
+            is AttendancePromotionResult.Denied -> AttendanceCommandResult.Denied(result.reason)
+            is AttendancePromotionResult.Success -> AttendanceCommandResult.Success(
+                result.attendance,
+                listOf(result.attendance),
+                result.event,
+            )
         }
     }
 
@@ -77,20 +109,21 @@ class RespondAttendance(
         )
         repository.save(record)
         val event = AttendanceEvent(
-                ids(),
-                aggregate.gameId,
-                aggregate.groupId,
-                aggregate.memberId,
-                aggregate.actorId,
-                decision.source,
-                decision.oldStatus,
-                decision.newStatus,
-                decision.reason,
-                timestamp,
-            )
+            ids(),
+            aggregate.gameId,
+            aggregate.groupId,
+            aggregate.memberId,
+            aggregate.actorId,
+            decision.source,
+            decision.oldStatus,
+            decision.newStatus,
+            decision.reason,
+            timestamp,
+        )
         repository.append(event)
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
         val promoted = if (
+            aggregate.promotionMode == PromotionMode.FIFO &&
             decision.oldStatus == AttendanceStatus.CONFIRMED &&
             decision.newStatus == AttendanceStatus.DECLINED
         ) promoteOne(aggregate, timestamp) else null
@@ -99,29 +132,23 @@ class RespondAttendance(
 
     private fun promoteOne(aggregate: AttendanceAggregate, timestamp: Instant): AttendanceRecord? {
         val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return null
-        val promoted = waiting.copy(
-            status = AttendanceStatus.CONFIRMED,
-            waitlistSequence = null,
-            updatedAt = maxOf(timestamp, waiting.respondedAt),
-            version = waiting.version + 1,
+        val promotionAggregate = aggregate.copy(
+            memberId = waiting.memberId,
+            current = waiting,
+            confirmedCount = (aggregate.confirmedCount - 1).coerceAtLeast(0),
         )
-        repository.save(promoted)
-        repository.append(
-            AttendanceEvent(
-                ids(),
-                aggregate.gameId,
-                aggregate.groupId,
-                promoted.memberId,
-                aggregate.actorId,
-                AttendanceSource.SYSTEM,
-                AttendanceStatus.WAITLISTED,
-                AttendanceStatus.CONFIRMED,
-                null,
-                timestamp,
-            ),
-        )
-        charges.promoted(aggregate.copy(memberId = promoted.memberId, current = waiting), aggregate.actorId)
-        return promoted
+        return when (val result = promoteAttendance(
+            promotionAggregate,
+            AttendanceSource.SYSTEM,
+            reason = null,
+            repository = repository,
+            charges = charges,
+            timestamp = timestamp,
+            ids = ids,
+        )) {
+            is AttendancePromotionResult.Denied -> error("automatic attendance promotion denied: ${result.reason}")
+            is AttendancePromotionResult.Success -> result.attendance
+        }
     }
 
     private fun AttendanceAggregate.authorized(source: AttendanceSource): Boolean = when (source) {
