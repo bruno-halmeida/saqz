@@ -75,7 +75,7 @@ class Payment8cScreenshotTest {
         cycle = SubscriptionCycle.Monthly,
         planName = "Organizador",
         priceCents = 4_990L,
-        cpfCnpj = "12345678901",
+        cpfCnpj = "12345678909",
     )
 
     // Pix escolhido (default), com CPF/CNPJ preenchido para conferir a máscara.
