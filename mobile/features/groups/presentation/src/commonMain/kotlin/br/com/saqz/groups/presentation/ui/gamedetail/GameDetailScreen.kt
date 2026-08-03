@@ -18,10 +18,6 @@ import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 internal object GameDetailTags {
     const val Screen = "game-detail"
 }
-
-/**
- * 4 · detalhe do jogo — scaffold do VUL-151. Carregando e falha; o conteúdo é VUL-154.
- */
 @Composable
 internal fun GameDetailScreen(
     state: GameDetailState,
@@ -47,12 +43,6 @@ internal fun GameDetailScreen(
 
 @Preview
 @Composable
-private fun GameDetailLoadingPreview() = SaqzTheme {
+private fun GameDetailPreview() = SaqzTheme {
     GameDetailScreen(state = GameDetailState(), onBack = {}, onIntent = {})
-}
-
-@Preview
-@Composable
-private fun GameDetailLoadedPreview() = SaqzTheme {
-    GameDetailScreen(state = GameDetailState(isLoading = false), onBack = {}, onIntent = {})
 }

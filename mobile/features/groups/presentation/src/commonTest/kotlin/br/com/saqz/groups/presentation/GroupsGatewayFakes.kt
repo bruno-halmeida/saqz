@@ -47,6 +47,7 @@ import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.model.GroupTimeZone as ModelGroupTimeZone
+import kotlinx.coroutines.CompletableDeferred
 
 class FakeGroupGateway(
     var readResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(sampleVersionedGroup()),
@@ -178,11 +179,21 @@ class FakeAthleteGateway(
 
 class FakeGameGateway(
     var listResult: SaqzResult<List<Game>, GameError> = SaqzResult.Success(emptyList()),
+    var readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
+    private val reads: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
 ) : GameGateway {
+    var readCalls = 0
+
     override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listResult
 
-    override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<VersionedGame, GameError> =
-        error("not used in this screen")
+    override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<VersionedGame, GameError> {
+        readCalls += 1
+        return reads?.getOrNull(readCalls - 1)?.await() ?: readResult
+    }
+
+    fun completeRead(index: Int, value: SaqzResult<VersionedGame, GameError>) {
+        reads?.getOrNull(index)?.complete(value)
+    }
 
     override suspend fun create(groupId: GroupId, command: GameWriteCommand): SaqzResult<VersionedGame, GameError> =
         error("not used in this screen")
@@ -322,3 +333,5 @@ fun sampleGame() = Game(
     availableSpots = 4,
     waitlistCount = 0,
 )
+
+fun sampleVersionedGame(game: Game = sampleGame()) = VersionedGame(game, GameVersionToken("etag-1"))

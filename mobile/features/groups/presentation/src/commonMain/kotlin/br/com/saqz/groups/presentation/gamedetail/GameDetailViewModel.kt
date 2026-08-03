@@ -4,22 +4,15 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
-import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 
-/**
- * 4 · detalhe do jogo. O VUL-151 só monta o scaffold: carrega o jogo. O conteúdo é
- * VUL-154.
- */
 class GameDetailViewModel(
     val groupId: String,
     val gameId: String,
     private val gameGateway: GameGateway,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
-
     private var loadGeneration = 0
 
     init {
@@ -36,18 +29,15 @@ class GameDetailViewModel(
         val generation = ++loadGeneration
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
-            when (val result = gameGateway.read(GroupId(groupId), gameId)) {
-                is SaqzResult.Failure -> showFailure(generation, result.error.toUiError())
-                is SaqzResult.Success -> {
-                    if (generation != loadGeneration) return@launch
-                    update { it.copy(isLoading = false, loadFailed = false, error = null) }
-                }
+            val error = when (val result = gameGateway.read(GroupId(groupId), gameId)) {
+                is SaqzResult.Failure -> result.error.toUiError()
+                is SaqzResult.Success -> null
+            }
+            if (generation != loadGeneration) return@launch
+            update {
+                if (error != null) it.copy(isLoading = false, loadFailed = true, error = error)
+                else it.copy(isLoading = false, loadFailed = false, error = null)
             }
         }
-    }
-
-    private fun showFailure(generation: Int, error: GroupUiError) {
-        if (generation != loadGeneration) return
-        update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
 }

@@ -9,10 +9,6 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/**
- * 4 · detalhe do jogo. [groupId] e [gameId] vêm da rota. O efeito `OpenEditor` abre o
- * editor — o conteúdo real é VUL-154.
- */
 @Composable
 fun GameDetailRoot(
     groupId: String,

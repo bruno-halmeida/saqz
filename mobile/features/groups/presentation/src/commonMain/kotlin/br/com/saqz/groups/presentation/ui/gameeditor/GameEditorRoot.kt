@@ -9,10 +9,6 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/**
- * 4 · editor de jogo. [groupId] vem da rota; [gameId] null cria, presente edita.
- * O efeito `Saved` volta à tela anterior — o formulário real é VUL-153.
- */
 @Composable
 fun GameEditorRoot(
     groupId: String,

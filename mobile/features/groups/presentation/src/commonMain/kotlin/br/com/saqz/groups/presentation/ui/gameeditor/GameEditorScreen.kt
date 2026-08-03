@@ -18,10 +18,6 @@ import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 internal object GameEditorTags {
     const val Screen = "game-editor"
 }
-
-/**
- * 4 · editor de jogo — scaffold do VUL-151. Carregando e falha; o formulário é VUL-153.
- */
 @Composable
 internal fun GameEditorScreen(
     state: GameEditorState,
@@ -47,12 +43,6 @@ internal fun GameEditorScreen(
 
 @Preview
 @Composable
-private fun GameEditorLoadingPreview() = SaqzTheme {
+private fun GameEditorPreview() = SaqzTheme {
     GameEditorScreen(state = GameEditorState(isLoading = true), onBack = {}, onIntent = {})
-}
-
-@Preview
-@Composable
-private fun GameEditorLoadedPreview() = SaqzTheme {
-    GameEditorScreen(state = GameEditorState(isLoading = false), onBack = {}, onIntent = {})
 }
