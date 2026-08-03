@@ -42,6 +42,12 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(GroupsRoute.Edit::class, GroupsRoute.Edit.serializer())
             subclass(GroupsRoute.Members::class, GroupsRoute.Members.serializer())
             subclass(GroupsRoute.Schedule::class, GroupsRoute.Schedule.serializer())
+            subclass(GroupsRoute.Invite::class, GroupsRoute.Invite.serializer())
+            subclass(GroupsRoute.InviteMessagePreview::class, GroupsRoute.InviteMessagePreview.serializer())
+            subclass(GroupsRoute.InviteQr::class, GroupsRoute.InviteQr.serializer())
+            subclass(GroupsRoute.InviteLanding::class, GroupsRoute.InviteLanding.serializer())
+            subclass(GroupsRoute.AthleteRegistration::class, GroupsRoute.AthleteRegistration.serializer())
+            subclass(GroupsRoute.MemberEditor::class, GroupsRoute.MemberEditor.serializer())
             // VUL-108: registro incondicional (AGENTS.md) mesmo sem nenhuma tela ainda —
             // sem isso a rota não sobrevive à rotação quando VUL-109..111 a empilharem.
             subclass(SubscriptionsRoute.PlanSelection::class, SubscriptionsRoute.PlanSelection.serializer())

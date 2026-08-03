@@ -14,6 +14,12 @@ class GroupsRouteTest {
             GroupsRoute.Edit("group-2"),
             GroupsRoute.Members("group-3"),
             GroupsRoute.Schedule("group-4"),
+            GroupsRoute.Invite("group-5"),
+            GroupsRoute.InviteMessagePreview("Vôlei do CERET", "https://saqz.app/invite/code"),
+            GroupsRoute.InviteQr("Vôlei do CERET", "https://saqz.app/invite/code"),
+            GroupsRoute.InviteLanding("invite-code"),
+            GroupsRoute.AthleteRegistration("group-6"),
+            GroupsRoute.MemberEditor("group-7", "user-8"),
         )
 
         routes.forEach { route ->

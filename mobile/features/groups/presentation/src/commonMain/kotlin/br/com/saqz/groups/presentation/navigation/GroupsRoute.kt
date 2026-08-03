@@ -22,4 +22,28 @@ sealed interface GroupsRoute : NavKey {
 
     @Serializable
     data class Schedule(val groupId: String) : GroupsRoute
+
+    /** 3a, with 3b/3c stacked as child destinations. */
+    @Serializable
+    data class Invite(val groupId: String) : GroupsRoute
+
+    /** 3b: WhatsApp/message preview. */
+    @Serializable
+    data class InviteMessagePreview(val groupName: String, val inviteUrl: String) : GroupsRoute
+
+    /** 3c: QR preview. */
+    @Serializable
+    data class InviteQr(val groupName: String, val inviteUrl: String) : GroupsRoute
+
+    /** 3d/3e/3f/3l: the landing ViewModel owns the visible state. */
+    @Serializable
+    data class InviteLanding(val code: String) : GroupsRoute
+
+    /** 3j/3k: first athlete profile after a successful invite redemption. */
+    @Serializable
+    data class AthleteRegistration(val groupId: String) : GroupsRoute
+
+    /** 3g: member editor. */
+    @Serializable
+    data class MemberEditor(val groupId: String, val userId: String) : GroupsRoute
 }
