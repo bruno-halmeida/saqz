@@ -85,11 +85,11 @@ class GroupSetupViewModel(
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
             is GroupSetupIntent.ToggleMensalistaPriority ->
-                onFormChange { copy(mensalistaPriority = intent.value) }
+                onGameConfigChange { copy(mensalistaPriority = intent.value) }
             is GroupSetupIntent.SelectPromotionMode ->
-                onFormChange { copy(promotionMode = intent.value) }
+                onGameConfigChange { copy(promotionMode = intent.value) }
             is GroupSetupIntent.ToggleAutoConfirm ->
-                onFormChange { copy(autoConfirmEnabled = intent.value) }
+                onGameConfigChange { copy(autoConfirmEnabled = intent.value) }
             is GroupSetupIntent.SelectDuration -> onDurationChange(intent.minutes)
             is GroupSetupIntent.ToggleRecurring -> onRecurringChange(intent.value)
             is GroupSetupIntent.OpenSheet -> onOpenSheet(intent.sheet)
@@ -346,6 +346,14 @@ class GroupSetupViewModel(
                 .revalidated()
         }
     }
+
+    private fun onGameConfigChange(transform: GroupSetupForm.() -> GroupSetupForm) {
+        onFormChange(transform = transform)
+        val form = state.value.form
+        savedState[KeyMensalistaPriority] = form.mensalistaPriority
+        savedState[KeyPromotionMode] = form.promotionMode.name
+        savedState[KeyAutoConfirm] = form.autoConfirmEnabled
+    }
 }
 
 private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupForm) = copy(form = form.transform())
@@ -363,6 +371,8 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
     val customLevel = handle.get<String>(KeyCustomLevel)
     val venueName = handle.get<String>(KeyVenueName)
     val venueAddress = handle.get<String>(KeyVenueAddress)
+    val promotionMode = handle.get<String>(KeyPromotionMode)
+        ?.let { runCatching { PromotionMode.valueOf(it) }.getOrNull() }
     val venue = when {
         venueName == null && venueAddress == null -> defaultVenue
         else -> (defaultVenue ?: EmptyVenue).copy(
@@ -375,6 +385,9 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
         description = description ?: this.description,
         customLevel = customLevel ?: this.customLevel,
         defaultVenue = venue,
+        mensalistaPriority = handle.get<Boolean>(KeyMensalistaPriority) ?: this.mensalistaPriority,
+        promotionMode = promotionMode ?: this.promotionMode,
+        autoConfirmEnabled = handle.get<Boolean>(KeyAutoConfirm) ?: this.autoConfirmEnabled,
     )
 }
 
@@ -458,4 +471,7 @@ private const val KeyDescription = "group-setup-description"
 private const val KeyCustomLevel = "group-setup-custom-level"
 private const val KeyVenueName = "group-setup-venue-name"
 private const val KeyVenueAddress = "group-setup-venue-address"
+private const val KeyMensalistaPriority = "group-setup-mensalista-priority"
+private const val KeyPromotionMode = "group-setup-promotion-mode"
+private const val KeyAutoConfirm = "group-setup-auto-confirm"
 private const val KeyCreationCommand = "group-setup-create-command-key"

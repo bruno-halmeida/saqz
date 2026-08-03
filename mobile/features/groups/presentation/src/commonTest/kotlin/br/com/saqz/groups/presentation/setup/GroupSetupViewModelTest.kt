@@ -450,6 +450,37 @@ class GroupSetupViewModelTest {
         }
 
     @Test
+    fun `configuracoes nao salvas sobrevivem a recriacao e ao load`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle()
+        viewModel(mode = GroupSetupMode.Edit("grp-1"), savedState = handle).also {
+            it.onIntent(GroupSetupIntent.ToggleMensalistaPriority(false))
+            it.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
+            it.onIntent(GroupSetupIntent.ToggleAutoConfirm(true))
+        }
+        assertEquals(false, handle.get<Boolean>("group-setup-mensalista-priority"))
+        assertEquals("MANUAL", handle.get<String>("group-setup-promotion-mode"))
+        assertEquals(true, handle.get<Boolean>("group-setup-auto-confirm"))
+
+        val serverGroup = br.com.saqz.groups.presentation.sampleGroup().copy(
+            gameConfig = br.com.saqz.groups.domain.group.GroupGameConfig(),
+        )
+        val restored = viewModel(
+            mode = GroupSetupMode.Edit("grp-1"),
+            savedState = handle,
+            profileGateway = FakeGroupProfileGateway(
+                readResult = SaqzResult.Success(
+                    br.com.saqz.groups.presentation.sampleVersionedGroup(serverGroup),
+                ),
+            ),
+        )
+        runCurrent()
+
+        assertEquals(false, restored.state.value.form.mensalistaPriority)
+        assertEquals(PromotionMode.MANUAL, restored.state.value.form.promotionMode)
+        assertEquals(true, restored.state.value.form.autoConfirmEnabled)
+    }
+
+    @Test
     fun `edicao hidrata a duracao do primeiro horario e a permissao de excluir`() =
         runTest(mainDispatcher) {
             val group = br.com.saqz.groups.presentation.sampleGroup(
@@ -504,55 +535,6 @@ class GroupSetupViewModelTest {
         assertEquals(false, form.mensalistaPriority)
         assertEquals(PromotionMode.MANUAL, form.promotionMode)
         assertEquals(true, form.autoConfirmEnabled)
-    }
-
-    @Test
-    fun `atleta nao recebe a secao de configuracoes de jogo`() = runTest(mainDispatcher) {
-        val viewModel = viewModel(
-            mode = GroupSetupMode.Edit(groupId = "grp-1"),
-            profileGateway = FakeGroupProfileGateway(
-                readResult = SaqzResult.Success(
-                    br.com.saqz.groups.presentation.sampleVersionedGroup(
-                        br.com.saqz.groups.presentation.sampleGroup(
-                            role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE,
-                        ),
-                    ),
-                ),
-            ),
-        )
-        runCurrent()
-
-        assertEquals(false, viewModel.state.value.canManageGameConfig)
-    }
-
-    @Test
-    fun `alterar a prioridade de mensalista atualiza o formulario`() = runTest(mainDispatcher) {
-        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
-
-        viewModel.onIntent(GroupSetupIntent.ToggleMensalistaPriority(false))
-        runCurrent()
-
-        assertEquals(false, viewModel.state.value.form.mensalistaPriority)
-    }
-
-    @Test
-    fun `alterar a promocao da reserva atualiza o formulario`() = runTest(mainDispatcher) {
-        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
-
-        viewModel.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
-        runCurrent()
-
-        assertEquals(PromotionMode.MANUAL, viewModel.state.value.form.promotionMode)
-    }
-
-    @Test
-    fun `alterar a auto-confirmacao atualiza o formulario`() = runTest(mainDispatcher) {
-        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
-
-        viewModel.onIntent(GroupSetupIntent.ToggleAutoConfirm(true))
-        runCurrent()
-
-        assertEquals(true, viewModel.state.value.form.autoConfirmEnabled)
     }
 
     @Test

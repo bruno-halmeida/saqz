@@ -9,6 +9,7 @@ import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.MonthlyChargeDraft
+import br.com.saqz.groups.model.PromotionMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -29,10 +30,39 @@ class IOSGroupDraftCodecTest {
                 name = "Vôlei",
                 modality = GroupModality.COURT_VOLLEYBALL,
                 composition = GroupComposition.MIXED,
+                mensalistaPriority = false,
+                promotionMode = PromotionMode.MANUAL,
+                autoConfirmEnabled = true,
             ),
         )
 
         assertEquals(draft, codec.decodeSetup(codec.encodeSetup(draft)))
+    }
+
+    @Test
+    fun `old setup draft defaults missing game config fields`() {
+        val draft = GroupSetupDraft(
+            resource = GroupDraftResource.UPDATE_GROUP,
+            groupId = GROUP,
+            groupVersion = 7,
+            etag = "\"7\"",
+            commandKey = KEY,
+            form = GroupSetupForm(
+                name = "Vôlei",
+                mensalistaPriority = false,
+                promotionMode = PromotionMode.MANUAL,
+                autoConfirmEnabled = true,
+            ),
+        )
+        val oldPayload = codec.encodeSetup(draft)
+            .replace(",\"mensalistaPriority\":false", "")
+            .replace(",\"promotionMode\":\"MANUAL\"", "")
+            .replace(",\"autoConfirmEnabled\":true", "")
+
+        val form = codec.decodeSetup(oldPayload).form
+        assertTrue(form.mensalistaPriority)
+        assertEquals(PromotionMode.FIFO, form.promotionMode)
+        assertFalse(form.autoConfirmEnabled)
     }
 
     @Test
