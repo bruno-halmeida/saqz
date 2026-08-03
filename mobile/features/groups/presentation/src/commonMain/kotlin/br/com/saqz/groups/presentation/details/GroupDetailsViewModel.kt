@@ -224,7 +224,7 @@ class GroupDetailsViewModel(
 
     private fun retryRoster() {
         val game = state.value.nextGame ?: return
-        if (!state.value.rosterStale || state.value.rosterRefreshing) return
+        if (!state.value.rosterStale || state.value.rosterRefreshing || state.value.responding) return
         val generation = ++rosterGeneration
         val loadAtStart = loadGeneration
         update { it.copy(rosterRefreshing = true) }

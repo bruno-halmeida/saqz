@@ -27,6 +27,7 @@ import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.port.GroupNowPort
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -350,6 +351,36 @@ class GroupDetailsViewModelTest {
         assertFalse(vm.state.value.rosterStale)
         assertEquals(listOf("Promovido"), vm.state.value.nextGame?.confirmedNames)
         assertEquals(3, attendance.rosterCalls)
+    }
+
+    @Test
+    fun `roster retry is ignored while a response is in flight`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            respondResult = SaqzResult.Success(sampleVersionedAttendanceMutation()),
+        )
+        attendance.rosterResults = mutableListOf(
+            SaqzResult.Success(sampleAttendanceRoster()),
+            SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+        )
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertTrue(vm.state.value.rosterStale)
+        attendance.respondDeferred = CompletableDeferred()
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        vm.onIntent(GroupDetailsIntent.RetryRoster)
+
+        assertTrue(vm.state.value.responding)
+        assertFalse(vm.state.value.rosterRefreshing)
+        assertEquals(2, attendance.rosterCalls)
+
+        attendance.respondDeferred?.complete(SaqzResult.Success(sampleVersionedAttendanceMutation()))
     }
 
     @Test

@@ -119,7 +119,7 @@ internal fun GroupGameResponseSection(
                 label = stringResource(Res.string.game_response_retry_roster),
                 onClick = { onIntent(GroupDetailsIntent.RetryRoster) },
                 variant = SaqzButtonVariant.Ghost,
-                enabled = !state.rosterRefreshing,
+                enabled = !state.rosterRefreshing && !state.responding,
                 loading = state.rosterRefreshing,
                 fullWidth = true,
             )
