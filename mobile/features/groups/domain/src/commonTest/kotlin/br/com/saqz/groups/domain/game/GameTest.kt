@@ -79,7 +79,7 @@ class GameTest {
         )
 
     @Test fun `all permanent errors are distinct`() =
-        assertEquals(4, setOf(GameError.HiddenResource, GameError.Conflict, GameError.InvalidLifecycle, GameError.Authentication).size)
+        assertEquals(4, setOf(GameError.HiddenResource, GameError.Conflict(), GameError.InvalidLifecycle, GameError.Authentication).size)
 
     @Test fun `shared data error is retained`() =
         assertEquals(DataError.Connectivity, assertIs<GameError.Data>(GameError.Data(DataError.Connectivity)).error)

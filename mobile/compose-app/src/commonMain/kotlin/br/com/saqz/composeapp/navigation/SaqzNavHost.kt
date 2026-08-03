@@ -465,6 +465,7 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     gameId = route.gameId,
                     onBack = pop,
+                    onOpenGameDetail = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
                 )
             }
             entry<GroupsRoute.GameDetail> { route ->

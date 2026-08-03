@@ -272,7 +272,7 @@ private fun NetworkError.toDomain(): GameError = when (this) {
     is NetworkError.ApiProblemError -> when (problem.code) {
         "VALIDATION_FAILED" -> GameError.Validation(DataError.Validation(ValidationDetails(emptyList(), problem.fieldErrors.orEmpty())))
         "GAME_NOT_FOUND", "GROUP_NOT_FOUND" -> GameError.HiddenResource
-        "VERSION_CONFLICT" -> GameError.Conflict
+        "VERSION_CONFLICT" -> GameError.Conflict(problem.fieldErrors?.get("conflictingGameId")?.firstOrNull())
         "INVALID_GAME_TRANSITION" -> GameError.InvalidLifecycle
         "AUTHENTICATION_REQUIRED" -> GameError.Authentication
         else -> GameError.Data(problem.status.toDataError())

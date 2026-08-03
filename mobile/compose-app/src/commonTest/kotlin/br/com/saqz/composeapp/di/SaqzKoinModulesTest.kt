@@ -299,8 +299,8 @@ class SaqzKoinModulesTest {
         koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
         koin.get<GroupMembersViewModel> { parametersOf("ceret") }
         // VUL-151: editor (criar/editar) e detalhe do jogo resolvem com os ids da rota.
-        koin.get<GameEditorViewModel> { parametersOf("ceret", null) }
-        koin.get<GameEditorViewModel> { parametersOf("ceret", "game-1") }
+        koin.get<GameEditorViewModel> { parametersOf("ceret", null, SavedStateHandle()) }
+        koin.get<GameEditorViewModel> { parametersOf("ceret", "game-1", SavedStateHandle()) }
         koin.get<GameDetailViewModel> { parametersOf("ceret", "game-1") }
 
         app.close()

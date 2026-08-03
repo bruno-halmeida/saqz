@@ -180,9 +180,15 @@ class FakeAthleteGateway(
 class FakeGameGateway(
     var listResult: SaqzResult<List<Game>, GameError> = SaqzResult.Success(emptyList()),
     var readResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
+    var createResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
+    var editResult: SaqzResult<VersionedGame, GameError> = SaqzResult.Success(sampleVersionedGame()),
     private val reads: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
 ) : GameGateway {
     var readCalls = 0
+    var createCalls = 0
+    var editCalls = 0
+    var lastCreateCommand: GameWriteCommand? = null
+    var lastEditCommand: GameWriteCommand? = null
 
     override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listResult
 
@@ -195,15 +201,22 @@ class FakeGameGateway(
         reads?.getOrNull(index)?.complete(value)
     }
 
-    override suspend fun create(groupId: GroupId, command: GameWriteCommand): SaqzResult<VersionedGame, GameError> =
-        error("not used in this screen")
+    override suspend fun create(groupId: GroupId, command: GameWriteCommand): SaqzResult<VersionedGame, GameError> {
+        createCalls += 1
+        lastCreateCommand = command
+        return createResult
+    }
 
     override suspend fun edit(
         groupId: GroupId,
         gameId: String,
         version: GameVersionToken,
         command: GameWriteCommand,
-    ): SaqzResult<VersionedGame, GameError> = error("not used in this screen")
+    ): SaqzResult<VersionedGame, GameError> {
+        editCalls += 1
+        lastEditCommand = command
+        return editResult
+    }
 
     override suspend fun lifecycle(
         groupId: GroupId,

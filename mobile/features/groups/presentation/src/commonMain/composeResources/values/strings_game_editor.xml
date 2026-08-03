@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 4a · Cabeçalho -->
+    <string name="game_editor_create_title">Criar jogo</string>
+    <string name="game_editor_edit_title">Editar jogo</string>
+    <string name="game_editor_subtitle">Jogo fora da recorrência</string>
+    <string name="game_editor_group_name">%1$s</string>
+
+    <!-- 4a · Campos -->
+    <string name="game_editor_date_label">Data</string>
+    <string name="game_editor_date_placeholder">Escolha um dia para o jogo</string>
+    <string name="game_editor_time_label">Horário</string>
+    <string name="game_editor_time_placeholder">Escolha a hora de início</string>
+    <string name="game_editor_duration_label">Duração</string>
+    <string name="game_editor_venue_label">Quadra</string>
+    <string name="game_editor_venue_name_hint">Ex.: CERET — Quadra 2</string>
+    <string name="game_editor_venue_address_label">Endereço</string>
+    <string name="game_editor_venue_address_hint">R. Canuto Abreu, s/n · Tatuapé</string>
+    <string name="game_editor_venue_helper">Já vem da quadra padrão do grupo. Você pode trocar só neste jogo.</string>
+    <string name="game_editor_capacity_label">Vagas neste jogo</string>
+    <string name="game_editor_capacity_helper">Acima disso entra na reserva.</string>
+    <string name="game_editor_confirmation_lead_label">Confirmar presença até</string>
+    <string name="game_editor_notes_label">Recado para a galera</string>
+    <string name="game_editor_notes_hint">Opcional. Aparece no convite do jogo.</string>
+
+    <!-- 4a · Ação -->
+    <string name="game_editor_create_action">Criar jogo</string>
+    <string name="game_editor_save_action">Salvar alterações</string>
+    <string name="game_editor_creating">Criando jogo…</string>
+    <string name="game_editor_saving">Salvando…</string>
+
+    <!-- 4b · Picker de data e horário -->
+    <string name="game_picker_title">Data e horário</string>
+    <string name="game_picker_save">Salvar data e horário</string>
+    <string name="game_picker_summary">%1$s · %2$s</string>
+    <string name="game_picker_month_january">janeiro</string>
+    <string name="game_picker_month_february">fevereiro</string>
+    <string name="game_picker_month_march">março</string>
+    <string name="game_picker_month_april">abril</string>
+    <string name="game_picker_month_may">maio</string>
+    <string name="game_picker_month_june">junho</string>
+    <string name="game_picker_month_july">julho</string>
+    <string name="game_picker_month_august">agosto</string>
+    <string name="game_picker_month_september">setembro</string>
+    <string name="game_picker_month_october">outubro</string>
+    <string name="game_picker_month_november">novembro</string>
+    <string name="game_picker_month_december">dezembro</string>
+
+    <!-- 4e · Erros -->
+    <string name="game_editor_error_missing_title">Faltam informações</string>
+    <string name="game_editor_error_missing_body">Escolha a data e o horário para criar o jogo.</string>
+    <string name="game_editor_error_date">Escolha um dia para o jogo.</string>
+    <string name="game_editor_error_time">Escolha a hora de início.</string>
+    <string name="game_editor_error_conflict_title">Já existe um jogo nesse horário</string>
+    <string name="game_editor_error_conflict_pick_other">Escolher outro horário</string>
+    <string name="game_editor_error_conflict_open_existing">Abrir o jogo que já existe</string>
+    <string name="game_editor_error_save_title">Não foi possível criar o jogo</string>
+    <string name="game_editor_error_save_body">Tente novamente.</string>
+    <string name="game_editor_error_retry">Tentar</string>
+
+</resources>

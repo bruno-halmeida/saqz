@@ -37,7 +37,7 @@ fun GroupMembershipError.toUiError(): GroupUiError = when (this) {
 fun GameError.toUiError(): GroupUiError = when (this) {
     is GameError.Validation -> GroupUiError.Validation
     GameError.HiddenResource -> GroupUiError.NotFound
-    GameError.Conflict -> GroupUiError.Conflict
+    is GameError.Conflict -> GroupUiError.Conflict
     GameError.InvalidLifecycle -> GroupUiError.Validation
     GameError.Authentication -> GroupUiError.AccessDenied
     is GameError.Data -> error.toUiError()
