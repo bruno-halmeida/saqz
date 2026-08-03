@@ -100,6 +100,34 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
+    fun `repeated authentication does not start a second redeem generation`() = runTest {
+        val redeemRelease = CompletableDeferred<Unit>()
+        val fixture = fixture(
+            redeem = {
+                redeemRelease.await()
+                SaqzResult.Success(InviteRedeem(InviteRedeemStatus.JOINED, GroupId("group-1"), "ATHLETE"))
+            },
+        )
+        fixture.local.pending = "invite-idempotent"
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(listOf("preview", "redeem"), fixture.gateway.actions)
+
+        redeemRelease.complete(Unit)
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-idempotent"),
+            fixture.coordinator.effects.first(),
+        )
+        assertNull(withTimeoutOrNull(1) { fixture.coordinator.effects.first() })
+    }
+
+    @Test
     fun `registration preview feeds the invite header and registration then redeems`() = runTest {
         val fixture = fixture()
         fixture.gateway.previewResult = SaqzResult.Success(

@@ -97,6 +97,7 @@ class GroupInviteCoordinator(
     /** Chamado pelo fecho depois que login ou registro entrega uma sessão. */
     fun onAuthenticated() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            if (authenticated.value) return@launch
             authenticated.value = true
             val token = nextGeneration()
             redeemPending(token)
