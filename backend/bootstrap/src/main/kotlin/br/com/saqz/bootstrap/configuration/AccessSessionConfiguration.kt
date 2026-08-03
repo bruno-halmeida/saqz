@@ -127,6 +127,7 @@ import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import org.springframework.context.annotation.Configuration
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
@@ -652,7 +653,13 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         repository: JdbcAutoConfirmationRepository,
     ) = AutoConfirmAttendance(transaction, repository, Instant::now)
-    @Bean fun gameSideEffects(charges: ChargeTransactions, autoConfirm: AutoConfirmAttendance): GameSideEffectPort =
+    /**
+     * AutoConfirmAttendance também é GameSideEffectPort; sem @Primary o autowire por tipo
+     * de editGame/changeGameLifecycle fica ambíguo e o boot com datasource falha.
+     */
+    @Bean
+    @Primary
+    fun gameSideEffects(charges: ChargeTransactions, autoConfirm: AutoConfirmAttendance): GameSideEffectPort =
         GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm))
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
