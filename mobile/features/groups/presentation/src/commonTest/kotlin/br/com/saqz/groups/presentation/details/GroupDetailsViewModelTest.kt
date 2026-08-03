@@ -143,6 +143,17 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `next game exposes fee availability for day-member notice`() = runTest {
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame().copy(gameFeeCents = null)))),
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        assertFalse(vm.state.value.nextGame?.hasGameFee ?: true)
+    }
+
+    @Test
     fun `published games only in the past do not create a next game response card`() = runTest {
         val pastGame = sampleGame().copy(startsAt = "2020-08-04T19:30:00-03:00")
         val vm = viewModel(
@@ -358,6 +369,26 @@ class GroupDetailsViewModelTest {
 
         vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
         vm.onIntent(GroupDetailsIntent.RetryRoster)
+
+        assertEquals(GroupDetailsResponseStatus.Confirmed, vm.state.value.memberResponse?.status)
+        assertEquals(null, vm.state.value.memberResponse?.waitlistPosition)
+    }
+
+    @Test
+    fun `successful roster read reconciles a waitlisted response promoted concurrently`() = runTest {
+        val mutation = sampleVersionedAttendanceMutation().copy(
+            value = sampleVersionedAttendanceMutation().value.copy(
+                attendance = AttendanceEntry("me", AttendanceStatus.Waitlisted, waitlistPosition = 2, version = 2),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Success(mutation))
+        attendance.rosterResults = mutableListOf(
+            SaqzResult.Success(sampleAttendanceRoster()),
+            SaqzResult.Success(AttendanceRoster(confirmed = listOf(AttendanceRosterMember("me", "Member")), waitlisted = emptyList())),
+        )
+        val vm = viewModel(groupGateway = athleteGroupGateway(), gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))), attendanceGateway = attendance, athleteGateway = monthlyAthleteGateway())
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
 
         assertEquals(GroupDetailsResponseStatus.Confirmed, vm.state.value.memberResponse?.status)
         assertEquals(null, vm.state.value.memberResponse?.waitlistPosition)

@@ -68,6 +68,7 @@ data class NextGameUi(
     val confirmedNames: List<String> = emptyList(),
     val availableSpots: Int = 0,
     val confirmationOpen: Boolean = true,
+    val hasGameFee: Boolean = false,
 )
 
 /** Os contadores 9 / 3 / 4 do 2f, com o título da própria linha e o "9/12" azul. */

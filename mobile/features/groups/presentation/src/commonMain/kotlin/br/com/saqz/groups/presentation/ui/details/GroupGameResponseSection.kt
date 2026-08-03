@@ -95,7 +95,7 @@ internal fun GroupGameResponseSection(
                 style = SaqzTheme.typography.support,
             )
         }
-        if (state.membershipType == AthleteMembershipType.AVULSO) {
+        if (state.membershipType == AthleteMembershipType.AVULSO && state.nextGame?.hasGameFee == true) {
             Text(
                 text = stringResource(Res.string.game_response_day_member_fee),
                 color = SaqzTheme.colors.textSecondary,

@@ -104,7 +104,7 @@ class GroupDetailsScreenTest {
                 memberResponse = GroupDetailsResponseUi(GroupDetailsResponseStatus.Waitlisted, 3),
                 membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO,
                 autoConfirmationVisible = false,
-                nextGame = GroupDetailsPreviewData.member.nextGame?.copy(confirmationOpen = false),
+                nextGame = GroupDetailsPreviewData.member.nextGame?.copy(confirmationOpen = false, hasGameFee = true),
             ),
         )
 
@@ -113,6 +113,18 @@ class GroupDetailsScreenTest {
         onNodeWithText("As confirmações estão encerradas.").assertExists()
         onNodeWithTag(GroupGameResponseTags.Going).assertExists()
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertExists()
+    }
+
+    @Test
+    fun `day-member fee notice is hidden when the next game has no fee`() = runComposeUiTest {
+        setScreen(
+            GroupDetailsPreviewData.member.copy(
+                membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO,
+                nextGame = GroupDetailsPreviewData.member.nextGame?.copy(hasGameFee = false),
+            ),
+        )
+
+        onAllNodesWithText("Ao confirmar, a cobrança deste jogo será gerada.").assertCountEquals(0)
     }
 
     @Test

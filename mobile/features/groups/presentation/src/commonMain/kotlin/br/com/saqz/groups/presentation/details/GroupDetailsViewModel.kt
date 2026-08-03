@@ -195,11 +195,12 @@ class GroupDetailsViewModel(
                     if (generation != responseGeneration || loadAtStart != loadGeneration) return@launch
                     val roster = (rosterResult as? SaqzResult.Success)?.value
                     val detail = result.value.value.detail
+                    val response = result.value.value.attendance.toResponse(roster)
                     update {
                         it.copy(
                             nextGame = it.nextGame?.reconcile(detail, roster),
                             attendance = detail.toAttendance(),
-                            memberResponse = result.value.value.attendance.toResponse(roster),
+                            memberResponse = if (roster != null) response.reconcileRoster(roster) else response,
                             responding = false,
                             responseFailed = false,
                             rosterStale = rosterResult is SaqzResult.Failure,
@@ -233,7 +234,7 @@ class GroupDetailsViewModel(
                     update {
                         it.copy(
                             nextGame = it.nextGame?.reconcileRoster(result.value),
-                            memberResponse = it.memberResponse?.withWaitlistPosition(result.value),
+                            memberResponse = it.memberResponse?.reconcileRoster(result.value),
                             rosterStale = false,
                             rosterRefreshing = false,
                         )
@@ -309,6 +310,7 @@ class GroupDetailsViewModel(
         confirmedNames = roster.confirmed.map { it.displayName },
         availableSpots = detail.availableSpots,
         confirmationOpen = status == GameStatus.Published && deadlineIsOpen(),
+        hasGameFee = gameFeeCents != null,
     )
 
     private fun NextGameUi.reconcile(detail: AttendanceDetail, roster: AttendanceRoster?): NextGameUi = copy(
@@ -338,7 +340,7 @@ class GroupDetailsViewModel(
         Instant.parse(confirmationDeadline) > now.now()
     }.getOrDefault(false)
 
-    private fun GroupDetailsResponseUi.withWaitlistPosition(roster: AttendanceRoster): GroupDetailsResponseUi {
+    private fun GroupDetailsResponseUi.reconcileRoster(roster: AttendanceRoster): GroupDetailsResponseUi {
         val id = memberId ?: return this
         return when {
             roster.confirmed.any { it.memberId == id } -> copy(
