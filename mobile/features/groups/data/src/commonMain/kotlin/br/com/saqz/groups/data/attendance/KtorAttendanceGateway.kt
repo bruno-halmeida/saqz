@@ -13,6 +13,9 @@ import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceMutation
+import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
+import br.com.saqz.groups.domain.attendance.AttendanceRoster
+import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
@@ -80,6 +83,19 @@ internal data class AttendanceMutationTransport(
 )
 
 @Serializable
+internal data class AttendanceRosterMemberTransport(
+    val memberId: String,
+    val displayName: String,
+    val waitlistPosition: Long? = null,
+)
+
+@Serializable
+internal data class AttendanceRosterTransport(
+    val confirmed: List<AttendanceRosterMemberTransport> = emptyList(),
+    val waitlisted: List<AttendanceRosterMemberTransport> = emptyList(),
+)
+
+@Serializable
 internal data class AttendanceCapacityTransport(
     val capacity: Int,
     val version: Long,
@@ -99,6 +115,13 @@ internal data class OverrideAttendanceRequest(
     val memberId: String,
     val intent: AttendanceIntentTransport,
     val reason: String,
+)
+
+@Serializable
+internal data class AttendancePromotionRequest(
+    val requestId: String,
+    val memberId: String,
+    val reason: String? = null,
 )
 
 @Serializable
@@ -139,6 +162,18 @@ class KtorAttendanceGateway(
             )
         }.mutationResult()
 
+    override suspend fun roster(
+        groupId: GroupId,
+        gameId: String,
+    ): SaqzResult<AttendanceRoster, AttendanceError> =
+        retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Get,
+                "${attendanceRoute(groupId, gameId)}/roster",
+                AttendanceRosterTransport.serializer(),
+            )
+        }.rosterResult()
+
     override suspend fun override(
         groupId: GroupId,
         gameId: String,
@@ -148,6 +183,20 @@ class KtorAttendanceGateway(
             network.execute(
                 HttpMethod.Post,
                 "${attendanceRoute(groupId, gameId)}/override",
+                AttendanceMutationTransport.serializer(),
+                NetworkRequest(json.encodeToString(command.toRequest())),
+            )
+        }.mutationResult()
+
+    override suspend fun promote(
+        groupId: GroupId,
+        gameId: String,
+        command: AttendancePromotionCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        retryTransport(command.requestId.safety(), delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Post,
+                "${attendanceRoute(groupId, gameId)}/promote",
                 AttendanceMutationTransport.serializer(),
                 NetworkRequest(json.encodeToString(command.toRequest())),
             )
@@ -190,12 +239,23 @@ private fun OverrideAttendanceCommand.toRequest() = OverrideAttendanceRequest(
     reason = reason,
 )
 
+private fun AttendancePromotionCommand.toRequest() = AttendancePromotionRequest(
+    requestId = requestId,
+    memberId = memberId,
+    reason = reason,
+)
+
 private fun AttendanceCapacityCommand.toRequest() = AttendanceCapacityRequest(
     requestId = requestId,
     capacity = capacity,
 )
 
 private fun NetworkResult<AttendanceDetailTransport>.detailResult() = when (this) {
+    is NetworkResult.Success -> SaqzResult.Success(value.toDomain())
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
+}
+
+private fun NetworkResult<AttendanceRosterTransport>.rosterResult() = when (this) {
     is NetworkResult.Success -> SaqzResult.Success(value.toDomain())
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
 }
@@ -282,6 +342,17 @@ private fun AttendanceDetailTransport.toDomain() = AttendanceDetail(
     availableSpots = availableSpots,
     waitlistCount = waitlistCount,
     capacity = capacity,
+)
+
+private fun AttendanceRosterTransport.toDomain() = AttendanceRoster(
+    confirmed = confirmed.map(AttendanceRosterMemberTransport::toDomain),
+    waitlisted = waitlisted.map(AttendanceRosterMemberTransport::toDomain),
+)
+
+private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
+    memberId = memberId,
+    displayName = displayName,
+    waitlistPosition = waitlistPosition,
 )
 
 private fun AttendanceMutationTransport.toDomain() = AttendanceMutation(

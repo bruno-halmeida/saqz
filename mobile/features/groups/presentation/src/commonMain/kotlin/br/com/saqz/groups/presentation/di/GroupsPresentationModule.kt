@@ -53,7 +53,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel {
         params -> GameEditorViewModel(params.get(), params.get(), params.get(), get(), get())
     }
-    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get()) }
+    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get()) }
     viewModel {
         GroupPhotoViewModel(
             profileGateway = get(),

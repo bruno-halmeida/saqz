@@ -34,7 +34,15 @@ class GameDetailScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h1400dp")
-    fun admin() = capture("game-detail-admin", GameDetailPreviewData.admin)
+    fun admin() = capture("game-detail-admin", GameDetailPreviewData.admin, directory = "vul-158")
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun capacitySheet() = capture(
+        "game-detail-capacity",
+        GameDetailPreviewData.admin.copy(capacitySheetOpen = true, capacityDraft = 14),
+        directory = "vul-158",
+    )
 
     @Test
     @Config(qualifiers = "+h1400dp")
@@ -81,11 +89,11 @@ class GameDetailScreenshotTest {
         GameDetailPreviewData.admin.copy(cancelDialogOpen = true, cancelFailed = true),
     )
 
-    private fun capture(name: String, state: GameDetailState) = capture(name) {
+    private fun capture(name: String, state: GameDetailState, directory: String = "vul-154") = capture(name, directory) {
         GameDetailScreen(state = state, onBack = {}, onIntent = {})
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    private fun capture(name: String, directory: String, content: @Composable () -> Unit) {
         compose.setContent {
             SaqzTheme {
                 Box(
@@ -97,6 +105,6 @@ class GameDetailScreenshotTest {
                 }
             }
         }
-        compose.onRoot().captureRoboImage("screenshots/vul-154/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 }

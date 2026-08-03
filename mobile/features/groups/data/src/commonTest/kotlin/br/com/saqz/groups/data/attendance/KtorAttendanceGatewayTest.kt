@@ -6,6 +6,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
@@ -84,6 +85,20 @@ class KtorAttendanceGatewayTest {
     }
 
     @Test
+    fun `roster uses roster route and preserves backend order`() = runTest {
+        val result = gateway { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/api/groups/group-1/games/game-1/attendance/roster", request.url.encodedPath)
+            rosterResponse()
+        }.roster(GROUP, GAME)
+
+        val roster = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceRoster
+        assertEquals(listOf("confirmed-1", "confirmed-2"), roster.confirmed.map { it.memberId })
+        assertEquals(listOf("wait-2", "wait-1"), roster.waitlisted.map { it.memberId })
+        assertEquals(2L, roster.waitlisted.first().waitlistPosition)
+    }
+
+    @Test
     fun `respond uses put route and confirm intent`() = runTest {
         gateway { request ->
             assertEquals(HttpMethod.Put, request.method)
@@ -137,6 +152,34 @@ class KtorAttendanceGatewayTest {
             GROUP,
             GAME,
             OverrideAttendanceCommand(KEY, "member-2", AttendanceIntent.Decline, "Correção"),
+        )
+    }
+
+    @Test
+    fun `promote uses directed route and request fields`() = runTest {
+        gateway { request ->
+            val body = request.bodyJson()
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/api/groups/group-1/games/game-1/attendance/promote", request.url.encodedPath)
+            assertEquals(KEY, body["requestId"]?.jsonPrimitive?.content)
+            assertEquals("member-2", body["memberId"]?.jsonPrimitive?.content)
+            assertEquals("Escolha do organizador", body["reason"]?.jsonPrimitive?.content)
+            mutationResponse()
+        }.promote(
+            GROUP,
+            GAME,
+            AttendancePromotionCommand(KEY, "member-2", "Escolha do organizador"),
+        )
+    }
+
+    @Test
+    fun `promote preserves returned etag`() = runTest {
+        val result = gateway { mutationResponse(etag = "\"11\"") }
+            .promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member-2", "Escolha do organizador"))
+
+        assertEquals(
+            "\"11\"",
+            assertIs<SaqzResult.Success<VersionedAttendanceMutation>>(result).value.version.value,
         )
     }
 
@@ -273,6 +316,17 @@ class KtorAttendanceGatewayTest {
     }
 
     @Test
+    fun `idempotent promote retries transient failure`() = runTest {
+        var calls = 0
+        gateway(delay = {}) {
+            calls++
+            respond("", HttpStatusCode.ServiceUnavailable)
+        }.promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member", "Escolha do organizador"))
+
+        assertEquals(4, calls)
+    }
+
+    @Test
     fun `idempotent capacity retries transient failure`() = runTest {
         var calls = 0
         gateway(delay = {}) {
@@ -339,6 +393,9 @@ class KtorAttendanceGatewayTest {
     private fun MockRequestHandleScope.detailResponse(body: String = DETAIL_JSON) =
         respond(body, headers = jsonHeaders())
 
+    private fun MockRequestHandleScope.rosterResponse() =
+        respond(ROSTER_JSON, headers = jsonHeaders())
+
     private fun MockRequestHandleScope.mutationResponse(etag: String = "\"2\"") =
         respond(MUTATION_JSON, headers = versionedHeaders(etag))
 
@@ -374,6 +431,7 @@ class KtorAttendanceGatewayTest {
         val GROUP = GroupId("group-1")
         const val GAME = "game-1"
         const val KEY = "request-key"
+        const val ROSTER_JSON = """{"confirmed":[{"memberId":"confirmed-1","displayName":"Ana"},{"memberId":"confirmed-2","displayName":"Bia"}],"waitlisted":[{"memberId":"wait-2","displayName":"Caio","waitlistPosition":2},{"memberId":"wait-1","displayName":"Duda","waitlistPosition":1}]}"""
         const val DETAIL_JSON = """{"ownAttendance":{"memberId":"member-1","status":"WAITLISTED","waitlistPosition":4,"version":7},"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24}"""
         const val DETAIL_WITHOUT_OWN = """{"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24}"""
         const val MUTATION_JSON = """{"attendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"audit":{"actorId":"organizer-1","source":"ORGANIZER_OVERRIDE","oldStatus":"WAITLISTED","newStatus":"CONFIRMED","reason":"Correção","occurredAt":"2026-08-12T22:30:00Z"},"promotedCount":2,"detail":{"ownAttendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"confirmedCount":4,"availableSpots":20,"waitlistCount":1,"capacity":24}}"""

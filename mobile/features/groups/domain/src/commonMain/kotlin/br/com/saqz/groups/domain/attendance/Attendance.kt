@@ -44,6 +44,17 @@ data class AttendanceDetail(
     val capacity: Int,
 )
 
+data class AttendanceRosterMember(
+    val memberId: String,
+    val displayName: String,
+    val waitlistPosition: Long? = null,
+)
+
+data class AttendanceRoster(
+    val confirmed: List<AttendanceRosterMember>,
+    val waitlisted: List<AttendanceRosterMember>,
+)
+
 data class AttendanceMutation(
     val attendance: AttendanceEntry,
     val audit: AttendanceAudit? = null,
@@ -85,6 +96,12 @@ data class AttendanceCapacityCommand(
     val capacity: Int,
 )
 
+data class AttendancePromotionCommand(
+    val requestId: String,
+    val memberId: String,
+    val reason: String,
+)
+
 sealed interface AttendanceError : SaqzError {
     data class Validation(val error: DataError.Validation) : AttendanceError
     data object HiddenResource : AttendanceError
@@ -101,10 +118,21 @@ interface AttendanceGateway {
         gameId: String,
     ): SaqzResult<AttendanceDetail, AttendanceError>
 
+    suspend fun roster(
+        groupId: GroupId,
+        gameId: String,
+    ): SaqzResult<AttendanceRoster, AttendanceError>
+
     suspend fun respond(
         groupId: GroupId,
         gameId: String,
         command: SelfAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError>
+
+    suspend fun promote(
+        groupId: GroupId,
+        gameId: String,
+        command: AttendancePromotionCommand,
     ): SaqzResult<VersionedAttendanceMutation, AttendanceError>
 
     suspend fun override(
