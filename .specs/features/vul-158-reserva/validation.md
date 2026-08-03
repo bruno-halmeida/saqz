@@ -1,8 +1,8 @@
 # VUL-158 Validation
 
-**Date**: 2026-08-03  
-**Spec**: `.specs/features/vul-158-reserva/spec.md`  
-**Diff range**: `origin/main..HEAD`  
+**Date**: 2026-08-03
+**Spec**: `.specs/features/vul-158-reserva/spec.md`
+**Diff range**: `origin/main..HEAD`
 **Verifier**: fresh-eyes pass in a detached scratch worktree
 
 ## Task Completion
@@ -48,7 +48,7 @@ Result: `BUILD SUCCESSFUL`; presentation reported 234 tests with 0 failures, dat
 | 1 | `GameWaitlistSection.kt:140` | Changed the promotion condition from `MANUAL` to `FIFO` | ✅ Killed — presentation test failed in both manual and FIFO UI cases |
 | 2 | `GameDetailViewModel.kt:194` | Changed promotion failure rollback from `previousWaitlist` to `emptyList()` | ✅ Killed — `promotion rolls back waitlist on failure` failed |
 
-**Sensor depth**: lightweight, 2 behavior-level mutations.  
+**Sensor depth**: lightweight, 2 behavior-level mutations.
 **Result**: 2/2 killed — PASS ✅. The real checkout was not mutated; the scratch worktree was removed afterward.
 
 ## Visual Review
