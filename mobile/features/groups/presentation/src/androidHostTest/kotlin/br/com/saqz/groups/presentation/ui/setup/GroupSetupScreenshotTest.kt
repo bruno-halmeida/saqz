@@ -130,6 +130,20 @@ class GroupSetupScreenshotTest {
     }
 
     @Test
+    fun gameConfigDefaults() = capture("config-jogo-padrao", directory = "vul-157") {
+        GroupGameConfigSection(
+            mensalistaPriority = true,
+            promotionMode = PromotionMode.FIFO,
+            confirmationLeadMinutes = GroupSetupDefaults.ConfirmationLeadMinutes,
+            autoConfirmEnabled = false,
+            onMensalistaPriorityChange = {},
+            onPromotionModeSelect = {},
+            onConfirmationLeadSelect = {},
+            onAutoConfirmChange = {},
+        )
+    }
+
+    @Test
     fun deleteSheet() = capture("2j-excluir-grupo") {
         GroupSetupScreen(
             state = createState(
