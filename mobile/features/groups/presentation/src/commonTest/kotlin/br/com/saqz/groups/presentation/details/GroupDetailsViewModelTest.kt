@@ -145,7 +145,35 @@ class GroupDetailsViewModelTest {
         )
 
         assertTrue(viewModel.state.value.isAdmin)
-        assertEquals("Saldo R$\u00A0380,00 · 2 mensalidades em aberto", viewModel.state.value.cashbox?.summary)
+        assertEquals("Saldo R$\u00A0380,00 · 3 mensalidades em aberto", viewModel.state.value.cashbox?.summary)
+    }
+
+    @Test
+    fun `admin cashbox counts pending monthly charges from previous months`() = runTest {
+        val viewModel = viewModel(
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            Charge(
+                                id = "monthly-jul",
+                                groupId = GroupId(GROUP_ID),
+                                memberId = "member-3",
+                                kind = ChargeKind.Monthly,
+                                month = "2026-07",
+                                amountCents = 7_000L,
+                                dueDate = "2026-07-10",
+                                status = ChargeStatus.Pending,
+                                version = 1,
+                                audit = emptyList(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("Saldo R$\u00A00,00 · 1 mensalidades em aberto", viewModel.state.value.cashbox?.summary)
     }
 
     @Test

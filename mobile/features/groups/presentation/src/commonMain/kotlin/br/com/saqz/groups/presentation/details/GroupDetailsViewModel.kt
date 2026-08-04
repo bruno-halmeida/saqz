@@ -136,7 +136,6 @@ class GroupDetailsViewModel(
         val cashbox = if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
             val openMonthlyCount = chargesResult.value.charges.count {
                 it.kind == ChargeKind.Monthly &&
-                    it.month == monthKey &&
                     it.status == ChargeStatus.Pending
             }
             CashboxUi(
