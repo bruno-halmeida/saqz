@@ -14,9 +14,12 @@ import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupDirectoryRepos
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
 import br.com.saqz.groups.application.admin.AdminGroupDirectory
 import br.com.saqz.groups.application.admin.AdminGroupStats
+import br.com.saqz.adminweb.http.AdminCouponsController
 import br.com.saqz.adminweb.http.AdminSubscriptionsController
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponDirectoryRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
+import br.com.saqz.subscriptions.application.AdminCouponDirectory
 import br.com.saqz.subscriptions.application.AdminRevenueStats
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
 import br.com.saqz.subscriptions.application.AdminSubscriptionDirectory
@@ -77,6 +80,13 @@ class PlatformAdminConfiguration {
         directory: AdminSubscriptionDirectory,
         canceler: AdminSubscriptionCanceler,
     ) = AdminSubscriptionsController(directory, canceler)
+
+    @Bean
+    fun adminCouponDirectory(dataSource: DataSource): AdminCouponDirectory =
+        JdbcAdminCouponDirectoryRepository(dataSource)
+
+    @Bean
+    fun adminCouponsController(directory: AdminCouponDirectory) = AdminCouponsController(directory)
 
     @Bean
     fun adminOverviewController(
