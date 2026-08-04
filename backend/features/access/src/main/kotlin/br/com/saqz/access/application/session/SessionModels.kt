@@ -74,6 +74,9 @@ sealed interface BootstrapSessionResult {
 sealed interface CompleteSessionProfileResult {
     data class Success(val session: SessionView) : CompleteSessionProfileResult
 
+    /** Conta suspensa pelo admin de plataforma: nenhum campo é atualizado. */
+    data object Suspended : CompleteSessionProfileResult
+
     data object InvalidPhone : CompleteSessionProfileResult
 
     data object InvalidDisplayName : CompleteSessionProfileResult
