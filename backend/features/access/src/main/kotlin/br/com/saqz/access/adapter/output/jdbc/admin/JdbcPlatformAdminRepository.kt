@@ -15,7 +15,8 @@ class JdbcPlatformAdminRepository(
         """
         SELECT id, email, display_name
         FROM access_users
-        WHERE firebase_subject = :subject AND platform_admin AND deleted_at IS NULL
+        WHERE firebase_subject = :subject AND platform_admin
+          AND deleted_at IS NULL AND suspended_at IS NULL
         """.trimIndent(),
     )
         .param("subject", subject)

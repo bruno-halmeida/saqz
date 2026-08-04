@@ -122,6 +122,7 @@ import br.com.saqz.access.application.session.AccountGroupCleanup
 import br.com.saqz.access.application.session.AccountTransactionRunner
 import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -166,6 +167,7 @@ class AccessSessionConfiguration {
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
             is BootstrapSessionResult.Success -> result.session.user.id
         }
     }

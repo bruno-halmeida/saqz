@@ -98,6 +98,8 @@ class UpdateSessionProfileRequest {
 
 class InvalidDisplayNameException : RuntimeException()
 
+class AccountSuspendedException : RuntimeException()
+
 class InvalidPhoneException : RuntimeException()
 
 class InvalidSessionProfileFieldException(val field: String) : RuntimeException()
@@ -114,6 +116,7 @@ class AccessSessionController(
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
             is BootstrapSessionResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
 
