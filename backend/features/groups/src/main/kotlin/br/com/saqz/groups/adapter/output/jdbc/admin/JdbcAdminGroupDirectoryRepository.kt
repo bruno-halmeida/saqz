@@ -66,7 +66,27 @@ class JdbcAdminGroupDirectoryRepository(
             }
             .list()
 
-        return AdminGroupPage(rows.map { it.summary }, rows.firstOrNull()?.total ?: 0, page, size)
+        val total = rows.firstOrNull()?.total ?: jdbc.sql(
+            """
+            SELECT count(*)
+            FROM access_groups g
+            JOIN access_users u ON u.id = g.owner_user_id
+            WHERE (:query::text IS NULL
+                   OR g.name ILIKE '%' || :query || '%'
+                   OR u.display_name ILIKE '%' || :query || '%')
+              AND (
+                   (:status::text IS NULL AND g.deleted_at IS NULL)
+                   OR (:status = 'active' AND g.deleted_at IS NULL)
+                   OR (:status = 'deleted' AND g.deleted_at IS NOT NULL)
+              )
+            """.trimIndent(),
+        )
+            .param("query", query?.trim()?.takeIf { it.isNotEmpty() })
+            .param("status", status)
+            .query(Long::class.java)
+            .single()
+
+        return AdminGroupPage(rows.map { it.summary }, total, page, size)
     }
 
     override fun find(groupId: UUID): AdminGroupDetail? {
@@ -109,7 +129,7 @@ class JdbcAdminGroupDirectoryRepository(
                    (SELECT count(*) FROM game_attendance a
                      WHERE a.game_id = x.id AND a.status = 'CONFIRMED') AS confirmed
             FROM games x
-            WHERE x.group_id = :id AND x.status <> 'DRAFT'
+            WHERE x.group_id = :id AND x.status <> 'DRAFT' AND x.starts_at < now()
             ORDER BY x.starts_at DESC
             LIMIT :limit
             """.trimIndent(),

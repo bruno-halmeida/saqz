@@ -69,6 +69,9 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
         subscription(plan = "TITULAR", createdAt = now.minusSeconds(90 * DAY), canceledAt = now.minusSeconds(60 * DAY))
         subscription(plan = "TITULAR", createdAt = now.minusSeconds(10 * DAY))
 
+        // Checkout abandonado: linha PAST_DUE criada no checkout, nunca confirmada.
+        subscription(plan = "TITULAR", status = "PAST_DUE", createdAt = now.minusSeconds(90 * DAY), firstConfirmedAt = null)
+
         assertEquals(ChurnStats(canceled = 1, activeAtStart = 2), repository.churn(start, now))
         assertEquals(ChurnStats(canceled = 2, activeAtStart = 4), repository.churn(null, now))
     }
@@ -85,12 +88,13 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
             couponId = cupom,
             couponCyclesRemaining = 2,
         )
+        // Estado real pós-esgotamento (ProcessAsaasWebhook): remaining vira NULL, coupon_id fica.
         subscription(
             plan = "TITULAR",
             cycle = "MONTHLY",
             createdAt = now.minusSeconds(DAY),
             couponId = cupom,
-            couponCyclesRemaining = 0,
+            couponCyclesRemaining = null,
         )
         subscription(plan = "ILIMITADO", cycle = "MONTHLY", createdAt = now.minusSeconds(DAY), status = "CANCELED")
 
@@ -98,7 +102,7 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
 
         assertEquals(
             listOf(
-                // 3591 = 3990 com 10%; 3990 = cupom esgotado volta ao cheio
+                // 3591 = 3990 com 10%; 3990 = cupom esgotado (remaining NULL, duração finita) volta ao cheio
                 PlanSplitEntry(Plan.TITULAR, subscribers = 2, mrrCents = 3_591 + 3_990),
                 // 5990 mensal + 59900/12 = 4991 do anual mensalizado
                 PlanSplitEntry(Plan.ORGANIZADOR, subscribers = 2, mrrCents = 5_990 + 4_991),
@@ -139,18 +143,20 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
         canceledAt: Instant? = null,
         couponId: UUID? = null,
         couponCyclesRemaining: Int? = null,
+        firstConfirmedAt: Instant? = createdAt,
         ownerId: UUID = insertUser(),
     ) {
         execute(
             """
             INSERT INTO subscriptions (
                 owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
-                current_period_end, canceled_at, coupon_id, coupon_cycles_remaining, created_at, updated_at
+                current_period_end, canceled_at, coupon_id, coupon_cycles_remaining,
+                first_confirmed_at, created_at, updated_at
             ) VALUES (
                 '$ownerId', '$plan', '$cycle', '$status', 'cus-$ownerId', 'sub-$ownerId',
                 '${now.plusSeconds(30 * DAY)}', ${canceledAt?.let { "'$it'" } ?: "NULL"},
                 ${couponId?.let { "'$it'" } ?: "NULL"}, ${couponCyclesRemaining ?: "NULL"},
-                '$createdAt', '$createdAt'
+                ${firstConfirmedAt?.let { "'$it'" } ?: "NULL"}, '$createdAt', '$createdAt'
             )
             """.trimIndent(),
         )
