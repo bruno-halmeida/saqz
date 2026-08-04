@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.groups.adapter.input.http.AccessGroupController
 import br.com.saqz.groups.adapter.input.http.AthleteController
+import br.com.saqz.groups.adapter.input.http.AccessGroupListController
 import br.com.saqz.groups.adapter.input.http.AccessGroupReadController
 import br.com.saqz.groups.adapter.input.http.AccessGroupSettingsController
 import br.com.saqz.groups.adapter.input.http.AccessInviteManagementController
@@ -26,6 +27,7 @@ import br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLin
 import br.com.saqz.groups.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.delete.JdbcGroupDeletionRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
+import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupSummariesReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
 import br.com.saqz.groups.adapter.output.jdbc.photo.JdbcGroupPhotoRepository
 import br.com.saqz.groups.adapter.output.media.GroupPhotoValidator
@@ -49,6 +51,7 @@ import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.delete.DeleteGroup
 import br.com.saqz.groups.application.delete.DeleteGroupResult
 import br.com.saqz.groups.application.read.GetGroup
+import br.com.saqz.groups.application.read.ListGroups
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.invite.manage.ExpireInvite
 import br.com.saqz.groups.application.invite.manage.GetInviteMetadata
@@ -381,6 +384,18 @@ class AccessSessionConfiguration {
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         getGroup: GetGroup,
     ) = AccessGroupReadController(verifiedGroupActorResolver, getGroup)
+
+    @Bean
+    fun groupSummariesReadRepository(dataSource: DataSource) = JdbcGroupSummariesReadRepository(dataSource)
+
+    @Bean
+    fun listGroups(repository: JdbcGroupSummariesReadRepository) = ListGroups(repository)
+
+    @Bean
+    fun accessGroupListController(
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
+        listGroups: ListGroups,
+    ) = AccessGroupListController(verifiedGroupActorResolver, listGroups)
 
     @Bean
     fun groupSettingsRepository(dataSource: DataSource) = JdbcGroupSettingsRepository(dataSource)
