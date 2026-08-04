@@ -1,0 +1,23 @@
+meta {
+  name: My Profile Stats
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{backendUrl}}/api/profile/stats
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns cross-group profile stats", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().games).to.be.a("number");
+    expect(res.getBody().groups).to.be.a("number");
+  });
+}

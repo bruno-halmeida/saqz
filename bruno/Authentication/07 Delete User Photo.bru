@@ -1,0 +1,21 @@
+meta {
+  name: Delete User Photo
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{backendUrl}}/api/session/photo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("photo is removed", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

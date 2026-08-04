@@ -1,0 +1,21 @@
+meta {
+  name: Read Athlete Stats
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{backendUrl}}/api/groups/{{groupId}}/athletes/{{userId}}/stats
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns the athlete stats for the group", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

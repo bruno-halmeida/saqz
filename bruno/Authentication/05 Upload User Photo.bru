@@ -1,0 +1,26 @@
+meta {
+  name: Upload User Photo
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{backendUrl}}/api/session/photo
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:multipart-form {
+  file: @file({{userPhotoFile}})
+}
+
+tests {
+  test("user photo is accepted with an ETag", function () {
+    expect(res.getStatus()).to.equal(204);
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+  });
+}
