@@ -116,6 +116,7 @@ internal fun SaqzNavHost(
     val restoring = remember { booleanArrayOf(true) }
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -367,6 +368,7 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     onBack = pop,
                     onEffect = { effect -> backStack.onDetailsEffect(effect, pop) },
+                    refreshVersion = groupDetailsRefreshVersion,
                 )
             }
             entry<GroupsRoute.Invite> { route ->
@@ -468,6 +470,7 @@ internal fun SaqzNavHost(
                     gameId = route.gameId,
                     onBack = pop,
                     onOpenGameDetail = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                    onSave = { groupDetailsRefreshVersion++ },
                 )
             }
             entry<GroupsRoute.GameDetail> { route ->

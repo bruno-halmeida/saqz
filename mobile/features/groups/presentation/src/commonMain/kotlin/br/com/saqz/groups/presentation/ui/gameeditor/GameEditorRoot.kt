@@ -17,6 +17,7 @@ fun GameEditorRoot(
     gameId: String?,
     onBack: () -> Unit,
     onOpenGameDetail: (String) -> Unit,
+    onSave: () -> Unit = {},
     viewModel: GameEditorViewModel? = null,
 ) {
     val instanceKey = rememberSaveable(groupId, gameId) {
@@ -29,7 +30,10 @@ fun GameEditorRoot(
     val state by resolvedViewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(resolvedViewModel.effects) { effect ->
         when (effect) {
-            GameEditorEffect.Saved -> onBack()
+            GameEditorEffect.Saved -> {
+                onSave()
+                onBack()
+            }
             is GameEditorEffect.OpenGameDetail -> onOpenGameDetail(effect.gameId)
         }
     }

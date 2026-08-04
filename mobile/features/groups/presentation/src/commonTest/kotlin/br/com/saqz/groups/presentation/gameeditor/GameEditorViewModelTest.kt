@@ -201,6 +201,42 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `failed publish edits the existing draft after a form change`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val editedDraft = draft.copy(version = GameVersionToken("etag-edited"))
+        val gateway = FakeGameGateway(
+            createResult = SaqzResult.Success(draft),
+            editResult = SaqzResult.Success(editedDraft),
+            lifecycleResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Failure(GameError.Data(DataError.Server)),
+                    SaqzResult.Success(editedDraft.copy(game = editedDraft.game.copy(status = GameStatus.Published))),
+                ),
+            ),
+        )
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(vm.state.value.saveFailed)
+
+        vm.onIntent(GameEditorIntent.UpdateNotes("Nota corrigida"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertEquals(1, gateway.editCalls)
+        assertEquals("game-1", gateway.lastEditGameId)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.editVersions)
+        assertEquals(
+            listOf(GameVersionToken("etag-draft"), GameVersionToken("etag-edited")),
+            gateway.lifecycleVersions,
+        )
+        assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
     fun `retry without form changes reuses the command key`() = runTest {
         val gateway = FakeGameGateway(
             createResult = SaqzResult.Failure(GameError.Data(DataError.Server)),

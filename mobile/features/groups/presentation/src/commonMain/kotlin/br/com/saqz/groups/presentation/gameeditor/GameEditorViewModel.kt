@@ -38,6 +38,7 @@ class GameEditorViewModel(
     initialState = GameEditorState(isLoading = true),
 ) {
     private var loadGeneration = 0
+    private var pendingDraft: VersionedGame? = null
     init {
         load()
     }
@@ -157,22 +158,24 @@ class GameEditorViewModel(
         }
         val draft = buildDraft(current, commandKey)
         val command = buildCommand(draft)
-        val attempt = if (gameId == null) {
+        val attempt = if (pendingDraft != null) {
+            val draft = pendingDraft ?: return
+            LastAttempt.Edit(draft.game.id, draft.version.value, commandKey, publishAfterEdit = true)
+        } else if (gameId == null) {
             LastAttempt.Create(commandKey)
         } else {
             val versionToken = current.versionToken ?: return
-            LastAttempt.Edit(gameId, versionToken, commandKey)
+            LastAttempt.Edit(gameId, versionToken, commandKey, publishAfterEdit = false)
         }
         update { it.copy(isSaving = true, saveFailed = false, hasConflict = false, conflictGameId = null) }
         viewModelScope.launch {
             val result = when (attempt) {
                 is LastAttempt.Create -> createAndPublish(command)
-                is LastAttempt.Edit -> gameGateway.edit(
-                    GroupId(groupId), attempt.gameId, GameVersionToken(attempt.versionToken), command,
-                )
+                is LastAttempt.Edit -> editAndMaybePublish(attempt, command)
             }
             when (result) {
                 is SaqzResult.Success -> {
+                    pendingDraft = null
                     savedState.remove<String>(KeyCommand)
                     update { it.copy(isSaving = false, saveFailed = false) }
                     emit(GameEditorEffect.Saved)
@@ -225,16 +228,40 @@ class GameEditorViewModel(
         val created = gameGateway.create(GroupId(groupId), command)
     ) {
         is SaqzResult.Failure -> created
-        is SaqzResult.Success -> if (created.value.game.status == GameStatus.Published) {
-            created
-        } else {
-            gameGateway.lifecycle(
-                GroupId(groupId),
-                created.value.game.id,
-                created.value.version,
-                GameLifecycleAction.Publish,
-            )
+        is SaqzResult.Success -> {
+            pendingDraft = created.value
+            publishIfDraft(created.value)
         }
+    }
+
+    private suspend fun editAndMaybePublish(
+        attempt: LastAttempt.Edit,
+        command: GameWriteCommand,
+    ): SaqzResult<VersionedGame, GameError> {
+        val edited = gameGateway.edit(
+            GroupId(groupId), attempt.gameId, GameVersionToken(attempt.versionToken), command,
+        )
+        if (!attempt.publishAfterEdit) return edited
+        return when (edited) {
+            is SaqzResult.Failure -> edited
+            is SaqzResult.Success -> {
+                pendingDraft = edited.value
+                publishIfDraft(edited.value)
+            }
+        }
+    }
+
+    private suspend fun publishIfDraft(
+        versioned: VersionedGame,
+    ): SaqzResult<VersionedGame, GameError> = if (versioned.game.status == GameStatus.Published) {
+        SaqzResult.Success(versioned)
+    } else {
+        gameGateway.lifecycle(
+            GroupId(groupId),
+            versioned.game.id,
+            versioned.version,
+            GameLifecycleAction.Publish,
+        )
     }
 
     private fun buildDraft(state: GameEditorState, commandKey: String): GameEditorDraft {
@@ -335,7 +362,12 @@ class GameEditorViewModel(
     private sealed interface LastAttempt {
         val commandKey: String
         data class Create(override val commandKey: String) : LastAttempt
-        data class Edit(val gameId: String, val versionToken: String, override val commandKey: String) : LastAttempt
+        data class Edit(
+            val gameId: String,
+            val versionToken: String,
+            override val commandKey: String,
+            val publishAfterEdit: Boolean,
+        ) : LastAttempt
     }
 
     private companion object {
