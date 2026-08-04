@@ -538,6 +538,28 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `edicao hidrata os campos Pix do grupo`() = runTest(mainDispatcher) {
+        val group = br.com.saqz.groups.presentation.sampleGroup().copy(
+            profile = br.com.saqz.groups.presentation.sampleGroup().profile?.copy(
+                pixKey = "racha@saqz.test",
+                pixLabel = "Lucas Prado · Nubank",
+            ),
+        )
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = FakeGroupProfileGateway(
+                readResult = SaqzResult.Success(
+                    br.com.saqz.groups.presentation.sampleVersionedGroup(group),
+                ),
+            ),
+        )
+        runCurrent()
+
+        assertEquals("racha@saqz.test", viewModel.state.value.pixKey)
+        assertEquals("Lucas Prado · Nubank", viewModel.state.value.pixLabel)
+    }
+
+    @Test
     fun `editar envia a configuracao de jogo no comando de update`() = runTest(mainDispatcher) {
         val profileGateway = FakeGroupProfileGateway()
         val viewModel = viewModel(
@@ -559,6 +581,23 @@ class GroupSetupViewModelTest {
             form?.promotionMode,
         )
         assertEquals(true, form?.autoConfirmEnabled)
+    }
+
+    @Test
+    fun `editar envia Pix com trim sem validar o formato da chave`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = profileGateway,
+        )
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("  texto livre sem formato  "))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixLabel("  Lucas Prado · Nubank  "))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        val form = profileGateway.lastUpdateCommand?.form
+        assertEquals("texto livre sem formato", form?.pixKey)
+        assertEquals("Lucas Prado · Nubank", form?.pixLabel)
     }
 
     /**
@@ -586,6 +625,12 @@ class GroupSetupViewModelTest {
         viewModel.onIntent(
             GroupSetupIntent.UpdateVenueAddress("E".repeat(GroupTextLimits.VenueAddressMax + 1)),
         )
+        viewModel.onIntent(
+            GroupSetupIntent.UpdatePixKey("P".repeat(GroupPixTextLimits.KeyMax + 1)),
+        )
+        viewModel.onIntent(
+            GroupSetupIntent.UpdatePixLabel("L".repeat(GroupPixTextLimits.LabelMax + 1)),
+        )
         runCurrent()
 
         val form = viewModel.state.value.form
@@ -594,8 +639,12 @@ class GroupSetupViewModelTest {
         assertEquals(GroupTextLimits.CustomLevelMax, form.customLevel?.length)
         assertEquals(GroupTextLimits.VenueNameMax, form.defaultVenue?.name?.length)
         assertEquals(GroupTextLimits.VenueAddressMax, form.defaultVenue?.address?.length)
+        assertEquals(GroupPixTextLimits.KeyMax, viewModel.state.value.pixKey?.length)
+        assertEquals(GroupPixTextLimits.LabelMax, viewModel.state.value.pixLabel?.length)
         // O que foi cortado também não vaza para o process death.
         assertEquals(GroupTextLimits.NameMax, handle.get<String>("group-setup-name")?.length)
+        assertEquals(GroupPixTextLimits.KeyMax, handle.get<String>("group-setup-pix-key")?.length)
+        assertEquals(GroupPixTextLimits.LabelMax, handle.get<String>("group-setup-pix-label")?.length)
     }
 
     /** Quadra vazia não é quadra: o backend recusa `defaultVenue` com campos em branco. */
@@ -711,6 +760,8 @@ class GroupSetupViewModelTest {
             "group-setup-name",
             "group-setup-description",
             "group-setup-custom-level",
+            "group-setup-pix-key",
+            "group-setup-pix-label",
             "group-setup-venue-name",
             "group-setup-venue-address",
         )

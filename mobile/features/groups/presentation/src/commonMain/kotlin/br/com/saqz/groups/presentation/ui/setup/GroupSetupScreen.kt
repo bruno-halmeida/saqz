@@ -75,6 +75,8 @@ internal object GroupSetupTags {
     const val MensalistaPriority = "group-game-config-mensalista-priority"
     const val PromotionMode = "group-game-config-promotion-mode"
     const val AutoConfirm = "group-game-config-auto-confirm"
+    const val PixKey = "group-setup-pix-key"
+    const val PixLabel = "group-setup-pix-label"
     const val VenueName = "group-setup-venue-name"
     const val VenueAddress = "group-setup-venue-address"
     const val Recurrence = "group-setup-recurrence"
@@ -268,6 +270,12 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
             onPromotionModeSelect = { onIntent(GroupSetupIntent.SelectPromotionMode(it)) },
             onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
             onAutoConfirmChange = { onIntent(GroupSetupIntent.ToggleAutoConfirm(it)) },
+        )
+        GroupPixSection(
+            pixKey = state.pixKey,
+            pixLabel = state.pixLabel,
+            onPixKeyChange = { onIntent(GroupSetupIntent.UpdatePixKey(it)) },
+            onPixLabelChange = { onIntent(GroupSetupIntent.UpdatePixLabel(it)) },
         )
     }
 }

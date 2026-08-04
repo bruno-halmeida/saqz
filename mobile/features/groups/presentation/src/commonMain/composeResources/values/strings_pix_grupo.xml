@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- VUL-182 · Pix do grupo no editar grupo -->
+    <string name="group_pix_title">Pix do grupo</string>
+    <string name="group_pix_key_label">Chave Pix</string>
+    <string name="group_pix_key_hint">Cole a chave Pix ou outro texto identificador.</string>
+    <string name="group_pix_label_label">O que é</string>
+    <string name="group_pix_label_hint">Ex.: Lucas Prado · Nubank</string>
+</resources>

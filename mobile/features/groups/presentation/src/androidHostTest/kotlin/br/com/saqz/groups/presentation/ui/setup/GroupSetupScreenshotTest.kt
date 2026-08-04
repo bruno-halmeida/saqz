@@ -36,6 +36,7 @@ import org.robolectric.annotation.GraphicsMode
     qualifiers = RobolectricDeviceQualifiers.Pixel7,
     application = Application::class,
 )
+@Suppress("TooManyFunctions")
 class GroupSetupScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
@@ -130,6 +131,16 @@ class GroupSetupScreenshotTest {
     }
 
     @Test
+    fun pixFields() = capture("pix-do-grupo", directory = "vul-182") {
+        GroupPixSection(
+            pixKey = "racha@saqz.test",
+            pixLabel = "Lucas Prado · Nubank",
+            onPixKeyChange = {},
+            onPixLabelChange = {},
+        )
+    }
+
+    @Test
     fun gameConfigDefaults() = capture("config-jogo-padrao", directory = "vul-157") {
         GroupGameConfigSection(
             mensalistaPriority = true,
@@ -173,6 +184,8 @@ class GroupSetupScreenshotTest {
         canManageGameConfig = mode is GroupSetupMode.Edit,
         durationMinutes = durationMinutes,
         sheet = sheet,
+        pixKey = if (mode is GroupSetupMode.Edit) "racha@saqz.test" else null,
+        pixLabel = if (mode is GroupSetupMode.Edit) "Lucas Prado · Nubank" else null,
     )
 
     private fun capture(name: String, directory: String = "vul-68", content: @Composable () -> Unit) {
