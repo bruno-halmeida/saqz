@@ -7,5 +7,20 @@
     "ui": {
       "enabled": false
     }
+  },
+  "hosting": {
+    "target": "adm-web",
+    "public": "adm-web",
+    "ignore": ["**/.*", "**/README.md"],
+    "headers": [
+      {
+        "source": "assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+      },
+      {
+        "source": "index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
   }
 }
