@@ -47,6 +47,7 @@ data class ApiProblem(
     val retryAfterSeconds: Int? = null,
     val remainingAttempts: Int? = null,
     val expiredAt: String? = null,
+    val conflictGameId: String? = null,
 )
 
 sealed interface NetworkError {

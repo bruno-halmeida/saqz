@@ -74,8 +74,10 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenVenueMap -> emit(GroupDetailsEffect.OpenMap)
             GroupDetailsIntent.Leave -> emit(GroupDetailsEffect.Left)
             GroupDetailsIntent.RetryRoster -> retryRoster()
+            GroupDetailsIntent.ViewGame -> state.value.nextGame?.let {
+                emit(GroupDetailsEffect.OpenGame(groupId, it.gameId))
+            }
             GroupDetailsIntent.ConfirmAttendance,
-            GroupDetailsIntent.ViewGame,
             GroupDetailsIntent.NotifyPending,
             GroupDetailsIntent.OpenNotices,
             GroupDetailsIntent.OpenChat,

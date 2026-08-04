@@ -128,7 +128,7 @@ internal data class GameWriteRequest(
     val capacity: Int? = null,
     val confirmationDeadline: String? = null,
     val gameFeeCents: Long? = null,
-    val useDefaultGameFee: Boolean = true,
+    val useDefaultGameFee: Boolean,
     val notes: String? = null,
 )
 
@@ -272,6 +272,7 @@ private fun NetworkError.toDomain(): GameError = when (this) {
     is NetworkError.ApiProblemError -> when (problem.code) {
         "VALIDATION_FAILED" -> GameError.Validation(DataError.Validation(ValidationDetails(emptyList(), problem.fieldErrors.orEmpty())))
         "GAME_NOT_FOUND", "GROUP_NOT_FOUND" -> GameError.HiddenResource
+        "GAME_SCHEDULE_CONFLICT" -> GameError.Conflict(problem.conflictGameId)
         "VERSION_CONFLICT" -> GameError.VersionConflict
         "INVALID_GAME_TRANSITION" -> GameError.InvalidLifecycle
         "AUTHENTICATION_REQUIRED" -> GameError.Authentication

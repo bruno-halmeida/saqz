@@ -36,6 +36,7 @@ import br.com.saqz.access.adapter.input.http.InvalidUserPhotoException
 import br.com.saqz.access.adapter.input.http.UserPhotoNotFoundException
 import br.com.saqz.access.adapter.input.http.UserPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
+import br.com.saqz.groups.adapter.input.http.GameScheduleConflictException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
@@ -212,6 +213,21 @@ class SafeExceptionHandler(
     @ExceptionHandler(VersionConflictException::class)
     fun versionConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
+    }
+
+    @ExceptionHandler(GameScheduleConflictException::class)
+    fun gameScheduleConflict(
+        failure: GameScheduleConflictException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            409,
+            ErrorCode.GAME_SCHEDULE_CONFLICT,
+            conflictGameId = failure.gameId.toString(),
+        )
     }
 
     @ExceptionHandler(GameNotFoundException::class)

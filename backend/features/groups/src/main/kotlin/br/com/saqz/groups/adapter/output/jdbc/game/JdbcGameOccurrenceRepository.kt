@@ -57,6 +57,20 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         return find(groupId, gameId)?.let { GameCommandContext(role, it) }
     }
 
+    override fun recurringConflict(
+        groupId: UUID,
+        startsAt: java.time.Instant,
+        excludingGameId: UUID?,
+    ): UUID? = jdbc.sql(if (excludingGameId == null) RECURRING_CONFLICT else RECURRING_CONFLICT_EXCLUDING_GAME)
+        .param("groupId", groupId)
+        .param("startsAt", Timestamp.from(startsAt))
+        .let { statement ->
+            if (excludingGameId == null) statement else statement.param("excludingGameId", excludingGameId)
+        }
+        .query(UUID::class.java)
+        .optional()
+        .orElse(null)
+
     override fun create(game: Game): GameWriteResult {
         val inserted = bind(jdbc.sql(INSERT_GAME), game).update()
         return if (inserted == 1) GameWriteResult.Saved(game)
@@ -182,6 +196,29 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             FROM access_groups
             WHERE id = :groupId AND deleted_at IS NULL
             ON CONFLICT (id) DO NOTHING
+        """
+
+        const val RECURRING_CONFLICT = """
+            SELECT id
+            FROM games
+            WHERE group_id = :groupId
+              AND starts_at = :startsAt
+              AND series_id IS NOT NULL
+              AND status <> 'CANCELLED'
+            ORDER BY id
+            LIMIT 1
+        """
+
+        const val RECURRING_CONFLICT_EXCLUDING_GAME = """
+            SELECT id
+            FROM games
+            WHERE group_id = :groupId
+              AND starts_at = :startsAt
+              AND id <> :excludingGameId
+              AND series_id IS NOT NULL
+              AND status <> 'CANCELLED'
+            ORDER BY id
+            LIMIT 1
         """
 
         const val UPDATE_GAME = """

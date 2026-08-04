@@ -206,8 +206,11 @@ class FakeGameGateway(
     var createCalls = 0
     var editCalls = 0
     var lastCreateCommand: GameWriteCommand? = null
+    var lastEditGameId: String? = null
     var lastEditCommand: GameWriteCommand? = null
     var lastLifecycleAction: GameLifecycleAction? = null
+    val editVersions = mutableListOf<GameVersionToken>()
+    val lifecycleGameIds = mutableListOf<String>()
     val lifecycleVersions = mutableListOf<GameVersionToken>()
 
     override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listResult
@@ -234,7 +237,9 @@ class FakeGameGateway(
         command: GameWriteCommand,
     ): SaqzResult<VersionedGame, GameError> {
         editCalls += 1
+        lastEditGameId = gameId
         lastEditCommand = command
+        editVersions += version
         return editResult
     }
 
@@ -244,6 +249,7 @@ class FakeGameGateway(
         version: GameVersionToken,
         action: GameLifecycleAction,
     ): SaqzResult<VersionedGame, GameError> {
+        lifecycleGameIds += gameId
         lastLifecycleAction = action
         lifecycleVersions += version
         return lifecycleDeferreds?.removeFirstOrNull()?.await()

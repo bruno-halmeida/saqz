@@ -480,7 +480,10 @@ private fun DurationChips(selected: Int, onSelect: (Int) -> Unit) {
     )
     Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
         SaqzSectionHeader(title = stringResource(Res.string.game_editor_duration_label))
-        Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+        ) {
             DurationOptions.forEachIndexed { index, minutes ->
                 SaqzChoiceChip(
                     label = labels[index],
@@ -547,9 +550,15 @@ private fun ConfirmationLeadChips(selected: Int, onSelect: (Int) -> Unit) {
         stringResource(Res.string.group_lead_twelve_hours),
         stringResource(Res.string.group_lead_twenty_four_hours),
     )
-    Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+    ) {
         SaqzSectionHeader(title = stringResource(Res.string.game_editor_confirmation_lead_label))
-        Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+        ) {
             LeadOptions.forEachIndexed { index, minutes ->
                 SaqzChoiceChip(
                     label = labels[index],
