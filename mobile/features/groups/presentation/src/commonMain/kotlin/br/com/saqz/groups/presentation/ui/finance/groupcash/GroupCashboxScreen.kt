@@ -30,12 +30,12 @@ import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxAction.ChargeMissing
-import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxAction.CopyPix
-import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxAction.MarkReceived
-import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxAction.Register
-import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxAction.Retry
-import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxAction.ViewFullStatement
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ChargeMissing
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.CopyPix
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.MarkReceived
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Register
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Retry
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ViewFullStatement
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_charge
 import br.com.saqz.groups.resources.group_cashbox_charge_missing
@@ -82,15 +82,15 @@ internal object GroupCashboxTags {
 internal fun GroupCashboxScreen(
     state: GroupCashboxState,
     onBack: () -> Unit,
-    onAction: (GroupCashboxAction) -> Unit,
+    onIntent: (GroupCashboxIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize().testTag(GroupCashboxTags.Screen)) {
         SaqzTopAppBar(title = state.groupName.ifBlank { null }, onBack = onBack)
         when {
             state.isLoading -> LoadingContent()
-            state.loadFailed -> LoadFailure(onRetry = { onAction(Retry) })
-            else -> LoadedContent(state = state, onAction = onAction)
+            state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })
+            else -> LoadedContent(state = state, onIntent = onIntent)
         }
     }
 }
@@ -121,7 +121,7 @@ private fun LoadFailure(onRetry: () -> Unit) = Column(
 }
 
 @Composable
-private fun LoadedContent(state: GroupCashboxState, onAction: (GroupCashboxAction) -> Unit) {
+private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
     Column(
         modifier = Modifier
@@ -130,24 +130,24 @@ private fun LoadedContent(state: GroupCashboxState, onAction: (GroupCashboxActio
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap * 2),
     ) {
-        CashboxHeader(state = state, onAction = onAction)
+        CashboxHeader(state = state, onIntent = onIntent)
         Text(
             text = stringResource(Res.string.group_cashbox_note),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textSecondary,
         )
         if (state.cashboxEmpty) {
-            EmptyCashbox(onAction = onAction)
+            EmptyCashbox(onIntent = onIntent)
         }
-        state.overdueBanner?.let { OverdueBanner(it, onAction) }
+        state.overdueBanner?.let { OverdueBanner(it, onIntent) }
         MonthlySection(state)
         if (state.debtors.isNotEmpty()) {
-            DebtorsSection(state = state, onAction = onAction)
+            DebtorsSection(state = state, onIntent = onIntent)
         }
-        state.pix?.let { PixCard(pix = it, onCopy = { onAction(CopyPix) }) }
+        state.pix?.let { PixCard(pix = it, onCopy = { onIntent(CopyPix) }) }
         SaqzButton(
             label = stringResource(Res.string.group_cashbox_statement),
-            onClick = { onAction(ViewFullStatement) },
+            onClick = { onIntent(ViewFullStatement) },
             variant = SaqzButtonVariant.Ghost,
             fullWidth = true,
             modifier = Modifier.testTag(GroupCashboxTags.Statement),
@@ -156,7 +156,7 @@ private fun LoadedContent(state: GroupCashboxState, onAction: (GroupCashboxActio
 }
 
 @Composable
-private fun CashboxHeader(state: GroupCashboxState, onAction: (GroupCashboxAction) -> Unit) {
+private fun CashboxHeader(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
@@ -183,7 +183,7 @@ private fun CashboxHeader(state: GroupCashboxState, onAction: (GroupCashboxActio
         Row(horizontalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
             SaqzButton(
                 label = stringResource(Res.string.group_cashbox_charge_missing),
-                onClick = { onAction(GroupCashboxAction.ChargeMissing) },
+                onClick = { onIntent(GroupCashboxIntent.ChargeMissing) },
                 variant = SaqzButtonVariant.Secondary,
                 size = SaqzButtonSize.Sm,
                 enabled = false,
@@ -191,7 +191,7 @@ private fun CashboxHeader(state: GroupCashboxState, onAction: (GroupCashboxActio
             )
             SaqzButton(
                 label = stringResource(Res.string.group_cashbox_register),
-                onClick = { onAction(Register) },
+                onClick = { onIntent(Register) },
                 size = SaqzButtonSize.Sm,
                 modifier = Modifier.weight(1f).testTag(GroupCashboxTags.Register),
             )
@@ -207,7 +207,7 @@ private fun CashboxHeader(state: GroupCashboxState, onAction: (GroupCashboxActio
 }
 
 @Composable
-private fun EmptyCashbox(onAction: (GroupCashboxAction) -> Unit) = SaqzCard(
+private fun EmptyCashbox(onIntent: (GroupCashboxIntent) -> Unit) = SaqzCard(
     modifier = Modifier.testTag(GroupCashboxTags.Empty),
     tone = SaqzCardTone.Soft,
 ) {
@@ -216,12 +216,12 @@ private fun EmptyCashbox(onAction: (GroupCashboxAction) -> Unit) = SaqzCard(
         description = stringResource(Res.string.group_cashbox_empty_body),
         icon = SaqzIcons.CreditCard,
         action = stringResource(Res.string.group_cashbox_empty_action),
-        onAction = { onAction(Register) },
+        onAction = { onIntent(Register) },
     )
 }
 
 @Composable
-private fun OverdueBanner(banner: OverdueBannerUi, onAction: (GroupCashboxAction) -> Unit) = SaqzCard(
+private fun OverdueBanner(banner: OverdueBannerUi, onIntent: (GroupCashboxIntent) -> Unit) = SaqzCard(
     modifier = Modifier.testTag(GroupCashboxTags.Overdue),
     tone = SaqzCardTone.Soft,
 ) {
@@ -240,7 +240,7 @@ private fun OverdueBanner(banner: OverdueBannerUi, onAction: (GroupCashboxAction
     }
     SaqzButton(
         label = stringResource(Res.string.group_cashbox_overdue_action),
-        onClick = { onAction(ChargeMissing) },
+        onClick = { onIntent(ChargeMissing) },
         variant = SaqzButtonVariant.Secondary,
         size = SaqzButtonSize.Sm,
         enabled = false,
@@ -289,14 +289,14 @@ private fun RowScope.MonthlyMetric(label: String, value: String) {
 }
 
 @Composable
-private fun DebtorsSection(state: GroupCashboxState, onAction: (GroupCashboxAction) -> Unit) = Column(
+private fun DebtorsSection(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit) = Column(
     modifier = Modifier.testTag(GroupCashboxTags.Debtors),
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
 ) {
     SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_debtors_title))
     SaqzCard(padded = false) {
         state.debtors.forEachIndexed { index, debtor ->
-            DebtorRow(debtor = debtor, onAction = onAction)
+            DebtorRow(debtor = debtor, onIntent = onIntent)
             if (index < state.debtors.lastIndex) {
                 br.com.saqz.designsystem.SaqzDivider()
             }
@@ -305,7 +305,7 @@ private fun DebtorsSection(state: GroupCashboxState, onAction: (GroupCashboxActi
 }
 
 @Composable
-private fun DebtorRow(debtor: DebtorUi, onAction: (GroupCashboxAction) -> Unit) {
+private fun DebtorRow(debtor: DebtorUi, onIntent: (GroupCashboxIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
@@ -328,14 +328,14 @@ private fun DebtorRow(debtor: DebtorUi, onAction: (GroupCashboxAction) -> Unit) 
         Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             SaqzButton(
                 label = stringResource(Res.string.group_cashbox_charge),
-                onClick = { onAction(ChargeMissing) },
+                onClick = { onIntent(ChargeMissing) },
                 variant = SaqzButtonVariant.Ghost,
                 size = SaqzButtonSize.Sm,
                 enabled = false,
             )
             SaqzButton(
                 label = stringResource(Res.string.group_cashbox_received_action),
-                onClick = { onAction(MarkReceived(debtor.chargeId)) },
+                onClick = { onIntent(MarkReceived(debtor.chargeId)) },
                 size = SaqzButtonSize.Sm,
                 loading = debtor.isUpdating,
             )

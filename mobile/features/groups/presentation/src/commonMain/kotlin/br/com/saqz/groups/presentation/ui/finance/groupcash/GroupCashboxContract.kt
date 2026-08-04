@@ -57,13 +57,13 @@ data class PixUi(
     val label: String?,
 )
 
-sealed interface GroupCashboxAction {
-    data object Retry : GroupCashboxAction
-    data object ChargeMissing : GroupCashboxAction
-    data object Register : GroupCashboxAction
-    data object ViewFullStatement : GroupCashboxAction
-    data class MarkReceived(val chargeId: String) : GroupCashboxAction
-    data object CopyPix : GroupCashboxAction
+sealed interface GroupCashboxIntent {
+    data object Retry : GroupCashboxIntent
+    data object ChargeMissing : GroupCashboxIntent
+    data object Register : GroupCashboxIntent
+    data object ViewFullStatement : GroupCashboxIntent
+    data class MarkReceived(val chargeId: String) : GroupCashboxIntent
+    data object CopyPix : GroupCashboxIntent
 }
 
 sealed interface GroupCashboxEffect {

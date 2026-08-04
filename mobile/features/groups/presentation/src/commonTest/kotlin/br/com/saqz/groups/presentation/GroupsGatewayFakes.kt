@@ -414,8 +414,9 @@ class FakeFinanceStatementGateway(
             hasMore = false,
         ),
     ),
+    var statementDeferred: CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>? = null,
 ) : FinanceStatementGateway {
-    override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery) = result
+    override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery) = statementDeferred?.await() ?: result
 }
 
 class FakeOrganizerFinanceGateway(

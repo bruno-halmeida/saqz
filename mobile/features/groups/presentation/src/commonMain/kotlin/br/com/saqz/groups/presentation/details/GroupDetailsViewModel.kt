@@ -106,10 +106,12 @@ class GroupDetailsViewModel(
                 is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
                 is SaqzResult.Success -> {
                     val group = groupResult.value.group
-                    loadAdminCashbox(generation, group)
                     when (val gamesResult = gameGateway.list(GroupId(groupId))) {
                         is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
-                        is SaqzResult.Success -> loadNextGame(generation, group, gamesResult.value)
+                        is SaqzResult.Success -> {
+                            loadNextGame(generation, group, gamesResult.value)
+                            loadAdminCashbox(generation, group)
+                        }
                     }
                 }
             }

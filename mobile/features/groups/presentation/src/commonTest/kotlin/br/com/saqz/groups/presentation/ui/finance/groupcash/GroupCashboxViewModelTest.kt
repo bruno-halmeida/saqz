@@ -158,7 +158,7 @@ class GroupCashboxViewModelTest {
         val viewModel = viewModel(organizer = organizer)
         val before = viewModel.state.value
 
-        viewModel.onIntent(GroupCashboxAction.MarkReceived("monthly-pending"))
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending"))
 
         assertTrue(viewModel.state.value.debtors.none { it.chargeId == "monthly-pending" })
         assertEquals("2/3", viewModel.state.value.monthlyProgressLabel)
@@ -177,7 +177,7 @@ class GroupCashboxViewModelTest {
         val viewModel = viewModel(organizer = organizer)
         val before = viewModel.state.value
 
-        viewModel.onIntent(GroupCashboxAction.MarkReceived("monthly-pending"))
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending"))
 
         assertEquals(before.debtors, viewModel.state.value.debtors)
         assertEquals(before.balanceCents, viewModel.state.value.balanceCents)
@@ -195,7 +195,7 @@ class GroupCashboxViewModelTest {
         )
 
         assertEquals("Camila está com agosto em aberto", viewModel.state.value.overdueBanner?.message)
-        viewModel.onIntent(GroupCashboxAction.MarkReceived("game-pending"))
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("game-pending"))
 
         assertNull(viewModel.state.value.overdueBanner)
     }
@@ -204,7 +204,7 @@ class GroupCashboxViewModelTest {
     fun `recebi rebuilds the overdue banner with only the remaining overdue debtors`() = runTest {
         val viewModel = viewModel()
 
-        viewModel.onIntent(GroupCashboxAction.MarkReceived("game-pending"))
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("game-pending"))
 
         assertEquals("Pedro e Thiago estão com agosto em aberto", viewModel.state.value.overdueBanner?.message)
         assertEquals(listOf("monthly-pending", "monthly-thiago"), viewModel.state.value.debtors.map { it.chargeId })
@@ -214,13 +214,13 @@ class GroupCashboxViewModelTest {
     fun `register and full statement emit the same navigation effect while charging stays disabled`() = runTest {
         val viewModel = viewModel()
 
-        viewModel.onIntent(GroupCashboxAction.Register)
+        viewModel.onIntent(GroupCashboxIntent.Register)
         assertEquals(GroupCashboxEffect.OpenStatement("group-1"), viewModel.effects.first())
 
-        viewModel.onIntent(GroupCashboxAction.ViewFullStatement)
+        viewModel.onIntent(GroupCashboxIntent.ViewFullStatement)
         assertEquals(GroupCashboxEffect.OpenStatement("group-1"), viewModel.effects.first())
 
-        viewModel.onIntent(GroupCashboxAction.ChargeMissing)
+        viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
         assertFalse(viewModel.state.value.operationFailed)
     }
 

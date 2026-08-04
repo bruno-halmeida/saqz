@@ -31,7 +31,7 @@ class GroupCashboxViewModel(
     private val statementGateway: FinanceStatementGateway,
     private val organizerFinanceGateway: OrganizerFinanceGateway,
     private val now: GroupNowPort,
-) : MviViewModel<GroupCashboxState, GroupCashboxAction, GroupCashboxEffect>(GroupCashboxState()) {
+) : MviViewModel<GroupCashboxState, GroupCashboxIntent, GroupCashboxEffect>(GroupCashboxState()) {
 
     private var loadGeneration = 0L
     private var receiptGeneration = 0L
@@ -40,17 +40,17 @@ class GroupCashboxViewModel(
         load()
     }
 
-    override fun onIntent(intent: GroupCashboxAction) {
+    override fun onIntent(intent: GroupCashboxIntent) {
         when (intent) {
-            GroupCashboxAction.Retry -> load()
-            GroupCashboxAction.ChargeMissing -> Unit
-            GroupCashboxAction.Register,
-            GroupCashboxAction.ViewFullStatement,
+            GroupCashboxIntent.Retry -> load()
+            GroupCashboxIntent.ChargeMissing -> Unit
+            GroupCashboxIntent.Register,
+            GroupCashboxIntent.ViewFullStatement,
             -> emit(GroupCashboxEffect.OpenStatement(groupId))
-            GroupCashboxAction.CopyPix -> state.value.pix?.let {
+            GroupCashboxIntent.CopyPix -> state.value.pix?.let {
                 emit(GroupCashboxEffect.CopyPix(it.key))
             }
-            is GroupCashboxAction.MarkReceived -> markReceived(intent.chargeId)
+            is GroupCashboxIntent.MarkReceived -> markReceived(intent.chargeId)
         }
     }
 

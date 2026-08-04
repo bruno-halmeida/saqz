@@ -24,5 +24,5 @@ fun GroupCashboxRoot(
             is GroupCashboxEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
         }
     }
-    GroupCashboxScreen(state = state, onBack = onBack, onAction = viewModel::onIntent)
+    GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
 }

@@ -14,8 +14,8 @@ import kotlin.test.assertEquals
 class GroupCashboxScreenTest {
     @Test
     fun `loaded state exposes cashbox sections and actions`() = runComposeUiTest {
-        val actions = mutableListOf<GroupCashboxAction>()
-        setScreen(loadedState, actions::add)
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState, intents::add)
 
         onNodeWithText("SALDO DO GRUPO").assertExists()
         onNodeWithTag(GroupCashboxTags.Monthly).assertExists()
@@ -26,23 +26,23 @@ class GroupCashboxScreenTest {
         onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
 
         onNodeWithTag(GroupCashboxTags.Register).performClick()
-        assertEquals(listOf<GroupCashboxAction>(GroupCashboxAction.Register), actions)
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Register), intents)
     }
 
     @Test
     fun `empty state shows the requested first launch copy and CTA`() = runComposeUiTest {
-        val actions = mutableListOf<GroupCashboxAction>()
-        setScreen(loadedState.copy(cashboxEmpty = true, debtors = emptyList()), actions::add)
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(cashboxEmpty = true, debtors = emptyList()), intents::add)
 
         onNodeWithTag(GroupCashboxTags.Empty).assertExists()
         onNodeWithText("Comece definindo a mensalidade ou registrando o aluguel da quadra").assertExists()
         onNodeWithText("Registrar primeiro lançamento").performClick()
-        assertEquals(listOf<GroupCashboxAction>(GroupCashboxAction.Register), actions)
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Register), intents)
     }
 
     @Test
     fun `overdue state shows named members and disabled charge CTA`() = runComposeUiTest {
-        val actions = mutableListOf<GroupCashboxAction>()
+        val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(
             loadedState.copy(
                 overdueBanner = OverdueBannerUi(
@@ -50,32 +50,32 @@ class GroupCashboxScreenTest {
                     monthLabel = "julho de 2026",
                 ),
             ),
-            actions::add,
+            intents::add,
         )
 
         onNodeWithTag(GroupCashboxTags.Overdue).assertExists()
         onNodeWithText("Camila, Pedro e Thiago estão com julho em aberto").assertExists()
         onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsNotEnabled()
-        assertEquals(emptyList<GroupCashboxAction>(), actions)
+        assertEquals(emptyList<GroupCashboxIntent>(), intents)
     }
 
     @Test
     fun `load failure shows retry state`() = runComposeUiTest {
-        val actions = mutableListOf<GroupCashboxAction>()
-        setScreen(GroupCashboxState(isLoading = false, loadFailed = true), actions::add)
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(GroupCashboxState(isLoading = false, loadFailed = true), intents::add)
 
         onNodeWithTag(GroupCashboxTags.Failure).assertExists()
         onNodeWithText("Verifique sua conexão e tente de novo.").assertExists()
         onNodeWithText("Tentar novamente").performClick()
-        assertEquals(listOf<GroupCashboxAction>(GroupCashboxAction.Retry), actions)
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Retry), intents)
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.setScreen(
         state: GroupCashboxState,
-        onAction: (GroupCashboxAction) -> Unit,
+        onIntent: (GroupCashboxIntent) -> Unit,
     ) = setContent {
         SaqzTheme {
-            GroupCashboxScreen(state = state, onBack = {}, onAction = onAction)
+            GroupCashboxScreen(state = state, onBack = {}, onIntent = onIntent)
         }
     }
 

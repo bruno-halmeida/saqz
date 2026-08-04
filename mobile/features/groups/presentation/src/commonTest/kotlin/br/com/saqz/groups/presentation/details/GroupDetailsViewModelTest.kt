@@ -43,6 +43,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -156,6 +157,25 @@ class GroupDetailsViewModelTest {
         )
 
         assertTrue(viewModel.state.value.isAdmin)
+        assertNotNull(viewModel.state.value.cashbox)
+        assertNull(viewModel.state.value.cashbox?.summary)
+    }
+
+    @Test
+    fun `details render before pending finance completes and degrade finance failure`() = runTest {
+        val finance = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
+        val viewModel = viewModel(
+            statementGateway = FakeFinanceStatementGateway(statementDeferred = finance),
+        )
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals("Vôlei do CERET", viewModel.state.value.header?.name)
+        assertNull(viewModel.state.value.cashbox)
+
+        finance.complete(SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLoading)
         assertNotNull(viewModel.state.value.cashbox)
         assertNull(viewModel.state.value.cashbox?.summary)
     }
