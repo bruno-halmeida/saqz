@@ -92,6 +92,19 @@ class AdminUsersEndpointIntegrationTest {
         assertEquals("ACCOUNT_SUSPENDED", objectMapper.readTree(response.body())["code"].stringValue())
     }
 
+    @Test
+    fun `perfil de conta suspensa tambem responde 403`() {
+        val request = HttpRequest.newBuilder(URI.create("http://localhost:$port/api/session/profile"))
+            .method("PATCH", HttpRequest.BodyPublishers.ofString("{\"nickname\": \"Novo\"}"))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer suspended-token")
+            .build()
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+
+        assertEquals(403, response.statusCode())
+        assertEquals("ACCOUNT_SUSPENDED", objectMapper.readTree(response.body())["code"].stringValue())
+    }
+
     private fun exchange(method: String, path: String, token: String): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
             .method(method, HttpRequest.BodyPublishers.noBody())
