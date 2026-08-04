@@ -13,7 +13,10 @@ import br.com.saqz.groups.domain.finance.FinanceStatementSummary
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
+import kotlin.time.Instant
 
 class StatementViewModel(
     private val groupId: String,
@@ -170,7 +173,13 @@ private fun br.com.saqz.groups.domain.finance.PaidMethod.toStatementMethodLabel(
     br.com.saqz.groups.domain.finance.PaidMethod.Other -> "Outro método"
 }
 
-private fun String.toStatementDateLabel(): String {
+internal fun String.toStatementDateLabel(
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+): String {
+    val local = runCatching { Instant.parse(this).toLocalDateTime(timeZone) }.getOrNull()
+    if (local != null) {
+        return "${local.day.toString().padStart(2, '0')}/${(local.month.ordinal + 1).toString().padStart(2, '0')}/${local.year}"
+    }
     val date = substringBefore('T').split('-')
     return if (date.size == 3 && date.all { it.isNotBlank() }) {
         "${date[2]}/${date[1]}/${date[0]}"

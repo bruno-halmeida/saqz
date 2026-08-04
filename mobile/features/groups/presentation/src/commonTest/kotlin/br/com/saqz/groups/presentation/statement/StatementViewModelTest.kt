@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -52,6 +53,14 @@ class StatementViewModelTest {
     @Test
     fun `formats negative outgoing amount using direction sign`() {
         assertEquals("−R$ 7,00", formatStatementAmount(-700L, FinanceDirection.Out))
+    }
+
+    @Test
+    fun `formats instant in local timezone before displaying date`() {
+        assertEquals(
+            "04/08/2026",
+            "2026-08-05T01:30:00Z".toStatementDateLabel(TimeZone.of("America/Sao_Paulo")),
+        )
     }
 
     @Test
