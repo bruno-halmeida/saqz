@@ -182,6 +182,7 @@ class GameMigrationIntegrationTest {
         assertEquals(true, boolean("SELECT review_required FROM group_charges WHERE id = '$paidCharge'"))
         assertEquals("WAIVED", string("SELECT status FROM group_charges WHERE id = '$waivedCharge'"))
         assertEquals(true, boolean("SELECT review_required FROM group_charges WHERE id = '$waivedCharge'"))
+        assertEquals(true, boolean("SELECT finance_review_required FROM games WHERE id = '$later'"))
         assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group'"))
         assertEquals(
             1,
