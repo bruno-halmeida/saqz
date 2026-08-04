@@ -99,6 +99,17 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `pagina alem do fim preserva o total`() {
+        val dono = insertUser("dono-p", name = "Dono Paginas")
+        insertGroup(dono, name = "Grupo Unico", createdAt = now)
+
+        val page = repository.list(null, null, page = 4, size = 10)
+
+        assertEquals(1, page.total)
+        assertEquals(0, page.items.size)
+    }
+
+    @Test
     fun `detalhe traz ultimos jogos com confirmados, sem rascunho`() {
         val dono = insertUser("dono", name = "Dona Detalhe")
         val membro = insertUser("membro", name = "Membro Um")
@@ -107,6 +118,8 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
         insertMembership(grupo, membro)
         val jogo = insertGame(grupo, startsAt = now.minusSeconds(86_400), status = "PUBLISHED")
         insertGame(grupo, startsAt = now.minusSeconds(172_800), status = "DRAFT")
+        // Futuro em relação ao relógio do banco (a query usa now() real, não o fixture).
+        insertGame(grupo, startsAt = Instant.now().plusSeconds(30 * 86_400), status = "PUBLISHED")
         insertAttendance(grupo, jogo, dono, status = "CONFIRMED")
         insertAttendance(grupo, jogo, membro, status = "DECLINED")
 
