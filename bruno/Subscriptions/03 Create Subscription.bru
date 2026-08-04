@@ -1,0 +1,25 @@
+meta {
+  name: Create Subscription
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{backendUrl}}/subscriptions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+body:json {
+  {"requestId": "{{$guid}}", "planId": "{{planId}}", "cycle": "MONTHLY", "billingType": "PIX", "name": "replace-with-name", "email": "{{resetEmail}}", "cpfCnpj": "replace-with-cpf"}
+}
+
+tests {
+  test("subscription checkout is created", function () {
+    expect([200, 201]).to.include(res.getStatus());
+  });
+}

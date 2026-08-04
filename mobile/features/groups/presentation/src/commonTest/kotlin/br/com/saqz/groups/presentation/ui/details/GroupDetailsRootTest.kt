@@ -9,8 +9,10 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
+import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeOrganizerFinanceGateway
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.port.GroupNowPort
@@ -29,6 +31,8 @@ class GroupDetailsRootTest {
             gameGateway = gameGateway,
             attendanceGateway = FakeAttendanceGateway(),
             athleteGateway = FakeAthleteGateway(),
+            statementGateway = FakeFinanceStatementGateway(),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(),
             now = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
         )
         var refreshVersion by mutableIntStateOf(0)

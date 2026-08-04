@@ -1,0 +1,25 @@
+meta {
+  name: Change Plan
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{backendUrl}}/subscriptions/me/change-plan
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+body:json {
+  {"requestId": "{{$guid}}", "targetPlanId": "{{planId}}"}
+}
+
+tests {
+  test("plan change is accepted", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

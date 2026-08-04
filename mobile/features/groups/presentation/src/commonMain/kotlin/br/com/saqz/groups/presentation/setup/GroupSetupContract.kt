@@ -68,11 +68,19 @@ object GroupSetupDefaults {
     )
 }
 
+internal object GroupPixTextLimits {
+    const val Min = 2
+    const val KeyMax = 140
+    const val LabelMax = 80
+}
+
 @Immutable
 data class GroupSetupState(
     val mode: GroupSetupMode,
     val step: GroupSetupStep = GroupSetupStep.Form,
     val form: GroupSetupForm = GroupSetupDefaults.Form,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
     val photoUrl: String? = null,
     // Só o `2j` usa: "Os %d membros perdem o acesso…". Não sai do formulário.
     val memberCount: Int = 0,
@@ -131,6 +139,10 @@ sealed interface GroupSetupIntent {
     data class UpdateName(val value: String) : GroupSetupIntent
 
     data class UpdateDescription(val value: String) : GroupSetupIntent
+
+    data class UpdatePixKey(val value: String) : GroupSetupIntent
+
+    data class UpdatePixLabel(val value: String) : GroupSetupIntent
 
     data class UpdateCustomLevel(val value: String) : GroupSetupIntent
 

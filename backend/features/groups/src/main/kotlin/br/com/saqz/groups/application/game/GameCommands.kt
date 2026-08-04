@@ -141,7 +141,12 @@ class ChangeGameLifecycle(
             when (val write = repository.update(changed, expectedVersion)) {
                 is GameWriteResult.Saved -> {
                     sideEffects.apply(write.game, actor, mutation.effects())
-                    GameCommandResult.Success(write.game)
+                    val responseGame = if (mutation == GameMutation.CANCEL) {
+                        repository.find(actor, groupId, gameId)?.game ?: write.game
+                    } else {
+                        write.game
+                    }
+                    GameCommandResult.Success(responseGame)
                 }
                 is GameWriteResult.ScheduleConflict -> GameCommandResult.ScheduleConflict(write.gameId)
                 GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict

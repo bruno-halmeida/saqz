@@ -1,0 +1,22 @@
+meta {
+  name: Cancel Subscription
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{backendUrl}}/subscriptions/me/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("subscription is canceled", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.be.a("string");
+  });
+}

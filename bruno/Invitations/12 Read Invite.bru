@@ -1,0 +1,21 @@
+meta {
+  name: Read Invite Metadata
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{backendUrl}}/api/groups/{{groupId}}/invite
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns current invite metadata", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

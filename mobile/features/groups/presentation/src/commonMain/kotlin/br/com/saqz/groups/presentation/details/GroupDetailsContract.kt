@@ -93,7 +93,7 @@ enum class GroupDetailsResponseStatus { Confirmed, Declined, Waitlisted }
 
 /** A linha de caixa do 2f — saldo e mensalidades já num texto só. */
 @Immutable
-data class CashboxUi(val summary: String)
+data class CashboxUi(val summary: String? = null)
 
 @Immutable
 data class VenueUi(val name: String, val address: String)

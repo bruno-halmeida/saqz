@@ -1,0 +1,21 @@
+meta {
+  name: My Subscription
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{backendUrl}}/subscriptions/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns the current subscription", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

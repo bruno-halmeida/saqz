@@ -1,0 +1,25 @@
+<resources>
+    <string name="group_cashbox_title">SALDO DO GRUPO</string>
+    <string name="group_cashbox_charge_missing">Cobrar quem falta</string>
+    <string name="group_cashbox_register">Registrar</string>
+    <string name="group_cashbox_note">Cobrança é manual: avise no &apos;Cobrar&apos; e toque em &apos;Recebi&apos; quando o Pix cair.</string>
+    <string name="group_cashbox_monthly_title">Mensalidades do mês</string>
+    <string name="group_cashbox_received">Recebido</string>
+    <string name="group_cashbox_open">Em aberto</string>
+    <string name="group_cashbox_expenses">Despesas</string>
+    <string name="group_cashbox_received_monthly_suffix"> mensalidades recebidas</string>
+    <string name="group_cashbox_debtors_title">Quem ainda não pagou</string>
+    <string name="group_cashbox_charge">Cobrar</string>
+    <string name="group_cashbox_received_action">Recebi</string>
+    <string name="group_cashbox_statement">Ver extrato completo</string>
+    <string name="group_cashbox_pix_title">Pix do grupo</string>
+    <string name="group_cashbox_pix_copy">Copiar</string>
+    <string name="group_cashbox_empty_title">Caixa zerado</string>
+    <string name="group_cashbox_empty_body">Comece definindo a mensalidade ou registrando o aluguel da quadra</string>
+    <string name="group_cashbox_empty_action">Registrar primeiro lançamento</string>
+    <string name="group_cashbox_overdue_action">Cobrar agora</string>
+    <string name="group_cashbox_load_failure_title">Não foi possível carregar o caixa</string>
+    <string name="group_cashbox_load_failure_body">Verifique sua conexão e tente de novo.</string>
+    <string name="group_cashbox_retry">Tentar novamente</string>
+    <string name="group_cashbox_operation_failure">Não foi possível registrar o recebimento. Tente novamente.</string>
+</resources>
