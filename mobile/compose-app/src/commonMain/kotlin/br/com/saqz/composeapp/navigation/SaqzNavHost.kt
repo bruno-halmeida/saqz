@@ -49,10 +49,15 @@ import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
+import br.com.saqz.groups.presentation.newentry.NewEntryEffect
+import br.com.saqz.groups.presentation.newentry.NewEntryRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.statement.StatementEffect
+import br.com.saqz.groups.presentation.statement.StatementRoot
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
 import br.com.saqz.groups.presentation.ui.finance.FinancePlaceholderScreen
+import br.com.saqz.groups.presentation.ui.finance.overview.FinanceOverviewRoot
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
@@ -121,6 +126,7 @@ internal fun SaqzNavHost(
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -268,7 +274,9 @@ internal fun SaqzNavHost(
             entry<SaqzShellDestination> {
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
-                    financeTab = { FinancePlaceholderScreen() },
+                    financeTab = {
+                        FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
+                    },
                     homeTab = { HomeRoot() },
                     profileTab = {
                         OwnProfileRoot(
@@ -340,7 +348,34 @@ internal fun SaqzNavHost(
                     },
                 )
             }
-            entry<FinanceRoute.Statement> { FinancePlaceholderScreen() }
+            entry<FinanceRoute.Statement> { route ->
+                StatementRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onEffect = { effect ->
+                        when (effect) {
+                            is StatementEffect.OpenNewEntry -> backStack.add(
+                                FinanceRoute.NewEntry(effect.groupId),
+                            )
+                        }
+                    },
+                    refreshVersion = statementRefreshVersion,
+                )
+            }
+            entry<FinanceRoute.NewEntry> { route ->
+                NewEntryRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onEffect = { effect ->
+                        when (effect) {
+                            NewEntryEffect.Saved -> {
+                                pop()
+                                statementRefreshVersion++
+                            }
+                        }
+                    },
+                )
+            }
             entry<FinanceRoute.GameSettlement> { FinancePlaceholderScreen() }
             entry<SubscriptionsRoute.PlanSelection> {
                 PlanSelectionRoot(

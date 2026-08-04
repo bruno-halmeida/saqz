@@ -64,6 +64,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(ProfileRoute.Exit::class, ProfileRoute.Exit.serializer())
             subclass(FinanceRoute.GroupCashbox::class, FinanceRoute.GroupCashbox.serializer())
             subclass(FinanceRoute.Statement::class, FinanceRoute.Statement.serializer())
+            subclass(FinanceRoute.NewEntry::class, FinanceRoute.NewEntry.serializer())
             subclass(FinanceRoute.GameSettlement::class, FinanceRoute.GameSettlement.serializer())
         }
     }
