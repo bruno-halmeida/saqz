@@ -69,9 +69,31 @@ class MonthlyChargeScheduleIntegrationTest{
         assertEquals(0,count("group_charges"))
     }
 
-    @Test fun `ignores a member whose due day is another day`(){
-        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=TODAY.dayOfMonth%28+1)
+    @Test fun `ignores a member whose due day has not arrived yet`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=TODAY.dayOfMonth+1)
         assertEquals(emptyList(),schedule().run())
+        assertEquals(0,count("group_charges"))
+    }
+
+    @Test fun `catches up on a due day the job never ran for`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=5)
+        val charges=schedule(today=TODAY.withDayOfMonth(20)).run()
+        assertEquals(listOf(f.member),charges.map{it.memberId})
+        assertEquals(TODAY.withDayOfMonth(5),date("SELECT due_date FROM group_charges"))
+        assertEquals(TODAY.withDayOfMonth(1),date("SELECT billing_month FROM group_charges"))
+    }
+
+    @Test fun `the catch up never duplicates a charge the month already has`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=5)
+        val onTime=schedule(today=TODAY.withDayOfMonth(5)).run().single()
+        val catchUp=schedule(today=TODAY.withDayOfMonth(20)).run().single()
+        assertEquals(onTime.id,catchUp.id)
+        assertEquals(1,count("group_charges"));assertEquals(1,count("group_charge_events"))
+    }
+
+    @Test fun `the first run of a new month leaves the previous month alone`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=5)
+        assertEquals(emptyList(),schedule(today=TODAY.plusMonths(1).withDayOfMonth(1)).run())
         assertEquals(0,count("group_charges"))
     }
 
@@ -91,9 +113,9 @@ class MonthlyChargeScheduleIntegrationTest{
         assertEquals(1,count("group_charges"))
     }
 
-    private fun schedule(onSkipped:(MonthlyDueMembership,String)->Unit={_,_->}):MonthlyChargeSchedule{
+    private fun schedule(today:LocalDate=TODAY,onSkipped:(MonthlyDueMembership,String)->Unit={_,_->}):MonthlyChargeSchedule{
         val repository=JdbcChargeTransactionRepository(dataSource)
-        return MonthlyChargeSchedule(repository,ChargeTransactions(JdbcTransactionRunner(dataSource),repository){NOW},{TODAY},onSkipped)
+        return MonthlyChargeSchedule(repository,ChargeTransactions(JdbcTransactionRunner(dataSource),repository){NOW},{today},onSkipped)
     }
     private fun explodingOn(member:UUID):ChargeTransactions{
         val delegate=JdbcChargeTransactionRepository(dataSource)
