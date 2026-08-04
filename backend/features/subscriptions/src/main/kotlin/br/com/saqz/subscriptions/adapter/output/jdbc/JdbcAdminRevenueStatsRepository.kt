@@ -84,7 +84,8 @@ class JdbcAdminRevenueStatsRepository(
                         THEN c.discount_percent END AS discount_percent
             FROM subscriptions s
             LEFT JOIN coupons c ON c.id = s.coupon_id
-            WHERE (s.status = 'ACTIVE' OR (s.status = 'PAST_DUE' AND s.first_confirmed_at IS NOT NULL))
+            WHERE s.canceled_at IS NULL
+              AND (s.status = 'ACTIVE' OR (s.status = 'PAST_DUE' AND s.first_confirmed_at IS NOT NULL))
             """.trimIndent(),
         ).query { rs, _ ->
             Row(
@@ -120,7 +121,8 @@ class JdbcAdminRevenueStatsRepository(
                 """
                 SELECT count(*) FROM subscriptions s
                 JOIN access_users u ON u.id = s.owner_user_id
-                WHERE u.created_at >= :from AND u.created_at < :to
+                WHERE s.first_confirmed_at IS NOT NULL
+                  AND u.created_at >= :from AND u.created_at < :to
                 """.trimIndent(),
             )
                 .param("from", weekStart.atStartOfDay().atOffset(ZoneOffset.UTC))

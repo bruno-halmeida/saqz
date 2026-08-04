@@ -112,6 +112,8 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
         subscription(plan = "ILIMITADO", cycle = "MONTHLY", createdAt = now.minusSeconds(DAY), status = "CANCELED")
         // Checkout abandonado (PAST_DUE sem confirmação) não é assinante no split.
         subscription(plan = "ILIMITADO", cycle = "MONTHLY", status = "PAST_DUE", createdAt = now.minusSeconds(DAY), firstConfirmedAt = null)
+        // Cancelada localmente (canceled_at antes do webhook) também não.
+        subscription(plan = "ILIMITADO", cycle = "MONTHLY", createdAt = now.minusSeconds(DAY), canceledAt = now.minusSeconds(3_600))
 
         val split = repository.planSplit()
 
@@ -132,12 +134,18 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
         val previousWeekUser = insertUser(createdAt = Instant.parse("2026-07-28T09:00:00Z"))
         subscription(plan = "ORGANIZADOR", createdAt = now.minusSeconds(DAY), ownerId = previousWeekUser)
         insertUser(createdAt = Instant.parse("2026-07-29T09:00:00Z"))
+        // Checkout nunca pago não vira "pagante" no cohort.
+        val abandonado = insertUser(createdAt = Instant.parse("2026-07-28T10:00:00Z"))
+        subscription(plan = "TITULAR", status = "PAST_DUE", createdAt = now.minusSeconds(DAY), firstConfirmedAt = null, ownerId = abandonado)
+        // Cancelada que chegou a pagar conta como conversão histórica.
+        val pagouECancelou = insertUser(createdAt = Instant.parse("2026-07-28T11:00:00Z"))
+        subscription(plan = "TITULAR", createdAt = now.minusSeconds(DAY), canceledAt = now.minusSeconds(3_600), ownerId = pagouECancelou)
 
         val cohort = repository.subscribedCohort(weeksBack = 5, now = now)
 
         assertEquals(5, cohort.size)
         assertEquals(monday.minusWeeks(1), cohort[3].weekStart)
-        assertEquals(1, cohort[3].subscribed)
+        assertEquals(2, cohort[3].subscribed)
         assertEquals(0, cohort[4].subscribed)
     }
 
