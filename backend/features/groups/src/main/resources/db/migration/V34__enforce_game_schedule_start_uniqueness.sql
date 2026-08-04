@@ -8,6 +8,8 @@
 -- retained while satisfying the actor/changer foreign keys.
 -- Lock writers before the scan so an older instance cannot insert another
 -- mutable schedule row between deduplication and index creation.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 LOCK TABLE games IN SHARE ROW EXCLUSIVE MODE;
 
 CREATE TEMP TABLE v34_duplicate_games ON COMMIT DROP AS
@@ -80,6 +82,8 @@ SET status = 'CANCELLED',
 FROM v34_duplicate_games duplicates
 WHERE game.id = duplicates.id;
 
-CREATE UNIQUE INDEX uq_games_group_starts_at_active
-    ON games (group_id, starts_at)
-    WHERE status IN ('DRAFT', 'PUBLISHED');
+ALTER TABLE games
+    ADD CONSTRAINT games_schedule_start_unique
+    EXCLUDE USING gist (group_id WITH =, starts_at WITH =)
+    WHERE (status IN ('DRAFT', 'PUBLISHED'))
+    DEFERRABLE INITIALLY IMMEDIATE;

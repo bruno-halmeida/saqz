@@ -185,7 +185,11 @@ class GameMigrationIntegrationTest {
         assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group'"))
         assertEquals(
             1,
-            int("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_games_group_starts_at_active'"),
+            int(
+                "SELECT count(*) FROM pg_constraint " +
+                    "WHERE conname = 'games_schedule_start_unique' AND contype = 'x' " +
+                    "AND condeferrable AND NOT condeferred",
+            ),
         )
     }
 

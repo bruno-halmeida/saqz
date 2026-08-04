@@ -120,6 +120,27 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         assertEquals("CANCELLED", string("SELECT status FROM games WHERE id='$removed'"))
     }
 
+    @Test fun `future edit defers uniqueness while retained slots swap times`() {
+        val fixture = fixture()
+        val swappedSlot = slot(fixture, LocalTime.of(20, 0))
+        val first = game(fixture, DATE, localTime = LocalTime.of(19, 30), slotKey = fixture.slotKey)
+        val second = game(fixture, DATE, localTime = LocalTime.of(20, 0), slotKey = swappedSlot)
+        val successor = successor(
+            fixture,
+            "Horários trocados",
+            listOf(
+                successorSlot(fixture, fixture.slotKey, LocalTime.of(20, 0), "Primeiro trocado"),
+                successorSlot(fixture, swappedSlot, LocalTime.of(19, 30), "Segundo trocado"),
+            ),
+        )
+
+        assertEquals(SeriesBoundaryResult.Applied, apply(repository(), fixture, successor))
+        assertEquals("20:00:00", string("SELECT local_time::text FROM games WHERE id='$first'"))
+        assertEquals("19:30:00", string("SELECT local_time::text FROM games WHERE id='$second'"))
+        assertEquals(successor.revisionId, uuid("SELECT series_revision_id FROM games WHERE id='$first'"))
+        assertEquals(successor.revisionId, uuid("SELECT series_revision_id FROM games WHERE id='$second'"))
+    }
+
     @Test fun `future edit preserves past and completed snapshots`() {
         val fixture = fixture(start = DATE.minusWeeks(2)); val past = game(fixture, DATE.minusWeeks(1)); val completed = game(fixture, DATE.plusWeeks(1), "COMPLETED"); game(fixture, DATE)
         val successor = successor(fixture, "Treino novo")
@@ -186,7 +207,11 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         return Fixture(group, venueId, lineage, revision, slotKey, start)
     }
 
-    private fun successor(fixture: Fixture, title: String, localTime: LocalTime = LocalTime.of(20, 0)) = WeeklySeriesRule(fixture.group, fixture.lineage, UUID.randomUUID(), "America/Sao_Paulo", DATE, slots = listOf(WeeklySlotRule(fixture.slotKey, DayOfWeek.WEDNESDAY, localTime, 100, GameVenueSnapshot(fixture.venue, "Arena Central", "Rua das Flores 100", "Quadra 2"), 20, 120, 3000, title)))
+    private fun successor(fixture: Fixture, title: String, localTime: LocalTime = LocalTime.of(20, 0)) = successor(fixture, title, listOf(successorSlot(fixture, fixture.slotKey, localTime, title)))
+
+    private fun successor(fixture: Fixture, title: String, slots: List<WeeklySlotRule>) = WeeklySeriesRule(fixture.group, fixture.lineage, UUID.randomUUID(), "America/Sao_Paulo", DATE, slots = slots)
+
+    private fun successorSlot(fixture: Fixture, slotKey: UUID, localTime: LocalTime, title: String) = WeeklySlotRule(slotKey, DayOfWeek.WEDNESDAY, localTime, 100, GameVenueSnapshot(fixture.venue, "Arena Central", "Rua das Flores 100", "Quadra 2"), 20, 120, 3000, title)
 
     private fun slot(fixture: Fixture, localTime: LocalTime): UUID {
         val slotKey = UUID.randomUUID()
