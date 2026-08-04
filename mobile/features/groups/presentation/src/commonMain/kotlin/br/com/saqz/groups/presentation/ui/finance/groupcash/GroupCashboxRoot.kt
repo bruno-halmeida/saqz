@@ -14,6 +14,7 @@ fun GroupCashboxRoot(
     groupId: String,
     onBack: () -> Unit,
     onOpenStatement: (String) -> Unit,
+    onMutationSuccess: () -> Unit = {},
     viewModel: GroupCashboxViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -22,6 +23,7 @@ fun GroupCashboxRoot(
         when (effect) {
             is GroupCashboxEffect.OpenStatement -> onOpenStatement(effect.groupId)
             is GroupCashboxEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            GroupCashboxEffect.MutationSucceeded -> onMutationSuccess()
         }
     }
     GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)

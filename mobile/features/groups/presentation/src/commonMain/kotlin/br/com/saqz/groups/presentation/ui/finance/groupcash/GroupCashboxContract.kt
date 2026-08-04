@@ -69,4 +69,5 @@ sealed interface GroupCashboxIntent {
 sealed interface GroupCashboxEffect {
     data class OpenStatement(val groupId: String) : GroupCashboxEffect
     data class CopyPix(val key: String) : GroupCashboxEffect
+    data object MutationSucceeded : GroupCashboxEffect
 }

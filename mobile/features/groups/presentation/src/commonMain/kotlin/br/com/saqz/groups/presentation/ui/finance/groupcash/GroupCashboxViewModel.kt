@@ -120,8 +120,9 @@ class GroupCashboxViewModel(
             )
             if (generation != receiptGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {
-                is SaqzResult.Success -> update {
-                    it.copy(updatingChargeId = null, operationFailed = false)
+                is SaqzResult.Success -> {
+                    update { it.copy(updatingChargeId = null, operationFailed = false) }
+                    emit(GroupCashboxEffect.MutationSucceeded)
                 }
                 is SaqzResult.Failure -> update {
                     previous.copy(operationFailed = true, updatingChargeId = null)

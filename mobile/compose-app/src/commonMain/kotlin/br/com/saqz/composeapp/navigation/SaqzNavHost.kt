@@ -331,6 +331,7 @@ internal fun SaqzNavHost(
                 GroupCashboxRoot(
                     groupId = route.groupId,
                     onBack = pop,
+                    onMutationSuccess = { groupDetailsRefreshVersion++ },
                     onOpenStatement = { groupId ->
                         // TODO(pós-merge VUL-180): retarget para NewEntry
                         backStack.add(FinanceRoute.Statement(groupId))

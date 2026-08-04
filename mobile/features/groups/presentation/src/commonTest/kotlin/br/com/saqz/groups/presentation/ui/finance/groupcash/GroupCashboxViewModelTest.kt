@@ -171,6 +171,15 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `successful recebi emits a mutation effect for the parent refresh`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending"))
+
+        assertEquals(GroupCashboxEffect.MutationSucceeded, viewModel.effects.first())
+    }
+
+    @Test
     fun `recebi failure restores debtor and previous totals`() = runTest {
         val organizer = FakeOrganizerFinanceGateway(
             updateResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)),
