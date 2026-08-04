@@ -709,6 +709,9 @@ class Component extends DCLogic {
       window.saqzAdmin.onSession((me) => {
         // Qualquer transição de sessão invalida respostas em voo da época anterior.
         this._epoca = (this._epoca || 0) + 1;
+        // Debounce de busca pendente não pode disparar depois do logout.
+        clearTimeout(this._ud);
+        clearTimeout(this._gd);
         if (me) {
           this.carregarPagina(this.state.page, true);
         } else {
