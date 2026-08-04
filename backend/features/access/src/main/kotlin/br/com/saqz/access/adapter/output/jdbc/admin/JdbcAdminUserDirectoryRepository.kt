@@ -25,7 +25,9 @@ class JdbcAdminUserDirectoryRepository(
             """
             SELECT u.id, u.display_name, u.email, u.city, u.created_at, u.updated_at, u.suspended_at,
                    s.plan,
-                   (SELECT count(*) FROM group_memberships m WHERE m.user_id = u.id) AS memberships,
+                   (SELECT count(*) FROM group_memberships m
+                     JOIN access_groups mg ON mg.id = m.group_id AND mg.deleted_at IS NULL
+                     WHERE m.user_id = u.id) AS memberships,
                    (SELECT count(*) FROM access_groups g
                      WHERE g.owner_user_id = u.id AND g.deleted_at IS NULL) AS owned_groups,
                    count(*) OVER () AS total
@@ -69,9 +71,32 @@ class JdbcAdminUserDirectoryRepository(
             }
             .list()
 
+        val total = rows.firstOrNull()?.total ?: jdbc.sql(
+            """
+            SELECT count(*)
+            FROM access_users u
+            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED'
+            WHERE u.deleted_at IS NULL
+              AND (:query::text IS NULL
+                   OR u.display_name ILIKE '%' || :query || '%'
+                   OR u.email ILIKE '%' || :query || '%')
+              AND (:plan::text IS NULL
+                   OR (:plan = 'FREE' AND s.plan IS NULL)
+                   OR s.plan = :plan)
+              AND (:status::text IS NULL
+                   OR (:status = 'suspended' AND u.suspended_at IS NOT NULL)
+                   OR (:status = 'active' AND u.suspended_at IS NULL))
+            """.trimIndent(),
+        )
+            .param("query", query?.trim()?.takeIf { it.isNotEmpty() })
+            .param("plan", plan)
+            .param("status", status)
+            .query(Long::class.java)
+            .single()
+
         return AdminUserPage(
             items = rows.map { it.summary },
-            total = rows.firstOrNull()?.total ?: 0,
+            total = total,
             page = page,
             size = size,
         )
@@ -139,14 +164,15 @@ class JdbcAdminUserDirectoryRepository(
         return user.copy(groups = groups)
     }
 
+    // updated_at fica intacto de propósito: é o proxy de último acesso do usuário,
+    // e ação administrativa não é acesso.
     override fun suspend(userId: UUID): Boolean = jdbc.sql(
-        "UPDATE access_users SET suspended_at = COALESCE(suspended_at, now()), updated_at = now() " +
+        "UPDATE access_users SET suspended_at = COALESCE(suspended_at, now()) " +
             "WHERE id = :id AND deleted_at IS NULL",
     ).param("id", userId).update() > 0
 
     override fun reactivate(userId: UUID): Boolean = jdbc.sql(
-        "UPDATE access_users SET suspended_at = NULL, updated_at = now() " +
-            "WHERE id = :id AND deleted_at IS NULL",
+        "UPDATE access_users SET suspended_at = NULL WHERE id = :id AND deleted_at IS NULL",
     ).param("id", userId).update() > 0
 
     private fun ResultSet.instant(column: String): Instant =
