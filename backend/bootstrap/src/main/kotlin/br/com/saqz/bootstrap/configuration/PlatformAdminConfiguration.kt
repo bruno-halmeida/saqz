@@ -1,8 +1,15 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.access.adapter.input.http.PlatformAdminMeController
+import br.com.saqz.access.adapter.output.jdbc.admin.JdbcAdminAccessStatsRepository
 import br.com.saqz.access.adapter.output.jdbc.admin.JdbcPlatformAdminRepository
+import br.com.saqz.access.application.admin.AdminAccessStats
 import br.com.saqz.access.application.admin.PlatformAdminLookup
+import br.com.saqz.adminweb.http.AdminOverviewController
+import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
+import br.com.saqz.groups.application.admin.AdminGroupStats
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
+import br.com.saqz.subscriptions.application.AdminRevenueStats
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,4 +24,23 @@ class PlatformAdminConfiguration {
 
     @Bean
     fun platformAdminMeController(lookup: PlatformAdminLookup) = PlatformAdminMeController(lookup)
+
+    @Bean
+    fun adminAccessStats(dataSource: DataSource): AdminAccessStats =
+        JdbcAdminAccessStatsRepository(dataSource)
+
+    @Bean
+    fun adminGroupStats(dataSource: DataSource): AdminGroupStats =
+        JdbcAdminGroupStatsRepository(dataSource)
+
+    @Bean
+    fun adminRevenueStats(dataSource: DataSource): AdminRevenueStats =
+        JdbcAdminRevenueStatsRepository(dataSource)
+
+    @Bean
+    fun adminOverviewController(
+        accessStats: AdminAccessStats,
+        groupStats: AdminGroupStats,
+        revenueStats: AdminRevenueStats,
+    ) = AdminOverviewController(accessStats, groupStats, revenueStats)
 }
