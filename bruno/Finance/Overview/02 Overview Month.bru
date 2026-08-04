@@ -1,0 +1,14 @@
+meta {
+  name: Finance Overview by Month
+  type: http
+  seq: 2
+}
+get {
+  url: {{baseUrl}}/api/me/finance/overview?month=2026-08
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("month period is returned", function () { expect(res.status).to.equal(200); expect(res.body.period.month).to.equal("2026-08"); expect(res.body.period.year).to.equal(null); });
+}

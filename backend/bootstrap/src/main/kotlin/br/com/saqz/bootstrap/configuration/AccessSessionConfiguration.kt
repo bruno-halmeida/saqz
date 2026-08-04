@@ -84,6 +84,7 @@ import br.com.saqz.groups.adapter.input.http.FinanceStatementController
 import br.com.saqz.groups.adapter.input.http.AttendanceController
 import br.com.saqz.groups.adapter.input.http.AutoConfirmationController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
+import br.com.saqz.groups.adapter.input.http.MyFinanceOverviewController
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcOccurrenceMaterializationRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesBoundaryRepository
@@ -91,6 +92,7 @@ import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceOverviewRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAutoConfirmationRepository
@@ -119,6 +121,7 @@ import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
 import br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects
 import br.com.saqz.groups.application.finance.expense.ExpenseService
+import br.com.saqz.groups.application.finance.overview.FinanceOverviewQuery
 import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
@@ -683,6 +686,15 @@ class AccessSessionConfiguration {
     @Bean fun expenseRepository(dataSource: DataSource) = JdbcExpenseRepository(dataSource)
     @Bean fun expenseService(transaction: JdbcTransactionRunner, repository: JdbcExpenseRepository) = ExpenseService(transaction, repository, java.util.UUID::randomUUID, Instant::now)
     @Bean fun expenseController(actor: VerifiedGroupActorResolver, expenses: ExpenseService, charges: ChargeManagement) = ExpenseController(actor, expenses, charges)
+    @Bean fun financeOverviewRepository(
+        dataSource: DataSource,
+        @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
+    ) = JdbcFinanceOverviewRepository(dataSource, ZoneId.of(zone))
+    @Bean fun financeOverviewQuery(
+        repository: JdbcFinanceOverviewRepository,
+        @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
+    ) = FinanceOverviewQuery(repository, Clock.systemUTC(), ZoneId.of(zone))
+    @Bean fun financeOverviewController(actor: VerifiedGroupActorResolver, query: FinanceOverviewQuery) = MyFinanceOverviewController(actor, query)
     @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
     @Bean fun financeStatementService(repository: JdbcFinanceStatementRepository) = FinanceStatementService(repository)
     @Bean fun financeStatementController(actor: VerifiedGroupActorResolver, service: FinanceStatementService) = FinanceStatementController(actor, service)
