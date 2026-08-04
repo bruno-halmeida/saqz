@@ -213,6 +213,20 @@ class JdbcGroupReadRepositoryIntegrationTest {
     }
 
     @Test
+    fun `athlete reads the group pix because it is what they pay into`() {
+        val owner = insertUser("pix-read-owner")
+        val athlete = insertUser("pix-read-athlete")
+        val group = insertCompleteGroup(owner)
+        insertMembership(group, athlete, "ATHLETE")
+        execute("UPDATE access_groups SET pix_key = 'racha@saqz.test', pix_label = 'Tesoureiro' WHERE id = '$group'")
+
+        val snapshot = requireNotNull(repository.find(GroupReadKey(athlete, group)))
+
+        assertEquals("racha@saqz.test", snapshot.profile?.pixKey)
+        assertEquals("Tesoureiro", snapshot.profile?.pixLabel)
+    }
+
+    @Test
     fun `admin reads finance defaults`() {
         val owner = insertUser("finance-owner")
         val admin = insertUser("finance-admin")

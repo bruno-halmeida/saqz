@@ -291,6 +291,28 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
     }
 
     @Test
+    fun `owner stores the group pix and omitting it preserves the stored key`() {
+        val owner = insertUser("pix-settings-owner")
+        val group = insertGroup(owner)
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                1,
+                UpdateGroupProfileInput(profile(pixKey = "  racha@saqz.test ", pixLabel = " Tesoureiro ")),
+            ),
+        )
+        assertEquals("racha@saqz.test", text("SELECT pix_key FROM access_groups WHERE id = '$group'"))
+        assertEquals("Tesoureiro", text("SELECT pix_label FROM access_groups WHERE id = '$group'"))
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 2, UpdateGroupProfileInput(profile())),
+        )
+        assertEquals("racha@saqz.test", text("SELECT pix_key FROM access_groups WHERE id = '$group'"))
+    }
+
+    @Test
     fun `owner can toggle entry approval through complete profile update`() {
         val owner = insertUser("profile-toggle-owner")
         val group = insertGroup(owner)
@@ -508,6 +530,8 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         mensalistaPriority: Boolean? = null,
         promotionMode: GroupPromotionMode? = null,
         autoConfirmEnabled: Boolean? = null,
+        pixKey: String? = null,
+        pixLabel: String? = null,
     ) = GroupProfileDefaultsInput(
         name = name,
         modality = modality,
@@ -528,6 +552,8 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
         autoConfirmEnabled = autoConfirmEnabled,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
     )
 
     private fun text(sql: String): String = connection().use { connection ->

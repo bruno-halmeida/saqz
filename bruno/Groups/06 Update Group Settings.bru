@@ -32,7 +32,9 @@ body:json {
     "monthlyDueDay": 10,
     "mensalistaPriority": false,
     "promotionMode": "MANUAL",
-    "autoConfirmEnabled": true
+    "autoConfirmEnabled": true,
+    "pixKey": "11999998888",
+    "pixLabel": "Pix do caixa"
   }
 }
 
@@ -48,5 +50,7 @@ tests {
     expect(res.getBody().gameConfig.mensalistaPriority).to.equal(false);
     expect(res.getBody().gameConfig.promotionMode).to.equal("MANUAL");
     expect(res.getBody().gameConfig.autoConfirmEnabled).to.equal(true);
+    expect(res.getBody().profile.pixKey).to.equal("11999998888");
+    expect(res.getBody().profile.pixLabel).to.equal("Pix do caixa");
   });
 }

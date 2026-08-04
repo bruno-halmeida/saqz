@@ -50,6 +50,8 @@ data class CreateGroupRequest @JsonCreator constructor(
     @JsonProperty("mensalistaPriority") val mensalistaPriority: Boolean? = null,
     @JsonProperty("promotionMode") val promotionMode: PromotionMode? = null,
     @JsonProperty("autoConfirmEnabled") val autoConfirmEnabled: Boolean? = null,
+    @JsonProperty("pixKey") val pixKey: String? = null,
+    @JsonProperty("pixLabel") val pixLabel: String? = null,
     @JsonProperty("timeZone") val timeZone: String?,
 )
 
@@ -146,4 +148,6 @@ private fun CreateGroupRequest.profileInput() = GroupProfileDefaultsInput(
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
         autoConfirmEnabled = autoConfirmEnabled,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
     )

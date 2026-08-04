@@ -69,6 +69,8 @@ class JdbcGroupReadRepository(
             groups.mensalista_priority,
             groups.promotion_mode,
             groups.auto_confirm_enabled,
+            groups.pix_key,
+            groups.pix_label,
             default_venue.id AS default_venue_id,
             default_venue.name AS default_venue_name,
             default_venue.address AS default_venue_address,
@@ -123,6 +125,8 @@ class JdbcGroupReadRepository(
                 regularSlots = rows.mapNotNull { it.slot },
                 defaultCapacity = first.defaultCapacity,
                 defaultConfirmationLeadMinutes = first.defaultConfirmationLeadMinutes,
+                pixKey = first.pixKey,
+                pixLabel = first.pixLabel,
             ),
             financeDefaults = first.financeDefaults,
             gameConfig = GroupGameConfigReadModel(
@@ -175,6 +179,8 @@ class JdbcGroupReadRepository(
         mensalistaPriority = getBoolean("mensalista_priority"),
         promotionMode = PromotionMode.valueOf(getString("promotion_mode")),
         autoConfirmEnabled = getBoolean("auto_confirm_enabled"),
+        pixKey = getString("pix_key"),
+        pixLabel = getString("pix_label"),
     )
 
     private fun ResultSet.getNullableInt(column: String): Int? {
@@ -211,5 +217,7 @@ class JdbcGroupReadRepository(
         val mensalistaPriority: Boolean,
         val promotionMode: PromotionMode,
         val autoConfirmEnabled: Boolean,
+        val pixKey: String?,
+        val pixLabel: String?,
     )
 }

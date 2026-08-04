@@ -57,6 +57,8 @@ data class GroupProfileReadModel(
     val regularSlots: List<GroupRegularSlotReadModel>,
     val defaultCapacity: Int?,
     val defaultConfirmationLeadMinutes: Int?,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
 )
 
 data class GroupVenueReadModel(
