@@ -152,6 +152,67 @@ class GameMigrationIntegrationTest {
         assertEquals(1, int("SELECT version FROM games WHERE id = '$game'"))
     }
 
+    @Test
+    fun `v34 cancels later active duplicates and reconciles their charges`() {
+        flyway().clean()
+        flyway("32").migrate()
+        val group = completeGroup("schedule-dedupe")
+        val venue = venue(group)
+        val first = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:00:00+00'")
+        val later = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:01:00+00'")
+        val owner = uuid("SELECT owner_user_id FROM access_groups WHERE id = '$group'")
+        val pendingCharge = charge(group, later, owner, "PENDING")
+        val paidCharge = charge(group, later, owner, "PAID")
+        val waivedCharge = charge(group, later, owner, "WAIVED")
+
+        flyway().migrate()
+
+        assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id = '$first'"))
+        assertEquals("CANCELLED", string("SELECT status FROM games WHERE id = '$later'"))
+        assertEquals(2, int("SELECT version FROM games WHERE id = '$later'"))
+        assertEquals("CANCELLED", string("SELECT status FROM group_charges WHERE id = '$pendingCharge'"))
+        assertEquals(2, int("SELECT version FROM group_charges WHERE id = '$pendingCharge'"))
+        assertEquals(
+            1,
+            int("SELECT count(*) FROM group_charge_events WHERE charge_id = '$pendingCharge'"),
+        )
+        assertEquals("PENDING", string("SELECT old_status FROM group_charge_events WHERE charge_id = '$pendingCharge'"))
+        assertEquals("CANCELLED", string("SELECT new_status FROM group_charge_events WHERE charge_id = '$pendingCharge'"))
+        assertEquals("PAID", string("SELECT status FROM group_charges WHERE id = '$paidCharge'"))
+        assertEquals(true, boolean("SELECT review_required FROM group_charges WHERE id = '$paidCharge'"))
+        assertEquals("WAIVED", string("SELECT status FROM group_charges WHERE id = '$waivedCharge'"))
+        assertEquals(true, boolean("SELECT review_required FROM group_charges WHERE id = '$waivedCharge'"))
+        assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group'"))
+        assertEquals(
+            1,
+            int(
+                "SELECT count(*) FROM pg_constraint " +
+                    "WHERE conname = 'games_schedule_start_unique' AND contype = 'x' " +
+                    "AND condeferrable AND NOT condeferred",
+            ),
+        )
+    }
+
+    @Test
+    fun `v34 leaves completed duplicates intact and outside the schedule index`() {
+        flyway().clean()
+        flyway("32").migrate()
+        val group = completeGroup("schedule-history")
+        val venue = venue(group)
+        val first = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:00:00+00'")
+        val later = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:01:00+00'")
+        execute("UPDATE games SET status = 'COMPLETED', version = 5 WHERE id = '$first'")
+        execute("UPDATE games SET status = 'COMPLETED', version = 7 WHERE id = '$later'")
+
+        flyway().migrate()
+
+        assertEquals("COMPLETED", string("SELECT status FROM games WHERE id = '$first'"))
+        assertEquals(5, int("SELECT version FROM games WHERE id = '$first'"))
+        assertEquals("COMPLETED", string("SELECT status FROM games WHERE id = '$later'"))
+        assertEquals(7, int("SELECT version FROM games WHERE id = '$later'"))
+        assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group'"))
+    }
+
     @Test fun `game rejects invalid lifecycle status`() = invalidGame("status", "'OPEN'")
     @Test fun `game rejects title limit`() = invalidGame("title", "'X'")
     @Test fun `game rejects duration limit`() = invalidGame("duration_minutes", "481")
@@ -245,6 +306,22 @@ class GameMigrationIntegrationTest {
         execute(
             "INSERT INTO group_venues (id, group_id, name, address, court, created_at, updated_at) " +
                 "VALUES ('$id', '$group', 'Arena Central', 'Rua das Flores 100', 'Quadra 2', now(), now())",
+        )
+        return id
+    }
+
+    private fun charge(group: UUID, game: UUID, owner: UUID, status: String): UUID {
+        val member = UUID.randomUUID()
+        execute(
+            "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) " +
+                "VALUES ('$member', 'charge-member-${UUID.randomUUID()}', true, 'Member Name', now(), now())",
+        )
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_charges (id, group_id, member_user_id, kind, game_id, amount_cents, due_date, " +
+                "status, created_by_user_id, changed_by_user_id, created_at, updated_at, member_display_name) VALUES " +
+                "('$id', '$group', '$member', 'GAME', '$game', 2500, DATE '2026-08-12', '$status', " +
+                "'$owner', '$owner', now(), now(), 'Member Name')",
         )
         return id
     }
@@ -344,6 +421,7 @@ class GameMigrationIntegrationTest {
 
     private fun int(sql: String): Int = query(sql) { it.getInt(1) }
     private fun string(sql: String): String = query(sql) { it.getString(1) }
+    private fun boolean(sql: String): Boolean = query(sql) { it.getBoolean(1) }
     private fun uuid(sql: String): UUID = query(sql) { it.getObject(1, UUID::class.java) }
 
     private fun <T> query(sql: String, read: (java.sql.ResultSet) -> T): T = connection().use { connection ->

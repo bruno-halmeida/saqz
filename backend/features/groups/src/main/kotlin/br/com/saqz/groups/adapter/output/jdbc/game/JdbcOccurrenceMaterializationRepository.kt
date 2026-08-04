@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.recurrence.OccurrenceMaterializationRepository
 import java.sql.PreparedStatement
@@ -27,6 +28,7 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
                 return inserted
             } catch (failure: Exception) {
                 connection.rollback()
+                if (failure.isGameScheduleConflict()) throw GameScheduleConflictWriteException()
                 throw failure
             }
         }

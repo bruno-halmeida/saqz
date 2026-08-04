@@ -43,9 +43,9 @@ class JdbcAthleteStatsRepositoryIntegrationTest {
         val group = insertGroup(owner)
         val member = insertUser("stats-member", "Member Person")
         insertMembership(group, member)
-        val confirmed = insertGame(group)
-        val declined = insertGame(group)
-        val waitlisted = insertGame(group)
+        val confirmed = insertGame(group, startOffsetMinutes = 0)
+        val declined = insertGame(group, startOffsetMinutes = 60)
+        val waitlisted = insertGame(group, startOffsetMinutes = 120)
         insertAttendance(confirmed, group, member, "CONFIRMED")
         insertAttendance(declined, group, member, "DECLINED")
         insertAttendance(waitlisted, group, member, "WAITLISTED", waitlistSequence = 1)
@@ -84,13 +84,14 @@ class JdbcAthleteStatsRepositoryIntegrationTest {
             "VALUES ('$group', '$user', 'ATHLETE', now(), now())",
     )
 
-    private fun insertGame(group: UUID): UUID {
+    private fun insertGame(group: UUID, startOffsetMinutes: Int): UUID {
         val id = UUID.randomUUID()
         execute(
             "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
                 "confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at) VALUES " +
                 "('$id', '$group', 'Treino', DATE '2026-08-12', TIME '19:30', 'America/Sao_Paulo', " +
-                "TIMESTAMPTZ '2026-08-12 22:30Z', 90, TIMESTAMPTZ '2026-08-11 22:30Z', 'Arena', 'Rua Central 100', " +
+                "TIMESTAMPTZ '2026-08-12 22:30Z' + INTERVAL '$startOffsetMinutes minutes', 90, " +
+                "TIMESTAMPTZ '2026-08-11 22:30Z', 'Arena', 'Rua Central 100', " +
                 "12, 'PUBLISHED', now(), now())",
         )
         return id

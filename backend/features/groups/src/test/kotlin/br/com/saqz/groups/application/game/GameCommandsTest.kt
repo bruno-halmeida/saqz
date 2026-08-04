@@ -61,6 +61,17 @@ class GameCommandsTest {
         assertTrue(fixture.repository.creates.isEmpty())
     }
 
+    @Test fun `database schedule conflict from create is exposed as a command conflict`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val existing = UUID.randomUUID()
+        fixture.repository.writeResult = GameWriteResult.ScheduleConflict(existing)
+
+        assertEquals(
+            GameCommandResult.ScheduleConflict(existing),
+            fixture.create.execute(actor, groupId, gameId, createInput()),
+        )
+    }
+
     @Test fun `admin creates game`() {
         assertTrue(fixture(GroupRole.ADMIN).create.execute(actor, groupId, gameId, createInput()) is GameCommandResult.Success)
     }

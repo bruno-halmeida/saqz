@@ -9,6 +9,7 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.group.GroupFinanceDefaults
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
@@ -269,6 +270,89 @@ class GameEditorViewModelTest {
         assertEquals("Nota depois do timeout", gateway.lastEditCommand?.notes)
         assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
         assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
+    fun `retry with group default fee recognizes own published draft`() = runTest {
+        val submittedGame = sampleGame().copy(
+            title = "Jogo fora da recorrência",
+            startsAt = "2026-08-04T22:30:00Z",
+            confirmationDeadline = "2026-08-04T16:30:00Z",
+            gameFeeCents = 2500,
+            status = GameStatus.Draft,
+        )
+        val draft = sampleVersionedGame(
+            submittedGame,
+        ).copy(version = GameVersionToken("etag-draft"))
+        val published = draft.copy(
+            version = GameVersionToken("etag-published"),
+            game = draft.game.copy(status = GameStatus.Published),
+        )
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(listOf(SaqzResult.Success(published))),
+            createResult = SaqzResult.Success(draft),
+            lifecycleResults = ArrayDeque(
+                listOf(SaqzResult.Failure(GameError.Data(DataError.Connectivity))),
+            ),
+        )
+        val groupGateway = FakeGroupGateway(
+            readResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleVersionedGroup(
+                    br.com.saqz.groups.presentation.sampleGroup().copy(
+                        financeDefaults = GroupFinanceDefaults(2500, null, null),
+                    ),
+                ),
+            ),
+        )
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupGateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(vm.state.value.saveFailed)
+        assertEquals(null, gateway.lastCreateCommand?.gameFeeCents)
+        assertTrue(gateway.lastCreateCommand?.useDefaultGameFee == true)
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertEquals(1, gateway.readCalls)
+        assertEquals(0, gateway.editCalls)
+        assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
+    fun `retry does not overwrite a concurrent published edit`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val published = draft.copy(
+            version = GameVersionToken("etag-published"),
+            game = draft.game.copy(status = GameStatus.Published),
+        )
+        val collaboratorEdit = published.copy(
+            version = GameVersionToken("etag-collaborator"),
+            game = published.game.copy(title = "Título do outro organizador"),
+        )
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(collaboratorEdit),
+            createResult = SaqzResult.Success(draft),
+            lifecycleResults = ArrayDeque(
+                listOf(SaqzResult.Failure(GameError.Data(DataError.Connectivity))),
+            ),
+        )
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        vm.onIntent(GameEditorIntent.UpdateNotes("Nota depois do timeout"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertEquals(1, gateway.readCalls)
+        assertEquals(0, gateway.editCalls)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
+        assertTrue(vm.state.value.saveFailed)
+        assertEquals(GroupUiError.Conflict, vm.state.value.error)
     }
 
     @Test

@@ -6,6 +6,7 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.game.GameLifecycleAction
@@ -243,16 +244,27 @@ class GameEditorViewModel(
         return when (val current = gameGateway.read(GroupId(groupId), pending.gameId)) {
             is SaqzResult.Failure -> current
             is SaqzResult.Success -> {
-                savePendingDraft(current.value)
-                editAndMaybePublish(
-                    LastAttempt.Edit(
-                        current.value.game.id,
-                        current.value.version.value,
-                        commandKey,
-                        publishAfterEdit = current.value.game.status != GameStatus.Published,
-                    ),
-                    command,
-                )
+                val serverFingerprint = gameFingerprint(current.value.game)
+                val submittedFingerprint = pending.submittedStateFingerprint
+                refreshPendingDraft(current.value)
+                if (submittedFingerprint == null || submittedFingerprint != serverFingerprint) {
+                    SaqzResult.Failure(GameError.VersionConflict)
+                } else if (
+                    current.value.game.status == GameStatus.Published &&
+                    commandFingerprint(command, current.value.game.gameFeeCents) == submittedFingerprint
+                ) {
+                    current
+                } else {
+                    editAndMaybePublish(
+                        LastAttempt.Edit(
+                            current.value.game.id,
+                            current.value.version.value,
+                            commandKey,
+                            publishAfterEdit = current.value.game.status != GameStatus.Published,
+                        ),
+                        command.withResolvedGameFee(current.value.game.gameFeeCents),
+                    )
+                }
             }
         }
     }
@@ -275,8 +287,18 @@ class GameEditorViewModel(
     }
 
     private fun savePendingDraft(versioned: VersionedGame) {
-        pendingDraft = PendingDraft(versioned.game.id, versioned.version.value)
+        pendingDraft = PendingDraft(
+            versioned.game.id,
+            versioned.version.value,
+            gameFingerprint(versioned.game),
+        )
         savedState[KeyPendingGameId] = versioned.game.id
+        savedState[KeyPendingVersion] = versioned.version.value
+        savedState[KeyPendingFingerprint] = gameFingerprint(versioned.game)
+    }
+
+    private fun refreshPendingDraft(versioned: VersionedGame) {
+        pendingDraft = pendingDraft?.copy(versionToken = versioned.version.value)
         savedState[KeyPendingVersion] = versioned.version.value
     }
 
@@ -284,6 +306,7 @@ class GameEditorViewModel(
         pendingDraft = null
         savedState.remove<String>(KeyPendingGameId)
         savedState.remove<String>(KeyPendingVersion)
+        savedState.remove<String>(KeyPendingFingerprint)
     }
 
     private suspend fun publishIfDraft(
@@ -397,7 +420,7 @@ class GameEditorViewModel(
     private fun restorePendingDraft(): PendingDraft? {
         val gameId = savedState.get<String>(KeyPendingGameId) ?: return null
         val version = savedState.get<String>(KeyPendingVersion) ?: return null
-        return PendingDraft(gameId, version)
+        return PendingDraft(gameId, version, savedState.get<String>(KeyPendingFingerprint))
     }
 
     private sealed interface LastAttempt {
@@ -429,11 +452,60 @@ class GameEditorViewModel(
         const val KeyVenueAddress = "game-editor-venue-address"
         const val KeyPendingGameId = "game-editor-pending-game-id"
         const val KeyPendingVersion = "game-editor-pending-version"
+        const val KeyPendingFingerprint = "game-editor-pending-fingerprint"
         const val DEFAULT_TITLE = "Jogo fora da recorrência"
     }
 }
 
-private data class PendingDraft(val gameId: String, val versionToken: String)
+private data class PendingDraft(
+    val gameId: String,
+    val versionToken: String,
+    val submittedStateFingerprint: String?,
+)
+
+private fun commandFingerprint(command: GameWriteCommand, resolvedDefaultGameFeeCents: Long?): String = listOf(
+    command.title,
+    command.venue?.venueId,
+    command.venue?.name,
+    command.venue?.address,
+    command.venue?.court,
+    command.localDate,
+    command.localTime,
+    command.zoneId,
+    command.startsAt,
+    command.durationMinutes,
+    command.capacity,
+    command.confirmationDeadline,
+    if (command.useDefaultGameFee) resolvedDefaultGameFeeCents else command.gameFeeCents,
+    command.notes,
+).fingerprint()
+
+private fun gameFingerprint(game: Game): String = listOf(
+    game.title,
+    game.venue.venueId,
+    game.venue.name,
+    game.venue.address,
+    game.venue.court,
+    game.localDate,
+    game.localTime,
+    game.zoneId,
+    game.startsAt,
+    game.durationMinutes,
+    game.capacity,
+    game.confirmationDeadline,
+    game.gameFeeCents,
+    game.notes,
+).fingerprint()
+
+private fun GameWriteCommand.withResolvedGameFee(resolvedGameFeeCents: Long?): GameWriteCommand =
+    if (!useDefaultGameFee) this else copy(
+        gameFeeCents = resolvedGameFeeCents,
+        useDefaultGameFee = false,
+    )
+
+private fun List<Any?>.fingerprint(): String = joinToString(FINGERPRINT_SEPARATOR) { it?.toString()?.trim().orEmpty() }
+
+private const val FINGERPRINT_SEPARATOR = "\u001F"
 
 private fun confirmationLeadMinutes(startsAt: String, deadline: String): Int? = runCatching {
     (Instant.parse(startsAt) - Instant.parse(deadline)).inWholeMinutes.toInt()

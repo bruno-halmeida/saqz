@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.series.SeriesOccurrenceView
 import br.com.saqz.groups.application.game.series.WeeklySeriesRepository
 import br.com.saqz.groups.application.game.series.WeeklySeriesView
@@ -18,15 +19,20 @@ import javax.sql.DataSource
 class JdbcWeeklySeriesRepository(private val dataSource: DataSource) : WeeklySeriesRepository {
     override fun role(actor: UUID, groupId: UUID): GroupRole? = dataSource.connection.use { c -> c.prepareStatement(ROLE).use { s -> s.setObject(1,actor);s.setObject(2,actor);s.setObject(3,groupId);s.setObject(4,actor);s.setObject(5,actor);s.executeQuery().use { r -> if(r.next()) GroupRole.valueOf(r.getString(1)) else null } } }
 
-    override fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>): Boolean = transaction { c ->
-        val activeGroup = c.prepareStatement("SELECT id FROM access_groups WHERE id=? AND deleted_at IS NULL FOR UPDATE").use { s -> s.setObject(1, rule.groupId); s.executeQuery().use { r -> r.next() } }
-        if (!activeGroup) return@transaction false
-        val inserted = c.prepareStatement(INSERT_SERIES).use { s -> s.setObject(1,rule.revisionId);s.setObject(2,rule.seriesId);s.setObject(3,rule.groupId);s.setString(4,rule.zoneId);s.setObject(5,rule.localStartDate);s.setObject(6,rule.localEndDate);s.setObject(7,rule.activeThroughDate);s.executeUpdate()==1 }
-        if (!inserted) return@transaction false
-        // As inserções filhas dependem do bloqueio FOR UPDATE do grupo ativo acima.
-        rule.slots.forEach { slot -> c.prepareStatement(INSERT_SLOT).use { s -> s.setObject(1,rule.revisionId);s.setObject(2,rule.groupId);s.setObject(3,slot.slotKey);s.setString(4,slot.title);s.setInt(5,slot.weekday.value);s.setObject(6,slot.localTime);s.setInt(7,slot.durationMinutes);s.setObject(8,slot.venue.venueId);s.setString(9,slot.venue.name);s.setString(10,slot.venue.address);s.setString(11,slot.venue.court);s.setInt(12,slot.capacity);s.setInt(13,slot.confirmationLeadMinutes);s.setObject(14,slot.gameFeeCents);s.executeUpdate() } }
-        occurrences.forEach { value -> val o=value.occurrence;val slot=o.slot;c.prepareStatement(INSERT_GAME).use { s -> s.setObject(1,value.id);s.setObject(2,o.groupId);s.setObject(3,o.seriesId);s.setObject(4,o.revisionId);s.setObject(5,slot.slotKey);s.setString(6,slot.title);s.setObject(7,o.localDate);s.setObject(8,o.localTime);s.setString(9,o.zoneId.value);s.setTimestamp(10,Timestamp.from(o.startsAt));s.setInt(11,slot.durationMinutes);s.setTimestamp(12,Timestamp.from(o.confirmationDeadline));s.setObject(13,slot.venue.venueId);s.setString(14,slot.venue.name);s.setString(15,slot.venue.address);s.setString(16,slot.venue.court);s.setInt(17,slot.capacity);s.setObject(18,slot.gameFeeCents);s.setTimestamp(19,Timestamp.from(value.createdAt));s.setTimestamp(20,Timestamp.from(value.createdAt));s.executeUpdate() } }
-        true
+    override fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>): Boolean = try {
+        transaction { c ->
+            val activeGroup = c.prepareStatement("SELECT id FROM access_groups WHERE id=? AND deleted_at IS NULL FOR UPDATE").use { s -> s.setObject(1, rule.groupId); s.executeQuery().use { r -> r.next() } }
+            if (!activeGroup) return@transaction false
+            val inserted = c.prepareStatement(INSERT_SERIES).use { s -> s.setObject(1,rule.revisionId);s.setObject(2,rule.seriesId);s.setObject(3,rule.groupId);s.setString(4,rule.zoneId);s.setObject(5,rule.localStartDate);s.setObject(6,rule.localEndDate);s.setObject(7,rule.activeThroughDate);s.executeUpdate()==1 }
+            if (!inserted) return@transaction false
+            // As inserções filhas dependem do bloqueio FOR UPDATE do grupo ativo acima.
+            rule.slots.forEach { slot -> c.prepareStatement(INSERT_SLOT).use { s -> s.setObject(1,rule.revisionId);s.setObject(2,rule.groupId);s.setObject(3,slot.slotKey);s.setString(4,slot.title);s.setInt(5,slot.weekday.value);s.setObject(6,slot.localTime);s.setInt(7,slot.durationMinutes);s.setObject(8,slot.venue.venueId);s.setString(9,slot.venue.name);s.setString(10,slot.venue.address);s.setString(11,slot.venue.court);s.setInt(12,slot.capacity);s.setInt(13,slot.confirmationLeadMinutes);s.setObject(14,slot.gameFeeCents);s.executeUpdate() } }
+            occurrences.forEach { value -> val o=value.occurrence;val slot=o.slot;c.prepareStatement(INSERT_GAME).use { s -> s.setObject(1,value.id);s.setObject(2,o.groupId);s.setObject(3,o.seriesId);s.setObject(4,o.revisionId);s.setObject(5,slot.slotKey);s.setString(6,slot.title);s.setObject(7,o.localDate);s.setObject(8,o.localTime);s.setString(9,o.zoneId.value);s.setTimestamp(10,Timestamp.from(o.startsAt));s.setInt(11,slot.durationMinutes);s.setTimestamp(12,Timestamp.from(o.confirmationDeadline));s.setObject(13,slot.venue.venueId);s.setString(14,slot.venue.name);s.setString(15,slot.venue.address);s.setString(16,slot.venue.court);s.setInt(17,slot.capacity);s.setObject(18,slot.gameFeeCents);s.setTimestamp(19,Timestamp.from(value.createdAt));s.setTimestamp(20,Timestamp.from(value.createdAt));s.executeUpdate() } }
+            true
+        }
+    } catch (failure: Exception) {
+        if (failure.isGameScheduleConflict()) throw GameScheduleConflictWriteException()
+        throw failure
     }
 
     override fun find(groupId: UUID, lineageId: UUID): WeeklySeriesView? = dataSource.connection.use { c ->
