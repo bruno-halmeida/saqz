@@ -22,7 +22,7 @@ class JdbcAdminCouponDirectoryRepository(
                (SELECT count(*) FROM coupon_redemptions r WHERE r.coupon_id = c.id) AS redemptions,
                (SELECT count(*) FROM subscriptions s
                  WHERE s.coupon_id = c.id AND s.status <> 'CANCELED'
-                   AND (s.coupon_cycles_remaining IS NULL OR s.coupon_cycles_remaining > 0)) AS active_subscriptions
+                   AND (c.duration_cycles IS NULL OR COALESCE(s.coupon_cycles_remaining, 0) > 0)) AS active_subscriptions
         FROM coupons c
         ORDER BY c.created_at DESC
         """.trimIndent(),
@@ -52,6 +52,7 @@ class JdbcAdminCouponDirectoryRepository(
             INSERT INTO coupons (id, code, discount_percent, duration_cycles, valid_until, created_at)
             SELECT :id, :code, :discount, :cycles, :validUntil, now()
             WHERE NOT EXISTS (SELECT 1 FROM coupons x WHERE lower(x.code) = lower(:code))
+            ON CONFLICT (code) DO NOTHING
             """.trimIndent(),
         )
             .param("id", id)
