@@ -1,0 +1,14 @@
+meta {
+  name: Finance Overview Invalid Filters
+  type: http
+  seq: 4
+}
+get {
+  url: {{baseUrl}}/api/me/finance/overview?month=2026-08&year=2026
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("month and year cannot be combined", function () { expect(res.status).to.equal(400); expect(res.body.fieldErrors.month).to.be.an("array"); expect(res.body.fieldErrors.year).to.be.an("array"); });
+}

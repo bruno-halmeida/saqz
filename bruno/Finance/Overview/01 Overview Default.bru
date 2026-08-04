@@ -1,0 +1,14 @@
+meta {
+  name: Finance Overview
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/me/finance/overview
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("finance overview response", function () { expect(res.status).to.equal(200); expect(res.body.totals).to.exist; expect(res.body.groups).to.be.an("array"); expect(res.body.recentTransactions).to.be.an("array"); });
+}

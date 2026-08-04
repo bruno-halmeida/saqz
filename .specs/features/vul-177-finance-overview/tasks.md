@@ -122,8 +122,8 @@ e `bruno/Finance/Overview/*.bru`
 
 **Done when:**
 
-- [ ] Contexto Spring consegue construir repository, query e controller.
-- [ ] Existem somente arquivos `.bru` novos sob `bruno/Finance/Overview/`.
+- [x] Contexto Spring consegue construir repository, query e controller.
+- [x] Existem somente arquivos `.bru` novos sob `bruno/Finance/Overview/`.
 - [ ] Build gate `test` + `integrationTest` passa.
 
 **Tests:** integration
