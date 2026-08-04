@@ -10,7 +10,7 @@ import java.time.YearMonth
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRepository{
+class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRepository,MonthlyDueMembershipRepository{
     private val jdbc=JdbcClient.create(dataSource)
     override fun createGameCharge(input:GameChargeInput,actorId:UUID,now:Instant):Charge{
         requireActiveGroup(input.groupId)
@@ -38,6 +38,9 @@ class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRe
         if(inserted==1)event(charge,null,ChargeStatus.PENDING,command.actorId,now)
         return charge
     }
+    // Membro sem monthly_fee_cents e diarista e nao entra. Membro inativo entra e e descartado por
+    // ChargeTransactions.generate, que ja e o dono da regra de inativo.
+    override fun dueOn(dayOfMonth:Int):List<MonthlyDueMembership> =jdbc.sql("SELECT memberships.group_id,groups.owner_user_id,memberships.user_id,memberships.monthly_fee_cents FROM group_memberships memberships JOIN access_groups groups ON groups.id=memberships.group_id AND groups.deleted_at IS NULL WHERE memberships.monthly_due_day=:day AND memberships.monthly_fee_cents IS NOT NULL ORDER BY memberships.group_id,memberships.user_id").param("day",dayOfMonth).query{rs,_->MonthlyDueMembership(rs.getObject("group_id",UUID::class.java),rs.getObject("owner_user_id",UUID::class.java),rs.getObject("user_id",UUID::class.java),rs.getLong("monthly_fee_cents"))}.list()
     private fun event(charge:Charge,old:ChargeStatus?,new:ChargeStatus,actor:UUID,now:Instant){val inserted=jdbc.sql("INSERT INTO group_charge_events (id,charge_id,group_id,actor_user_id,old_status,new_status,occurred_at) SELECT :id,:charge,:group,:actor,:old,:new,:now WHERE EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("id",UUID.randomUUID()).param("charge",charge.id).param("group",charge.groupId).param("actor",actor).param("old",old?.name,java.sql.Types.VARCHAR).param("new",new.name).param("now",Timestamp.from(now)).update();check(inserted==1){"Grupo de cobrança excluído ou inexistente"}}
     private fun findGame(group:UUID,game:UUID,member:UUID)=jdbc.sql("$SELECT WHERE c.group_id=:group AND c.game_id=:game AND c.member_user_id=:member").param("group",group).param("game",game).param("member",member).query(::map).optional().orElse(null)
     private fun findMonthly(group:UUID,month:YearMonth,member:UUID)=jdbc.sql("$SELECT WHERE c.group_id=:group AND c.billing_month=:month AND c.member_user_id=:member").param("group",group).param("month",month.atDay(1)).param("member",member).query(::map).optional().orElse(null)
