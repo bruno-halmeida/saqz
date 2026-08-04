@@ -63,6 +63,7 @@ data class GameResponse(
 
 class GameNotFoundException : RuntimeException()
 class InvalidGameTransitionException : RuntimeException()
+class GameScheduleConflictException(val gameId: UUID) : RuntimeException()
 
 @RestController
 class GameController(
@@ -122,6 +123,7 @@ class GameController(
         is GameCommandResult.Invalid -> throw InvalidGroupRequestException(result.errors.groupBy({ it.field }, { it.message }))
         is GameCommandResult.InvalidTransition -> throw InvalidGameTransitionException()
         GameCommandResult.VersionConflict -> throw VersionConflictException()
+        is GameCommandResult.ScheduleConflict -> throw GameScheduleConflictException(result.gameId)
         GameCommandResult.GroupNotFound, GameCommandResult.GameNotFound -> throw GameNotFoundException()
         GameCommandResult.AccessForbidden -> throw AccessForbiddenException()
     }

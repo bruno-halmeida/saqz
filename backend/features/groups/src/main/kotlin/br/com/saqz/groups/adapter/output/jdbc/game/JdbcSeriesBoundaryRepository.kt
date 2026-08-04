@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.series.FutureBoundaryCommand
 import br.com.saqz.groups.application.game.series.OnlyThisBoundaryCommand
@@ -68,7 +69,11 @@ class JdbcSeriesBoundaryRepository(
     }
 
     private fun regenerateFuture(connection: Connection, command: FutureBoundaryCommand) {
+        connection.createStatement().use { statement ->
+            statement.execute("SET CONSTRAINTS games_schedule_start_unique DEFERRED")
+        }
         val identities = command.occurrences.map { it.occurrence.localDate to it.occurrence.slot.slotKey }.toSet()
+        cancelRemovedFuture(connection, command, identities)
         command.occurrences.forEach { value ->
             val occurrence = value.occurrence
             val updated = connection.prepareStatement(REGENERATE).use { statement ->
@@ -83,6 +88,13 @@ class JdbcSeriesBoundaryRepository(
                 insertOccurrence(connection, value)
             }
         }
+    }
+
+    private fun cancelRemovedFuture(
+        connection: Connection,
+        command: FutureBoundaryCommand,
+        identities: Set<Pair<java.time.LocalDate, java.util.UUID>>,
+    ) {
         connection.prepareStatement(SELECT_FUTURE_IDENTITIES).use { statement ->
             statement.setObject(1, command.groupId)
             statement.setObject(2, command.successorRule.seriesId)
@@ -192,7 +204,13 @@ class JdbcSeriesBoundaryRepository(
 
     private fun <T> transaction(block: (Connection) -> T): T = dataSource.connection.use { connection ->
         connection.autoCommit = false
-        try { block(connection).also { connection.commit() } } catch (failure: Exception) { connection.rollback(); throw failure }
+        try {
+            block(connection).also { connection.commit() }
+        } catch (failure: Exception) {
+            connection.rollback()
+            if (failure.isGameScheduleConflict()) throw GameScheduleConflictWriteException()
+            throw failure
+        }
     }
 
     private data class LockedGame(val version: Long, val date: java.time.LocalDate, val status: String, val detached: Boolean)

@@ -83,6 +83,14 @@ class KtorGameGatewayTest {
     }
 
     @Test
+    fun `create sends default fee decision when true`() = runTest {
+        gateway { request ->
+            assertEquals("true", request.bodyJson()["useDefaultGameFee"]?.jsonPrimitive?.content)
+            gameResponse(HttpStatusCode.Created)
+        }.create(GROUP, gameCommand().copy(gameFeeCents = null, useDefaultGameFee = true))
+    }
+
+    @Test
     fun `create omits server owned fields`() = runTest {
         gateway { request ->
             val body = request.bodyJson()
@@ -149,6 +157,18 @@ class KtorGameGatewayTest {
     @Test fun `hidden game maps safely`() = errorCase(404, "GAME_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `hidden group maps safely`() = errorCase(404, "GROUP_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `version conflict maps safely`() = errorCase(409, "VERSION_CONFLICT", GameError.VersionConflict::class.simpleName)
+    @Test
+    fun `schedule conflict preserves existing game id`() = runTest {
+        val result = gateway {
+            respond(
+                """{"status":409,"code":"GAME_SCHEDULE_CONFLICT","correlationId":"private","conflictGameId":"existing-game"}""",
+                HttpStatusCode.Conflict,
+                jsonHeaders(),
+            )
+        }.create(GROUP, gameCommand())
+
+        assertEquals(GameError.Conflict("existing-game"), assertIs<SaqzResult.Failure<*>>(result).error)
+    }
     @Test fun `invalid lifecycle maps safely`() = errorCase(409, "INVALID_GAME_TRANSITION", GameError.InvalidLifecycle::class.simpleName)
     @Test fun `authentication maps safely`() = errorCase(401, "AUTHENTICATION_REQUIRED", GameError.Authentication::class.simpleName)
     @Test fun `forbidden maps safely`() = errorCase(403, "FORBIDDEN", GameError.Data(DataError.Forbidden)::class.simpleName)

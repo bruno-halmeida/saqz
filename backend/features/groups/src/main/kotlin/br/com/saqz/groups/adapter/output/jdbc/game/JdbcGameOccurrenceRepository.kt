@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.output.jdbc.game
 import br.com.saqz.groups.application.game.GameCommandContext
 import br.com.saqz.groups.application.game.GameCommandRepository
 import br.com.saqz.groups.application.game.GameCreationContext
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.GameQueryRepository
 import br.com.saqz.groups.application.game.GameWriteResult
 import br.com.saqz.groups.domain.GroupRole
@@ -19,6 +20,7 @@ import java.sql.Timestamp
 import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
+import org.springframework.dao.DataIntegrityViolationException
 
 class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandRepository, GameQueryRepository {
     private val jdbc = JdbcClient.create(dataSource)
@@ -57,16 +59,46 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         return find(groupId, gameId)?.let { GameCommandContext(role, it) }
     }
 
+    override fun recurringConflict(
+        groupId: UUID,
+        startsAt: java.time.Instant,
+        excludingGameId: UUID?,
+    ): UUID? = jdbc.sql(if (excludingGameId == null) RECURRING_CONFLICT else RECURRING_CONFLICT_EXCLUDING_GAME)
+        .param("groupId", groupId)
+        .param("startsAt", Timestamp.from(startsAt))
+        .let { statement ->
+            if (excludingGameId == null) statement else statement.param("excludingGameId", excludingGameId)
+        }
+        .query(UUID::class.java)
+        .optional()
+        .orElse(null)
+
     override fun create(game: Game): GameWriteResult {
-        val inserted = bind(jdbc.sql(INSERT_GAME), game).update()
-        return if (inserted == 1) GameWriteResult.Saved(game)
-        else find(game.groupId, game.id)?.let(GameWriteResult::Saved) ?: GameWriteResult.NotFound
+        val inserted = try {
+            bind(jdbc.sql(INSERT_GAME), game).update()
+        } catch (failure: DataIntegrityViolationException) {
+            if (!failure.isGameScheduleConflict()) throw failure
+            return runCatching { recurringConflict(game.groupId, game.snapshot.startsAt, excludingGameId = null) }
+                .getOrNull()
+                ?.let(GameWriteResult::ScheduleConflict)
+                ?: throw GameScheduleConflictWriteException()
+        }
+        if (inserted == 1) return GameWriteResult.Saved(game)
+        find(game.groupId, game.id)?.let { return GameWriteResult.Saved(it) }
+        return recurringConflict(game.groupId, game.snapshot.startsAt, excludingGameId = null)
+            ?.let(GameWriteResult::ScheduleConflict)
+            ?: GameWriteResult.NotFound
     }
 
     override fun update(game: Game, expectedVersion: Long): GameWriteResult {
-        val updated = bind(jdbc.sql(UPDATE_GAME), game)
-            .param("expectedVersion", expectedVersion)
-            .update()
+        val updated = try {
+            bind(jdbc.sql(UPDATE_GAME), game)
+                .param("expectedVersion", expectedVersion)
+                .update()
+        } catch (failure: DataIntegrityViolationException) {
+            if (failure.isGameScheduleConflict()) throw GameScheduleConflictWriteException()
+            throw failure
+        }
         if (updated == 0) {
             return if (find(game.groupId, game.id) == null) GameWriteResult.NotFound else GameWriteResult.VersionConflict
         }
@@ -182,6 +214,27 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             FROM access_groups
             WHERE id = :groupId AND deleted_at IS NULL
             ON CONFLICT (id) DO NOTHING
+        """
+
+        const val RECURRING_CONFLICT = """
+            SELECT id
+            FROM games
+            WHERE group_id = :groupId
+              AND starts_at = :startsAt
+              AND status IN ('DRAFT', 'PUBLISHED')
+            ORDER BY id
+            LIMIT 1
+        """
+
+        const val RECURRING_CONFLICT_EXCLUDING_GAME = """
+            SELECT id
+            FROM games
+            WHERE group_id = :groupId
+              AND starts_at = :startsAt
+              AND id <> :excludingGameId
+              AND status IN ('DRAFT', 'PUBLISHED')
+            ORDER BY id
+            LIMIT 1
         """
 
         const val UPDATE_GAME = """

@@ -116,6 +116,7 @@ internal fun SaqzNavHost(
     val restoring = remember { booleanArrayOf(true) }
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -367,6 +368,7 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     onBack = pop,
                     onEffect = { effect -> backStack.onDetailsEffect(effect, pop) },
+                    refreshVersion = groupDetailsRefreshVersion,
                 )
             }
             entry<GroupsRoute.Invite> { route ->
@@ -468,6 +470,7 @@ internal fun SaqzNavHost(
                     gameId = route.gameId,
                     onBack = pop,
                     onOpenGameDetail = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                    onSave = { groupDetailsRefreshVersion++ },
                 )
             }
             entry<GroupsRoute.GameDetail> { route ->
@@ -602,6 +605,8 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         GroupDetailsEffect.Left -> pop()
         // 4 · Criar jogo: abre o editor com gameId null.
         is GroupDetailsEffect.OpenCreateGame -> add(GroupsRoute.GameEditor(effect.groupId))
+        // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
+        is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
         // TODO(Fluxo 5 · Financeiro, 5b)
         is GroupDetailsEffect.OpenCashbox -> Unit
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))

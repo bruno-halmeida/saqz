@@ -154,7 +154,7 @@ internal fun SaqzAppShell(
             onSelect = { id ->
                 when (id) {
                     SaqzShellGroupsTab, SaqzShellProfileTab -> activeTab = id
-                    // TODO(Fluxo 6 · Home) e TODO(Fluxo 4 · Jogos): sem tela, sem destino.
+                    // TODO(Fluxo 6 · Home): sem tela, sem destino.
                     SaqzShellHomeTab, SaqzShellGamesTab -> Unit
                     else -> Unit
                 }

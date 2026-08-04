@@ -6,6 +6,7 @@ import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as Acce
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
+import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
@@ -36,9 +37,11 @@ import br.com.saqz.access.adapter.input.http.InvalidUserPhotoException
 import br.com.saqz.access.adapter.input.http.UserPhotoNotFoundException
 import br.com.saqz.access.adapter.input.http.UserPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
+import br.com.saqz.groups.adapter.input.http.GameScheduleConflictException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
@@ -199,6 +202,11 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
     }
 
+    @ExceptionHandler(AccountSuspendedException::class)
+    fun accountSuspended(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.ACCOUNT_SUSPENDED)
+    }
+
     @ExceptionHandler(EntryRequestNotFoundException::class)
     fun entryRequestNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.ENTRY_REQUEST_NOT_FOUND)
@@ -212,6 +220,26 @@ class SafeExceptionHandler(
     @ExceptionHandler(VersionConflictException::class)
     fun versionConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
+    }
+
+    @ExceptionHandler(GameScheduleConflictException::class)
+    fun gameScheduleConflict(
+        failure: GameScheduleConflictException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            409,
+            ErrorCode.GAME_SCHEDULE_CONFLICT,
+            conflictGameId = failure.gameId.toString(),
+        )
+    }
+
+    @ExceptionHandler(GameScheduleConflictWriteException::class)
+    fun gameScheduleConflictWrite(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.GAME_SCHEDULE_CONFLICT)
     }
 
     @ExceptionHandler(GameNotFoundException::class)

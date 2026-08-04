@@ -98,6 +98,8 @@ class UpdateSessionProfileRequest {
 
 class InvalidDisplayNameException : RuntimeException()
 
+class AccountSuspendedException : RuntimeException()
+
 class InvalidPhoneException : RuntimeException()
 
 class InvalidSessionProfileFieldException(val field: String) : RuntimeException()
@@ -114,6 +116,7 @@ class AccessSessionController(
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
             is BootstrapSessionResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
         }
 
@@ -138,6 +141,7 @@ class AccessSessionController(
                     phoneVisibilityProvided = request.phoneVisibilityProvided,
                 )
         ) {
+            CompleteSessionProfileResult.Suspended -> throw AccountSuspendedException()
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             CompleteSessionProfileResult.InvalidNickname -> throw InvalidSessionProfileFieldException("nickname")
@@ -150,7 +154,7 @@ class AccessSessionController(
 
     @DeleteMapping("/api/session")
     fun delete(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<Void> {
-        deleteAccount.execute(identity.subject)
+        if (!deleteAccount.execute(identity.subject)) throw AccountSuspendedException()
         return ResponseEntity.noContent().build()
     }
 }

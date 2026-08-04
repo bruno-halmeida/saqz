@@ -80,6 +80,7 @@ import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.groups.adapter.input.http.GameController
 import br.com.saqz.groups.adapter.input.http.ChargeController
 import br.com.saqz.groups.adapter.input.http.ExpenseController
+import br.com.saqz.groups.adapter.input.http.FinanceStatementController
 import br.com.saqz.groups.adapter.input.http.AttendanceController
 import br.com.saqz.groups.adapter.input.http.AutoConfirmationController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
@@ -92,6 +93,7 @@ import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementReposi
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceOverviewRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAutoConfirmationRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
@@ -120,6 +122,7 @@ import br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
 import br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects
 import br.com.saqz.groups.application.finance.expense.ExpenseService
 import br.com.saqz.groups.application.finance.overview.FinanceOverviewQuery
+import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
@@ -127,6 +130,7 @@ import br.com.saqz.access.application.session.AccountGroupCleanup
 import br.com.saqz.access.application.session.AccountTransactionRunner
 import br.com.saqz.access.application.session.DeleteAccount
 import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -175,6 +179,7 @@ class AccessSessionConfiguration {
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
             is BootstrapSessionResult.Success -> result.session.user.id
         }
     }
@@ -690,6 +695,9 @@ class AccessSessionConfiguration {
         @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
     ) = FinanceOverviewQuery(repository, Clock.systemUTC(), ZoneId.of(zone))
     @Bean fun financeOverviewController(actor: VerifiedGroupActorResolver, query: FinanceOverviewQuery) = MyFinanceOverviewController(actor, query)
+    @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
+    @Bean fun financeStatementService(repository: JdbcFinanceStatementRepository) = FinanceStatementService(repository)
+    @Bean fun financeStatementController(actor: VerifiedGroupActorResolver, service: FinanceStatementService) = FinanceStatementController(actor, service)
     @Bean fun monthlyChargeSchedule(
         repository: JdbcChargeTransactionRepository,
         charges: ChargeTransactions,

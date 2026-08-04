@@ -180,6 +180,8 @@ sealed interface GroupDetailsEffect {
 
     data class OpenCreateGame(val groupId: String) : GroupDetailsEffect
 
+    data class OpenGame(val groupId: String, val gameId: String) : GroupDetailsEffect
+
     data class OpenCashbox(val groupId: String) : GroupDetailsEffect
 
     data class OpenInviteLink(val groupId: String) : GroupDetailsEffect

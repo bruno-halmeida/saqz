@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeries
 import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeriesResult
@@ -27,6 +28,7 @@ import java.time.LocalTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -104,6 +106,22 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         execute("UPDATE group_venues SET name = 'Arena Renamed' WHERE id = '${fixture.venueId}'")
 
         assertEquals("Arena Central", string("SELECT venue_name FROM games ORDER BY local_date LIMIT 1"))
+    }
+
+    @Test fun `schedule uniqueness violation is mapped to a game schedule conflict`() {
+        val fixture = fixture()
+        execute(
+            "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
+                "confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at) VALUES " +
+                "('${UUID.randomUUID()}', '${fixture.rule.groupId}', 'Jogo avulso', DATE '2026-01-07', TIME '19:30', " +
+                "'America/Sao_Paulo', TIMESTAMPTZ '2026-01-07 22:30Z', 90, TIMESTAMPTZ '2026-01-07 19:30Z', " +
+                "'Arena', 'Rua Central 100', 12, 'DRAFT', now(), now())",
+        )
+
+        assertFailsWith<GameScheduleConflictWriteException> {
+            fixture.materializer.execute(fixture.rule, DATE)
+        }
+        assertEquals(1, int("SELECT count(*) FROM games"))
     }
 
     private fun fixture(

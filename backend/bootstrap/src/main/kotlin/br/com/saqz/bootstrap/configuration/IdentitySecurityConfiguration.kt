@@ -9,7 +9,12 @@ import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.ErrorCode
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -55,6 +60,38 @@ class IdentitySecurityConfiguration {
         problemWriter.write(request, response, status, code)
     }
 
+    /**
+     * Ambos rodam só na cadeia de segurança: sem desligar o auto-registro do Boot eles
+     * também rodariam no container e derrubariam o preflight CORS (OPTIONS sem bearer).
+     */
+    @Bean
+    fun bearerFilterRegistration(filter: BearerAuthenticationFilter) =
+        FilterRegistrationBean(filter).apply { isEnabled = false }
+
+    @Bean
+    fun platformAdminGuardFilterRegistration(filter: PlatformAdminGuardFilter) =
+        FilterRegistrationBean(filter).apply { isEnabled = false }
+
+    /** Origens do adm-web (lista separada por vírgula); vazio = nenhum CORS liberado. */
+    @Bean
+    fun corsConfigurationSource(
+        @Value("\${saqz.adminweb.origins:}") origins: String,
+    ): CorsConfigurationSource {
+        val source = UrlBasedCorsConfigurationSource()
+        val allowed = origins.split(',').map(String::trim).filter(String::isNotEmpty)
+        if (allowed.isNotEmpty()) {
+            source.registerCorsConfiguration(
+                "/admin/**",
+                CorsConfiguration().apply {
+                    allowedOrigins = allowed
+                    allowedMethods = listOf("GET", "POST", "OPTIONS")
+                    allowedHeaders = listOf("Authorization", "Content-Type")
+                },
+            )
+        }
+        return source
+    }
+
     @Bean
     fun securityFilterChain(
         http: HttpSecurity,
@@ -64,6 +101,7 @@ class IdentitySecurityConfiguration {
         asaasWebhookBodySizeFilter: AsaasWebhookBodySizeFilter,
         problemWriter: ApiProblemWriter,
     ): SecurityFilterChain = http
+        .cors { }
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
