@@ -26,11 +26,12 @@ class JdbcAdminSubscriptionDirectoryRepository(
 
         val rows = jdbc.sql(
             """
-            SELECT s.owner_user_id, s.plan, s.cycle, s.status, s.current_period_end,
+            SELECT s.owner_user_id, s.plan, s.cycle, s.current_period_end,
+                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS status,
                    s.canceled_at, s.past_due_since, s.created_at,
                    s.coupon_id, s.coupon_cycles_remaining,
                    u.display_name AS owner_name, u.email AS owner_email,
-                   c.code AS coupon_code, c.discount_percent,
+                   c.code AS coupon_code, c.discount_percent, c.duration_cycles,
                    count(*) OVER () AS total
             FROM subscriptions s
             JOIN access_users u ON u.id = s.owner_user_id
@@ -39,7 +40,9 @@ class JdbcAdminSubscriptionDirectoryRepository(
                    OR u.display_name ILIKE '%' || :query || '%'
                    OR u.email ILIKE '%' || :query || '%')
               AND (:plan::text IS NULL OR s.plan = :plan)
-              AND (:status::text IS NULL OR s.status = :status)
+              AND (:status::text IS NULL
+                   OR (:status = 'CANCELED' AND (s.canceled_at IS NOT NULL OR s.status = 'CANCELED'))
+                   OR (:status <> 'CANCELED' AND s.status = :status AND s.canceled_at IS NULL))
             ORDER BY s.created_at DESC, s.owner_user_id
             LIMIT :size OFFSET :offset
             """.trimIndent(),
@@ -52,17 +55,38 @@ class JdbcAdminSubscriptionDirectoryRepository(
             .query { rs, _ -> Row(rs.summary(), rs.getLong("total")) }
             .list()
 
-        return AdminSubscriptionPage(rows.map { it.summary }, rows.firstOrNull()?.total ?: 0, page, size)
+        val total = rows.firstOrNull()?.total ?: jdbc.sql(
+            """
+            SELECT count(*)
+            FROM subscriptions s
+            JOIN access_users u ON u.id = s.owner_user_id
+            WHERE (:query::text IS NULL
+                   OR u.display_name ILIKE '%' || :query || '%'
+                   OR u.email ILIKE '%' || :query || '%')
+              AND (:plan::text IS NULL OR s.plan = :plan)
+              AND (:status::text IS NULL
+                   OR (:status = 'CANCELED' AND (s.canceled_at IS NOT NULL OR s.status = 'CANCELED'))
+                   OR (:status <> 'CANCELED' AND s.status = :status AND s.canceled_at IS NULL))
+            """.trimIndent(),
+        )
+            .param("query", query?.trim()?.takeIf { it.isNotEmpty() })
+            .param("plan", plan)
+            .param("status", status)
+            .query(Long::class.java)
+            .single()
+
+        return AdminSubscriptionPage(rows.map { it.summary }, total, page, size)
     }
 
     override fun find(ownerUserId: UUID): AdminSubscriptionDetail? {
         val summary = jdbc.sql(
             """
-            SELECT s.owner_user_id, s.plan, s.cycle, s.status, s.current_period_end,
+            SELECT s.owner_user_id, s.plan, s.cycle, s.current_period_end,
+                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS status,
                    s.canceled_at, s.past_due_since, s.created_at,
                    s.coupon_id, s.coupon_cycles_remaining,
                    u.display_name AS owner_name, u.email AS owner_email,
-                   c.code AS coupon_code, c.discount_percent
+                   c.code AS coupon_code, c.discount_percent, c.duration_cycles
             FROM subscriptions s
             JOIN access_users u ON u.id = s.owner_user_id
             LEFT JOIN coupons c ON c.id = s.coupon_id
@@ -103,10 +127,12 @@ class JdbcAdminSubscriptionDirectoryRepository(
     private fun ResultSet.summary(): AdminSubscriptionSummary {
         val plan = Plan.valueOf(getString("plan"))
         val cycle = SubscriptionCycle.valueOf(getString("cycle"))
-        val couponActive = SubscriptionPricing.hasActiveCouponDiscount(
-            getObject("coupon_id", UUID::class.java),
-            getObject("coupon_cycles_remaining")?.let { (it as Number).toInt() },
-        )
+        // Permanente = duration_cycles nulo; finito esgotado fica com remaining nulo
+        // mantendo coupon_id (ProcessAsaasWebhook) e volta ao preço cheio.
+        val couponActive = getObject("coupon_id", UUID::class.java) != null && (
+            getObject("duration_cycles") == null ||
+                (getObject("coupon_cycles_remaining")?.let { (it as Number).toInt() } ?: 0) > 0
+            )
         val fullPrice = with(SubscriptionPricing) { plan.priceCents(cycle) }
         val discount = getObject("discount_percent")?.let { (it as Number).toInt() }
         return AdminSubscriptionSummary(

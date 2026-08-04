@@ -146,6 +146,43 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `membership em grupo apagado nao conta na lista`() {
+        val pessoa = insertUser("na-lista", name = "Pessoa Lista", email = "pl@saqz.test")
+        val dono = insertUser("dono-x", name = "Dono Xis", email = "dx@saqz.test")
+        val vivo = insertGroup(dono, name = "Grupo Vivo")
+        val morto = insertGroup(dono, name = "Grupo Morto")
+        insertMembership(vivo, pessoa, role = "ATHLETE")
+        insertMembership(morto, pessoa, role = "ATHLETE")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$morto'")
+
+        val row = repository.list("Pessoa Lista", null, null, 1, 10).items.single()
+
+        assertEquals(1, row.memberships)
+    }
+
+    @Test
+    fun `pagina alem do fim preserva o total`() {
+        insertUser("um", name = "Pessoa Um", email = "um@saqz.test")
+        insertUser("dois", name = "Pessoa Dois", email = "dois@saqz.test")
+
+        val page = repository.list(null, null, null, page = 5, size = 10)
+
+        assertEquals(2, page.total)
+        assertTrue(page.items.isEmpty())
+    }
+
+    @Test
+    fun `suspensao nao mexe no ultimo acesso`() {
+        val alvo = insertUser("acesso", name = "Pessoa Acesso", email = "pa@saqz.test")
+        val antes = repository.find(alvo)!!.lastSeenAt
+
+        repository.suspend(alvo)
+        repository.reactivate(alvo)
+
+        assertEquals(antes, repository.find(alvo)!!.lastSeenAt)
+    }
+
+    @Test
     fun `suspender duas vezes preserva o instante original`() {
         val user = insertUser("dupla", name = "Pessoa Dupla", email = "dupla@saqz.test")
 

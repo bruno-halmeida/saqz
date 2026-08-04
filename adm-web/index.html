@@ -311,9 +311,9 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Visão geral</strong>
       <sc-raw-select value="{{ periodo }}" sc-camel-on-change="{{ onPeriodo }}" style="appearance:none;border:1px solid var(--saqz-blue);background:var(--saqz-ice);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--saqz-blue);font-family:inherit;cursor:pointer">
-        <option value="30">Últimos 30 dias</option>
-        <option value="90">Últimos 90 dias</option>
-        <option value="all">Desde o início (fev)</option>
+        <option value="30d">Últimos 30 dias</option>
+        <option value="90d">Últimos 90 dias</option>
+        <option value="all">Desde o início</option>
       </sc-raw-select>
       <span style="font-size:13px;color:var(--saqz-muted)">{{ perNota }}</span>
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ atualizadoEm }}</span>
@@ -660,7 +660,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Código<input value="{{ ncCod }}" sc-camel-on-change="{{ onNcCod }}" placeholder="EX.: VOLTA15" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy);text-transform:uppercase;letter-spacing:.03em"></label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Desconto (%)<input value="{{ ncDesc }}" sc-camel-on-change="{{ onNcDesc }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
-            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Dura (meses)<input value="{{ ncMeses }}" sc-camel-on-change="{{ onNcMeses }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Dura (ciclos de cobrança)<input value="{{ ncMeses }}" sc-camel-on-change="{{ onNcMeses }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
           </div>
           <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Válido até<input value="{{ ncVal }}" sc-camel-on-change="{{ onNcVal }}" placeholder="dd/mm/aaaa" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
         </div>
@@ -752,18 +752,20 @@ class Component extends DCLogic {
 
   carregarUsuario(id) {
     this.setState({ userDetail: null, userReceipts: null });
+    const atual = () => this.state.selU === id;
     this.api(`/admin/users/${id}`)
       .then((userDetail) => {
+        if (!atual()) return; // resposta atrasada de outra seleção
         this.setState({ userDetail });
         if (userDetail.subscription) {
           this.api(`/admin/subscriptions/${id}`)
-            .then((d) => this.setState({ userReceipts: d.receipts }))
-            .catch(() => this.setState({ userReceipts: [] }));
+            .then((d) => { if (atual()) this.setState({ userReceipts: d.receipts }); })
+            .catch(() => { if (atual()) this.setState({ userReceipts: [] }); });
         } else {
           this.setState({ userReceipts: [] });
         }
       })
-      .catch(() => this.setState({ userDetail: { erro: true } }));
+      .catch(() => { if (atual()) this.setState({ userDetail: { erro: true } }); });
   }
 
   carregarGrupos() {
@@ -780,9 +782,10 @@ class Component extends DCLogic {
 
   carregarGrupo(id) {
     this.setState({ groupDetail: null });
+    const atual = () => this.state.selG === id;
     this.api(`/admin/groups/${id}`)
-      .then((groupDetail) => this.setState({ groupDetail }))
-      .catch(() => this.setState({ groupDetail: { erro: true } }));
+      .then((groupDetail) => { if (atual()) this.setState({ groupDetail }); })
+      .catch(() => { if (atual()) this.setState({ groupDetail: { erro: true } }); });
   }
 
   carregarAssinaturas() {
@@ -809,11 +812,21 @@ class Component extends DCLogic {
   criarCupom() {
     const n = this.state.nc;
     if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
-    const body = { code: n.cod.trim(), discountPercent: parseInt(n.desc, 10) || 0 };
-    const meses = parseInt(n.meses, 10);
-    if (meses > 0) body.durationCycles = meses;
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.val.trim());
-    if (m) body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
+    const desconto = parseInt(n.desc, 10);
+    if (!(desconto >= 1 && desconto <= 100)) { this.aviso("Desconto precisa ser um número de 1 a 100."); return; }
+    const body = { code: n.cod.trim(), discountPercent: desconto };
+    // Campo vazio = sem limite (intencional); preenchido inválido interrompe,
+    // senão um erro de digitação viraria cupom eterno.
+    if (n.meses.trim() !== "") {
+      const ciclos = parseInt(n.meses, 10);
+      if (!(ciclos >= 1) || String(ciclos) !== n.meses.trim()) { this.aviso("Duração precisa ser um número de ciclos (ou vazio para sempre)."); return; }
+      body.durationCycles = ciclos;
+    }
+    if (n.val.trim() !== "") {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.val.trim());
+      if (!m) { this.aviso("Validade precisa estar no formato dd/mm/aaaa (ou vazia)."); return; }
+      body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
+    }
     window.saqzAdmin.fetchAdmin("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
       if (r.status === 201) {
         this.setState({ cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" } });
@@ -923,9 +936,13 @@ class Component extends DCLogic {
     ] : [];
 
     const cohort = ov ? ov.cohort.map((c) => {
-      const fim = new Date(c.weekStart); fim.setDate(fim.getDate() + 6);
+      // weekStart é data-calendário (YYYY-MM-DD): formatar sem passar por Date/UTC,
+      // senão fusos a oeste mostram o dia anterior.
+      const inicio = c.weekStart.split("-");
+      const fim = new Date(Date.UTC(+inicio[0], +inicio[1] - 1, +inicio[2] + 6));
+      const fimTxt = `${String(fim.getUTCDate()).padStart(2, "0")}/${String(fim.getUTCMonth() + 1).padStart(2, "0")}`;
       const pct = (n) => c.signups > 0 ? `${n} · ${Math.round((n / c.signups) * 100)}%` : String(n);
-      return { sem: `${this.dataCurta(c.weekStart)} – ${this.dataCurta(fim.toISOString())}`, cad: String(c.signups), ativ: "—", grupo: pct(c.joinedGroup), pago: pct(c.subscribed), pagoStyle: c.subscribed > 0 ? "color:#17B26A" : "color:#667085" };
+      return { sem: `${inicio[2]}/${inicio[1]} – ${fimTxt}`, cad: String(c.signups), ativ: "—", grupo: pct(c.joinedGroup), pago: pct(c.subscribed), pagoStyle: c.subscribed > 0 ? "color:#17B26A" : "color:#667085" };
     }) : [];
 
     const maxMrr = ov && ov.planSplit.length ? Math.max(...ov.planSplit.map(p => p.mrrCents)) : 1;
@@ -1041,13 +1058,13 @@ class Component extends DCLogic {
       onSuspender: !det ? () => {} : suspenso
         ? () => {
           window.saqzAdmin.fetchAdmin(`/admin/users/${det.userId}/reactivate`, { method: "POST" }).then((r) => {
-            if (r.ok) { this.carregarUsuario(det.userId); this.aviso(`${(det.displayName || "A pessoa").split(" ")[0]} está de volta ao app.`); }
+            if (r.ok) { this.carregarUsuario(det.userId); this.carregarUsuarios(); this.aviso(`${(det.displayName || "A pessoa").split(" ")[0]} está de volta ao app.`); }
           });
         }
         : () => this.setState({ modal: { titulo: `Suspender ${det.displayName}?`, texto: "A pessoa perde o acesso ao app na hora. Dá pra desfazer quando quiser.", confirm: "Suspender usuário", danger: true, acao: () => {
           window.saqzAdmin.fetchAdmin(`/admin/users/${det.userId}/suspend`, { method: "POST" }).then((r) => {
             this.setState({ modal: null });
-            if (r.ok) { this.carregarUsuario(det.userId); this.aviso("Usuário suspenso."); } else { this.aviso("Não deu para suspender agora."); }
+            if (r.ok) { this.carregarUsuario(det.userId); this.carregarUsuarios(); this.aviso("Usuário suspenso."); } else { this.aviso("Não deu para suspender agora."); }
           });
         } } }),
       onVerAssin: () => det && sub && this.go("assinatura", { selA: det.userId }),
