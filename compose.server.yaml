@@ -1,0 +1,46 @@
+# Overlay for the home server. Usage:
+#   docker compose -f compose.yaml -f compose.server.yaml up -d --build
+# Publishes:
+#   backend  -> https://saqz-api.brunoalmeida.dev
+#   adm-web  -> https://saqzweb.brunoalmeida.dev
+# Database: Supabase (dev) via IPv4 session pooler; local postgres disabled.
+services:
+  backend:
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require
+      SPRING_DATASOURCE_USERNAME: postgres.vjqpjzefvyrkfvrzhljb
+      SPRING_DATASOURCE_PASSWORD: ${SAQZ_DB_PASSWORD}
+      SAQZ_ADMINWEB_ORIGINS: https://saqzweb.brunoalmeida.dev
+    depends_on: !reset {}
+    networks:
+      - default
+      - local-server-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.saqz-api.rule=Host(`saqz-api.brunoalmeida.dev`)"
+      - "traefik.http.services.saqz-api.loadbalancer.server.port=8080"
+
+  adm-web:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./adm-web:/usr/share/nginx/html:ro
+      - ./firebase-config.server.js:/usr/share/nginx/html/assets/firebase-config.js:ro
+      - ./nginx-adm-web.conf:/etc/nginx/conf.d/default.conf:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - local-server-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.saqz-web.rule=Host(`saqzweb.brunoalmeida.dev`)"
+      - "traefik.http.services.saqz-web.loadbalancer.server.port=80"
+
+  # Local postgres kept available under a profile, but not started by default
+  # (the dev database now lives on Supabase).
+  database:
+    profiles: ["local-db"]
+
+networks:
+  local-server-network:
+    external: true
