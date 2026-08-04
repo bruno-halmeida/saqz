@@ -11,6 +11,8 @@ import br.com.saqz.groups.domain.GroupRole
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Types
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -26,6 +28,13 @@ class JdbcFinanceStatementRepository(
         .optional()
         .map(GroupRole::valueOf)
         .orElse(null)
+
+    override fun timeZone(groupId: UUID): ZoneId = jdbc.sql(TIME_ZONE)
+        .param("group", groupId)
+        .query(String::class.java)
+        .optional()
+        .map(ZoneId::of)
+        .orElse(ZoneOffset.UTC)
 
     override fun page(query: FinanceStatementQuery): FinanceStatementPage {
         require(query.limit > 0) { "limit must be positive" }
@@ -90,6 +99,13 @@ class JdbcFinanceStatementRepository(
     )
 
     private companion object {
+        const val TIME_ZONE = """
+            SELECT time_zone
+            FROM access_groups
+            WHERE id = :group
+              AND deleted_at IS NULL
+            """
+
         const val ROLE = """
             SELECT CASE WHEN groups.owner_user_id = :actor THEN 'OWNER' ELSE memberships.role END
             FROM access_groups groups

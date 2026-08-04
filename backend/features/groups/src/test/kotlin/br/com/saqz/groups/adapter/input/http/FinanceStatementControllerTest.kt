@@ -99,6 +99,7 @@ class FinanceStatementControllerTest {
         var role: GroupRole? = GroupRole.OWNER
         var lastQuery: br.com.saqz.groups.application.finance.statement.FinanceStatementQuery? = null
         override fun role(actorId: UUID, groupId: UUID) = role
+        override fun timeZone(groupId: UUID) = java.time.ZoneId.of("America/Sao_Paulo")
         override fun page(query: br.com.saqz.groups.application.finance.statement.FinanceStatementQuery): FinanceStatementPage {
             lastQuery = query
             return page

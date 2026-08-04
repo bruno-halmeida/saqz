@@ -15,6 +15,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.time.Instant
+import java.time.ZoneId
 import java.time.YearMonth
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -40,6 +41,13 @@ class JdbcFinanceStatementRepositoryIntegrationTest {
 
     @AfterAll
     fun stop() = postgres.stop()
+
+    @Test
+    fun `exposes the group time zone for default month resolution`() {
+        val fixture = fixture()
+
+        assertEquals(ZoneId.of("America/Sao_Paulo"), repository().timeZone(fixture.group))
+    }
 
     @Test
     fun `mixed page is sorted with signed values and derived summaries`() {

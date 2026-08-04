@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.finance.statement
 
 import br.com.saqz.groups.domain.GroupRole
+import java.time.ZoneId
 import java.time.YearMonth
 import java.util.UUID
 
@@ -12,7 +13,7 @@ sealed interface FinanceStatementResult {
 
 class FinanceStatementService(
     private val repository: FinanceStatementRepository,
-    private val currentMonth: () -> YearMonth = { YearMonth.now() },
+    private val currentMonth: (ZoneId) -> YearMonth = { zone -> YearMonth.now(zone) },
 ) {
     fun list(
         actorId: UUID,
@@ -33,7 +34,7 @@ class FinanceStatementService(
                 repository.page(
                     FinanceStatementQuery(
                         groupId = groupId,
-                        month = month ?: currentMonth(),
+                        month = month ?: currentMonth(repository.timeZone(groupId)),
                         direction = direction,
                         limit = limit,
                         offset = offset,

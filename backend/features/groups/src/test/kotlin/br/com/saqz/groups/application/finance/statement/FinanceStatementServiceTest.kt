@@ -3,6 +3,7 @@ package br.com.saqz.groups.application.finance.statement
 import br.com.saqz.groups.domain.GroupRole
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.ZoneId
 import java.time.YearMonth
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -32,16 +33,22 @@ class FinanceStatementServiceTest {
     )
 
     @Test
-    fun `owner uses current month by default and forwards direction pagination`() {
+    fun `owner resolves default month in the group time zone and forwards pagination`() {
         val repository = MemoryRepository(GroupRole.OWNER, page)
-        val service = FinanceStatementService(repository) { YearMonth.of(2026, 8) }
+        val service = FinanceStatementService(repository) { zone ->
+            YearMonth.from(Instant.parse("2026-08-01T02:00:00Z").atZone(zone))
+        }
 
         val result = assertIs<FinanceStatementResult.Success>(
             service.list(actor, group, null, FinanceStatementDirection.OUT, 7, 14),
         )
 
         assertEquals(page, result.value)
-        assertEquals(FinanceStatementQuery(group, YearMonth.of(2026, 8), FinanceStatementDirection.OUT, 7, 14), repository.lastQuery)
+        assertEquals(
+            FinanceStatementQuery(group, YearMonth.of(2026, 7), FinanceStatementDirection.OUT, 7, 14),
+            repository.lastQuery,
+        )
+        assertEquals(ZoneId.of("America/Sao_Paulo"), repository.lastTimeZone)
     }
 
     @Test
@@ -66,10 +73,17 @@ class FinanceStatementServiceTest {
     private class MemoryRepository(
         private val configuredRole: GroupRole?,
         private val configuredPage: FinanceStatementPage,
+        private val configuredTimeZone: ZoneId = ZoneId.of("America/Sao_Paulo"),
     ) : FinanceStatementRepository {
         var lastQuery: FinanceStatementQuery? = null
+        var lastTimeZone: ZoneId? = null
 
         override fun role(actorId: UUID, groupId: UUID) = configuredRole
+
+        override fun timeZone(groupId: UUID): ZoneId {
+            lastTimeZone = configuredTimeZone
+            return configuredTimeZone
+        }
 
         override fun page(query: FinanceStatementQuery): FinanceStatementPage {
             lastQuery = query

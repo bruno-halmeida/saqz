@@ -2,6 +2,7 @@ package br.com.saqz.groups.application.finance.statement
 
 import br.com.saqz.groups.domain.GroupRole
 import java.time.Instant
+import java.time.ZoneId
 import java.time.YearMonth
 import java.util.UUID
 
@@ -45,5 +46,6 @@ data class FinanceStatementQuery(
 
 interface FinanceStatementRepository {
     fun role(actorId: UUID, groupId: UUID): GroupRole?
+    fun timeZone(groupId: UUID): ZoneId
     fun page(query: FinanceStatementQuery): FinanceStatementPage
 }
