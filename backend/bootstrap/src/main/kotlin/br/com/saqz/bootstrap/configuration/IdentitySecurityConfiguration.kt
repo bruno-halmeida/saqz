@@ -3,9 +3,12 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
 import br.com.saqz.bootstrap.configuration.http.AsaasWebhookBodySizeFilter
 import br.com.saqz.bootstrap.configuration.http.RequestCorrelationFilter
+import br.com.saqz.access.adapter.input.http.PlatformAdminGuardFilter
+import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.ErrorCode
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -40,10 +43,23 @@ class IdentitySecurityConfiguration {
         problemWriter.write(request, response, status, code)
     }
 
+    /**
+     * A guarda resolve o lookup por ObjectProvider: em contexto sem datasource (testes de
+     * endpoint) não há bean de lookup e a resposta é negar — /admin nunca abre por engano.
+     */
+    @Bean
+    fun platformAdminGuardFilter(
+        platformAdminLookup: ObjectProvider<PlatformAdminLookup>,
+        problemWriter: ApiProblemWriter,
+    ) = PlatformAdminGuardFilter({ platformAdminLookup.getIfAvailable() }) { request, response, status, code ->
+        problemWriter.write(request, response, status, code)
+    }
+
     @Bean
     fun securityFilterChain(
         http: HttpSecurity,
         bearerAuthenticationFilter: BearerAuthenticationFilter,
+        platformAdminGuardFilter: PlatformAdminGuardFilter,
         requestCorrelationFilter: RequestCorrelationFilter,
         asaasWebhookBodySizeFilter: AsaasWebhookBodySizeFilter,
         problemWriter: ApiProblemWriter,
@@ -63,6 +79,7 @@ class IdentitySecurityConfiguration {
             }
         }
         .addFilterBefore(bearerAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+        .addFilterAfter(platformAdminGuardFilter, BearerAuthenticationFilter::class.java)
         .addFilterBefore(requestCorrelationFilter, BearerAuthenticationFilter::class.java)
         .addFilterAfter(asaasWebhookBodySizeFilter, RequestCorrelationFilter::class.java)
         .build()

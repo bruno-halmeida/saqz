@@ -30,7 +30,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(10, flyway.migrate().migrationsExecuted)
+        assertEquals(11, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -201,6 +201,15 @@ class AccessSchemaIntegrationTest {
         assertEquals("FIFO", queryString("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
         assertEquals(false, queryBoolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
         assertSqlFails { execute("UPDATE access_groups SET promotion_mode = 'LIFO' WHERE id = '$group'") }
+    }
+
+    @Test
+    fun `v30 defaults platform admin to false and allows explicit grant`() {
+        val user = insertUser("platform-admin-default")
+
+        assertEquals(false, queryBoolean("SELECT platform_admin FROM access_users WHERE id = '$user'"))
+        execute("UPDATE access_users SET platform_admin = true WHERE id = '$user'")
+        assertEquals(true, queryBoolean("SELECT platform_admin FROM access_users WHERE id = '$user'"))
     }
 
     @Test
