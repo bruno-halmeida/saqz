@@ -749,9 +749,16 @@ class Component extends DCLogic {
     const epoca = this._epoca || 0;
     // mutacao() descarta época antiga na chegada; o parse do body também é
     // assíncrono, então a época é re-checada depois dele.
+    const foraDeEpoca = () => (this._epoca || 0) !== epoca;
     return this.mutacao(path).then((r) => {
       if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json().then((dados) => ((this._epoca || 0) !== epoca ? new Promise(() => {}) : dados));
+      return r.json().then(
+        (dados) => (foraDeEpoca() ? new Promise(() => {}) : dados),
+        (err) => {
+          if (foraDeEpoca()) return new Promise(() => {});
+          throw err;
+        },
+      );
     });
   }
 
