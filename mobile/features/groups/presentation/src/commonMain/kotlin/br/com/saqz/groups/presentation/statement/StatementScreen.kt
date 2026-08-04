@@ -20,7 +20,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzDivider
@@ -186,7 +185,6 @@ private fun StatementRow(item: StatementItemUi) {
             SaqzIcon(
                 icon = if (item.direction == FinanceDirection.In) SaqzIcons.ArrowRight else SaqzIcons.CreditCard,
                 tint = if (item.direction == FinanceDirection.In) colors.success else colors.errorForeground,
-                size = 22.dp,
             )
         }
         Column(modifier = Modifier.weight(1f)) {
