@@ -9,7 +9,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class SaqzAppShellTest {
@@ -26,13 +25,12 @@ class SaqzAppShellTest {
     }
 
     @Test
-    fun financeTabInvokesNavigationCallback() = runComposeUiTest {
-        var opened = false
+    fun financeTabRendersInsideShellAndCanReturnToGroups() = runComposeUiTest {
         setContent {
             SaqzTheme {
                 SaqzAppShell(
                     groupsTab = { Text(GroupsTab) },
-                    onOpenFinance = { opened = true },
+                    financeTab = { Text(FinanceTab) },
                 )
             }
         }
@@ -40,7 +38,9 @@ class SaqzAppShellTest {
         onNodeWithText("Financeiro").performClick()
         waitForIdle()
 
-        assertTrue(opened)
+        onNodeWithText(FinanceTab).assertIsDisplayed()
+        onNodeWithText("Grupos").performClick()
+        waitForIdle()
         onNodeWithText(GroupsTab).assertIsDisplayed()
     }
 
@@ -84,6 +84,7 @@ class SaqzAppShellTest {
 
     private companion object {
         const val GroupsTab = "conteúdo-da-aba-grupos"
+        const val FinanceTab = "conteúdo-da-aba-financeiro"
         const val ProfileTab = "conteúdo-da-aba-perfil"
     }
 }

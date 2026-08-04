@@ -60,7 +60,7 @@ private const val SaqzShellFinanceTab = "financeiro"
  *
  * **Início e Jogos ficam inertes**, como manda o VUL-72: o toque não leva a lugar nenhum
  * enquanto os fluxos 6 e 4 não existirem. Perfil recebe o conteúdo real por [profileTab];
- * Financeiro abre o caixa geral por [onOpenFinance];
+ * Financeiro recebe o caixa geral por [financeTab];
  * a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra e da entrada
  * opcional do catálogo de desenvolvimento.
  *
@@ -75,8 +75,8 @@ internal fun SaqzAppShell(
     catalogEnabled: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
     profileTab: @Composable () -> Unit = {},
+    financeTab: @Composable () -> Unit = {},
     banner: @Composable () -> Unit = {},
-    onOpenFinance: () -> Unit = {},
 ) {
     // `rememberSaveable`, não `remember`: aba ativa e catálogo aberto são estado de
     // navegação, e o AGENTS.md §5 proíbe `remember` para estado de aplicação. Com
@@ -137,6 +137,7 @@ internal fun SaqzAppShell(
                 when (activeTab) {
                     SaqzShellGroupsTab -> groupsTab()
                     SaqzShellProfileTab -> profileTab()
+                    SaqzShellFinanceTab -> financeTab()
                     else -> Unit
                 }
             }
@@ -157,8 +158,7 @@ internal fun SaqzAppShell(
             activeId = activeTab,
             onSelect = { id ->
                 when (id) {
-                    SaqzShellGroupsTab, SaqzShellProfileTab -> activeTab = id
-                    SaqzShellFinanceTab -> onOpenFinance()
+                    SaqzShellGroupsTab, SaqzShellProfileTab, SaqzShellFinanceTab -> activeTab = id
                     // TODO(Fluxo 6 · Home): sem tela, sem destino.
                     SaqzShellHomeTab, SaqzShellGamesTab -> Unit
                     else -> Unit

@@ -7,9 +7,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface FinanceRoute : NavKey {
     @Serializable
-    data object Overview : FinanceRoute
-
-    @Serializable
     data class GroupCashbox(val groupId: String) : FinanceRoute
 
     @Serializable

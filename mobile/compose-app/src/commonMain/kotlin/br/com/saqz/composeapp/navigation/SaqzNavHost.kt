@@ -266,7 +266,7 @@ internal fun SaqzNavHost(
             entry<SaqzShellDestination> {
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
-                    onOpenFinance = { backStack.add(FinanceRoute.Overview) },
+                    financeTab = { FinancePlaceholderScreen() },
                     profileTab = {
                         OwnProfileRoot(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },
@@ -326,7 +326,6 @@ internal fun SaqzNavHost(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
-            entry<FinanceRoute.Overview> { FinancePlaceholderScreen() }
             entry<FinanceRoute.GroupCashbox> { FinancePlaceholderScreen() }
             entry<FinanceRoute.Statement> { FinancePlaceholderScreen() }
             entry<FinanceRoute.GameSettlement> { FinancePlaceholderScreen() }

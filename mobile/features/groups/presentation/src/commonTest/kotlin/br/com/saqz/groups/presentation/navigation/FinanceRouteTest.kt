@@ -8,7 +8,6 @@ class FinanceRouteTest {
     @Test
     fun routesRoundTripWithScalarArguments() {
         val routes = listOf(
-            FinanceRoute.Overview,
             FinanceRoute.GroupCashbox("group-1"),
             FinanceRoute.Statement("group-2"),
             FinanceRoute.GameSettlement("group-3", "game-1"),
