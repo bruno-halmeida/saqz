@@ -6,9 +6,10 @@
 # Database: Supabase (dev) via IPv4 session pooler; local postgres disabled.
 services:
   backend:
+    restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require
-      SPRING_DATASOURCE_USERNAME: postgres.vjqpjzefvyrkfvrzhljb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+      SPRING_DATASOURCE_USERNAME: postgres.jrwpmobttggeturyekot
       SPRING_DATASOURCE_PASSWORD: ${SAQZ_DB_PASSWORD}
       SAQZ_ADMINWEB_ORIGINS: https://saqzweb.brunoalmeida.dev
     depends_on: !reset {}
