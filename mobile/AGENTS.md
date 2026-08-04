@@ -482,3 +482,10 @@ O que a preguiça **não** dissolve — e o gate confirma:
 
 Essas cinco não são cerimônia: são o que dá teste sem emulador e troca de implementação sem tocar em
 tela. Inlinar o gateway no ViewModel não é ser eficiente, é furar o gate.
+
+## Code Review Rules
+
+### Cobertura em um único round
+- Reporte TODOS os achados no mesmo review, incluindo os de severidade menor quando tocam o mesmo
+  trecho já comentado — não reserve achados para rounds futuros.
+- Ao revisar um fix de round anterior, revise também o entorno do fix no mesmo passe.
