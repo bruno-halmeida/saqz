@@ -100,11 +100,11 @@ OVERVIEW-09
 
 **Done when:**
 
-- [ ] Endpoint retorna período, totais, grupos e recentes estruturados.
-- [ ] Actor logado é o único identificador usado na consulta.
-- [ ] Resposta vazia permanece HTTP 200.
-- [ ] Filtros inválidos e mutuamente exclusivos retornam HTTP-contract exception.
-- [ ] Unit gate passa com todos os campos do payload assertados.
+- [x] Endpoint retorna período, totais, grupos e recentes estruturados.
+- [x] Actor logado é o único identificador usado na consulta.
+- [x] Resposta vazia permanece HTTP 200.
+- [x] Filtros inválidos e mutuamente exclusivos retornam HTTP-contract exception.
+- [x] Unit gate passa com todos os campos do payload assertados.
 
 **Tests:** unit
 **Gate:** quick
