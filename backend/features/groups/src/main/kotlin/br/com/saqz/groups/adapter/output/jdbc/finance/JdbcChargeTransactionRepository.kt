@@ -25,6 +25,7 @@ class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRe
         jdbc.sql("UPDATE group_charges SET status='CANCELLED',changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status='PENDING' AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
         pending.forEach{eventId->event(find(eventId)?:error("cancelled charge lost"),ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)}
         jdbc.sql("UPDATE group_charges SET review_required=true,changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status IN ('PAID','WAIVED') AND NOT review_required AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
+        jdbc.sql("UPDATE games SET finance_review_required=true WHERE group_id=:group AND id=:game AND EXISTS (SELECT 1 FROM group_charges WHERE group_id=:group AND game_id=:game AND status IN ('PAID','WAIVED'))").param("group",groupId).param("game",gameId).update()
     }
     override fun members(groupId:UUID):GroupMembers?{
         val exists=jdbc.sql("SELECT count(*) FROM access_groups WHERE id=:group AND deleted_at IS NULL").param("group",groupId).query(Int::class.java).single()>0;if(!exists)return null
