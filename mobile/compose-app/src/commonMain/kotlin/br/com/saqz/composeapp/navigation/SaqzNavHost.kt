@@ -602,6 +602,8 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         GroupDetailsEffect.Left -> pop()
         // 4 · Criar jogo: abre o editor com gameId null.
         is GroupDetailsEffect.OpenCreateGame -> add(GroupsRoute.GameEditor(effect.groupId))
+        // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
+        is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
         // TODO(Fluxo 5 · Financeiro, 5b)
         is GroupDetailsEffect.OpenCashbox -> Unit
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))

@@ -50,6 +50,17 @@ class GameCommandsTest {
         assertEquals(24, fixture.repository.creation?.defaults?.capacity)
     }
 
+    @Test fun `manual create reports the recurring occurrence at the same instant`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val existing = UUID.randomUUID()
+        fixture.repository.recurringConflict = existing
+
+        val result = fixture.create.execute(actor, groupId, gameId, createInput())
+
+        assertEquals(GameCommandResult.ScheduleConflict(existing), result)
+        assertTrue(fixture.repository.creates.isEmpty())
+    }
+
     @Test fun `admin creates game`() {
         assertTrue(fixture(GroupRole.ADMIN).create.execute(actor, groupId, gameId, createInput()) is GameCommandResult.Success)
     }
@@ -248,8 +259,10 @@ class GameCommandsTest {
         val creates = mutableListOf<Game>()
         val updates = mutableListOf<Pair<Game, Long>>()
         var writeResult: GameWriteResult? = null
+        var recurringConflict: UUID? = null
 
         override fun creationContext(actor: UUID, groupId: UUID) = creation
+        override fun recurringConflict(groupId: UUID, startsAt: Instant) = recurringConflict
         override fun find(actor: UUID, groupId: UUID, gameId: UUID) = current
         override fun create(game: Game): GameWriteResult {
             creates += game

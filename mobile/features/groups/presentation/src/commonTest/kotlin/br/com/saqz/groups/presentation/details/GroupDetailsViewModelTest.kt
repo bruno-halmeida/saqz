@@ -117,6 +117,17 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `view game opens the loaded next game`() = runTest {
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.ViewGame)
+
+        assertEquals(GroupDetailsEffect.OpenGame(GROUP_ID, "game-1"), viewModel.effects.first())
+    }
+
+    @Test
     fun `next game loads response card and eligible auto confirmation`() = runTest {
         val group = sampleGroup(role = GroupRole.ATHLETE).copy(
             gameConfig = GroupGameConfig(autoConfirmEnabled = true),

@@ -14,4 +14,5 @@ data class ApiProblem(
     /** Quantas tentativas restam no código de recuperação — a tela 1k desenha o número. */
     val remainingAttempts: Int? = null,
     val expiredAt: Instant? = null,
+    val conflictGameId: String? = null,
 )

@@ -26,6 +26,7 @@ sealed interface GameWriteResult {
 
 interface GameCommandRepository {
     fun creationContext(actor: UUID, groupId: UUID): GameCreationContext?
+    fun recurringConflict(groupId: UUID, startsAt: java.time.Instant): UUID?
     fun find(actor: UUID, groupId: UUID, gameId: UUID): GameCommandContext?
     fun create(game: Game): GameWriteResult
     fun update(game: Game, expectedVersion: Long): GameWriteResult
@@ -57,6 +58,7 @@ sealed interface GameCommandResult {
     data object GameNotFound : GameCommandResult
     data object AccessForbidden : GameCommandResult
     data object VersionConflict : GameCommandResult
+    data class ScheduleConflict(val gameId: UUID) : GameCommandResult
 }
 
 class CreateGame(
@@ -69,7 +71,9 @@ class CreateGame(
             if (!context.role.isOrganizer()) return@inTransaction context.role.denied()
             when (val validation = GameDraftValidator.validate(GameDefaultSnapshotFactory.copy(context.defaults, input))) {
                 is GameDraftValidation.Invalid -> GameCommandResult.Invalid(validation.errors)
-                is GameDraftValidation.Valid -> repository.create(Game(gameId, groupId, validation.snapshot)).toResult()
+                is GameDraftValidation.Valid -> repository.recurringConflict(groupId, validation.snapshot.startsAt)
+                    ?.let(GameCommandResult::ScheduleConflict)
+                    ?: repository.create(Game(gameId, groupId, validation.snapshot)).toResult()
             }
         }
 }

@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
+import br.com.saqz.groups.domain.game.GameLifecycleAction
+import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
@@ -179,6 +181,23 @@ class GameEditorViewModelTest {
         assertEquals("2026-08-04", command?.localDate)
         assertEquals("19:30", command?.localTime)
         assertEquals(120, command?.durationMinutes)
+    }
+
+    @Test
+    fun `successful create publishes the returned draft`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val gateway = FakeGameGateway(createResult = SaqzResult.Success(draft))
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(GameLifecycleAction.Publish, gateway.lastLifecycleAction)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
+        assertFalse(vm.state.value.isSaving)
+        assertFalse(vm.state.value.saveFailed)
     }
 
     @Test

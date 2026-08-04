@@ -7,9 +7,12 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
+import br.com.saqz.groups.domain.game.GameLifecycleAction
+import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.GameWriteCommand
+import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupVenue
 import br.com.saqz.groups.model.GameEditorDraft
@@ -163,7 +166,7 @@ class GameEditorViewModel(
         update { it.copy(isSaving = true, saveFailed = false, hasConflict = false, conflictGameId = null) }
         viewModelScope.launch {
             val result = when (attempt) {
-                is LastAttempt.Create -> gameGateway.create(GroupId(groupId), command)
+                is LastAttempt.Create -> createAndPublish(command)
                 is LastAttempt.Edit -> gameGateway.edit(
                     GroupId(groupId), attempt.gameId, GameVersionToken(attempt.versionToken), command,
                 )
@@ -213,6 +216,24 @@ class GameEditorViewModel(
                         it.localTime == current.form.localTime
                 }?.let { emit(GameEditorEffect.OpenGameDetail(it.id)) }
             }
+        }
+    }
+
+    private suspend fun createAndPublish(
+        command: GameWriteCommand,
+    ): SaqzResult<VersionedGame, GameError> = when (
+        val created = gameGateway.create(GroupId(groupId), command)
+    ) {
+        is SaqzResult.Failure -> created
+        is SaqzResult.Success -> if (created.value.game.status == GameStatus.Published) {
+            created
+        } else {
+            gameGateway.lifecycle(
+                GroupId(groupId),
+                created.value.game.id,
+                created.value.version,
+                GameLifecycleAction.Publish,
+            )
         }
     }
 
