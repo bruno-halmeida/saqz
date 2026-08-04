@@ -238,7 +238,7 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `retry treats a draft as published when the publish response was lost`() = runTest {
+    fun `retry rereads a published draft and edits form changes before succeeding`() = runTest {
         val draft = sampleVersionedGame(
             sampleGame().copy(status = GameStatus.Draft),
         ).copy(version = GameVersionToken("etag-draft"))
@@ -249,6 +249,7 @@ class GameEditorViewModelTest {
         val gateway = FakeGameGateway(
             readResult = SaqzResult.Success(published),
             createResult = SaqzResult.Success(draft),
+            editResult = SaqzResult.Success(published.copy(version = GameVersionToken("etag-edited"))),
             lifecycleResults = ArrayDeque(
                 listOf(SaqzResult.Failure(GameError.Data(DataError.Connectivity))),
             ),
@@ -262,7 +263,11 @@ class GameEditorViewModelTest {
 
         assertEquals(1, gateway.createCalls)
         assertEquals(1, gateway.readCalls)
-        assertEquals(0, gateway.editCalls)
+        assertEquals(1, gateway.editCalls)
+        assertEquals("game-1", gateway.lastEditGameId)
+        assertEquals(listOf(GameVersionToken("etag-published")), gateway.editVersions)
+        assertEquals("Nota depois do timeout", gateway.lastEditCommand?.notes)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
         assertFalse(vm.state.value.saveFailed)
     }
 

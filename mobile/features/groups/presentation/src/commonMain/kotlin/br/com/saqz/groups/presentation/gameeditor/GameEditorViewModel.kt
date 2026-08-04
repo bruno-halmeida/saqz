@@ -244,19 +244,15 @@ class GameEditorViewModel(
             is SaqzResult.Failure -> current
             is SaqzResult.Success -> {
                 savePendingDraft(current.value)
-                if (current.value.game.status == GameStatus.Published) {
-                    current
-                } else {
-                    editAndMaybePublish(
-                        LastAttempt.Edit(
-                            current.value.game.id,
-                            current.value.version.value,
-                            commandKey,
-                            publishAfterEdit = true,
-                        ),
-                        command,
-                    )
-                }
+                editAndMaybePublish(
+                    LastAttempt.Edit(
+                        current.value.game.id,
+                        current.value.version.value,
+                        commandKey,
+                        publishAfterEdit = current.value.game.status != GameStatus.Published,
+                    ),
+                    command,
+                )
             }
         }
     }
