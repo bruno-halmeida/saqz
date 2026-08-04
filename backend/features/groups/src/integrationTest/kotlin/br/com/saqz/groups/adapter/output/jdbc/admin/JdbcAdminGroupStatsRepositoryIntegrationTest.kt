@@ -61,18 +61,19 @@ class JdbcAdminGroupStatsRepositoryIntegrationTest {
 
     @Test
     fun `activeGroups ignora apagados e groupsCreated respeita a janela`() {
-        val vivo = insertGroup()
-        insertGroup()
-        val apagado = insertGroup()
+        // created_at explícito e amarrado ao "now" do fixture: com now() do banco o
+        // teste apodrecia assim que o relógio real cruzasse a janela fixa.
+        val vivo = insertGroup(createdAt = now.minusSeconds(60 * DAY))
+        insertGroup(createdAt = now.minusSeconds(2 * DAY))
+        val apagado = insertGroup(createdAt = now.minusSeconds(3 * DAY))
         execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$apagado'")
-        execute("UPDATE access_groups SET created_at = '${now.minusSeconds(60 * DAY)}' WHERE id = '$vivo'")
 
         assertEquals(2, repository.activeGroups())
         assertEquals(2, repository.groupsCreated(now.minusSeconds(30 * DAY), now.plusSeconds(DAY)))
         assertEquals(3, repository.groupsCreated(null, now.plusSeconds(DAY)))
     }
 
-    private fun insertGroup(): UUID {
+    private fun insertGroup(createdAt: Instant = now): UUID {
         val owner = UUID.randomUUID()
         execute(
             "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) " +
@@ -81,7 +82,7 @@ class JdbcAdminGroupStatsRepositoryIntegrationTest {
         val group = UUID.randomUUID()
         execute(
             "INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at) " +
-                "VALUES ('$group', '$owner', '${UUID.randomUUID()}', 'Grupo Valido', 'America/Sao_Paulo', now(), now())",
+                "VALUES ('$group', '$owner', '${UUID.randomUUID()}', 'Grupo Valido', 'America/Sao_Paulo', '$createdAt', '$createdAt')",
         )
         return group
     }
