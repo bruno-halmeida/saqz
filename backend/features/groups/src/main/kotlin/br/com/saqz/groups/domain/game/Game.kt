@@ -217,6 +217,7 @@ data class Game(
     val status: GameStatus = GameStatus.DRAFT,
     val version: Long = 1,
     val detachedFromSeries: Boolean = false,
+    val financeReviewRequired: Boolean = false,
 )
 
 object GameLifecyclePolicy {

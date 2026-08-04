@@ -38,6 +38,7 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -157,6 +158,16 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         val saved = assertIs<GameWriteResult.Saved>(fixture.repository.update(changed, 1)).game
         assertEquals(2, saved.version)
         assertEquals("Final semanal", fixture.repository.find(fixture.group, game.id)?.snapshot?.title)
+    }
+
+    @Test fun `game reads persisted finance review flag`() {
+        val fixture = fixture()
+        val game = create(fixture)
+
+        assertFalse(fixture.repository.find(fixture.group, game.id)!!.financeReviewRequired)
+        execute("UPDATE games SET status = 'CANCELLED', finance_review_required = true WHERE id = '${game.id}'")
+
+        assertTrue(fixture.repository.find(fixture.group, game.id)!!.financeReviewRequired)
     }
 
     @Test fun `completed game does not block a new draft at the same start`() {
