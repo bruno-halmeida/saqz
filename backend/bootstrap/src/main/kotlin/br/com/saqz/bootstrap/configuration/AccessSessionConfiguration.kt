@@ -141,7 +141,8 @@ import org.springframework.context.annotation.Configuration
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
 import org.springframework.jdbc.core.simple.JdbcClient
-import org.springframework.jdbc.datasource.DriverManagerDataSource
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.net.URI
@@ -157,10 +158,16 @@ import javax.sql.DataSource
 @EnableScheduling
 class AccessSessionConfiguration {
     @Bean
-    fun accessDataSource(environment: Environment): DataSource = DriverManagerDataSource(
-        environment.getRequiredProperty("spring.datasource.url"),
-        environment.getProperty("spring.datasource.username").orEmpty(),
-        environment.getProperty("spring.datasource.password").orEmpty(),
+    // Pool de verdade: DriverManagerDataSource abria uma conexao fisica por query, e contra
+    // um Postgres remoto com TLS + SCRAM cada handshake custa ~125ms (4 queries = ~500ms por
+    // request). Pool pequeno porque o Supavisor em session mode segura um slot por conexao.
+    fun accessDataSource(environment: Environment): DataSource = HikariDataSource(
+        HikariConfig().apply {
+            jdbcUrl = environment.getRequiredProperty("spring.datasource.url")
+            username = environment.getProperty("spring.datasource.username").orEmpty()
+            password = environment.getProperty("spring.datasource.password").orEmpty()
+            maximumPoolSize = 5
+        },
     )
 
     @Bean(initMethod = "migrate")

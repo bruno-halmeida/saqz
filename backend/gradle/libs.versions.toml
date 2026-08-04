@@ -16,6 +16,7 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 flyway-core = { module = "org.flywaydb:flyway-core" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 greenmail = { module = "com.icegreen:greenmail", version.ref = "greenmail" }
+hikaricp = { module = "com.zaxxer:HikariCP" }
 postgresql = { module = "org.postgresql:postgresql" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 spring-jdbc = { module = "org.springframework:spring-jdbc" }

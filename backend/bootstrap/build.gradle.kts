@@ -12,6 +12,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation(libs.spring.boot.starter.mail)
+    implementation(libs.hikaricp)
     implementation(libs.spring.jdbc)
     implementation(libs.firebase.admin)
     implementation(libs.flyway.core)
