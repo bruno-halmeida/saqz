@@ -29,6 +29,7 @@ class KtorFinanceGatewaysTest {
         assertEquals(GAME, game.gameId)
         assertNull(game.month)
         assertEquals(ChargeStatus.Pending, game.status)
+        assertEquals(PaidMethod.Cash, game.paidMethod)
         assertEquals(ChargeStatus.Paid, game.audit.single().newStatus)
         assertEquals(2_500L, value.totals?.pendingCents)
         assertEquals(5_000L, value.totals?.paidCents)
@@ -110,6 +111,20 @@ class KtorFinanceGatewaysTest {
     }
 
     @Test
+    fun `charge status sends paid method`() = runTest {
+        organizer { request ->
+            assertEquals("PAID", request.json().getValue("status").jsonPrimitive.content)
+            assertEquals("CASH", request.json().getValue("paidMethod").jsonPrimitive.content)
+            versioned(CHARGE_JSON, "\"5\"")
+        }.updateChargeStatus(
+            GROUP,
+            CHARGE,
+            FinanceVersionToken("\"4\""),
+            ChargeStatusCommand(ChargeStatus.Paid, paidMethod = PaidMethod.Cash),
+        )
+    }
+
+    @Test
     fun `expense list maps category notes audit status and active total`() = runTest {
         val value = success(organizer { json(EXPENSES) }.expenses(GROUP))
         val expense = value.expenses.single()
@@ -121,6 +136,22 @@ class KtorFinanceGatewaysTest {
         assertEquals(ExpenseStatus.Active, expense.status)
         assertEquals(ExpenseAction.Created, expense.audit.single().action)
         assertEquals(12_345L, value.activeTotalCents)
+    }
+
+    @Test
+    fun `expense list maps racha direction and unknown category tolerantly`() = runTest {
+        val racha = success(
+            organizer {
+                json(EXPENSES.replace("\"OTHER\"", "\"RACHA\"").replace("\"ACTIVE\"", "\"ACTIVE\",\"direction\":\"IN\""))
+            }.expenses(GROUP),
+        ).expenses.single()
+        assertEquals(ExpenseCategory.Racha, racha.category)
+        assertEquals(FinanceDirection.In, racha.direction)
+
+        val unknown = success(
+            organizer { json(EXPENSES.replace("\"OTHER\"", "\"NEW_CATEGORY\"")) }.expenses(GROUP),
+        ).expenses.single()
+        assertEquals(ExpenseCategory.Other, unknown.category)
     }
 
     @Test
@@ -145,6 +176,47 @@ class KtorFinanceGatewaysTest {
             assertEquals("OTHER", request.json().getValue("category").jsonPrimitive.content)
             versioned(EXPENSE_JSON, "\"2\"")
         }.editExpense(GROUP, EXPENSE, FinanceVersionToken("\"1\""), expense())
+    }
+
+    @Test
+    fun `expense create sends optional direction`() = runTest {
+        organizer { request ->
+            assertEquals("IN", request.json().getValue("direction").jsonPrimitive.content)
+            versioned(EXPENSE_JSON, "\"1\"")
+        }.createExpense(GROUP, expense(KEY).copy(direction = FinanceDirection.In))
+    }
+
+    @Test
+    fun `statement sends filters and maps signed page`() = runTest {
+        val value = success(
+            KtorFinanceStatementGateway(auth(Tokens()) { request ->
+                assertEquals("2026-08", request.url.parameters["month"])
+                assertEquals("OUT", request.url.parameters["direction"])
+                assertEquals("5", request.url.parameters["limit"])
+                assertEquals("2", request.url.parameters["offset"])
+                json(STATEMENT)
+            }, retryDelay = {}).statement(
+                GROUP,
+                FinanceStatementQuery("2026-08", FinanceDirection.Out, limit = 5, offset = 2),
+            ),
+        )
+        assertEquals("-700", value.items.single().amountCents.toString())
+        assertEquals(FinanceDirection.Out, value.items.single().direction)
+        assertEquals(PaidMethod.Cash, value.items.single().paidMethod)
+        assertEquals(2_300L, value.summary.periodBalanceCents)
+    }
+
+    @Test
+    fun `overview sends period and maps structured groups`() = runTest {
+        val value = success(
+            KtorFinanceOverviewGateway(auth(Tokens()) { request ->
+                assertEquals("2026", request.url.parameters["year"])
+                json(OVERVIEW)
+            }, retryDelay = {}).overview(FinanceOverviewQuery(year = 2026)),
+        )
+        assertEquals(2026, value.period.year)
+        assertEquals(2, value.groups.single().status.pendingMonthlyCount)
+        assertEquals(FinanceDirection.In, value.recentTransactions.single().direction)
     }
 
     @Test
@@ -377,11 +449,13 @@ class KtorFinanceGatewaysTest {
         const val EXPENSE = "expense-1"
         const val KEY = "finance-key"
         const val CHARGE_JSON = """{"id":"charge-1","groupId":"group-1","memberId":"member-1","kind":"GAME","gameId":"game-1","month":null,"amountCents":2500,"dueDate":"2026-08-12","status":"PENDING","reviewRequired":true,"version":5,"events":[{"actorId":"actor-1","oldStatus":"PENDING","newStatus":"PAID","note":"Recebido","occurredAt":"2026-08-12T10:00:00Z"}]}"""
-        const val CHARGES = """{"charges":[$CHARGE_JSON,{"id":"charge-2","groupId":"group-1","memberId":"member-1","kind":"MONTHLY","gameId":null,"month":"2026-08","amountCents":7000,"dueDate":"2026-08-10","status":"CANCELLED","version":2,"events":[]}],"pendingTotalCents":2500,"paidTotalCents":5000,"waivedTotalCents":1000,"cancelledTotalCents":7000}"""
+        const val CHARGES = """{"charges":[{"id":"charge-1","groupId":"group-1","memberId":"member-1","kind":"GAME","gameId":"game-1","month":null,"amountCents":2500,"dueDate":"2026-08-12","status":"PENDING","reviewRequired":true,"version":5,"paidMethod":"CASH","events":[{"actorId":"actor-1","oldStatus":"PENDING","newStatus":"PAID","note":"Recebido","occurredAt":"2026-08-12T10:00:00Z"}]},{"id":"charge-2","groupId":"group-1","memberId":"member-1","kind":"MONTHLY","gameId":null,"month":"2026-08","amountCents":7000,"dueDate":"2026-08-10","status":"CANCELLED","version":2,"events":[]}],"pendingTotalCents":2500,"paidTotalCents":5000,"waivedTotalCents":1000,"cancelledTotalCents":7000}"""
         const val OWN_CHARGES = """{"charges":[$CHARGE_JSON]}"""
         const val EXPENSE_JSON = """{"id":"expense-1","groupId":"group-1","description":"Água do jogo","amountCents":12345,"expenseDate":"2026-08-12","category":"OTHER","customCategory":"Água","notes":"Compra manual","status":"ACTIVE","version":1,"events":[{"actorId":"actor-1","action":"CREATED","occurredAt":"2026-08-12T10:00:00Z"}]}"""
         const val VOID_EXPENSE_JSON = """{"id":"expense-1","groupId":"group-1","description":"Água do jogo","amountCents":12345,"expenseDate":"2026-08-12","category":"OTHER","customCategory":"Água","notes":"Compra manual","status":"VOIDED","version":3,"events":[{"actorId":"actor-1","action":"VOIDED","occurredAt":"2026-08-13T10:00:00Z"}]}"""
         const val EXPENSES = """{"expenses":[$EXPENSE_JSON],"activeExpenseTotalCents":12345}"""
         const val TOTALS = """{"pendingChargeCents":2500,"paidChargeCents":5000,"waivedChargeCents":1000,"cancelledChargeCents":7000,"activeExpenseCents":12345}"""
+        const val STATEMENT = """{"month":"2026-08","items":[{"id":"expense-1","type":"EXPENSE","direction":"OUT","title":"Aluguel","category":"VENUE","paidMethod":"CASH","occurredAt":"2026-08-19T03:00:00Z","amountCents":-700}],"summary":{"totalInCents":3000,"totalOutCents":700,"periodBalanceCents":2300,"accumulatedBalanceCents":1800},"limit":5,"offset":2,"hasMore":false}"""
+        const val OVERVIEW = """{"period":{"month":null,"year":2026},"totals":{"balanceCents":6000,"inCents":12000,"outCents":6000,"pendingCents":4000},"groups":[{"id":"group-1","name":"Grupo","balanceCents":12000,"pendingMonthlyCount":2,"hasBillingConfigured":true}],"recentTransactions":[{"id":"launch-1","groupId":"group-1","groupName":"Grupo","kind":"LAUNCH","direction":"IN","memberName":null,"description":"Racha","amountCents":1200,"occurredAt":"2026-08-02T10:00:00Z"}]}"""
     }
 }

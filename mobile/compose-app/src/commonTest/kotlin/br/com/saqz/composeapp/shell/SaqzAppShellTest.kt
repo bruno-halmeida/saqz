@@ -18,10 +18,30 @@ class SaqzAppShellTest {
         setContent { SaqzTheme { SaqzAppShell(groupsTab = { Text(GroupsTab) }) } }
         onNodeWithTag(SaqzShellTabContentTag).assertIsDisplayed()
         onNodeWithText(GroupsTab).assertIsDisplayed()
-        // A barra é do shell: os quatro itens do 10q estão aqui, não nas telas de grupo.
-        listOf("Início", "Jogos", "Grupos", "Perfil").forEach {
+        // A barra é do shell: os cinco itens estão aqui, não nas telas de grupo.
+        listOf("Início", "Jogos", "Grupos", "Financeiro", "Perfil").forEach {
             onNodeWithText(it).assertIsDisplayed()
         }
+    }
+
+    @Test
+    fun financeTabRendersInsideShellAndCanReturnToGroups() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    groupsTab = { Text(GroupsTab) },
+                    financeTab = { Text(FinanceTab) },
+                )
+            }
+        }
+
+        onNodeWithText("Financeiro").performClick()
+        waitForIdle()
+
+        onNodeWithText(FinanceTab).assertIsDisplayed()
+        onNodeWithText("Grupos").performClick()
+        waitForIdle()
+        onNodeWithText(GroupsTab).assertIsDisplayed()
     }
 
     // VUL-72: Início e Jogos ficam inertes até os fluxos 6 e 4 existirem — tocar neles não
@@ -64,6 +84,7 @@ class SaqzAppShellTest {
 
     private companion object {
         const val GroupsTab = "conteúdo-da-aba-grupos"
+        const val FinanceTab = "conteúdo-da-aba-financeiro"
         const val ProfileTab = "conteúdo-da-aba-perfil"
     }
 }

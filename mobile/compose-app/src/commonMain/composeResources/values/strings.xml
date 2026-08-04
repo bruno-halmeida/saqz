@@ -5,6 +5,7 @@
     <string name="shell_nav_home">Início</string>
     <string name="shell_nav_games">Jogos</string>
     <string name="shell_nav_groups">Grupos</string>
+    <string name="shell_nav_finance">Financeiro</string>
     <string name="shell_nav_profile">Perfil</string>
     <string name="shell_email_unverified">Confirme seu e-mail para não perder o acesso à sua conta.</string>
     <string name="shell_email_resend">Reenviar</string>

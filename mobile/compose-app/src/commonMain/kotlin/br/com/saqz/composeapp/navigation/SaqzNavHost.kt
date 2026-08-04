@@ -46,11 +46,13 @@ import br.com.saqz.groups.invite.GroupInviteCoordinator
 import br.com.saqz.groups.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
+import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
+import br.com.saqz.groups.presentation.ui.finance.FinancePlaceholderScreen
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
@@ -264,6 +266,7 @@ internal fun SaqzNavHost(
             entry<SaqzShellDestination> {
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
+                    financeTab = { FinancePlaceholderScreen() },
                     profileTab = {
                         OwnProfileRoot(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },
@@ -323,6 +326,9 @@ internal fun SaqzNavHost(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
+            entry<FinanceRoute.GroupCashbox> { FinancePlaceholderScreen() }
+            entry<FinanceRoute.Statement> { FinancePlaceholderScreen() }
+            entry<FinanceRoute.GameSettlement> { FinancePlaceholderScreen() }
             entry<SubscriptionsRoute.PlanSelection> {
                 PlanSelectionRoot(
                     onBack = pop,
@@ -607,8 +613,7 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         is GroupDetailsEffect.OpenCreateGame -> add(GroupsRoute.GameEditor(effect.groupId))
         // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
         is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
-        // TODO(Fluxo 5 · Financeiro, 5b)
-        is GroupDetailsEffect.OpenCashbox -> Unit
+        is GroupDetailsEffect.OpenCashbox -> add(FinanceRoute.GroupCashbox(effect.groupId))
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
         // TODO(Fluxo 9 · Quadra): abrir a quadra no mapa é port nativo, não rota.
         GroupDetailsEffect.OpenMap -> Unit

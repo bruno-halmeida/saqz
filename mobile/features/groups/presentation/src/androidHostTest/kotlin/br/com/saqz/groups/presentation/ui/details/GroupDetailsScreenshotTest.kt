@@ -51,6 +51,14 @@ class GroupDetailsScreenshotTest {
     @Test
     fun loading() = capture("group-details-loading", GroupDetailsState())
 
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun financeShortcut() = capture(
+        name = "group-details-finance-shortcut",
+        state = GroupDetailsPreviewData.admin,
+        directory = "vul-178",
+    )
+
     private fun capture(name: String, state: GroupDetailsState, directory: String = "vul-69") = capture(name, directory) {
         GroupDetailsScreen(state = state, onBack = {}, onIntent = {})
     }
