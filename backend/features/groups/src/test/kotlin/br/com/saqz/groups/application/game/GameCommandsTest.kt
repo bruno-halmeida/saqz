@@ -50,6 +50,17 @@ class GameCommandsTest {
         assertEquals(24, fixture.repository.creation?.defaults?.capacity)
     }
 
+    @Test fun `manual create reports the recurring occurrence at the same instant`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val existing = UUID.randomUUID()
+        fixture.repository.recurringConflict = existing
+
+        val result = fixture.create.execute(actor, groupId, gameId, createInput())
+
+        assertEquals(GameCommandResult.ScheduleConflict(existing), result)
+        assertTrue(fixture.repository.creates.isEmpty())
+    }
+
     @Test fun `admin creates game`() {
         assertTrue(fixture(GroupRole.ADMIN).create.execute(actor, groupId, gameId, createInput()) is GameCommandResult.Success)
     }
@@ -94,6 +105,28 @@ class GameCommandsTest {
         assertEquals("Novo título", assertIs<GameCommandResult.Success>(result).game.snapshot.title)
         assertEquals(1, fixture.repository.updates.size)
         assertEquals(setOf(GameSideEffect.SCHEDULE_CHANGED), fixture.effects.calls.single().second)
+    }
+
+    @Test fun `edit reports the recurring occurrence at the same instant`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val existing = UUID.randomUUID()
+        fixture.repository.recurringConflict = existing
+
+        val result = fixture.edit.execute(actor, groupId, gameId, 1, validDraft())
+
+        assertEquals(GameCommandResult.ScheduleConflict(existing), result)
+        assertTrue(fixture.repository.updates.isEmpty())
+        assertTrue(fixture.effects.calls.isEmpty())
+    }
+
+    @Test fun `edit does not report the game itself as a recurring conflict`() {
+        val fixture = fixture(GroupRole.OWNER)
+        fixture.repository.recurringConflict = gameId
+
+        val result = fixture.edit.execute(actor, groupId, gameId, 1, validDraft())
+
+        assertTrue(result is GameCommandResult.Success)
+        assertEquals(1, fixture.repository.updates.size)
     }
 
     @Test fun `published game remains editable`() {
@@ -248,8 +281,11 @@ class GameCommandsTest {
         val creates = mutableListOf<Game>()
         val updates = mutableListOf<Pair<Game, Long>>()
         var writeResult: GameWriteResult? = null
+        var recurringConflict: UUID? = null
 
         override fun creationContext(actor: UUID, groupId: UUID) = creation
+        override fun recurringConflict(groupId: UUID, startsAt: Instant, excludingGameId: UUID?) =
+            recurringConflict?.takeUnless { it == excludingGameId }
         override fun find(actor: UUID, groupId: UUID, gameId: UUID) = current
         override fun create(game: Game): GameWriteResult {
             creates += game

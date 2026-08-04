@@ -20,6 +20,8 @@ import br.com.saqz.groups.invite.groupsInviteModule
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupInviteUrlStorePort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupNowPort
+import br.com.saqz.groups.port.DefaultGroupNowPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.port.NativeInviteClipboardPort
@@ -165,5 +167,6 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<NativeInviteSharePort> { get<SaqzNativePorts>().groups.inviteShare }
     single<NativeInviteClipboardPort> { get<SaqzNativePorts>().groups.inviteClipboard }
     single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
+    single<GroupNowPort> { DefaultGroupNowPort() }
     single { dependencies.drafts }
 }

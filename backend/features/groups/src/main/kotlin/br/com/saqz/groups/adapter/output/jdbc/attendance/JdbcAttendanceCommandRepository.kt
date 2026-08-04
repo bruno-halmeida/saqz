@@ -152,6 +152,46 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         .optional()
         .orElse(null)
 
+    override fun findResponseReplay(
+        groupId: UUID,
+        gameId: UUID,
+        actorId: UUID,
+        requestId: UUID,
+    ): AttendanceResponseReplay? = jdbc.sql(RESPONSE_REPLAY)
+        .param("group", groupId)
+        .param("game", gameId)
+        .param("actor", actorId)
+        .param("request", requestId)
+        .query { rs, _ ->
+            AttendanceResponseReplay(
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    AttendanceStatus.valueOf(rs.getString("attendance_status")),
+                    rs.getObject("attendance_waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("attendance_responded_at").toInstant(),
+                    rs.getTimestamp("attendance_updated_at").toInstant(),
+                    rs.getLong("attendance_version"),
+                ),
+                AttendanceEvent(
+                    rs.getObject("event_id", UUID::class.java),
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    rs.getObject("actor_user_id", UUID::class.java),
+                    AttendanceSource.valueOf(rs.getString("source")),
+                    rs.getString("old_status")?.let(AttendanceStatus::valueOf),
+                    AttendanceStatus.valueOf(rs.getString("new_status")),
+                    rs.getString("reason"),
+                    rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getObject("request_id", UUID::class.java),
+                ),
+            )
+        }
+        .optional()
+        .orElse(null)
+
     override fun save(record: AttendanceRecord) {
         check(
             jdbc.sql(SAVE)
@@ -212,6 +252,9 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                 AttendanceDetail(
                     own, confirmed, (capacity - confirmed).coerceAtLeast(0),
                     rs.getInt("waitlist_count"), capacity, rs.getLong("game_version"),
+                    rs.getInt("declined_count"),
+                    rs.getInt("pending_count"),
+                    rs.getBoolean("auto_confirm_enabled"),
                 )
             }
             .optional()
@@ -356,6 +399,24 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             ORDER BY event.occurred_at,event.id
             LIMIT 1
         """
+        const val RESPONSE_REPLAY = """
+            SELECT event.id AS event_id,event.game_id,event.group_id,event.member_user_id,event.actor_user_id,
+                   event.source,event.old_status,event.new_status,event.reason,event.occurred_at,event.request_id,
+                   attendance.status AS attendance_status,
+                   attendance.waitlist_sequence AS attendance_waitlist_sequence,
+                   attendance.responded_at AS attendance_responded_at,
+                   attendance.updated_at AS attendance_updated_at,
+                   attendance.version AS attendance_version
+            FROM attendance_events event
+            JOIN game_attendance attendance
+              ON attendance.game_id=event.game_id AND attendance.member_user_id=event.member_user_id
+            JOIN access_groups ag ON ag.id=event.group_id AND ag.deleted_at IS NULL
+            WHERE event.group_id=:group AND event.game_id=:game
+              AND event.actor_user_id=:actor AND event.request_id=:request
+              AND event.source='SELF'
+            ORDER BY event.occurred_at,event.id
+            LIMIT 1
+        """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
                    g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,ag.promotion_mode,
@@ -388,7 +449,15 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
                    a.responded_at,a.updated_at AS attendance_updated_at,a.version AS attendance_version,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
-                   (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count
+                   (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count,
+                   (SELECT count(*) FROM game_attendance d WHERE d.game_id=g.id AND d.status='DECLINED') AS declined_count,
+                   (SELECT count(*) FROM group_memberships pending
+                    WHERE pending.group_id=g.group_id AND pending.role='ATHLETE' AND pending.active
+                      AND NOT EXISTS (
+                          SELECT 1 FROM game_attendance response
+                          WHERE response.game_id=g.id AND response.member_user_id=pending.user_id
+                      )) AS pending_count,
+                   COALESCE(member.auto_confirm_enabled, false) AS auto_confirm_enabled
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor

@@ -40,6 +40,20 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `confirmation at capacity receives first monotonic waitlist position`() { val f = fixture(capacity = 2); repeat(2) { attendance(f, member(f.group, "confirmed-$it"), "CONFIRMED") }; val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.WAITLISTED, saved.status); assertEquals(1, saved.waitlistSequence) }
     @Test fun `successive full confirmations receive unique fifo positions`() { val f = fixture(capacity = 2); repeat(2) { attendance(f, member(f.group, "confirmed-$it"), "CONFIRMED") }; val second = member(f.group, "second"); val firstSaved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val secondSaved = success(f.service.execute(second, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(listOf(1L, 2L), listOf(firstSaved.waitlistSequence, secondSaved.waitlistSequence)) }
     @Test fun `confirmation retry returns same row without another audit`() { val f = fixture(); val first = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val retry = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(first, retry); assertEquals(1, count("game_attendance")); assertEquals(1, count("attendance_events")) }
+    @Test fun `self response replay with the same request id creates one avulso charge`() {
+        val f = fixture()
+        execute("UPDATE group_memberships SET membership_type='AVULSO' WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        execute("UPDATE access_groups SET mensalista_priority=false WHERE id='${f.group}'")
+        execute("UPDATE games SET game_fee_cents=2500 WHERE id='${f.game}'")
+        val requestId = UUID.randomUUID()
+
+        val first = f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = requestId)
+        val replay = f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = requestId)
+
+        assertEquals(first, replay)
+        assertEquals(1, count("attendance_events"))
+        assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='${f.member}'"))
+    }
     @Test fun `attendance row stores member nickname snapshot at creation`() { val f = fixture(); execute("UPDATE access_users SET nickname='Apelido' WHERE id='${f.member}'"); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals("Apelido", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")) }
     @Test fun `a status update never rewrites the attendance row's member display name snapshot`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renamed' WHERE id='${f.member}'"); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals("User", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")) }
     @Test fun `renaming a member changes only future attendance snapshots`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renamed' WHERE id='${f.member}'"); assertEquals("User", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")); val secondGame = UUID.randomUUID(); execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$secondGame','${f.group}','Treino 2',DATE '2026-08-19',TIME '19:30','America/Sao_Paulo',TIMESTAMPTZ '2026-08-19 22:30Z',90,TIMESTAMPTZ '2026-08-18 22:30Z','Arena','Rua Central 100',2,2500,'PUBLISHED',now(),now())"); success(f.service.execute(f.member, f.group, secondGame, intent = AttendanceIntent.CONFIRM)); assertEquals("Renamed", string("SELECT member_display_name FROM game_attendance WHERE game_id='$secondGame'")) }
@@ -51,6 +65,18 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `roster of a game without responses is empty for a member`() { val f = fixture(); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(emptyList(), roster.confirmed); assertEquals(emptyList(), roster.waitlisted) }
     @Test fun `roster stays visible to the owner and hidden from nonmembers`() { val f = fixture(); attendance(f, f.member, "CONFIRMED", "Ana"); assertEquals(listOf("Ana"), requireNotNull(rosterOf(f, f.owner)).confirmed.map { it.displayName }); assertNull(rosterOf(f, user("outsider"))); assertNull(rosterOf(fixture("other"), f.member)) }
     @Test fun `roster names survive a member rename`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='${f.member}'"); assertEquals(listOf("User"), requireNotNull(rosterOf(f, f.member)).confirmed.map { it.displayName }) }
+    @Test fun `detail exposes declined pending and own auto confirmation`() {
+        val f = fixture()
+        attendance(f, member(f.group, "declined"), "DECLINED")
+        waitlist(f, member(f.group, "waitlisted"), 1)
+        execute("UPDATE group_memberships SET auto_confirm_enabled=true WHERE group_id='${f.group}' AND user_id='${f.member}'")
+
+        val detail = requireNotNull(JdbcAttendanceCommandRepository(dataSource).find(f.member, f.group, f.game))
+
+        assertEquals(1, detail.declinedCount)
+        assertEquals(1, detail.pendingCount)
+        assertEquals(true, detail.autoConfirmEnabled)
+    }
 
     // --- VUL-152: ordenação da reserva por faixa + FIFO e colapso pós-prazo ---
     @Test fun `roster with priority on lists mensalistas before avulsos in fifo within each tier`() {

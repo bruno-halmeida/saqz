@@ -53,6 +53,8 @@ data class GroupProfileReadResponse(
     val regularSlots: List<GroupRegularSlotReadResponse>,
     val defaultCapacity: Int?,
     val defaultConfirmationLeadMinutes: Int?,
+    val pixKey: String?,
+    val pixLabel: String?,
 )
 
 data class GroupVenueReadResponse(
@@ -141,6 +143,8 @@ private fun GroupProfileReadModel.toResponse() = GroupProfileReadResponse(
     regularSlots = regularSlots.map { it.toResponse() },
     defaultCapacity = defaultCapacity,
     defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
+    pixKey = pixKey,
+    pixLabel = pixLabel,
 )
 
 private fun GroupVenueReadModel.toResponse() = GroupVenueReadResponse(id, name, address, court)

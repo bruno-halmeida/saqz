@@ -30,7 +30,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(12, flyway.migrate().migrationsExecuted)
+        assertEquals(13, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -213,12 +213,26 @@ class AccessSchemaIntegrationTest {
     }
 
     @Test
-    fun `v31 creates users without suspension and accepts a suspension timestamp`() {
+    fun `v33 creates users without suspension and accepts a suspension timestamp`() {
         val user = insertUser("suspension-default")
 
         assertEquals(null, queryString("SELECT suspended_at::text FROM access_users WHERE id = '$user'"))
         execute("UPDATE access_users SET suspended_at = now() WHERE id = '$user'")
         assertEquals(1, queryInt("SELECT count(*) FROM access_users WHERE id = '$user' AND suspended_at IS NOT NULL"))
+    }
+
+    @Test
+    fun `v31 leaves pix empty and accepts any trimmed free text key`() {
+        val owner = insertUser("pix-owner")
+        val group = insertGroup(owner)
+
+        assertEquals(null, queryString("SELECT pix_key FROM access_groups WHERE id = '$group'"))
+        execute("UPDATE access_groups SET pix_key = 'racha@saqz.test', pix_label = 'Tesoureiro' WHERE id = '$group'")
+        assertEquals("racha@saqz.test", queryString("SELECT pix_key FROM access_groups WHERE id = '$group'"))
+        execute("UPDATE access_groups SET pix_key = '11999998888' WHERE id = '$group'")
+        assertSqlFails { execute("UPDATE access_groups SET pix_key = ' espaco' WHERE id = '$group'") }
+        assertSqlFails { execute("UPDATE access_groups SET pix_key = 'x' WHERE id = '$group'") }
+        assertSqlFails { execute("UPDATE access_groups SET pix_label = 'quebra\nlinha' WHERE id = '$group'") }
     }
 
     @Test

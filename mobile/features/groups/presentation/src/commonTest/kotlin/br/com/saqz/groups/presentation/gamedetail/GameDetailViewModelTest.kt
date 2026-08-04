@@ -2,8 +2,23 @@ package br.com.saqz.groups.presentation.gamedetail
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
+import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
+import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
+import br.com.saqz.groups.domain.attendance.AttendanceRoster
+import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
+import br.com.saqz.groups.domain.attendance.AttendanceMutation
+import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
+import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameStatus
@@ -11,13 +26,17 @@ import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupGameConfig
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
-import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleCancelledGame
+import br.com.saqz.groups.presentation.sampleAttendanceDetail
+import br.com.saqz.groups.presentation.sampleAttendanceRoster
+import br.com.saqz.groups.presentation.sampleVersionedAttendanceCapacity
+import br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import kotlinx.coroutines.CompletableDeferred
@@ -46,11 +65,16 @@ class GameDetailViewModelTest {
     @Test
     fun `loads game details`() = runTest {
         val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame()))
-        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(sampleAttendanceDetail().copy(declinedCount = 2, pendingCount = 3)),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), attendance, FakeAthleteGateway())
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(1, gateway.readCalls)
         assertNotNull(viewModel.state.value.header)
         assertNotNull(viewModel.state.value.attendance)
+        assertEquals(2, viewModel.state.value.attendance?.declined)
+        assertEquals(3, viewModel.state.value.attendance?.pending)
     }
 
     @Test
@@ -410,4 +434,93 @@ class GameDetailViewModelTest {
         ),
     )
 
+}
+
+private class FakeAttendanceGateway(
+    var readResult: SaqzResult<AttendanceDetail, AttendanceError> = SaqzResult.Success(sampleAttendanceDetail()),
+    var rosterResult: SaqzResult<AttendanceRoster, AttendanceError> = SaqzResult.Success(sampleAttendanceRoster()),
+    var respondResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> = SaqzResult.Success(
+        VersionedAttendanceMutation(
+            value = AttendanceMutation(
+                attendance = AttendanceEntry("me", AttendanceStatus.Confirmed, null, 1),
+                promotedCount = 0,
+                detail = AttendanceDetail(null, 5, 7, 0, 12),
+            ),
+            version = AttendanceVersionToken("etag-1"),
+        ),
+    ),
+    var promoteResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        SaqzResult.Success(sampleVersionedAttendanceMutation()),
+    var capacityResult: SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
+        SaqzResult.Success(sampleVersionedAttendanceCapacity()),
+    var autoConfirmationResult: SaqzResult<AutoConfirmationUpdate, AttendanceError> =
+        SaqzResult.Success(AutoConfirmationUpdate(false)),
+) : AttendanceGateway {
+    var readCalls = 0
+    var rosterCalls = 0
+    var respondCalls = 0
+    var promoteCalls = 0
+    var capacityCalls = 0
+    var autoConfirmationCalls = 0
+    var lastResponse: SelfAttendanceCommand? = null
+    var lastPromotionCommand: AttendancePromotionCommand? = null
+    var lastAutoConfirmation: AutoConfirmationCommand? = null
+    var promoteDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
+    var capacityDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceCapacity, AttendanceError>>? = null
+
+    override suspend fun read(groupId: br.com.saqz.domain.GroupId, gameId: String): SaqzResult<AttendanceDetail, AttendanceError> {
+        readCalls++
+        return readResult
+    }
+
+    override suspend fun respond(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        command: SelfAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
+        respondCalls++
+        lastResponse = command
+        return respondResult
+    }
+
+    override suspend fun roster(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+    ): SaqzResult<AttendanceRoster, AttendanceError> {
+        rosterCalls++
+        return rosterResult
+    }
+
+    override suspend fun promote(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        command: AttendancePromotionCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
+        promoteCalls++
+        lastPromotionCommand = command
+        return promoteDeferred?.await() ?: promoteResult
+    }
+
+    override suspend fun override(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        command: OverrideAttendanceCommand,
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> = error("not used in this screen")
+
+    override suspend fun capacity(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        version: AttendanceVersionToken,
+        command: AttendanceCapacityCommand,
+    ): SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
+        capacityDeferred?.await() ?: capacityResult
+
+    override suspend fun updateAutoConfirmation(
+        groupId: br.com.saqz.domain.GroupId,
+        command: AutoConfirmationCommand,
+    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> {
+        autoConfirmationCalls++
+        lastAutoConfirmation = command
+        return autoConfirmationResult
+    }
 }

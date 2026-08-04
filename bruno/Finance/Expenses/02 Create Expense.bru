@@ -9,7 +9,7 @@ post {
   auth: bearer
 }
 auth:bearer { token: {{idToken}} }
-body:json { {"requestId":"{{$guid}}","description":"Aluguel da quadra","amountCents":5000,"expenseDate":"2026-08-01","category":"VENUE"} }
+body:json { {"requestId":"{{$guid}}","description":"Aluguel da quadra","amountCents":5000,"expenseDate":"2026-08-01","category":"VENUE","direction":"OUT"} }
 tests {
-  test("created manual expense", function () { expect(res.status).to.equal(201); expect(res.headers.etag).to.exist; });
+  test("created manual expense", function () { expect(res.status).to.equal(201); expect(res.headers.etag).to.exist; expect(res.body.direction).to.equal("OUT"); });
 }

@@ -26,5 +26,7 @@ tests {
     expect(res.getBody().gameConfig.mensalistaPriority).to.be.a("boolean");
     expect(res.getBody().gameConfig.promotionMode).to.be.oneOf(["FIFO", "MANUAL"]);
     expect(res.getBody().gameConfig.autoConfirmEnabled).to.be.a("boolean");
+    expect(res.getBody().profile).to.have.property("pixKey");
+    expect(res.getBody().profile).to.have.property("pixLabel");
   });
 }

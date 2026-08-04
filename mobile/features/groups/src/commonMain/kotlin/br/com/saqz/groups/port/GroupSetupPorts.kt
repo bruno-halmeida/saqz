@@ -3,7 +3,13 @@ package br.com.saqz.groups.port
 import br.com.saqz.groups.model.GroupDraftKey
 import br.com.saqz.groups.model.GroupSetupDraft
 import br.com.saqz.groups.model.GroupTimeZone
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
+
+fun interface GroupNowPort { fun now(): Instant }
+
+class DefaultGroupNowPort : GroupNowPort { override fun now(): Instant = Clock.System.now() }
 
 sealed interface GroupSystemTimeZoneResult {
     data class Available(val value: GroupTimeZone) : GroupSystemTimeZoneResult

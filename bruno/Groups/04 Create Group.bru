@@ -45,6 +45,8 @@ body:json {
     "mensalistaPriority": true,
     "promotionMode": "FIFO",
     "autoConfirmEnabled": false,
+    "pixKey": "racha@saqz.test",
+    "pixLabel": "Tesoureiro do grupo",
     "timeZone": "America/Sao_Paulo"
   }
 }
@@ -64,5 +66,7 @@ tests {
     expect(res.getBody().gameConfig.mensalistaPriority).to.equal(true);
     expect(res.getBody().gameConfig.promotionMode).to.equal("FIFO");
     expect(res.getBody().gameConfig.autoConfirmEnabled).to.equal(false);
+    expect(res.getBody().profile.pixKey).to.equal("racha@saqz.test");
+    expect(res.getBody().profile.pixLabel).to.equal("Tesoureiro do grupo");
   });
 }

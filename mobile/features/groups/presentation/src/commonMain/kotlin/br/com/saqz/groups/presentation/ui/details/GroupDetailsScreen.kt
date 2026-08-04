@@ -17,6 +17,9 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.presentation.details.GroupDetailsResponseStatus
+import br.com.saqz.groups.presentation.details.GroupDetailsResponseUi
 import br.com.saqz.groups.presentation.details.AttendanceSummaryUi
 import br.com.saqz.groups.presentation.details.CashboxUi
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
@@ -90,7 +93,12 @@ internal fun GroupDetailsScreen(
             ) {
                 state.header?.let { GroupHeaderCard(header = it, isAdmin = state.isAdmin, onIntent = onIntent) }
                 state.nextGame?.let { GroupNextGameCard(nextGame = it, onIntent = onIntent) }
-                state.attendance?.let { GroupAttendanceStats(attendance = it, onIntent = onIntent) }
+                if (!state.isAdmin && state.nextGame != null) {
+                    GroupGameResponseSection(state = state, onIntent = onIntent)
+                }
+                state.attendance?.let {
+                    GroupAttendanceStats(attendance = it, isAdmin = state.isAdmin, onIntent = onIntent)
+                }
                 state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
                 state.venue?.let { GroupVenueCard(venue = it, isAdmin = state.isAdmin, onIntent = onIntent) }
                 if (!state.isAdmin) {
@@ -161,11 +169,12 @@ internal object GroupDetailsPreviewData {
         isOwner = true,
         header = header,
         attendance = AttendanceSummaryUi(
-            title = "Próximo jogo · terça",
-            ratio = "9/12",
+            confirmedCount = 9,
+            capacity = 12,
             going = 9,
-            maybe = 3,
+            notGoing = 3,
             pending = 4,
+            availableSpots = 3,
         ),
         cashbox = CashboxUi(summary = "Saldo R$ 380,00 · 8 mensalidades em aberto"),
         venue = venue,
@@ -178,10 +187,12 @@ internal object GroupDetailsPreviewData {
         isAdmin = false,
         header = memberHeader,
         nextGame = NextGameUi(
+            gameId = "game-1",
             date = "Ter, 28/07 · 19h30",
             venue = "CERET — Quadra 2 · Tatuapé",
             deadline = "Encerra hoje · 18h",
-            confirmedSummary = "9 de 12 confirmados",
+            confirmedCount = 9,
+            capacity = 12,
             confirmedNames = listOf(
                 "Lucas Prado",
                 "Bia Souza",
@@ -193,7 +204,20 @@ internal object GroupDetailsPreviewData {
                 "Fábio Sá",
                 "Gil Matos",
             ),
+            availableSpots = 3,
         ),
+        attendance = AttendanceSummaryUi(
+            confirmedCount = 9,
+            capacity = 12,
+            going = 9,
+            notGoing = 3,
+            pending = 4,
+            availableSpots = 3,
+        ),
+        memberResponse = GroupDetailsResponseUi(GroupDetailsResponseStatus.Confirmed),
+        membershipType = AthleteMembershipType.MENSALISTA,
+        autoConfirmationVisible = true,
+        autoConfirmationEnabled = true,
         venue = venue,
         latestNotice = NoticeUi(
             author = "Lucas",
@@ -204,7 +228,7 @@ internal object GroupDetailsPreviewData {
         memberPreview = listOf(
             MemberPreviewUi("1", "Lucas Prado", "Organizador · levantador", MemberStatusUi.Admin),
             MemberPreviewUi("2", "Bia Souza", "Ponteira", MemberStatusUi.Going),
-            MemberPreviewUi("3", "Thiago Melo", "Central", MemberStatusUi.Maybe),
+            MemberPreviewUi("3", "Thiago Melo", "Central"),
         ),
         memberCount = 26,
     )

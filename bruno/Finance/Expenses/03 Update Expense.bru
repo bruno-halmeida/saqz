@@ -12,5 +12,11 @@ headers { If-Match: "{{expenseVersion}}" }
 auth:bearer { token: {{idToken}} }
 body:json { {"description":"Aluguel atualizado","amountCents":5500,"expenseDate":"2026-08-01","category":"VENUE"} }
 tests {
-  test("versioned expense update", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; });
+  test("versioned expense update", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.direction).to.equal("OUT"); });
+}
+
+docs {
+  `direction` é opcional no update: omitir preserva a direção guardada, então editar
+  a descrição de uma entrada (IN) não a transforma em despesa. Mande `direction`
+  explícito só para trocar o sentido do lançamento.
 }

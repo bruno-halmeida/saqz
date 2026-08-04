@@ -133,6 +133,7 @@ class JdbcGroupCreationRepository(
             default_capacity, default_confirmation_lead_minutes, default_game_fee_cents,
             monthly_fee_cents, monthly_due_day,
             mensalista_priority, promotion_mode, auto_confirm_enabled,
+            pix_key, pix_label,
             created_at, updated_at
         ) VALUES (
             :id, :ownerUserId, :creationKey, :name, :timeZone, 1,
@@ -143,6 +144,7 @@ class JdbcGroupCreationRepository(
             COALESCE(CAST(:mensalistaPriority AS boolean), true),
             COALESCE(:promotionMode, 'FIFO'),
             COALESCE(CAST(:autoConfirmEnabled AS boolean), false),
+            :pixKey, :pixLabel,
             now(), now()
         )
         ON CONFLICT (owner_user_id, creation_key) DO NOTHING
@@ -194,6 +196,8 @@ class JdbcGroupCreationRepository(
             .param("mensalistaPriority", profile.mensalistaPriority)
             .param("promotionMode", profile.promotionMode?.name)
             .param("autoConfirmEnabled", profile.autoConfirmEnabled)
+            .param("pixKey", profile.pixKey)
+            .param("pixLabel", profile.pixLabel)
     }
 
     private fun ResultSet.toStoredGroup() = StoredGroup(

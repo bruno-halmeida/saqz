@@ -71,6 +71,14 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
 
         // Checkout abandonado: linha PAST_DUE criada no checkout, nunca confirmada.
         subscription(plan = "TITULAR", status = "PAST_DUE", createdAt = now.minusSeconds(90 * DAY), firstConfirmedAt = null)
+        // Cancelar um checkout nunca pago também não é churn.
+        subscription(
+            plan = "TITULAR",
+            status = "PAST_DUE",
+            createdAt = now.minusSeconds(90 * DAY),
+            canceledAt = now.minusSeconds(4 * DAY),
+            firstConfirmedAt = null,
+        )
 
         assertEquals(ChurnStats(canceled = 1, activeAtStart = 2), repository.churn(start, now))
         assertEquals(ChurnStats(canceled = 2, activeAtStart = 4), repository.churn(null, now))
@@ -97,6 +105,8 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
             couponCyclesRemaining = null,
         )
         subscription(plan = "ILIMITADO", cycle = "MONTHLY", createdAt = now.minusSeconds(DAY), status = "CANCELED")
+        // Checkout abandonado (PAST_DUE sem confirmação) não é assinante no split.
+        subscription(plan = "ILIMITADO", cycle = "MONTHLY", status = "PAST_DUE", createdAt = now.minusSeconds(DAY), firstConfirmedAt = null)
 
         val split = repository.planSplit()
 

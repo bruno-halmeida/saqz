@@ -42,6 +42,9 @@ data class AttendanceDetail(
     val availableSpots: Int,
     val waitlistCount: Int,
     val capacity: Int,
+    val declinedCount: Int = 0,
+    val pendingCount: Int = 0,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 data class AttendanceRosterMember(
@@ -96,6 +99,10 @@ data class AttendanceCapacityCommand(
     val capacity: Int,
 )
 
+data class AutoConfirmationCommand(val enabled: Boolean)
+
+data class AutoConfirmationUpdate(val enabled: Boolean)
+
 data class AttendancePromotionCommand(
     val requestId: String,
     val memberId: String,
@@ -118,16 +125,16 @@ interface AttendanceGateway {
         gameId: String,
     ): SaqzResult<AttendanceDetail, AttendanceError>
 
-    suspend fun roster(
-        groupId: GroupId,
-        gameId: String,
-    ): SaqzResult<AttendanceRoster, AttendanceError>
-
     suspend fun respond(
         groupId: GroupId,
         gameId: String,
         command: SelfAttendanceCommand,
     ): SaqzResult<VersionedAttendanceMutation, AttendanceError>
+
+    suspend fun roster(
+        groupId: GroupId,
+        gameId: String,
+    ): SaqzResult<AttendanceRoster, AttendanceError>
 
     suspend fun promote(
         groupId: GroupId,
@@ -147,4 +154,9 @@ interface AttendanceGateway {
         version: AttendanceVersionToken,
         command: AttendanceCapacityCommand,
     ): SaqzResult<VersionedAttendanceCapacity, AttendanceError>
+
+    suspend fun updateAutoConfirmation(
+        groupId: GroupId,
+        command: AutoConfirmationCommand,
+    ): SaqzResult<AutoConfirmationUpdate, AttendanceError>
 }

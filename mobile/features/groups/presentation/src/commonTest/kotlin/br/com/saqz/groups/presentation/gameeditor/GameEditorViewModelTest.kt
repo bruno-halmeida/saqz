@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
+import br.com.saqz.groups.domain.game.GameLifecycleAction
+import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
@@ -179,6 +181,135 @@ class GameEditorViewModelTest {
         assertEquals("2026-08-04", command?.localDate)
         assertEquals("19:30", command?.localTime)
         assertEquals(120, command?.durationMinutes)
+    }
+
+    @Test
+    fun `successful create publishes the returned draft`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val gateway = FakeGameGateway(createResult = SaqzResult.Success(draft))
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(GameLifecycleAction.Publish, gateway.lastLifecycleAction)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
+        assertFalse(vm.state.value.isSaving)
+        assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
+    fun `failed publish edits the existing draft after a form change`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val editedDraft = draft.copy(version = GameVersionToken("etag-edited"))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            createResult = SaqzResult.Success(draft),
+            editResult = SaqzResult.Success(editedDraft),
+            lifecycleResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Failure(GameError.Data(DataError.Server)),
+                    SaqzResult.Success(editedDraft.copy(game = editedDraft.game.copy(status = GameStatus.Published))),
+                ),
+            ),
+        )
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(vm.state.value.saveFailed)
+
+        vm.onIntent(GameEditorIntent.UpdateNotes("Nota corrigida"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertEquals(1, gateway.editCalls)
+        assertEquals("game-1", gateway.lastEditGameId)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.editVersions)
+        assertEquals(
+            listOf(GameVersionToken("etag-draft"), GameVersionToken("etag-edited")),
+            gateway.lifecycleVersions,
+        )
+        assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
+    fun `retry rereads a published draft and edits form changes before succeeding`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val published = draft.copy(
+            version = GameVersionToken("etag-published"),
+            game = draft.game.copy(status = GameStatus.Published),
+        )
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(published),
+            createResult = SaqzResult.Success(draft),
+            editResult = SaqzResult.Success(published.copy(version = GameVersionToken("etag-edited"))),
+            lifecycleResults = ArrayDeque(
+                listOf(SaqzResult.Failure(GameError.Data(DataError.Connectivity))),
+            ),
+        )
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        vm.onIntent(GameEditorIntent.UpdateNotes("Nota depois do timeout"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertEquals(1, gateway.readCalls)
+        assertEquals(1, gateway.editCalls)
+        assertEquals("game-1", gateway.lastEditGameId)
+        assertEquals(listOf(GameVersionToken("etag-published")), gateway.editVersions)
+        assertEquals("Nota depois do timeout", gateway.lastEditCommand?.notes)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
+        assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
+    fun `pending draft identity survives view model recreation`() = runTest {
+        val savedState = SavedStateHandle()
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val firstGateway = FakeGameGateway(
+            createResult = SaqzResult.Success(draft),
+            lifecycleResults = ArrayDeque(
+                listOf(SaqzResult.Failure(GameError.Data(DataError.Connectivity))),
+            ),
+        )
+        val first = viewModel(savedState = savedState, gameGateway = firstGateway)
+        first.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        first.onIntent(GameEditorIntent.Submit)
+
+        val refreshedDraft = draft.copy(version = GameVersionToken("etag-refreshed"))
+        val editedDraft = refreshedDraft.copy(version = GameVersionToken("etag-edited"))
+        val secondGateway = FakeGameGateway(
+            readResult = SaqzResult.Success(refreshedDraft),
+            editResult = SaqzResult.Success(editedDraft),
+            lifecycleResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Success(
+                        editedDraft.copy(game = editedDraft.game.copy(status = GameStatus.Published)),
+                    ),
+                ),
+            ),
+        )
+        val recreated = viewModel(savedState = savedState, gameGateway = secondGateway)
+        recreated.onIntent(GameEditorIntent.UpdateNotes("Nota restaurada"))
+        recreated.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(0, secondGateway.createCalls)
+        assertEquals(1, secondGateway.readCalls)
+        assertEquals(1, secondGateway.editCalls)
+        assertEquals("game-1", secondGateway.lastEditGameId)
+        assertEquals(listOf(GameVersionToken("etag-refreshed")), secondGateway.editVersions)
+        assertFalse(recreated.state.value.saveFailed)
     }
 
     @Test

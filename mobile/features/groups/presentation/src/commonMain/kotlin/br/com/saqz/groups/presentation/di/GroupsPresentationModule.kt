@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
 import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
@@ -20,6 +21,7 @@ import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import org.koin.core.parameter.ParametersHolder
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -47,11 +49,12 @@ fun groupsPresentationModule(): Module = module {
             timeZonePort = get<GroupSystemTimeZonePort>(),
         )
     }
-    viewModel { params -> GroupDetailsViewModel(params.get(), get()) }
+    viewModel { params -> GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
-    viewModel {
-        params -> GameEditorViewModel(params.get(), params.get(), params.get(), get(), get())
+    viewModel { params ->
+        val (groupId, gameId) = gameEditorRouteArguments(params)
+        GameEditorViewModel(groupId, gameId, params.get(), get(), get())
     }
     viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get()) }
     viewModel {
@@ -63,4 +66,10 @@ fun groupsPresentationModule(): Module = module {
             previews = get<GroupPhotoPreviewPort>(),
         )
     }
+}
+
+internal fun gameEditorRouteArguments(params: ParametersHolder): Pair<String, String?> {
+    val groupId: String = params[0]
+    val gameId: String? = params[1]
+    return groupId to gameId
 }

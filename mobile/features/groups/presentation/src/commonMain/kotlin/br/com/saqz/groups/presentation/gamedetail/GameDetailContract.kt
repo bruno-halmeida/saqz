@@ -38,6 +38,7 @@ data class GameDetailHeaderUi(
     val venue: String,
     val durationMinutes: Int,
     val availableSpots: Int,
+    val confirmationOpen: Boolean = true,
     val confirmationDeadlineWeekday: GroupWeekday? = null,
 )
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }

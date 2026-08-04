@@ -7,9 +7,10 @@ import java.time.YearMonth
 import java.util.UUID
 
 enum class ChargeStatus { PENDING, PAID, WAIVED, CANCELLED }
+enum class PaidMethod { PIX, CASH, OTHER }
 sealed interface ChargeIdentity { data class Game(val gameId:UUID):ChargeIdentity;data class Monthly(val month:YearMonth):ChargeIdentity }
-data class Charge(val id:UUID,val groupId:UUID,val memberId:UUID,val identity:ChargeIdentity,val amountCents:Long,val dueDate:LocalDate,val status:ChargeStatus=ChargeStatus.PENDING,val version:Long=1,val reviewRequired:Boolean=false){init{require(amountCents in 1..99_999_999);require(version>=1)}}
-data class ChargeStatusCommand(val target:ChargeStatus,val note:String?=null)
+data class Charge(val id:UUID,val groupId:UUID,val memberId:UUID,val identity:ChargeIdentity,val amountCents:Long,val dueDate:LocalDate,val status:ChargeStatus=ChargeStatus.PENDING,val version:Long=1,val reviewRequired:Boolean=false,val paidMethod:PaidMethod?=null){init{require(amountCents in 1..99_999_999);require(version>=1)}}
+data class ChargeStatusCommand(val target:ChargeStatus,val note:String?=null,val paidMethod:PaidMethod?=null)
 data class ChargeEvent(val id:UUID,val chargeId:UUID,val actorId:UUID,val oldStatus:ChargeStatus,val newStatus:ChargeStatus,val note:String?,val occurredAt:Instant)
 data class ChargeChange(val charge:Charge,val event:ChargeEvent)
 class InvalidChargeTransition:RuntimeException()
@@ -19,7 +20,9 @@ object ChargeTransitions {
     fun apply(current:Charge,command:ChargeStatusCommand,actorId:UUID,now:Instant,eventId:UUID):ChargeChange{
         if(current.status!=ChargeStatus.PENDING||command.target==ChargeStatus.PENDING)throw InvalidChargeTransition()
         val note=command.note?.trim()?.also{if(it.length !in 2..500||it.any(Char::isISOControl))throw InvalidChargeNote()}
-        val changed=current.copy(status=command.target,version=current.version+1)
+        // Só o recebimento tem "como recebeu"; PIX é o default de quem não manda o campo.
+        val method=if(command.target==ChargeStatus.PAID)command.paidMethod?:PaidMethod.PIX else null
+        val changed=current.copy(status=command.target,version=current.version+1,paidMethod=method)
         return ChargeChange(changed,ChargeEvent(eventId,current.id,actorId,current.status,command.target,note,now))
     }
 }
