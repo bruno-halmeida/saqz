@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.gameeditor
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
@@ -38,7 +39,7 @@ class GameEditorViewModel(
     initialState = GameEditorState(isLoading = true),
 ) {
     private var loadGeneration = 0
-    private var pendingDraft: VersionedGame? = null
+    private var pendingDraft: PendingDraft? = restorePendingDraft()
     init {
         load()
     }
@@ -159,8 +160,7 @@ class GameEditorViewModel(
         val draft = buildDraft(current, commandKey)
         val command = buildCommand(draft)
         val attempt = if (pendingDraft != null) {
-            val draft = pendingDraft ?: return
-            LastAttempt.Edit(draft.game.id, draft.version.value, commandKey, publishAfterEdit = true)
+            LastAttempt.ResumePendingDraft(commandKey)
         } else if (gameId == null) {
             LastAttempt.Create(commandKey)
         } else {
@@ -171,11 +171,12 @@ class GameEditorViewModel(
         viewModelScope.launch {
             val result = when (attempt) {
                 is LastAttempt.Create -> createAndPublish(command)
+                is LastAttempt.ResumePendingDraft -> resumePendingDraft(attempt.commandKey, command)
                 is LastAttempt.Edit -> editAndMaybePublish(attempt, command)
             }
             when (result) {
                 is SaqzResult.Success -> {
-                    pendingDraft = null
+                    clearPendingDraft()
                     savedState.remove<String>(KeyCommand)
                     update { it.copy(isSaving = false, saveFailed = false) }
                     emit(GameEditorEffect.Saved)
@@ -229,8 +230,34 @@ class GameEditorViewModel(
     ) {
         is SaqzResult.Failure -> created
         is SaqzResult.Success -> {
-            pendingDraft = created.value
+            savePendingDraft(created.value)
             publishIfDraft(created.value)
+        }
+    }
+
+    private suspend fun resumePendingDraft(
+        commandKey: String,
+        command: GameWriteCommand,
+    ): SaqzResult<VersionedGame, GameError> {
+        val pending = pendingDraft ?: return SaqzResult.Failure(GameError.Data(DataError.Connectivity))
+        return when (val current = gameGateway.read(GroupId(groupId), pending.gameId)) {
+            is SaqzResult.Failure -> current
+            is SaqzResult.Success -> {
+                savePendingDraft(current.value)
+                if (current.value.game.status == GameStatus.Published) {
+                    current
+                } else {
+                    editAndMaybePublish(
+                        LastAttempt.Edit(
+                            current.value.game.id,
+                            current.value.version.value,
+                            commandKey,
+                            publishAfterEdit = true,
+                        ),
+                        command,
+                    )
+                }
+            }
         }
     }
 
@@ -245,10 +272,22 @@ class GameEditorViewModel(
         return when (edited) {
             is SaqzResult.Failure -> edited
             is SaqzResult.Success -> {
-                pendingDraft = edited.value
+                savePendingDraft(edited.value)
                 publishIfDraft(edited.value)
             }
         }
+    }
+
+    private fun savePendingDraft(versioned: VersionedGame) {
+        pendingDraft = PendingDraft(versioned.game.id, versioned.version.value)
+        savedState[KeyPendingGameId] = versioned.game.id
+        savedState[KeyPendingVersion] = versioned.version.value
+    }
+
+    private fun clearPendingDraft() {
+        pendingDraft = null
+        savedState.remove<String>(KeyPendingGameId)
+        savedState.remove<String>(KeyPendingVersion)
     }
 
     private suspend fun publishIfDraft(
@@ -359,9 +398,16 @@ class GameEditorViewModel(
         } ?: form.venue,
     )
 
+    private fun restorePendingDraft(): PendingDraft? {
+        val gameId = savedState.get<String>(KeyPendingGameId) ?: return null
+        val version = savedState.get<String>(KeyPendingVersion) ?: return null
+        return PendingDraft(gameId, version)
+    }
+
     private sealed interface LastAttempt {
         val commandKey: String
         data class Create(override val commandKey: String) : LastAttempt
+        data class ResumePendingDraft(override val commandKey: String) : LastAttempt
         data class Edit(
             val gameId: String,
             val versionToken: String,
@@ -385,9 +431,13 @@ class GameEditorViewModel(
         const val KeyNotes = "game-editor-notes"
         const val KeyVenueName = "game-editor-venue-name"
         const val KeyVenueAddress = "game-editor-venue-address"
+        const val KeyPendingGameId = "game-editor-pending-game-id"
+        const val KeyPendingVersion = "game-editor-pending-version"
         const val DEFAULT_TITLE = "Jogo fora da recorrência"
     }
 }
+
+private data class PendingDraft(val gameId: String, val versionToken: String)
 
 private fun confirmationLeadMinutes(startsAt: String, deadline: String): Int? = runCatching {
     (Instant.parse(startsAt) - Instant.parse(deadline)).inWholeMinutes.toInt()
