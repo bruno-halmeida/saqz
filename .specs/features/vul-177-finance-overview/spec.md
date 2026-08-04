@@ -110,9 +110,9 @@ administrados e em um grupo de atleta; confirmar a lista recente e os campos de 
 | OVERVIEW-02 | P1: Caixa do organizador | Design | Pending |
 | OVERVIEW-03 | P1: Caixa do organizador | Design | Pending |
 | OVERVIEW-04 | P1: Caixa do organizador | Design | Pending |
-| OVERVIEW-05 | P1: Período selecionável | Design | Pending |
-| OVERVIEW-06 | P1: Período selecionável | Design | Pending |
-| OVERVIEW-07 | P1: Período selecionável | Design | Pending |
+| OVERVIEW-05 | P1: Período selecionável | Execute | Verified |
+| OVERVIEW-06 | P1: Período selecionável | Execute | Verified |
+| OVERVIEW-07 | P1: Período selecionável | Execute | Verified |
 | OVERVIEW-08 | P2: Saúde por grupo e atividade recente | Design | Pending |
 | OVERVIEW-09 | P2: Saúde por grupo e atividade recente | Design | Pending |
 | OVERVIEW-10 | P2: Saúde por grupo e atividade recente | Design | Pending |

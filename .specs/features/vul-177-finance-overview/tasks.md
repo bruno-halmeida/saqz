@@ -55,10 +55,10 @@ atomically before the next task begins. After T4, run the independent feature-le
 
 **Done when:**
 
-- [ ] Mês corrente, mês específico e ano completo são resolvidos com precisão.
-- [ ] Ambos os filtros e formatos inválidos retornam erros de campo em português.
-- [ ] Os modelos carregam todos os campos estruturados exigidos pelo contrato.
-- [ ] Unit gate passa sem testes reduzidos ou ignorados.
+- [x] Mês corrente, mês específico e ano completo são resolvidos com precisão.
+- [x] Ambos os filtros e formatos inválidos retornam erros de campo em português.
+- [x] Os modelos carregam todos os campos estruturados exigidos pelo contrato.
+- [x] Unit gate passa sem testes reduzidos ou ignorados.
 
 **Tests:** unit
 **Gate:** quick
