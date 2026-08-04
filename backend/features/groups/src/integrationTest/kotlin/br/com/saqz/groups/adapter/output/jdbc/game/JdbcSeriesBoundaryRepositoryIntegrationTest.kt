@@ -106,6 +106,20 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id='$selected'"))
     }
 
+    @Test fun `future edit cancels removed slot before retained slot moves into its time`() {
+        val fixture = fixture()
+        val removedSlot = slot(fixture, LocalTime.of(20, 0))
+        val retained = game(fixture, DATE, localTime = LocalTime.of(19, 30), slotKey = fixture.slotKey)
+        val removed = game(fixture, DATE, localTime = LocalTime.of(20, 0), slotKey = removedSlot)
+        val successor = successor(fixture, "Retained moved", LocalTime.of(20, 0))
+
+        assertEquals(SeriesBoundaryResult.Applied, apply(repository(), fixture, successor))
+        assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id='$retained'"))
+        assertEquals("20:00:00", string("SELECT local_time::text FROM games WHERE id='$retained'"))
+        assertEquals(successor.revisionId, uuid("SELECT series_revision_id FROM games WHERE id='$retained'"))
+        assertEquals("CANCELLED", string("SELECT status FROM games WHERE id='$removed'"))
+    }
+
     @Test fun `future edit preserves past and completed snapshots`() {
         val fixture = fixture(start = DATE.minusWeeks(2)); val past = game(fixture, DATE.minusWeeks(1)); val completed = game(fixture, DATE.plusWeeks(1), "COMPLETED"); game(fixture, DATE)
         val successor = successor(fixture, "Treino novo")
@@ -172,16 +186,23 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         return Fixture(group, venueId, lineage, revision, slotKey, start)
     }
 
-    private fun successor(fixture: Fixture, title: String) = WeeklySeriesRule(fixture.group, fixture.lineage, UUID.randomUUID(), "America/Sao_Paulo", DATE, slots = listOf(WeeklySlotRule(fixture.slotKey, DayOfWeek.WEDNESDAY, LocalTime.of(20, 0), 100, GameVenueSnapshot(fixture.venue, "Arena Central", "Rua das Flores 100", "Quadra 2"), 20, 120, 3000, title)))
+    private fun successor(fixture: Fixture, title: String, localTime: LocalTime = LocalTime.of(20, 0)) = WeeklySeriesRule(fixture.group, fixture.lineage, UUID.randomUUID(), "America/Sao_Paulo", DATE, slots = listOf(WeeklySlotRule(fixture.slotKey, DayOfWeek.WEDNESDAY, localTime, 100, GameVenueSnapshot(fixture.venue, "Arena Central", "Rua das Flores 100", "Quadra 2"), 20, 120, 3000, title)))
+
+    private fun slot(fixture: Fixture, localTime: LocalTime): UUID {
+        val slotKey = UUID.randomUUID()
+        execute("INSERT INTO game_series_slots (series_revision_id,group_id,slot_key,title,weekday,local_time,duration_minutes,venue_id,venue_name,venue_address,venue_court,capacity,confirmation_lead_minutes,game_fee_cents,created_at) VALUES ('${fixture.revision}','${fixture.group}','$slotKey','Treino semanal',3,TIME '$localTime',90,'${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,180,2500,now())")
+        return slotKey
+    }
 
     private fun game(
         fixture: Fixture,
         localDate: LocalDate,
         status: String = "PUBLISHED",
         localTime: LocalTime = LocalTime.of(19, 30),
+        slotKey: UUID = fixture.slotKey,
     ): UUID {
         val id = UUID.randomUUID(); val starts = localDate.atTime(localTime).toInstant(ZoneOffset.ofHours(-3)); val deadline = starts.minusSeconds(10800)
-        execute("INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','${fixture.lineage}','${fixture.revision}','${fixture.slotKey}','Treino semanal',DATE '$localDate',TIME '$localTime','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'$status',now(),now())")
+        execute("INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','${fixture.lineage}','${fixture.revision}','$slotKey','Treino semanal',DATE '$localDate',TIME '$localTime','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'$status',now(),now())")
         return id
     }
 

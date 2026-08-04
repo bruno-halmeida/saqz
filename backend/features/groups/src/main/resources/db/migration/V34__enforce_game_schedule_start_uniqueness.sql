@@ -1,10 +1,15 @@
--- Existing installations may already contain overlapping active rows from the
--- pre-index race. Keep the earliest game (created_at, then id as a stable tie
--- breaker), preserve every row, and cancel only the later duplicates.
+-- Existing installations may already contain overlapping mutable schedule rows
+-- from the pre-index race. Keep the earliest game (created_at, then id as a
+-- stable tie breaker), preserve every row, and cancel only later DRAFT/PUBLISHED
+-- duplicates. COMPLETED history is immutable and is intentionally out of scope.
 --
 -- A migration has no request actor. The group owner is used as the historical
 -- actor so the same charge audit semantics as GameMutation.CANCEL can be
 -- retained while satisfying the actor/changer foreign keys.
+-- Lock writers before the scan so an older instance cannot insert another
+-- mutable schedule row between deduplication and index creation.
+LOCK TABLE games IN SHARE ROW EXCLUSIVE MODE;
+
 CREATE TEMP TABLE v34_duplicate_games ON COMMIT DROP AS
 SELECT id, group_id, owner_user_id
 FROM (
@@ -17,7 +22,7 @@ FROM (
            ) AS game_rank
     FROM games
     JOIN access_groups groups ON groups.id = games.group_id
-    WHERE games.status <> 'CANCELLED'
+    WHERE games.status IN ('DRAFT', 'PUBLISHED')
 ) AS ranked_games
 WHERE game_rank > 1;
 
@@ -77,4 +82,4 @@ WHERE game.id = duplicates.id;
 
 CREATE UNIQUE INDEX uq_games_group_starts_at_active
     ON games (group_id, starts_at)
-    WHERE status <> 'CANCELLED';
+    WHERE status IN ('DRAFT', 'PUBLISHED');

@@ -189,6 +189,26 @@ class GameMigrationIntegrationTest {
         )
     }
 
+    @Test
+    fun `v34 leaves completed duplicates intact and outside the schedule index`() {
+        flyway().clean()
+        flyway("32").migrate()
+        val group = completeGroup("schedule-history")
+        val venue = venue(group)
+        val first = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:00:00+00'")
+        val later = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:01:00+00'")
+        execute("UPDATE games SET status = 'COMPLETED', version = 5 WHERE id = '$first'")
+        execute("UPDATE games SET status = 'COMPLETED', version = 7 WHERE id = '$later'")
+
+        flyway().migrate()
+
+        assertEquals("COMPLETED", string("SELECT status FROM games WHERE id = '$first'"))
+        assertEquals(5, int("SELECT version FROM games WHERE id = '$first'"))
+        assertEquals("COMPLETED", string("SELECT status FROM games WHERE id = '$later'"))
+        assertEquals(7, int("SELECT version FROM games WHERE id = '$later'"))
+        assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group'"))
+    }
+
     @Test fun `game rejects invalid lifecycle status`() = invalidGame("status", "'OPEN'")
     @Test fun `game rejects title limit`() = invalidGame("title", "'X'")
     @Test fun `game rejects duration limit`() = invalidGame("duration_minutes", "481")

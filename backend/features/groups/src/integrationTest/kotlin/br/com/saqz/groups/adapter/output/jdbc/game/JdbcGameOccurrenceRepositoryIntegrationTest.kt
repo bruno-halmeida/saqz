@@ -159,6 +159,18 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertEquals("Final semanal", fixture.repository.find(fixture.group, game.id)?.snapshot?.title)
     }
 
+    @Test fun `completed game does not block a new draft at the same start`() {
+        val fixture = fixture()
+        val completed = create(fixture)
+        assertIs<GameWriteResult.Saved>(fixture.repository.update(completed.copy(status = GameStatus.COMPLETED), 1))
+
+        val fresh = create(fixture, UUID.randomUUID())
+
+        assertEquals(GameStatus.COMPLETED, fixture.repository.find(fixture.group, completed.id)?.status)
+        assertEquals(GameStatus.DRAFT, fresh.status)
+        assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '${fixture.group}'"))
+    }
+
     @Test fun `stale update retains authoritative row unchanged`() {
         val fixture = fixture()
         val game = create(fixture)

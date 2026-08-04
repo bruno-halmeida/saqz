@@ -70,6 +70,7 @@ class JdbcSeriesBoundaryRepository(
 
     private fun regenerateFuture(connection: Connection, command: FutureBoundaryCommand) {
         val identities = command.occurrences.map { it.occurrence.localDate to it.occurrence.slot.slotKey }.toSet()
+        cancelRemovedFuture(connection, command, identities)
         command.occurrences.forEach { value ->
             val occurrence = value.occurrence
             val updated = connection.prepareStatement(REGENERATE).use { statement ->
@@ -84,6 +85,13 @@ class JdbcSeriesBoundaryRepository(
                 insertOccurrence(connection, value)
             }
         }
+    }
+
+    private fun cancelRemovedFuture(
+        connection: Connection,
+        command: FutureBoundaryCommand,
+        identities: Set<Pair<java.time.LocalDate, java.util.UUID>>,
+    ) {
         connection.prepareStatement(SELECT_FUTURE_IDENTITIES).use { statement ->
             statement.setObject(1, command.groupId)
             statement.setObject(2, command.successorRule.seriesId)

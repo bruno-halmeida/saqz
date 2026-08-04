@@ -212,7 +212,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             FROM games
             WHERE group_id = :groupId
               AND starts_at = :startsAt
-              AND status <> 'CANCELLED'
+              AND status IN ('DRAFT', 'PUBLISHED')
             ORDER BY id
             LIMIT 1
         """
@@ -223,7 +223,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             WHERE group_id = :groupId
               AND starts_at = :startsAt
               AND id <> :excludingGameId
-              AND status <> 'CANCELLED'
+              AND status IN ('DRAFT', 'PUBLISHED')
             ORDER BY id
             LIMIT 1
         """
