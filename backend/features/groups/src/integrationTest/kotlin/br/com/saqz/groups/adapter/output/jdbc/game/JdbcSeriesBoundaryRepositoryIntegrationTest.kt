@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.game
 
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeries
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
 import br.com.saqz.groups.application.game.series.OnlyThisBoundaryCommand
 import br.com.saqz.groups.application.game.series.SeriesBoundaryAction
@@ -55,6 +56,18 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         assertEquals(2, int("SELECT count(*) FROM games WHERE series_id='${fixture.lineage}'"))
     }
 
+    @Test fun `only this edit maps an occupied start to a schedule conflict`() {
+        val fixture = fixture(); val selected = game(fixture, DATE); occupiedGame(fixture)
+
+        assertFailsWith<GameScheduleConflictWriteException> {
+            repository().applyOnlyThis(
+                OnlyThisBoundaryCommand(fixture.group, selected, 1, DATE.minusDays(1), SeriesBoundaryAction.EDIT, snapshot(DATE, "Treino alterado")),
+            )
+        }
+        assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id='$selected'"))
+        assertEquals(false, bool("SELECT detached_from_series FROM games WHERE id='$selected'"))
+    }
+
     @Test fun `only this cancel preserves stable occurrence identity`() {
         val fixture = fixture(); val selected = game(fixture, DATE)
         assertEquals(SeriesBoundaryResult.Applied, repository().applyOnlyThis(OnlyThisBoundaryCommand(fixture.group, selected, 1, DATE.minusDays(1), SeriesBoundaryAction.CANCEL)))
@@ -81,6 +94,16 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         assertEquals(12, int("SELECT count(*) FROM games WHERE series_revision_id='${successor.revisionId}'"))
         assertEquals(12, int("SELECT count(*) FROM games WHERE series_id='${fixture.lineage}'"))
         assertEquals("Treino novo", string("SELECT title FROM games WHERE series_revision_id='${successor.revisionId}' ORDER BY local_date LIMIT 1"))
+    }
+
+    @Test fun `future edit maps a regenerated occupied start to a schedule conflict`() {
+        val fixture = fixture(); val selected = game(fixture, DATE); occupiedGame(fixture)
+        val successor = successor(fixture, "Treino novo")
+
+        assertFailsWith<GameScheduleConflictWriteException> { apply(repository(), fixture, successor) }
+        assertEquals(1, int("SELECT count(*) FROM game_series WHERE lineage_id='${fixture.lineage}'"))
+        assertEquals(1, int("SELECT version FROM game_series WHERE id='${fixture.revision}'"))
+        assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id='$selected'"))
     }
 
     @Test fun `future edit preserves past and completed snapshots`() {
@@ -151,9 +174,20 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
 
     private fun successor(fixture: Fixture, title: String) = WeeklySeriesRule(fixture.group, fixture.lineage, UUID.randomUUID(), "America/Sao_Paulo", DATE, slots = listOf(WeeklySlotRule(fixture.slotKey, DayOfWeek.WEDNESDAY, LocalTime.of(20, 0), 100, GameVenueSnapshot(fixture.venue, "Arena Central", "Rua das Flores 100", "Quadra 2"), 20, 120, 3000, title)))
 
-    private fun game(fixture: Fixture, localDate: LocalDate, status: String = "PUBLISHED"): UUID {
-        val id = UUID.randomUUID(); val starts = localDate.atTime(19,30).toInstant(ZoneOffset.ofHours(-3)); val deadline = starts.minusSeconds(10800)
-        execute("INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','${fixture.lineage}','${fixture.revision}','${fixture.slotKey}','Treino semanal',DATE '$localDate',TIME '19:30','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'$status',now(),now())")
+    private fun game(
+        fixture: Fixture,
+        localDate: LocalDate,
+        status: String = "PUBLISHED",
+        localTime: LocalTime = LocalTime.of(19, 30),
+    ): UUID {
+        val id = UUID.randomUUID(); val starts = localDate.atTime(localTime).toInstant(ZoneOffset.ofHours(-3)); val deadline = starts.minusSeconds(10800)
+        execute("INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','${fixture.lineage}','${fixture.revision}','${fixture.slotKey}','Treino semanal',DATE '$localDate',TIME '$localTime','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'$status',now(),now())")
+        return id
+    }
+
+    private fun occupiedGame(fixture: Fixture): UUID {
+        val id = UUID.randomUUID(); val starts = DATE.atTime(20, 0).toInstant(ZoneOffset.ofHours(-3)); val deadline = starts.minusSeconds(10800)
+        execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','Avulso ocupado',DATE '$DATE',TIME '20:00','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'PUBLISHED',now(),now())")
         return id
     }
 

@@ -152,6 +152,26 @@ class GameMigrationIntegrationTest {
         assertEquals(1, int("SELECT version FROM games WHERE id = '$game'"))
     }
 
+    @Test
+    fun `v33 cancels later active duplicates before creating the unique schedule index`() {
+        flyway().clean()
+        flyway("32").migrate()
+        val group = completeGroup("schedule-dedupe")
+        val venue = venue(group)
+        val first = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:00:00+00'")
+        val later = game(group, venue, override = "created_at = TIMESTAMPTZ '2026-01-01 00:01:00+00'")
+
+        flyway().migrate()
+
+        assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id = '$first'"))
+        assertEquals("CANCELLED", string("SELECT status FROM games WHERE id = '$later'"))
+        assertEquals(2, int("SELECT count(*) FROM games WHERE group_id = '$group'"))
+        assertEquals(
+            1,
+            int("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_games_group_starts_at_active'"),
+        )
+    }
+
     @Test fun `game rejects invalid lifecycle status`() = invalidGame("status", "'OPEN'")
     @Test fun `game rejects title limit`() = invalidGame("title", "'X'")
     @Test fun `game rejects duration limit`() = invalidGame("duration_minutes", "481")

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.series.FutureBoundaryCommand
 import br.com.saqz.groups.application.game.series.OnlyThisBoundaryCommand
@@ -192,7 +193,13 @@ class JdbcSeriesBoundaryRepository(
 
     private fun <T> transaction(block: (Connection) -> T): T = dataSource.connection.use { connection ->
         connection.autoCommit = false
-        try { block(connection).also { connection.commit() } } catch (failure: Exception) { connection.rollback(); throw failure }
+        try {
+            block(connection).also { connection.commit() }
+        } catch (failure: Exception) {
+            connection.rollback()
+            if (failure.isGameScheduleConflict()) throw GameScheduleConflictWriteException()
+            throw failure
+        }
     }
 
     private data class LockedGame(val version: Long, val date: java.time.LocalDate, val status: String, val detached: Boolean)
