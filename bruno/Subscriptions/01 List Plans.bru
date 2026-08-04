@@ -1,0 +1,22 @@
+meta {
+  name: List Plans
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{backendUrl}}/plans
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns the available plans", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}

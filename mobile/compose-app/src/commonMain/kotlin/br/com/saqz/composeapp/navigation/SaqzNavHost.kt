@@ -57,6 +57,7 @@ import br.com.saqz.groups.presentation.statement.StatementRoot
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
 import br.com.saqz.groups.presentation.ui.finance.FinancePlaceholderScreen
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
@@ -331,7 +332,17 @@ internal fun SaqzNavHost(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
-            entry<FinanceRoute.GroupCashbox> { FinancePlaceholderScreen() }
+            entry<FinanceRoute.GroupCashbox> { route ->
+                GroupCashboxRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onMutationSuccess = { groupDetailsRefreshVersion++ },
+                    onOpenStatement = { groupId ->
+                        // TODO(pós-merge VUL-180): retarget para NewEntry
+                        backStack.add(FinanceRoute.Statement(groupId))
+                    },
+                )
+            }
             entry<FinanceRoute.Statement> { route ->
                 StatementRoot(
                     groupId = route.groupId,

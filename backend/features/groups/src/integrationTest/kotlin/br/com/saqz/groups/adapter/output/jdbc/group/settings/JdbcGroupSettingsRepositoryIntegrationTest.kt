@@ -36,6 +36,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcGroupSettingsRepositoryIntegrationTest {
@@ -291,7 +292,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
     }
 
     @Test
-    fun `owner stores the group pix and omitting it preserves the stored key`() {
+    fun `owner stores the group pix, omitting preserves it, and empty clears it`() {
         val owner = insertUser("pix-settings-owner")
         val group = insertGroup(owner)
 
@@ -310,6 +311,17 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
             useCase.execute(owner, group, 2, UpdateGroupProfileInput(profile())),
         )
         assertEquals("racha@saqz.test", text("SELECT pix_key FROM access_groups WHERE id = '$group'"))
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                3,
+                UpdateGroupProfileInput(profile(pixKey = "  ", pixLabel = "")),
+            ),
+        )
+        assertTrue(boolean("SELECT pix_key IS NULL FROM access_groups WHERE id = '$group'"))
+        assertTrue(boolean("SELECT pix_label IS NULL FROM access_groups WHERE id = '$group'"))
     }
 
     @Test

@@ -47,7 +47,9 @@ class GameControllerTest {
     @Test fun `stale edit returns version conflict and preserves game`() { val game=seed(); assertFailsWith<VersionConflictException>{controller.edit(ID,"$group","${game.id}","\"2\"",request().copy(title="Changed"))}; assertEquals("Treino semanal",repository.games.getValue(game.id).snapshot.title) }
     @Test fun `publish returns published state and attendance effect`() { val game=seed(); val response=controller.publish(ID,"$group","${game.id}","\"1\""); assertEquals("PUBLISHED",response.body!!.status); assertTrue(GameSideEffect.ATTENDANCE_OPENED in effects.last) }
     @Test fun `invalid lifecycle transition has stable exception`() { val game=seed(); assertFailsWith<InvalidGameTransitionException>{controller.complete(ID,"$group","${game.id}","\"1\"")} }
-    @Test fun `cancel reports finance review without refund field`() { val game=seed(GameStatus.PUBLISHED); val response=controller.cancel(ID,"$group","${game.id}","\"1\""); assertEquals("CANCELLED",response.body!!.status); assertTrue(response.body!!.financeReviewRequired); assertTrue(GameSideEffect.PENDING_CHARGES_CANCELLED in effects.last) }
+    @Test fun `cancel without finance review returns false`() { val game=seed(GameStatus.PUBLISHED); val response=controller.cancel(ID,"$group","${game.id}","\"1\""); assertEquals("CANCELLED",response.body!!.status); assertFalse(response.body!!.financeReviewRequired); assertTrue(GameSideEffect.PENDING_CHARGES_CANCELLED in effects.last) }
+    @Test fun `cancel with a paid charge returns finance review immediately`() { effects.paidCharge = true; val game=seed(GameStatus.PUBLISHED); val response=controller.cancel(ID,"$group","${game.id}","\"1\""); assertTrue(response.body!!.financeReviewRequired) }
+    @Test fun `read returns persisted finance review flag`() { val game=seed(GameStatus.CANCELLED); repository.games[game.id]=game.copy(financeReviewRequired=true); val response=controller.read(ID,"$group","${game.id}"); assertTrue(response.body!!.financeReviewRequired) }
     @Test fun `complete freezes published game`() { val game=seed(GameStatus.PUBLISHED); val response=controller.complete(ID,"$group","${game.id}","\"1\""); assertEquals("COMPLETED",response.body!!.status); assertEquals(setOf(GameSideEffect.ATTENDANCE_FROZEN),effects.last) }
 
     private fun seed(status: GameStatus=GameStatus.DRAFT): Game { val game=Game(UUID.randomUUID(),group,snapshot(),status); repository.games[game.id]=game; return game }
@@ -65,6 +67,6 @@ class GameControllerTest {
         override fun list(groupId:UUID)=if(groupId==group) games.values.toList() else emptyList()
         override fun find(groupId:UUID,gameId:UUID)=if(groupId==group)games[gameId] else null
     }
-    private class RecordingEffects:GameSideEffectPort { var last:Set<GameSideEffect> = emptySet(); override fun apply(game:Game,actorId:UUID,effects:Set<GameSideEffect>){last=effects} }
+    private inner class RecordingEffects:GameSideEffectPort { var last:Set<GameSideEffect> = emptySet(); var paidCharge = false; override fun apply(game:Game,actorId:UUID,effects:Set<GameSideEffect>){last=effects; if (paidCharge && GameSideEffect.PENDING_CHARGES_CANCELLED in effects) repository.games[game.id] = game.copy(financeReviewRequired=true)} }
     private companion object { val ID=RequestIdentity("subject",emailVerified=true,displayName="Player"); val DATE=LocalDate.of(2026,8,12); val START=Instant.parse("2026-08-12T22:30:00Z") }
 }

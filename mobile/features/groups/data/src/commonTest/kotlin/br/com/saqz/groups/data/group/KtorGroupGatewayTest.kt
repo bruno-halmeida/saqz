@@ -170,6 +170,20 @@ class KtorGroupGatewayTest {
             )
         }
 
+    @Test fun `profile update keeps empty pix fields in the payload to clear them`() =
+        runTest {
+            fixture { req ->
+                val body = req.bodyJson()
+                assertTrue("pixKey" in body)
+                assertTrue("pixLabel" in body)
+                assertEquals("", body["pixKey"]?.jsonPrimitive?.content)
+                assertEquals("", body["pixLabel"]?.jsonPrimitive?.content)
+                group()
+            }.gateway.updateProfile(
+                profileUpdate().copy(form = form().copy(pixKey = "", pixLabel = "")),
+            )
+        }
+
     @Test fun `read maps game config defaults when absent`() =
         runTest {
             val g = fixture { group(baseJson()) }

@@ -63,6 +63,11 @@ import br.com.saqz.groups.resources.group_game_config_promotion_hint
 import br.com.saqz.groups.resources.group_game_config_promotion_label
 import br.com.saqz.groups.resources.group_game_config_promotion_manual
 import br.com.saqz.groups.resources.group_game_config_title
+import br.com.saqz.groups.resources.group_pix_key_hint
+import br.com.saqz.groups.resources.group_pix_key_label
+import br.com.saqz.groups.resources.group_pix_label_hint
+import br.com.saqz.groups.resources.group_pix_label_label
+import br.com.saqz.groups.resources.group_pix_title
 import br.com.saqz.groups.resources.group_setup_add_slot
 import br.com.saqz.groups.resources.group_setup_capacity_beach_hint
 import br.com.saqz.groups.resources.group_setup_capacity_hint
@@ -653,6 +658,54 @@ private const val DescriptionMinLines = 3
 
 // Ordem do export: FIFO à esquerda, Manual à direita.
 private val PromotionModeOptions = listOf(PromotionMode.FIFO, PromotionMode.MANUAL)
+
+@Composable
+internal fun GroupPixSection(
+    pixKey: String?,
+    pixLabel: String?,
+    onPixKeyChange: (String) -> Unit,
+    onPixLabelChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    pixKeyError: String? = null,
+    pixLabelError: String? = null,
+) {
+    val keyLabel = stringResource(Res.string.group_pix_key_label)
+    val labelLabel = stringResource(Res.string.group_pix_label_label)
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+    ) {
+        SaqzSectionHeader(title = stringResource(Res.string.group_pix_title))
+        GroupFormCard(
+            title = keyLabel,
+            hint = stringResource(Res.string.group_pix_key_hint),
+        ) {
+            SaqzInput(
+                value = pixKey.orEmpty(),
+                onValueChange = onPixKeyChange,
+                label = keyLabel,
+                showLabel = false,
+                placeholder = stringResource(Res.string.group_pix_key_hint),
+                errorText = pixKeyError,
+                modifier = Modifier.testTag(GroupSetupTags.PixKey),
+            )
+            Text(
+                text = labelLabel,
+                style = SaqzTheme.typography.label,
+                color = SaqzTheme.colors.textPrimary,
+            )
+            SaqzInput(
+                value = pixLabel.orEmpty(),
+                onValueChange = onPixLabelChange,
+                label = labelLabel,
+                showLabel = false,
+                placeholder = stringResource(Res.string.group_pix_label_hint),
+                errorText = pixLabelError,
+                modifier = Modifier.testTag(GroupSetupTags.PixLabel),
+            )
+        }
+    }
+}
 
 /**
  * VUL-157 — `2i` apenas. A seção agrupa os quatro campos que o dono/admin controla:

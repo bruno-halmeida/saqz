@@ -1,0 +1,21 @@
+meta {
+  name: Preview Invite (public)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{backendUrl}}/api/invites/preview
+  body: json
+  auth: none
+}
+
+body:json {
+  {"code": "{{inviteCode}}"}
+}
+
+tests {
+  test("returns group preview for the invite code", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

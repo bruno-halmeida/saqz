@@ -99,7 +99,9 @@ internal fun GroupDetailsScreen(
                 state.attendance?.let {
                     GroupAttendanceStats(attendance = it, isAdmin = state.isAdmin, onIntent = onIntent)
                 }
-                state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
+                if (state.isAdmin) {
+                    state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
+                }
                 state.venue?.let { GroupVenueCard(venue = it, isAdmin = state.isAdmin, onIntent = onIntent) }
                 if (!state.isAdmin) {
                     GroupShortcutTiles(onIntent = onIntent)

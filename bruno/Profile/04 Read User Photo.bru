@@ -1,0 +1,22 @@
+meta {
+  name: Read User Photo
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{backendUrl}}/api/session/photo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns the stored photo bytes", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("etag")).to.be.a("string").and.not.empty;
+  });
+}

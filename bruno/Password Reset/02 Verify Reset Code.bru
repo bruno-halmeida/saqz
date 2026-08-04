@@ -1,0 +1,26 @@
+meta {
+  name: Verify Reset Code (public)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{backendUrl}}/api/password-reset/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {"email": "{{resetEmail}}", "code": "{{resetCode}}"}
+}
+
+vars:post-response {
+  resetToken: res.body.token
+}
+
+tests {
+  test("code is exchanged for a reset token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().token).to.be.a("string");
+  });
+}
