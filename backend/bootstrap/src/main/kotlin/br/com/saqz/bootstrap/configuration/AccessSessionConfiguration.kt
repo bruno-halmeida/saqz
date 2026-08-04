@@ -111,8 +111,10 @@ import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeries
 import br.com.saqz.groups.application.game.series.ApplySeriesBoundary
 import br.com.saqz.groups.application.game.series.WeeklySeriesService
+import br.com.saqz.groups.adapter.input.scheduling.MonthlyChargeJob
 import br.com.saqz.groups.application.finance.charge.ChargeManagement
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
+import br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
 import br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects
 import br.com.saqz.groups.application.finance.expense.ExpenseService
 import br.com.saqz.access.application.session.BootstrapSession
@@ -134,14 +136,18 @@ import org.springframework.core.env.Environment
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.springframework.mail.javamail.JavaMailSender
+import org.springframework.scheduling.annotation.EnableScheduling
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("spring.datasource.url")
+@EnableScheduling
 class AccessSessionConfiguration {
     @Bean
     fun accessDataSource(environment: Environment): DataSource = DriverManagerDataSource(
@@ -672,6 +678,20 @@ class AccessSessionConfiguration {
     @Bean fun expenseRepository(dataSource: DataSource) = JdbcExpenseRepository(dataSource)
     @Bean fun expenseService(transaction: JdbcTransactionRunner, repository: JdbcExpenseRepository) = ExpenseService(transaction, repository, java.util.UUID::randomUUID, Instant::now)
     @Bean fun expenseController(actor: VerifiedGroupActorResolver, expenses: ExpenseService, charges: ChargeManagement) = ExpenseController(actor, expenses, charges)
+    @Bean fun monthlyChargeSchedule(
+        repository: JdbcChargeTransactionRepository,
+        charges: ChargeTransactions,
+        @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
+    ) = MonthlyChargeSchedule(
+        repository,
+        charges,
+        { LocalDate.now(ZoneId.of(zone)) },
+        { membership, reason ->
+            LoggerFactory.getLogger(MonthlyChargeSchedule::class.java)
+                .warn("mensalidade nao gerada para o membro {} do grupo {}: {}", membership.memberId, membership.groupId, reason)
+        },
+    )
+    @Bean fun monthlyChargeJob(schedule: MonthlyChargeSchedule) = MonthlyChargeJob(schedule)
 
     @Bean fun athleteRepository(dataSource: DataSource) = JdbcAthleteRepository(dataSource)
     @Bean fun athleteRosterRepository(dataSource: DataSource) = JdbcAthleteRosterRepository(dataSource)
