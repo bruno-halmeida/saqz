@@ -49,7 +49,11 @@ import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
+import br.com.saqz.groups.presentation.newentry.NewEntryEffect
+import br.com.saqz.groups.presentation.newentry.NewEntryRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.statement.StatementEffect
+import br.com.saqz.groups.presentation.statement.StatementRoot
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
 import br.com.saqz.groups.presentation.ui.finance.FinancePlaceholderScreen
@@ -327,7 +331,30 @@ internal fun SaqzNavHost(
                 )
             }
             entry<FinanceRoute.GroupCashbox> { FinancePlaceholderScreen() }
-            entry<FinanceRoute.Statement> { FinancePlaceholderScreen() }
+            entry<FinanceRoute.Statement> { route ->
+                StatementRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onEffect = { effect ->
+                        when (effect) {
+                            is StatementEffect.OpenNewEntry -> backStack.add(
+                                FinanceRoute.NewEntry(effect.groupId),
+                            )
+                        }
+                    },
+                )
+            }
+            entry<FinanceRoute.NewEntry> { route ->
+                NewEntryRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onEffect = { effect ->
+                        when (effect) {
+                            NewEntryEffect.Saved -> pop()
+                        }
+                    },
+                )
+            }
             entry<FinanceRoute.GameSettlement> { FinancePlaceholderScreen() }
             entry<SubscriptionsRoute.PlanSelection> {
                 PlanSelectionRoot(

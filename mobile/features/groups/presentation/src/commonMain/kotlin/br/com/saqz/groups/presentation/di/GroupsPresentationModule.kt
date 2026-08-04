@@ -16,11 +16,13 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
 import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
+import br.com.saqz.groups.presentation.newentry.NewEntryViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
 import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import br.com.saqz.groups.presentation.statement.StatementViewModel
 import org.koin.core.parameter.ParametersHolder
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
@@ -50,6 +52,8 @@ fun groupsPresentationModule(): Module = module {
         )
     }
     viewModel { params -> GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
+    viewModel { params -> StatementViewModel(params.get(), get()) }
+    viewModel { params -> NewEntryViewModel(params.get(), params.get(), get(), get<GroupNowPort>()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->

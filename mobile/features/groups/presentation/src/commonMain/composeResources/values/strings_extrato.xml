@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="statement_title">Extrato</string>
+    <string name="statement_filter_all">Tudo</string>
+    <string name="statement_filter_in">Entradas</string>
+    <string name="statement_filter_out">Saídas</string>
+    <string name="statement_summary">%1$d lançamentos · saldo %2$s</string>
+    <string name="statement_empty_title">Nenhum lançamento neste período</string>
+    <string name="statement_empty_body">Quando houver entradas ou saídas, elas aparecem aqui.</string>
+    <string name="statement_load_more">Carregar mais</string>
+    <string name="statement_new_entry">Novo lançamento</string>
+    <string name="statement_in_accessibility">Entrada: %1$s, %2$s, %3$s</string>
+    <string name="statement_out_accessibility">Saída: %1$s, %2$s, %3$s</string>
+
+    <string name="new_entry_title">Novo lançamento</string>
+    <string name="new_entry_direction">Tipo</string>
+    <string name="new_entry_in">Entrada</string>
+    <string name="new_entry_out">Saída</string>
+    <string name="new_entry_amount">Valor</string>
+    <string name="new_entry_amount_hint">0,00</string>
+    <string name="new_entry_shortcut_80">R$ 80</string>
+    <string name="new_entry_shortcut_120">R$ 120</string>
+    <string name="new_entry_shortcut_160">R$ 160</string>
+    <string name="new_entry_description">Descrição</string>
+    <string name="new_entry_description_hint">Ex.: compra de bolas</string>
+    <string name="new_entry_category">Categoria</string>
+    <string name="new_entry_category_court">Quadra</string>
+    <string name="new_entry_category_material">Material</string>
+    <string name="new_entry_category_racha">Racha</string>
+    <string name="new_entry_category_other">Outros</string>
+    <string name="new_entry_date">Data</string>
+    <string name="new_entry_save">Salvar lançamento</string>
+    <string name="new_entry_saving">Salvando…</string>
+    <string name="new_entry_validation">Preencha valor, descrição e uma data válida.</string>
+    <string name="new_entry_save_error">Não foi possível salvar o lançamento. Tente novamente.</string>
+</resources>
