@@ -85,6 +85,17 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `dono com assinatura cancelada localmente tambem fica sem plano`() {
+        val dono = insertUser("cancel-local", name = "Cancelou Local")
+        insertGroup(dono, name = "Grupo Cancelado Local", createdAt = now)
+        insertSubscription(dono, plan = "ORGANIZADOR")
+        execute("UPDATE subscriptions SET canceled_at = now() WHERE owner_user_id = '$dono'")
+
+        assertNull(repository.list(null, null, 1, 10).items.single().ownerPlan)
+        assertNull(repository.find(repository.list(null, null, 1, 10).items.single().groupId)?.ownerPlan)
+    }
+
+    @Test
     fun `lista default esconde apagados e o filtro deleted os expoe`() {
         val dono = insertUser("dono", name = "Dono Comum")
         insertGroup(dono, name = "Grupo Vivo", createdAt = now)

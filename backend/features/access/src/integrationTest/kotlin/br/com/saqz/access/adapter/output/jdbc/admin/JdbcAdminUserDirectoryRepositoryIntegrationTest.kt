@@ -94,6 +94,18 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `cancelamento local sem webhook tambem vira FREE e detalhe mostra CANCELED`() {
+        val cancelado = insertUser("cancel-local", name = "Cancelou Local", email = "cl@saqz.test")
+        insertSubscription(cancelado, plan = "TITULAR")
+        execute("UPDATE subscriptions SET canceled_at = now() WHERE owner_user_id = '$cancelado'")
+
+        val amadores = repository.list(null, plan = "FREE", status = null, page = 1, size = 10)
+
+        assertEquals(listOf("Cancelou Local"), amadores.items.map { it.displayName })
+        assertEquals("CANCELED", repository.find(cancelado)?.subscription?.status)
+    }
+
+    @Test
     fun `filtra por status de suspensao e lista ignora conta apagada`() {
         val suspenso = insertUser("suspenso", name = "Pessoa Suspensa", email = "sus@saqz.test")
         insertUser("ativo", name = "Pessoa Ativa", email = "ativa@saqz.test")

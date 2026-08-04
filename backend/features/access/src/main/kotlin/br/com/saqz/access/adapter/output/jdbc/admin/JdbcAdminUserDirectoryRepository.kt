@@ -32,7 +32,7 @@ class JdbcAdminUserDirectoryRepository(
                      WHERE g.owner_user_id = u.id AND g.deleted_at IS NULL) AS owned_groups,
                    count(*) OVER () AS total
             FROM access_users u
-            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED'
+            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
             WHERE u.deleted_at IS NULL
               AND (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
@@ -75,7 +75,7 @@ class JdbcAdminUserDirectoryRepository(
             """
             SELECT count(*)
             FROM access_users u
-            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED'
+            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
             WHERE u.deleted_at IS NULL
               AND (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
@@ -107,7 +107,8 @@ class JdbcAdminUserDirectoryRepository(
             """
             SELECT u.id, u.display_name, u.email, u.nickname, u.phone, u.city,
                    u.suspended_at, u.created_at, u.updated_at,
-                   s.plan, s.cycle, s.status AS subscription_status, s.created_at AS subscribed_at
+                   s.plan, s.cycle, s.created_at AS subscribed_at,
+                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS subscription_status
             FROM access_users u
             LEFT JOIN subscriptions s ON s.owner_user_id = u.id
             WHERE u.id = :id AND u.deleted_at IS NULL
