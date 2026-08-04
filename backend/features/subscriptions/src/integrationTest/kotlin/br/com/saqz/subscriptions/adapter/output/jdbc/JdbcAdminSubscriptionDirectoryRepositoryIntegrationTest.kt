@@ -72,7 +72,8 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         val comDesconto = insertUser(name = "Com Desconto", email = "cd@saqz.test")
         val esgotado = insertUser(name = "Cupom Esgotado", email = "ce@saqz.test")
         insertSubscription(comDesconto, plan = "TITULAR", couponId = cupom, couponCyclesRemaining = 2, createdAt = now)
-        insertSubscription(esgotado, plan = "TITULAR", couponId = cupom, couponCyclesRemaining = 0, createdAt = now)
+        // Estado real pós-esgotamento: remaining vira NULL, coupon_id fica.
+        insertSubscription(esgotado, plan = "TITULAR", couponId = cupom, couponCyclesRemaining = null, createdAt = now)
 
         val detalheDesconto = repository.find(comDesconto)!!.summary
         val detalheEsgotado = repository.find(esgotado)!!.summary
@@ -81,6 +82,30 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         assertEquals("GALERA10", detalheDesconto.couponCode)
         assertEquals(3_990, detalheEsgotado.priceCents)
         assertNull(detalheEsgotado.couponCode)
+    }
+
+    @Test
+    fun `cancelamento local sem webhook ja aparece como cancelada`() {
+        val dono = insertUser(name = "Cancelou Agora", email = "ca@saqz.test")
+        insertSubscription(dono, plan = "TITULAR", createdAt = now, canceledAt = now.minusSeconds(600))
+
+        val canceladas = repository.list(null, null, status = "CANCELED", page = 1, size = 10)
+        val ativas = repository.list(null, null, status = "ACTIVE", page = 1, size = 10)
+
+        assertEquals(listOf("Cancelou Agora"), canceladas.items.map { it.ownerName })
+        assertEquals("CANCELED", repository.find(dono)!!.summary.status)
+        assertEquals(0, ativas.total)
+    }
+
+    @Test
+    fun `pagina alem do fim preserva o total`() {
+        val dono = insertUser(name = "Uma Pessoa", email = "up@saqz.test")
+        insertSubscription(dono, plan = "ORGANIZADOR", createdAt = now)
+
+        val page = repository.list(null, null, null, page = 3, size = 10)
+
+        assertEquals(1, page.total)
+        assertEquals(0, page.items.size)
     }
 
     @Test
@@ -117,6 +142,7 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         cycle: String = "MONTHLY",
         status: String = "ACTIVE",
         createdAt: Instant,
+        canceledAt: Instant? = null,
         couponId: UUID? = null,
         couponCyclesRemaining: Int? = null,
     ) {
@@ -124,11 +150,14 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
             """
             INSERT INTO subscriptions (
                 owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
-                current_period_end, past_due_since, coupon_id, coupon_cycles_remaining, created_at, updated_at
+                current_period_end, past_due_since, canceled_at, coupon_id, coupon_cycles_remaining,
+                created_at, updated_at
             ) VALUES (
                 '$ownerId', '$plan', '$cycle', '$status', 'cus-$ownerId', 'sub-$ownerId',
                 '${now.plusSeconds(2_592_000)}', ${if (status == "PAST_DUE") "'$now'" else "NULL"},
-                ${couponId?.let { "'$it'" } ?: "NULL"}, ${couponCyclesRemaining ?: "NULL"}, '$createdAt', '$createdAt'
+                ${canceledAt?.let { "'$it'" } ?: "NULL"},
+                ${couponId?.let { "'$it'" } ?: "NULL"}, ${couponCyclesRemaining ?: "NULL"},
+                '$createdAt', '$createdAt'
             )
             """.trimIndent(),
         )
