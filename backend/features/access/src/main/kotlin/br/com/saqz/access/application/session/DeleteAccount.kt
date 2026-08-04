@@ -5,6 +5,9 @@ import java.util.UUID
 interface AccountDeletionRepository {
     /** Returns the active account id, or null when there is nothing left to delete. */
     fun softDelete(subject: String): UUID?
+
+    /** Instante da suspensão de plataforma, ou null quando a conta pode agir. */
+    fun suspendedAt(subject: String): java.time.Instant? = null
 }
 
 interface AccountGroupCleanup {
@@ -22,10 +25,16 @@ class DeleteAccount(
     private val repository: AccountDeletionRepository,
     private val groupCleanup: AccountGroupCleanup,
 ) {
-    fun execute(subject: String) = transactionRunner.inTransaction {
+    /** false = conta suspensa; nada foi apagado. */
+    fun execute(subject: String): Boolean = transactionRunner.inTransaction {
+        // Suspenso não apaga a conta nem demole os grupos que organiza.
+        if (repository.suspendedAt(subject) != null) {
+            return@inTransaction false
+        }
         repository.softDelete(subject)?.let { userId ->
             groupCleanup.deleteOwnedGroups(userId)
             groupCleanup.removeMemberships(userId)
         }
+        true
     }
 }
