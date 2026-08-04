@@ -52,13 +52,16 @@ class JdbcAdminRevenueStatsRepository(
             .param("to", to.atOffset(ZoneOffset.UTC))
             .query(Long::class.java).single()
 
+        // Denominador só com quem já pagou alguma vez: o checkout cria a linha PAST_DUE
+        // com first_confirmed_at nulo, e abandono de checkout não é base de churn.
         val activeAtStart = if (from == null) {
-            jdbc.sql("SELECT count(*) FROM subscriptions").query(Long::class.java).single()
+            jdbc.sql("SELECT count(*) FROM subscriptions WHERE first_confirmed_at IS NOT NULL")
+                .query(Long::class.java).single()
         } else {
             jdbc.sql(
                 """
                 SELECT count(*) FROM subscriptions
-                WHERE created_at < :from
+                WHERE first_confirmed_at IS NOT NULL AND first_confirmed_at < :from
                   AND (canceled_at IS NULL OR canceled_at >= :from)
                 """.trimIndent(),
             ).param("from", from.atOffset(ZoneOffset.UTC)).query(Long::class.java).single()
@@ -73,7 +76,7 @@ class JdbcAdminRevenueStatsRepository(
             """
             SELECT s.plan, s.cycle,
                    CASE WHEN s.coupon_id IS NOT NULL
-                             AND (s.coupon_cycles_remaining IS NULL OR s.coupon_cycles_remaining > 0)
+                             AND (c.duration_cycles IS NULL OR COALESCE(s.coupon_cycles_remaining, 0) > 0)
                         THEN c.discount_percent END AS discount_percent
             FROM subscriptions s
             LEFT JOIN coupons c ON c.id = s.coupon_id

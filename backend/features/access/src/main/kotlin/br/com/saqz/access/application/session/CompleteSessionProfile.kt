@@ -19,6 +19,10 @@ class CompleteSessionProfile(
         cityProvided: Boolean = false,
         phoneVisibilityProvided: Boolean = false,
     ): CompleteSessionProfileResult {
+        // Suspensão vale para toda escrita autenticada, não só para o bootstrap.
+        if (repository.suspendedAt(subject) != null) {
+            return CompleteSessionProfileResult.Suspended
+        }
         val phone = if (phoneProvided) {
             runCatching { PhoneNumber.from(rawPhone.orEmpty()) }.getOrNull()
                 ?: return CompleteSessionProfileResult.InvalidPhone

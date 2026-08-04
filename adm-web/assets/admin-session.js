@@ -16,6 +16,7 @@
 
   var me = null;
   var listeners = [];
+  var pendingError = null;
 
   // ---- Overlay de login (bloqueia o painel até validar o papel de admin) ----
   var overlay = document.createElement("div");
@@ -100,7 +101,9 @@
   auth.onAuthStateChanged(function (user) {
     if (!user) {
       me = null;
-      showOverlay();
+      // signOut disparado por falha de validação: a mensagem sobrevive a este callback.
+      showOverlay(pendingError);
+      pendingError = null;
       notify();
       return;
     }
@@ -112,12 +115,11 @@
       })
       .catch(function (error) {
         me = null;
+        pendingError = error.status === 403
+          ? "Esta conta não tem acesso ao painel."
+          : "Não deu para validar o acesso agora. Tente de novo.";
+        showOverlay(pendingError);
         auth.signOut();
-        showOverlay(
-          error.status === 403
-            ? "Esta conta não tem acesso ao painel."
-            : "Não deu para validar o acesso agora. Tente de novo.",
-        );
       });
   });
 

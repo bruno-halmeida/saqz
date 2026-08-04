@@ -72,6 +72,17 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `duplicidade e case-insensitive como o resto do fluxo 8`() {
+        // O fluxo 8 busca cupom com lower(code) e espera no máximo uma linha.
+        execute(
+            "INSERT INTO coupons (id, code, discount_percent, created_at) " +
+                "VALUES ('${UUID.randomUUID()}', 'promo', 5, now())",
+        )
+
+        assertEquals(AdminCouponCreateResult.DuplicateCode, repository.create("PROMO", 10, null, null))
+    }
+
+    @Test
     fun `desativar expira o cupom agora e preserva expiracao ja passada`() {
         val created = repository.create("SAQUE20", 20, null, validUntil = null) as AdminCouponCreateResult.Created
 
