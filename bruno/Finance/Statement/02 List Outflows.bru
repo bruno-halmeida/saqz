@@ -1,0 +1,14 @@
+meta {
+  name: List Finance Statement Outflows
+  type: http
+  seq: 2
+}
+get {
+  url: {{backendUrl}}/api/groups/{{groupId}}/finance/statement?direction=OUT&limit=20&offset=0
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("statement outflow filter", function () { expect(res.status).to.equal(200); res.body.items.forEach(function (item) { expect(item.direction).to.equal("OUT"); expect(item.amountCents).to.be.below(0); }); });
+}
