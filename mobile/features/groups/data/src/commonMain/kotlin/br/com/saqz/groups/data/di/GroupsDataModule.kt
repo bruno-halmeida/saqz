@@ -4,6 +4,8 @@ import br.com.saqz.groups.data.athlete.KtorAthleteGateway
 import br.com.saqz.groups.data.attendance.KtorAttendanceGateway
 import br.com.saqz.groups.data.attendance.share.KtorAttendanceSharingGateway
 import br.com.saqz.groups.data.finance.KtorAthleteFinanceGateway
+import br.com.saqz.groups.data.finance.KtorFinanceOverviewGateway
+import br.com.saqz.groups.data.finance.KtorFinanceStatementGateway
 import br.com.saqz.groups.data.finance.KtorOrganizerFinanceGateway
 import br.com.saqz.groups.data.game.KtorGameGateway
 import br.com.saqz.groups.data.group.KtorGroupGateway
@@ -13,6 +15,8 @@ import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.domain.finance.AthleteFinanceGateway
+import br.com.saqz.groups.domain.finance.FinanceOverviewGateway
+import br.com.saqz.groups.domain.finance.FinanceStatementGateway
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.group.GroupGateway
@@ -32,6 +36,8 @@ fun groupsDataModule(): Module = module {
     single<GroupMembershipGateway> { KtorGroupMembershipGateway(get()) }
     single<AthleteFinanceGateway> { KtorAthleteFinanceGateway(get()) }
     single<OrganizerFinanceGateway> { KtorOrganizerFinanceGateway(get()) }
+    single<FinanceStatementGateway> { KtorFinanceStatementGateway(get()) }
+    single<FinanceOverviewGateway> { KtorFinanceOverviewGateway(get()) }
     single<AttendanceGateway> { KtorAttendanceGateway(get()) }
     single<AttendanceSharingGateway> { KtorAttendanceSharingGateway(get()) }
     single<GroupPhotoGateway> { KtorGroupPhotoGateway(get()) }

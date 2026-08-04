@@ -159,6 +159,17 @@ class KtorGroupGatewayTest {
             }.gateway.updateProfile(UpdateGroupProfileCommand(GroupId(ID), GroupVersionToken("\"6\""), form))
         }
 
+    @Test fun `profile update sends pix fields`() =
+        runTest {
+            fixture { req ->
+                assertEquals("racha@saqz.test", req.bodyJson()["pixKey"]?.jsonPrimitive?.content)
+                assertEquals("Caixa", req.bodyJson()["pixLabel"]?.jsonPrimitive?.content)
+                group()
+            }.gateway.updateProfile(
+                profileUpdate().copy(form = form().copy(pixKey = "racha@saqz.test", pixLabel = "Caixa")),
+            )
+        }
+
     @Test fun `read maps game config defaults when absent`() =
         runTest {
             val g = fixture { group(baseJson()) }
@@ -198,6 +209,15 @@ class KtorGroupGatewayTest {
                     .group
             assertEquals("Gym", g.profile?.defaultVenue?.name)
             assertEquals(2500, g.financeDefaults?.defaultGameFeeCents)
+        }
+
+    @Test fun `complete response maps pix fields`() =
+        runTest {
+            val g = fixture {
+                group(completeJson().replace("\"defaultVenue\"", "\"pixKey\":\"racha@saqz.test\",\"pixLabel\":\"Caixa\",\"defaultVenue\""))
+            }.gateway.read(GroupId(ID)).success<VersionedGroup>().group
+            assertEquals("racha@saqz.test", g.profile?.pixKey)
+            assertEquals("Caixa", g.profile?.pixLabel)
         }
 
     @Test fun `older response defaults profile status privacy and currency`() =

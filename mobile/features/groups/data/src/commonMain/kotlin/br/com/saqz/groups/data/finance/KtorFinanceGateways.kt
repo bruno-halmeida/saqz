@@ -19,9 +19,6 @@ internal enum class ChargeKindTransport { GAME, MONTHLY }
 internal enum class ChargeStatusTransport { PENDING, PAID, WAIVED, CANCELLED }
 
 @Serializable
-internal enum class ExpenseCategoryTransport { VENUE, EQUIPMENT, REFEREE, OTHER }
-
-@Serializable
 internal enum class ExpenseStatusTransport { ACTIVE, VOIDED }
 
 @Serializable
@@ -50,6 +47,7 @@ internal data class ChargeTransport(
     val reviewRequired: Boolean = false,
     val version: Long,
     val events: List<ChargeAuditTransport>,
+    val paidMethod: String? = null,
 )
 
 @Serializable
@@ -74,6 +72,7 @@ private data class MonthlyChargeRequest(
 private data class ChargeStatusRequest(
     val status: ChargeStatusTransport,
     val note: String? = null,
+    val paidMethod: String? = null,
 )
 
 @Serializable
@@ -90,12 +89,13 @@ internal data class ExpenseTransport(
     val description: String,
     val amountCents: Long,
     val expenseDate: String,
-    val category: ExpenseCategoryTransport,
+    val category: String,
     val customCategory: String? = null,
     val notes: String? = null,
     val status: ExpenseStatusTransport,
     val version: Long,
     val events: List<ExpenseAuditTransport>,
+    val direction: String = "OUT",
 )
 
 @Serializable
@@ -110,9 +110,10 @@ private data class ExpenseWriteRequest(
     val description: String,
     val amountCents: Long,
     val expenseDate: String,
-    val category: ExpenseCategoryTransport,
+    val category: String,
     val customCategory: String? = null,
     val notes: String? = null,
+    val direction: String? = null,
 )
 
 @Serializable
@@ -122,6 +123,80 @@ internal data class FinanceTotalsTransport(
     val waivedChargeCents: Long,
     val cancelledChargeCents: Long,
     val activeExpenseCents: Long,
+)
+
+@Serializable
+private data class FinanceStatementItemTransport(
+    val id: String,
+    val type: String,
+    val direction: String,
+    val title: String,
+    val category: String,
+    val paidMethod: String? = null,
+    val occurredAt: String,
+    val amountCents: Long,
+)
+
+@Serializable
+private data class FinanceStatementSummaryTransport(
+    val totalInCents: Long,
+    val totalOutCents: Long,
+    val periodBalanceCents: Long,
+    val accumulatedBalanceCents: Long,
+)
+
+@Serializable
+private data class FinanceStatementPageTransport(
+    val month: String,
+    val items: List<FinanceStatementItemTransport>,
+    val summary: FinanceStatementSummaryTransport,
+    val limit: Int,
+    val offset: Int,
+    val hasMore: Boolean,
+)
+
+@Serializable
+private data class FinanceOverviewPeriodTransport(
+    val month: String? = null,
+    val year: Int? = null,
+)
+
+@Serializable
+private data class FinanceOverviewTotalsTransport(
+    val balanceCents: Long,
+    val inCents: Long,
+    val outCents: Long,
+    val pendingCents: Long,
+)
+
+@Serializable
+private data class FinanceOverviewGroupTransport(
+    val id: String,
+    val name: String,
+    val balanceCents: Long,
+    val pendingMonthlyCount: Int,
+    val hasBillingConfigured: Boolean,
+)
+
+@Serializable
+private data class FinanceOverviewTransactionTransport(
+    val id: String,
+    val groupId: String,
+    val groupName: String,
+    val kind: String,
+    val direction: String? = null,
+    val memberName: String? = null,
+    val description: String? = null,
+    val amountCents: Long,
+    val occurredAt: String,
+)
+
+@Serializable
+private data class FinanceOverviewTransport(
+    val period: FinanceOverviewPeriodTransport,
+    val totals: FinanceOverviewTotalsTransport,
+    val groups: List<FinanceOverviewGroupTransport>,
+    val recentTransactions: List<FinanceOverviewTransactionTransport>,
 )
 
 class KtorAthleteFinanceGateway(
@@ -136,6 +211,36 @@ class KtorAthleteFinanceGateway(
                 ChargeListTransport.serializer(),
             )
         }.toChargeListResult()
+}
+
+class KtorFinanceStatementGateway(
+    private val network: AuthenticatedNetworkClient,
+    private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+) : FinanceStatementGateway {
+    override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery) =
+        retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Get,
+                "api/groups/${groupId.value}/finance/statement",
+                FinanceStatementPageTransport.serializer(),
+                NetworkRequest(query = query.toNetworkQuery()),
+            )
+        }.toFinanceStatementResult()
+}
+
+class KtorFinanceOverviewGateway(
+    private val network: AuthenticatedNetworkClient,
+    private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+) : FinanceOverviewGateway {
+    override suspend fun overview(query: FinanceOverviewQuery) =
+        retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Get,
+                "api/me/finance/overview",
+                FinanceOverviewTransport.serializer(),
+                NetworkRequest(query = query.toNetworkQuery()),
+            )
+        }.toFinanceOverviewResult()
 }
 
 class KtorOrganizerFinanceGateway(
@@ -246,8 +351,6 @@ private fun MonthlyChargeCommand.toRequest() = MonthlyChargeRequest(
     memberIds = memberIds,
 )
 
-private fun ChargeStatusCommand.toRequest() = ChargeStatusRequest(status.toTransport(), note)
-
 private fun ExpenseWriteCommand.toRequest() = ExpenseWriteRequest(
     requestId = requestId,
     description = description,
@@ -256,13 +359,38 @@ private fun ExpenseWriteCommand.toRequest() = ExpenseWriteRequest(
     category = category.toTransport(),
     customCategory = customCategory,
     notes = notes,
+    direction = direction?.toTransport(),
 )
+
+private fun ChargeStatusCommand.toRequest() = ChargeStatusRequest(
+    status = status.toTransport(),
+    note = note,
+    paidMethod = paidMethod?.toTransport(),
+)
+
+private fun FinanceStatementQuery.toNetworkQuery() = buildMap {
+    month?.let { put("month", it) }
+    direction?.let { put("direction", it.toTransport()) }
+    put("limit", limit.toString())
+    put("offset", offset.toString())
+}
+
+private fun FinanceOverviewQuery.toNetworkQuery() = buildMap {
+    month?.let { put("month", it) }
+    year?.let { put("year", it.toString()) }
+}
 
 private fun NetworkResult<ChargeListTransport>.toChargeListResult() = mapFinance { it.toDomain() }
 
 private fun NetworkResult<ExpenseListTransport>.toExpenseListResult() = mapFinance { it.toDomain() }
 
 private fun NetworkResult<FinanceTotalsTransport>.toFinanceTotalsResult() = mapFinance { it.toDomain() }
+
+private fun NetworkResult<FinanceStatementPageTransport>.toFinanceStatementResult() =
+    mapFinance { it.toDomain() }
+
+private fun NetworkResult<FinanceOverviewTransport>.toFinanceOverviewResult() =
+    mapFinance { it.toDomain() }
 
 private fun NetworkResult<ChargeTransport>.toVersionedChargeResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toFinanceError())
@@ -299,6 +427,7 @@ private fun ChargeListTransport.toDomain() = ChargeList(
 private fun ChargeTransport.toDomain() = Charge(
     id, GroupId(groupId), memberId, kind.toDomain(), gameId, month, amountCents,
     dueDate, status.toDomain(), reviewRequired, version, events.map(ChargeAuditTransport::toDomain),
+    paidMethod.toPaidMethod(),
 )
 
 private fun ChargeAuditTransport.toDomain() =
@@ -308,8 +437,70 @@ private fun ExpenseListTransport.toDomain() =
     ExpenseList(expenses.map(ExpenseTransport::toDomain), activeExpenseTotalCents)
 
 private fun ExpenseTransport.toDomain() = Expense(
-    id, GroupId(groupId), description, amountCents, expenseDate, category.toDomain(),
+    id, GroupId(groupId), description, amountCents, expenseDate, category.toExpenseCategory(),
     customCategory, notes, status.toDomain(), version, events.map(ExpenseAuditTransport::toDomain),
+    direction.toFinanceDirection(),
+)
+
+private fun FinanceStatementPageTransport.toDomain() = FinanceStatementPage(
+    month = month,
+    items = items.map(FinanceStatementItemTransport::toDomain),
+    summary = summary.toDomain(),
+    limit = limit,
+    offset = offset,
+    hasMore = hasMore,
+)
+
+private fun FinanceStatementItemTransport.toDomain() = FinanceStatementItem(
+    id = id,
+    type = type,
+    direction = direction.toFinanceDirection(),
+    title = title,
+    category = category,
+    paidMethod = paidMethod.toPaidMethod(),
+    occurredAt = occurredAt,
+    amountCents = amountCents,
+)
+
+private fun FinanceStatementSummaryTransport.toDomain() = FinanceStatementSummary(
+    totalInCents = totalInCents,
+    totalOutCents = totalOutCents,
+    periodBalanceCents = periodBalanceCents,
+    accumulatedBalanceCents = accumulatedBalanceCents,
+)
+
+private fun FinanceOverviewTransport.toDomain() = FinanceOverview(
+    period = FinanceOverviewPeriod(period.month, period.year),
+    totals = FinanceOverviewTotals(
+        balanceCents = totals.balanceCents,
+        inCents = totals.inCents,
+        outCents = totals.outCents,
+        pendingCents = totals.pendingCents,
+    ),
+    groups = groups.map {
+        FinanceOverviewGroup(
+            id = it.id,
+            name = it.name,
+            balanceCents = it.balanceCents,
+            status = FinanceOverviewGroupStatus(
+                pendingMonthlyCount = it.pendingMonthlyCount,
+                hasBillingConfigured = it.hasBillingConfigured,
+            ),
+        )
+    },
+    recentTransactions = recentTransactions.map {
+        FinanceOverviewTransaction(
+            id = it.id,
+            groupId = it.groupId,
+            groupName = it.groupName,
+            kind = it.kind,
+            direction = it.direction?.toFinanceDirection(),
+            memberName = it.memberName,
+            description = it.description,
+            amountCents = it.amountCents,
+            occurredAt = it.occurredAt,
+        )
+    },
 )
 
 private fun ExpenseAuditTransport.toDomain() = ExpenseAudit(actorId, action.toDomain(), occurredAt)
@@ -337,18 +528,43 @@ private fun ChargeStatus.toTransport() = when (this) {
     ChargeStatus.Cancelled -> ChargeStatusTransport.CANCELLED
 }
 
-private fun ExpenseCategoryTransport.toDomain() = when (this) {
-    ExpenseCategoryTransport.VENUE -> ExpenseCategory.Venue
-    ExpenseCategoryTransport.EQUIPMENT -> ExpenseCategory.Equipment
-    ExpenseCategoryTransport.REFEREE -> ExpenseCategory.Referee
-    ExpenseCategoryTransport.OTHER -> ExpenseCategory.Other
+private fun String.toFinanceDirection() = when (uppercase()) {
+    "IN" -> FinanceDirection.In
+    else -> FinanceDirection.Out
+}
+
+private fun String.toExpenseCategory() = when (uppercase()) {
+    "VENUE" -> ExpenseCategory.Venue
+    "EQUIPMENT" -> ExpenseCategory.Equipment
+    "REFEREE" -> ExpenseCategory.Referee
+    "RACHA" -> ExpenseCategory.Racha
+    else -> ExpenseCategory.Other
 }
 
 private fun ExpenseCategory.toTransport() = when (this) {
-    ExpenseCategory.Venue -> ExpenseCategoryTransport.VENUE
-    ExpenseCategory.Equipment -> ExpenseCategoryTransport.EQUIPMENT
-    ExpenseCategory.Referee -> ExpenseCategoryTransport.REFEREE
-    ExpenseCategory.Other -> ExpenseCategoryTransport.OTHER
+    ExpenseCategory.Venue -> "VENUE"
+    ExpenseCategory.Equipment -> "EQUIPMENT"
+    ExpenseCategory.Referee -> "REFEREE"
+    ExpenseCategory.Other -> "OTHER"
+    ExpenseCategory.Racha -> "RACHA"
+}
+
+private fun FinanceDirection.toTransport() = when (this) {
+    FinanceDirection.In -> "IN"
+    FinanceDirection.Out -> "OUT"
+}
+
+private fun PaidMethod.toTransport() = when (this) {
+    PaidMethod.Pix -> "PIX"
+    PaidMethod.Cash -> "CASH"
+    PaidMethod.Other -> "OTHER"
+}
+
+private fun String?.toPaidMethod(): PaidMethod? = when (this?.uppercase()) {
+    null -> null
+    "PIX" -> PaidMethod.Pix
+    "CASH" -> PaidMethod.Cash
+    else -> PaidMethod.Other
 }
 
 private fun ExpenseStatusTransport.toDomain() = when (this) {

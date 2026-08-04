@@ -18,11 +18,23 @@ enum class ChargeStatus {
     Cancelled,
 }
 
+enum class PaidMethod {
+    Pix,
+    Cash,
+    Other,
+}
+
 enum class ExpenseCategory {
     Venue,
     Equipment,
     Referee,
     Other,
+    Racha,
+}
+
+enum class FinanceDirection {
+    In,
+    Out,
 }
 
 enum class ExpenseStatus {
@@ -60,6 +72,7 @@ data class Charge(
     val reviewRequired: Boolean = false,
     val version: Long,
     val audit: List<ChargeAudit>,
+    val paidMethod: PaidMethod? = null,
 )
 
 data class ChargeTotals(
@@ -90,6 +103,7 @@ data class MonthlyChargeCommand(
 data class ChargeStatusCommand(
     val status: ChargeStatus,
     val note: String? = null,
+    val paidMethod: PaidMethod? = null,
 )
 
 data class ExpenseAudit(
@@ -110,6 +124,7 @@ data class Expense(
     val status: ExpenseStatus,
     val version: Long,
     val audit: List<ExpenseAudit>,
+    val direction: FinanceDirection = FinanceDirection.Out,
 )
 
 data class ExpenseList(
@@ -130,6 +145,89 @@ data class ExpenseWriteCommand(
     val category: ExpenseCategory,
     val customCategory: String? = null,
     val notes: String? = null,
+    val direction: FinanceDirection? = null,
+)
+
+data class FinanceStatementQuery(
+    val month: String? = null,
+    val direction: FinanceDirection? = null,
+    val limit: Int = 20,
+    val offset: Int = 0,
+)
+
+data class FinanceStatementItem(
+    val id: String,
+    val type: String,
+    val direction: FinanceDirection,
+    val title: String,
+    val category: String,
+    val paidMethod: PaidMethod?,
+    val occurredAt: String,
+    val amountCents: Long,
+)
+
+data class FinanceStatementSummary(
+    val totalInCents: Long,
+    val totalOutCents: Long,
+    val periodBalanceCents: Long,
+    val accumulatedBalanceCents: Long,
+)
+
+data class FinanceStatementPage(
+    val month: String,
+    val items: List<FinanceStatementItem>,
+    val summary: FinanceStatementSummary,
+    val limit: Int,
+    val offset: Int,
+    val hasMore: Boolean,
+)
+
+data class FinanceOverviewQuery(
+    val month: String? = null,
+    val year: Int? = null,
+)
+
+data class FinanceOverviewPeriod(
+    val month: String?,
+    val year: Int?,
+)
+
+data class FinanceOverviewTotals(
+    val balanceCents: Long,
+    val inCents: Long,
+    val outCents: Long,
+    val pendingCents: Long,
+)
+
+data class FinanceOverviewGroupStatus(
+    val pendingMonthlyCount: Int,
+    val hasBillingConfigured: Boolean,
+)
+
+data class FinanceOverviewGroup(
+    val id: String,
+    val name: String,
+    val balanceCents: Long,
+    val status: FinanceOverviewGroupStatus,
+)
+
+data class FinanceOverviewTransaction(
+    val id: String,
+    val groupId: String,
+    val groupName: String,
+    val kind: String,
+    val direction: FinanceDirection?,
+    val memberName: String?,
+    val description: String?,
+    val amountCents: Long,
+    val occurredAt: String,
+)
+
+data class FinanceOverview(
+    val period: FinanceOverviewPeriod,
+    val totals: FinanceOverviewTotals,
+    val groups: List<FinanceOverviewGroup>,
+    val recentTransactions: List<FinanceOverviewTransaction>,
 )
 
 data class FinanceTotals(
@@ -153,6 +251,19 @@ sealed interface FinanceError : SaqzError {
 
 interface AthleteFinanceGateway {
     suspend fun ownCharges(groupId: GroupId): SaqzResult<ChargeList, FinanceError>
+}
+
+interface FinanceStatementGateway {
+    suspend fun statement(
+        groupId: GroupId,
+        query: FinanceStatementQuery = FinanceStatementQuery(),
+    ): SaqzResult<FinanceStatementPage, FinanceError>
+}
+
+interface FinanceOverviewGateway {
+    suspend fun overview(
+        query: FinanceOverviewQuery = FinanceOverviewQuery(),
+    ): SaqzResult<FinanceOverview, FinanceError>
 }
 
 interface OrganizerFinanceGateway {

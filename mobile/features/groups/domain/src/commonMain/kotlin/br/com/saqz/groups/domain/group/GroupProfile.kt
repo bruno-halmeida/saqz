@@ -48,6 +48,8 @@ data class GroupProfile(
     val regularSlots: List<GroupRegularSlot>,
     val defaultCapacity: Int?,
     val defaultConfirmationLeadMinutes: Int?,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
 )
 
 data class GroupGameConfig(
@@ -107,6 +109,8 @@ data class GroupSetupForm(
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
     val autoConfirmEnabled: Boolean = false,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

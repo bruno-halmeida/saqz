@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.composeapp.catalog.SaqzCatalogScreen
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.shell_nav_games
+import br.com.saqz.composeapp.resources.shell_nav_finance
 import br.com.saqz.composeapp.resources.shell_nav_groups
 import br.com.saqz.composeapp.resources.shell_nav_home
 import br.com.saqz.composeapp.resources.shell_nav_profile
@@ -42,6 +43,7 @@ internal const val SaqzShellGroupsTab = "grupos"
 internal const val SaqzShellProfileTab = "perfil"
 private const val SaqzShellHomeTab = "inicio"
 private const val SaqzShellGamesTab = "jogos"
+private const val SaqzShellFinanceTab = "financeiro"
 
 /**
  * O shell autenticado: a barra do 10q e o conteúdo da aba ativa. A barra é do shell e de
@@ -58,6 +60,7 @@ private const val SaqzShellGamesTab = "jogos"
  *
  * **Início e Jogos ficam inertes**, como manda o VUL-72: o toque não leva a lugar nenhum
  * enquanto os fluxos 6 e 4 não existirem. Perfil recebe o conteúdo real por [profileTab];
+ * Financeiro abre o caixa geral por [onOpenFinance];
  * a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra e da entrada
  * opcional do catálogo de desenvolvimento.
  *
@@ -73,6 +76,7 @@ internal fun SaqzAppShell(
     groupsTab: @Composable () -> Unit = {},
     profileTab: @Composable () -> Unit = {},
     banner: @Composable () -> Unit = {},
+    onOpenFinance: () -> Unit = {},
 ) {
     // `rememberSaveable`, não `remember`: aba ativa e catálogo aberto são estado de
     // navegação, e o AGENTS.md §5 proíbe `remember` para estado de aplicação. Com
@@ -154,6 +158,7 @@ internal fun SaqzAppShell(
             onSelect = { id ->
                 when (id) {
                     SaqzShellGroupsTab, SaqzShellProfileTab -> activeTab = id
+                    SaqzShellFinanceTab -> onOpenFinance()
                     // TODO(Fluxo 6 · Home): sem tela, sem destino.
                     SaqzShellHomeTab, SaqzShellGamesTab -> Unit
                     else -> Unit
@@ -168,6 +173,7 @@ private fun shellNavItems() = listOf(
     SaqzNavItem(SaqzShellHomeTab, stringResource(Res.string.shell_nav_home), SaqzIcons.Home),
     SaqzNavItem(SaqzShellGamesTab, stringResource(Res.string.shell_nav_games), SaqzIcons.Calendar),
     SaqzNavItem(SaqzShellGroupsTab, stringResource(Res.string.shell_nav_groups), SaqzIcons.Users),
+    SaqzNavItem(SaqzShellFinanceTab, stringResource(Res.string.shell_nav_finance), SaqzIcons.CreditCard),
     SaqzNavItem(SaqzShellProfileTab, stringResource(Res.string.shell_nav_profile), SaqzIcons.User),
 )
 

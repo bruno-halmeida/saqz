@@ -72,6 +72,8 @@ internal data class GroupProfileDto(
     val regularSlots: List<GroupRegularSlotDto> = emptyList(),
     val defaultCapacity: Int? = null,
     val defaultConfirmationLeadMinutes: Int? = null,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
 )
 
 @Serializable
@@ -153,6 +155,8 @@ private data class CompleteGroupRequestDto(
     val mensalistaPriority: Boolean? = null,
     val promotionMode: String? = null,
     val autoConfirmEnabled: Boolean? = null,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
 )
 
 class KtorGroupGateway(
@@ -300,6 +304,8 @@ private fun GroupProfileDto.toDomain(): GroupProfile? {
         },
         defaultCapacity = defaultCapacity,
         defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
     )
 }
 
@@ -329,6 +335,8 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
         mensalistaPriority = form.mensalistaPriority,
         promotionMode = form.promotionMode.name,
         autoConfirmEnabled = form.autoConfirmEnabled,
+        pixKey = form.pixKey,
+        pixLabel = form.pixLabel,
     )
 }
 

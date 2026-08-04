@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class SaqzAppShellTest {
@@ -18,10 +19,29 @@ class SaqzAppShellTest {
         setContent { SaqzTheme { SaqzAppShell(groupsTab = { Text(GroupsTab) }) } }
         onNodeWithTag(SaqzShellTabContentTag).assertIsDisplayed()
         onNodeWithText(GroupsTab).assertIsDisplayed()
-        // A barra é do shell: os quatro itens do 10q estão aqui, não nas telas de grupo.
-        listOf("Início", "Jogos", "Grupos", "Perfil").forEach {
+        // A barra é do shell: os cinco itens estão aqui, não nas telas de grupo.
+        listOf("Início", "Jogos", "Grupos", "Financeiro", "Perfil").forEach {
             onNodeWithText(it).assertIsDisplayed()
         }
+    }
+
+    @Test
+    fun financeTabInvokesNavigationCallback() = runComposeUiTest {
+        var opened = false
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    groupsTab = { Text(GroupsTab) },
+                    onOpenFinance = { opened = true },
+                )
+            }
+        }
+
+        onNodeWithText("Financeiro").performClick()
+        waitForIdle()
+
+        assertTrue(opened)
+        onNodeWithText(GroupsTab).assertIsDisplayed()
     }
 
     // VUL-72: Início e Jogos ficam inertes até os fluxos 6 e 4 existirem — tocar neles não

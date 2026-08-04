@@ -6,6 +6,7 @@ import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.savedstate.serialization.SavedStateConfiguration
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlinx.serialization.KSerializer
@@ -61,6 +62,10 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(SubscriptionsRoute.MyPlan::class, SubscriptionsRoute.MyPlan.serializer())
             subclass(ProfileRoute.Edit::class, ProfileRoute.Edit.serializer())
             subclass(ProfileRoute.Exit::class, ProfileRoute.Exit.serializer())
+            subclass(FinanceRoute.Overview::class, FinanceRoute.Overview.serializer())
+            subclass(FinanceRoute.GroupCashbox::class, FinanceRoute.GroupCashbox.serializer())
+            subclass(FinanceRoute.Statement::class, FinanceRoute.Statement.serializer())
+            subclass(FinanceRoute.GameSettlement::class, FinanceRoute.GameSettlement.serializer())
         }
     }
 }

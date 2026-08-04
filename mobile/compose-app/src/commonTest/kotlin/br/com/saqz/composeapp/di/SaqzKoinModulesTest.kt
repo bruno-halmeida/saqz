@@ -80,6 +80,10 @@ import br.com.saqz.groups.port.DefaultGroupNowPort
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
+import br.com.saqz.groups.data.finance.KtorFinanceOverviewGateway
+import br.com.saqz.groups.data.finance.KtorFinanceStatementGateway
+import br.com.saqz.groups.domain.finance.FinanceOverviewGateway
+import br.com.saqz.groups.domain.finance.FinanceStatementGateway
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
 import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
@@ -189,6 +193,8 @@ class SaqzKoinModulesTest {
         assertIs<KtorSessionGateway>(koin.get<SessionGateway>())
         assertIs<KtorPasswordResetGateway>(koin.get<PasswordResetGateway>())
         assertIs<KtorSubscriptionGateway>(koin.get<SubscriptionGateway>())
+        assertIs<KtorFinanceStatementGateway>(koin.get<FinanceStatementGateway>())
+        assertIs<KtorFinanceOverviewGateway>(koin.get<FinanceOverviewGateway>())
 
         app.close()
     }
