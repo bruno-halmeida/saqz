@@ -102,6 +102,9 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
         val amadores = repository.list("Nunca Pagou", plan = "FREE", status = null, page = 1, size = 10)
 
         assertEquals(listOf("Nunca Pagou"), amadores.items.map { it.displayName })
+        // No detalhe também não aparece como assinatura (nunca foi assinante) —
+        // diferente da cancelada-que-pagou, que segue visível como CANCELED.
+        assertNull(repository.find(abandonou)?.subscription)
     }
 
     @Test

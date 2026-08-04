@@ -111,6 +111,7 @@ class JdbcAdminUserDirectoryRepository(
                    CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS subscription_status
             FROM access_users u
             LEFT JOIN subscriptions s ON s.owner_user_id = u.id
+                 AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
             WHERE u.id = :id AND u.deleted_at IS NULL
             """.trimIndent(),
         )
