@@ -47,7 +47,7 @@ class JdbcAdminGroupDirectoryRepository(
             .param("query", query?.trim()?.takeIf { it.isNotEmpty() })
             .param("status", status)
             .param("size", size)
-            .param("offset", (page - 1) * size)
+            .param("offset", (page - 1).toLong() * size)
             .query { rs, _ ->
                 Row(
                     summary = AdminGroupSummary(
