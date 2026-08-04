@@ -66,6 +66,11 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
         insertRedemption(couponId, canceladaLocal)
         insertSubscription(canceladaLocal, couponId, cyclesRemaining = 2)
         execute("UPDATE subscriptions SET canceled_at = now() WHERE owner_user_id = '$canceladaLocal'")
+        // Checkout nunca pago com cupom também não.
+        val nuncaPagou = insertUser()
+        insertRedemption(couponId, nuncaPagou)
+        insertSubscription(nuncaPagou, couponId, cyclesRemaining = 2)
+        execute("UPDATE subscriptions SET status = 'PAST_DUE', first_confirmed_at = NULL WHERE owner_user_id = '$nuncaPagou'")
         // Estado real pós-esgotamento: remaining NULL com cupom de duração finita.
         insertSubscription(cupomEsgotado, couponId, cyclesRemaining = null)
 
@@ -73,7 +78,7 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
 
         assertEquals(1, list.size)
         assertEquals("GALERA10", list.single().code)
-        assertEquals(3, list.single().redemptions)
+        assertEquals(4, list.single().redemptions)
         assertEquals(1, list.single().activeSubscriptions)
     }
 
@@ -118,9 +123,10 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
     private fun insertSubscription(ownerId: UUID, couponId: UUID, cyclesRemaining: Int?) {
         execute(
             "INSERT INTO subscriptions (owner_user_id, plan, cycle, status, asaas_customer_id, " +
-                "asaas_subscription_id, current_period_end, coupon_id, coupon_cycles_remaining, created_at, updated_at) " +
+                "asaas_subscription_id, current_period_end, first_confirmed_at, coupon_id, coupon_cycles_remaining, " +
+                "created_at, updated_at) " +
                 "VALUES ('$ownerId', 'TITULAR', 'MONTHLY', 'ACTIVE', 'cus-$ownerId', 'sub-$ownerId', " +
-                "'${now.plusSeconds(2_592_000)}', '$couponId', ${cyclesRemaining ?: "NULL"}, now(), now())",
+                "'${now.plusSeconds(2_592_000)}', now(), '$couponId', ${cyclesRemaining ?: "NULL"}, now(), now())",
         )
     }
 

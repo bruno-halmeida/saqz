@@ -31,7 +31,7 @@ class JdbcAdminGroupDirectoryRepository(
                    count(*) OVER () AS total
             FROM access_groups g
             JOIN access_users u ON u.id = g.owner_user_id
-            LEFT JOIN subscriptions s ON s.owner_user_id = g.owner_user_id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
+            LEFT JOIN subscriptions s ON s.owner_user_id = g.owner_user_id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
             WHERE (:query::text IS NULL
                    OR g.name ILIKE '%' || :query || '%'
                    OR u.display_name ILIKE '%' || :query || '%')
@@ -100,7 +100,7 @@ class JdbcAdminGroupDirectoryRepository(
                        AND x.starts_at < now()) AS games_played
             FROM access_groups g
             JOIN access_users u ON u.id = g.owner_user_id
-            LEFT JOIN subscriptions s ON s.owner_user_id = g.owner_user_id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
+            LEFT JOIN subscriptions s ON s.owner_user_id = g.owner_user_id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
             WHERE g.id = :id
             """.trimIndent(),
         )

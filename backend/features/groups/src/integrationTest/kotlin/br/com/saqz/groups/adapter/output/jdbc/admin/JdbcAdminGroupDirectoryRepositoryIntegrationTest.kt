@@ -85,6 +85,16 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `dono com checkout nunca pago fica sem plano`() {
+        val dono = insertUser("nunca-pagou", name = "Nunca Pagou")
+        insertGroup(dono, name = "Grupo Sem Pagamento", createdAt = now)
+        insertSubscription(dono, plan = "ORGANIZADOR")
+        execute("UPDATE subscriptions SET status = 'PAST_DUE', first_confirmed_at = NULL WHERE owner_user_id = '$dono'")
+
+        assertNull(repository.list(null, null, 1, 10).items.single().ownerPlan)
+    }
+
+    @Test
     fun `dono com assinatura cancelada localmente tambem fica sem plano`() {
         val dono = insertUser("cancel-local", name = "Cancelou Local")
         insertGroup(dono, name = "Grupo Cancelado Local", createdAt = now)
@@ -172,9 +182,9 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     private fun insertSubscription(ownerId: UUID, plan: String) {
         execute(
             "INSERT INTO subscriptions (owner_user_id, plan, cycle, status, asaas_customer_id, " +
-                "asaas_subscription_id, current_period_end, created_at, updated_at) " +
+                "asaas_subscription_id, current_period_end, first_confirmed_at, created_at, updated_at) " +
                 "VALUES ('$ownerId', '$plan', 'MONTHLY', 'ACTIVE', 'cus-$ownerId', 'sub-$ownerId', " +
-                "'${now.plusSeconds(2_592_000)}', now(), now())",
+                "'${now.plusSeconds(2_592_000)}', now(), now(), now())",
         )
     }
 

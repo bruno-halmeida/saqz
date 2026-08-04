@@ -94,6 +94,17 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `checkout nunca pago tambem e FREE na lista`() {
+        val abandonou = insertUser("abandonou", name = "Nunca Pagou", email = "np@saqz.test")
+        insertSubscription(abandonou, plan = "TITULAR", status = "PAST_DUE")
+        execute("UPDATE subscriptions SET first_confirmed_at = NULL WHERE owner_user_id = '$abandonou'")
+
+        val amadores = repository.list("Nunca Pagou", plan = "FREE", status = null, page = 1, size = 10)
+
+        assertEquals(listOf("Nunca Pagou"), amadores.items.map { it.displayName })
+    }
+
+    @Test
     fun `cancelamento local sem webhook tambem vira FREE e detalhe mostra CANCELED`() {
         val cancelado = insertUser("cancel-local", name = "Cancelou Local", email = "cl@saqz.test")
         insertSubscription(cancelado, plan = "TITULAR")
@@ -242,9 +253,9 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
     private fun insertSubscription(ownerId: UUID, plan: String, status: String = "ACTIVE") {
         execute(
             "INSERT INTO subscriptions (owner_user_id, plan, cycle, status, asaas_customer_id, " +
-                "asaas_subscription_id, current_period_end, created_at, updated_at) " +
+                "asaas_subscription_id, current_period_end, first_confirmed_at, created_at, updated_at) " +
                 "VALUES ('$ownerId', '$plan', 'MONTHLY', '$status', 'cus-$ownerId', 'sub-$ownerId', " +
-                "'${now.plusSeconds(2_592_000)}', '$now', '$now')",
+                "'${now.plusSeconds(2_592_000)}', '$now', '$now', '$now')",
         )
     }
 

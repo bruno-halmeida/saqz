@@ -32,7 +32,7 @@ class JdbcAdminUserDirectoryRepository(
                      WHERE g.owner_user_id = u.id AND g.deleted_at IS NULL) AS owned_groups,
                    count(*) OVER () AS total
             FROM access_users u
-            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
+            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
             WHERE u.deleted_at IS NULL
               AND (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
@@ -75,7 +75,7 @@ class JdbcAdminUserDirectoryRepository(
             """
             SELECT count(*)
             FROM access_users u
-            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
+            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
             WHERE u.deleted_at IS NULL
               AND (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
