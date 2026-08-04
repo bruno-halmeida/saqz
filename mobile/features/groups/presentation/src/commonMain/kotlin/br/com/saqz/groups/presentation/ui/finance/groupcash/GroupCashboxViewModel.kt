@@ -165,7 +165,8 @@ class GroupCashboxViewModel(
         val balanceCents = statement.summary.accumulatedBalanceCents
         val receivedCents = paidMonthly.sumOf { it.amountCents }
         val expensesCents = statement.summary.totalOutCents
-        val hasHistory = statement.summary.totalInCents != 0L || expensesCents != 0L || charges.any { it.status == ChargeStatus.Paid }
+        val hasHistory = statement.summary.totalInCents != 0L || expensesCents != 0L ||
+            charges.any { it.status != ChargeStatus.Cancelled }
         val cashboxEmpty = !hasHistory && pending.isEmpty() && balanceCents == 0L
         return GroupCashboxState(
             isLoading = false,
@@ -268,7 +269,7 @@ class GroupCashboxViewModel(
             val verb = if (it.size == 1) "está" else "estão"
             OverdueBannerUi(
                 message = it.joinNames() + " $verb com " +
-                    (month?.let { value -> "$value em aberto" } ?: "mensalidades em aberto"),
+                    (month?.let { value -> "$value em aberto" } ?: "cobranças em aberto"),
                 monthLabel = bannerMonthKey?.let(::monthNameFromKey),
             )
         }

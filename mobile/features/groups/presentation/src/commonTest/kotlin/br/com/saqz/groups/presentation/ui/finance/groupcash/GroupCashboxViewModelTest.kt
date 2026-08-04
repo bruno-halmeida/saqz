@@ -73,7 +73,7 @@ class GroupCashboxViewModelTest {
         assertEquals("1/3", state.monthlyProgressLabel)
         assertEquals("R$\u00A070,00", state.receivedLabel)
         assertEquals("R$\u00A0140,00", state.balanceLabel)
-        assertEquals("Camila, Pedro e Thiago estão com mensalidades em aberto", state.overdueBanner?.message)
+        assertEquals("Camila, Pedro e Thiago estão com cobranças em aberto", state.overdueBanner?.message)
         assertNull(state.overdueBanner?.monthLabel)
         assertEquals(listOf("Camila", "Pedro", "Thiago"), state.debtors.map { it.name })
         assertEquals("pix@saqz.com", state.pix?.key)
@@ -94,7 +94,7 @@ class GroupCashboxViewModelTest {
             ),
         )
 
-        assertEquals("Camila e Pedro estão com mensalidades em aberto", viewModel.state.value.overdueBanner?.message)
+        assertEquals("Camila e Pedro estão com cobranças em aberto", viewModel.state.value.overdueBanner?.message)
         assertNull(viewModel.state.value.overdueBanner?.monthLabel)
     }
 
@@ -154,6 +154,20 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `waived charges keep the cashbox out of the empty state`() = runTest {
+        val waivedCharge = defaultCharges[1].copy(status = ChargeStatus.Waived)
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(listOf(waivedCharge))),
+            ),
+            statement = FakeStatementGateway(SaqzResult.Success(statement(0L, 0L, 0L, 0L))),
+        )
+
+        assertFalse(viewModel.state.value.cashboxEmpty)
+        assertEquals("0/1", viewModel.state.value.monthlyProgressLabel)
+    }
+
+    @Test
     fun `recebi removes debtor optimistically and sends pix plus quoted charge version`() = runTest {
         val organizer = FakeOrganizerFinanceGateway()
         val viewModel = viewModel(organizer = organizer)
@@ -206,7 +220,7 @@ class GroupCashboxViewModelTest {
             ),
         )
 
-        assertEquals("Camila está com mensalidades em aberto", viewModel.state.value.overdueBanner?.message)
+        assertEquals("Camila está com cobranças em aberto", viewModel.state.value.overdueBanner?.message)
         assertNull(viewModel.state.value.overdueBanner?.monthLabel)
         viewModel.onIntent(GroupCashboxIntent.MarkReceived("game-pending"))
 
