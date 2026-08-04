@@ -57,6 +57,11 @@ data class AttendancePromotionReplay(
     val event: AttendanceEvent,
 )
 
+data class AttendanceResponseReplay(
+    val attendance: AttendanceRecord,
+    val event: AttendanceEvent,
+)
+
 interface AttendanceCommandRepository {
     fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate?
     fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate?
@@ -66,6 +71,7 @@ interface AttendanceCommandRepository {
     fun append(event: AttendanceEvent)
     fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean
     fun findPromotionReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendancePromotionReplay? = null
+    fun findResponseReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendanceResponseReplay? = null
 }
 
 fun interface AttendanceChargePort {
@@ -96,6 +102,9 @@ data class AttendanceDetail(
     val waitlistCount: Int,
     val capacity: Int,
     val gameVersion: Long,
+    val declinedCount: Int = 0,
+    val pendingCount: Int = 0,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 fun interface AttendanceDetailQuery {

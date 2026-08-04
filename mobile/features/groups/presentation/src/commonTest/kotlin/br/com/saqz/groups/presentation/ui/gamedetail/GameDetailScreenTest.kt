@@ -8,11 +8,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import br.com.saqz.groups.presentation.gamedetail.GameDetailWaitlistUi
-import br.com.saqz.groups.domain.athlete.AthletePosition
-import br.com.saqz.groups.domain.group.PromotionMode
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class)
@@ -91,6 +91,14 @@ class GameDetailScreenTest {
     }
 
     @Test
+    fun `game detail does not render member response controls`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(isAdmin = false))
+
+        onAllNodesWithText("Você vai jogar?").assertCountEquals(0)
+        onAllNodesWithText("Confirmar presença automaticamente").assertCountEquals(0)
+    }
+
+    @Test
     fun `capacity sheet renders stepper controls`() = runComposeUiTest {
         setContent {
             SaqzTheme {
@@ -112,10 +120,11 @@ class GameDetailScreenTest {
         status: GameDetailStatusTone = GameDetailStatusTone.Published,
         cancelDialogOpen: Boolean = false,
         waitlist: List<GameDetailWaitlistUi> = GameDetailPreviewData.admin.waitlist,
+        state: GameDetailState? = null,
     ) = setContent {
         SaqzTheme {
             GameDetailScreen(
-                state = GameDetailPreviewData.admin.copy(
+                state = state ?: GameDetailPreviewData.admin.copy(
                     header = GameDetailPreviewData.header.copy(statusTone = status),
                     cancelDialogOpen = cancelDialogOpen,
                     waitlist = waitlist,

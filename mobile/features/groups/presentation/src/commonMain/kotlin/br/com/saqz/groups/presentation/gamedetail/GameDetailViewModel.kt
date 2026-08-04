@@ -32,11 +32,14 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.toInstant
+import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
+@Suppress("LargeClass")
 class GameDetailViewModel(
     val groupId: String,
     val gameId: String,
@@ -359,14 +362,16 @@ class GameDetailViewModel(
             venue = venueLine.ifBlank { venue.name },
             durationMinutes = durationMinutes,
             availableSpots = availableSpots,
+            confirmationOpen = status == GameStatus.Published &&
+                (deadlineLocal?.let { it.toInstant(zone) > Clock.System.now() } ?: true),
         )
     }
     private fun AttendanceDetail.toAttendance() = GameDetailAttendanceUi(
         confirmed = confirmedCount,
         capacity = capacity,
         availableSpots = availableSpots,
-        declined = 0,
-        pending = 0,
+        declined = declinedCount,
+        pending = pendingCount,
     )
 
     private fun AttendanceRosterMember.toConfirmed(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- VUL-159 · resposta do membro no jogo -->
+    <string name="game_response_question">Você vai jogar?</string>
+    <string name="game_response_yes">Vou</string>
+    <string name="game_response_no">Não vou</string>
+    <string name="game_response_spots">%1$d vagas</string>
+    <string name="game_response_confirmed">Você está confirmado na vaga.</string>
+    <string name="game_response_declined">Você não vai jogar.</string>
+    <string name="game_response_waitlisted">Você é o %1$dº da reserva.</string>
+    <string name="game_response_waitlisted_unknown">Você está na reserva.</string>
+    <string name="game_response_deadline_closed">As confirmações estão encerradas.</string>
+    <string name="game_response_day_member_fee">Ao confirmar, a cobrança deste jogo será gerada.</string>
+    <string name="game_response_auto_confirmation">Confirmar presença automaticamente</string>
+    <string name="game_response_request_failed">Não foi possível salvar sua resposta. Tente novamente.</string>
+    <string name="game_response_auto_confirmation_failed">Não foi possível atualizar a auto-confirmação. Tente novamente.</string>
+    <string name="game_response_roster_stale">A lista de presença pode estar desatualizada.</string>
+    <string name="game_response_retry_roster">Tentar novamente</string>
+    <string name="game_response_next_game">Próximo jogo</string>
+    <string name="game_response_confirmed_summary">%1$d de %2$d confirmados</string>
+    <string name="game_response_confirmed_ratio">%1$d/%2$d</string>
+</resources>

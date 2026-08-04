@@ -41,13 +41,21 @@ class GroupDetailsScreenshotTest {
     fun member() = capture("group-details-member", GroupDetailsPreviewData.member)
 
     @Test
+    @Config(qualifiers = "+h2000dp")
+    fun memberResponse() = capture(
+        "group-details-response-confirmed-auto",
+        GroupDetailsPreviewData.member,
+        directory = "vul-159",
+    )
+
+    @Test
     fun loading() = capture("group-details-loading", GroupDetailsState())
 
-    private fun capture(name: String, state: GroupDetailsState) = capture(name) {
+    private fun capture(name: String, state: GroupDetailsState, directory: String = "vul-69") = capture(name, directory) {
         GroupDetailsScreen(state = state, onBack = {}, onIntent = {})
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
+    private fun capture(name: String, directory: String, content: @Composable () -> Unit) {
         compose.setContent {
             SaqzTheme {
                 Box(
@@ -59,6 +67,6 @@ class GroupDetailsScreenshotTest {
                 }
             }
         }
-        compose.onRoot().captureRoboImage("screenshots/vul-69/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 }

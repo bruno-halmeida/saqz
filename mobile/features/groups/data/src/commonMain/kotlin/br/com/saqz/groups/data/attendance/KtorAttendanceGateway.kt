@@ -18,6 +18,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
+import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
@@ -72,14 +74,9 @@ internal data class AttendanceDetailTransport(
     val availableSpots: Int,
     val waitlistCount: Int,
     val capacity: Int,
-)
-
-@Serializable
-internal data class AttendanceMutationTransport(
-    val attendance: AttendanceEntryTransport,
-    val audit: AttendanceAuditTransport? = null,
-    val promotedCount: Int,
-    val detail: AttendanceDetailTransport,
+    val declinedCount: Int = 0,
+    val pendingCount: Int = 0,
+    val autoConfirmEnabled: Boolean = false,
 )
 
 @Serializable
@@ -93,6 +90,14 @@ internal data class AttendanceRosterMemberTransport(
 internal data class AttendanceRosterTransport(
     val confirmed: List<AttendanceRosterMemberTransport> = emptyList(),
     val waitlisted: List<AttendanceRosterMemberTransport> = emptyList(),
+)
+
+@Serializable
+internal data class AttendanceMutationTransport(
+    val attendance: AttendanceEntryTransport,
+    val audit: AttendanceAuditTransport? = null,
+    val promotedCount: Int,
+    val detail: AttendanceDetailTransport,
 )
 
 @Serializable
@@ -129,6 +134,12 @@ internal data class AttendanceCapacityRequest(
     val requestId: String,
     val capacity: Int,
 )
+
+@Serializable
+internal data class AutoConfirmationRequest(val enabled: Boolean)
+
+@Serializable
+internal data class AutoConfirmationUpdateTransport(val enabled: Boolean)
 
 class KtorAttendanceGateway(
     private val network: AuthenticatedNetworkClient,
@@ -169,7 +180,7 @@ class KtorAttendanceGateway(
         retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
             network.execute(
                 HttpMethod.Get,
-                "${attendanceRoute(groupId, gameId)}/roster",
+                rosterRoute(groupId, gameId),
                 AttendanceRosterTransport.serializer(),
             )
         }.rosterResult()
@@ -220,8 +231,25 @@ class KtorAttendanceGateway(
             )
         }.capacityResult()
 
+    override suspend fun updateAutoConfirmation(
+        groupId: GroupId,
+        command: AutoConfirmationCommand,
+    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> =
+        network.execute(
+            HttpMethod.Put,
+            autoConfirmationRoute(groupId),
+            AutoConfirmationUpdateTransport.serializer(),
+            NetworkRequest(json.encodeToString(AutoConfirmationRequest(command.enabled))),
+        ).autoConfirmationResult()
+
     private fun attendanceRoute(groupId: GroupId, gameId: String) =
         "api/groups/${groupId.value}/games/$gameId/attendance"
+
+    private fun rosterRoute(groupId: GroupId, gameId: String) =
+        "${attendanceRoute(groupId, gameId)}/roster"
+
+    private fun autoConfirmationRoute(groupId: GroupId) =
+        "api/groups/${groupId.value}/athletes/me/auto-confirmation"
 }
 
 private fun String.safety() =
@@ -255,11 +283,6 @@ private fun NetworkResult<AttendanceDetailTransport>.detailResult() = when (this
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
 }
 
-private fun NetworkResult<AttendanceRosterTransport>.rosterResult() = when (this) {
-    is NetworkResult.Success -> SaqzResult.Success(value.toDomain())
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
-}
-
 private fun NetworkResult<AttendanceMutationTransport>.mutationResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
     is NetworkResult.Success -> versionToken()
@@ -268,12 +291,22 @@ private fun NetworkResult<AttendanceMutationTransport>.mutationResult() = when (
         ?: invalidResponse()
 }
 
+private fun NetworkResult<AttendanceRosterTransport>.rosterResult() = when (this) {
+    is NetworkResult.Success -> SaqzResult.Success(value.toDomain())
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
+}
+
 private fun NetworkResult<AttendanceCapacityTransport>.capacityResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
     is NetworkResult.Success -> versionToken()
         ?.let { VersionedAttendanceCapacity(value.toDomain(), it) }
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
+}
+
+private fun NetworkResult<AutoConfirmationUpdateTransport>.autoConfirmationResult() = when (this) {
+    is NetworkResult.Success -> SaqzResult.Success(AutoConfirmationUpdate(value.enabled))
+    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
 }
 
 private fun NetworkResult.Success<*>.versionToken() = metadata.header(HttpHeaders.ETag)
@@ -342,17 +375,9 @@ private fun AttendanceDetailTransport.toDomain() = AttendanceDetail(
     availableSpots = availableSpots,
     waitlistCount = waitlistCount,
     capacity = capacity,
-)
-
-private fun AttendanceRosterTransport.toDomain() = AttendanceRoster(
-    confirmed = confirmed.map(AttendanceRosterMemberTransport::toDomain),
-    waitlisted = waitlisted.map(AttendanceRosterMemberTransport::toDomain),
-)
-
-private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
-    memberId = memberId,
-    displayName = displayName,
-    waitlistPosition = waitlistPosition,
+    declinedCount = declinedCount,
+    pendingCount = pendingCount,
+    autoConfirmEnabled = autoConfirmEnabled,
 )
 
 private fun AttendanceMutationTransport.toDomain() = AttendanceMutation(
@@ -367,4 +392,15 @@ private fun AttendanceCapacityTransport.toDomain() = AttendanceCapacity(
     version = version,
     promotedCount = promotedCount,
     detail = detail.toDomain(),
+)
+
+private fun AttendanceRosterTransport.toDomain() = AttendanceRoster(
+    confirmed = confirmed.map(AttendanceRosterMemberTransport::toDomain),
+    waitlisted = waitlisted.map(AttendanceRosterMemberTransport::toDomain),
+)
+
+private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
+    memberId = memberId,
+    displayName = displayName,
+    waitlistPosition = waitlistPosition,
 )

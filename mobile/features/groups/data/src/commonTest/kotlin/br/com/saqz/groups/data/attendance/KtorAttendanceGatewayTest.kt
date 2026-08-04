@@ -9,6 +9,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
@@ -35,6 +36,7 @@ import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -67,11 +69,14 @@ class KtorAttendanceGatewayTest {
     fun `read maps authoritative counts`() = runTest {
         val detail = successDetail()
 
-        assertEquals(listOf(3, 21, 2, 24), listOf(
+        assertEquals(listOf(3, 21, 2, 24, 5, 7, true), listOf(
             detail.confirmedCount,
             detail.availableSpots,
             detail.waitlistCount,
             detail.capacity,
+            detail.declinedCount,
+            detail.pendingCount,
+            detail.autoConfirmEnabled,
         ))
     }
 
@@ -115,6 +120,26 @@ class KtorAttendanceGatewayTest {
             assertEquals("DECLINE", request.bodyJson()["intent"]?.jsonPrimitive?.content)
             mutationResponse()
         }.respond(GROUP, GAME, SelfAttendanceCommand(KEY, AttendanceIntent.Decline))
+    }
+
+    @Test
+    fun `auto confirmation uses own member route and enabled body`() = runTest {
+        val result = gateway { request ->
+            assertEquals(HttpMethod.Put, request.method)
+            assertEquals(
+                "/api/groups/group-1/athletes/me/auto-confirmation",
+                request.url.encodedPath,
+            )
+            assertEquals(true, request.bodyJson()["enabled"]?.jsonPrimitive?.boolean)
+            autoConfirmationResponse()
+        }.updateAutoConfirmation(GROUP, AutoConfirmationCommand(enabled = true))
+
+        assertEquals(
+            true,
+            assertIs<SaqzResult.Success<*>>(result).value.let {
+                it as br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
+            }.enabled,
+        )
     }
 
     @Test
@@ -402,6 +427,9 @@ class KtorAttendanceGatewayTest {
     private fun MockRequestHandleScope.capacityResponse(etag: String = "\"8\"") =
         respond(CAPACITY_JSON, headers = versionedHeaders(etag))
 
+    private fun MockRequestHandleScope.autoConfirmationResponse(enabled: Boolean = true) =
+        respond("{\"enabled\":$enabled}", headers = jsonHeaders())
+
     private fun MockRequestHandleScope.problemResponse(status: Int, code: String) = respond(
         """{"status":$status,"code":"$code","correlationId":"safe"}""",
         HttpStatusCode.fromValue(status),
@@ -432,7 +460,7 @@ class KtorAttendanceGatewayTest {
         const val GAME = "game-1"
         const val KEY = "request-key"
         const val ROSTER_JSON = """{"confirmed":[{"memberId":"confirmed-1","displayName":"Ana"},{"memberId":"confirmed-2","displayName":"Bia"}],"waitlisted":[{"memberId":"wait-2","displayName":"Caio","waitlistPosition":2},{"memberId":"wait-1","displayName":"Duda","waitlistPosition":1}]}"""
-        const val DETAIL_JSON = """{"ownAttendance":{"memberId":"member-1","status":"WAITLISTED","waitlistPosition":4,"version":7},"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24}"""
+        const val DETAIL_JSON = """{"ownAttendance":{"memberId":"member-1","status":"WAITLISTED","waitlistPosition":4,"version":7},"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24,"declinedCount":5,"pendingCount":7,"autoConfirmEnabled":true}"""
         const val DETAIL_WITHOUT_OWN = """{"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24}"""
         const val MUTATION_JSON = """{"attendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"audit":{"actorId":"organizer-1","source":"ORGANIZER_OVERRIDE","oldStatus":"WAITLISTED","newStatus":"CONFIRMED","reason":"Correção","occurredAt":"2026-08-12T22:30:00Z"},"promotedCount":2,"detail":{"ownAttendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"confirmedCount":4,"availableSpots":20,"waitlistCount":1,"capacity":24}}"""
         const val CAPACITY_JSON = """{"capacity":30,"version":8,"promotedCount":2,"detail":{"confirmedCount":4,"availableSpots":26,"waitlistCount":0,"capacity":30}}"""

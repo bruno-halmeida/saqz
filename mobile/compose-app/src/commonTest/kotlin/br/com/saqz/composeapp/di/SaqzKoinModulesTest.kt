@@ -76,6 +76,8 @@ import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
+import br.com.saqz.groups.port.DefaultGroupNowPort
+import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
@@ -161,6 +163,7 @@ class SaqzKoinModulesTest {
         single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
         single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
         single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
+        single<GroupNowPort> { DefaultGroupNowPort() }
     }
 
     @Test

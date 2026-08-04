@@ -50,6 +50,9 @@ data class AttendanceDetailResponse(
     val availableSpots: Int,
     val waitlistCount: Int,
     val capacity: Int,
+    val declinedCount: Int,
+    val pendingCount: Int,
+    val autoConfirmEnabled: Boolean,
 )
 data class AttendanceRosterMemberResponse(
     val memberId: UUID,
@@ -105,10 +108,10 @@ class AttendanceController(
         @PathVariable gameId: String,
         @RequestBody request: AttendanceSelfRequest,
     ): ResponseEntity<AttendanceMutationResponse> {
-        required(request.requestId, "requestId")
+        val requestId = required(request.requestId, "requestId")
         val actor = actors.resolve(identity)
         return mutation(
-            responses.execute(actor, uuid(groupId), uuid(gameId), intent = intent(request.intent)),
+            responses.execute(actor, uuid(groupId), uuid(gameId), intent = intent(request.intent), requestId = requestId),
             actor, uuid(groupId), uuid(gameId),
         )
     }
@@ -202,6 +205,15 @@ class AttendanceController(
 
 private fun AttendanceRecord.response() = AttendanceEntryResponse(memberId, status.name, waitlistSequence, version)
 private fun AttendanceEvent.response() = AttendanceAuditResponse(actorId, source.name, oldStatus?.name, newStatus.name, reason, occurredAt)
-private fun AttendanceDetail.response() = AttendanceDetailResponse(own?.response(), confirmedCount, availableSpots, waitlistCount, capacity)
+private fun AttendanceDetail.response() = AttendanceDetailResponse(
+    own?.response(),
+    confirmedCount,
+    availableSpots,
+    waitlistCount,
+    capacity,
+    declinedCount,
+    pendingCount,
+    autoConfirmEnabled,
+)
 private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition)
 private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() })

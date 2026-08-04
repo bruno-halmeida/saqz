@@ -28,6 +28,7 @@ import org.robolectric.annotation.GraphicsMode
     qualifiers = RobolectricDeviceQualifiers.Pixel7,
     application = Application::class,
 )
+@Suppress("TooManyFunctions")
 class GameDetailScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
@@ -47,6 +48,14 @@ class GameDetailScreenshotTest {
     @Test
     @Config(qualifiers = "+h1400dp")
     fun member() = capture("game-detail-member", GameDetailPreviewData.admin.copy(isAdmin = false))
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun memberWithoutResponse() = capture(
+        "game-detail-member-without-response",
+        GameDetailPreviewData.admin.copy(isAdmin = false),
+        directory = "vul-159",
+    )
 
     @Test
     @Config(qualifiers = "+h1400dp")
