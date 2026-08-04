@@ -141,6 +141,7 @@ class AccessSessionController(
                     phoneVisibilityProvided = request.phoneVisibilityProvided,
                 )
         ) {
+            CompleteSessionProfileResult.Suspended -> throw AccountSuspendedException()
             CompleteSessionProfileResult.InvalidPhone -> throw InvalidPhoneException()
             CompleteSessionProfileResult.InvalidDisplayName -> throw InvalidDisplayNameException()
             CompleteSessionProfileResult.InvalidNickname -> throw InvalidSessionProfileFieldException("nickname")
