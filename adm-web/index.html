@@ -511,9 +511,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   <div style="flex:1;min-height:0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:14px">Receita</strong>
-      <button type="button" sc-camel-on-click="{{ onTabAss }}" style="{{ tabAss }}">Assinaturas</button>
-      <button type="button" sc-camel-on-click="{{ onTabCob }}" style="{{ tabCob }}">Cobranças</button>
-      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">MRR R$ 1.295 · taxa de julho R$ 746</span>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ recResumo }}</span>
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
       <sc-if value="{{ isTabAss }}" hint-placeholder-val="{{ true }}">
@@ -531,24 +529,10 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
           </button>
         </sc-for>
-        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">Mostrando 8 de 53 assinaturas ativas ou recentes.</span>
+        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">{{ recRodape }}</span>
       </div>
       </sc-if>
-      <sc-if value="{{ isTabCob }}" hint-placeholder-val="{{ false }}">
-      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-        <span style="display:grid;grid-template-columns:0.6fr 1.6fr 1.6fr 0.8fr 1fr 150px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>DATA</span><span>DE QUEM</span><span>O QUE</span><span>VALOR</span><span>STATUS</span><span></span></span>
-        <sc-for list="{{ cobRows }}" as="c" hint-placeholder-count="8">
-          <span style="display:grid;grid-template-columns:0.6fr 1.6fr 1.6fr 0.8fr 1fr 150px;gap:10px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px;box-sizing:border-box">
-            <span style="color:var(--saqz-muted)">{{ c.data }}</span>
-            <strong style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.nome }}</strong>
-            <span style="color:var(--saqz-muted)">{{ c.tipo }}</span>
-            <span style="font-weight:600">{{ c.valor }}</span>
-            <span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span>
-            <span style="justify-self:end"><sc-if value="{{ c.temAcao }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ c.onAcao }}" style="{{ c.acaoStyle }}">{{ c.acaoTxt }}</span></sc-if></span>
-          </span>
-        </sc-for>
-      </div>
-      </sc-if>
+      
     </div>
   </div>
   </sc-if>
@@ -561,7 +545,6 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <span style="{{ adStatusStyle }}">{{ adStatusTxt }}</span>
       <span style="margin-left:auto"></span>
       <sc-if value="{{ adAtiva }}" hint-placeholder-val="{{ false }}">
-        <span sc-camel-on-click="{{ onReembolsar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-navy);background:var(--saqz-white)" style-hover="background:var(--saqz-ice)">Reembolsar última cobrança</span>
         <span sc-camel-on-click="{{ onCancelar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-error);background:var(--saqz-white)" style-hover="background:rgba(229,72,77,.06)">Cancelar plano</span>
       </sc-if>
     </div>
@@ -574,7 +557,6 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Assinante desde</span><strong style="font-weight:700">{{ ad.desde }}</strong></span>
           <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Cupom</span><strong style="font-weight:700">{{ ad.cupom }}</strong></span>
           <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Próxima cobrança</span><strong style="font-weight:700">{{ ad.prox }}</strong></span>
-          <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Forma de pagamento</span><strong style="font-weight:700">{{ ad.forma }}</strong></span>
         </div>
       </div>
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
@@ -595,9 +577,9 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-        <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>CÓDIGO</span><span>DESCONTO</span><span>VÁLIDO ATÉ</span><span>USOS</span><span>MRR COM DESCONTO</span><span>STATUS</span></span>
+        <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr 110px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>CÓDIGO</span><span>DESCONTO</span><span>VÁLIDO ATÉ</span><span>USOS</span><span>COM DESCONTO ATIVO</span><span>STATUS</span><span></span></span>
         <sc-for list="{{ cuponsRows }}" as="c" hint-placeholder-count="3">
-          <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><strong style="font-weight:700;letter-spacing:.03em">{{ c.cod }}</strong><span style="color:var(--saqz-muted)">{{ c.desc }}</span><span style="color:var(--saqz-muted)">{{ c.validade }}</span><span>{{ c.usos }}</span><span style="color:var(--saqz-muted)">{{ c.mrr }}</span><span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span></span>
+          <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr 110px;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><strong style="font-weight:700;letter-spacing:.03em">{{ c.cod }}</strong><span style="color:var(--saqz-muted)">{{ c.desc }}</span><span style="color:var(--saqz-muted)">{{ c.validade }}</span><span>{{ c.usos }}</span><span style="color:var(--saqz-muted)">{{ c.ativos }}</span><span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span><span style="justify-self:end"><sc-if value="{{ c.podeDesativar }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ c.onDesativar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-error);background:rgba(229,72,77,.08)">Desativar</span></sc-if></span></span>
         </sc-for>
       </div>
     </div>
@@ -709,13 +691,10 @@ class Component extends DCLogic {
     overview: null, atrasadas: null,
     usersPage: null, userDetail: null, userReceipts: null,
     groupsPage: null, groupDetail: null,
-    // Receita, cupons e suporte seguem mockados até o VUL-170/171
-    canceladas: {}, reembolsos: {}, resolvidas: {},
-    cupons: [
-      { cod: "GALERA10", desc: "10% por 6 meses", validade: "15/08/2026", usos: 9, ativo: true, mrr: "R$ 161,19" },
-      { cod: "SAQUE20", desc: "20% no primeiro mês", validade: "30/06/2026", usos: 14, ativo: false, mrr: "—" }
-    ],
-    cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "31/12/2026" },
+    subsPage: null, subDetail: null, couponsData: null,
+    // Suporte segue mockado até o VUL-171
+    resolvidas: {},
+    cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" },
     modal: null, toast: null
   };
 
@@ -744,6 +723,8 @@ class Component extends DCLogic {
     if (page === "visao" && (force || !st.overview)) this.carregarVisao();
     if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
     if (page === "grupos" && (force || !st.groupsPage)) this.carregarGrupos();
+    if (page === "receita" && (force || !st.subsPage)) this.carregarAssinaturas();
+    if (page === "cupons" && (force || !st.couponsData)) this.carregarCupons();
   }
 
   carregarVisao() {
@@ -804,6 +785,57 @@ class Component extends DCLogic {
       .catch(() => this.setState({ groupDetail: { erro: true } }));
   }
 
+  carregarAssinaturas() {
+    this.setState({ subsPage: null });
+    this.api("/admin/subscriptions?page=1&size=25")
+      .then((subsPage) => this.setState({ subsPage }))
+      .catch(() => this.setState({ subsPage: { erro: true, items: [], total: 0 } }));
+  }
+
+  carregarAssinatura(ownerId) {
+    this.setState({ subDetail: null });
+    this.api(`/admin/subscriptions/${ownerId}`)
+      .then((subDetail) => this.setState({ subDetail }))
+      .catch(() => this.setState({ subDetail: { erro: true } }));
+  }
+
+  carregarCupons() {
+    this.setState({ couponsData: null });
+    this.api("/admin/coupons")
+      .then((couponsData) => this.setState({ couponsData }))
+      .catch(() => this.setState({ couponsData: { erro: true } }));
+  }
+
+  criarCupom() {
+    const n = this.state.nc;
+    if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
+    const body = { code: n.cod.trim(), discountPercent: parseInt(n.desc, 10) || 0 };
+    const meses = parseInt(n.meses, 10);
+    if (meses > 0) body.durationCycles = meses;
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.val.trim());
+    if (m) body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
+    window.saqzAdmin.fetchAdmin("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
+      if (r.status === 201) {
+        this.setState({ cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" } });
+        this.carregarCupons();
+        this.aviso(`Cupom ${body.code} criado.`);
+      } else if (r.status === 409) {
+        this.aviso("Já existe um cupom com esse código.");
+      } else {
+        this.aviso("Não deu para criar o cupom — confira os campos.");
+      }
+    });
+  }
+
+  desativarCupom(c) {
+    this.setState({ modal: { titulo: `Desativar ${c.code}?`, texto: "O cupom expira agora e novas assinaturas não conseguem mais usar. Quem já usa mantém o desconto contratado.", confirm: "Desativar cupom", danger: true, acao: () => {
+      window.saqzAdmin.fetchAdmin(`/admin/coupons/${c.id}/deactivate`, { method: "POST" }).then((r) => {
+        this.setState({ modal: null });
+        if (r.ok) { this.carregarCupons(); this.aviso(`Cupom ${c.code} desativado.`); } else { this.aviso("Não deu para desativar agora."); }
+      });
+    } } });
+  }
+
   chip(bg, c) { return `display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:${bg};color:${c};white-space:nowrap`; }
   chipPlano(p) {
     if (!p || p === "FREE") return this.chip("#F5F5F7", "#667085");
@@ -820,6 +852,7 @@ class Component extends DCLogic {
       this.carregarPagina(page, false);
       if (page === "usuario" && extra && extra.selU) this.carregarUsuario(extra.selU);
       if (page === "grupo" && extra && extra.selG) this.carregarGrupo(extra.selG);
+      if (page === "assinatura" && extra && extra.selA) this.carregarAssinatura(extra.selA);
     });
   }
 
@@ -948,17 +981,36 @@ class Component extends DCLogic {
     } : { nome: st.groupDetail && st.groupDetail.erro ? "Não deu para carregar" : "Carregando…", organizador: "—", planoOrg: "", membros: "—", jogos: "—", criado: "—", fuso: "—" };
     const gdJogos = gdet ? gdet.lastGames.map(j => ({ data: this.dataCurta(j.startsAt), desc: j.title + (j.status === "CANCELLED" ? " · cancelado" : ""), presenca: `${j.confirmed} confirmado${j.confirmed === 1 ? "" : "s"}` })) : [];
 
-    // ---- Receita/cupons/suporte: mock até VUL-170/171 ----
-    const tab = on => `border:0;background:${on ? "var(--saqz-ice)" : "transparent"};color:${on ? "var(--saqz-blue)" : "var(--saqz-navy)"};font-family:inherit;font-size:13.5px;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer`;
-    const assinRows = [];
-    const cobRows = [];
-    const ad = { nome: "—", plano: "—", ciclo: "—", valor: "—", cupom: "—", desde: "—", prox: "—", forma: "—" };
-    const adStatus = this.chipStatus("ativa");
-    const adHist = [];
-    const cuponsRows = st.cupons.map(c => {
-      const cs = this.chipStatus(c.ativo ? "ativo" : "vencido");
-      return { ...c, usos: String(c.usos), statusTxt: cs.txt, statusStyle: cs.style };
-    });
+    // ---- Receita (API) ----
+    const sp = st.subsPage;
+    const statusAssin = { ACTIVE: "ativa", PAST_DUE: "atrasada", CANCELED: "cancelada" };
+    const assinRows = sp && !sp.erro ? sp.items.map(a => {
+      const cs = this.chipStatus(statusAssin[a.status] || "ativa");
+      return { nome: a.ownerName || a.ownerEmail || "—", plano: a.plan, planoStyle: this.chipPlano(a.plan), ciclo: a.cycle === "ANNUAL" ? "anual" : "mensal", valor: `${this.money(a.priceCents)}/${a.cycle === "ANNUAL" ? "ano" : "mês"}`, cupom: a.couponCode || "—", statusTxt: cs.txt, statusStyle: cs.style, desde: this.dataBr(a.createdAt), onOpen: () => this.go("assinatura", { selA: a.ownerUserId }) };
+    }) : [];
+    const recResumo = sp ? (sp.erro ? "erro ao carregar" : `${sp.total} assinatura${sp.total === 1 ? "" : "s"}`) : "carregando…";
+    const recRodape = sp ? (sp.erro ? "Não deu para carregar as assinaturas." : `Mostrando ${sp.items.length} de ${sp.total} · página 1 (paginação completa na próxima fase).`) : "Carregando…";
+
+    const sd = st.subDetail && !st.subDetail.erro ? st.subDetail : null;
+    const sds = sd ? sd.summary : null;
+    const adCancelada = sds ? sds.status === "CANCELED" : false;
+    const adStatus = this.chipStatus(sds ? (statusAssin[sds.status] || "ativa") : "ativa");
+    const ad = sds ? {
+      nome: sds.ownerName || "—", plano: sds.plan, ciclo: sds.cycle === "ANNUAL" ? "anual" : "mensal",
+      valor: `${this.money(sds.priceCents)} por ${sds.cycle === "ANNUAL" ? "ano" : "mês"}`,
+      cupom: sds.couponCode || "—", desde: this.dataBr(sds.createdAt),
+      prox: adCancelada ? `— cancelada, vale até ${this.dataBr(sds.currentPeriodEnd)}` : this.dataBr(sds.currentPeriodEnd)
+    } : { nome: st.subDetail && st.subDetail.erro ? "não deu para carregar" : "carregando…", plano: "—", ciclo: "—", valor: "—", cupom: "—", desde: "—", prox: "—" };
+    const adHist = sd ? sd.receipts.map(r => { const cs = this.chipStatus("paga"); return { data: this.dataCurta(r.processedAt), desc: "Pagamento confirmado", valor: this.money(r.valueCents), statusTxt: cs.txt, statusStyle: cs.style }; }) : [];
+
+    // ---- Cupons (API) ----
+    const cd = st.couponsData && !st.couponsData.erro ? st.couponsData : null;
+    const agora = Date.now();
+    const cuponsRows = cd ? cd.map(c => {
+      const ativo = !c.validUntil || new Date(c.validUntil).getTime() > agora;
+      const cs = this.chipStatus(ativo ? "ativo" : "vencido");
+      return { cod: c.code, desc: `${c.discountPercent}%${c.durationCycles ? ` por ${c.durationCycles} ciclo${c.durationCycles === 1 ? "" : "s"}` : " sempre"}`, validade: c.validUntil ? this.dataBr(c.validUntil) : "sem validade", usos: String(c.redemptions), ativos: String(c.activeSubscriptions), statusTxt: cs.txt, statusStyle: cs.style, podeDesativar: ativo, onDesativar: () => this.desativarCupom(c) };
+    }) : [];
     const denAbertas = this.DEN.filter(d => d.aberta && !st.resolvidas[d.id]).length;
     const denRows = this.DEN.map(d => {
       const aberta = d.aberta && !st.resolvidas[d.id];
@@ -1002,11 +1054,18 @@ class Component extends DCLogic {
       gBusca: st.gBusca, onGBusca: this.filtroGrupos("gBusca"), gStatus: st.gStatus, onGStatus: this.filtroGrupos("gStatus"),
       gruposRows, gCount, gRodape,
       gd, gdStatusTxt: gdStatus.txt, gdStatusStyle: gdStatus.style, gdJogos,
-      tabAss: tab(st.rTab === "ass"), tabCob: tab(st.rTab === "cob"), onTabAss: () => this.setState({ rTab: "ass" }), onTabCob: () => this.setState({ rTab: "cob" }), isTabAss: st.rTab === "ass", isTabCob: st.rTab === "cob",
-      assinRows, cobRows,
-      ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: false,
-      onCancelar: () => this.aviso("Fiação da receita chega no VUL-170."),
-      onReembolsar: () => this.aviso("Fiação da receita chega no VUL-170."),
+      isTabAss: true,
+      assinRows, recResumo, recRodape,
+      ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !!sds && !adCancelada,
+      onCancelar: !sds || adCancelada ? () => {} : () => this.setState({ modal: { titulo: `Cancelar o plano de ${sds.ownerName}?`, texto: "A assinatura para de renovar no Asaas e vale até o fim do período já pago.", confirm: "Cancelar plano", danger: true, acao: () => {
+        window.saqzAdmin.fetchAdmin(`/admin/subscriptions/${sds.ownerUserId}/cancel`, { method: "POST" }).then((r) => {
+          this.setState({ modal: null });
+          if (r.status === 204) { this.carregarAssinatura(sds.ownerUserId); this.carregarAssinaturas(); this.aviso("Plano cancelado. Vale até o fim do período pago."); }
+          else if (r.status === 409) { this.aviso("Essa assinatura já estava cancelada."); }
+          else if (r.status === 503) { this.aviso("Asaas não configurado neste ambiente."); }
+          else { this.aviso("Não deu para cancelar agora."); }
+        });
+      } } }),
       cuponsRows,
       onNovoCupom: () => this.setState({ cupomOpen: true }),
       onCupomFechar: () => this.setState({ cupomOpen: false }),
@@ -1016,7 +1075,7 @@ class Component extends DCLogic {
       onNcDesc: e => this.setState(s => ({ nc: { ...s.nc, desc: e.target.value } })),
       onNcMeses: e => this.setState(s => ({ nc: { ...s.nc, meses: e.target.value } })),
       onNcVal: e => this.setState(s => ({ nc: { ...s.nc, val: e.target.value } })),
-      onCriarCupom: () => this.aviso("Fiação de cupons chega no VUL-170."),
+      onCriarCupom: () => this.criarCupom(),
       denRows, supResumo: `Prévia — fluxo de denúncias ainda não existe (VUL-171)`,
       dd: dSel, ddStatusTxt: ddStatus.txt, ddStatusStyle: ddStatus.style, ddAberta,
       onResolver: () => this.aviso("Fluxo de denúncias ainda não existe (VUL-171)."),
