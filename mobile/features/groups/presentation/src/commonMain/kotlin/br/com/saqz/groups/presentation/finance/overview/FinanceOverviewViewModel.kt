@@ -23,6 +23,7 @@ class FinanceOverviewViewModel(
     initialState = financeOverviewInitialState(nowPort.now()),
 ) {
     private var loadGeneration = 0L
+    private var firstTabActivationHandled = false
 
     init {
         load(FinanceOverviewPeriodSelection.CurrentMonth)
@@ -32,7 +33,13 @@ class FinanceOverviewViewModel(
         when (intent) {
             is FinanceOverviewIntent.SelectPeriod -> load(intent.selection)
             is FinanceOverviewIntent.OpenGroup -> emit(FinanceOverviewEffect.OpenGroup(intent.groupId))
-            FinanceOverviewIntent.TabActive -> load(state.value.selectedPeriod)
+            FinanceOverviewIntent.TabActive -> {
+                if (firstTabActivationHandled) {
+                    load(state.value.selectedPeriod)
+                } else {
+                    firstTabActivationHandled = true
+                }
+            }
             FinanceOverviewIntent.Retry -> load(state.value.selectedPeriod)
         }
     }

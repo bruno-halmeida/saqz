@@ -24,7 +24,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalTestApi::class)
 class FinanceOverviewRootTest {
     @Test
-    fun `reentering finance tab reloads the current month after rollover`() = runComposeUiTest {
+    fun `first visit makes one request and reentry refreshes after rollover`() = runComposeUiTest {
         var currentNow = Instant.parse("2026-07-31T12:00:00Z")
         val gateway = RecordingFinanceOverviewGateway()
         val viewModel = FinanceOverviewViewModel(
@@ -44,6 +44,7 @@ class FinanceOverviewRootTest {
             }
         }
         waitForIdle()
+        assertEquals(listOf(FinanceOverviewQuery(month = "2026-07")), gateway.queries)
         gateway.queries.clear()
 
         currentNow = Instant.parse("2026-08-01T12:00:00Z")
