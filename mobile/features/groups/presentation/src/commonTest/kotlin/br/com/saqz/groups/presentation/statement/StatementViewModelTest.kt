@@ -53,6 +53,29 @@ class StatementViewModelTest {
     }
 
     @Test
+    fun `maps charge kinds to Portuguese statement categories`() = runTest(dispatcher) {
+        val gateway = FakeStatementGateway(
+            pages = ArrayDeque(
+                listOf(
+                    statementPage(
+                        items = listOf(
+                            incomeItem.copy(category = "MONTHLY"),
+                            expenseItem.copy(category = "GAME"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = StatementViewModel("group-1", gateway)
+        viewModel.onIntent(StatementIntent.Retry)
+
+        assertEquals(
+            listOf("Mensalidade · Pix · 04/08/2026", "Jogo · 04/08/2026"),
+            viewModel.state.value.items.map { it.meta },
+        )
+    }
+
+    @Test
     fun `formats negative outgoing amount using direction sign`() {
         assertEquals("−R$ 7,00", formatStatementAmount(-700L, FinanceDirection.Out))
     }

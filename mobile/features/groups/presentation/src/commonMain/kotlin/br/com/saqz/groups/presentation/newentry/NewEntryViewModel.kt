@@ -147,6 +147,10 @@ internal fun parseEntryCents(value: String): Long? {
 internal fun parseEntryDate(value: String): String? {
     val trimmed = value.trim()
     if (isEntryDate(trimmed)) return trimmed
+    if (trimmed.length == 8 && trimmed.all(Char::isDigit)) {
+        val iso = "${trimmed.substring(4)}-${trimmed.substring(2, 4)}-${trimmed.substring(0, 2)}"
+        return iso.takeIf(::isEntryDate)
+    }
     val parts = trimmed.split('/')
     return if (parts.size == 3 && parts[0].length == 2 && parts[1].length == 2 && parts[2].length == 4) {
         "${parts[2]}-${parts[1]}-${parts[0]}"

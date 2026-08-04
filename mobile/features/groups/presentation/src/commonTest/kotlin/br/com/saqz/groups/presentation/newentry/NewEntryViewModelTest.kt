@@ -64,7 +64,7 @@ class NewEntryViewModelTest {
     }
 
     @Test
-    fun `shortcut and date input keep cents and ISO command values`() = runTest(dispatcher) {
+    fun `shortcut and numeric date input keep cents and ISO command values`() = runTest(dispatcher) {
         val gateway = FakeOrganizerGateway()
         val viewModel = viewModel(gateway = gateway)
 
@@ -72,7 +72,7 @@ class NewEntryViewModelTest {
         viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(12_000L))
         viewModel.onIntent(NewEntryIntent.DescriptionChanged("Compra de bolas"))
         viewModel.onIntent(NewEntryIntent.SelectCategory(NewEntryCategory.Material))
-        viewModel.onIntent(NewEntryIntent.DateChanged("12/08/2026"))
+        viewModel.onIntent(NewEntryIntent.DateChanged("12082026"))
         viewModel.onIntent(NewEntryIntent.Save)
 
         assertEquals(NewEntryEffect.Saved, viewModel.effects.first())

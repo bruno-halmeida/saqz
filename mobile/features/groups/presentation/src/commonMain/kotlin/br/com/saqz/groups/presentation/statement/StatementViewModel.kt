@@ -162,6 +162,8 @@ private fun Long.withThousandsSeparator(): String = toString()
     .reversed()
 
 private fun String.toStatementCategoryLabel(): String = when (uppercase()) {
+    "MONTHLY" -> "Mensalidade"
+    "GAME" -> "Jogo"
     "VENUE", "QUADRA" -> "Quadra"
     "EQUIPMENT", "MATERIAL" -> "Material"
     "REFEREE", "ARBITRAGEM" -> "Arbitragem"
