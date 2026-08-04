@@ -706,7 +706,20 @@ class Component extends DCLogic {
 
   componentDidMount() {
     if (window.saqzAdmin) {
-      window.saqzAdmin.onSession((me) => { if (me) this.carregarPagina(this.state.page, true); });
+      window.saqzAdmin.onSession((me) => {
+        if (me) {
+          this.carregarPagina(this.state.page, true);
+        } else {
+          // Sessão encerrada: nada da sessão anterior fica em memória nem
+          // aparece entre o logout e a validação do próximo login.
+          this.setState({
+            overview: null, atrasadas: null,
+            usersPage: null, userDetail: null, userReceipts: null,
+            groupsPage: null, groupDetail: null,
+            subsPage: null, subDetail: null, couponsData: null
+          });
+        }
+      });
     }
   }
 
