@@ -98,6 +98,16 @@ class GroupProfileDefaultsValidatorTest {
     }
 
     @Test
+    fun `pix accepts explicit clear and enforces two code points when present`() {
+        val cleared = valid(input(pixKey = "  ", pixLabel = ""))
+        assertEquals("", cleared.pixKey)
+        assertEquals("", cleared.pixLabel)
+        assertFields(input(pixKey = "🏐"), "pixKey")
+        assertFields(input(pixLabel = "A"), "pixLabel")
+        assertEquals("🏐🏐", valid(input(pixKey = " 🏐🏐 ")).pixKey)
+    }
+
+    @Test
     fun `custom level is required only for custom level`() {
         assertFields(input(level = GroupLevel.CUSTOM), "customLevel")
         assertEquals("Elite", valid(input(level = GroupLevel.CUSTOM, customLevel = " Elite ")).customLevel)
@@ -267,6 +277,8 @@ class GroupProfileDefaultsValidatorTest {
         customLevel: String? = null,
         playStyle: CourtPlayStyle? = null,
         customPlayStyle: String? = null,
+        pixKey: String? = null,
+        pixLabel: String? = null,
         defaultVenue: GroupVenueInput? = null,
         regularSlots: List<RegularSlotInput> = emptyList(),
         defaultCapacity: Int? = null,
@@ -284,6 +296,8 @@ class GroupProfileDefaultsValidatorTest {
         customLevel = customLevel,
         playStyle = playStyle,
         customPlayStyle = customPlayStyle,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
         defaultVenue = defaultVenue,
         regularSlots = regularSlots,
         defaultCapacity = defaultCapacity,

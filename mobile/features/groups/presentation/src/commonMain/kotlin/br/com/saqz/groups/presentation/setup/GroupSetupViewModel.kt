@@ -416,7 +416,11 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
 private fun GroupSetupForm.withVenue(transform: GroupVenueForm.() -> GroupVenueForm) =
     copy(defaultVenue = (defaultVenue ?: EmptyVenue).transform().orNullWhenCleared())
 
-private fun GroupSetupState.toDomainForm() = form.toDomain(slotsForCommand, pixKey, pixLabel)
+private fun GroupSetupState.toDomainForm() = form.toDomain(
+    slots = slotsForCommand,
+    pixKey = pixKey?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
+    pixLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
+)
 
 private fun GroupSetupForm.toDomain(
     slots: List<GroupRegularSlotForm> = regularSlots,
@@ -449,8 +453,8 @@ private fun GroupSetupForm.toDomain(
     mensalistaPriority = mensalistaPriority,
     promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
     autoConfirmEnabled = autoConfirmEnabled,
-    pixKey = pixKey.trimmedOrNull(),
-    pixLabel = pixLabel.trimmedOrNull(),
+    pixKey = pixKey?.trim(),
+    pixLabel = pixLabel?.trim(),
 ).cleaned()
 
 private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
@@ -503,5 +507,3 @@ private const val KeyMensalistaPriority = "group-setup-mensalista-priority"
 private const val KeyPromotionMode = "group-setup-promotion-mode"
 private const val KeyAutoConfirm = "group-setup-auto-confirm"
 private const val KeyCreationCommand = "group-setup-create-command-key"
-
-private fun String?.trimmedOrNull(): String? = this?.trim()?.takeIf(String::isNotEmpty)

@@ -42,6 +42,8 @@ import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.validate
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_pix_error_key
+import br.com.saqz.groups.resources.group_pix_error_label
 import br.com.saqz.groups.resources.group_setup_create_action
 import br.com.saqz.groups.resources.group_setup_create_title
 import br.com.saqz.groups.resources.group_setup_delete_action
@@ -274,6 +276,8 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
         GroupPixSection(
             pixKey = state.pixKey,
             pixLabel = state.pixLabel,
+            pixKeyError = state.errorText(GroupSetupError.PixKeyTooShort, Res.string.group_pix_error_key),
+            pixLabelError = state.errorText(GroupSetupError.PixLabelTooShort, Res.string.group_pix_error_label),
             onPixKeyChange = { onIntent(GroupSetupIntent.UpdatePixKey(it)) },
             onPixLabelChange = { onIntent(GroupSetupIntent.UpdatePixLabel(it)) },
         )

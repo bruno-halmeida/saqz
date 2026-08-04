@@ -69,6 +69,7 @@ object GroupSetupDefaults {
 }
 
 internal object GroupPixTextLimits {
+    const val Min = 2
     const val KeyMax = 140
     const val LabelMax = 80
 }

@@ -600,6 +600,37 @@ class GroupSetupViewModelTest {
         assertEquals("Lucas Prado · Nubank", form?.pixLabel)
     }
 
+    @Test
+    fun `editar envia string vazia para limpar os campos Pix`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = profileGateway,
+        )
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey(""))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixLabel(""))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        val form = profileGateway.lastUpdateCommand?.form
+        assertEquals("", form?.pixKey)
+        assertEquals("", form?.pixLabel)
+    }
+
+    @Test
+    fun `criar envia nulo para campos Pix vazios`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey(""))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixLabel(""))
+        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        runCurrent()
+
+        val form = profileGateway.lastCreateCommand?.form
+        assertNull(form?.pixKey)
+        assertNull(form?.pixLabel)
+    }
+
     /**
      * Teto de digitação: o estado para no máximo do backend em vez de deixar digitar e
      * reprovar depois. Fronteira nos dois lados — o máximo exato entra inteiro, um

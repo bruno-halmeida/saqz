@@ -666,6 +666,8 @@ internal fun GroupPixSection(
     onPixKeyChange: (String) -> Unit,
     onPixLabelChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    pixKeyError: String? = null,
+    pixLabelError: String? = null,
 ) {
     val keyLabel = stringResource(Res.string.group_pix_key_label)
     val labelLabel = stringResource(Res.string.group_pix_label_label)
@@ -684,6 +686,7 @@ internal fun GroupPixSection(
                 label = keyLabel,
                 showLabel = false,
                 placeholder = stringResource(Res.string.group_pix_key_hint),
+                errorText = pixKeyError,
                 modifier = Modifier.testTag(GroupSetupTags.PixKey),
             )
             Text(
@@ -697,6 +700,7 @@ internal fun GroupPixSection(
                 label = labelLabel,
                 showLabel = false,
                 placeholder = stringResource(Res.string.group_pix_label_hint),
+                errorText = pixLabelError,
                 modifier = Modifier.testTag(GroupSetupTags.PixLabel),
             )
         }
