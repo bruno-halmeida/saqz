@@ -3,7 +3,11 @@ package br.com.saqz.adminweb.http
 import br.com.saqz.access.application.admin.AdminUserDetail
 import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.AdminUserPage
+import br.com.saqz.access.application.admin.PlatformAdminLookup
+import br.com.saqz.sharedkernel.RequestIdentity
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -15,6 +19,7 @@ import java.util.UUID
 @RestController
 class AdminUsersController(
     private val directory: AdminUserDirectory,
+    private val adminLookup: PlatformAdminLookup,
 ) {
     @GetMapping("/admin/users")
     fun list(
@@ -35,8 +40,17 @@ class AdminUsersController(
         directory.find(id)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
 
     @PostMapping("/admin/users/{id}/suspend")
-    fun suspend(@PathVariable id: UUID): ResponseEntity<Void> =
-        if (directory.suspend(id)) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
+    fun suspend(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal identity: RequestIdentity,
+    ): ResponseEntity<Void> {
+        // Auto-suspensão trancaria o (possivelmente único) admin para fora do painel:
+        // o lookup da guarda ignora contas suspensas e ninguém conseguiria reativar.
+        if (adminLookup.findBySubject(identity.subject)?.userId == id) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build()
+        }
+        return if (directory.suspend(id)) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
+    }
 
     @PostMapping("/admin/users/{id}/reactivate")
     fun reactivate(@PathVariable id: UUID): ResponseEntity<Void> =

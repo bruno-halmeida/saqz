@@ -57,7 +57,8 @@ class PlatformAdminConfiguration {
         JdbcAdminUserDirectoryRepository(dataSource)
 
     @Bean
-    fun adminUsersController(directory: AdminUserDirectory) = AdminUsersController(directory)
+    fun adminUsersController(directory: AdminUserDirectory, lookup: PlatformAdminLookup) =
+        AdminUsersController(directory, lookup)
 
     @Bean
     fun adminGroupDirectory(dataSource: DataSource): AdminGroupDirectory =

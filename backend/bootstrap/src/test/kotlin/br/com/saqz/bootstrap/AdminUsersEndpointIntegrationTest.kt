@@ -80,6 +80,13 @@ class AdminUsersEndpointIntegrationTest {
     }
 
     @Test
+    fun `admin nao consegue suspender a propria conta`() {
+        val response = exchange("POST", "/admin/users/$ADMIN_SELF_ID/suspend", "admin-token")
+
+        assertEquals(409, response.statusCode())
+    }
+
+    @Test
     fun `usuario comum nao passa da guarda`() {
         assertEquals(403, exchange("GET", "/admin/users", "user-token").statusCode())
     }
@@ -181,11 +188,12 @@ class AdminUsersEndpointIntegrationTest {
 
         @Bean
         fun adminUsersLookup(): PlatformAdminLookup = PlatformAdminLookup { subject ->
-            if (subject == "admin-subject") PlatformAdminView(UUID.randomUUID(), "admin@saqz.test", "Ana Admin") else null
+            if (subject == "admin-subject") PlatformAdminView(ADMIN_SELF_ID, "admin@saqz.test", "Ana Admin") else null
         }
 
         @Bean
-        fun adminUsersController() = br.com.saqz.adminweb.http.AdminUsersController(StubDirectory())
+        fun adminUsersController(lookup: PlatformAdminLookup) =
+            br.com.saqz.adminweb.http.AdminUsersController(StubDirectory(), lookup)
 
         @Bean
         fun suspendedSessionRepository() = SuspendedAwareSessionRepository()
@@ -220,5 +228,6 @@ class AdminUsersEndpointIntegrationTest {
 
     private companion object {
         val USER_ID: UUID = UUID.fromString("3d2a9c4e-1f2b-4a5c-8d6e-0f1a2b3c4d5e")
+        val ADMIN_SELF_ID: UUID = UUID.fromString("aa11bb22-cc33-4d44-9e55-ff6677889900")
     }
 }
