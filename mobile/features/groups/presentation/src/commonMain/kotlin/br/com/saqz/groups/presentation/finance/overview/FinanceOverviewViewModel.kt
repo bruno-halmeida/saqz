@@ -32,6 +32,7 @@ class FinanceOverviewViewModel(
         when (intent) {
             is FinanceOverviewIntent.SelectPeriod -> load(intent.selection)
             is FinanceOverviewIntent.OpenGroup -> emit(FinanceOverviewEffect.OpenGroup(intent.groupId))
+            FinanceOverviewIntent.TabActive -> load(state.value.selectedPeriod)
             FinanceOverviewIntent.Retry -> load(state.value.selectedPeriod)
         }
     }

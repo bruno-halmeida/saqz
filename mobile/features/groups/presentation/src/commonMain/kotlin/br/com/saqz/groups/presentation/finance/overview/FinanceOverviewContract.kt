@@ -55,6 +55,7 @@ data class FinanceOverviewState(
 sealed interface FinanceOverviewIntent {
     data class SelectPeriod(val selection: FinanceOverviewPeriodSelection) : FinanceOverviewIntent
     data class OpenGroup(val groupId: String) : FinanceOverviewIntent
+    data object TabActive : FinanceOverviewIntent
     data object Retry : FinanceOverviewIntent
 }
 
