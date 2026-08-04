@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.home.HomeError
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 
 /** Erros que a apresentação conhece; o detalhe de transporte morre antes de chegar à UI. */
@@ -42,6 +43,10 @@ fun GameError.toUiError(): GroupUiError = when (this) {
     GameError.InvalidLifecycle -> GroupUiError.Validation
     GameError.Authentication -> GroupUiError.AccessDenied
     is GameError.Data -> error.toUiError()
+}
+
+fun HomeError.toUiError(): GroupUiError = when (this) {
+    is HomeError.Data -> error.toUiError()
 }
 
 private fun DataError.toUiError(): GroupUiError = when (this) {
