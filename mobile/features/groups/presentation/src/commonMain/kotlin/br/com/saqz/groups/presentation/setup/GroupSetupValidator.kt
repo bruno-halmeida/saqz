@@ -3,7 +3,7 @@ package br.com.saqz.groups.presentation.setup
 import br.com.saqz.groups.model.GroupLevel
 
 /**
- * Os cinco campos que o `2g` marca em vermelho, mais três que só o backend exige.
+ * Os sete campos que o `2g` marca em vermelho, mais três que só o backend exige.
  *
  * `ModalityRequired` e `CompositionRequired` não estão no desenho, mas
  * `KtorGroupGateway.toRequest` faz `requireNotNull` nos dois: sem eles a revisão deixaria
@@ -17,6 +17,8 @@ enum class GroupSetupError {
     CompositionRequired,
     CustomLevelRequired,
     DescriptionTooShort,
+    PixKeyTooShort,
+    PixLabelTooShort,
     CapacityOutOfRange,
     SlotsRequired,
     VenueNameRequired,
@@ -32,6 +34,8 @@ enum class GroupSetupError {
  * | -- | -- | -- | -- |
  * | `name` | 109 | `requiredText(2, 80)` | mínimo valida, máximo corta |
  * | `description` | 110 | `optionalText(2, 500)` | mínimo valida, máximo corta |
+ * | `pixKey` | 114 | `optionalPixText(2, 140)` | mínimo valida, máximo corta |
+ * | `pixLabel` | 115 | `optionalPixText(2, 80)` | mínimo valida, máximo corta |
  * | `customLevel` | 112 | `optionalText(2, 40)` | mínimo valida, máximo corta |
  * | `defaultVenue.name` | 171 | `requiredText(2, 120)` | mínimo valida, máximo corta |
  * | `defaultVenue.address` | 172 | `requiredText(5, 300)` | mínimo valida, máximo corta |
@@ -106,6 +110,7 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
         if (description != null && description.codePointLength() < GroupTextLimits.DescriptionMin) {
             add(GroupSetupError.DescriptionTooShort)
         }
+        addAll(validatePix(state))
         val customLevel = form.customLevel
         val customLevelTooShort = customLevel != null &&
             customLevel.codePointLength() < GroupTextLimits.CustomLevelMin
@@ -136,5 +141,16 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
         if (venue != null && venue.address.codePointLength() < GroupTextLimits.VenueAddressMin) {
             add(GroupSetupError.VenueAddressNotFound)
         }
+    }
+}
+
+private fun validatePix(state: GroupSetupState): Set<GroupSetupError> = buildSet {
+    val pixKey = state.pixKey?.trim()
+    if (!pixKey.isNullOrEmpty() && pixKey.codePointLength() < GroupPixTextLimits.Min) {
+        add(GroupSetupError.PixKeyTooShort)
+    }
+    val pixLabel = state.pixLabel?.trim()
+    if (!pixLabel.isNullOrEmpty() && pixLabel.codePointLength() < GroupPixTextLimits.Min) {
+        add(GroupSetupError.PixLabelTooShort)
     }
 }

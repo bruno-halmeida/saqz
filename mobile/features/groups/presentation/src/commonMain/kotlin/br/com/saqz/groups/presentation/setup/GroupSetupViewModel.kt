@@ -65,6 +65,12 @@ class GroupSetupViewModel(
                 onTextChange(KeyDescription, intent.value, GroupTextLimits.DescriptionMax) {
                     copy(description = it)
                 }
+            is GroupSetupIntent.UpdatePixKey ->
+                onPixTextChange(KeyPixKey, intent.value, GroupPixTextLimits.KeyMax) { copy(pixKey = it) }
+            is GroupSetupIntent.UpdatePixLabel ->
+                onPixTextChange(KeyPixLabel, intent.value, GroupPixTextLimits.LabelMax) {
+                    copy(pixLabel = it)
+                }
             is GroupSetupIntent.UpdateCustomLevel ->
                 onTextChange(KeyCustomLevel, intent.value, GroupTextLimits.CustomLevelMax) {
                     copy(customLevel = it)
@@ -139,8 +145,10 @@ class GroupSetupViewModel(
                             canManageGameConfig = group.role != GroupRole.ATHLETE,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
-                            form = group.toForm().withSavedText(savedState),
-                        )
+                            form = group.toForm(),
+                            pixKey = group.profile?.pixKey,
+                            pixLabel = group.profile?.pixLabel,
+                        ).withSavedText(savedState)
                     }
                 }
             }
@@ -335,6 +343,18 @@ class GroupSetupViewModel(
         onFormChange { edit(capped) }
     }
 
+    private fun onPixTextChange(
+        key: String,
+        value: String,
+        maxLength: Int,
+        edit: GroupSetupState.(String) -> GroupSetupState,
+    ) {
+        val capped = value.withoutControlChars().takeCodePoints(maxLength)
+        savedState[key] = capped
+        discardCreationKey()
+        update { current -> edit.invoke(current, capped).copy(creationCommandKey = null).revalidated() }
+    }
+
     private fun onFormChange(
         closeSheet: Boolean = false,
         transform: GroupSetupForm.() -> GroupSetupForm,
@@ -362,6 +382,8 @@ private fun GroupSetupState.revalidated() = if (errors.isEmpty()) this else copy
 
 private fun GroupSetupState.withSavedText(handle: SavedStateHandle): GroupSetupState = copy(
     form = form.withSavedText(handle),
+    pixKey = handle.get<String>(KeyPixKey) ?: pixKey,
+    pixLabel = handle.get<String>(KeyPixLabel) ?: pixLabel,
     creationCommandKey = handle.get<String>(KeyCreationCommand),
 )
 
@@ -394,10 +416,16 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
 private fun GroupSetupForm.withVenue(transform: GroupVenueForm.() -> GroupVenueForm) =
     copy(defaultVenue = (defaultVenue ?: EmptyVenue).transform().orNullWhenCleared())
 
-private fun GroupSetupState.toDomainForm() = form.toDomain(slotsForCommand)
+private fun GroupSetupState.toDomainForm() = form.toDomain(
+    slots = slotsForCommand,
+    pixKey = pixKey?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
+    pixLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
+)
 
 private fun GroupSetupForm.toDomain(
     slots: List<GroupRegularSlotForm> = regularSlots,
+    pixKey: String? = null,
+    pixLabel: String? = null,
 ) = br.com.saqz.groups.domain.group.GroupSetupForm(
     name = name,
     modality = modality?.let { br.com.saqz.groups.domain.group.GroupModality.valueOf(it.name) },
@@ -425,6 +453,8 @@ private fun GroupSetupForm.toDomain(
     mensalistaPriority = mensalistaPriority,
     promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
     autoConfirmEnabled = autoConfirmEnabled,
+    pixKey = pixKey?.trim(),
+    pixLabel = pixLabel?.trim(),
 ).cleaned()
 
 private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
@@ -468,6 +498,8 @@ private fun newCommandKey(): String = Uuid.random().toString()
 
 private const val KeyName = "group-setup-name"
 private const val KeyDescription = "group-setup-description"
+private const val KeyPixKey = "group-setup-pix-key"
+private const val KeyPixLabel = "group-setup-pix-label"
 private const val KeyCustomLevel = "group-setup-custom-level"
 private const val KeyVenueName = "group-setup-venue-name"
 private const val KeyVenueAddress = "group-setup-venue-address"
