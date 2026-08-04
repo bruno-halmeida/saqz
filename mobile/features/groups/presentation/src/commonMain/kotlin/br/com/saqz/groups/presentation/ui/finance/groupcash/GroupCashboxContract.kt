@@ -41,6 +41,7 @@ data class DebtorUi(
     val amountCents: Long,
     val chargeVersion: Long,
     val month: String?,
+    val isOverdue: Boolean = false,
     val isUpdating: Boolean = false,
 )
 

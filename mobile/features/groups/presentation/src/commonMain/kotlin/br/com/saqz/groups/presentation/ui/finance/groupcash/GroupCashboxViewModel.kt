@@ -159,20 +159,13 @@ class GroupCashboxViewModel(
         val pending = charges.filter { it.status == ChargeStatus.Pending }
         val memberNames = memberships.associate { it.userId to it.displayName }
         val debtors = pending
-            .map { it.toDebtor(memberNames[it.memberId] ?: "Membro") }
+            .map { it.toDebtor(memberNames[it.memberId] ?: "Membro", it.dueDate < date.toString()) }
             .sortedBy { it.dueLabel }
-        val overdue = pending.filter { it.dueDate < date.toString() }
-        val overdueMonth = overdue.firstNotNullOfOrNull { it.month }
-            ?.let(::monthNameOnlyFromKey)
-            ?: monthNameOnlyFromKey(monthKey)
-        val overdueNames = overdue
-            .map { memberNames[it.memberId] ?: "Membro" }
-            .distinct()
-            .sorted()
         val balanceCents = statement.summary.accumulatedBalanceCents
         val receivedCents = paidMonthly.sumOf { it.amountCents }
         val expensesCents = statement.summary.totalOutCents
-        val hasHistory = receivedCents != 0L || expensesCents != 0L || charges.any { it.status == ChargeStatus.Paid }
+        val hasHistory = statement.summary.totalInCents != 0L || expensesCents != 0L || charges.any { it.status == ChargeStatus.Paid }
+        val cashboxEmpty = !hasHistory && pending.isEmpty() && balanceCents == 0L
         return GroupCashboxState(
             isLoading = false,
             groupName = groupName,
@@ -192,19 +185,14 @@ class GroupCashboxViewModel(
             paidMonthlyCount = paidMonthly.size,
             openMonthlyCount = openMonthly.size,
             monthlyTotalCount = monthly.size,
-            cashboxEmpty = !hasHistory,
-            overdueBanner = overdueNames.takeIf { it.isNotEmpty() }?.let {
-                OverdueBannerUi(
-                    message = it.joinNames() + " estão com $overdueMonth em aberto",
-                    monthLabel = overdueMonth,
-                )
-            },
+            cashboxEmpty = cashboxEmpty,
+            overdueBanner = buildOverdueBanner(monthKey, debtors),
             debtors = debtors,
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
         )
     }
 
-    private fun Charge.toDebtor(name: String) = DebtorUi(
+    private fun Charge.toDebtor(name: String, isOverdue: Boolean) = DebtorUi(
         chargeId = id,
         memberId = memberId,
         name = name,
@@ -213,6 +201,7 @@ class GroupCashboxViewModel(
         amountCents = amountCents,
         chargeVersion = version,
         month = month,
+        isOverdue = isOverdue,
     )
 
     private fun GroupCashboxState.optimisticallyReceive(debtor: DebtorUi): GroupCashboxState {
@@ -222,6 +211,7 @@ class GroupCashboxViewModel(
         val nextTotal = monthlyTotalCount
         val nextReceived = receivedCents + if (isMonthly) debtor.amountCents else 0L
         val nextOpen = (openCents - if (isMonthly) debtor.amountCents else 0L).coerceAtLeast(0L)
+        val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
         return copy(
             balanceCents = balanceCents + debtor.amountCents,
             balanceLabel = formatBrl(balanceCents + debtor.amountCents),
@@ -233,7 +223,8 @@ class GroupCashboxViewModel(
             openMonthlyCount = nextOpenCount,
             monthlyProgressLabel = "$nextPaid/$nextTotal",
             monthlyProgress = if (nextTotal == 0) 0f else nextPaid.toFloat() / nextTotal,
-            debtors = debtors.filterNot { it.chargeId == debtor.chargeId },
+            debtors = remainingDebtors,
+            overdueBanner = buildOverdueBanner(monthKey, remainingDebtors),
             updatingChargeId = debtor.chargeId,
             cashboxEmpty = false,
             operationFailed = false,
@@ -263,6 +254,21 @@ class GroupCashboxViewModel(
     private fun monthNameOnlyFromKey(key: String): String {
         val month = key.substringAfter('-', "01").toIntOrNull()?.coerceIn(1, 12) ?: 1
         return MONTH_NAMES[month - 1]
+    }
+
+    private fun buildOverdueBanner(monthKey: String, debtors: List<DebtorUi>): OverdueBannerUi? {
+        val overdue = debtors.filter { it.isOverdue }
+        val names = overdue.map { it.name }.distinct().sorted()
+        val month = overdue.firstNotNullOfOrNull { it.month }
+            ?.let(::monthNameOnlyFromKey)
+            ?: monthNameOnlyFromKey(monthKey)
+        return names.takeIf { it.isNotEmpty() }?.let {
+            val verb = if (it.size == 1) "está" else "estão"
+            OverdueBannerUi(
+                message = it.joinNames() + " $verb com $month em aberto",
+                monthLabel = month,
+            )
+        }
     }
 
     private fun List<String>.joinNames(): String = when (size) {

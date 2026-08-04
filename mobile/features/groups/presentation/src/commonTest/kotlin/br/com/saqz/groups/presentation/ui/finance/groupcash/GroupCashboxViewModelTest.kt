@@ -95,6 +95,32 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `pending charges keep the cashbox out of the empty state`() = runTest {
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(listOf(defaultCharges[1]))),
+            ),
+            statement = FakeStatementGateway(SaqzResult.Success(statement(0L, 0L, 0L, 0L))),
+        )
+
+        assertFalse(viewModel.state.value.cashboxEmpty)
+        assertEquals(listOf("Pedro"), viewModel.state.value.debtors.map { it.name })
+    }
+
+    @Test
+    fun `accumulated balance keeps the cashbox out of the empty state`() = runTest {
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(emptyList())),
+            ),
+            statement = FakeStatementGateway(SaqzResult.Success(statement(0L, 0L, 0L, 1L))),
+        )
+
+        assertFalse(viewModel.state.value.cashboxEmpty)
+        assertEquals("R$\u00A00,01", viewModel.state.value.balanceLabel)
+    }
+
+    @Test
     fun `recebi removes debtor optimistically and sends pix plus quoted charge version`() = runTest {
         val organizer = FakeOrganizerFinanceGateway()
         val viewModel = viewModel(organizer = organizer)
@@ -126,6 +152,30 @@ class GroupCashboxViewModelTest {
         assertEquals(before.monthlyProgressLabel, viewModel.state.value.monthlyProgressLabel)
         assertTrue(viewModel.state.value.operationFailed)
         assertNull(viewModel.state.value.updatingChargeId)
+    }
+
+    @Test
+    fun `recebi clears the overdue banner when the last overdue debtor is received`() = runTest {
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(listOf(defaultCharges[3]))),
+            ),
+        )
+
+        assertEquals("Camila está com agosto em aberto", viewModel.state.value.overdueBanner?.message)
+        viewModel.onIntent(GroupCashboxAction.MarkReceived("game-pending"))
+
+        assertNull(viewModel.state.value.overdueBanner)
+    }
+
+    @Test
+    fun `recebi rebuilds the overdue banner with only the remaining overdue debtors`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxAction.MarkReceived("game-pending"))
+
+        assertEquals("Pedro e Thiago estão com agosto em aberto", viewModel.state.value.overdueBanner?.message)
+        assertEquals(listOf("monthly-pending", "monthly-thiago"), viewModel.state.value.debtors.map { it.chargeId })
     }
 
     @Test
