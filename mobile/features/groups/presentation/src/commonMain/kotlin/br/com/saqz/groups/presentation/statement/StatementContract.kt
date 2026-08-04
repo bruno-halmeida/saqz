@@ -32,6 +32,7 @@ data class StatementState(
     val isLoading: Boolean = true,
     val isLoadingMore: Boolean = false,
     val loadFailed: Boolean = false,
+    val paginationFailed: GroupUiError? = null,
     val error: GroupUiError? = null,
     val filter: StatementFilter = StatementFilter.All,
     val items: List<StatementItemUi> = emptyList(),

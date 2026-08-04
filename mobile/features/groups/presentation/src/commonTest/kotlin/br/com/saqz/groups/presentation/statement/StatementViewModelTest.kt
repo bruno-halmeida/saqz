@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.finance.FinanceStatementItem
 import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementQuery
 import br.com.saqz.groups.domain.finance.FinanceStatementSummary
+import br.com.saqz.groups.presentation.GroupUiError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +24,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -105,6 +107,32 @@ class StatementViewModelTest {
     }
 
     @Test
+    fun `pagination failure keeps loaded items and retries inline`() = runTest(dispatcher) {
+        val gateway = FakeStatementGateway(
+            results = ArrayDeque(
+                listOf(
+                    SaqzResult.Success(statementPage(items = listOf(incomeItem), hasMore = true)),
+                    SaqzResult.Failure(FinanceError.Data(DataError.Unknown)),
+                    SaqzResult.Success(statementPage(items = listOf(expenseItem), offset = 1)),
+                ),
+            ),
+        )
+        val viewModel = StatementViewModel("group-1", gateway)
+        viewModel.onIntent(StatementIntent.Retry)
+
+        viewModel.onIntent(StatementIntent.LoadMore)
+
+        assertEquals(listOf("income-1"), viewModel.state.value.items.map { it.id })
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.Network, viewModel.state.value.paginationFailed)
+
+        viewModel.onIntent(StatementIntent.LoadMore)
+
+        assertEquals(listOf("income-1", "expense-1"), viewModel.state.value.items.map { it.id })
+        assertNull(viewModel.state.value.paginationFailed)
+    }
+
+    @Test
     fun `stale response cannot replace a newer filter request`() = runTest(dispatcher) {
         val old = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
         val fresh = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
@@ -160,6 +188,7 @@ class StatementViewModelTest {
 private class FakeStatementGateway(
     private val pages: ArrayDeque<FinanceStatementPage>? = null,
     private val deferreds: ArrayDeque<CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>>? = null,
+    private val results: ArrayDeque<SaqzResult<FinanceStatementPage, FinanceError>>? = null,
 ) : FinanceStatementGateway {
     val queries = mutableListOf<FinanceStatementQuery>()
 
@@ -168,7 +197,8 @@ private class FakeStatementGateway(
         query: FinanceStatementQuery,
     ): SaqzResult<FinanceStatementPage, FinanceError> {
         queries += query
-        return deferreds?.removeFirstOrNull()?.await()
+        return results?.removeFirstOrNull()
+            ?: deferreds?.removeFirstOrNull()?.await()
             ?: pages?.removeFirstOrNull()?.let { SaqzResult.Success(it) }
             ?: SaqzResult.Failure(FinanceError.Data(DataError.Unknown))
     }

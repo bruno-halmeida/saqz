@@ -40,6 +40,8 @@ import br.com.saqz.groups.resources.statement_filter_in
 import br.com.saqz.groups.resources.statement_filter_out
 import br.com.saqz.groups.resources.statement_in_accessibility
 import br.com.saqz.groups.resources.statement_load_more
+import br.com.saqz.groups.resources.statement_pagination_error
+import br.com.saqz.groups.resources.statement_pagination_retry
 import br.com.saqz.groups.resources.statement_new_entry
 import br.com.saqz.groups.resources.statement_out_accessibility
 import br.com.saqz.groups.resources.statement_summary
@@ -127,16 +129,32 @@ internal fun StatementScreen(
                     }
                     if (state.hasMore) {
                         item {
-                            SaqzButton(
-                                label = stringResource(Res.string.statement_load_more),
-                                onClick = { onIntent(StatementIntent.LoadMore) },
-                                loading = state.isLoadingMore,
-                                enabled = !state.isLoadingMore,
-                                fullWidth = true,
+                            Column(
                                 modifier = Modifier
-                                    .padding(top = metrics.blockGap)
-                                    .testTag(StatementTags.LoadMore),
-                            )
+                                    .fillMaxWidth()
+                                    .padding(top = metrics.blockGap),
+                                verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                            ) {
+                                if (state.paginationFailed != null) {
+                                    Text(
+                                        text = stringResource(Res.string.statement_pagination_error),
+                                        style = SaqzTheme.typography.caption,
+                                        color = SaqzTheme.colors.errorForeground,
+                                    )
+                                }
+                                SaqzButton(
+                                    label = if (state.paginationFailed != null) {
+                                        stringResource(Res.string.statement_pagination_retry)
+                                    } else {
+                                        stringResource(Res.string.statement_load_more)
+                                    },
+                                    onClick = { onIntent(StatementIntent.LoadMore) },
+                                    loading = state.isLoadingMore,
+                                    enabled = !state.isLoadingMore,
+                                    fullWidth = true,
+                                    modifier = Modifier.testTag(StatementTags.LoadMore),
+                                )
+                            }
                         }
                     }
                 }

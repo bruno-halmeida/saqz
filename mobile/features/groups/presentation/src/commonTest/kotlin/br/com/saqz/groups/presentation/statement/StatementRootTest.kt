@@ -45,6 +45,27 @@ class StatementRootTest {
 
         assertEquals(2, gateway.queries.size)
     }
+
+    @Test
+    fun `positive refresh version still loads only once on first composition`() = runComposeUiTest {
+        val gateway = CountingStatementGateway()
+        val viewModel = StatementViewModel("group-1", gateway)
+
+        setContent {
+            SaqzTheme {
+                StatementRoot(
+                    groupId = "group-1",
+                    onBack = {},
+                    onEffect = {},
+                    viewModel = viewModel,
+                    refreshVersion = 1,
+                )
+            }
+        }
+        waitForIdle()
+
+        assertEquals(1, gateway.queries.size)
+    }
 }
 
 private class CountingStatementGateway : FinanceStatementGateway {

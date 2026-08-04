@@ -8,6 +8,8 @@
     <string name="statement_empty_title">Nenhum lançamento neste período</string>
     <string name="statement_empty_body">Quando houver entradas ou saídas, elas aparecem aqui.</string>
     <string name="statement_load_more">Carregar mais</string>
+    <string name="statement_pagination_error">Não foi possível carregar mais lançamentos.</string>
+    <string name="statement_pagination_retry">Tentar novamente</string>
     <string name="statement_new_entry">Novo lançamento</string>
     <string name="statement_in_accessibility">Entrada: %1$s, %2$s, %3$s</string>
     <string name="statement_out_accessibility">Saída: %1$s, %2$s, %3$s</string>

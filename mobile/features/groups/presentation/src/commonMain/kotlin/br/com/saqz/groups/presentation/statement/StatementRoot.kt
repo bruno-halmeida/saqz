@@ -17,11 +17,8 @@ fun StatementRoot(
     refreshVersion: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, refreshVersion) {
         viewModel.onIntent(StatementIntent.Retry)
-    }
-    LaunchedEffect(refreshVersion) {
-        if (refreshVersion > 0) viewModel.onIntent(StatementIntent.Retry)
     }
     ObserveAsEvents(viewModel.effects, onEvent = onEffect)
     StatementScreen(

@@ -46,8 +46,9 @@ class StatementViewModel(
             it.copy(
                 isLoading = reset,
                 isLoadingMore = !reset,
-                loadFailed = false,
-                error = null,
+                loadFailed = if (reset) false else it.loadFailed,
+                paginationFailed = if (reset) null else it.paginationFailed,
+                error = if (reset) null else it.error,
                 items = if (reset) emptyList() else it.items,
                 nextOffset = if (reset) 0 else it.nextOffset,
             )
@@ -68,8 +69,9 @@ class StatementViewModel(
                         it.copy(
                             isLoading = false,
                             isLoadingMore = false,
-                            loadFailed = true,
-                            error = result.error.toUiError(),
+                            loadFailed = reset,
+                            paginationFailed = if (reset) null else result.error.toUiError(),
+                            error = if (reset) result.error.toUiError() else it.error,
                         )
                     }
                 }
@@ -86,6 +88,7 @@ class StatementViewModel(
                 isLoading = false,
                 isLoadingMore = false,
                 loadFailed = false,
+                paginationFailed = null,
                 error = null,
                 items = if (reset) page.items.map(FinanceStatementItem::toUi) else {
                     it.items + page.items.map(FinanceStatementItem::toUi)
