@@ -51,7 +51,7 @@ class JdbcAdminSubscriptionDirectoryRepository(
             .param("plan", plan)
             .param("status", status)
             .param("size", size)
-            .param("offset", (page - 1) * size)
+            .param("offset", (page - 1).toLong() * size)
             .query { rs, _ -> Row(rs.summary(), rs.getLong("total")) }
             .list()
 

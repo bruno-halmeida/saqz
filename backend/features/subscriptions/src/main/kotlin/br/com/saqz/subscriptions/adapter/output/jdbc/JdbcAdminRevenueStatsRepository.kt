@@ -44,7 +44,8 @@ class JdbcAdminRevenueStatsRepository(
         val canceled = jdbc.sql(
             """
             SELECT count(*) FROM subscriptions
-            WHERE canceled_at IS NOT NULL AND canceled_at < :to
+            WHERE canceled_at IS NOT NULL AND first_confirmed_at IS NOT NULL
+              AND canceled_at < :to
               AND (:from::timestamptz IS NULL OR canceled_at >= :from)
             """.trimIndent(),
         )
@@ -80,7 +81,7 @@ class JdbcAdminRevenueStatsRepository(
                         THEN c.discount_percent END AS discount_percent
             FROM subscriptions s
             LEFT JOIN coupons c ON c.id = s.coupon_id
-            WHERE s.status IN ('ACTIVE', 'PAST_DUE')
+            WHERE (s.status = 'ACTIVE' OR (s.status = 'PAST_DUE' AND s.first_confirmed_at IS NOT NULL))
             """.trimIndent(),
         ).query { rs, _ ->
             Row(
