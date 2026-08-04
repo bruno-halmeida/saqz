@@ -723,15 +723,24 @@ class Component extends DCLogic {
     if (page === "visao" && (force || !st.overview)) this.carregarVisao();
     if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
     if (page === "grupos" && (force || !st.groupsPage)) this.carregarGrupos();
+<<<<<<< HEAD
     if (page === "receita" && (force || !st.subsPage)) this.carregarAssinaturas();
     if (page === "cupons" && (force || !st.couponsData)) this.carregarCupons();
+=======
+    // Re-login com detalhe aberto: recarrega o registro selecionado.
+    if (page === "usuario" && st.selU && (force || !st.userDetail)) this.carregarUsuario(st.selU);
+    if (page === "grupo" && st.selG && (force || !st.groupDetail)) this.carregarGrupo(st.selG);
+    if (page === "assinatura" && st.selA && (force || !st.subDetail)) this.carregarAssinatura(st.selA);
+>>>>>>> vul-169-web-fiacao-listas
   }
 
   carregarVisao() {
+    const periodo = this.state.periodo;
+    const atual = () => this.state.periodo === periodo;
     this.setState({ overview: null, atrasadas: null });
-    this.api(`/admin/overview?period=${this.state.periodo}`)
-      .then((overview) => this.setState({ overview }))
-      .catch(() => this.setState({ overview: { erro: true } }));
+    this.api(`/admin/overview?period=${periodo}`)
+      .then((overview) => { if (atual()) this.setState({ overview }); })
+      .catch(() => { if (atual()) this.setState({ overview: { erro: true } }); });
     this.api("/admin/subscriptions?status=PAST_DUE&page=1&size=1")
       .then((p) => this.setState({ atrasadas: p.total }))
       .catch(() => this.setState({ atrasadas: null }));
@@ -744,10 +753,12 @@ class Component extends DCLogic {
     if (st.uPlano !== "todos") q.push("plan=" + st.uPlano);
     if (st.uStatus !== "todos") q.push("status=" + st.uStatus);
     q.push("page=1", "size=25");
+    const req = (this._usersReq = (this._usersReq || 0) + 1);
+    const atual = () => this._usersReq === req;
     this.setState({ usersPage: null });
     this.api("/admin/users?" + q.join("&"))
-      .then((usersPage) => this.setState({ usersPage }))
-      .catch(() => this.setState({ usersPage: { erro: true, items: [], total: 0 } }));
+      .then((usersPage) => { if (atual()) this.setState({ usersPage }); })
+      .catch(() => { if (atual()) this.setState({ usersPage: { erro: true, items: [], total: 0 } }); });
   }
 
   carregarUsuario(id) {
@@ -774,10 +785,12 @@ class Component extends DCLogic {
     if (st.gBusca.trim()) q.push("query=" + encodeURIComponent(st.gBusca.trim()));
     if (st.gStatus !== "todos") q.push("status=" + st.gStatus);
     q.push("page=1", "size=25");
+    const req = (this._groupsReq = (this._groupsReq || 0) + 1);
+    const atual = () => this._groupsReq === req;
     this.setState({ groupsPage: null });
     this.api("/admin/groups?" + q.join("&"))
-      .then((groupsPage) => this.setState({ groupsPage }))
-      .catch(() => this.setState({ groupsPage: { erro: true, items: [], total: 0 } }));
+      .then((groupsPage) => { if (atual()) this.setState({ groupsPage }); })
+      .catch(() => { if (atual()) this.setState({ groupsPage: { erro: true, items: [], total: 0 } }); });
   }
 
   carregarGrupo(id) {
@@ -797,9 +810,10 @@ class Component extends DCLogic {
 
   carregarAssinatura(ownerId) {
     this.setState({ subDetail: null });
+    const atual = () => this.state.selA === ownerId;
     this.api(`/admin/subscriptions/${ownerId}`)
-      .then((subDetail) => this.setState({ subDetail }))
-      .catch(() => this.setState({ subDetail: { erro: true } }));
+      .then((subDetail) => { if (atual()) this.setState({ subDetail }); })
+      .catch(() => { if (atual()) this.setState({ subDetail: { erro: true } }); });
   }
 
   carregarCupons() {
@@ -813,7 +827,10 @@ class Component extends DCLogic {
     const n = this.state.nc;
     if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
     const desconto = parseInt(n.desc, 10);
-    if (!(desconto >= 1 && desconto <= 100)) { this.aviso("Desconto precisa ser um número de 1 a 100."); return; }
+    if (!(desconto >= 1 && desconto <= 100) || String(desconto) !== n.desc.trim()) {
+      this.aviso("Desconto precisa ser um número inteiro de 1 a 100.");
+      return;
+    }
     const body = { code: n.cod.trim(), discountPercent: desconto };
     // Campo vazio = sem limite (intencional); preenchido inválido interrompe,
     // senão um erro de digitação viraria cupom eterno.
