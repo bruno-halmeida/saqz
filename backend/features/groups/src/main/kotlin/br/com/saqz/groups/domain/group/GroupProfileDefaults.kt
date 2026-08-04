@@ -60,6 +60,8 @@ data class ValidGroupProfileDefaults(
     val mensalistaPriority: Boolean?,
     val promotionMode: PromotionMode?,
     val autoConfirmEnabled: Boolean?,
+    val pixKey: String?,
+    val pixLabel: String?,
 )
 
 data class ValidGroupVenue(
@@ -94,6 +96,8 @@ data class GroupProfileDefaultsInput(
     val mensalistaPriority: Boolean? = null,
     val promotionMode: PromotionMode? = null,
     val autoConfirmEnabled: Boolean? = null,
+    val pixKey: String? = null,
+    val pixLabel: String? = null,
 )
 
 data class GroupVenueInput(
@@ -122,6 +126,9 @@ object GroupProfileDefaultsValidator {
         val city = optionalText(input.city, "city", 2, 80, errors)
         val customLevel = optionalText(input.customLevel, "customLevel", 2, 40, errors)
         val customPlayStyle = optionalText(input.customPlayStyle, "customPlayStyle", 2, 40, errors)
+        // Texto livre: o Pix aceita CPF, e-mail, telefone e chave aleatória, e produto não quer validar formato.
+        val pixKey = optionalText(input.pixKey, "pixKey", 2, 140, errors)
+        val pixLabel = optionalText(input.pixLabel, "pixLabel", 2, 80, errors)
         val venue = validateVenue(input.defaultVenue, errors)
         val slots = validateSlots(input.regularSlots, errors)
 
@@ -159,6 +166,8 @@ object GroupProfileDefaultsValidator {
                     mensalistaPriority = input.mensalistaPriority,
                     promotionMode = input.promotionMode,
                     autoConfirmEnabled = input.autoConfirmEnabled,
+                    pixKey = pixKey,
+                    pixLabel = pixLabel,
                 ),
             )
         }

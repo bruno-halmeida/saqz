@@ -65,6 +65,8 @@ data class UpdateGroupProfileRequest @JsonCreator constructor(
     @JsonProperty("mensalistaPriority") val mensalistaPriority: Boolean? = null,
     @JsonProperty("promotionMode") val promotionMode: PromotionMode? = null,
     @JsonProperty("autoConfirmEnabled") val autoConfirmEnabled: Boolean? = null,
+    @JsonProperty("pixKey") val pixKey: String? = null,
+    @JsonProperty("pixLabel") val pixLabel: String? = null,
     @JsonProperty("entryRequiresApproval") val entryRequiresApproval: Boolean? = null,
 )
 
@@ -215,6 +217,8 @@ private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
         autoConfirmEnabled = autoConfirmEnabled,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
     ),
     defaultVenueId = defaultVenue?.id,
     regularSlotIds = regularSlots.orEmpty().map { it.id },
