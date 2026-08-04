@@ -14,8 +14,14 @@ import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupDirectoryRepos
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
 import br.com.saqz.groups.application.admin.AdminGroupDirectory
 import br.com.saqz.groups.application.admin.AdminGroupStats
+import br.com.saqz.adminweb.http.AdminSubscriptionsController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
 import br.com.saqz.subscriptions.application.AdminRevenueStats
+import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
+import br.com.saqz.subscriptions.application.AdminSubscriptionDirectory
+import br.com.saqz.subscriptions.application.CancelSubscription
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -56,6 +62,21 @@ class PlatformAdminConfiguration {
 
     @Bean
     fun adminGroupsController(directory: AdminGroupDirectory) = AdminGroupsController(directory)
+
+    @Bean
+    fun adminSubscriptionDirectory(dataSource: DataSource): AdminSubscriptionDirectory =
+        JdbcAdminSubscriptionDirectoryRepository(dataSource)
+
+    /** Delegar ao CancelSubscription do Fluxo 8; sem Asaas configurado, o port responde null (503). */
+    @Bean
+    fun adminSubscriptionCanceler(cancel: ObjectProvider<CancelSubscription>) =
+        AdminSubscriptionCanceler { ownerUserId -> cancel.getIfAvailable()?.execute(ownerUserId) }
+
+    @Bean
+    fun adminSubscriptionsController(
+        directory: AdminSubscriptionDirectory,
+        canceler: AdminSubscriptionCanceler,
+    ) = AdminSubscriptionsController(directory, canceler)
 
     @Bean
     fun adminOverviewController(
