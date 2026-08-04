@@ -21,6 +21,7 @@ import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxViewModel
 import org.koin.core.parameter.ParametersHolder
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
@@ -50,6 +51,7 @@ fun groupsPresentationModule(): Module = module {
         )
     }
     viewModel { params -> GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
+    viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
