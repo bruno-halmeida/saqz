@@ -6,6 +6,7 @@ import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as Acce
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
+import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
@@ -198,6 +199,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccessForbiddenException::class)
     fun accessForbidden(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
+    }
+
+    @ExceptionHandler(AccountSuspendedException::class)
+    fun accountSuspended(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.ACCOUNT_SUSPENDED)
     }
 
     @ExceptionHandler(EntryRequestNotFoundException::class)

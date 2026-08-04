@@ -29,7 +29,10 @@ class JdbcAdminRevenueStatsRepository(
         FROM subscription_events
         WHERE type = :type
           AND processed_at IS NOT NULL
-          AND (payload::jsonb)#>>'{payment,value}' IS NOT NULL
+          AND (
+              jsonb_typeof((payload::jsonb)#>'{payment,value}') = 'number'
+              OR (payload::jsonb)#>>'{payment,value}' ~ '^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$'
+          )
           AND processed_at < :to
           AND (:from::timestamptz IS NULL OR processed_at >= :from)
         """.trimIndent(),
@@ -81,7 +84,8 @@ class JdbcAdminRevenueStatsRepository(
                         THEN c.discount_percent END AS discount_percent
             FROM subscriptions s
             LEFT JOIN coupons c ON c.id = s.coupon_id
-            WHERE (s.status = 'ACTIVE' OR (s.status = 'PAST_DUE' AND s.first_confirmed_at IS NOT NULL))
+            WHERE s.canceled_at IS NULL
+              AND (s.status = 'ACTIVE' OR (s.status = 'PAST_DUE' AND s.first_confirmed_at IS NOT NULL))
             """.trimIndent(),
         ).query { rs, _ ->
             Row(
@@ -117,7 +121,8 @@ class JdbcAdminRevenueStatsRepository(
                 """
                 SELECT count(*) FROM subscriptions s
                 JOIN access_users u ON u.id = s.owner_user_id
-                WHERE u.created_at >= :from AND u.created_at < :to
+                WHERE s.first_confirmed_at IS NOT NULL
+                  AND u.created_at >= :from AND u.created_at < :to
                 """.trimIndent(),
             )
                 .param("from", weekStart.atStartOfDay().atOffset(ZoneOffset.UTC))

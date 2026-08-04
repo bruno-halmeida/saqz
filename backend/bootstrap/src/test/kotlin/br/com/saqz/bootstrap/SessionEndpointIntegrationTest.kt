@@ -564,6 +564,8 @@ class SessionEndpointIntegrationTest {
     }
 
     class RecordingSessionRepository : SessionRepository, AccountDeletionRepository {
+        override fun suspendedAt(subject: String): java.time.Instant? = null
+
         val commands = mutableListOf<SessionUpsert>()
         val profileCommands = mutableListOf<ProfileCompletion>()
         private val ids = mutableMapOf<String, UUID>()

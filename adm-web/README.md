@@ -103,3 +103,20 @@ Duas abas:
 4. **Dados reais nos detalhes** — jogos do grupo e sparklines são gerados no
    cliente hoje.
 5. **Deploy** — estático (Firebase Hosting cai bem com o resto do repo).
+
+## Deploy (Firebase Hosting)
+
+O `firebase.json` da raiz já tem o target `adm-web` apontando para esta pasta
+(`assets/` com cache de 7 dias, `index.html` sem cache, `robots.txt` bloqueando
+indexação). Para publicar:
+
+```bash
+# 1. Preencher assets/firebase-config.js com os valores do console
+#    (apiKey/authDomain/projectId reais, apiBaseUrl da API, SEM authEmulatorUrl)
+# 2. Liberar a origem publicada no backend: SAQZ_ADMINWEB_ORIGINS=https://<site>
+firebase target:apply hosting adm-web <site-do-projeto> --project prod
+firebase deploy --only hosting:adm-web --project prod
+```
+
+O acesso é protegido por login (papel de admin no backend); o hosting não
+precisa de proteção extra.

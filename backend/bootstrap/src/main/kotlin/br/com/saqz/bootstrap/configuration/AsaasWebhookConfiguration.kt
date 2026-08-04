@@ -1,5 +1,6 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
@@ -99,6 +100,7 @@ class AsaasWebhookConfiguration {
     fun subscriptionActorResolver(bootstrapSession: BootstrapSession) = SubscriptionActorResolver { identity ->
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
             is BootstrapSessionResult.Success -> result.session.user.id
         }
     }

@@ -24,6 +24,8 @@ services:
       # e ela que impede um dump do banco de inverter um codigo de quatro digitos.
       # Este valor e so de desenvolvimento; producao define o seu.
       SAQZ_PASSWORD_RESET_SECRET: apenas-para-desenvolvimento-local-nao-use-em-producao
+      # Origens liberadas para o adm-web (CORS de /admin/**). Vazio = nada liberado.
+      SAQZ_ADMINWEB_ORIGINS: ${SAQZ_ADMINWEB_ORIGINS:-}
     secrets:
       - firebase-admin
     healthcheck:
