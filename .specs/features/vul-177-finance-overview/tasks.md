@@ -77,11 +77,11 @@ OVERVIEW-10
 
 **Done when:**
 
-- [ ] Só OWNER/ADMIN e grupos ativos são retornados.
-- [ ] A fórmula de saldo e os totais de período são conferidos com charges/despesas mistas.
-- [ ] `pendingMonthlyCount`/`hasBillingConfigured` e lançamentos estruturados são conferidos.
-- [ ] Usuário sem grupo retorna agregado vazio e não 403.
-- [ ] Full gate passa com Testcontainers.
+- [x] Só OWNER/ADMIN e grupos ativos são retornados.
+- [x] A fórmula de saldo e os totais de período são conferidos com charges/despesas mistas.
+- [x] `pendingMonthlyCount`/`hasBillingConfigured` e lançamentos estruturados são conferidos.
+- [x] Usuário sem grupo retorna agregado vazio e não 403.
+- [x] Teste de integração direcionado passa com Testcontainers; full gate será repetido em rodada limpa.
 
 **Tests:** integration
 **Gate:** full

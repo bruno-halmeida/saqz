@@ -106,16 +106,16 @@ administrados e em um grupo de atleta; confirmar a lista recente e os campos de 
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| OVERVIEW-01 | P1: Caixa do organizador | Design | Pending |
-| OVERVIEW-02 | P1: Caixa do organizador | Design | Pending |
-| OVERVIEW-03 | P1: Caixa do organizador | Design | Pending |
-| OVERVIEW-04 | P1: Caixa do organizador | Design | Pending |
+| OVERVIEW-01 | P1: Caixa do organizador | Execute | Verified |
+| OVERVIEW-02 | P1: Caixa do organizador | Execute | Verified |
+| OVERVIEW-03 | P1: Caixa do organizador | Execute | Verified |
+| OVERVIEW-04 | P1: Caixa do organizador | Execute | Verified |
 | OVERVIEW-05 | P1: Período selecionável | Execute | Verified |
 | OVERVIEW-06 | P1: Período selecionável | Execute | Verified |
 | OVERVIEW-07 | P1: Período selecionável | Execute | Verified |
-| OVERVIEW-08 | P2: Saúde por grupo e atividade recente | Design | Pending |
-| OVERVIEW-09 | P2: Saúde por grupo e atividade recente | Design | Pending |
-| OVERVIEW-10 | P2: Saúde por grupo e atividade recente | Design | Pending |
+| OVERVIEW-08 | P2: Saúde por grupo e atividade recente | Execute | Verified |
+| OVERVIEW-09 | P2: Saúde por grupo e atividade recente | Execute | Verified |
+| OVERVIEW-10 | P2: Saúde por grupo e atividade recente | Execute | Verified |
 
 **Coverage:** 10 total, 10 mapped to tasks, 0 unmapped.
 
