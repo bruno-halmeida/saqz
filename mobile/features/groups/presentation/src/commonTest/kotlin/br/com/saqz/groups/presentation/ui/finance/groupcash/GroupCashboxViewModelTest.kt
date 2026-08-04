@@ -73,7 +73,8 @@ class GroupCashboxViewModelTest {
         assertEquals("1/3", state.monthlyProgressLabel)
         assertEquals("R$\u00A070,00", state.receivedLabel)
         assertEquals("R$\u00A0140,00", state.balanceLabel)
-        assertEquals("Camila, Pedro e Thiago estão com agosto em aberto", state.overdueBanner?.message)
+        assertEquals("Camila, Pedro e Thiago estão com mensalidades em aberto", state.overdueBanner?.message)
+        assertNull(state.overdueBanner?.monthLabel)
         assertEquals(listOf("Camila", "Pedro", "Thiago"), state.debtors.map { it.name })
         assertEquals("pix@saqz.com", state.pix?.key)
         assertEquals("Vôlei do CERET", state.pix?.label)
@@ -187,14 +188,17 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
-    fun `recebi clears the overdue banner when the last overdue debtor is received`() = runTest {
+    fun `monthless game overdue banner stays generic for previous month`() = runTest {
         val viewModel = viewModel(
             organizer = FakeOrganizerFinanceGateway(
-                chargesResult = SaqzResult.Success(chargeList(listOf(defaultCharges[3]))),
+                chargesResult = SaqzResult.Success(
+                    chargeList(listOf(defaultCharges[3].copy(dueDate = "2026-07-10"))),
+                ),
             ),
         )
 
-        assertEquals("Camila está com agosto em aberto", viewModel.state.value.overdueBanner?.message)
+        assertEquals("Camila está com mensalidades em aberto", viewModel.state.value.overdueBanner?.message)
+        assertNull(viewModel.state.value.overdueBanner?.monthLabel)
         viewModel.onIntent(GroupCashboxIntent.MarkReceived("game-pending"))
 
         assertNull(viewModel.state.value.overdueBanner)

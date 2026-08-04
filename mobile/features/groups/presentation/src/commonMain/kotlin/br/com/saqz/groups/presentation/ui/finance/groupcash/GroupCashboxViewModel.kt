@@ -186,7 +186,7 @@ class GroupCashboxViewModel(
             openMonthlyCount = openMonthly.size,
             monthlyTotalCount = monthly.size,
             cashboxEmpty = cashboxEmpty,
-            overdueBanner = buildOverdueBanner(monthKey, debtors),
+            overdueBanner = buildOverdueBanner(debtors),
             debtors = debtors,
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
         )
@@ -224,7 +224,7 @@ class GroupCashboxViewModel(
             monthlyProgressLabel = "$nextPaid/$nextTotal",
             monthlyProgress = if (nextTotal == 0) 0f else nextPaid.toFloat() / nextTotal,
             debtors = remainingDebtors,
-            overdueBanner = buildOverdueBanner(monthKey, remainingDebtors),
+            overdueBanner = buildOverdueBanner(remainingDebtors),
             updatingChargeId = debtor.chargeId,
             cashboxEmpty = false,
             operationFailed = false,
@@ -256,12 +256,12 @@ class GroupCashboxViewModel(
         return MONTH_NAMES[month - 1]
     }
 
-    private fun buildOverdueBanner(monthKey: String, debtors: List<DebtorUi>): OverdueBannerUi? {
+    private fun buildOverdueBanner(debtors: List<DebtorUi>): OverdueBannerUi? {
         val overdue = debtors.filter { it.isOverdue }
         val names = overdue.map { it.name }.distinct().sorted()
         val overdueMonthKeys = overdue.mapNotNull { it.month }.distinct()
         val bannerMonthKey = overdueMonthKeys.singleOrNull()
-            ?: monthKey.takeIf { overdueMonthKeys.isEmpty() }
+            ?.takeUnless { overdue.any { it.month == null } }
         val month = bannerMonthKey?.let(::monthNameOnlyFromKey)
         return names.takeIf { it.isNotEmpty() }?.let {
             val verb = if (it.size == 1) "está" else "estão"
