@@ -45,11 +45,13 @@ class JdbcAdminCouponDirectoryRepository(
         validUntil: Instant?,
     ): AdminCouponCreateResult {
         val id = UUID.randomUUID()
+        // Duplicidade case-insensitive: o fluxo 8 resolve cupom com lower(code) = lower(:code)
+        // e espera no máximo uma linha — ON CONFLICT no índice case-sensitive não basta.
         val inserted = jdbc.sql(
             """
             INSERT INTO coupons (id, code, discount_percent, duration_cycles, valid_until, created_at)
-            VALUES (:id, :code, :discount, :cycles, :validUntil, now())
-            ON CONFLICT (code) DO NOTHING
+            SELECT :id, :code, :discount, :cycles, :validUntil, now()
+            WHERE NOT EXISTS (SELECT 1 FROM coupons x WHERE lower(x.code) = lower(:code))
             """.trimIndent(),
         )
             .param("id", id)
