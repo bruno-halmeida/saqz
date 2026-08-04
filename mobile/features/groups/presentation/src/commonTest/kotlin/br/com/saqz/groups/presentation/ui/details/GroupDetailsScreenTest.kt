@@ -40,7 +40,6 @@ class GroupDetailsScreenTest {
         GroupGameResponseTags.NotGoing,
         GroupGameResponseTags.AutoConfirmation,
         GroupDetailsTags.ShortcutNotices,
-        GroupDetailsTags.ShortcutCashbox,
         GroupDetailsTags.ShortcutSchedule,
         GroupDetailsTags.ShortcutChat,
         GroupDetailsTags.Notice,
@@ -63,6 +62,24 @@ class GroupDetailsScreenTest {
 
         memberOnly.forEach { onNodeWithTag(it).assertExists() }
         adminOnly.forEach { onAllNodesWithTag(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun memberViewDoesNotExposeOrganizerCashboxShortcut() = runComposeUiTest {
+        setScreen(GroupDetailsPreviewData.member)
+
+        onAllNodesWithTag(GroupDetailsTags.ShortcutCashbox).assertCountEquals(0)
+        onAllNodesWithTag(GroupDetailsTags.Cashbox).assertCountEquals(0)
+    }
+
+    @Test
+    fun adminCashboxRowStillOpensOrganizerCashbox() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setScreen(GroupDetailsPreviewData.admin) { intents += it }
+
+        onNodeWithTag(GroupDetailsTags.Cashbox).performClick()
+
+        assertEquals(GroupDetailsIntent.OpenCashbox, intents.single())
     }
 
     @Test
