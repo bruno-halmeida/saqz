@@ -56,9 +56,14 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
         insertEvent(type = "PAYMENT_CONFIRMED", valueReais = "89.90", processedAt = now.minusSeconds(45 * DAY))
         insertEvent(type = "PAYMENT_OVERDUE", valueReais = "39.90", processedAt = now.minusSeconds(2 * DAY))
         insertEvent(type = "PAYMENT_CONFIRMED", valueReais = "39.90", processedAt = null)
+        // Formatos que o ListReceipts aceita também contam: string decimal e científica.
+        insertEvent(type = "PAYMENT_CONFIRMED", valueReais = "\".50\"", processedAt = now.minusSeconds(4 * DAY))
+        insertEvent(type = "PAYMENT_CONFIRMED", valueReais = "\"1.999E1\"", processedAt = now.minusSeconds(5 * DAY))
+        // Texto não numérico fica de fora sem derrubar a consulta.
+        insertEvent(type = "PAYMENT_CONFIRMED", valueReais = "\"abc\"", processedAt = now.minusSeconds(6 * DAY))
 
-        assertEquals(9_980, repository.revenueCents(now.minusSeconds(30 * DAY), now))
-        assertEquals(18_970, repository.revenueCents(null, now))
+        assertEquals(9_980 + 50 + 1_999, repository.revenueCents(now.minusSeconds(30 * DAY), now))
+        assertEquals(18_970 + 50 + 1_999, repository.revenueCents(null, now))
     }
 
     @Test

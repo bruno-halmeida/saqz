@@ -29,7 +29,10 @@ class JdbcAdminRevenueStatsRepository(
         FROM subscription_events
         WHERE type = :type
           AND processed_at IS NOT NULL
-          AND (payload::jsonb)#>>'{payment,value}' ~ '^-?[0-9]+(\.[0-9]+)?$' 
+          AND (
+              jsonb_typeof((payload::jsonb)#>'{payment,value}') = 'number'
+              OR (payload::jsonb)#>>'{payment,value}' ~ '^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$'
+          )
           AND processed_at < :to
           AND (:from::timestamptz IS NULL OR processed_at >= :from)
         """.trimIndent(),
