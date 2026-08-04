@@ -15,3 +15,8 @@ ALTER TABLE group_expense_events ADD CONSTRAINT ck_group_expense_events_directio
 ALTER TABLE group_charges ADD COLUMN paid_method varchar(8);
 ALTER TABLE group_charges ADD CONSTRAINT ck_group_charges_paid_method
     CHECK (paid_method IS NULL OR paid_method IN ('PIX', 'CASH', 'OTHER'));
+
+-- Cobrança já recebida antes desta migração nunca vai transitar de novo, então o default de
+-- produto (PIX) precisa alcançar o histórico aqui. Só PAID: pendente, isenta e cancelada
+-- nunca foram recebidas e continuam nulas.
+UPDATE group_charges SET paid_method = 'PIX' WHERE status = 'PAID' AND paid_method IS NULL;
