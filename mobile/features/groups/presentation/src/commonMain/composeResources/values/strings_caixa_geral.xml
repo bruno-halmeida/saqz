@@ -20,6 +20,7 @@
     <string name="finance_overview_no_billing">Sem cobrança ativa</string>
     <string name="finance_overview_transaction_in">Recebimento</string>
     <string name="finance_overview_transaction_out">Despesa</string>
+    <string name="finance_overview_transaction_neutral">Lançamento</string>
     <string name="finance_overview_month_january">Janeiro</string>
     <string name="finance_overview_month_february">Fevereiro</string>
     <string name="finance_overview_month_march">Março</string>

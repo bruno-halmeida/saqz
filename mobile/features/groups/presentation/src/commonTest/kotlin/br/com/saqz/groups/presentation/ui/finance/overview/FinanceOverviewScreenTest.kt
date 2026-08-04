@@ -10,6 +10,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewIntent
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewPeriodSelection
+import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewTransactionUi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -29,6 +30,30 @@ class FinanceOverviewScreenTest {
         onNodeWithText("Tudo em dia", useUnmergedTree = true).assertExists()
         onNodeWithText("Sem cobrança ativa", useUnmergedTree = true).assertExists()
         onNodeWithText("+R$ 120,00", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun `transaction without direction shows a neutral title`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                FinanceOverviewScreen(
+                    state = FinanceOverviewSamples.filled.copy(
+                        recentTransactions = listOf(
+                            FinanceOverviewTransactionUi(
+                                id = "transaction-unknown",
+                                title = null,
+                                groupAndDate = "Grupo · 03/07",
+                                amount = "R$ 10,00",
+                                isIncoming = null,
+                            ),
+                        ),
+                    ),
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Lançamento", useUnmergedTree = true).assertExists()
     }
 
     @Test

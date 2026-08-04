@@ -72,6 +72,7 @@ import br.com.saqz.groups.resources.finance_overview_recent
 import br.com.saqz.groups.resources.finance_overview_retry
 import br.com.saqz.groups.resources.finance_overview_title
 import br.com.saqz.groups.resources.finance_overview_transaction_in
+import br.com.saqz.groups.resources.finance_overview_transaction_neutral
 import br.com.saqz.groups.resources.finance_overview_transaction_out
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -435,10 +436,10 @@ private fun FinanceOverviewTransactionRow(transaction: FinanceOverviewTransactio
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             Text(
                 text = transaction.title ?: stringResource(
-                    if (transaction.isIncoming == true) {
-                        Res.string.finance_overview_transaction_in
-                    } else {
-                        Res.string.finance_overview_transaction_out
+                    when (transaction.isIncoming) {
+                        true -> Res.string.finance_overview_transaction_in
+                        false -> Res.string.finance_overview_transaction_out
+                        null -> Res.string.finance_overview_transaction_neutral
                     },
                 ),
                 style = SaqzTheme.typography.label,
