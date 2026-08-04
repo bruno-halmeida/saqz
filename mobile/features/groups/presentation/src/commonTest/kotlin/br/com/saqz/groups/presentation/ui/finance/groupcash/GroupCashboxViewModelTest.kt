@@ -98,6 +98,20 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `future pending charge uses a future due label`() = runTest {
+        val futureCharge = defaultCharges[1].copy(dueDate = "2026-08-25")
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(listOf(futureCharge))),
+            ),
+        )
+
+        val debtor = viewModel.state.value.debtors.single()
+        assertFalse(debtor.isOverdue)
+        assertEquals("Vence em 25/08", debtor.dueLabel)
+    }
+
+    @Test
     fun `no financial movement exposes the empty cashbox state`() = runTest {
         val empty = FakeOrganizerFinanceGateway(
             chargesResult = SaqzResult.Success(chargeList(emptyList())),

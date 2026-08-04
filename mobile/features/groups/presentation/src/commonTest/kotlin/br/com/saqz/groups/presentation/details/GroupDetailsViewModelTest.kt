@@ -161,6 +161,21 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `athlete reload clears a previously loaded admin cashbox`() = runTest {
+        val groupGateway = FakeGroupGateway(
+            readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.OWNER))),
+        )
+        val viewModel = viewModel(groupGateway = groupGateway)
+        assertNotNull(viewModel.state.value.cashbox)
+
+        groupGateway.readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.ATHLETE)))
+        viewModel.onIntent(GroupDetailsIntent.Retry)
+
+        assertFalse(viewModel.state.value.isAdmin)
+        assertNull(viewModel.state.value.cashbox)
+    }
+
+    @Test
     fun `empty profile still renders a usable header`() = runTest {
         val empty = sampleVersionedGroup(sampleGroup(profile = null))
         val viewModel = viewModel(

@@ -116,8 +116,13 @@ class GroupDetailsViewModel(
         }
     }
 
+    @Suppress("ReturnCount")
     private suspend fun loadAdminCashbox(generation: Int, group: Group) {
-        if (group.role == GroupRole.ATHLETE) return
+        if (generation != loadGeneration) return
+        if (group.role == GroupRole.ATHLETE) {
+            update { it.copy(cashbox = null) }
+            return
+        }
         val monthKey = currentDate(group.timeZone.id).monthKey()
         val statementResult = statementGateway.statement(
             GroupId(groupId),

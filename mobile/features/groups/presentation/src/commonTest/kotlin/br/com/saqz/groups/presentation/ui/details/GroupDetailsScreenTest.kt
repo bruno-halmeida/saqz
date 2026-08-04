@@ -93,6 +93,18 @@ class GroupDetailsScreenTest {
     }
 
     @Test
+    fun memberViewDoesNotRenderCashboxFromStaleState() = runComposeUiTest {
+        setScreen(
+            GroupDetailsPreviewData.member.copy(
+                cashbox = CashboxUi(summary = "Saldo R$ 380,00 · 8 mensalidades em aberto"),
+            ),
+        )
+
+        onAllNodesWithTag(GroupDetailsTags.Cashbox).assertCountEquals(0)
+        onAllNodesWithText("Caixa do grupo").assertCountEquals(0)
+    }
+
+    @Test
     fun venueActionFollowsTheView() = runComposeUiTest {
         val intents = mutableListOf<GroupDetailsIntent>()
         setScreen(GroupDetailsPreviewData.admin) { intents += it }

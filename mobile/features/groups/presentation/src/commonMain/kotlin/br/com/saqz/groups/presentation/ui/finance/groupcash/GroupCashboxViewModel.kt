@@ -196,7 +196,7 @@ class GroupCashboxViewModel(
         chargeId = id,
         memberId = memberId,
         name = name,
-        dueLabel = "Venceu em ${formatDate(dueDate)}",
+        dueLabel = "${if (isOverdue) "Venceu em" else "Vence em"} ${formatDate(dueDate)}",
         amountLabel = formatBrl(amountCents),
         amountCents = amountCents,
         chargeVersion = version,
