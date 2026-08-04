@@ -723,9 +723,14 @@ class Component extends DCLogic {
             groupsPage: null, groupDetail: null,
             subsPage: null, subDetail: null, couponsData: null,
             // Modais e toasts carregam closures destrutivas da sessão velha;
-            // o rascunho do cupom também não pertence ao próximo admin.
+            // rascunho, filtros digitados e navegação também não pertencem
+            // ao próximo admin.
             modal: null, toast: null, cupomOpen: false,
-            nc: { cod: "", desc: "10", meses: "3", val: "" }
+            nc: { cod: "", desc: "10", meses: "3", val: "" },
+            page: "visao", selU: null, selG: null, selA: null, selD: null,
+            periodo: "30d", rTab: "ass",
+            uBusca: "", uPlano: "todos", uStatus: "todos",
+            gBusca: "", gStatus: "todos"
           });
         }
       });
