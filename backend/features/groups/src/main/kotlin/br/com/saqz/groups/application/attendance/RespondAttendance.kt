@@ -33,10 +33,21 @@ class RespondAttendance(
         intent: AttendanceIntent,
         source: AttendanceSource = AttendanceSource.SELF,
         reason: String? = null,
+        requestId: UUID? = null,
     ): AttendanceCommandResult = transaction.inTransaction {
         if (intent == AttendanceIntent.PROMOTE) return@inTransaction AttendanceCommandResult.Forbidden
+        if (source == AttendanceSource.SELF && requestId != null) {
+            repository.findResponseReplay(groupId, gameId, actorId, requestId)?.let {
+                return@inTransaction it.result()
+            }
+        }
         val aggregate = repository.lock(groupId, gameId, memberId, actorId)
             ?: return@inTransaction AttendanceCommandResult.Hidden
+        if (source == AttendanceSource.SELF && requestId != null) {
+            repository.findResponseReplay(groupId, gameId, actorId, requestId)?.let {
+                return@inTransaction it.result()
+            }
+        }
         if (!aggregate.authorized(source)) return@inTransaction aggregate.denied(source)
         when (val decision = AttendanceTransitionPolicy.decide(
             AttendanceDecisionContext(
@@ -54,7 +65,7 @@ class RespondAttendance(
             intent,
         )) {
             is AttendanceDecision.Denied -> AttendanceCommandResult.Denied(decision.reason)
-            is AttendanceDecision.Transition -> apply(aggregate, decision)
+            is AttendanceDecision.Transition -> apply(aggregate, decision, requestId)
         }
     }
 
@@ -98,6 +109,7 @@ class RespondAttendance(
     private fun apply(
         aggregate: AttendanceAggregate,
         decision: AttendanceDecision.Transition,
+        requestId: UUID?,
     ): AttendanceCommandResult {
         if (!decision.changed) return AttendanceCommandResult.Success(requireNotNull(aggregate.current))
         val timestamp = now()
@@ -126,6 +138,7 @@ class RespondAttendance(
             decision.newStatus,
             decision.reason,
             timestamp,
+            requestId,
         )
         repository.append(event)
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
@@ -163,6 +176,9 @@ class RespondAttendance(
 
     private fun AttendancePromotionReplay.result() =
         AttendanceCommandResult.Success(attendance, listOf(attendance), event)
+
+    private fun AttendanceResponseReplay.result() =
+        AttendanceCommandResult.Success(attendance, event = event)
 
     private fun AttendanceAggregate.authorized(source: AttendanceSource): Boolean = when (source) {
         AttendanceSource.SELF -> actorId == memberId && actorRole != null

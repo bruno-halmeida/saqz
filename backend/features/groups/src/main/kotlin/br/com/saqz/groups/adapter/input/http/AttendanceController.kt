@@ -108,10 +108,10 @@ class AttendanceController(
         @PathVariable gameId: String,
         @RequestBody request: AttendanceSelfRequest,
     ): ResponseEntity<AttendanceMutationResponse> {
-        required(request.requestId, "requestId")
+        val requestId = required(request.requestId, "requestId")
         val actor = actors.resolve(identity)
         return mutation(
-            responses.execute(actor, uuid(groupId), uuid(gameId), intent = intent(request.intent)),
+            responses.execute(actor, uuid(groupId), uuid(gameId), intent = intent(request.intent), requestId = requestId),
             actor, uuid(groupId), uuid(gameId),
         )
     }

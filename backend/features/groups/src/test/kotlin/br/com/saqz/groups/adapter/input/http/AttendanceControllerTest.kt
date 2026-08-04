@@ -125,7 +125,7 @@ class AttendanceControllerTest {
     @Test fun `self response requires request id`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(requestId = null)) } }
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
     @Test fun `self response rejects promotion intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "PROMOTE")) } }
-    @Test fun `self response retry is equivalent without duplicate audit`() { actor = member; val first = controller.respond(ID, "$group", "$game", self()); val retry = controller.respond(ID, "$group", "$game", self()); assertEquals(first.body!!.attendance, retry.body!!.attendance); assertNull(retry.body!!.audit); assertEquals(1, repository.events.size) }
+    @Test fun `self response retry replays the original mutation without another audit`() { actor = member; val request = self(); val first = controller.respond(ID, "$group", "$game", request); val retry = controller.respond(ID, "$group", "$game", request); assertEquals(first.body, retry.body); assertEquals(1, repository.events.size) }
     @Test fun `self response after deadline is distinct`() { actor = member; repository.deadline = NOW.minusSeconds(1); assertFailsWith<AttendanceDeadlinePassedException> { controller.respond(ID, "$group", "$game", self()) } }
     @Test fun `cancelled game response is distinctly frozen`() { actor = member; repository.status = GameStatus.CANCELLED; assertFailsWith<AttendanceFrozenException> { controller.respond(ID, "$group", "$game", self()) } }
     @Test fun `organizer override returns target and exact audit reason`() { val response = controller.override(ID, "$group", "$game", override()); assertEquals(member, response.body!!.attendance.memberId); assertEquals("ORGANIZER", response.body!!.audit!!.source); assertEquals("Chegou após o prazo", response.body!!.audit!!.reason) }
@@ -198,6 +198,13 @@ class AttendanceControllerTest {
                 it.groupId == groupId && it.gameId == gameId && it.actorId == actorId && it.requestId == requestId
             } ?: return null
             return AttendancePromotionReplay(records.getValue(event.memberId), event)
+        }
+        override fun findResponseReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendanceResponseReplay? {
+            val event = events.firstOrNull {
+                it.groupId == groupId && it.gameId == gameId && it.actorId == actorId &&
+                    it.requestId == requestId && it.source == AttendanceSource.SELF
+            } ?: return null
+            return AttendanceResponseReplay(records.getValue(event.memberId), event)
         }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }
         var autoConfirmEnabled = false

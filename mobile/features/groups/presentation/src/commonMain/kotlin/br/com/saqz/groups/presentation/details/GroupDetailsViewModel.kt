@@ -229,18 +229,22 @@ class GroupDetailsViewModel(
         val loadAtStart = loadGeneration
         update { it.copy(rosterRefreshing = true) }
         viewModelScope.launch {
-            when (val result = attendanceGateway.roster(GroupId(groupId), game.gameId)) {
-                is SaqzResult.Success -> if (generation == rosterGeneration && loadAtStart == loadGeneration) {
+            val roster = attendanceGateway.roster(GroupId(groupId), game.gameId)
+            val detail = attendanceGateway.read(GroupId(groupId), game.gameId)
+            when {
+                roster is SaqzResult.Success && detail is SaqzResult.Success ->
+                    if (generation == rosterGeneration && loadAtStart == loadGeneration) {
                     update {
                         it.copy(
-                            nextGame = it.nextGame?.reconcileRoster(result.value),
-                            memberResponse = it.memberResponse?.reconcileRoster(result.value),
+                            nextGame = it.nextGame?.reconcile(detail.value, roster.value),
+                            attendance = detail.value.toAttendance(),
+                            memberResponse = it.memberResponse?.reconcileRoster(roster.value),
                             rosterStale = false,
                             rosterRefreshing = false,
                         )
                     }
                 }
-                is SaqzResult.Failure -> if (generation == rosterGeneration && loadAtStart == loadGeneration) {
+                else -> if (generation == rosterGeneration && loadAtStart == loadGeneration) {
                     update { it.copy(rosterStale = true, rosterRefreshing = false) }
                 }
             }

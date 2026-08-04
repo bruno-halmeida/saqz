@@ -152,6 +152,46 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         .optional()
         .orElse(null)
 
+    override fun findResponseReplay(
+        groupId: UUID,
+        gameId: UUID,
+        actorId: UUID,
+        requestId: UUID,
+    ): AttendanceResponseReplay? = jdbc.sql(RESPONSE_REPLAY)
+        .param("group", groupId)
+        .param("game", gameId)
+        .param("actor", actorId)
+        .param("request", requestId)
+        .query { rs, _ ->
+            AttendanceResponseReplay(
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    AttendanceStatus.valueOf(rs.getString("attendance_status")),
+                    rs.getObject("attendance_waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("attendance_responded_at").toInstant(),
+                    rs.getTimestamp("attendance_updated_at").toInstant(),
+                    rs.getLong("attendance_version"),
+                ),
+                AttendanceEvent(
+                    rs.getObject("event_id", UUID::class.java),
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    rs.getObject("actor_user_id", UUID::class.java),
+                    AttendanceSource.valueOf(rs.getString("source")),
+                    rs.getString("old_status")?.let(AttendanceStatus::valueOf),
+                    AttendanceStatus.valueOf(rs.getString("new_status")),
+                    rs.getString("reason"),
+                    rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getObject("request_id", UUID::class.java),
+                ),
+            )
+        }
+        .optional()
+        .orElse(null)
+
     override fun save(record: AttendanceRecord) {
         check(
             jdbc.sql(SAVE)
@@ -356,6 +396,24 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             WHERE event.group_id=:group AND event.game_id=:game
               AND event.actor_user_id=:actor AND event.request_id=:request
               AND event.source='ORGANIZER' AND event.new_status='CONFIRMED'
+            ORDER BY event.occurred_at,event.id
+            LIMIT 1
+        """
+        const val RESPONSE_REPLAY = """
+            SELECT event.id AS event_id,event.game_id,event.group_id,event.member_user_id,event.actor_user_id,
+                   event.source,event.old_status,event.new_status,event.reason,event.occurred_at,event.request_id,
+                   attendance.status AS attendance_status,
+                   attendance.waitlist_sequence AS attendance_waitlist_sequence,
+                   attendance.responded_at AS attendance_responded_at,
+                   attendance.updated_at AS attendance_updated_at,
+                   attendance.version AS attendance_version
+            FROM attendance_events event
+            JOIN game_attendance attendance
+              ON attendance.game_id=event.game_id AND attendance.member_user_id=event.member_user_id
+            JOIN access_groups ag ON ag.id=event.group_id AND ag.deleted_at IS NULL
+            WHERE event.group_id=:group AND event.game_id=:game
+              AND event.actor_user_id=:actor AND event.request_id=:request
+              AND event.source='SELF'
             ORDER BY event.occurred_at,event.id
             LIMIT 1
         """

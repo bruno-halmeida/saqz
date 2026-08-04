@@ -379,6 +379,39 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `roster retry refreshes attendance counts with the roster`() = runTest {
+        val mutation = sampleVersionedAttendanceMutation().copy(
+            value = sampleVersionedAttendanceMutation().value.copy(
+                detail = sampleAttendanceDetail().copy(confirmedCount = 9, availableSpots = 3),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Success(mutation))
+        attendance.rosterResults = mutableListOf(
+            SaqzResult.Success(sampleAttendanceRoster()),
+            SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
+            SaqzResult.Success(AttendanceRoster(confirmed = listOf(AttendanceRosterMember("fresh", "Atualizado")), waitlisted = emptyList())),
+        )
+        val vm = viewModel(
+            groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        attendance.detailResult = SaqzResult.Success(sampleAttendanceDetail().copy(confirmedCount = 10, availableSpots = 2))
+
+        vm.onIntent(GroupDetailsIntent.RetryRoster)
+
+        assertFalse(vm.state.value.rosterStale)
+        assertEquals(10, vm.state.value.attendance?.going)
+        assertEquals(2, vm.state.value.attendance?.availableSpots)
+        assertEquals(10, vm.state.value.nextGame?.confirmedCount)
+        assertEquals(2, vm.state.value.nextGame?.availableSpots)
+        assertEquals(listOf("Atualizado"), vm.state.value.nextGame?.confirmedNames)
+    }
+
+    @Test
     fun `roster retry is ignored while a response is in flight`() = runTest {
         val attendance = FakeAttendanceGateway(
             respondResult = SaqzResult.Success(sampleVersionedAttendanceMutation()),
