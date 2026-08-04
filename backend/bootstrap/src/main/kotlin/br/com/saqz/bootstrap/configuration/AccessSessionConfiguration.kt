@@ -80,6 +80,7 @@ import br.com.saqz.groups.adapter.input.http.GroupPhotoController
 import br.com.saqz.groups.adapter.input.http.GameController
 import br.com.saqz.groups.adapter.input.http.ChargeController
 import br.com.saqz.groups.adapter.input.http.ExpenseController
+import br.com.saqz.groups.adapter.input.http.FinanceStatementController
 import br.com.saqz.groups.adapter.input.http.AttendanceController
 import br.com.saqz.groups.adapter.input.http.AutoConfirmationController
 import br.com.saqz.groups.adapter.input.http.WeeklySeriesController
@@ -90,6 +91,7 @@ import br.com.saqz.groups.adapter.output.jdbc.game.JdbcWeeklySeriesRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcExpenseRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAutoConfirmationRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
@@ -117,6 +119,7 @@ import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
 import br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects
 import br.com.saqz.groups.application.finance.expense.ExpenseService
+import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
@@ -678,6 +681,9 @@ class AccessSessionConfiguration {
     @Bean fun expenseRepository(dataSource: DataSource) = JdbcExpenseRepository(dataSource)
     @Bean fun expenseService(transaction: JdbcTransactionRunner, repository: JdbcExpenseRepository) = ExpenseService(transaction, repository, java.util.UUID::randomUUID, Instant::now)
     @Bean fun expenseController(actor: VerifiedGroupActorResolver, expenses: ExpenseService, charges: ChargeManagement) = ExpenseController(actor, expenses, charges)
+    @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
+    @Bean fun financeStatementService(repository: JdbcFinanceStatementRepository) = FinanceStatementService(repository)
+    @Bean fun financeStatementController(actor: VerifiedGroupActorResolver, service: FinanceStatementService) = FinanceStatementController(actor, service)
     @Bean fun monthlyChargeSchedule(
         repository: JdbcChargeTransactionRepository,
         charges: ChargeTransactions,
