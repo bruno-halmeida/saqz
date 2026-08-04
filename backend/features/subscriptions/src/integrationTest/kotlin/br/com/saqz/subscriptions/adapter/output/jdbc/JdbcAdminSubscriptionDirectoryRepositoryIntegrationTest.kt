@@ -114,6 +114,12 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         val outra = insertUser(name = "Outra Pessoa", email = "op@saqz.test")
         insertSubscription(dona, plan = "ORGANIZADOR", createdAt = now)
         insertEvent(dona, valueReais = "59.90", processedAt = now.minusSeconds(200_000))
+        // Payload malformado (valor textual) não pode derrubar a consulta.
+        execute(
+            "INSERT INTO subscription_events (id, asaas_event_id, type, payload, processed_at, created_at, owner_user_id) " +
+                "VALUES ('${UUID.randomUUID()}', 'evt-${UUID.randomUUID()}', 'PAYMENT_CONFIRMED', " +
+                "'{\"payment\": {\"value\": \"abc\"}}', '${now.minusSeconds(300_000)}', '$now', '$dona')",
+        )
         insertEvent(dona, valueReais = "59.90", processedAt = now.minusSeconds(100_000))
         insertEvent(outra, valueReais = "39.90", processedAt = now.minusSeconds(50_000))
         insertEvent(dona, valueReais = "59.90", processedAt = null)
@@ -121,8 +127,9 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         val detail = repository.find(dona)
 
         assertNotNull(detail)
-        assertEquals(2, detail.receipts.size)
+        assertEquals(3, detail.receipts.size)
         assertEquals(5_990, detail.receipts.first().valueCents)
+        assertNull(detail.receipts.last().valueCents)
         assertEquals(now.minusSeconds(100_000), detail.receipts.first().processedAt)
         assertNull(repository.find(UUID.randomUUID()))
     }

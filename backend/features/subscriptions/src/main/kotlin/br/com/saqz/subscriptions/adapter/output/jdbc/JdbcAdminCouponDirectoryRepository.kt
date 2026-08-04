@@ -21,7 +21,7 @@ class JdbcAdminCouponDirectoryRepository(
         SELECT c.id, c.code, c.discount_percent, c.duration_cycles, c.valid_until,
                (SELECT count(*) FROM coupon_redemptions r WHERE r.coupon_id = c.id) AS redemptions,
                (SELECT count(*) FROM subscriptions s
-                 WHERE s.coupon_id = c.id AND s.status <> 'CANCELED'
+                 WHERE s.coupon_id = c.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL
                    AND (c.duration_cycles IS NULL OR COALESCE(s.coupon_cycles_remaining, 0) > 0)) AS active_subscriptions
         FROM coupons c
         ORDER BY c.created_at DESC

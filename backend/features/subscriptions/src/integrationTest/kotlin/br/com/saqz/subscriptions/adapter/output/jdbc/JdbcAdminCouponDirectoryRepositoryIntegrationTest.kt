@@ -61,6 +61,11 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
         insertRedemption(couponId, comCupom)
         insertRedemption(couponId, cupomEsgotado)
         insertSubscription(comCupom, couponId, cyclesRemaining = 2)
+        // Cancelada localmente (canceled_at sem o webhook) não conta como desconto ativo.
+        val canceladaLocal = insertUser()
+        insertRedemption(couponId, canceladaLocal)
+        insertSubscription(canceladaLocal, couponId, cyclesRemaining = 2)
+        execute("UPDATE subscriptions SET canceled_at = now() WHERE owner_user_id = '$canceladaLocal'")
         // Estado real pós-esgotamento: remaining NULL com cupom de duração finita.
         insertSubscription(cupomEsgotado, couponId, cyclesRemaining = null)
 
@@ -68,7 +73,7 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
 
         assertEquals(1, list.size)
         assertEquals("GALERA10", list.single().code)
-        assertEquals(2, list.single().redemptions)
+        assertEquals(3, list.single().redemptions)
         assertEquals(1, list.single().activeSubscriptions)
     }
 

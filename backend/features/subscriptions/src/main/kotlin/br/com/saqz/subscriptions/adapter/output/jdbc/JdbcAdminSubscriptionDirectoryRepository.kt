@@ -102,7 +102,9 @@ class JdbcAdminSubscriptionDirectoryRepository(
         val receipts = jdbc.sql(
             """
             SELECT asaas_event_id, processed_at,
-                   round(((payload::jsonb)#>>'{payment,value}')::numeric * 100)::bigint AS value_cents
+                   CASE WHEN (payload::jsonb)#>>'{payment,value}' ~ '^-?[0-9]+(\.[0-9]+)?$'
+                        THEN round(((payload::jsonb)#>>'{payment,value}')::numeric * 100)::bigint
+                   END AS value_cents
             FROM subscription_events
             WHERE owner_user_id = :id AND type = :type AND processed_at IS NOT NULL
             ORDER BY processed_at DESC
