@@ -13,6 +13,7 @@ import br.com.saqz.groups.domain.finance.FinanceStatementSummary
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class StatementViewModel(
     private val groupId: String,
@@ -142,7 +143,7 @@ internal fun formatStatementAmount(amountCents: Long, direction: FinanceDirectio
 }
 
 internal fun formatStatementCurrency(amountCents: Long): String {
-    val absolute = amountCents.coerceAtLeast(0)
+    val absolute = abs(amountCents)
     val reais = absolute / 100
     val centavos = (absolute % 100).toString().padStart(2, '0')
     return "R$ ${reais.withThousandsSeparator()},$centavos"

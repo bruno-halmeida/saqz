@@ -50,6 +50,11 @@ class StatementViewModelTest {
     }
 
     @Test
+    fun `formats negative outgoing amount using direction sign`() {
+        assertEquals("−R$ 7,00", formatStatementAmount(-700L, FinanceDirection.Out))
+    }
+
+    @Test
     fun `filter changes direction and resets pagination`() = runTest(dispatcher) {
         val gateway = FakeStatementGateway(
             pages = ArrayDeque(
