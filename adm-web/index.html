@@ -660,7 +660,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Código<input value="{{ ncCod }}" sc-camel-on-change="{{ onNcCod }}" placeholder="EX.: VOLTA15" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy);text-transform:uppercase;letter-spacing:.03em"></label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Desconto (%)<input value="{{ ncDesc }}" sc-camel-on-change="{{ onNcDesc }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
-            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Dura (meses)<input value="{{ ncMeses }}" sc-camel-on-change="{{ onNcMeses }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Dura (ciclos de cobrança)<input value="{{ ncMeses }}" sc-camel-on-change="{{ onNcMeses }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
           </div>
           <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Válido até<input value="{{ ncVal }}" sc-camel-on-change="{{ onNcVal }}" placeholder="dd/mm/aaaa" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
         </div>
@@ -812,11 +812,21 @@ class Component extends DCLogic {
   criarCupom() {
     const n = this.state.nc;
     if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
-    const body = { code: n.cod.trim(), discountPercent: parseInt(n.desc, 10) || 0 };
-    const meses = parseInt(n.meses, 10);
-    if (meses > 0) body.durationCycles = meses;
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.val.trim());
-    if (m) body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
+    const desconto = parseInt(n.desc, 10);
+    if (!(desconto >= 1 && desconto <= 100)) { this.aviso("Desconto precisa ser um número de 1 a 100."); return; }
+    const body = { code: n.cod.trim(), discountPercent: desconto };
+    // Campo vazio = sem limite (intencional); preenchido inválido interrompe,
+    // senão um erro de digitação viraria cupom eterno.
+    if (n.meses.trim() !== "") {
+      const ciclos = parseInt(n.meses, 10);
+      if (!(ciclos >= 1) || String(ciclos) !== n.meses.trim()) { this.aviso("Duração precisa ser um número de ciclos (ou vazio para sempre)."); return; }
+      body.durationCycles = ciclos;
+    }
+    if (n.val.trim() !== "") {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.val.trim());
+      if (!m) { this.aviso("Validade precisa estar no formato dd/mm/aaaa (ou vazia)."); return; }
+      body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
+    }
     window.saqzAdmin.fetchAdmin("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
       if (r.status === 201) {
         this.setState({ cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" } });
