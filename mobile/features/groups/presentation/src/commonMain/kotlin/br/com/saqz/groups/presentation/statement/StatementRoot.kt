@@ -14,10 +14,14 @@ fun StatementRoot(
     onBack: () -> Unit,
     onEffect: (StatementEffect) -> Unit,
     viewModel: StatementViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    refreshVersion: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.onIntent(StatementIntent.Retry)
+    }
+    LaunchedEffect(refreshVersion) {
+        if (refreshVersion > 0) viewModel.onIntent(StatementIntent.Retry)
     }
     ObserveAsEvents(viewModel.effects, onEvent = onEffect)
     StatementScreen(

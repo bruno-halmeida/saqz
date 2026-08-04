@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.newentry
 
 import androidx.lifecycle.SavedStateHandle
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.finance.ChargeList
@@ -22,6 +23,7 @@ import br.com.saqz.groups.domain.finance.ExpenseAction
 import br.com.saqz.groups.domain.finance.ExpenseAudit
 import br.com.saqz.groups.domain.finance.VersionedExpense
 import br.com.saqz.groups.domain.finance.ExpenseWriteCommand
+import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.port.GroupNowPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,6 +37,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -99,6 +102,29 @@ class NewEntryViewModelTest {
         assertEquals(0, gateway.createCalls)
     }
 
+    @Test
+    fun `retrying save reuses request id until success`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway(
+            createResults = ArrayDeque(
+                listOf(SaqzResult.Failure(FinanceError.Data(DataError.Unknown))),
+            ),
+        )
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
+        viewModel.onIntent(NewEntryIntent.DescriptionChanged("Aluguel da quadra"))
+
+        viewModel.onIntent(NewEntryIntent.Save)
+        val firstRequestId = gateway.commands.single().requestId
+
+        viewModel.onIntent(NewEntryIntent.Save)
+        assertEquals(NewEntryEffect.Saved, viewModel.effects.first())
+        assertEquals(firstRequestId, gateway.commands[1].requestId)
+
+        viewModel.onIntent(NewEntryIntent.Save)
+        assertEquals(NewEntryEffect.Saved, viewModel.effects.first())
+        assertNotEquals(firstRequestId, gateway.commands[2].requestId)
+    }
+
     private fun viewModel(
         gateway: FakeOrganizerGateway = FakeOrganizerGateway(),
     ) = NewEntryViewModel(
@@ -109,20 +135,25 @@ class NewEntryViewModelTest {
     )
 }
 
-private class FakeOrganizerGateway : OrganizerFinanceGateway {
+private class FakeOrganizerGateway(
+    private val createResults: ArrayDeque<SaqzResult<VersionedExpense, FinanceError>> = ArrayDeque(),
+) : OrganizerFinanceGateway {
     var createCalls = 0
     var lastCommand: ExpenseWriteCommand? = null
+    val commands = mutableListOf<ExpenseWriteCommand>()
 
     override suspend fun charges(groupId: GroupId) = SaqzResult.Success(ChargeList(emptyList()))
     override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) = SaqzResult.Success(ChargeList(emptyList()))
     override suspend fun updateChargeStatus(groupId: GroupId, chargeId: String, version: FinanceVersionToken, command: ChargeStatusCommand) =
         SaqzResult.Success(VersionedCharge(sampleCharge(), version))
     override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
-    override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand) = {
+    override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand): SaqzResult<VersionedExpense, FinanceError> {
         createCalls++
         lastCommand = command
-        SaqzResult.Success(VersionedExpense(sampleExpense(), FinanceVersionToken("etag")))
-    }()
+        commands += command
+        return createResults.removeFirstOrNull()
+            ?: SaqzResult.Success(VersionedExpense(sampleExpense(), FinanceVersionToken("etag")))
+    }
     override suspend fun editExpense(groupId: GroupId, expenseId: String, version: FinanceVersionToken, command: ExpenseWriteCommand) =
         SaqzResult.Success(VersionedExpense(sampleExpense(), version))
     override suspend fun voidExpense(groupId: GroupId, expenseId: String, version: FinanceVersionToken) =

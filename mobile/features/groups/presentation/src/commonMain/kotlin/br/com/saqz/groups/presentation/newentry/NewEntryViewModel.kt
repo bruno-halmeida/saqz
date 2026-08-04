@@ -27,6 +27,8 @@ class NewEntryViewModel(
     NewEntryState(date = now.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()).restore(savedState),
 ) {
     private var saveGeneration = 0L
+    private var requestId = savedState.get<String>(KEY_REQUEST_ID)
+        ?: Uuid.random().toString().also { savedState[KEY_REQUEST_ID] = it }
 
     override fun onIntent(intent: NewEntryIntent) {
         when (intent) {
@@ -80,7 +82,7 @@ class NewEntryViewModel(
                 val result = gateway.createExpense(
                     GroupId(groupId),
                     ExpenseWriteCommand(
-                        requestId = Uuid.random().toString(),
+                        requestId = requestId,
                         description = current.description.trim(),
                         amountCents = amountCents,
                         expenseDate = current.date,
@@ -94,6 +96,8 @@ class NewEntryViewModel(
                 }
                 is SaqzResult.Success -> if (requestGeneration == saveGeneration) {
                     update { it.copy(isSaving = false, error = null) }
+                    requestId = Uuid.random().toString()
+                    savedState[KEY_REQUEST_ID] = requestId
                     emit(NewEntryEffect.Saved)
                 }
             }
@@ -172,3 +176,4 @@ private const val KEY_AMOUNT = "new-entry-amount"
 private const val KEY_DESCRIPTION = "new-entry-description"
 private const val KEY_CATEGORY = "new-entry-category"
 private const val KEY_DATE = "new-entry-date"
+private const val KEY_REQUEST_ID = "new-entry-request-id"

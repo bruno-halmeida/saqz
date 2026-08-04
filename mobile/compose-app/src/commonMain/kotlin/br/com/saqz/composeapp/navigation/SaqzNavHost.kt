@@ -123,6 +123,7 @@ internal fun SaqzNavHost(
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -342,6 +343,7 @@ internal fun SaqzNavHost(
                             )
                         }
                     },
+                    refreshVersion = statementRefreshVersion,
                 )
             }
             entry<FinanceRoute.NewEntry> { route ->
@@ -350,7 +352,10 @@ internal fun SaqzNavHost(
                     onBack = pop,
                     onEffect = { effect ->
                         when (effect) {
-                            NewEntryEffect.Saved -> pop()
+                            NewEntryEffect.Saved -> {
+                                pop()
+                                statementRefreshVersion++
+                            }
                         }
                     },
                 )
