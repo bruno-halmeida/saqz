@@ -7,9 +7,12 @@ import br.com.saqz.access.adapter.output.jdbc.admin.JdbcPlatformAdminRepository
 import br.com.saqz.access.application.admin.AdminAccessStats
 import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.PlatformAdminLookup
+import br.com.saqz.adminweb.http.AdminGroupsController
 import br.com.saqz.adminweb.http.AdminOverviewController
 import br.com.saqz.adminweb.http.AdminUsersController
+import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupDirectoryRepository
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
+import br.com.saqz.groups.application.admin.AdminGroupDirectory
 import br.com.saqz.groups.application.admin.AdminGroupStats
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.application.AdminRevenueStats
@@ -46,6 +49,13 @@ class PlatformAdminConfiguration {
 
     @Bean
     fun adminUsersController(directory: AdminUserDirectory) = AdminUsersController(directory)
+
+    @Bean
+    fun adminGroupDirectory(dataSource: DataSource): AdminGroupDirectory =
+        JdbcAdminGroupDirectoryRepository(dataSource)
+
+    @Bean
+    fun adminGroupsController(directory: AdminGroupDirectory) = AdminGroupsController(directory)
 
     @Bean
     fun adminOverviewController(
