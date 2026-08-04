@@ -728,7 +728,7 @@ class Component extends DCLogic {
             // ao próximo admin.
             modal: null, toast: null, cupomOpen: false,
             nc: { cod: "", desc: "10", meses: "3", val: "" },
-            page: "visao", selU: null, selG: null, selA: null, selD: null,
+            page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
             periodo: "30d", rTab: "ass",
             uBusca: "", uPlano: "todos", uStatus: "todos",
             gBusca: "", gStatus: "todos"
