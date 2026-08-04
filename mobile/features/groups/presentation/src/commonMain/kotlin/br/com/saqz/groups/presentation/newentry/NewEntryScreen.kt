@@ -32,6 +32,8 @@ import br.com.saqz.groups.resources.new_entry_category
 import br.com.saqz.groups.resources.new_entry_category_court
 import br.com.saqz.groups.resources.new_entry_category_material
 import br.com.saqz.groups.resources.new_entry_category_other
+import br.com.saqz.groups.resources.new_entry_custom_category
+import br.com.saqz.groups.resources.new_entry_custom_category_error
 import br.com.saqz.groups.resources.new_entry_category_racha
 import br.com.saqz.groups.resources.new_entry_date
 import br.com.saqz.groups.resources.new_entry_description
@@ -55,6 +57,7 @@ internal object NewEntryTags {
     const val Amount = "finance-new-entry-amount"
     const val Description = "finance-new-entry-description"
     const val Category = "finance-new-entry-category"
+    const val CustomCategory = "finance-new-entry-custom-category"
     const val Date = "finance-new-entry-date"
     const val Save = "finance-new-entry-save"
 }
@@ -152,6 +155,21 @@ internal fun NewEntryScreen(
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
+            }
+            if (state.category == NewEntryCategory.Other) {
+                val customCategoryInvalid = state.error == br.com.saqz.groups.presentation.GroupUiError.Validation &&
+                    !isValidCustomCategory(state.customCategory)
+                SaqzInput(
+                    value = state.customCategory,
+                    onValueChange = { onIntent(NewEntryIntent.CustomCategoryChanged(it)) },
+                    label = stringResource(Res.string.new_entry_custom_category),
+                    errorText = if (customCategoryInvalid) {
+                        stringResource(Res.string.new_entry_custom_category_error)
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.testTag(NewEntryTags.CustomCategory),
+                )
             }
             SaqzInput(
                 value = formatEntryDate(state.date),

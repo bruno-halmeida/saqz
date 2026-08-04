@@ -50,6 +50,10 @@ class NewEntryViewModel(
                 savedState[KEY_CATEGORY] = intent.category.name
                 update { it.copy(category = intent.category, error = null) }
             }
+            is NewEntryIntent.CustomCategoryChanged -> {
+                savedState[KEY_CUSTOM_CATEGORY] = intent.value
+                update { it.copy(customCategory = intent.value, error = null) }
+            }
             is NewEntryIntent.DateChanged -> updateDate(intent.value)
             NewEntryIntent.Save -> save()
         }
@@ -71,7 +75,14 @@ class NewEntryViewModel(
         val current = state.value
         if (current.isSaving) return
         val amountCents = parseEntryCents(current.amountText)
-        if (amountCents == null || amountCents <= 0L || current.description.isBlank() || !isEntryDate(current.date)) {
+        val customCategory = current.customCategory.trim()
+        if (
+            amountCents == null ||
+            amountCents <= 0L ||
+            current.description.isBlank() ||
+            !isEntryDate(current.date) ||
+            (current.category == NewEntryCategory.Other && !isValidCustomCategory(customCategory))
+        ) {
             update { it.copy(error = GroupUiError.Validation) }
             return
         }
@@ -87,6 +98,7 @@ class NewEntryViewModel(
                         amountCents = amountCents,
                         expenseDate = current.date,
                         category = current.category.toExpenseCategory(),
+                        customCategory = customCategory.takeIf { current.category == NewEntryCategory.Other },
                         direction = current.direction.toFinanceDirection(),
                     ),
                 )
@@ -163,6 +175,8 @@ internal fun isEntryDate(value: String): Boolean = runCatching {
     kotlinx.datetime.LocalDate.parse(value)
 }.isSuccess
 
+internal fun isValidCustomCategory(value: String): Boolean = value.trim().length in 2..40
+
 private fun NewEntryState.restore(savedState: SavedStateHandle): NewEntryState = copy(
     direction = savedState.get<String>(KEY_DIRECTION)?.let { value ->
         NewEntryDirection.entries.firstOrNull { it.name == value }
@@ -172,6 +186,7 @@ private fun NewEntryState.restore(savedState: SavedStateHandle): NewEntryState =
     category = savedState.get<String>(KEY_CATEGORY)?.let { value ->
         NewEntryCategory.entries.firstOrNull { it.name == value }
     } ?: category,
+    customCategory = savedState.get<String>(KEY_CUSTOM_CATEGORY) ?: customCategory,
     date = savedState.get<String>(KEY_DATE) ?: date,
 )
 
@@ -179,5 +194,6 @@ private const val KEY_DIRECTION = "new-entry-direction"
 private const val KEY_AMOUNT = "new-entry-amount"
 private const val KEY_DESCRIPTION = "new-entry-description"
 private const val KEY_CATEGORY = "new-entry-category"
+private const val KEY_CUSTOM_CATEGORY = "new-entry-custom-category"
 private const val KEY_DATE = "new-entry-date"
 private const val KEY_REQUEST_ID = "new-entry-request-id"

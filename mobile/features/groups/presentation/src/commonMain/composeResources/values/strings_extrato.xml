@@ -30,6 +30,8 @@
     <string name="new_entry_category_material">Material</string>
     <string name="new_entry_category_racha">Racha</string>
     <string name="new_entry_category_other">Outros</string>
+    <string name="new_entry_custom_category">O que é?</string>
+    <string name="new_entry_custom_category_error">Informe o que é (2 a 40 caracteres).</string>
     <string name="new_entry_date">Data</string>
     <string name="new_entry_save">Salvar lançamento</string>
     <string name="new_entry_saving">Salvando…</string>

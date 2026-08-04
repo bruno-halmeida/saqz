@@ -22,6 +22,7 @@ data class NewEntryState(
     val amountText: String = "",
     val description: String = "",
     val category: NewEntryCategory = NewEntryCategory.Other,
+    val customCategory: String = "",
     val date: String,
     val isSaving: Boolean = false,
     val error: GroupUiError? = null,
@@ -33,6 +34,7 @@ sealed interface NewEntryIntent {
     data class SelectAmountShortcut(val cents: Long) : NewEntryIntent
     data class DescriptionChanged(val value: String) : NewEntryIntent
     data class SelectCategory(val category: NewEntryCategory) : NewEntryIntent
+    data class CustomCategoryChanged(val value: String) : NewEntryIntent
     data class DateChanged(val value: String) : NewEntryIntent
     data object Save : NewEntryIntent
 }

@@ -103,6 +103,32 @@ class NewEntryViewModelTest {
     }
 
     @Test
+    fun `other without custom category shows field validation and does not save`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway()
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
+        viewModel.onIntent(NewEntryIntent.DescriptionChanged("Compra de bolas"))
+        viewModel.onIntent(NewEntryIntent.Save)
+
+        assertEquals(br.com.saqz.groups.presentation.GroupUiError.Validation, viewModel.state.value.error)
+        assertEquals(0, gateway.createCalls)
+    }
+
+    @Test
+    fun `other with custom category saves the custom category`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway()
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
+        viewModel.onIntent(NewEntryIntent.DescriptionChanged("Compra de bolas"))
+        viewModel.onIntent(NewEntryIntent.CustomCategoryChanged("Água"))
+        viewModel.onIntent(NewEntryIntent.Save)
+
+        assertEquals(NewEntryEffect.Saved, viewModel.effects.first())
+        assertEquals(ExpenseCategory.Other, gateway.lastCommand?.category)
+        assertEquals("Água", gateway.lastCommand?.customCategory)
+    }
+
+    @Test
     fun `retrying save reuses request id until success`() = runTest(dispatcher) {
         val gateway = FakeOrganizerGateway(
             createResults = ArrayDeque(
@@ -112,6 +138,7 @@ class NewEntryViewModelTest {
         val viewModel = viewModel(gateway = gateway)
         viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
         viewModel.onIntent(NewEntryIntent.DescriptionChanged("Aluguel da quadra"))
+        viewModel.onIntent(NewEntryIntent.SelectCategory(NewEntryCategory.Court))
 
         viewModel.onIntent(NewEntryIntent.Save)
         val firstRequestId = gateway.commands.single().requestId
