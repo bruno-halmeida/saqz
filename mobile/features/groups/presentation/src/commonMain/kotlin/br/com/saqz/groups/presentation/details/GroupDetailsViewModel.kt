@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.details
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -20,6 +21,11 @@ import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.finance.ChargeKind
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.domain.finance.FinanceStatementGateway
+import br.com.saqz.groups.domain.finance.FinanceStatementQuery
+import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
@@ -36,13 +42,15 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
-@Suppress("LargeClass")
+@Suppress("LargeClass", "LongParameterList")
 class GroupDetailsViewModel(
     private val groupId: String,
     private val groupGateway: GroupGateway,
     private val gameGateway: GameGateway,
     private val attendanceGateway: AttendanceGateway,
     private val athleteGateway: AthleteGateway,
+    private val statementGateway: FinanceStatementGateway,
+    private val organizerFinanceGateway: OrganizerFinanceGateway,
     private val now: GroupNowPort,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
@@ -96,12 +104,49 @@ class GroupDetailsViewModel(
         viewModelScope.launch {
             when (val groupResult = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
-                is SaqzResult.Success -> when (val gamesResult = gameGateway.list(GroupId(groupId))) {
-                    is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
-                    is SaqzResult.Success -> loadNextGame(generation, groupResult.value.group, gamesResult.value)
+                is SaqzResult.Success -> {
+                    val group = groupResult.value.group
+                    when (val gamesResult = gameGateway.list(GroupId(groupId))) {
+                        is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
+                        is SaqzResult.Success -> {
+                            loadNextGame(generation, group, gamesResult.value)
+                            loadAdminCashbox(generation, group)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    @Suppress("ReturnCount")
+    private suspend fun loadAdminCashbox(generation: Int, group: Group) {
+        if (generation != loadGeneration) return
+        if (group.role == GroupRole.ATHLETE) {
+            update { it.copy(cashbox = null) }
+            return
+        }
+        val monthKey = currentDate(group.timeZone.id).monthKey()
+        val statementResult = statementGateway.statement(
+            GroupId(groupId),
+            FinanceStatementQuery(month = monthKey),
+        )
+        if (generation != loadGeneration) return
+        val chargesResult = organizerFinanceGateway.charges(GroupId(groupId))
+        if (generation != loadGeneration) return
+        val cashbox = if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
+            val openMonthlyCount = chargesResult.value.charges.count {
+                it.kind == ChargeKind.Monthly &&
+                    it.status == ChargeStatus.Pending
+            }
+            CashboxUi(
+                summary = "Saldo ${formatBrl(statementResult.value.summary.accumulatedBalanceCents)} · " +
+                    "$openMonthlyCount mensalidades em aberto",
+            )
+        } else {
+            CashboxUi()
+        }
+        if (generation != loadGeneration) return
+        update { it.copy(cashbox = cashbox) }
     }
 
     @Suppress("ReturnCount")
@@ -433,6 +478,14 @@ class GroupDetailsViewModel(
         return runCatching { Instant.parse(confirmationDeadline) > now.now() }
             .getOrDefault(true)
     }
+
+    private fun currentDate(timeZoneId: String): LocalDate {
+        val instant = now.now()
+        return runCatching { instant.toLocalDateTime(TimeZone.of(timeZoneId)).date }
+            .getOrElse { instant.toLocalDateTime(TimeZone.UTC).date }
+    }
+
+    private fun LocalDate.monthKey() = "$year-${month.ordinal.plus(1).toString().padStart(2, '0')}"
 }
 
 private fun List<Game>.nextPublishedGame(now: Instant): Game? {

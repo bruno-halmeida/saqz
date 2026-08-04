@@ -389,18 +389,19 @@ internal fun GroupCashboxRow(
             GroupIconCircle(SaqzIcons.CreditCard)
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = label, style = SaqzTheme.typography.label, color = colors.textPrimary)
-                Text(
-                    text = cashbox.summary,
-                    style = SaqzTheme.typography.caption,
-                    color = colors.textSecondary,
-                )
+                cashbox.summary?.let {
+                    Text(text = it, style = SaqzTheme.typography.caption, color = colors.textSecondary)
+                }
             }
             SaqzIcon(SaqzIcons.ChevronRight, tint = colors.textSecondary)
         }
     }
 }
 
-/** `2e` — os quatro azulejos de atalho. */
+/**
+ * `2e` — os atalhos do membro. Caixa é do organizador; a rota de pagamentos próprios ainda
+ * não está navegável nesta branch, então não expomos uma porta para o caixa do grupo aqui.
+ */
 @Composable
 internal fun GroupShortcutTiles(
     onIntent: (GroupDetailsIntent) -> Unit,
@@ -414,12 +415,6 @@ internal fun GroupShortcutTiles(
         label = stringResource(Res.string.group_details_notices),
         tag = GroupDetailsTags.ShortcutNotices,
         onClick = { onIntent(GroupDetailsIntent.OpenNotices) },
-    )
-    GroupShortcutTile(
-        icon = SaqzIcons.CreditCard,
-        label = stringResource(Res.string.group_details_cash),
-        tag = GroupDetailsTags.ShortcutCashbox,
-        onClick = { onIntent(GroupDetailsIntent.OpenCashbox) },
     )
     GroupShortcutTile(
         icon = SaqzIcons.Calendar,

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.details.CashboxUi
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsResponseStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsResponseUi
@@ -40,7 +41,6 @@ class GroupDetailsScreenTest {
         GroupGameResponseTags.NotGoing,
         GroupGameResponseTags.AutoConfirmation,
         GroupDetailsTags.ShortcutNotices,
-        GroupDetailsTags.ShortcutCashbox,
         GroupDetailsTags.ShortcutSchedule,
         GroupDetailsTags.ShortcutChat,
         GroupDetailsTags.Notice,
@@ -63,6 +63,45 @@ class GroupDetailsScreenTest {
 
         memberOnly.forEach { onNodeWithTag(it).assertExists() }
         adminOnly.forEach { onAllNodesWithTag(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun memberViewDoesNotExposeOrganizerCashboxShortcut() = runComposeUiTest {
+        setScreen(GroupDetailsPreviewData.member)
+
+        onAllNodesWithTag(GroupDetailsTags.ShortcutCashbox).assertCountEquals(0)
+        onAllNodesWithTag(GroupDetailsTags.Cashbox).assertCountEquals(0)
+    }
+
+    @Test
+    fun adminCashboxRowStillOpensOrganizerCashbox() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setScreen(GroupDetailsPreviewData.admin) { intents += it }
+
+        onNodeWithTag(GroupDetailsTags.Cashbox).performClick()
+
+        assertEquals(GroupDetailsIntent.OpenCashbox, intents.single())
+    }
+
+    @Test
+    fun adminCashboxRowRemainsVisibleWithoutFinanceSummary() = runComposeUiTest {
+        setScreen(GroupDetailsPreviewData.admin.copy(cashbox = CashboxUi()))
+
+        onNodeWithTag(GroupDetailsTags.Cashbox).assertExists()
+        onNodeWithText("Caixa do grupo").assertExists()
+        onAllNodesWithText("Saldo R$ 380,00 · 8 mensalidades em aberto").assertCountEquals(0)
+    }
+
+    @Test
+    fun memberViewDoesNotRenderCashboxFromStaleState() = runComposeUiTest {
+        setScreen(
+            GroupDetailsPreviewData.member.copy(
+                cashbox = CashboxUi(summary = "Saldo R$ 380,00 · 8 mensalidades em aberto"),
+            ),
+        )
+
+        onAllNodesWithTag(GroupDetailsTags.Cashbox).assertCountEquals(0)
+        onAllNodesWithText("Caixa do grupo").assertCountEquals(0)
     }
 
     @Test
