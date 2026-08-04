@@ -8,8 +8,12 @@ put {
   body: json
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
-body:json { {"requestId":"{{$guid}}","intent":"CONFIRM"} }
+auth:bearer {
+  token: {{idToken}}
+}
+body:json {
+  {"requestId":"{{$guid}}","intent":"CONFIRM"}
+}
 tests {
   test("self response is authoritative", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.attendance.status).to.be.oneOf(["CONFIRMED","WAITLISTED"]); expect(res.body.attendance).to.not.have.property("charge"); });
 }

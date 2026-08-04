@@ -8,7 +8,9 @@ get {
   body: none
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
+auth:bearer {
+  token: {{idToken}}
+}
 tests {
   test("returns the groups the user has access to", function () { expect(res.status).to.equal(200); expect(res.body.groups).to.be.an("array"); });
 }

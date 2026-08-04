@@ -8,7 +8,9 @@ get {
   body: none
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
+auth:bearer {
+  token: {{idToken}}
+}
 tests {
   test("own charges are redacted", function () { expect(res.status).to.equal(200); expect(res.body.charges).to.be.an("array"); expect(res.body.pendingTotalCents).to.equal(null); });
 }

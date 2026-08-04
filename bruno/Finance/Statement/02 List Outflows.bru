@@ -8,7 +8,9 @@ get {
   body: none
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
+auth:bearer {
+  token: {{idToken}}
+}
 tests {
   test("statement outflow filter", function () { expect(res.status).to.equal(200); res.body.items.forEach(function (item) { expect(item.direction).to.equal("OUT"); expect(item.amountCents).to.be.below(0); }); });
 }

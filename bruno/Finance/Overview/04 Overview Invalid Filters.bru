@@ -8,7 +8,9 @@ get {
   body: none
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
+auth:bearer {
+  token: {{idToken}}
+}
 tests {
   test("month and year cannot be combined", function () { expect(res.status).to.equal(400); expect(res.body.fieldErrors.month).to.be.an("array"); expect(res.body.fieldErrors.year).to.be.an("array"); });
 }

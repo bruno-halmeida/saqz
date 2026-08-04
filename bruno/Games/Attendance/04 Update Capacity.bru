@@ -11,8 +11,12 @@ put {
 headers {
   If-Match: "{{gameVersion}}"
 }
-auth:bearer { token: {{idToken}} }
-body:json { {"requestId":"{{$guid}}","capacity":24} }
+auth:bearer {
+  token: {{idToken}}
+}
+body:json {
+  {"requestId":"{{$guid}}","capacity":24}
+}
 tests {
   test("versioned capacity response", function () { expect(res.status).to.equal(200); expect(res.headers.etag).to.exist; expect(res.body.capacity).to.equal(24); expect(res.body.promotedCount).to.be.a("number"); });
 }

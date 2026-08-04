@@ -8,8 +8,12 @@ post {
   body: json
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
-body:json { {"requestId":"{{$guid}}","description":"Racha do sábado","amountCents":12000,"expenseDate":"2026-08-01","category":"RACHA","direction":"IN"} }
+auth:bearer {
+  token: {{idToken}}
+}
+body:json {
+  {"requestId":"{{$guid}}","description":"Racha do sábado","amountCents":12000,"expenseDate":"2026-08-01","category":"RACHA","direction":"IN"}
+}
 tests {
   test("created manual entry", function () { expect(res.status).to.equal(201); expect(res.body.direction).to.equal("IN"); expect(res.body.category).to.equal("RACHA"); });
 }

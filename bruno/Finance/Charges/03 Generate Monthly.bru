@@ -8,7 +8,9 @@ post {
   body: json
   auth: bearer
 }
-auth:bearer { token: {{idToken}} }
+auth:bearer {
+  token: {{idToken}}
+}
 body:json {
   {"requestId":"{{$guid}}","month":"2026-08","amountCents":3000,"dueDate":"2026-08-10","memberIds":["{{memberId}}"]}
 }
