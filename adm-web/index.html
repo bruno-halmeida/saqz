@@ -316,14 +316,13 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         <option value="all">Desde o início (fev)</option>
       </sc-raw-select>
       <span style="font-size:13px;color:var(--saqz-muted)">{{ perNota }}</span>
-      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">Atualizado hoje, 08h10</span>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ atualizadoEm }}</span>
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
         <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
-          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 18px;display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center">
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 18px;display:grid;gap:8px;align-items:center">
             <span><span style="display:block;font-size:12.5px;font-weight:600;color:var(--saqz-muted)">{{ k.label }}</span><strong style="display:block;margin-top:6px;font-size:27px;font-weight:800;letter-spacing:-0.02em">{{ k.valor }} <span style="font-size:14px;font-weight:700;color:var(--saqz-muted)">{{ k.sub }}</span></strong><span style="{{ k.dStyle }}">{{ k.delta }}</span></span>
-            <svg sc-camel-view-box="0 0 120 44" style="width:120px;height:44px" aria-hidden="true"><path d="{{ k.spark }}" fill="none" stroke="{{ k.cor }}" stroke-width="2.5" stroke-linecap="round"></path></svg>
           </div>
         </sc-for>
       </div>
@@ -335,36 +334,21 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <sc-for list="{{ cohort }}" as="c" hint-placeholder-count="5">
               <span style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1.1fr 1.2fr;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px;align-items:center"><span style="font-weight:600">{{ c.sem }}</span><span>{{ c.cad }}</span><span>{{ c.ativ }}</span><span>{{ c.grupo }}</span><strong style="{{ c.pagoStyle }}">{{ c.pago }}</strong></span>
             </sc-for>
-            <p style="margin:0;padding:12px 20px;font-size:12.5px;line-height:1.5;color:var(--saqz-muted)">O gargalo é criar o primeiro grupo, não pagar: quem cria grupo assina. O convite e o onboarding de organizador são o ponto de alavanca.</p>
+            
           </div>
-          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:12px;align-content:start">
-            <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:15px;font-weight:700">De onde veio a receita</strong><span style="font-size:12.5px;color:var(--saqz-muted)">{{ perLabel }}</span></div>
-            <div style="display:grid;gap:8px">
-              <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="display:flex;align-items:center;gap:8px;color:var(--saqz-muted)"><span style="width:10px;height:10px;border-radius:3px;background:var(--saqz-blue)"></span>Assinaturas de plano</span><strong style="font-weight:700">{{ splitPlanos }}</strong></span>
-              <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="display:flex;align-items:center;gap:8px;color:var(--saqz-muted)"><span style="width:10px;height:10px;border-radius:3px;background:#C7F300"></span>Taxa de 4% sobre mensalidades</span><strong style="font-weight:700">{{ splitTaxa }}</strong></span>
-            </div>
-            <div style="display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--saqz-ice)"><span style="{{ splitBar1 }}"></span><span style="{{ splitBar2 }}"></span></div>
-            <span style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--saqz-border);padding-top:12px"><span style="color:var(--saqz-muted)">Volume processado nas mensalidades dos grupos</span><strong style="font-weight:700">{{ splitVolume }}</strong></span>
-          </div>
+          
         </div>
         <div style="display:grid;gap:16px;align-content:start">
           <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:12px;align-content:start">
-            <strong style="font-size:15px;font-weight:700">Receita por plano · julho</strong>
+            <strong style="font-size:15px;font-weight:700">MRR por plano</strong>
             <sc-for list="{{ planoBars }}" as="p" hint-placeholder-count="3">
               <div style="display:grid;gap:6px"><span style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--saqz-muted)">{{ p.label }}</span><strong style="font-weight:700">{{ p.val }}</strong></span><span style="{{ p.bar }}"></span></div>
             </sc-for>
           </div>
-          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:10px;align-content:start">
-            <strong style="font-size:15px;font-weight:700">Onde a galera joga</strong>
-            <sc-for list="{{ cidades }}" as="c" hint-placeholder-count="4">
-              <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">{{ c.nome }}</span><strong style="font-weight:700">{{ c.val }}</strong></span>
-            </sc-for>
-          </div>
+          
           <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:10px;align-content:start">
             <strong style="font-size:15px;font-weight:700">Precisa da sua mão</strong>
-            <button type="button" sc-camel-on-click="{{ goRecCob }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:var(--saqz-error);flex:0 0 auto"></span><span style="flex:1">3 cobranças de plano falharam — R$ 59,70 em risco</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
-            <button type="button" sc-camel-on-click="{{ goSup }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:var(--saqz-warning);flex:0 0 auto"></span><span style="flex:1">{{ pendDenuncia }}</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
-            <button type="button" sc-camel-on-click="{{ goCup }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:#C7F300;flex:0 0 auto"></span><span style="flex:1">GALERA10 vence em 12 dias — 9 assinaturas usam</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
+            <button type="button" sc-camel-on-click="{{ goRec }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:var(--saqz-warning);flex:0 0 auto"></span><span style="flex:1">{{ pendAtraso }}</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
           </div>
         </div>
       </div>
@@ -378,13 +362,10 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Usuários</strong>
       <input value="{{ uBusca }}" sc-camel-on-change="{{ onUBusca }}" placeholder="Buscar por nome ou e-mail" style="border:1px solid var(--saqz-border);border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:inherit;color:var(--saqz-navy);width:240px;box-sizing:border-box">
       <sc-raw-select value="{{ uPlano }}" sc-camel-on-change="{{ onUPlano }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
-        <option value="todos">Plano: todos</option><option value="Amador">Amador (grátis)</option><option value="Organizador">Organizador</option><option value="Quadra Cheia">Quadra Cheia</option>
+        <option value="todos">Plano: todos</option><option value="FREE">Grátis</option><option value="TITULAR">Titular</option><option value="ORGANIZADOR">Organizador</option><option value="ILIMITADO">Ilimitado</option>
       </sc-raw-select>
       <sc-raw-select value="{{ uStatus }}" sc-camel-on-change="{{ onUStatus }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
-        <option value="todos">Status: todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo há 30 dias</option><option value="suspenso">Suspenso</option>
-      </sc-raw-select>
-      <sc-raw-select value="{{ uCidade }}" sc-camel-on-change="{{ onUCidade }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
-        <option value="todas">Cidade: todas</option><option>São Paulo</option><option>Recife</option><option>Curitiba</option><option>Fortaleza</option><option>Florianópolis</option>
+        <option value="todos">Status: todos</option><option value="active">Ativo</option><option value="suspended">Suspenso</option>
       </sc-raw-select>
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ uCount }}</span>
     </div>
@@ -428,7 +409,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Cidade</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.cidade }}</strong></span>
             <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">No Saqz desde</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.desde }}</strong></span>
             <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Último acesso</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.acesso }}</strong></span>
-            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Presenças em julho</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.presencas }}</strong></span>
+            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Telefone</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.telefone }}</strong></span>
           </div>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
@@ -467,25 +448,21 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border);flex-wrap:wrap">
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Grupos</strong>
       <input value="{{ gBusca }}" sc-camel-on-change="{{ onGBusca }}" placeholder="Buscar grupo ou organizador" style="border:1px solid var(--saqz-border);border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:inherit;color:var(--saqz-navy);width:240px;box-sizing:border-box">
-      <sc-raw-select value="{{ gCidade }}" sc-camel-on-change="{{ onGCidade }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
-        <option value="todas">Cidade: todas</option><option>São Paulo</option><option>Recife</option><option>Curitiba</option><option>Fortaleza</option><option>Florianópolis</option>
-      </sc-raw-select>
-      <sc-raw-select value="{{ gModo }}" sc-camel-on-change="{{ onGModo }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
-        <option value="todas">Modalidade: todas</option><option value="quadra">Quadra</option><option value="praia">Praia</option><option value="futevôlei">Futevôlei</option>
+      <sc-raw-select value="{{ gStatus }}" sc-camel-on-change="{{ onGStatus }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
+        <option value="todos">Status: ativos</option><option value="deleted">Apagados</option>
       </sc-raw-select>
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ gCount }}</span>
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-        <span style="display:grid;grid-template-columns:2fr 1.4fr 1fr 0.8fr 1.1fr 1fr 1fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>GRUPO</span><span>ORGANIZADOR</span><span>CIDADE</span><span>MEMBROS</span><span>MENSALIDADES/MÊS</span><span>TAXA (4%)</span><span>STATUS</span><span></span></span>
+        <span style="display:grid;grid-template-columns:2fr 1.4fr 1.2fr 0.7fr 0.7fr 1fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>GRUPO</span><span>ORGANIZADOR</span><span>PLANO DO ORGANIZADOR</span><span>MEMBROS</span><span>JOGOS</span><span>STATUS</span><span></span></span>
         <sc-for list="{{ gruposRows }}" as="g" hint-placeholder-count="8">
-          <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:grid;grid-template-columns:2fr 1.4fr 1fr 0.8fr 1.1fr 1fr 1fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
-            <span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ g.modalidade }}</span></span>
+          <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:grid;grid-template-columns:2fr 1.4fr 1.2fr 0.7fr 0.7fr 1fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+            <span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ g.sub }}</span></span>
             <span style="color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.organizador }}</span>
-            <span style="color:var(--saqz-muted)">{{ g.cidade }}</span>
+            <span><span style="{{ g.planoOrgStyle }}">{{ g.planoOrg }}</span></span>
             <span style="color:var(--saqz-muted)">{{ g.membros }}</span>
-            <span style="color:var(--saqz-muted)">{{ g.mensal }}</span>
-            <strong style="color:var(--saqz-success);font-weight:700">{{ g.taxa }}</strong>
+            <span style="color:var(--saqz-muted)">{{ g.jogos }}</span>
             <span><span style="{{ g.statusStyle }}">{{ g.statusTxt }}</span></span>
             <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
           </button>
@@ -505,22 +482,18 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">Criado em {{ gd.criado }}</span>
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Organizador</span><strong style="display:block;margin-top:6px;font-size:15px;font-weight:700">{{ gd.organizador }}</strong><span style="display:block;margin-top:3px;font-size:12px;color:var(--saqz-muted)">{{ gd.planoOrg }}</span></div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Membros</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.membros }}</strong></div>
-        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Jogos em julho</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.jogos }}</strong></div>
-        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Mensalidades/mês</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.mensal }}</strong></div>
-        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Taxa pra plataforma</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em;color:var(--saqz-success)">{{ gd.taxa }}</strong><span style="display:block;margin-top:3px;font-size:12px;color:var(--saqz-muted)">4% do volume</span></div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Jogos realizados</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.jogos }}</strong></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
           <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Sobre o grupo</strong></div>
           <div style="padding:14px 20px;display:grid;gap:10px">
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Modalidade</span><strong style="font-weight:600">{{ gd.modalidade }}</strong></span>
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Local</span><strong style="font-weight:600">{{ gd.local }}</strong></span>
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Rotina</span><strong style="font-weight:600">{{ gd.rotina }}</strong></span>
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Mensalidade por membro</span><strong style="font-weight:600">{{ gd.mensalMembro }}</strong></span>
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Presença média</span><strong style="font-weight:600">{{ gd.presenca }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Plano do organizador</span><strong style="font-weight:600">{{ gd.planoOrg }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Fuso horário</span><strong style="font-weight:600">{{ gd.fuso }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Criado em</span><strong style="font-weight:600">{{ gd.criado }}</strong></span>
           </div>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
@@ -728,11 +701,16 @@ class Component extends DCLogic {
   state = {
     page: this.props.paginaInicial ?? "visao",
     selU: null, selG: null, selA: null, selD: null,
-    periodo: "30",
-    uBusca: "", uPlano: "todos", uStatus: "todos", uCidade: "todas",
-    gBusca: "", gCidade: "todas", gModo: "todas",
+    periodo: "30d",
+    uBusca: "", uPlano: "todos", uStatus: "todos",
+    gBusca: "", gStatus: "todos",
     rTab: "ass",
-    suspensos: {}, canceladas: {}, reembolsos: {}, resolvidas: {},
+    // Dados vindos da API /admin (null = carregando; {erro:true} = falhou)
+    overview: null, atrasadas: null,
+    usersPage: null, userDetail: null, userReceipts: null,
+    groupsPage: null, groupDetail: null,
+    // Receita, cupons e suporte seguem mockados até o VUL-170/171
+    canceladas: {}, reembolsos: {}, resolvidas: {},
     cupons: [
       { cod: "GALERA10", desc: "10% por 6 meses", validade: "15/08/2026", usos: 9, ativo: true, mrr: "R$ 161,19" },
       { cod: "SAQUE20", desc: "20% no primeiro mês", validade: "30/06/2026", usos: 14, ativo: false, mrr: "—" }
@@ -741,180 +719,247 @@ class Component extends DCLogic {
     modal: null, toast: null
   };
 
-  USERS = [
-    { id: "u1", nome: "Bianca Souza", email: "bianca.souza@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "hoje", desde: "12/05/2026", presencas: 6, assinId: "a1", meusGrupos: [{ gid: "g7", papel: "Organizadora" }] },
-    { id: "u2", nome: "Thiago Melo", email: "thiago.melo@hotmail.com", cidade: "Recife", plano: "Quadra Cheia", status: "ativo", grupos: 4, acesso: "hoje", desde: "03/03/2026", presencas: 11, assinId: "a2", meusGrupos: [{ gid: "g3", papel: "Organizador" }] },
-    { id: "u3", nome: "Carla Nunes", email: "carla.nunes@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "ontem", desde: "28/04/2026", presencas: 8, assinId: "a3", meusGrupos: [{ gid: "g2", papel: "Organizadora" }] },
-    { id: "u4", nome: "Renato Alves", email: "renato.alves@gmail.com", cidade: "Fortaleza", plano: "Organizador", status: "ativo", grupos: 1, acesso: "há 2 dias", desde: "30/07/2026", presencas: 3, assinId: "a4", meusGrupos: [{ gid: "g8", papel: "Organizador" }] },
-    { id: "u5", nome: "Diego Farias", email: "diego.farias@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "hoje", desde: "19/06/2026", presencas: 7, assinId: "a5", meusGrupos: [{ gid: "g5", papel: "Organizador" }] },
-    { id: "u6", nome: "Marina Costa", email: "marina.costa@gmail.com", cidade: "São Paulo", plano: "Amador", status: "ativo", grupos: 0, acesso: "hoje", desde: "07/06/2026", presencas: 9, assinId: null, meusGrupos: [{ gid: "g1", papel: "Membro" }, { gid: "g2", papel: "Membro" }] },
-    { id: "u7", nome: "Pedro Sales", email: "pedro.sales@gmail.com", cidade: "Recife", plano: "Amador", status: "ativo", grupos: 0, acesso: "há 3 dias", desde: "22/05/2026", presencas: 5, assinId: null, meusGrupos: [{ gid: "g3", papel: "Membro" }] },
-    { id: "u8", nome: "Ana Beatriz Lima", email: "ana.blima@gmail.com", cidade: "São Paulo", plano: "Amador", status: "inativo", grupos: 0, acesso: "há 34 dias", desde: "10/04/2026", presencas: 0, assinId: null, meusGrupos: [{ gid: "g1", papel: "Membro" }] },
-    { id: "u9", nome: "João Vitor Ramos", email: "jvramos@gmail.com", cidade: "Curitiba", plano: "Quadra Cheia", status: "ativo", grupos: 3, acesso: "ontem", desde: "15/03/2026", presencas: 10, assinId: "a6", meusGrupos: [{ gid: "g4", papel: "Organizador" }] },
-    { id: "u10", nome: "Fernanda Dias", email: "fernanda.dias@gmail.com", cidade: "Florianópolis", plano: "Organizador", status: "ativo", grupos: 1, acesso: "há 8 dias", desde: "02/05/2026", presencas: 2, assinId: "a7", meusGrupos: [{ gid: "g6", papel: "Organizadora" }] },
-    { id: "u11", nome: "Rafael Torres", email: "rafa.torres@gmail.com", cidade: "São Paulo", plano: "Amador", status: "ativo", grupos: 0, acesso: "hoje", desde: "30/06/2026", presencas: 8, assinId: null, meusGrupos: [{ gid: "g1", papel: "Membro" }] },
-    { id: "u12", nome: "Camila Rocha", email: "camila.rocha@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "hoje", desde: "20/02/2026", presencas: 9, assinId: "a8", meusGrupos: [{ gid: "g1", papel: "Organizadora" }] }
-  ];
-
-  GRUPOS = [
-    { id: "g1", nome: "Vôlei do CERET", organizador: "Camila Rocha", uid: "u12", planoOrg: "Organizador", cidade: "São Paulo", local: "CERET — Quadra 2, Tatuapé", modalidade: "quadra", membros: 38, mensal: 2280, status: "ativo", jogos: 9, criado: "20/02/2026", rotina: "Ter e qui, 19h30", mensalMembro: "R$ 60/mês", presenca: "82%" },
-    { id: "g2", nome: "Areia do Ibira", organizador: "Carla Nunes", uid: "u3", planoOrg: "Organizador", cidade: "São Paulo", local: "Ibirapuera — arena de areia", modalidade: "praia", membros: 26, mensal: 1560, status: "ativo", jogos: 5, criado: "28/04/2026", rotina: "Sáb, 9h", mensalMembro: "R$ 60/mês", presenca: "76%" },
-    { id: "g3", nome: "Futevôlei da Ponte", organizador: "Thiago Melo", uid: "u2", planoOrg: "Quadra Cheia", cidade: "Recife", local: "Praia de Boa Viagem", modalidade: "futevôlei", membros: 22, mensal: 1320, status: "ativo", jogos: 8, criado: "03/03/2026", rotina: "Qua e dom, 7h", mensalMembro: "R$ 60/mês", presenca: "88%" },
-    { id: "g4", nome: "Quarta da Rede", organizador: "João Vitor Ramos", uid: "u9", planoOrg: "Quadra Cheia", cidade: "Curitiba", local: "Ginásio do Portão", modalidade: "quadra", membros: 19, mensal: 950, status: "ativo", jogos: 4, criado: "15/03/2026", rotina: "Qua, 20h", mensalMembro: "R$ 50/mês", presenca: "79%" },
-    { id: "g5", nome: "Racha do Morumbi", organizador: "Diego Farias", uid: "u5", planoOrg: "Organizador", cidade: "São Paulo", local: "Clube Alto da Boa Vista", modalidade: "quadra", membros: 24, mensal: 0, status: "analise", jogos: 6, criado: "19/06/2026", rotina: "Sex, 21h", mensalMembro: "cobra fora do app", presenca: "71%" },
-    { id: "g6", nome: "Sábado na Areia", organizador: "Fernanda Dias", uid: "u10", planoOrg: "Organizador (cancelado)", cidade: "Florianópolis", local: "Praia dos Ingleses", modalidade: "praia", membros: 15, mensal: 600, status: "risco", jogos: 3, criado: "02/05/2026", rotina: "Sáb, 10h", mensalMembro: "R$ 40/mês", presenca: "64%" },
-    { id: "g7", nome: "Vôlei da Firma", organizador: "Bianca Souza", uid: "u1", planoOrg: "Organizador", cidade: "São Paulo", local: "SESC Belenzinho", modalidade: "quadra", membros: 17, mensal: 680, status: "ativo", jogos: 4, criado: "12/05/2026", rotina: "Seg, 19h", mensalMembro: "R$ 40/mês", presenca: "74%" },
-    { id: "g8", nome: "Praia do Futuro", organizador: "Renato Alves", uid: "u4", planoOrg: "Organizador", cidade: "Fortaleza", local: "Praia do Futuro, barraca 42", modalidade: "praia", membros: 21, mensal: 840, status: "ativo", jogos: 5, criado: "30/07/2026", rotina: "Dom, 8h", mensalMembro: "R$ 40/mês", presenca: "80%" }
-  ];
-
-  ASSIN = [
-    { id: "a1", uid: "u1", nome: "Bianca Souza", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "atrasada", desde: "12/05/2026", prox: "aguardando pagamento", forma: "Cartão ····4412", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 19,90", status: "falhou" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 19,90", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 19,90", status: "paga" }] },
-    { id: "a2", uid: "u2", nome: "Thiago Melo", plano: "Quadra Cheia", ciclo: "mensal", valor: "R$ 39,90/mês", cupom: "—", status: "ativa", desde: "03/03/2026", prox: "01/09, Pix", forma: "Pix", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 39,90", status: "paga" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 39,90", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 39,90", status: "paga" }] },
-    { id: "a3", uid: "u3", nome: "Carla Nunes", plano: "Organizador", ciclo: "anual", valor: "R$ 199/ano", cupom: "—", status: "ativa", desde: "28/04/2026", prox: "28/04/2027, cartão", forma: "Cartão ····9080", hist: [{ data: "28/07", desc: "Renovação anual", valor: "R$ 199,00", status: "paga" }] },
-    { id: "a4", uid: "u4", nome: "Renato Alves", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "atrasada", desde: "30/07/2026", prox: "aguardando pagamento", forma: "Cartão ····2210", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 19,90", status: "falhou" }, { data: "30/07", desc: "Primeira cobrança", valor: "R$ 19,90", status: "paga" }] },
-    { id: "a5", uid: "u5", nome: "Diego Farias", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "atrasada", desde: "19/06/2026", prox: "aguardando pagamento", forma: "Cartão ····7731", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 19,90", status: "falhou" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 19,90", status: "paga" }] },
-    { id: "a6", uid: "u9", nome: "João Vitor Ramos", plano: "Quadra Cheia", ciclo: "mensal", valor: "R$ 39,90/mês", cupom: "—", status: "ativa", desde: "15/03/2026", prox: "01/09, cartão", forma: "Cartão ····5104", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 39,90", status: "paga" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 39,90", status: "paga" }] },
-    { id: "a7", uid: "u10", nome: "Fernanda Dias", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "cancelada", desde: "02/05/2026", prox: "— cancelada em 12/07", forma: "Pix", hist: [{ data: "01/07", desc: "Mensalidade julho", valor: "R$ 19,90", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 19,90", status: "paga" }] },
-    { id: "a8", uid: "u12", nome: "Camila Rocha", plano: "Organizador", ciclo: "mensal", valor: "R$ 17,91/mês", cupom: "GALERA10", status: "ativa", desde: "20/02/2026", prox: "01/09, Pix", forma: "Pix", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 17,91", status: "paga" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 17,91", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 17,91", status: "paga" }] }
-  ];
-
-  COBR = [
-    { id: "c1", data: "01/08", nome: "Thiago Melo", tipo: "Plano Quadra Cheia", valor: "R$ 39,90", status: "paga", aid: "a2" },
-    { id: "c2", data: "01/08", nome: "Bianca Souza", tipo: "Plano Organizador", valor: "R$ 19,90", status: "falhou", aid: "a1" },
-    { id: "c3", data: "01/08", nome: "Renato Alves", tipo: "Plano Organizador", valor: "R$ 19,90", status: "falhou", aid: "a4" },
-    { id: "c4", data: "01/08", nome: "Diego Farias", tipo: "Plano Organizador", valor: "R$ 19,90", status: "falhou", aid: "a5" },
-    { id: "c5", data: "01/08", nome: "Camila Rocha", tipo: "Plano Organizador · GALERA10", valor: "R$ 17,91", status: "paga", aid: "a8" },
-    { id: "c6", data: "31/07", nome: "Vôlei do CERET", tipo: "Taxa de 4% · mensalidades de julho", valor: "R$ 91,20", status: "paga", aid: null },
-    { id: "c7", data: "31/07", nome: "Areia do Ibira", tipo: "Taxa de 4% · mensalidades de julho", valor: "R$ 62,40", status: "paga", aid: null },
-    { id: "c8", data: "28/07", nome: "Carla Nunes", tipo: "Plano Organizador · renovação anual", valor: "R$ 199,00", status: "paga", aid: "a3" }
-  ];
-
+  ASSIN = [];
+  COBR = [];
   DEN = [
-    { id: "d1", grupo: "Racha do Morumbi", gid: "g5", organizador: "Diego Farias", motivo: "Cobrança fora do app", quando: "01/08", por: "um membro do grupo", anteriores: "nenhuma", aberta: true, desc: "O membro relata que o organizador cobra as mensalidades por Pix direto e usa o Saqz só para presença, mas anuncia no grupo que a cobrança é oficial do app. Pediu verificação para não cair em golpe." },
-    { id: "d2", grupo: "Vôlei da Firma", gid: "g7", organizador: "Bianca Souza", motivo: "Convites em massa", quando: "22/07", por: "um usuário convidado", anteriores: "nenhuma", aberta: false, desc: "Usuário recebeu convites repetidos de um número desconhecido usando o link do grupo. Resolvido: link de convite trocado e orientação enviada à organizadora." },
-    { id: "d3", grupo: "Quarta da Rede", gid: "g4", organizador: "João Vitor Ramos", motivo: "Perfil com nome ofensivo", quando: "15/07", por: "um membro do grupo", anteriores: "nenhuma", aberta: false, desc: "Perfil com apelido ofensivo dentro do grupo. Resolvido: usuário renomeou o perfil após aviso." }
+    { id: "d1", grupo: "Racha do Morumbi", gid: null, organizador: "Diego Farias", motivo: "Cobrança fora do app", quando: "01/08", por: "um membro do grupo", anteriores: "nenhuma", aberta: true, desc: "Fluxo de denúncias ainda não existe no produto (VUL-171). Esta tela é uma prévia com dados de exemplo." }
   ];
 
-  PER = {
-    "30": { label: "julho (fechado)", nota: "vs junho", split: { p: "R$ 1.090", t: "R$ 746", vol: "R$ 18.640", w1: 59, w2: 41 }, kpis: [
-      { label: "Receita total", valor: "R$ 1.836", sub: "", delta: "▲ 21% vs junho", up: true },
-      { label: "Novos usuários", valor: "58", sub: "", delta: "▲ 9% vs junho", up: true },
-      { label: "Usuários ativos (30d)", valor: "418", sub: "· 65% de 642", delta: "▲ 4 p.p. vs junho", up: true },
-      { label: "Grupos ativos", valor: "61", sub: "", delta: "▲ 7 novos no mês", up: true },
-      { label: "Jogos realizados", valor: "236", sub: "", delta: "▲ 12% vs junho", up: true },
-      { label: "Churn de assinaturas", valor: "5,4%", sub: "", delta: "▲ 3 cancelamentos", up: false }
-    ] },
-    "90": { label: "maio — julho", nota: "vs fev — abr", split: { p: "R$ 2.750", t: "R$ 1.836", vol: "R$ 45.900", w1: 60, w2: 40 }, kpis: [
-      { label: "Receita total", valor: "R$ 4.586", sub: "", delta: "▲ 2,4× vs trimestre anterior", up: true },
-      { label: "Novos usuários", valor: "163", sub: "", delta: "▲ 31% vs trimestre anterior", up: true },
-      { label: "Usuários ativos (30d)", valor: "418", sub: "· 65% de 642", delta: "▲ 9 p.p. no trimestre", up: true },
-      { label: "Grupos ativos", valor: "61", sub: "", delta: "▲ 19 novos no trimestre", up: true },
-      { label: "Jogos realizados", valor: "655", sub: "", delta: "▲ 38% vs trimestre anterior", up: true },
-      { label: "Churn de assinaturas", valor: "4,8%", sub: "", delta: "▲ 7 cancelamentos", up: false }
-    ] },
-    "all": { label: "fev — jul (6 meses)", nota: "desde o lançamento", split: { p: "R$ 5.310", t: "R$ 3.630", vol: "R$ 90.750", w1: 59, w2: 41 }, kpis: [
-      { label: "Receita acumulada", valor: "R$ 8.940", sub: "", delta: "▲ desde fevereiro", up: true },
-      { label: "Usuários no total", valor: "642", sub: "", delta: "▲ 58 só em julho", up: true },
-      { label: "Usuários ativos (30d)", valor: "418", sub: "· 65% de 642", delta: "▲ retenção crescendo", up: true },
-      { label: "Grupos criados", valor: "74", sub: "· 61 ativos", delta: "▲ 82% seguem ativos", up: true },
-      { label: "Jogos realizados", valor: "1.480", sub: "", delta: "▲ 236 em julho", up: true },
-      { label: "Churn médio mensal", valor: "4,1%", sub: "", delta: "▲ 11 cancelamentos no total", up: false }
-    ] }
-  };
+  componentDidMount() {
+    if (window.saqzAdmin) {
+      window.saqzAdmin.onSession((me) => { if (me) this.carregarPagina(this.state.page, true); });
+    }
+  }
 
-  SPARKS = ["M2 38 L22 34 L42 30 L62 24 L82 18 L102 12 L118 6", "M2 34 L22 30 L42 32 L62 24 L82 22 L102 14 L118 10", "M2 30 L22 28 L42 26 L62 26 L82 22 L102 18 L118 16", "M2 36 L22 34 L42 30 L62 28 L82 24 L102 20 L118 14", "M2 32 L22 28 L42 30 L62 22 L82 20 L102 16 L118 12", "M2 22 L22 26 L42 20 L62 28 L82 24 L102 30 L118 26"];
+  api(path) {
+    if (!window.saqzAdmin || !window.saqzAdmin.me) return Promise.reject(new Error("sem sessão"));
+    return window.saqzAdmin.fetchAdmin(path).then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  carregarPagina(page, force) {
+    const st = this.state;
+    if (page === "visao" && (force || !st.overview)) this.carregarVisao();
+    if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
+    if (page === "grupos" && (force || !st.groupsPage)) this.carregarGrupos();
+  }
+
+  carregarVisao() {
+    this.setState({ overview: null, atrasadas: null });
+    this.api(`/admin/overview?period=${this.state.periodo}`)
+      .then((overview) => this.setState({ overview }))
+      .catch(() => this.setState({ overview: { erro: true } }));
+    this.api("/admin/subscriptions?status=PAST_DUE&page=1&size=1")
+      .then((p) => this.setState({ atrasadas: p.total }))
+      .catch(() => this.setState({ atrasadas: null }));
+  }
+
+  carregarUsuarios() {
+    const st = this.state;
+    const q = [];
+    if (st.uBusca.trim()) q.push("query=" + encodeURIComponent(st.uBusca.trim()));
+    if (st.uPlano !== "todos") q.push("plan=" + st.uPlano);
+    if (st.uStatus !== "todos") q.push("status=" + st.uStatus);
+    q.push("page=1", "size=25");
+    this.setState({ usersPage: null });
+    this.api("/admin/users?" + q.join("&"))
+      .then((usersPage) => this.setState({ usersPage }))
+      .catch(() => this.setState({ usersPage: { erro: true, items: [], total: 0 } }));
+  }
+
+  carregarUsuario(id) {
+    this.setState({ userDetail: null, userReceipts: null });
+    this.api(`/admin/users/${id}`)
+      .then((userDetail) => {
+        this.setState({ userDetail });
+        if (userDetail.subscription) {
+          this.api(`/admin/subscriptions/${id}`)
+            .then((d) => this.setState({ userReceipts: d.receipts }))
+            .catch(() => this.setState({ userReceipts: [] }));
+        } else {
+          this.setState({ userReceipts: [] });
+        }
+      })
+      .catch(() => this.setState({ userDetail: { erro: true } }));
+  }
+
+  carregarGrupos() {
+    const st = this.state;
+    const q = [];
+    if (st.gBusca.trim()) q.push("query=" + encodeURIComponent(st.gBusca.trim()));
+    if (st.gStatus !== "todos") q.push("status=" + st.gStatus);
+    q.push("page=1", "size=25");
+    this.setState({ groupsPage: null });
+    this.api("/admin/groups?" + q.join("&"))
+      .then((groupsPage) => this.setState({ groupsPage }))
+      .catch(() => this.setState({ groupsPage: { erro: true, items: [], total: 0 } }));
+  }
+
+  carregarGrupo(id) {
+    this.setState({ groupDetail: null });
+    this.api(`/admin/groups/${id}`)
+      .then((groupDetail) => this.setState({ groupDetail }))
+      .catch(() => this.setState({ groupDetail: { erro: true } }));
+  }
 
   chip(bg, c) { return `display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:${bg};color:${c};white-space:nowrap`; }
-  chipPlano(p) { return p === "Organizador" ? this.chip("#F4F8FB", "#0638DF") : p === "Quadra Cheia" ? this.chip("#F4F8FB", "#0E1738") : this.chip("#F5F5F7", "#667085"); }
+  chipPlano(p) {
+    if (!p || p === "FREE") return this.chip("#F5F5F7", "#667085");
+    return p === "ILIMITADO" ? this.chip("#F4F8FB", "#0E1738") : this.chip("#F4F8FB", "#0638DF");
+  }
   chipStatus(s) {
-    const m = { ativo: ["rgba(23,178,106,.12)", "#17B26A", "Ativo"], ativa: ["rgba(23,178,106,.12)", "#17B26A", "Ativa"], paga: ["rgba(23,178,106,.12)", "#17B26A", "Paga"], inativo: ["#F5F5F7", "#667085", "Inativo"], suspenso: ["rgba(229,72,77,.12)", "#E5484D", "Suspenso"], atrasada: ["rgba(245,166,35,.16)", "#8a5a00", "Atrasada"], falhou: ["rgba(229,72,77,.12)", "#E5484D", "Falhou"], cancelada: ["#F5F5F7", "#667085", "Cancelada"], reembolsada: ["#F5F5F7", "#667085", "Reembolsada"], analise: ["rgba(245,166,35,.16)", "#8a5a00", "Em análise"], risco: ["rgba(245,166,35,.16)", "#8a5a00", "Sem plano"], aberta: ["rgba(245,166,35,.16)", "#8a5a00", "Aberta"], resolvida: ["rgba(23,178,106,.12)", "#17B26A", "Resolvida"], vencido: ["#F5F5F7", "#667085", "Vencido"] };
+    const m = { ativo: ["rgba(23,178,106,.12)", "#17B26A", "Ativo"], ativa: ["rgba(23,178,106,.12)", "#17B26A", "Ativa"], paga: ["rgba(23,178,106,.12)", "#17B26A", "Paga"], inativo: ["#F5F5F7", "#667085", "Inativo"], suspenso: ["rgba(229,72,77,.12)", "#E5484D", "Suspenso"], atrasada: ["rgba(245,166,35,.16)", "#8a5a00", "Atrasada"], falhou: ["rgba(229,72,77,.12)", "#E5484D", "Falhou"], cancelada: ["#F5F5F7", "#667085", "Cancelada"], reembolsada: ["#F5F5F7", "#667085", "Reembolsada"], apagado: ["#F5F5F7", "#667085", "Apagado"], aberta: ["rgba(245,166,35,.16)", "#8a5a00", "Aberta"], resolvida: ["rgba(23,178,106,.12)", "#17B26A", "Resolvida"], vencido: ["#F5F5F7", "#667085", "Vencido"] };
     const [bg, c, t] = m[s] || m.ativo;
     return { style: this.chip(bg, c), txt: t };
   }
-  go(page, extra) { this.setState({ page, ...(extra || {}) }); }
+
+  go(page, extra) {
+    this.setState({ page, ...(extra || {}) }, () => {
+      this.carregarPagina(page, false);
+      if (page === "usuario" && extra && extra.selU) this.carregarUsuario(extra.selU);
+      if (page === "grupo" && extra && extra.selG) this.carregarGrupo(extra.selG);
+    });
+  }
+
   aviso(t) {
     clearTimeout(this._tt);
     this.setState({ toast: t });
     this._tt = setTimeout(() => this.setState({ toast: null }), 3200);
   }
+
   set(k) { return e => this.setState({ [k]: e.target.value }); }
+
+  filtroUsuarios(k) {
+    return (e) => {
+      this.setState({ [k]: e.target.value }, () => {
+        clearTimeout(this._ud);
+        this._ud = setTimeout(() => this.carregarUsuarios(), k === "uBusca" ? 350 : 0);
+      });
+    };
+  }
+
+  filtroGrupos(k) {
+    return (e) => {
+      this.setState({ [k]: e.target.value }, () => {
+        clearTimeout(this._gd);
+        this._gd = setTimeout(() => this.carregarGrupos(), k === "gBusca" ? 350 : 0);
+      });
+    };
+  }
+
+  money(cents) {
+    if (cents == null) return "—";
+    return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+  dataBr(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  dataCurta(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  }
+  delta(node, invertido) {
+    if (!node || node.previous == null) return { txt: "", up: true };
+    const atual = node.current, ant = node.previous;
+    if (ant === 0) return { txt: atual > 0 ? "▲ novo no período" : "sem variação", up: atual > 0 };
+    const pct = Math.round(((atual - ant) / ant) * 100);
+    const subiu = pct >= 0;
+    const bom = invertido ? !subiu : subiu;
+    return { txt: `${subiu ? "▲" : "▼"} ${Math.abs(pct)}% vs período anterior`, up: bom };
+  }
 
   renderVals() {
     const st = this.state;
     const navS = on => `position:relative;width:42px;height:42px;border-radius:12px;border:0;display:grid;place-items:center;cursor:pointer;font-family:inherit;background:${on ? "var(--saqz-ice)" : "transparent"};color:${on ? "var(--saqz-blue)" : "var(--saqz-navy)"}`;
     const navB = on => on ? "position:absolute;left:-11px;top:11px;bottom:11px;width:3px;border-radius:3px;background:#C7F300" : "display:none";
     const pageKey = { visao: "vis", usuarios: "usu", usuario: "usu", grupos: "gru", grupo: "gru", receita: "rec", assinatura: "rec", cupons: "cup", suporte: "sup", denuncia: "sup" }[st.page];
-    const per = this.PER[st.periodo];
-    const kpis = per.kpis.map((k, i) => ({ ...k, spark: this.SPARKS[i], cor: k.up ? "#0638DF" : "#E5484D", dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${k.up ? "#17B26A" : "#E5484D"}` }));
-    const denAbertas = this.DEN.filter(d => d.aberta && !st.resolvidas[d.id]).length;
 
-    const usuarios = this.USERS.map(u => ({ ...u, status: st.suspensos[u.id] ? "suspenso" : u.status }));
-    const q = st.uBusca.trim().toLowerCase();
-    const usuariosF = usuarios.filter(u => (!q || (u.nome + u.email).toLowerCase().includes(q)) && (st.uPlano === "todos" || u.plano === st.uPlano) && (st.uStatus === "todos" || u.status === st.uStatus) && (st.uCidade === "todas" || u.cidade === st.uCidade));
-    const ini = n => n.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
-    const usuariosRows = usuariosF.map(u => {
-      const cs = this.chipStatus(u.status);
-      return { ini: ini(u.nome), nome: u.nome, email: u.email, cidade: u.cidade, grupos: String(u.grupos), plano: u.plano, planoStyle: this.chipPlano(u.plano), statusTxt: cs.txt, statusStyle: cs.style, acesso: u.acesso, onOpen: () => this.go("usuario", { selU: u.id }) };
+    // ---- Visão geral (API) ----
+    const ov = st.overview && !st.overview.erro ? st.overview : null;
+    const kpis = ov ? [
+      (() => { const d = this.delta(ov.revenueCents); return { label: "Receita no período", valor: this.money(ov.revenueCents.current), sub: "", delta: d.txt, dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${d.up ? "#17B26A" : "#E5484D"}` }; })(),
+      (() => { const d = this.delta(ov.newUsers); return { label: "Novos usuários", valor: String(ov.newUsers.current), sub: "", delta: d.txt, dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${d.up ? "#17B26A" : "#E5484D"}` }; })(),
+      { label: "Usuários ativos (30d)", valor: String(ov.activeUsers30d), sub: `· de ${ov.totalUsers}`, delta: "", dStyle: "display:none" },
+      (() => { const d = this.delta(ov.groupsCreated); return { label: "Grupos ativos", valor: String(ov.activeGroups), sub: "", delta: d.txt ? `${d.txt} (criados)` : "", dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${d.up ? "#17B26A" : "#E5484D"}` }; })(),
+      (() => { const d = this.delta(ov.gamesPlayed); return { label: "Jogos realizados", valor: String(ov.gamesPlayed.current), sub: "", delta: d.txt, dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${d.up ? "#17B26A" : "#E5484D"}` }; })(),
+      { label: "Churn de assinaturas", valor: ov.churn.activeAtStart > 0 ? `${Math.round((ov.churn.canceled / ov.churn.activeAtStart) * 100)}%` : "—", sub: "", delta: ov.churn.canceled > 0 ? `▲ ${ov.churn.canceled} cancelamentos` : "sem cancelamentos", dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${ov.churn.canceled > 0 ? "#E5484D" : "#17B26A"}` }
+    ] : [];
+
+    const cohort = ov ? ov.cohort.map((c) => {
+      const fim = new Date(c.weekStart); fim.setDate(fim.getDate() + 6);
+      const pct = (n) => c.signups > 0 ? `${n} · ${Math.round((n / c.signups) * 100)}%` : String(n);
+      return { sem: `${this.dataCurta(c.weekStart)} – ${this.dataCurta(fim.toISOString())}`, cad: String(c.signups), ativ: "—", grupo: pct(c.joinedGroup), pago: pct(c.subscribed), pagoStyle: c.subscribed > 0 ? "color:#17B26A" : "color:#667085" };
+    }) : [];
+
+    const maxMrr = ov && ov.planSplit.length ? Math.max(...ov.planSplit.map(p => p.mrrCents)) : 1;
+    const planoBars = ov ? ov.planSplit.map((p, i) => ({
+      label: `${p.plan} · ${p.subscribers} assinante${p.subscribers === 1 ? "" : "s"}`,
+      val: this.money(p.mrrCents),
+      bar: `display:block;height:10px;border-radius:999px;background:var(--saqz-blue);opacity:${1 - i * 0.28};width:${Math.max(8, Math.round((p.mrrCents / maxMrr) * 100))}%`
+    })) : [];
+
+    const perNota = { "30d": "vs 30 dias anteriores", "90d": "vs 90 dias anteriores", "all": "desde o lançamento" }[st.periodo];
+    const atualizadoEm = st.overview ? (st.overview.erro ? "Não deu para carregar — recarregue a página" : "Dados ao vivo da API") : "Carregando…";
+    const pendAtraso = st.atrasadas == null ? "Carregando pendências…" : st.atrasadas > 0 ? `${st.atrasadas} assinatura${st.atrasadas === 1 ? "" : "s"} com pagamento atrasado` : "Nenhuma assinatura atrasada";
+
+    // ---- Usuários (API) ----
+    const ini = n => (n || "?").split(" ").map(p => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+    const up = st.usersPage;
+    const usuariosRows = up && !up.erro ? up.items.map(u => {
+      const cs = this.chipStatus(u.suspended ? "suspenso" : "ativo");
+      return { ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", cidade: u.city || "—", grupos: String(u.memberships), plano: u.plan || "Grátis", planoStyle: this.chipPlano(u.plan), statusTxt: cs.txt, statusStyle: cs.style, acesso: this.dataBr(u.lastSeenAt), onOpen: () => this.go("usuario", { selU: u.userId }) };
+    }) : [];
+    const uCount = up ? (up.erro ? "erro ao carregar" : `${up.total} usuário${up.total === 1 ? "" : "s"}`) : "carregando…";
+    const uRodape = up ? (up.erro ? "Não deu para carregar a lista. Ajuste o filtro ou tente de novo." : `Mostrando ${up.items.length} de ${up.total} · página 1 (paginação completa na próxima fase).`) : "Carregando…";
+
+    const det = st.userDetail && !st.userDetail.erro ? st.userDetail : null;
+    const udStatus = this.chipStatus(det && det.suspendedAt ? "suspenso" : "ativo");
+    const sub = det ? det.subscription : null;
+    const ud = det ? {
+      ini: ini(det.displayName), nome: det.displayName || "—", email: det.email || "—",
+      cidade: det.city || "—", desde: this.dataBr(det.createdAt), acesso: this.dataBr(det.lastSeenAt), telefone: det.phone || "—",
+      planoTitulo: sub ? `${sub.plan} · ${sub.cycle === "ANNUAL" ? "anual" : "mensal"}` : "Grátis",
+      planoSub: sub ? `${sub.status === "ACTIVE" ? "em dia" : sub.status === "PAST_DUE" ? "pagamento atrasado" : "cancelada"} · desde ${this.dataBr(sub.since)}` : "Sem assinatura ativa."
+    } : { ini: "…", nome: st.userDetail && st.userDetail.erro ? "Não deu para carregar" : "Carregando…", email: "", cidade: "—", desde: "—", acesso: "—", telefone: "—", planoTitulo: "—", planoSub: "" };
+    const udGrupos = det ? det.groups.map(g => ({ nome: g.name, sub: `${g.members} membro${g.members === 1 ? "" : "s"}`, papel: g.role === "OWNER" ? "Organiza" : g.role === "ADMIN" ? "Admin" : "Membro", onOpen: () => this.go("grupo", { selG: g.groupId }) })) : [];
+    const udPagtos = (st.userReceipts || []).map(r => {
+      const cs = this.chipStatus("paga");
+      return { data: this.dataCurta(r.processedAt), desc: "Pagamento confirmado", valor: this.money(r.valueCents), statusTxt: cs.txt, statusStyle: cs.style };
     });
 
-    const uSel = usuarios.find(u => u.id === st.selU) || usuarios[0];
-    const aDoU = this.ASSIN.find(a => a.id === uSel.assinId);
-    const udStatus = this.chipStatus(uSel.status);
-    const ud = { ...uSel, ini: ini(uSel.nome), planoTitulo: uSel.plano === "Amador" ? "Amador · grátis" : aDoU ? `${aDoU.plano} · ${aDoU.ciclo}` : uSel.plano, planoSub: uSel.plano === "Amador" ? "Sem cobrança. Pode criar 1 grupo de até 20 membros." : aDoU ? `${aDoU.valor} · ${st.canceladas[aDoU.id] ? "cancelada" : aDoU.status === "atrasada" ? "pagamento atrasado" : "em dia"} · desde ${aDoU.desde}` : "" };
-    const udGrupos = uSel.meusGrupos.map(m => {
-      const g = this.GRUPOS.find(x => x.id === m.gid);
-      return { nome: g.nome, sub: `${g.cidade} · ${g.membros} membros · ${g.rotina}`, papel: m.papel, onOpen: () => this.go("grupo", { selG: g.id }) };
-    });
-    const udPagtos = (aDoU ? aDoU.hist : []).map(h => { const cs = this.chipStatus(h.status); return { ...h, statusTxt: cs.txt, statusStyle: cs.style }; });
+    // ---- Grupos (API) ----
+    const gp = st.groupsPage;
+    const gruposRows = gp && !gp.erro ? gp.items.map(g => {
+      const cs = this.chipStatus(g.deleted ? "apagado" : "ativo");
+      return { nome: g.name, sub: `desde ${this.dataBr(g.createdAt)}`, organizador: g.ownerName || "—", planoOrg: g.ownerPlan || "Sem plano", planoOrgStyle: this.chipPlano(g.ownerPlan), membros: String(g.members), jogos: String(g.gamesPlayed), statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("grupo", { selG: g.groupId }) };
+    }) : [];
+    const gCount = gp ? (gp.erro ? "erro ao carregar" : `${gp.total} grupo${gp.total === 1 ? "" : "s"}`) : "carregando…";
+    const gRodape = gp ? (gp.erro ? "Não deu para carregar a lista. Ajuste o filtro ou tente de novo." : `Mostrando ${gp.items.length} de ${gp.total} · página 1 (paginação completa na próxima fase).`) : "Carregando…";
 
-    const q2 = st.gBusca.trim().toLowerCase();
-    const gruposF = this.GRUPOS.filter(g => (!q2 || (g.nome + g.organizador).toLowerCase().includes(q2)) && (st.gCidade === "todas" || g.cidade === st.gCidade) && (st.gModo === "todas" || g.modalidade === st.gModo));
-    const money = n => n ? "R$ " + n.toLocaleString("pt-BR") : "—";
-    const gruposRows = gruposF.map(g => {
-      const cs = this.chipStatus(g.status);
-      return { nome: g.nome, modalidade: g.modalidade[0].toUpperCase() + g.modalidade.slice(1), organizador: g.organizador, cidade: g.cidade, membros: String(g.membros), mensal: money(g.mensal), taxa: g.mensal ? "R$ " + (g.mensal * 0.04).toFixed(2).replace(".", ",") : "—", statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("grupo", { selG: g.id }) };
-    });
+    const gdet = st.groupDetail && !st.groupDetail.erro ? st.groupDetail : null;
+    const gdStatus = this.chipStatus(gdet && gdet.deletedAt ? "apagado" : "ativo");
+    const gd = gdet ? {
+      nome: gdet.name, organizador: gdet.ownerName || "—", planoOrg: gdet.ownerPlan || "Sem plano",
+      membros: String(gdet.members), jogos: String(gdet.gamesPlayed), criado: this.dataBr(gdet.createdAt), fuso: gdet.timeZone
+    } : { nome: st.groupDetail && st.groupDetail.erro ? "Não deu para carregar" : "Carregando…", organizador: "—", planoOrg: "", membros: "—", jogos: "—", criado: "—", fuso: "—" };
+    const gdJogos = gdet ? gdet.lastGames.map(j => ({ data: this.dataCurta(j.startsAt), desc: j.title + (j.status === "CANCELLED" ? " · cancelado" : ""), presenca: `${j.confirmed} confirmado${j.confirmed === 1 ? "" : "s"}` })) : [];
 
-    const gSel = this.GRUPOS.find(g => g.id === st.selG) || this.GRUPOS[0];
-    const gdStatus = this.chipStatus(gSel.status);
-    const gd = { ...gSel, modalidade: gSel.modalidade[0].toUpperCase() + gSel.modalidade.slice(1), membros: String(gSel.membros), jogos: String(gSel.jogos), mensal: money(gSel.mensal), taxa: gSel.mensal ? "R$ " + (gSel.mensal * 0.04).toFixed(2).replace(".", ",") : "—" };
-    const gdJogos = [
-      { data: "31/07", desc: `${gSel.rotina.split(",")[0]} · jogo da semana`, presenca: `${Math.max(8, gSel.membros - 6)} confirmados` },
-      { data: "24/07", desc: "Jogo da semana", presenca: `${Math.max(7, gSel.membros - 9)} confirmados` },
-      { data: "17/07", desc: "Jogo da semana", presenca: `${Math.max(9, gSel.membros - 7)} confirmados` },
-      { data: "10/07", desc: "Jogo da semana", presenca: `${Math.max(6, gSel.membros - 10)} confirmados` }
-    ];
-
+    // ---- Receita/cupons/suporte: mock até VUL-170/171 ----
     const tab = on => `border:0;background:${on ? "var(--saqz-ice)" : "transparent"};color:${on ? "var(--saqz-blue)" : "var(--saqz-navy)"};font-family:inherit;font-size:13.5px;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer`;
-    const assinRows = this.ASSIN.map(a => {
-      const status = st.canceladas[a.id] ? "cancelada" : a.status;
-      const cs = this.chipStatus(status);
-      return { nome: a.nome, plano: a.plano, planoStyle: this.chipPlano(a.plano), ciclo: a.ciclo, valor: a.valor, cupom: a.cupom, statusTxt: cs.txt, statusStyle: cs.style, desde: a.desde, onOpen: () => this.go("assinatura", { selA: a.id }) };
-    });
-    const cobRows = this.COBR.map(c => {
-      const status = st.reembolsos[c.id] ? "reembolsada" : c.status;
-      const cs = this.chipStatus(status);
-      const pode = status === "paga" && c.aid;
-      const falhou = status === "falhou";
-      return { data: c.data, nome: c.nome, tipo: c.tipo, valor: c.valor, statusTxt: cs.txt, statusStyle: cs.style, temAcao: pode || falhou,
-        acaoTxt: falhou ? "Tentar de novo" : "Reembolsar",
-        acaoStyle: "display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:var(--saqz-ice)",
-        onAcao: falhou
-          ? () => this.aviso(`Nova tentativa de cobrança enviada para ${c.nome}.`)
-          : () => this.setState({ modal: { titulo: `Reembolsar ${c.valor} de ${c.nome}?`, texto: "O valor volta pela mesma forma de pagamento em até 5 dias úteis. A assinatura continua ativa.", confirm: "Reembolsar", danger: false, acao: () => { this.setState(s => ({ reembolsos: { ...s.reembolsos, [c.id]: true }, modal: null })); this.aviso("Reembolso enviado. Cai em até 5 dias úteis."); } } }) };
-    });
-
-    const aSel = this.ASSIN.find(a => a.id === st.selA) || this.ASSIN[0];
-    const adCancelada = !!st.canceladas[aSel.id];
-    const adStatus = this.chipStatus(adCancelada ? "cancelada" : aSel.status);
-    const ad = { ...aSel, prox: adCancelada ? "— cancelada, vale até o fim do período pago" : aSel.prox };
-    const adHist = aSel.hist.map(h => { const cs = this.chipStatus(h.status); return { ...h, statusTxt: cs.txt, statusStyle: cs.style }; });
-
+    const assinRows = [];
+    const cobRows = [];
+    const ad = { nome: "—", plano: "—", ciclo: "—", valor: "—", cupom: "—", desde: "—", prox: "—", forma: "—" };
+    const adStatus = this.chipStatus("ativa");
+    const adHist = [];
     const cuponsRows = st.cupons.map(c => {
       const cs = this.chipStatus(c.ativo ? "ativo" : "vencido");
       return { ...c, usos: String(c.usos), statusTxt: cs.txt, statusStyle: cs.style };
     });
-
+    const denAbertas = this.DEN.filter(d => d.aberta && !st.resolvidas[d.id]).length;
     const denRows = this.DEN.map(d => {
       const aberta = d.aberta && !st.resolvidas[d.id];
       const cs = this.chipStatus(aberta ? "aberta" : "resolvida");
@@ -925,6 +970,7 @@ class Component extends DCLogic {
     const ddStatus = this.chipStatus(ddAberta ? "aberta" : "resolvida");
 
     const modal = st.modal;
+    const suspenso = !!(det && det.suspendedAt);
     return {
       sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sSup: navS(pageKey === "sup"),
       bVis: navB(pageKey === "vis"), bUsu: navB(pageKey === "usu"), bGru: navB(pageKey === "gru"), bRec: navB(pageKey === "rec"), bCup: navB(pageKey === "cup"), bSup: navB(pageKey === "sup"),
@@ -932,39 +978,35 @@ class Component extends DCLogic {
       goVis: () => this.go("visao"), goUsu: () => this.go("usuarios"), goGru: () => this.go("grupos"), goRec: () => this.go("receita"), goCup: () => this.go("cupons"), goSup: () => this.go("suporte"),
       goRecCob: () => this.go("receita", { rTab: "cob" }),
       isVis: st.page === "visao", isUsu: st.page === "usuarios", isUsuDet: st.page === "usuario", isGru: st.page === "grupos", isGruDet: st.page === "grupo", isRec: st.page === "receita", isAssDet: st.page === "assinatura", isCup: st.page === "cupons", isSup: st.page === "suporte", isDenDet: st.page === "denuncia",
-      periodo: st.periodo, onPeriodo: this.set("periodo"), perLabel: per.label, perNota: per.nota,
-      kpis, cohort: [
-        { sem: "29/06 – 05/07", cad: "16", ativ: "12 · 75%", grupo: "3 · 19%", pago: "2 · 12%", pagoStyle: "color:#17B26A" },
-        { sem: "06/07 – 12/07", cad: "13", ativ: "10 · 77%", grupo: "2 · 15%", pago: "2 · 15%", pagoStyle: "color:#17B26A" },
-        { sem: "13/07 – 19/07", cad: "18", ativ: "15 · 83%", grupo: "4 · 22%", pago: "3 · 17%", pagoStyle: "color:#17B26A" },
-        { sem: "20/07 – 26/07", cad: "11", ativ: "8 · 73%", grupo: "1 · 9%", pago: "1 · 9%", pagoStyle: "color:#667085" },
-        { sem: "27/07 – 02/08", cad: "14", ativ: "11 · 79%", grupo: "2 · 14%", pago: "cedo demais", pagoStyle: "color:#667085" }
-      ],
-      splitPlanos: per.split.p, splitTaxa: per.split.t, splitVolume: per.split.vol,
-      splitBar1: `width:${per.split.w1}%;background:var(--saqz-blue)`, splitBar2: `width:${per.split.w2}%;background:#C7F300`,
-      planoBars: [
-        { label: "Organizador · 41 assinantes", val: "R$ 816", bar: "display:block;height:10px;border-radius:999px;background:var(--saqz-blue);width:63%" },
-        { label: "Quadra Cheia · 12 assinantes", val: "R$ 479", bar: "display:block;height:10px;border-radius:999px;background:var(--saqz-blue);opacity:.45;width:37%" },
-        { label: "Taxa sobre mensalidades", val: "R$ 746", bar: "display:block;height:10px;border-radius:999px;background:#C7F300;width:58%" }
-      ],
-      cidades: [{ nome: "São Paulo", val: "31 grupos" }, { nome: "Recife", val: "9 grupos" }, { nome: "Curitiba", val: "7 grupos" }, { nome: "Outras 8 cidades", val: "14 grupos" }],
-      pendDenuncia: denAbertas ? `${denAbertas} denúncia aberta — Racha do Morumbi` : "Nenhuma denúncia aberta",
-      uBusca: st.uBusca, onUBusca: this.set("uBusca"), uPlano: st.uPlano, onUPlano: this.set("uPlano"), uStatus: st.uStatus, onUStatus: this.set("uStatus"), uCidade: st.uCidade, onUCidade: this.set("uCidade"),
-      usuariosRows, uCount: `${usuariosF.length} de 642 usuários`, uRodape: "Mostrando os 12 usuários mais recentes que batem com o filtro · 642 no total.",
-      ud, udStatusTxt: udStatus.txt, udStatusStyle: udStatus.style, udGrupos, udPagtos, udTemAssin: !!aDoU,
-      udBtnLabel: st.suspensos[uSel.id] ? "Reativar usuário" : "Suspender usuário",
-      onSuspender: st.suspensos[uSel.id]
-        ? () => { this.setState(s => { const sus = { ...s.suspensos }; delete sus[uSel.id]; return { suspensos: sus }; }); this.aviso(`${uSel.nome.split(" ")[0]} está de volta ao app.`); }
-        : () => this.setState({ modal: { titulo: `Suspender ${uSel.nome}?`, texto: "A pessoa perde o acesso ao app na hora e os grupos que organiza ficam sem organizador até você reativar. Dá pra desfazer quando quiser.", confirm: "Suspender usuário", danger: true, acao: () => { this.setState(s => ({ suspensos: { ...s.suspensos, [uSel.id]: true }, modal: null })); this.aviso("Usuário suspenso."); } } }),
-      onVerAssin: () => aDoU && this.go("assinatura", { selA: aDoU.id }),
-      gBusca: st.gBusca, onGBusca: this.set("gBusca"), gCidade: st.gCidade, onGCidade: this.set("gCidade"), gModo: st.gModo, onGModo: this.set("gModo"),
-      gruposRows, gCount: `${gruposF.length} de 61 grupos ativos`, gRodape: "Mostrando os 8 grupos com mais movimento que batem com o filtro · 61 ativos no total.",
+      periodo: st.periodo,
+      onPeriodo: (e) => this.setState({ periodo: e.target.value }, () => this.carregarVisao()),
+      perNota, atualizadoEm,
+      kpis, cohort, planoBars, pendAtraso,
+      uBusca: st.uBusca, onUBusca: this.filtroUsuarios("uBusca"), uPlano: st.uPlano, onUPlano: this.filtroUsuarios("uPlano"), uStatus: st.uStatus, onUStatus: this.filtroUsuarios("uStatus"),
+      usuariosRows, uCount, uRodape,
+      ud, udStatusTxt: udStatus.txt, udStatusStyle: udStatus.style, udGrupos, udPagtos, udTemAssin: !!sub,
+      udBtnLabel: suspenso ? "Reativar usuário" : "Suspender usuário",
+      onSuspender: !det ? () => {} : suspenso
+        ? () => {
+          window.saqzAdmin.fetchAdmin(`/admin/users/${det.userId}/reactivate`, { method: "POST" }).then((r) => {
+            if (r.ok) { this.carregarUsuario(det.userId); this.aviso(`${(det.displayName || "A pessoa").split(" ")[0]} está de volta ao app.`); }
+          });
+        }
+        : () => this.setState({ modal: { titulo: `Suspender ${det.displayName}?`, texto: "A pessoa perde o acesso ao app na hora. Dá pra desfazer quando quiser.", confirm: "Suspender usuário", danger: true, acao: () => {
+          window.saqzAdmin.fetchAdmin(`/admin/users/${det.userId}/suspend`, { method: "POST" }).then((r) => {
+            this.setState({ modal: null });
+            if (r.ok) { this.carregarUsuario(det.userId); this.aviso("Usuário suspenso."); } else { this.aviso("Não deu para suspender agora."); }
+          });
+        } } }),
+      onVerAssin: () => det && sub && this.go("assinatura", { selA: det.userId }),
+      gBusca: st.gBusca, onGBusca: this.filtroGrupos("gBusca"), gStatus: st.gStatus, onGStatus: this.filtroGrupos("gStatus"),
+      gruposRows, gCount, gRodape,
       gd, gdStatusTxt: gdStatus.txt, gdStatusStyle: gdStatus.style, gdJogos,
       tabAss: tab(st.rTab === "ass"), tabCob: tab(st.rTab === "cob"), onTabAss: () => this.setState({ rTab: "ass" }), onTabCob: () => this.setState({ rTab: "cob" }), isTabAss: st.rTab === "ass", isTabCob: st.rTab === "cob",
       assinRows, cobRows,
-      ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !adCancelada && aSel.status !== "cancelada",
-      onCancelar: () => this.setState({ modal: { titulo: `Cancelar o plano de ${aSel.nome}?`, texto: "A assinatura para de renovar e vale até o fim do período já pago. Os grupos continuam no ar até lá.", confirm: "Cancelar plano", danger: true, acao: () => { this.setState(s => ({ canceladas: { ...s.canceladas, [aSel.id]: true }, modal: null })); this.aviso("Plano cancelado. Vale até o fim do período pago."); } } }),
-      onReembolsar: () => this.setState({ modal: { titulo: `Reembolsar a última cobrança de ${aSel.nome}?`, texto: `${aSel.hist[0].valor} voltam pela mesma forma de pagamento em até 5 dias úteis. A assinatura continua ativa.`, confirm: "Reembolsar", danger: false, acao: () => { this.setState({ modal: null }); this.aviso("Reembolso enviado. Cai em até 5 dias úteis."); } } }),
+      ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: false,
+      onCancelar: () => this.aviso("Fiação da receita chega no VUL-170."),
+      onReembolsar: () => this.aviso("Fiação da receita chega no VUL-170."),
       cuponsRows,
       onNovoCupom: () => this.setState({ cupomOpen: true }),
       onCupomFechar: () => this.setState({ cupomOpen: false }),
@@ -974,16 +1016,11 @@ class Component extends DCLogic {
       onNcDesc: e => this.setState(s => ({ nc: { ...s.nc, desc: e.target.value } })),
       onNcMeses: e => this.setState(s => ({ nc: { ...s.nc, meses: e.target.value } })),
       onNcVal: e => this.setState(s => ({ nc: { ...s.nc, val: e.target.value } })),
-      onCriarCupom: () => {
-        const n = st.nc;
-        if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
-        this.setState(s => ({ cupons: [{ cod: n.cod.trim(), desc: `${n.desc || "10"}% por ${n.meses || "3"} meses`, validade: n.val || "31/12/2026", usos: 0, ativo: true, mrr: "—" }, ...s.cupons], cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "31/12/2026" } }));
-        this.aviso(`Cupom ${n.cod.trim()} criado.`);
-      },
-      denRows, supResumo: denAbertas ? `${denAbertas} aberta · ${this.DEN.length - denAbertas} resolvidas` : `Tudo em dia · ${this.DEN.length} resolvidas`,
+      onCriarCupom: () => this.aviso("Fiação de cupons chega no VUL-170."),
+      denRows, supResumo: `Prévia — fluxo de denúncias ainda não existe (VUL-171)`,
       dd: dSel, ddStatusTxt: ddStatus.txt, ddStatusStyle: ddStatus.style, ddAberta,
-      onResolver: () => { this.setState(s => ({ resolvidas: { ...s.resolvidas, [dSel.id]: true } })); this.aviso("Denúncia resolvida."); },
-      ddVerGrupo: () => this.go("grupo", { selG: dSel.gid }),
+      onResolver: () => this.aviso("Fluxo de denúncias ainda não existe (VUL-171)."),
+      ddVerGrupo: () => {},
       modalOpen: !!modal, modalTitulo: modal ? modal.titulo : "", modalTexto: modal ? modal.texto : "", modalConfirmTxt: modal ? modal.confirm : "",
       modalConfirmStyle: `display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;color:#fff;background:${modal && modal.danger ? "var(--saqz-error)" : "var(--saqz-blue)"}`,
       onModalConfirm: () => modal && modal.acao(),
