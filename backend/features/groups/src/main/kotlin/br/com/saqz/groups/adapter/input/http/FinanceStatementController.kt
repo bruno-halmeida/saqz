@@ -56,7 +56,7 @@ class FinanceStatementController(
         @RequestParam(defaultValue = "20") limit: Int = 20,
         @RequestParam(defaultValue = "0") offset: Int = 0,
     ): FinanceStatementResponse {
-        if (limit <= 0) invalid("limit")
+        if (limit !in 1..MAX_LIMIT) invalid("limit")
         if (offset < 0) invalid("offset")
         val parsedMonth = month?.let(::parseMonth)
         val parsedDirection = direction?.let(::parseDirection)
@@ -87,6 +87,10 @@ class FinanceStatementController(
 
     private fun invalid(field: String): Nothing =
         throw InvalidGroupRequestException(mapOf(field to listOf("is required or invalid")))
+
+    private companion object {
+        const val MAX_LIMIT = 100
+    }
 }
 
 private fun FinanceStatementPage.response() = FinanceStatementResponse(

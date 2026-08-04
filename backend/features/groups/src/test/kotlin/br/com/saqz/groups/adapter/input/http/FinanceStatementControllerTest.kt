@@ -14,6 +14,7 @@ import java.time.YearMonth
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class FinanceStatementControllerTest {
     private val actor = UUID.randomUUID()
@@ -89,6 +90,10 @@ class FinanceStatementControllerTest {
         assertEquals(setOf("limit"), assertFailsWith<InvalidGroupRequestException> {
             controller.list(identity, group.toString(), limit = 0)
         }.fieldErrors.keys)
+        assertEquals(setOf("limit"), assertFailsWith<InvalidGroupRequestException> {
+            controller.list(identity, group.toString(), limit = Int.MAX_VALUE)
+        }.fieldErrors.keys)
+        assertNull(repository.lastQuery)
         assertEquals(setOf("offset"), assertFailsWith<InvalidGroupRequestException> {
             controller.list(identity, group.toString(), offset = -1)
         }.fieldErrors.keys)
