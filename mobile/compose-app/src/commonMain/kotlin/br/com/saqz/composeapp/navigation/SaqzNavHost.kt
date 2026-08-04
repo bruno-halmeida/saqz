@@ -53,6 +53,7 @@ import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
 import br.com.saqz.groups.presentation.ui.finance.FinancePlaceholderScreen
+import br.com.saqz.groups.presentation.ui.finance.overview.FinanceOverviewRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
@@ -266,7 +267,9 @@ internal fun SaqzNavHost(
             entry<SaqzShellDestination> {
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
-                    financeTab = { FinancePlaceholderScreen() },
+                    financeTab = {
+                        FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
+                    },
                     profileTab = {
                         OwnProfileRoot(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="finance_overview_title">Caixa geral</string>
+    <string name="finance_overview_balance_eyebrow">SALDO DOS SEUS GRUPOS</string>
+    <string name="finance_overview_group_count">%1$d grupos · %2$s</string>
+    <string name="finance_overview_group_count_one">%1$d grupo · %2$s</string>
+    <string name="finance_overview_entered">Entrou</string>
+    <string name="finance_overview_left">Saiu</string>
+    <string name="finance_overview_receivable">A receber</string>
+    <string name="finance_overview_groups">Seus grupos</string>
+    <string name="finance_overview_recent">Últimos lançamentos</string>
+    <string name="finance_overview_empty_title">Você ainda não administra nenhum grupo</string>
+    <string name="finance_overview_empty_body">Quando você administrar um grupo, o saldo e os lançamentos dele aparecerão aqui.</string>
+    <string name="finance_overview_load_error_title">Não foi possível carregar o caixa geral</string>
+    <string name="finance_overview_load_error_body">Verifique sua conexão e tente novamente.</string>
+    <string name="finance_overview_retry">Tentar novamente</string>
+    <string name="finance_overview_pending_monthly_one">1 mensalidade em aberto</string>
+    <string name="finance_overview_pending_monthly">%1$d mensalidades em aberto</string>
+    <string name="finance_overview_all_clear">Tudo em dia</string>
+    <string name="finance_overview_no_billing">Sem cobrança ativa</string>
+    <string name="finance_overview_transaction_in">Recebimento</string>
+    <string name="finance_overview_transaction_out">Despesa</string>
+    <string name="finance_overview_month_january">Janeiro</string>
+    <string name="finance_overview_month_february">Fevereiro</string>
+    <string name="finance_overview_month_march">Março</string>
+    <string name="finance_overview_month_april">Abril</string>
+    <string name="finance_overview_month_may">Maio</string>
+    <string name="finance_overview_month_june">Junho</string>
+    <string name="finance_overview_month_july">Julho</string>
+    <string name="finance_overview_month_august">Agosto</string>
+    <string name="finance_overview_month_september">Setembro</string>
+    <string name="finance_overview_month_october">Outubro</string>
+    <string name="finance_overview_month_november">Novembro</string>
+    <string name="finance_overview_month_december">Dezembro</string>
+</resources>
