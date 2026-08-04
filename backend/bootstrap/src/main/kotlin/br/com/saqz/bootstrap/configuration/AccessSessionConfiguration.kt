@@ -723,7 +723,7 @@ class AccessSessionConfiguration {
     @Bean fun homeRepository(dataSource: DataSource) = JdbcHomeRepository(dataSource)
     @Bean fun homeQuery(
         repository: JdbcHomeRepository,
-        @Value("${saqz.finance.monthly-charges.zone}") zone: String,
+        @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
     ) = HomeQuery(repository, Clock.systemUTC(), ZoneId.of(zone))
     @Bean fun homeController(actor: VerifiedGroupActorResolver, query: HomeQuery) = MyHomeController(actor, query)
     @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
