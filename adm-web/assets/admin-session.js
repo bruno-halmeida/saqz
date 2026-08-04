@@ -152,7 +152,9 @@
           Authorization: "Bearer " + token,
         });
         return fetch(config.apiBaseUrl + path, merged).then(function (response) {
-          if (response.status === 401 || response.status === 403) {
+          // Resposta atrasada de uma sessão anterior não pode derrubar a sessão
+          // atual: o signOut só vale se o usuário desta chamada ainda é o logado.
+          if ((response.status === 401 || response.status === 403) && auth.currentUser === user) {
             auth.signOut();
           }
           return response;

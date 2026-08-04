@@ -706,15 +706,65 @@ class Component extends DCLogic {
 
   componentDidMount() {
     if (window.saqzAdmin) {
-      window.saqzAdmin.onSession((me) => { if (me) this.carregarPagina(this.state.page, true); });
+      window.saqzAdmin.onSession((me) => {
+        // Qualquer transição de sessão invalida respostas em voo da época anterior.
+        this._epoca = (this._epoca || 0) + 1;
+        // Timers pendentes não disparam depois da transição de sessão.
+        clearTimeout(this._ud);
+        clearTimeout(this._gd);
+        clearTimeout(this._tt);
+        if (me) {
+          this.carregarPagina(this.state.page, true);
+        } else {
+          // Sessão encerrada: nada da sessão anterior fica em memória nem
+          // aparece entre o logout e a validação do próximo login.
+          this.setState({
+            overview: null, atrasadas: null,
+            usersPage: null, userDetail: null, userReceipts: null,
+            groupsPage: null, groupDetail: null,
+            subsPage: null, subDetail: null, couponsData: null,
+            // Modais e toasts carregam closures destrutivas da sessão velha;
+            // rascunho, filtros digitados e navegação também não pertencem
+            // ao próximo admin.
+            modal: null, toast: null, cupomOpen: false,
+            nc: { cod: "", desc: "10", meses: "3", val: "" },
+            page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
+            periodo: "30d", rTab: "ass",
+            uBusca: "", uPlano: "todos", uStatus: "todos",
+            gBusca: "", gStatus: "todos"
+          });
+        }
+      });
     }
+  }
+
+  mutacao(path, options) {
+    const epoca = this._epoca || 0;
+    const foraDeEpoca = () => (this._epoca || 0) !== epoca;
+    return window.saqzAdmin.fetchAdmin(path, options).then(
+      (r) => (foraDeEpoca() ? new Promise(() => {}) : r),
+      (err) => {
+        if (foraDeEpoca()) return new Promise(() => {});
+        throw err;
+      },
+    );
   }
 
   api(path) {
     if (!window.saqzAdmin || !window.saqzAdmin.me) return Promise.reject(new Error("sem sessão"));
-    return window.saqzAdmin.fetchAdmin(path).then((r) => {
+    const epoca = this._epoca || 0;
+    // mutacao() descarta época antiga na chegada; o parse do body também é
+    // assíncrono, então a época é re-checada depois dele.
+    const foraDeEpoca = () => (this._epoca || 0) !== epoca;
+    return this.mutacao(path).then((r) => {
       if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
+      return r.json().then(
+        (dados) => (foraDeEpoca() ? new Promise(() => {}) : dados),
+        (err) => {
+          if (foraDeEpoca()) return new Promise(() => {});
+          throw err;
+        },
+      );
     });
   }
 
@@ -841,7 +891,7 @@ class Component extends DCLogic {
       if (!m) { this.aviso("Validade precisa estar no formato dd/mm/aaaa (ou vazia)."); return; }
       body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
     }
-    window.saqzAdmin.fetchAdmin("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
+    this.mutacao("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
       if (r.status === 201) {
         this.setState({ cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" } });
         this.carregarCupons();
@@ -856,7 +906,7 @@ class Component extends DCLogic {
 
   desativarCupom(c) {
     this.setState({ modal: { titulo: `Desativar ${c.code}?`, texto: "O cupom expira agora e novas assinaturas não conseguem mais usar. Quem já usa mantém o desconto contratado.", confirm: "Desativar cupom", danger: true, acao: () => {
-      window.saqzAdmin.fetchAdmin(`/admin/coupons/${c.id}/deactivate`, { method: "POST" }).then((r) => {
+      this.mutacao(`/admin/coupons/${c.id}/deactivate`, { method: "POST" }).then((r) => {
         this.setState({ modal: null });
         if (r.ok) { this.carregarCupons(); this.aviso(`Cupom ${c.code} desativado.`); } else { this.aviso("Não deu para desativar agora."); }
       });
@@ -1071,12 +1121,12 @@ class Component extends DCLogic {
       udBtnLabel: suspenso ? "Reativar usuário" : "Suspender usuário",
       onSuspender: !det ? () => {} : suspenso
         ? () => {
-          window.saqzAdmin.fetchAdmin(`/admin/users/${det.userId}/reactivate`, { method: "POST" }).then((r) => {
+          this.mutacao(`/admin/users/${det.userId}/reactivate`, { method: "POST" }).then((r) => {
             if (r.ok) { this.carregarUsuario(det.userId); this.carregarUsuarios(); this.aviso(`${(det.displayName || "A pessoa").split(" ")[0]} está de volta ao app.`); }
           });
         }
         : () => this.setState({ modal: { titulo: `Suspender ${det.displayName}?`, texto: "A pessoa perde o acesso ao app na hora. Dá pra desfazer quando quiser.", confirm: "Suspender usuário", danger: true, acao: () => {
-          window.saqzAdmin.fetchAdmin(`/admin/users/${det.userId}/suspend`, { method: "POST" }).then((r) => {
+          this.mutacao(`/admin/users/${det.userId}/suspend`, { method: "POST" }).then((r) => {
             this.setState({ modal: null });
             if (r.ok) { this.carregarUsuario(det.userId); this.carregarUsuarios(); this.aviso("Usuário suspenso."); } else { this.aviso("Não deu para suspender agora."); }
           });
@@ -1089,7 +1139,7 @@ class Component extends DCLogic {
       assinRows, recResumo, recRodape,
       ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !!sds && !adCancelada,
       onCancelar: !sds || adCancelada ? () => {} : () => this.setState({ modal: { titulo: `Cancelar o plano de ${sds.ownerName}?`, texto: "A assinatura para de renovar no Asaas e vale até o fim do período já pago.", confirm: "Cancelar plano", danger: true, acao: () => {
-        window.saqzAdmin.fetchAdmin(`/admin/subscriptions/${sds.ownerUserId}/cancel`, { method: "POST" }).then((r) => {
+        this.mutacao(`/admin/subscriptions/${sds.ownerUserId}/cancel`, { method: "POST" }).then((r) => {
           this.setState({ modal: null });
           if (r.status === 204) { this.carregarAssinatura(sds.ownerUserId); this.carregarAssinaturas(); this.aviso("Plano cancelado. Vale até o fim do período pago."); }
           else if (r.status === 409) { this.aviso("Essa assinatura já estava cancelada."); }
