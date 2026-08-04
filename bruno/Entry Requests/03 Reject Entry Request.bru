@@ -1,0 +1,21 @@
+meta {
+  name: Reject Entry Request
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{backendUrl}}/api/groups/{{groupId}}/entry-requests/{{userId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("entry request is rejected", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

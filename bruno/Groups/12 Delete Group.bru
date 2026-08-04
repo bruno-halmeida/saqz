@@ -1,0 +1,21 @@
+meta {
+  name: Delete Group
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{backendUrl}}/api/groups/{{groupId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("group is deleted", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

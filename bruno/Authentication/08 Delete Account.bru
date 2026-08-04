@@ -1,0 +1,21 @@
+meta {
+  name: Delete Account (PERMANENT - not logout)
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{backendUrl}}/api/session
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("account is permanently deleted", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

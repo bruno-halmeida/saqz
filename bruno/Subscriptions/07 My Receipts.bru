@@ -1,0 +1,21 @@
+meta {
+  name: My Receipts
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{backendUrl}}/subscriptions/me/receipts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("returns the receipts list", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
