@@ -44,7 +44,26 @@ class MonthlyChargeScheduleIntegrationTest{
         assertEquals(1,count("group_charges"));assertEquals(1,count("group_charge_events"))
     }
 
-    @Test fun `ignores a member without a monthly fee`(){
+    @Test fun `falls back to the group default when the member has no override`(){
+        val f=fixture();groupDefaults(f.group,feeCents=4500,dueDay=TODAY.dayOfMonth);monthly(f.group,f.member,feeCents=null,dueDay=null)
+        assertEquals(listOf(f.member),schedule().run().map{it.memberId})
+        assertEquals(4500,int("SELECT amount_cents FROM group_charges"))
+        assertEquals(TODAY,date("SELECT due_date FROM group_charges"))
+    }
+
+    @Test fun `the member override wins over the group default`(){
+        val f=fixture();groupDefaults(f.group,feeCents=4500,dueDay=TODAY.dayOfMonth%28+1);monthly(f.group,f.member,feeCents=3000,dueDay=TODAY.dayOfMonth)
+        assertEquals(listOf(f.member),schedule().run().map{it.memberId})
+        assertEquals(3000,int("SELECT amount_cents FROM group_charges"))
+    }
+
+    @Test fun `ignores an avulso member even with a fee and a due day filled in`(){
+        val f=fixture();groupDefaults(f.group,feeCents=4500,dueDay=TODAY.dayOfMonth);monthly(f.group,f.member,feeCents=3000,dueDay=TODAY.dayOfMonth,type="AVULSO")
+        assertEquals(emptyList(),schedule().run())
+        assertEquals(0,count("group_charges"))
+    }
+
+    @Test fun `ignores a member with no fee on the membership and none on the group`(){
         val f=fixture();monthly(f.group,f.member,feeCents=null,dueDay=TODAY.dayOfMonth)
         assertEquals(emptyList(),schedule().run())
         assertEquals(0,count("group_charges"))
@@ -81,9 +100,14 @@ class MonthlyChargeScheduleIntegrationTest{
         val repository=object:ChargeTransactionRepository by delegate{override fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant)=if(memberId==member) error("injected") else delegate.createMonthlyCharge(command,memberId,now)}
         return ChargeTransactions(JdbcTransactionRunner(dataSource),repository){NOW}
     }
-    private fun monthly(group:UUID,member:UUID,feeCents:Long?,dueDay:Int){
+    private fun monthly(group:UUID,member:UUID,feeCents:Long?,dueDay:Int?,type:String="MENSALISTA"){
+        assertTrue(dueDay==null||dueDay in 1..28)
+        execute("UPDATE group_memberships SET membership_type='$type',monthly_fee_cents=${feeCents ?: "NULL"},monthly_due_day=${dueDay ?: "NULL"} WHERE group_id='$group' AND user_id='$member'")
+    }
+    /** Default do grupo (V2 do :features:access): fee e dia andam juntos ou ficam os dois nulos. */
+    private fun groupDefaults(group:UUID,feeCents:Long,dueDay:Int){
         assertTrue(dueDay in 1..28)
-        execute("UPDATE group_memberships SET monthly_fee_cents=${feeCents ?: "NULL"},monthly_due_day=$dueDay WHERE group_id='$group' AND user_id='$member'")
+        execute("UPDATE access_groups SET monthly_fee_cents=$feeCents,monthly_due_day=$dueDay WHERE id='$group'")
     }
     private fun fixture():Fixture{val owner=user("owner");val member=user("member");val group=UUID.randomUUID();execute("INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,created_at,updated_at) VALUES ('$group','$owner','${UUID.randomUUID()}','Group','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',now(),now())");execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) VALUES ('$group','$member','ATHLETE',now(),now())");return Fixture(owner,member,group)}
     private fun user(subject:String):UUID{val id=UUID.randomUUID();execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-${UUID.randomUUID()}',true,'User',now(),now())");return id}
