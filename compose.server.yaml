@@ -1,8 +1,9 @@
 # Overlay for the home server. Usage:
 #   docker compose -f compose.yaml -f compose.server.yaml up -d --build
 # Publishes:
-#   backend  -> https://saqz-api.brunoalmeida.dev
-#   adm-web  -> https://saqzweb.brunoalmeida.dev
+#   backend      -> https://saqz-api.brunoalmeida.dev
+#   adm-web      -> https://saqzweb.brunoalmeida.dev
+#   landing-page -> https://saqz.app
 # Database: Supabase (dev) via IPv4 session pooler; local postgres disabled.
 services:
   backend:
@@ -14,6 +15,10 @@ services:
       SAQZ_ADMINWEB_ORIGINS: https://saqzweb.brunoalmeida.dev
       SAQZ_ASAAS_API_KEY: ${SAQZ_ASAAS_API_KEY}
       SAQZ_ASAAS_WEBHOOK_TOKEN: ${SAQZ_ASAAS_WEBHOOK_TOKEN}
+      # Producao: trocar no .env para https://api.asaas.com/v3 junto com a chave
+      # de producao. O default aqui evita mandar string vazia (que sobrescreveria
+      # o default de application.properties e quebraria a base-url).
+      SAQZ_ASAAS_BASE_URL: ${SAQZ_ASAAS_BASE_URL:-https://api-sandbox.asaas.com/v3}
     depends_on: !reset {}
     networks:
       - default
@@ -38,6 +43,25 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.saqz-web.rule=Host(`saqzweb.brunoalmeida.dev`)"
       - "traefik.http.services.saqz-web.loadbalancer.server.port=80"
+
+  landing-page:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./landing-page:/usr/share/nginx/html:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - local-server-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.saqz-landing.rule=Host(`saqz.app`) || Host(`www.saqz.app`)"
+      - "traefik.http.services.saqz-landing.loadbalancer.server.port=80"
+      # www -> apex, so search engines see a single canonical host
+      - "traefik.http.middlewares.saqz-landing-www.redirectregex.regex=^https?://www\\.saqz\\.app/(.*)"
+      - "traefik.http.middlewares.saqz-landing-www.redirectregex.replacement=https://saqz.app/$${1}"
+      - "traefik.http.middlewares.saqz-landing-www.redirectregex.permanent=true"
+      - "traefik.http.routers.saqz-landing.middlewares=saqz-landing-www"
 
   # Local postgres kept available under a profile, but not started by default
   # (the dev database now lives on Supabase).
