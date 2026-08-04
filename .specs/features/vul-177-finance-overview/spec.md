@@ -8,9 +8,9 @@ risco de somar grupos em que o usuário não administra o caixa.
 
 ## Goals
 
-- [ ] Expor um `GET /api/me/finance/overview` com totais e grupos administrados pelo usuário.
-- [ ] Derivar saldo com a fórmula financeira oficial e retornar lançamentos recentes estruturados.
-- [ ] Permitir mês corrente, mês específico e ano-calendário sem expor dados de grupos de atletas.
+- [x] Expor um `GET /api/me/finance/overview` com totais e grupos administrados pelo usuário.
+- [x] Derivar saldo com a fórmula financeira oficial e retornar lançamentos recentes estruturados.
+- [x] Permitir mês corrente, mês específico e ano-calendário sem expor dados de grupos de atletas.
 
 ## Out of Scope
 
@@ -121,6 +121,6 @@ administrados e em um grupo de atleta; confirmar a lista recente e os campos de 
 
 ## Success Criteria
 
-- [ ] O endpoint retorna apenas caixa de OWNER/ADMIN e mantém 200 para usuário sem grupo.
-- [ ] O saldo acumulado não depende de coluna de saldo e usa a fórmula única do projeto.
-- [ ] Os gates locais de unit e integrationTest de `features:groups` passam.
+- [x] O endpoint retorna apenas caixa de OWNER/ADMIN e mantém 200 para usuário sem grupo.
+- [x] O saldo acumulado não depende de coluna de saldo e usa a fórmula única do projeto.
+- [x] Os gates locais de unit e integrationTest de `features:groups` passam.

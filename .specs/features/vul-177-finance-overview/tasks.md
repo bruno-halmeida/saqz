@@ -6,7 +6,7 @@ Implement with the `tlc-spec-driven` skill. Each task is implemented, tested, ga
 atomically before the next task begins. After T4, run the independent feature-level validation.
 
 **Design:** `.specs/features/vul-177-finance-overview/design.md`
-**Status:** In Progress
+**Status:** Validated; delivery pending
 
 ## Test Coverage Matrix
 
@@ -81,7 +81,7 @@ OVERVIEW-10
 - [x] A fórmula de saldo e os totais de período são conferidos com charges/despesas mistas.
 - [x] `pendingMonthlyCount`/`hasBillingConfigured` e lançamentos estruturados são conferidos.
 - [x] Usuário sem grupo retorna agregado vazio e não 403.
-- [x] Teste de integração direcionado passa com Testcontainers; full gate será repetido em rodada limpa.
+- [x] Teste de integração direcionado e full gate passam com Testcontainers.
 
 **Tests:** integration
 **Gate:** full
@@ -124,7 +124,7 @@ e `bruno/Finance/Overview/*.bru`
 
 - [x] Contexto Spring consegue construir repository, query e controller.
 - [x] Existem somente arquivos `.bru` novos sob `bruno/Finance/Overview/`.
-- [ ] Build gate `test` + `integrationTest` passa.
+- [x] Build gate `test` + `integrationTest` passa.
 
 **Tests:** integration
 **Gate:** build
