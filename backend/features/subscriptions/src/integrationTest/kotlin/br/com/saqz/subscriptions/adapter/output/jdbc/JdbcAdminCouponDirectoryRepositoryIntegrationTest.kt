@@ -61,7 +61,8 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
         insertRedemption(couponId, comCupom)
         insertRedemption(couponId, cupomEsgotado)
         insertSubscription(comCupom, couponId, cyclesRemaining = 2)
-        insertSubscription(cupomEsgotado, couponId, cyclesRemaining = 0)
+        // Estado real pós-esgotamento: remaining NULL com cupom de duração finita.
+        insertSubscription(cupomEsgotado, couponId, cyclesRemaining = null)
 
         val list = repository.list()
 
@@ -109,12 +110,12 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
         execute("INSERT INTO coupon_redemptions (coupon_id, user_id, redeemed_at) VALUES ('$couponId', '$userId', now())")
     }
 
-    private fun insertSubscription(ownerId: UUID, couponId: UUID, cyclesRemaining: Int) {
+    private fun insertSubscription(ownerId: UUID, couponId: UUID, cyclesRemaining: Int?) {
         execute(
             "INSERT INTO subscriptions (owner_user_id, plan, cycle, status, asaas_customer_id, " +
                 "asaas_subscription_id, current_period_end, coupon_id, coupon_cycles_remaining, created_at, updated_at) " +
                 "VALUES ('$ownerId', 'TITULAR', 'MONTHLY', 'ACTIVE', 'cus-$ownerId', 'sub-$ownerId', " +
-                "'${now.plusSeconds(2_592_000)}', '$couponId', $cyclesRemaining, now(), now())",
+                "'${now.plusSeconds(2_592_000)}', '$couponId', ${cyclesRemaining ?: "NULL"}, now(), now())",
         )
     }
 

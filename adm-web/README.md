@@ -114,8 +114,8 @@ indexação). Para publicar:
 # 1. Preencher assets/firebase-config.js com os valores do console
 #    (apiKey/authDomain/projectId reais, apiBaseUrl da API, SEM authEmulatorUrl)
 # 2. Liberar a origem publicada no backend: SAQZ_ADMINWEB_ORIGINS=https://<site>
-firebase target:apply hosting adm-web <site-do-projeto>
-firebase deploy --only hosting:adm-web
+firebase target:apply hosting adm-web <site-do-projeto> --project prod
+firebase deploy --only hosting:adm-web --project prod
 ```
 
 O acesso é protegido por login (papel de admin no backend); o hosting não
