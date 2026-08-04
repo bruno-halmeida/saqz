@@ -176,8 +176,19 @@ class BootstrapSessionTest {
         )
     }
 
+    @Test
+    fun `suspended account returns Suspended without touching the upsert`() {
+        val repository = RecordingSessionRepository(view, suspendedAt = java.time.Instant.parse("2026-08-01T00:00:00Z"))
+
+        val result = BootstrapSession(repository).execute(identity())
+
+        assertEquals(BootstrapSessionResult.Suspended, result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
     private class RecordingSessionRepository(
         private val result: SessionView,
+        private val suspendedAt: java.time.Instant? = null,
     ) : SessionRepository {
         val commands: MutableList<SessionUpsert> = Collections.synchronizedList(mutableListOf())
 
@@ -185,5 +196,7 @@ class BootstrapSessionTest {
             commands += command
             return result
         }
+
+        override fun suspendedAt(subject: String): java.time.Instant? = suspendedAt
     }
 }

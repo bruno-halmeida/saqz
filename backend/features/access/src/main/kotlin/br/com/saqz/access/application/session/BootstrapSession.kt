@@ -10,6 +10,10 @@ class BootstrapSession(
         val displayName = identity.displayName
             ?.let { runCatching { AccessName.from(it) }.getOrNull() }
             ?: return BootstrapSessionResult.InvalidDisplayName
+        // Antes do upsert: suspenso não vira "ativo" nem tem updated_at bumpado.
+        if (repository.suspendedAt(identity.subject) != null) {
+            return BootstrapSessionResult.Suspended
+        }
         val session = repository.upsertAndLoad(
             SessionUpsert(
                 subject = identity.subject,

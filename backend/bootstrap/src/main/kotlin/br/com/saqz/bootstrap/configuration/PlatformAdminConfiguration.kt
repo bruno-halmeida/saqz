@@ -2,10 +2,13 @@ package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.access.adapter.input.http.PlatformAdminMeController
 import br.com.saqz.access.adapter.output.jdbc.admin.JdbcAdminAccessStatsRepository
+import br.com.saqz.access.adapter.output.jdbc.admin.JdbcAdminUserDirectoryRepository
 import br.com.saqz.access.adapter.output.jdbc.admin.JdbcPlatformAdminRepository
 import br.com.saqz.access.application.admin.AdminAccessStats
+import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.adminweb.http.AdminOverviewController
+import br.com.saqz.adminweb.http.AdminUsersController
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
 import br.com.saqz.groups.application.admin.AdminGroupStats
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
@@ -36,6 +39,13 @@ class PlatformAdminConfiguration {
     @Bean
     fun adminRevenueStats(dataSource: DataSource): AdminRevenueStats =
         JdbcAdminRevenueStatsRepository(dataSource)
+
+    @Bean
+    fun adminUserDirectory(dataSource: DataSource): AdminUserDirectory =
+        JdbcAdminUserDirectoryRepository(dataSource)
+
+    @Bean
+    fun adminUsersController(directory: AdminUserDirectory) = AdminUsersController(directory)
 
     @Bean
     fun adminOverviewController(

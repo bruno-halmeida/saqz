@@ -30,7 +30,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(11, flyway.migrate().migrationsExecuted)
+        assertEquals(12, flyway.migrate().migrationsExecuted)
     }
 
     @AfterAll
@@ -210,6 +210,15 @@ class AccessSchemaIntegrationTest {
         assertEquals(false, queryBoolean("SELECT platform_admin FROM access_users WHERE id = '$user'"))
         execute("UPDATE access_users SET platform_admin = true WHERE id = '$user'")
         assertEquals(true, queryBoolean("SELECT platform_admin FROM access_users WHERE id = '$user'"))
+    }
+
+    @Test
+    fun `v31 creates users without suspension and accepts a suspension timestamp`() {
+        val user = insertUser("suspension-default")
+
+        assertEquals(null, queryString("SELECT suspended_at::text FROM access_users WHERE id = '$user'"))
+        execute("UPDATE access_users SET suspended_at = now() WHERE id = '$user'")
+        assertEquals(1, queryInt("SELECT count(*) FROM access_users WHERE id = '$user' AND suspended_at IS NOT NULL"))
     }
 
     @Test

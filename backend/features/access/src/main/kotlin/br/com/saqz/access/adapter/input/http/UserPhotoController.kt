@@ -78,6 +78,7 @@ class UserPhotoController(
     private fun resolveUserId(identity: RequestIdentity): UUID =
         when (val result = bootstrapSession.execute(identity)) {
             BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
             is BootstrapSessionResult.Success -> result.session.user.id
         }
 

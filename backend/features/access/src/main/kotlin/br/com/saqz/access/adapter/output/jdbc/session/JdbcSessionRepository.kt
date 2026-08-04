@@ -19,6 +19,16 @@ class JdbcSessionRepository(
 ) : SessionRepository, AccountDeletionRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
+    override fun suspendedAt(subject: String): java.time.Instant? = jdbc.sql(
+        "SELECT suspended_at FROM access_users " +
+            "WHERE firebase_subject = :subject AND deleted_at IS NULL AND suspended_at IS NOT NULL",
+    )
+        .param("subject", subject)
+        .query(java.time.OffsetDateTime::class.java)
+        .optional()
+        .map { it.toInstant() }
+        .orElse(null)
+
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
         val user = jdbc.sql(
             """
