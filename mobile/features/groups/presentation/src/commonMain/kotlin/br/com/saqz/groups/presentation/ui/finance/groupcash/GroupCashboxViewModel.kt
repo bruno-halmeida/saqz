@@ -259,14 +259,16 @@ class GroupCashboxViewModel(
     private fun buildOverdueBanner(monthKey: String, debtors: List<DebtorUi>): OverdueBannerUi? {
         val overdue = debtors.filter { it.isOverdue }
         val names = overdue.map { it.name }.distinct().sorted()
-        val month = overdue.firstNotNullOfOrNull { it.month }
-            ?.let(::monthNameOnlyFromKey)
-            ?: monthNameOnlyFromKey(monthKey)
+        val overdueMonthKeys = overdue.mapNotNull { it.month }.distinct()
+        val bannerMonthKey = overdueMonthKeys.singleOrNull()
+            ?: monthKey.takeIf { overdueMonthKeys.isEmpty() }
+        val month = bannerMonthKey?.let(::monthNameOnlyFromKey)
         return names.takeIf { it.isNotEmpty() }?.let {
             val verb = if (it.size == 1) "está" else "estão"
             OverdueBannerUi(
-                message = it.joinNames() + " $verb com $month em aberto",
-                monthLabel = month,
+                message = it.joinNames() + " $verb com " +
+                    (month?.let { value -> "$value em aberto" } ?: "mensalidades em aberto"),
+                monthLabel = bannerMonthKey?.let(::monthNameFromKey),
             )
         }
     }

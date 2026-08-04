@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.details.CashboxUi
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsResponseStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsResponseUi
@@ -80,6 +81,15 @@ class GroupDetailsScreenTest {
         onNodeWithTag(GroupDetailsTags.Cashbox).performClick()
 
         assertEquals(GroupDetailsIntent.OpenCashbox, intents.single())
+    }
+
+    @Test
+    fun adminCashboxRowRemainsVisibleWithoutFinanceSummary() = runComposeUiTest {
+        setScreen(GroupDetailsPreviewData.admin.copy(cashbox = CashboxUi()))
+
+        onNodeWithTag(GroupDetailsTags.Cashbox).assertExists()
+        onNodeWithText("Caixa do grupo").assertExists()
+        onAllNodesWithText("Saldo R$ 380,00 · 8 mensalidades em aberto").assertCountEquals(0)
     }
 
     @Test

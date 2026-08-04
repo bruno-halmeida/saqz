@@ -38,6 +38,17 @@ import br.com.saqz.groups.domain.game.SeriesBoundaryCommand
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.game.VersionedSeries
 import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
+import br.com.saqz.groups.domain.finance.ChargeList
+import br.com.saqz.groups.domain.finance.ChargeStatusCommand
+import br.com.saqz.groups.domain.finance.ExpenseList
+import br.com.saqz.groups.domain.finance.ExpenseWriteCommand
+import br.com.saqz.groups.domain.finance.FinanceError
+import br.com.saqz.groups.domain.finance.FinanceStatementGateway
+import br.com.saqz.groups.domain.finance.FinanceStatementPage
+import br.com.saqz.groups.domain.finance.FinanceStatementQuery
+import br.com.saqz.groups.domain.finance.FinanceStatementSummary
+import br.com.saqz.groups.domain.finance.FinanceTotals
+import br.com.saqz.groups.domain.finance.FinanceVersionToken
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.CreateGroupCommand
 import br.com.saqz.groups.domain.group.Group
@@ -58,6 +69,10 @@ import br.com.saqz.groups.domain.membership.GroupInviteMetadata
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.finance.MonthlyChargeCommand
+import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
+import br.com.saqz.groups.domain.finance.VersionedCharge
+import br.com.saqz.groups.domain.finance.VersionedExpense
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.model.GroupTimeZone as ModelGroupTimeZone
@@ -386,6 +401,56 @@ class FakeGroupSystemTimeZonePort : GroupSystemTimeZonePort {
             (it as ModelGroupTimeZone.ParseResult.Valid).value
         }))
     }
+}
+
+class FakeFinanceStatementGateway(
+    var result: SaqzResult<FinanceStatementPage, FinanceError> = SaqzResult.Success(
+        FinanceStatementPage(
+            month = "2026-08",
+            items = emptyList(),
+            summary = FinanceStatementSummary(0L, 0L, 0L, 0L),
+            limit = 20,
+            offset = 0,
+            hasMore = false,
+        ),
+    ),
+) : FinanceStatementGateway {
+    override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery) = result
+}
+
+class FakeOrganizerFinanceGateway(
+    var chargesResult: SaqzResult<ChargeList, FinanceError> = SaqzResult.Success(ChargeList(emptyList())),
+) : OrganizerFinanceGateway {
+    override suspend fun charges(groupId: GroupId) = chargesResult
+
+    override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) =
+        error("not used in this screen")
+
+    override suspend fun updateChargeStatus(
+        groupId: GroupId,
+        chargeId: String,
+        version: FinanceVersionToken,
+        command: ChargeStatusCommand,
+    ) = error("not used in this screen") as SaqzResult<VersionedCharge, FinanceError>
+
+    override suspend fun expenses(groupId: GroupId) =
+        error("not used in this screen") as SaqzResult<ExpenseList, FinanceError>
+
+    override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand) =
+        error("not used in this screen") as SaqzResult<VersionedExpense, FinanceError>
+
+    override suspend fun editExpense(
+        groupId: GroupId,
+        expenseId: String,
+        version: FinanceVersionToken,
+        command: ExpenseWriteCommand,
+    ) = error("not used in this screen") as SaqzResult<VersionedExpense, FinanceError>
+
+    override suspend fun voidExpense(groupId: GroupId, expenseId: String, version: FinanceVersionToken) =
+        error("not used in this screen") as SaqzResult<VersionedExpense, FinanceError>
+
+    override suspend fun totals(groupId: GroupId) =
+        error("not used in this screen") as SaqzResult<FinanceTotals, FinanceError>
 }
 
 fun sampleGroup(

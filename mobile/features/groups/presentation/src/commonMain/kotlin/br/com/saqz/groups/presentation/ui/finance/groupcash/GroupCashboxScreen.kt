@@ -233,7 +233,9 @@ private fun OverdueBanner(banner: OverdueBannerUi, onAction: (GroupCashboxAction
                 style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
                 color = SaqzTheme.colors.textPrimary,
             )
-            SaqzStatusChip(text = banner.monthLabel, tone = br.com.saqz.designsystem.SaqzChipTone.Warning)
+            banner.monthLabel?.let {
+                SaqzStatusChip(text = it, tone = br.com.saqz.designsystem.SaqzChipTone.Warning)
+            }
         }
     }
     SaqzButton(

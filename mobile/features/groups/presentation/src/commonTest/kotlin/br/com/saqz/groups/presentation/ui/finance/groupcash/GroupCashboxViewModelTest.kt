@@ -80,6 +80,24 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `overdue banner uses generic copy when debtors span multiple months`() = runTest {
+        val julyCamila = defaultCharges[3].copy(
+            id = "monthly-july-camila",
+            kind = ChargeKind.Monthly,
+            month = "2026-07",
+            dueDate = "2026-07-10",
+        )
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(listOf(julyCamila, defaultCharges[1]))),
+            ),
+        )
+
+        assertEquals("Camila e Pedro estão com mensalidades em aberto", viewModel.state.value.overdueBanner?.message)
+        assertNull(viewModel.state.value.overdueBanner?.monthLabel)
+    }
+
+    @Test
     fun `no financial movement exposes the empty cashbox state`() = runTest {
         val empty = FakeOrganizerFinanceGateway(
             chargesResult = SaqzResult.Success(chargeList(emptyList())),

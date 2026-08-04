@@ -48,7 +48,7 @@ data class DebtorUi(
 @Immutable
 data class OverdueBannerUi(
     val message: String,
-    val monthLabel: String,
+    val monthLabel: String?,
 )
 
 @Immutable

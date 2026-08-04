@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.details
 
 import br.com.saqz.domain.DataError
+import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteError
@@ -12,13 +13,23 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.domain.finance.ChargeKind
+import br.com.saqz.groups.domain.finance.ChargeList
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.domain.finance.FinanceError
+import br.com.saqz.groups.domain.finance.FinanceStatementPage
+import br.com.saqz.groups.domain.finance.FinanceStatementSummary
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupGameConfig
+import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
+import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeOrganizerFinanceGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleAttendanceDetail
@@ -40,6 +51,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private const val GROUP_ID = "group-1"
@@ -62,6 +75,89 @@ class GroupDetailsViewModelTest {
         assertEquals("CERET", viewModel.state.value.venue?.name)
         assertTrue(viewModel.state.value.header?.summaryChips?.isNotEmpty() == true)
         assertFalse(viewModel.state.value.isOwner)
+    }
+
+    @Test
+    fun `admin details expose cashbox summary from finance gateways`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = FakeGroupGateway(
+                readResult = SaqzResult.Success(
+                    sampleVersionedGroup(sampleGroup(timeZone = GroupTimeZone("UTC"))),
+                ),
+            ),
+            statementGateway = FakeFinanceStatementGateway(
+                result = SaqzResult.Success(
+                    FinanceStatementPage(
+                        month = "2026-08",
+                        items = emptyList(),
+                        summary = FinanceStatementSummary(0L, 0L, 0L, 38_000L),
+                        limit = 20,
+                        offset = 0,
+                        hasMore = false,
+                    ),
+                ),
+            ),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            Charge(
+                                id = "monthly-aug-1",
+                                groupId = GroupId(GROUP_ID),
+                                memberId = "member-1",
+                                kind = ChargeKind.Monthly,
+                                month = "2026-08",
+                                amountCents = 7_000L,
+                                dueDate = "2026-08-10",
+                                status = ChargeStatus.Pending,
+                                version = 1,
+                                audit = emptyList(),
+                            ),
+                            Charge(
+                                id = "monthly-aug-2",
+                                groupId = GroupId(GROUP_ID),
+                                memberId = "member-2",
+                                kind = ChargeKind.Monthly,
+                                month = "2026-08",
+                                amountCents = 7_000L,
+                                dueDate = "2026-08-10",
+                                status = ChargeStatus.Pending,
+                                version = 1,
+                                audit = emptyList(),
+                            ),
+                            Charge(
+                                id = "monthly-jul",
+                                groupId = GroupId(GROUP_ID),
+                                memberId = "member-3",
+                                kind = ChargeKind.Monthly,
+                                month = "2026-07",
+                                amountCents = 7_000L,
+                                dueDate = "2026-07-10",
+                                status = ChargeStatus.Pending,
+                                version = 1,
+                                audit = emptyList(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(viewModel.state.value.isAdmin)
+        assertEquals("Saldo R$\u00A0380,00 · 2 mensalidades em aberto", viewModel.state.value.cashbox?.summary)
+    }
+
+    @Test
+    fun `admin keeps the cashbox entry when finance summary fails`() = runTest {
+        val viewModel = viewModel(
+            statementGateway = FakeFinanceStatementGateway(
+                result = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)),
+            ),
+        )
+
+        assertTrue(viewModel.state.value.isAdmin)
+        assertNotNull(viewModel.state.value.cashbox)
+        assertNull(viewModel.state.value.cashbox?.summary)
     }
 
     @Test
@@ -563,7 +659,18 @@ class GroupDetailsViewModelTest {
         gameGateway: FakeGameGateway = FakeGameGateway(),
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),
         athleteGateway: FakeAthleteGateway = FakeAthleteGateway(),
-    ) = GroupDetailsViewModel(GROUP_ID, groupGateway, gameGateway, attendanceGateway, athleteGateway, GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") })
+        statementGateway: FakeFinanceStatementGateway = FakeFinanceStatementGateway(),
+        organizerFinanceGateway: FakeOrganizerFinanceGateway = FakeOrganizerFinanceGateway(),
+    ) = GroupDetailsViewModel(
+        GROUP_ID,
+        groupGateway,
+        gameGateway,
+        attendanceGateway,
+        athleteGateway,
+        statementGateway,
+        organizerFinanceGateway,
+        GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
+    )
 
     private fun athleteGroupGateway() = FakeGroupGateway(
         readResult = SaqzResult.Success(

@@ -389,11 +389,9 @@ internal fun GroupCashboxRow(
             GroupIconCircle(SaqzIcons.CreditCard)
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = label, style = SaqzTheme.typography.label, color = colors.textPrimary)
-                Text(
-                    text = cashbox.summary,
-                    style = SaqzTheme.typography.caption,
-                    color = colors.textSecondary,
-                )
+                cashbox.summary?.let {
+                    Text(text = it, style = SaqzTheme.typography.caption, color = colors.textSecondary)
+                }
             }
             SaqzIcon(SaqzIcons.ChevronRight, tint = colors.textSecondary)
         }
