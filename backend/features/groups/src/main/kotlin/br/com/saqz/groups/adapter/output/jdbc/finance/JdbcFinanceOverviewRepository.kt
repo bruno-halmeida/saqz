@@ -127,7 +127,7 @@ class JdbcFinanceOverviewRepository(
 
     private companion object {
         const val ADMINISTERED_GROUPS = """
-            SELECT groups.id, groups.name, groups.monthly_fee_cents
+            SELECT groups.id, groups.name, groups.monthly_fee_cents, groups.monthly_due_day
             FROM access_groups groups
             WHERE groups.deleted_at IS NULL
               AND (
@@ -214,14 +214,14 @@ class JdbcFinanceOverviewRepository(
                       AND charges.due_date <= :endDate
                 ) AS pending_monthly_count,
                 (
-                    groups.monthly_fee_cents IS NOT NULL
-                    OR EXISTS (
+                    EXISTS (
                         SELECT 1
                         FROM group_memberships memberships
                         WHERE memberships.group_id = groups.id
                           AND memberships.membership_type = 'MENSALISTA'
                           AND memberships.active = true
                           AND COALESCE(memberships.monthly_fee_cents, groups.monthly_fee_cents) IS NOT NULL
+                          AND COALESCE(memberships.monthly_due_day, groups.monthly_due_day) IS NOT NULL
                     )
                 ) AS has_billing_configured
             FROM administered_groups groups

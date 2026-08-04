@@ -72,6 +72,24 @@ class JdbcFinanceOverviewRepositoryIntegrationTest {
     }
 
     @Test
+    fun `billing configuration requires an active mensalista with effective fee and due day`() {
+        val actor = user("billing-config", "Billing config")
+        val missingDueDay = group("Missing due day", actor)
+        val defaultWithoutMensalista = group("Default without mensalista", actor, monthlyFee = 1000)
+        val inheritedConfiguration = group("Inherited configuration", actor, monthlyFee = 1000)
+
+        mensalista(missingDueDay, actor, monthlyFee = 900, monthlyDueDay = null)
+        mensalista(inheritedConfiguration, actor)
+
+        val overview = JdbcFinanceOverviewRepository(dataSource, ZONE)
+            .find(actor, FinanceOverviewPeriod.Month(YearMonth.of(2026, 8)))
+
+        assertFalse(overview.groups.first { it.id == missingDueDay }.hasBillingConfigured)
+        assertFalse(overview.groups.first { it.id == defaultWithoutMensalista }.hasBillingConfigured)
+        assertTrue(overview.groups.first { it.id == inheritedConfiguration }.hasBillingConfigured)
+    }
+
+    @Test
     fun `period without movement keeps accumulated balances but returns no recent activity`() {
         val fixture = fixture()
 
@@ -113,6 +131,7 @@ class JdbcFinanceOverviewRepositoryIntegrationTest {
         val adminGroup = group("Admin group", otherOwner)
         val athleteGroup = group("Athlete group", otherOwner)
         execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) VALUES ('$adminGroup','$actor','ADMIN',now(),now()),('$athleteGroup','$actor','ATHLETE',now(),now())")
+        mensalista(ownerGroup, ownerMember)
 
         paidMonthly(ownerGroup, ownerMember, 1000, "2026-08-03 12:00:00+00")
         monthly(ownerGroup, ownerPendingMember, 500, "2026-08-20", "2026-08-01")
@@ -127,12 +146,28 @@ class JdbcFinanceOverviewRepositoryIntegrationTest {
         return Fixture(actor, ownerGroup, adminGroup, athleteGroup)
     }
 
-    private fun group(name: String, owner: UUID, monthlyFee: Long? = null): UUID {
+    private fun group(
+        name: String,
+        owner: UUID,
+        monthlyFee: Long? = null,
+        monthlyDueDay: Int? = monthlyFee?.let { 10 },
+    ): UUID {
         val id = UUID.randomUUID()
         val fee = monthlyFee?.toString() ?: "NULL"
-        val dueDay = monthlyFee?.let { "10" } ?: "NULL"
+        val dueDay = monthlyDueDay?.toString() ?: "NULL"
         execute("INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,monthly_fee_cents,monthly_due_day,created_at,updated_at) VALUES ('$id','$owner','${UUID.randomUUID()}','$name','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',$fee,$dueDay,now(),now())")
         return id
+    }
+
+    private fun mensalista(
+        group: UUID,
+        member: UUID,
+        monthlyFee: Long? = null,
+        monthlyDueDay: Int? = null,
+    ) {
+        val fee = monthlyFee?.toString() ?: "NULL"
+        val dueDay = monthlyDueDay?.toString() ?: "NULL"
+        execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at,membership_type,active,monthly_fee_cents,monthly_due_day) VALUES ('$group','$member','ATHLETE',now(),now(),'MENSALISTA',true,$fee,$dueDay) ON CONFLICT (group_id,user_id) DO UPDATE SET membership_type='MENSALISTA', active=true, monthly_fee_cents=$fee, monthly_due_day=$dueDay")
     }
 
     private fun user(subject: String, displayName: String): UUID {
