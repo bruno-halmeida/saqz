@@ -251,7 +251,7 @@ class GameEditorViewModel(
                     SaqzResult.Failure(GameError.VersionConflict)
                 } else if (
                     current.value.game.status == GameStatus.Published &&
-                    commandFingerprint(command) == submittedFingerprint
+                    commandFingerprint(command, current.value.game.gameFeeCents) == submittedFingerprint
                 ) {
                     current
                 } else {
@@ -262,7 +262,7 @@ class GameEditorViewModel(
                             commandKey,
                             publishAfterEdit = current.value.game.status != GameStatus.Published,
                         ),
-                        command,
+                        command.withResolvedGameFee(current.value.game.gameFeeCents),
                     )
                 }
             }
@@ -463,7 +463,7 @@ private data class PendingDraft(
     val submittedStateFingerprint: String?,
 )
 
-private fun commandFingerprint(command: GameWriteCommand): String = listOf(
+private fun commandFingerprint(command: GameWriteCommand, resolvedDefaultGameFeeCents: Long?): String = listOf(
     command.title,
     command.venue?.venueId,
     command.venue?.name,
@@ -476,8 +476,7 @@ private fun commandFingerprint(command: GameWriteCommand): String = listOf(
     command.durationMinutes,
     command.capacity,
     command.confirmationDeadline,
-    command.gameFeeCents,
-    command.useDefaultGameFee,
+    if (command.useDefaultGameFee) resolvedDefaultGameFeeCents else command.gameFeeCents,
     command.notes,
 ).fingerprint()
 
@@ -495,9 +494,14 @@ private fun gameFingerprint(game: Game): String = listOf(
     game.capacity,
     game.confirmationDeadline,
     game.gameFeeCents,
-    game.gameFeeCents == null,
     game.notes,
 ).fingerprint()
+
+private fun GameWriteCommand.withResolvedGameFee(resolvedGameFeeCents: Long?): GameWriteCommand =
+    if (!useDefaultGameFee) this else copy(
+        gameFeeCents = resolvedGameFeeCents,
+        useDefaultGameFee = false,
+    )
 
 private fun List<Any?>.fingerprint(): String = joinToString(FINGERPRINT_SEPARATOR) { it?.toString()?.trim().orEmpty() }
 
