@@ -77,6 +77,7 @@ class SubscriptionQueryControllerTest {
         override fun findByOwnerUserId(ownerUserId: UUID) = subscription
         override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = subscription
         override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun findByLastConfirmedPaymentId(paymentId: String) = null
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = error("unused")
         override fun save(subscription: Subscription) = error("unused")

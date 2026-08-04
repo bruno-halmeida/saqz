@@ -368,6 +368,9 @@ class CreateSubscriptionTest {
         override fun findByPendingUpgradeChargeId(chargeId: String) =
             byOwner.values.firstOrNull { it.pendingUpgradeChargeId == chargeId }
 
+        override fun findByLastConfirmedPaymentId(paymentId: String) =
+            byOwner.values.firstOrNull { it.lastConfirmedPaymentId == paymentId }
+
         override fun lockOwner(ownerUserId: UUID) {
             lockedOwners += ownerUserId
         }

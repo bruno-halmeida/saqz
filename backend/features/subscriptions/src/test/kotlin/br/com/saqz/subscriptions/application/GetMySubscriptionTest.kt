@@ -196,6 +196,7 @@ class GetMySubscriptionTest {
         override fun findByOwnerUserIdForUpdate(ownerUserId: UUID): Subscription? =
             findByOwnerUserId(ownerUserId)
         override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun findByLastConfirmedPaymentId(paymentId: String) = null
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = error("unused")
         override fun save(subscription: Subscription) = error("unused")

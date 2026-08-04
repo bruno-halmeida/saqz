@@ -105,6 +105,100 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
+    fun `PAYMENT_RECEIVED activates a past-due subscription just like PAYMENT_CONFIRMED`() {
+        val result = useCase.execute(
+            token,
+            command(
+                eventId = "evt_recv",
+                type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED,
+                paymentId = "pay_first",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.ACTIVE, sub.status)
+        assertEquals(periodEnd, sub.currentPeriodEnd)
+        assertNull(sub.pastDueSince)
+        assertEquals(fixedNow, sub.firstConfirmedAt)
+        assertEquals("pay_first", sub.lastConfirmedPaymentId)
+        assertEquals(ownerId, events.rows.getValue("evt_recv").ownerUserId)
+    }
+
+    @Test
+    fun `CONFIRMED and RECEIVED for one charge confirm it once`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_pair_conf", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED, paymentId = "pay_pair"),
+        )
+        val afterFirst = subscriptions.get("sub_123").currentPeriodEnd
+
+        // Evento irmao: id de evento diferente, entao passa pela trava de asaasEventId.
+        val result = useCase.execute(
+            token,
+            command(eventId = "evt_pair_recv", type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED, paymentId = "pay_pair"),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), afterFirst)
+        assertEquals(afterFirst, subscriptions.get("sub_123").currentPeriodEnd)
+    }
+
+    @Test
+    fun `next cycle charge still renews after the previous pair was collapsed`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                lastConfirmedPaymentId = "pay_july",
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_august", type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED, paymentId = "pay_august"),
+        )
+
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Instant.parse("2026-08-30T00:00:00Z"), sub.currentPeriodEnd)
+        assertEquals("pay_august", sub.lastConfirmedPaymentId)
+    }
+
+    @Test
+    fun `RECEIVED sibling of an upgrade charge is not billed as a renewal`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_pair",
+            ),
+        )
+
+        useCase.execute(token, upgradeCommand("evt_upg_conf", ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED))
+        // applyPendingUpgrade limpou pendingUpgradeChargeId, entao o irmao so resolve pela
+        // coluna lastConfirmedPaymentId — antes disso caia em SubscriptionNotReady (503 eterno).
+        val result = useCase.execute(token, upgradeCommand("evt_upg_recv", ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED))
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(Plan.ORGANIZADOR, sub.plan)
+        assertEquals(periodEnd, sub.currentPeriodEnd)
+        assertEquals(listOf("sub_123" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.updates)
+    }
+
+    @Test
     fun `same asaasEventId twice does not reapply effects`() {
         val first = command(eventId = "evt_dup", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED)
         useCase.execute(token, first)
@@ -717,6 +811,19 @@ class ProcessAsaasWebhookTest {
         rawPayload = """{"id":"$eventId","event":"$type"}""",
     )
 
+    /** Cobranca avulsa de upgrade: o payload do Asaas nao traz `payment.subscription`. */
+    private fun upgradeCommand(
+        eventId: String,
+        type: String,
+        paymentId: String = "pay_upgrade_pair",
+    ) = AsaasWebhookCommand(
+        asaasEventId = eventId,
+        eventType = type,
+        asaasSubscriptionId = null,
+        asaasPaymentId = paymentId,
+        rawPayload = """{"id":"$eventId","event":"$type","payment":{"id":"$paymentId"}}""",
+    )
+
     private class InMemorySubscriptionEventStore : SubscriptionEventStore {
         data class Row(
             val id: UUID,
@@ -774,6 +881,7 @@ class ProcessAsaasWebhookTest {
         private val byAsaasId = linkedMapOf<String, Subscription>()
         private val byOwnerId = linkedMapOf<UUID, Subscription>()
         private val byUpgradeCharge = linkedMapOf<String, Subscription>()
+        private val byConfirmedPayment = linkedMapOf<String, Subscription>()
 
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription? =
             byAsaasId[asaasSubscriptionId]
@@ -785,6 +893,9 @@ class ProcessAsaasWebhookTest {
         override fun findByPendingUpgradeChargeId(chargeId: String): Subscription? =
             byUpgradeCharge[chargeId]
 
+        override fun findByLastConfirmedPaymentId(paymentId: String): Subscription? =
+            byConfirmedPayment[paymentId]
+
         override fun lockOwner(ownerUserId: UUID) = Unit
 
         override fun insert(subscription: Subscription) = save(subscription)
@@ -792,9 +903,11 @@ class ProcessAsaasWebhookTest {
         override fun save(subscription: Subscription) {
             byAsaasId.values.removeIf { it.ownerUserId == subscription.ownerUserId }
             byUpgradeCharge.entries.removeIf { it.value.ownerUserId == subscription.ownerUserId }
+            byConfirmedPayment.entries.removeIf { it.value.ownerUserId == subscription.ownerUserId }
             byAsaasId[subscription.asaasSubscriptionId] = subscription
             byOwnerId[subscription.ownerUserId] = subscription
             subscription.pendingUpgradeChargeId?.let { byUpgradeCharge[it] = subscription }
+            subscription.lastConfirmedPaymentId?.let { byConfirmedPayment[it] = subscription }
         }
 
         fun get(asaasSubscriptionId: String): Subscription = byAsaasId.getValue(asaasSubscriptionId)

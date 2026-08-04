@@ -89,6 +89,9 @@ class ProcessAsaasWebhook(
         }
         command.asaasPaymentId?.takeIf { it.isNotBlank() }?.let { payId ->
             subscriptions.findByPendingUpgradeChargeId(payId)?.let { return it }
+            // Cobranca de upgrade ja aplicada limpa pendingUpgradeChargeId, entao o evento irmao
+            // (RECEIVED depois do CONFIRMED) so resolve por aqui — sem isto viraria 503 eterno.
+            subscriptions.findByLastConfirmedPaymentId(payId)?.let { return it }
         }
         return null
     }
@@ -115,42 +118,61 @@ class ProcessAsaasWebhook(
 
     private fun applyDomainEvent(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
         when (command.eventType) {
-            EVENT_PAYMENT_CONFIRMED, EVENT_PAYMENT_OVERDUE -> {
+            in CONFIRMING_EVENT_TYPES -> {
                 if (current.status == SubscriptionStatus.CANCELED) return
-                if (command.eventType == EVENT_PAYMENT_CONFIRMED) {
-                    if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
-                        // canceledAt is set by CancelSubscription immediately; status only flips to
-                        // CANCELED once this same webhook processes SUBSCRIPTION_DELETED. A late
-                        // payment on an abandoned pending-upgrade charge (never canceled at Asaas, no
-                        // gateway call for that) must not be misapplied as an upgrade in that gap.
-                        if (current.canceledAt != null) return
-                        applyPendingUpgrade(current)
-                        return
-                    }
-                    val confirmed = confirmPayment(current, now)
-                    subscriptions.save(confirmed.subscription)
-                    confirmed.fullPriceCentsToPush?.let { cents ->
-                        asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents)
-                    }
-                } else {
-                    if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
-                        // Same canceledAt gap as the CONFIRMED branch above: preserve the mapping so a
-                        // late payment on this charge can still resolve.
-                        if (current.canceledAt != null) return
-                        // Optional upgrade charge expired — clear pending only; base plan stays.
-                        clearPendingUpgrade(current)
-                        return
-                    }
-                    // Asaas doesn't guarantee delivery order — an overdue notice for an invoice due
-                    // before the already-confirmed period end is stale (superseded by a later
-                    // PAYMENT_CONFIRMED) and must not regress the subscription back to PAST_DUE.
-                    if (isStaleOverdue(command, current)) return
-                    subscriptions.save(markPastDue(current, now))
-                }
+                applyConfirmedPayment(command, current, now)
+            }
+            EVENT_PAYMENT_OVERDUE -> {
+                if (current.status == SubscriptionStatus.CANCELED) return
+                applyOverdue(command, current, now)
             }
             EVENT_SUBSCRIPTION_DELETED -> subscriptions.save(cancel(current, now))
         }
     }
+
+    private fun applyConfirmedPayment(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
+        // PAYMENT_CONFIRMED e PAYMENT_RECEIVED descrevem a mesma cobranca paga e os dois chegam,
+        // com asaasEventId distinto — o gate por evento nao colapsa o par. Quem chegar primeiro
+        // aplica; o segundo vira no-op aqui, senao avancaria currentPeriodEnd um ciclo de graca.
+        if (isAlreadyConfirmed(current, command.asaasPaymentId)) return
+        if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+            // canceledAt is set by CancelSubscription immediately; status only flips to
+            // CANCELED once this same webhook processes SUBSCRIPTION_DELETED. A late
+            // payment on an abandoned pending-upgrade charge (never canceled at Asaas, no
+            // gateway call for that) must not be misapplied as an upgrade in that gap.
+            if (current.canceledAt != null) return
+            applyPendingUpgrade(current, command.asaasPaymentId)
+            return
+        }
+        val confirmed = confirmPayment(current, command.asaasPaymentId, now)
+        subscriptions.save(confirmed.subscription)
+        confirmed.fullPriceCentsToPush?.let { cents ->
+            asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents)
+        }
+    }
+
+    private fun applyOverdue(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
+        if (isPendingUpgradePayment(current, command.asaasPaymentId)) {
+            // Same canceledAt gap as the confirming branch above: preserve the mapping so a
+            // late payment on this charge can still resolve.
+            if (current.canceledAt != null) return
+            // Optional upgrade charge expired — clear pending only; base plan stays.
+            clearPendingUpgrade(current)
+            return
+        }
+        // Asaas doesn't guarantee delivery order — an overdue notice for an invoice due
+        // before the already-confirmed period end is stale (superseded by a later
+        // PAYMENT_CONFIRMED) and must not regress the subscription back to PAST_DUE.
+        if (isStaleOverdue(command, current)) return
+        subscriptions.save(markPastDue(current, now))
+    }
+
+    /**
+     * Cobranca sem id no payload nao tem como ser deduplicada — aplica, que e exatamente o
+     * comportamento que existia antes de PAYMENT_RECEIVED virar evento de dominio.
+     */
+    private fun isAlreadyConfirmed(current: Subscription, paymentId: String?): Boolean =
+        paymentId != null && paymentId == current.lastConfirmedPaymentId
 
     private fun isStaleOverdue(command: AsaasWebhookCommand, current: Subscription): Boolean {
         val dueDate = paymentDueDate(command.rawPayload) ?: return false
@@ -172,7 +194,7 @@ class ProcessAsaasWebhook(
         return paymentId != null && paymentId == pendingCharge
     }
 
-    private fun applyPendingUpgrade(current: Subscription) {
+    private fun applyPendingUpgrade(current: Subscription, paymentId: String?) {
         val target = current.pendingUpgradePlan ?: return
         val full = target.priceCents(current.cycle)
         val recurring = recurringPriceWithCoupon(full, current)
@@ -184,6 +206,9 @@ class ProcessAsaasWebhook(
                 pendingUpgradeChargeId = null,
                 pendingPlan = null,
                 pendingPlanEffectiveAt = null,
+                // Sem isto o evento irmao (RECEIVED apos CONFIRMED) nao casaria mais com
+                // pendingUpgradeChargeId, ja limpo acima, e seria cobrado como renovacao.
+                lastConfirmedPaymentId = paymentId ?: current.lastConfirmedPaymentId,
             ),
         )
     }
@@ -211,7 +236,7 @@ class ProcessAsaasWebhook(
         val fullPriceCentsToPush: Long?,
     )
 
-    private fun confirmPayment(current: Subscription, now: Instant): ConfirmOutcome {
+    private fun confirmPayment(current: Subscription, paymentId: String?, now: Instant): ConfirmOutcome {
         // First confirmation keeps the period set at create; renewals advance one cycle.
         val periodEnd = if (current.firstConfirmedAt == null) {
             current.currentPeriodEnd
@@ -223,6 +248,7 @@ class ProcessAsaasWebhook(
             currentPeriodEnd = periodEnd,
             pastDueSince = null,
             firstConfirmedAt = current.firstConfirmedAt ?: now,
+            lastConfirmedPaymentId = paymentId ?: current.lastConfirmedPaymentId,
         )
 
         // Any recurring PAYMENT_CONFIRMED while a downgrade is scheduled is the renewal that
@@ -265,12 +291,23 @@ class ProcessAsaasWebhook(
 
     companion object {
         const val EVENT_PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED"
+
+        /**
+         * Boleto/PIX liquidam com RECEIVED e nem sempre mandam CONFIRMED — tratar so CONFIRMED
+         * deixaria assinatura paga presa em PAST_DUE. Os dois confirmam; [isAlreadyConfirmed]
+         * garante que o par nao seja aplicado duas vezes.
+         */
+        const val EVENT_PAYMENT_RECEIVED = "PAYMENT_RECEIVED"
         const val EVENT_PAYMENT_OVERDUE = "PAYMENT_OVERDUE"
         const val EVENT_SUBSCRIPTION_DELETED = "SUBSCRIPTION_DELETED"
         const val WEBHOOK_TOKEN_HEADER = "asaas-access-token"
 
-        private val DOMAIN_EVENT_TYPES = setOf(
+        private val CONFIRMING_EVENT_TYPES = setOf(
             EVENT_PAYMENT_CONFIRMED,
+            EVENT_PAYMENT_RECEIVED,
+        )
+
+        private val DOMAIN_EVENT_TYPES = CONFIRMING_EVENT_TYPES + setOf(
             EVENT_PAYMENT_OVERDUE,
             EVENT_SUBSCRIPTION_DELETED,
         )

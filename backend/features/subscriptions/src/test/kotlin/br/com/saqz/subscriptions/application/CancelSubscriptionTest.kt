@@ -150,6 +150,7 @@ class CancelSubscriptionTest {
         }
 
         override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun findByLastConfirmedPaymentId(paymentId: String) = null
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = save(subscription)
         override fun save(subscription: Subscription) {

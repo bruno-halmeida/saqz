@@ -119,6 +119,7 @@ class SubscriptionCommandControllerTest {
         override fun findByOwnerUserId(ownerUserId: UUID) = existing
         override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = existing
         override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun findByLastConfirmedPaymentId(paymentId: String) = null
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = error("unused")
         override fun save(subscription: Subscription) = error("unused")
@@ -129,6 +130,7 @@ class SubscriptionCommandControllerTest {
         override fun findByOwnerUserId(ownerUserId: UUID) = error("unused")
         override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = error("unused")
         override fun findByPendingUpgradeChargeId(chargeId: String) = error("unused")
+        override fun findByLastConfirmedPaymentId(paymentId: String) = error("unused")
         override fun lockOwner(ownerUserId: UUID) = error("unused")
         override fun insert(subscription: Subscription) = error("unused")
         override fun save(subscription: Subscription) = error("unused")

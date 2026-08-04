@@ -284,6 +284,9 @@ class ChangePlanTest {
         override fun findByPendingUpgradeChargeId(chargeId: String) =
             byOwner.values.firstOrNull { it.pendingUpgradeChargeId == chargeId }
 
+        override fun findByLastConfirmedPaymentId(paymentId: String) =
+            byOwner.values.firstOrNull { it.lastConfirmedPaymentId == paymentId }
+
         override fun lockOwner(ownerUserId: UUID) = Unit
         override fun insert(subscription: Subscription) = save(subscription)
         override fun save(subscription: Subscription) {

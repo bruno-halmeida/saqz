@@ -28,6 +28,12 @@ data class Subscription(
     /** Upgrade awaiting one-off charge confirmation (webhook applies plan). */
     val pendingUpgradePlan: Plan? = null,
     val pendingUpgradeChargeId: String? = null,
+    /**
+     * Última cobrança cujo pagamento já foi aplicado. Asaas manda PAYMENT_CONFIRMED e
+     * PAYMENT_RECEIVED para a mesma cobrança com `asaasEventId` diferente, então a trava por
+     * evento não colapsa o par — sem isto o segundo evento avançaria `currentPeriodEnd` de novo.
+     */
+    val lastConfirmedPaymentId: String? = null,
 ) {
     /**
      * Espelho em Kotlin do predicado de `JdbcSubscriptionPlanLookup.findEntitlingPlan` —

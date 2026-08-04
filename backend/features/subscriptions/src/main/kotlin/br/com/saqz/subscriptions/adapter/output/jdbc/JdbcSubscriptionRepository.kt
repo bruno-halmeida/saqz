@@ -72,6 +72,20 @@ class JdbcSubscriptionRepository(
             .optional()
             .orElse(null)
 
+    override fun findByLastConfirmedPaymentId(paymentId: String): Subscription? =
+        jdbc.sql(
+            """
+            SELECT $COLUMNS
+            FROM subscriptions
+            WHERE last_confirmed_payment_id = :paymentId
+            FOR UPDATE
+            """.trimIndent(),
+        )
+            .param("paymentId", paymentId)
+            .query { rs, _ -> mapSubscription(rs) }
+            .optional()
+            .orElse(null)
+
     override fun lockOwner(ownerUserId: UUID) {
         val locked = jdbc.sql(
             "SELECT id FROM access_users WHERE id = :ownerUserId FOR UPDATE",
@@ -91,13 +105,13 @@ class JdbcSubscriptionRepository(
                 owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
                 billing_type, current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
                 coupon_id, coupon_cycles_remaining, past_due_since, first_confirmed_at,
-                pending_upgrade_plan, pending_upgrade_charge_id,
+                pending_upgrade_plan, pending_upgrade_charge_id, last_confirmed_payment_id,
                 created_at, updated_at
             ) VALUES (
                 :ownerUserId, :plan, :cycle, :status, :asaasCustomerId, :asaasSubscriptionId,
                 :billingType, :currentPeriodEnd, :canceledAt, :pendingPlan, :pendingPlanEffectiveAt,
                 :couponId, :couponCyclesRemaining, :pastDueSince, :firstConfirmedAt,
-                :pendingUpgradePlan, :pendingUpgradeChargeId,
+                :pendingUpgradePlan, :pendingUpgradeChargeId, :lastConfirmedPaymentId,
                 :createdAt, :updatedAt
             )
             """.trimIndent(),
@@ -129,6 +143,7 @@ class JdbcSubscriptionRepository(
                 first_confirmed_at = :firstConfirmedAt,
                 pending_upgrade_plan = :pendingUpgradePlan,
                 pending_upgrade_charge_id = :pendingUpgradeChargeId,
+                last_confirmed_payment_id = :lastConfirmedPaymentId,
                 updated_at = :updatedAt
             WHERE owner_user_id = :ownerUserId
             """.trimIndent(),
@@ -159,6 +174,7 @@ class JdbcSubscriptionRepository(
             .param("firstConfirmedAt", subscription.firstConfirmedAt?.let(Timestamp::from))
             .param("pendingUpgradePlan", subscription.pendingUpgradePlan?.name)
             .param("pendingUpgradeChargeId", subscription.pendingUpgradeChargeId)
+            .param("lastConfirmedPaymentId", subscription.lastConfirmedPaymentId)
 
     private fun mapSubscription(rs: java.sql.ResultSet): Subscription = Subscription(
         ownerUserId = rs.getObject("owner_user_id", UUID::class.java),
@@ -178,6 +194,7 @@ class JdbcSubscriptionRepository(
         firstConfirmedAt = rs.getTimestamp("first_confirmed_at")?.toInstant(),
         pendingUpgradePlan = rs.getString("pending_upgrade_plan")?.let(Plan::valueOf),
         pendingUpgradeChargeId = rs.getString("pending_upgrade_charge_id"),
+        lastConfirmedPaymentId = rs.getString("last_confirmed_payment_id"),
     )
 
     companion object {
@@ -185,7 +202,7 @@ class JdbcSubscriptionRepository(
             owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id,
             billing_type, current_period_end, canceled_at, pending_plan, pending_plan_effective_at,
             coupon_id, coupon_cycles_remaining, past_due_since, first_confirmed_at,
-            pending_upgrade_plan, pending_upgrade_charge_id
+            pending_upgrade_plan, pending_upgrade_charge_id, last_confirmed_payment_id
         """
     }
 }
