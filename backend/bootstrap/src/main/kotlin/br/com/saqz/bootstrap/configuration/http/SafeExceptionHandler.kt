@@ -40,6 +40,7 @@ import br.com.saqz.groups.adapter.input.http.GameScheduleConflictException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
@@ -228,6 +229,11 @@ class SafeExceptionHandler(
             ErrorCode.GAME_SCHEDULE_CONFLICT,
             conflictGameId = failure.gameId.toString(),
         )
+    }
+
+    @ExceptionHandler(GameScheduleConflictWriteException::class)
+    fun gameScheduleConflictWrite(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.GAME_SCHEDULE_CONFLICT)
     }
 
     @ExceptionHandler(GameNotFoundException::class)

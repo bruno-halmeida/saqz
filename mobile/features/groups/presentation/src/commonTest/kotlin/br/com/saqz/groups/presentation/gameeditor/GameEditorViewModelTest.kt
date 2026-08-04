@@ -272,6 +272,41 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `retry does not overwrite a concurrent published edit`() = runTest {
+        val draft = sampleVersionedGame(
+            sampleGame().copy(status = GameStatus.Draft),
+        ).copy(version = GameVersionToken("etag-draft"))
+        val published = draft.copy(
+            version = GameVersionToken("etag-published"),
+            game = draft.game.copy(status = GameStatus.Published),
+        )
+        val collaboratorEdit = published.copy(
+            version = GameVersionToken("etag-collaborator"),
+            game = published.game.copy(title = "Título do outro organizador"),
+        )
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(collaboratorEdit),
+            createResult = SaqzResult.Success(draft),
+            lifecycleResults = ArrayDeque(
+                listOf(SaqzResult.Failure(GameError.Data(DataError.Connectivity))),
+            ),
+        )
+        val vm = viewModel(gameGateway = gateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        vm.onIntent(GameEditorIntent.UpdateNotes("Nota depois do timeout"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertEquals(1, gateway.readCalls)
+        assertEquals(0, gateway.editCalls)
+        assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
+        assertTrue(vm.state.value.saveFailed)
+        assertEquals(GroupUiError.Conflict, vm.state.value.error)
+    }
+
+    @Test
     fun `pending draft identity survives view model recreation`() = runTest {
         val savedState = SavedStateHandle()
         val draft = sampleVersionedGame(

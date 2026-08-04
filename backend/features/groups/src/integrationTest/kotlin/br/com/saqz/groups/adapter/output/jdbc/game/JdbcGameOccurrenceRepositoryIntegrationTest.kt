@@ -12,6 +12,9 @@ import br.com.saqz.groups.application.game.ListGames
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.CreateGameInput
 import br.com.saqz.groups.domain.game.Game
+import br.com.saqz.groups.domain.game.GameDefaultSnapshotFactory
+import br.com.saqz.groups.domain.game.GameDraftValidation
+import br.com.saqz.groups.domain.game.GameDraftValidator
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameDraftInput
 import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
@@ -31,6 +34,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -200,13 +206,46 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertEquals(2500, stored?.snapshot?.gameFeeCents)
     }
 
-    @Test fun `list ordering is resolved start then id`() {
+    @Test fun `list ordering is resolved by start`() {
         val fixture = fixture()
         val later = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000002"), START.plusSeconds(3600))
         val first = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000003"), START)
-        val second = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000004"), START)
+        val second = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000004"), START.plusSeconds(60))
 
         assertEquals(listOf(first.id, second.id, later.id), fixture.repository.list(fixture.group).map(Game::id))
+    }
+
+    @Test fun `concurrent inserts at one start return one schedule conflict`() {
+        val fixture = fixture()
+        val snapshot = assertIs<GameDraftValidation.Valid>(
+            GameDraftValidator.validate(
+                GameDefaultSnapshotFactory.copy(
+                    requireNotNull(fixture.repository.creationContext(fixture.owner, fixture.group)).defaults,
+                    createInput(),
+                ),
+            ),
+        ).snapshot
+        val games = listOf(
+            Game(UUID.randomUUID(), fixture.group, snapshot),
+            Game(UUID.randomUUID(), fixture.group, snapshot),
+        )
+        val barrier = CyclicBarrier(games.size)
+        val executor = Executors.newFixedThreadPool(games.size)
+        try {
+            val results = games.map { game ->
+                executor.submit<GameWriteResult> {
+                    barrier.await()
+                    fixture.repository.create(game)
+                }
+            }.map { it.get(10, TimeUnit.SECONDS) }
+
+            assertEquals(1, results.count { it is GameWriteResult.Saved })
+            val conflict = assertIs<GameWriteResult.ScheduleConflict>(results.single { it is GameWriteResult.ScheduleConflict })
+            assertTrue(games.any { it.id == conflict.gameId })
+            assertEquals(1, int("SELECT count(*) FROM games"))
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     private fun create(fixture: Fixture, id: UUID = UUID.randomUUID(), start: Instant = START): Game {

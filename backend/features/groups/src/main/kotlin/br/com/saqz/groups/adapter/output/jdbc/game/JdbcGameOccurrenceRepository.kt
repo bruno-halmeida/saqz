@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.output.jdbc.game
 import br.com.saqz.groups.application.game.GameCommandContext
 import br.com.saqz.groups.application.game.GameCommandRepository
 import br.com.saqz.groups.application.game.GameCreationContext
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.GameQueryRepository
 import br.com.saqz.groups.application.game.GameWriteResult
 import br.com.saqz.groups.domain.GroupRole
@@ -19,6 +20,7 @@ import java.sql.Timestamp
 import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
+import org.springframework.dao.DuplicateKeyException
 
 class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandRepository, GameQueryRepository {
     private val jdbc = JdbcClient.create(dataSource)
@@ -73,14 +75,21 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
 
     override fun create(game: Game): GameWriteResult {
         val inserted = bind(jdbc.sql(INSERT_GAME), game).update()
-        return if (inserted == 1) GameWriteResult.Saved(game)
-        else find(game.groupId, game.id)?.let(GameWriteResult::Saved) ?: GameWriteResult.NotFound
+        if (inserted == 1) return GameWriteResult.Saved(game)
+        find(game.groupId, game.id)?.let { return GameWriteResult.Saved(it) }
+        return recurringConflict(game.groupId, game.snapshot.startsAt, excludingGameId = null)
+            ?.let(GameWriteResult::ScheduleConflict)
+            ?: GameWriteResult.NotFound
     }
 
     override fun update(game: Game, expectedVersion: Long): GameWriteResult {
-        val updated = bind(jdbc.sql(UPDATE_GAME), game)
-            .param("expectedVersion", expectedVersion)
-            .update()
+        val updated = try {
+            bind(jdbc.sql(UPDATE_GAME), game)
+                .param("expectedVersion", expectedVersion)
+                .update()
+        } catch (_: DuplicateKeyException) {
+            throw GameScheduleConflictWriteException()
+        }
         if (updated == 0) {
             return if (find(game.groupId, game.id) == null) GameWriteResult.NotFound else GameWriteResult.VersionConflict
         }
@@ -195,7 +204,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 :status, :detachedFromSeries, now(), now()
             FROM access_groups
             WHERE id = :groupId AND deleted_at IS NULL
-            ON CONFLICT (id) DO NOTHING
+            ON CONFLICT DO NOTHING
         """
 
         const val RECURRING_CONFLICT = """
@@ -203,7 +212,6 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             FROM games
             WHERE group_id = :groupId
               AND starts_at = :startsAt
-              AND series_id IS NOT NULL
               AND status <> 'CANCELLED'
             ORDER BY id
             LIMIT 1
@@ -215,7 +223,6 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             WHERE group_id = :groupId
               AND starts_at = :startsAt
               AND id <> :excludingGameId
-              AND series_id IS NOT NULL
               AND status <> 'CANCELLED'
             ORDER BY id
             LIMIT 1

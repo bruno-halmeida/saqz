@@ -20,9 +20,12 @@ data class GameCommandContext(val role: GroupRole?, val game: Game)
 
 sealed interface GameWriteResult {
     data class Saved(val game: Game) : GameWriteResult
+    data class ScheduleConflict(val gameId: UUID) : GameWriteResult
     data object VersionConflict : GameWriteResult
     data object NotFound : GameWriteResult
 }
+
+class GameScheduleConflictWriteException : RuntimeException()
 
 interface GameCommandRepository {
     fun creationContext(actor: UUID, groupId: UUID): GameCreationContext?
@@ -107,6 +110,7 @@ class EditGame(
                 sideEffects.apply(write.game, actor, setOf(GameSideEffect.SCHEDULE_CHANGED))
                 GameCommandResult.Success(write.game)
             }
+            is GameWriteResult.ScheduleConflict -> GameCommandResult.ScheduleConflict(write.gameId)
             GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict
             GameWriteResult.NotFound -> GameCommandResult.GameNotFound
         }
@@ -139,6 +143,7 @@ class ChangeGameLifecycle(
                     sideEffects.apply(write.game, actor, mutation.effects())
                     GameCommandResult.Success(write.game)
                 }
+                is GameWriteResult.ScheduleConflict -> GameCommandResult.ScheduleConflict(write.gameId)
                 GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict
                 GameWriteResult.NotFound -> GameCommandResult.GameNotFound
             }
@@ -148,6 +153,7 @@ class ChangeGameLifecycle(
 
 private fun GameWriteResult.toResult(): GameCommandResult = when (this) {
     is GameWriteResult.Saved -> GameCommandResult.Success(game)
+    is GameWriteResult.ScheduleConflict -> GameCommandResult.ScheduleConflict(gameId)
     GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict
     GameWriteResult.NotFound -> GameCommandResult.GroupNotFound
 }

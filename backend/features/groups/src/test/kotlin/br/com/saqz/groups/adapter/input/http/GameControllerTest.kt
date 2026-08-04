@@ -28,6 +28,7 @@ class GameControllerTest {
     }
 
     @Test fun `create returns 201 quoted ETag and server state`() { val response = controller.create(ID, "$group", request()); assertEquals(201, response.statusCode.value()); assertEquals("\"1\"", response.headers.eTag); assertEquals("DRAFT", response.body!!.status); assertEquals(0, response.body!!.confirmedCount) }
+    @Test fun `persisted schedule conflict is exposed as the schedule conflict exception`() { val existing = UUID.randomUUID(); repository.writeResult = GameWriteResult.ScheduleConflict(existing); val failure = assertFailsWith<GameScheduleConflictException> { controller.create(ID, "$group", request()) }; assertEquals(existing, failure.gameId) }
     @Test fun `create retry with same request id returns the authoritative original`() { val id=UUID.randomUUID(); controller.create(ID,"$group",request(id)); val replay=controller.create(ID,"$group",request(id).copy(title="Different")); assertEquals(1,repository.games.size); assertEquals("Treino semanal",replay.body!!.title) }
     @Test fun `create requires request id`() { assertFailsWith<InvalidGroupRequestException> { controller.create(ID,"$group",request().copy(requestId=null)) } }
     @Test fun `create reports all invalid fields`() { val failure=assertFailsWith<InvalidGroupRequestException>{ controller.create(ID,"$group",request().copy(title="x",durationMinutes=2,capacity=1)) }; assertTrue(failure.fieldErrors.keys.containsAll(listOf("title","durationMinutes","capacity"))) }
@@ -54,11 +55,11 @@ class GameControllerTest {
     private fun snapshot() = GameSnapshot("Treino semanal",GameVenueSnapshot(null,"Arena Central","Rua das Flores 100","Quadra 2"),DATE,LocalTime.of(19,30),br.com.saqz.groups.domain.IanaTimeZone.from("America/Sao_Paulo"),START,90,24,START.minusSeconds(10800),2500,"Levar bola")
 
     private inner class MemoryRepository : GameCommandRepository, GameQueryRepository {
-        var role: GroupRole?=GroupRole.OWNER; val games=linkedMapOf<UUID,Game>()
+        var role: GroupRole?=GroupRole.OWNER; var writeResult: GameWriteResult?=null; val games=linkedMapOf<UUID,Game>()
         override fun creationContext(actor:UUID,groupId:UUID)=if(groupId==group) GameCreationContext(role,GroupGameDefaults()) else null
         override fun recurringConflict(groupId:UUID,startsAt:Instant,excludingGameId:UUID?):UUID?=null
         override fun find(actor:UUID,groupId:UUID,gameId:UUID)=if(groupId==group&&role!=null) games[gameId]?.let{GameCommandContext(role,it)} else null
-        override fun create(game:Game):GameWriteResult { val stored=games.getOrPut(game.id){game}; return GameWriteResult.Saved(stored) }
+        override fun create(game:Game):GameWriteResult { writeResult?.let { return it }; val stored=games.getOrPut(game.id){game}; return GameWriteResult.Saved(stored) }
         override fun update(game:Game,expectedVersion:Long):GameWriteResult { val old=games[game.id]?:return GameWriteResult.NotFound; if(old.version!=expectedVersion)return GameWriteResult.VersionConflict; val saved=game.copy(version=expectedVersion+1);games[game.id]=saved;return GameWriteResult.Saved(saved) }
         override fun role(actor:UUID,groupId:UUID)=if(groupId==group) role else null
         override fun list(groupId:UUID)=if(groupId==group) games.values.toList() else emptyList()

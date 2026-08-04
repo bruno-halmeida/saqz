@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap
 
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
+import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -106,6 +107,13 @@ class SafeDiagnosticsIntegrationTest {
         val response = get("/test/invalid-receipt-pagination", "pagination-secret-token")
 
         assertProblem(response, 400, "VALIDATION_FAILED")
+    }
+
+    @Test
+    fun `database game schedule conflict has a 409 problem`() {
+        verifier.result = TokenVerification.Verified(RequestIdentity("schedule-conflict-subject"))
+
+        assertProblem(get("/test/game-schedule-conflict", "schedule-conflict-token"), 409, "GAME_SCHEDULE_CONFLICT")
     }
 
     @Test
@@ -309,6 +317,9 @@ class SafeDiagnosticsIntegrationTest {
 
         @GetMapping("/test/unexpected")
         fun fail(): Nothing = error("FirebaseAuthException private-key-content service-account-content")
+
+        @GetMapping("/test/game-schedule-conflict")
+        fun gameScheduleConflict(): Nothing = throw GameScheduleConflictWriteException()
 
         @GetMapping("/test/invalid-receipt-pagination")
         fun invalidReceiptPagination(): Nothing = throw InvalidReceiptPaginationException()
