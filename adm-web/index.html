@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Saqz Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="assets/react.production.min.js"></script>
+<script src="assets/react-dom.production.min.js"></script>
+<script>window.__resources = {};</script>
+<script src="assets/dc-runtime.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>/* Saqz uses Inter across product and communication.
+   Variable font: opsz 14–32, wght 100–900. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  font-optical-sizing: auto;
+  src: url("assets/inter-var.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  font-optical-sizing: auto;
+  src: url("assets/inter-var-italic.ttf") format("truetype");
+}
+</style>
+<style>:root {
+  /* ---- Brand ---- */
+  --saqz-blue: #0638DF;          /* Marca, CTA, estado ativo */
+  --saqz-blue-pressed: #052BB3;  /* Estado :active/pressed do azul */
+  --saqz-blue-tint: #F4F8FB;     /* Superfície azulada suave (= ice) */
+  --saqz-lime: #C7F300;          /* Microacento, energia */
+  --saqz-navy: #0E1738;          /* Títulos e texto principal */
+
+  /* ---- Surfaces ---- */
+  --saqz-white: #FFFFFF;         /* Superfície de card */
+  --saqz-canvas: #F5F5F7;        /* Fundo geral do app */
+  --saqz-ice: #F4F8FB;           /* Superfície suave / avatar bg */
+
+  /* ---- Lines & secondary text ---- */
+  --saqz-border: #D8DDE8;        /* Divisores e contornos */
+  --saqz-muted: #667085;         /* Texto secundário */
+  --saqz-placeholder: #98A2B3;   /* Placeholder de input */
+  --saqz-disabled-bg: #C9CED8;   /* Fundo de botão desabilitado */
+  --saqz-disabled-fg: #7A8291;   /* Texto de botão desabilitado */
+
+  /* ---- Feedback ---- */
+  --saqz-success: #17B26A;
+  --saqz-warning: #F5A623;
+  --saqz-error: #E5484D;
+
+  /* ---- Semantic aliases ---- */
+  --color-brand: var(--saqz-blue);
+  --color-accent: var(--saqz-lime);
+  --text-strong: var(--saqz-navy);
+  --text-body: var(--saqz-navy);
+  --text-muted: var(--saqz-muted);
+  --text-on-brand: var(--saqz-white);
+  --surface-page: var(--saqz-canvas);
+  --surface-card: var(--saqz-white);
+  --surface-soft: var(--saqz-ice);
+  --border-default: var(--saqz-border);
+
+  /* Translucent brand fills used for chips / focus rings */
+  --brand-fill-08: rgba(6, 56, 223, 0.08);
+  --brand-fill-11: rgba(6, 56, 223, 0.11);
+  --lime-fill-32: rgba(199, 243, 0, 0.32);
+  --error-fill-10: rgba(229, 72, 77, 0.10);
+  --scrim: rgba(14, 23, 56, 0.46);
+}
+</style>
+<style>:root {
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Type scale — size / line-height / weight. Tight tracking on large sizes. */
+  --text-display-size: 56px;   --text-display-line: 60px;  --text-display-weight: 800;  --text-display-track: -0.03em;
+  --text-h1-size: 40px;        --text-h1-line: 44px;       --text-h1-weight: 700;       --text-h1-track: -0.035em;
+  --text-h2-size: 28px;        --text-h2-line: 34px;       --text-h2-weight: 700;       --text-h2-track: -0.02em;
+  --text-h3-size: 21px;        --text-h3-line: 26px;       --text-h3-weight: 600;       --text-h3-track: -0.01em;
+  --text-title-size: 17px;     --text-title-line: 22px;    --text-title-weight: 600;
+  --text-body-size: 17px;      --text-body-line: 25px;     --text-body-weight: 400;
+  --text-support-size: 14px;   --text-support-line: 20px;  --text-support-weight: 400;
+  --text-label-size: 16px;     --text-label-line: 20px;    --text-label-weight: 600;
+  --text-caption-size: 12px;   --text-caption-line: 16px;  --text-caption-weight: 400;
+  --text-eyebrow-track: 0.08em;
+
+  /* Mobile (app) scale — from the Compose SaqzTypography */
+  --m-headline-size: 32px;  --m-headline-line: 36px;  --m-headline-weight: 700;  --m-headline-track: -0.03em;
+  --m-title-size: 22px;     --m-title-line: 27px;     --m-title-weight: 700;     --m-title-track: -0.02em;
+  --m-subtitle-size: 18px;  --m-subtitle-line: 23px;  --m-subtitle-weight: 600;
+  --m-body-size: 16px;      --m-body-line: 23px;      --m-body-weight: 400;
+  --m-support-size: 14px;   --m-support-line: 20px;   --m-support-weight: 400;
+  --m-label-size: 15px;     --m-label-line: 18px;     --m-label-weight: 600;
+  --m-caption-size: 12px;   --m-caption-line: 16px;   --m-caption-weight: 400;
+  --m-nav-size: 11px;       --m-nav-line: 14px;       --m-nav-weight: 600;
+}
+</style>
+<style>:root {
+  /* 4dp base grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Layout conventions */
+  --page-margin: 16px;      /* Mobile side margin */
+  --section-gap: 24px;      /* Gap between sections (24–32) */
+  --block-gap: 12px;        /* Internal gap inside a block */
+  --touch-min: 44px;        /* Minimum touch target */
+  --bottom-nav-height: 76px;
+}
+</style>
+<style>:root {
+  --radius-input: 10px;
+  --radius-card: 12px;
+  --radius-large: 20px;   /* Compose "large" shape */
+  --radius-sheet: 28px;   /* Bottom sheet top corners */
+  --radius-pill: 999px;   /* Buttons, chips, nav indicator */
+
+  /* Shadows — discreet and rare in Saqz. */
+  --shadow-none: none;
+  --shadow-device: 0 24px 70px rgba(14, 23, 56, 0.14);   /* Phone frame / large float */
+  --shadow-sheet: 0 -12px 40px rgba(14, 23, 56, 0.12);   /* Bottom sheet lift */
+  --shadow-toast: 0 12px 40px rgba(14, 23, 56, 0.20);
+}
+</style>
+<style>/* Saqz uses Inter across product and communication.
+   Variable font: opsz 14–32, wght 100–900. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  font-optical-sizing: auto;
+  src: url("assets/inter-var.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  font-optical-sizing: auto;
+  src: url("assets/inter-var-italic.ttf") format("truetype");
+}
+
+:root {
+  /* ---- Brand ---- */
+  --saqz-blue: #0638DF;          /* Marca, CTA, estado ativo */
+  --saqz-blue-pressed: #052BB3;  /* Estado :active/pressed do azul */
+  --saqz-blue-tint: #F4F8FB;     /* Superfície azulada suave (= ice) */
+  --saqz-lime: #C7F300;          /* Microacento, energia */
+  --saqz-navy: #0E1738;          /* Títulos e texto principal */
+
+  /* ---- Surfaces ---- */
+  --saqz-white: #FFFFFF;         /* Superfície de card */
+  --saqz-canvas: #F5F5F7;        /* Fundo geral do app */
+  --saqz-ice: #F4F8FB;           /* Superfície suave / avatar bg */
+
+  /* ---- Lines & secondary text ---- */
+  --saqz-border: #D8DDE8;        /* Divisores e contornos */
+  --saqz-muted: #667085;         /* Texto secundário */
+  --saqz-placeholder: #98A2B3;   /* Placeholder de input */
+  --saqz-disabled-bg: #C9CED8;   /* Fundo de botão desabilitado */
+  --saqz-disabled-fg: #7A8291;   /* Texto de botão desabilitado */
+
+  /* ---- Feedback ---- */
+  --saqz-success: #17B26A;
+  --saqz-warning: #F5A623;
+  --saqz-error: #E5484D;
+
+  /* ---- Semantic aliases ---- */
+  --color-brand: var(--saqz-blue);
+  --color-accent: var(--saqz-lime);
+  --text-strong: var(--saqz-navy);
+  --text-body: var(--saqz-navy);
+  --text-muted: var(--saqz-muted);
+  --text-on-brand: var(--saqz-white);
+  --surface-page: var(--saqz-canvas);
+  --surface-card: var(--saqz-white);
+  --surface-soft: var(--saqz-ice);
+  --border-default: var(--saqz-border);
+
+  /* Translucent brand fills used for chips / focus rings */
+  --brand-fill-08: rgba(6, 56, 223, 0.08);
+  --brand-fill-11: rgba(6, 56, 223, 0.11);
+  --lime-fill-32: rgba(199, 243, 0, 0.32);
+  --error-fill-10: rgba(229, 72, 77, 0.10);
+  --scrim: rgba(14, 23, 56, 0.46);
+}
+
+:root {
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Type scale — size / line-height / weight. Tight tracking on large sizes. */
+  --text-display-size: 56px;   --text-display-line: 60px;  --text-display-weight: 800;  --text-display-track: -0.03em;
+  --text-h1-size: 40px;        --text-h1-line: 44px;       --text-h1-weight: 700;       --text-h1-track: -0.035em;
+  --text-h2-size: 28px;        --text-h2-line: 34px;       --text-h2-weight: 700;       --text-h2-track: -0.02em;
+  --text-h3-size: 21px;        --text-h3-line: 26px;       --text-h3-weight: 600;       --text-h3-track: -0.01em;
+  --text-title-size: 17px;     --text-title-line: 22px;    --text-title-weight: 600;
+  --text-body-size: 17px;      --text-body-line: 25px;     --text-body-weight: 400;
+  --text-support-size: 14px;   --text-support-line: 20px;  --text-support-weight: 400;
+  --text-label-size: 16px;     --text-label-line: 20px;    --text-label-weight: 600;
+  --text-caption-size: 12px;   --text-caption-line: 16px;  --text-caption-weight: 400;
+  --text-eyebrow-track: 0.08em;
+
+  /* Mobile (app) scale — from the Compose SaqzTypography */
+  --m-headline-size: 32px;  --m-headline-line: 36px;  --m-headline-weight: 700;  --m-headline-track: -0.03em;
+  --m-title-size: 22px;     --m-title-line: 27px;     --m-title-weight: 700;     --m-title-track: -0.02em;
+  --m-subtitle-size: 18px;  --m-subtitle-line: 23px;  --m-subtitle-weight: 600;
+  --m-body-size: 16px;      --m-body-line: 23px;      --m-body-weight: 400;
+  --m-support-size: 14px;   --m-support-line: 20px;   --m-support-weight: 400;
+  --m-label-size: 15px;     --m-label-line: 18px;     --m-label-weight: 600;
+  --m-caption-size: 12px;   --m-caption-line: 16px;   --m-caption-weight: 400;
+  --m-nav-size: 11px;       --m-nav-line: 14px;       --m-nav-weight: 600;
+}
+
+:root {
+  /* 4dp base grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Layout conventions */
+  --page-margin: 16px;      /* Mobile side margin */
+  --section-gap: 24px;      /* Gap between sections (24–32) */
+  --block-gap: 12px;        /* Internal gap inside a block */
+  --touch-min: 44px;        /* Minimum touch target */
+  --bottom-nav-height: 76px;
+}
+
+:root {
+  --radius-input: 10px;
+  --radius-card: 12px;
+  --radius-large: 20px;   /* Compose "large" shape */
+  --radius-sheet: 28px;   /* Bottom sheet top corners */
+  --radius-pill: 999px;   /* Buttons, chips, nav indicator */
+
+  /* Shadows — discreet and rare in Saqz. */
+  --shadow-none: none;
+  --shadow-device: 0 24px 70px rgba(14, 23, 56, 0.14);   /* Phone frame / large float */
+  --shadow-sheet: 0 -12px 40px rgba(14, 23, 56, 0.12);   /* Bottom sheet lift */
+  --shadow-toast: 0 12px 40px rgba(14, 23, 56, 0.20);
+}
+
+</style>
+<script src="assets/saqz-design-system.js"></script>
+<style>/* fallback */
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("assets/material-symbols-rounded.woff2") format('woff2');
+}
+
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+</style>
+<style>
+body{margin:0;background:#F5F5F7}
+.msr{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;letter-spacing:normal;display:inline-block;white-space:nowrap;user-select:none;font-variation-settings:'FILL' 0,'wght' 400,'opsz' 24}
+a{color:#0638DF}a:hover{color:#052BB3}
+select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}
+</style>
+</helmet>
+<div style="width:100vw;height:100vh;min-height:740px;display:grid;grid-template-columns:64px 1fr;background:var(--saqz-canvas);font-family:var(--font-ui);color:var(--saqz-navy);box-sizing:border-box;overflow:hidden">
+  <aside style="background:var(--saqz-white);border-right:1px solid var(--saqz-border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;box-sizing:border-box">
+    <img src="assets/logo.png" alt="Saqz" style="width:30px;height:30px;object-fit:contain;margin-bottom:12px">
+    <button type="button" aria-label="Visão geral" title="Visão geral" sc-camel-on-click="{{ goVis }}" style="{{ sVis }}"><span style="{{ bVis }}"></span><span class="msr" style="font-size:20px">monitoring</span></button>
+    <button type="button" aria-label="Usuários" title="Usuários" sc-camel-on-click="{{ goUsu }}" style="{{ sUsu }}"><span style="{{ bUsu }}"></span><span class="msr" style="font-size:20px">group</span></button>
+    <button type="button" aria-label="Grupos" title="Grupos" sc-camel-on-click="{{ goGru }}" style="{{ sGru }}"><span style="{{ bGru }}"></span><span class="msr" style="font-size:20px">sports_volleyball</span></button>
+    <button type="button" aria-label="Receita" title="Receita" sc-camel-on-click="{{ goRec }}" style="{{ sRec }}"><span style="{{ bRec }}"></span><span class="msr" style="font-size:20px">payments</span></button>
+    <button type="button" aria-label="Cupons" title="Cupons" sc-camel-on-click="{{ goCup }}" style="{{ sCup }}"><span style="{{ bCup }}"></span><span class="msr" style="font-size:20px">sell</span></button>
+    <button type="button" aria-label="Suporte" title="Suporte" sc-camel-on-click="{{ goSup }}" style="{{ sSup }}"><span style="{{ bSup }}"></span><span class="msr" style="font-size:20px">support</span><span style="{{ supDot }}"></span></button>
+    <span style="margin-top:auto;width:34px;height:34px;border-radius:50%;background:var(--saqz-ice);color:var(--saqz-navy);font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)" title="Lucas Prado · Fundador">LP</span>
+  </aside>
+  <main style="min-width:0;display:flex;flex-direction:column;overflow:hidden">
+
+  <sc-if value="{{ isVis }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Visão geral</strong>
+      <sc-raw-select value="{{ periodo }}" sc-camel-on-change="{{ onPeriodo }}" style="appearance:none;border:1px solid var(--saqz-blue);background:var(--saqz-ice);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--saqz-blue);font-family:inherit;cursor:pointer">
+        <option value="30">Últimos 30 dias</option>
+        <option value="90">Últimos 90 dias</option>
+        <option value="all">Desde o início (fev)</option>
+      </sc-raw-select>
+      <span style="font-size:13px;color:var(--saqz-muted)">{{ perNota }}</span>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">Atualizado hoje, 08h10</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 18px;display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center">
+            <span><span style="display:block;font-size:12.5px;font-weight:600;color:var(--saqz-muted)">{{ k.label }}</span><strong style="display:block;margin-top:6px;font-size:27px;font-weight:800;letter-spacing:-0.02em">{{ k.valor }} <span style="font-size:14px;font-weight:700;color:var(--saqz-muted)">{{ k.sub }}</span></strong><span style="{{ k.dStyle }}">{{ k.delta }}</span></span>
+            <svg sc-camel-view-box="0 0 120 44" style="width:120px;height:44px" aria-hidden="true"><path d="{{ k.spark }}" fill="none" stroke="{{ k.cor }}" stroke-width="2.5" stroke-linecap="round"></path></svg>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
+        <div style="display:grid;gap:16px;align-content:start">
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Coorte semanal — do cadastro ao pago</strong><span style="font-size:12.5px;color:var(--saqz-muted)">últimas 5 semanas</span></div>
+            <span style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1.1fr 1.2fr;gap:10px;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>SEMANA</span><span>CADASTROS</span><span>ATIVARAM</span><span>CRIARAM GRUPO</span><span>VIRARAM PAGOS</span></span>
+            <sc-for list="{{ cohort }}" as="c" hint-placeholder-count="5">
+              <span style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1.1fr 1.2fr;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px;align-items:center"><span style="font-weight:600">{{ c.sem }}</span><span>{{ c.cad }}</span><span>{{ c.ativ }}</span><span>{{ c.grupo }}</span><strong style="{{ c.pagoStyle }}">{{ c.pago }}</strong></span>
+            </sc-for>
+            <p style="margin:0;padding:12px 20px;font-size:12.5px;line-height:1.5;color:var(--saqz-muted)">O gargalo é criar o primeiro grupo, não pagar: quem cria grupo assina. O convite e o onboarding de organizador são o ponto de alavanca.</p>
+          </div>
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:12px;align-content:start">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:15px;font-weight:700">De onde veio a receita</strong><span style="font-size:12.5px;color:var(--saqz-muted)">{{ perLabel }}</span></div>
+            <div style="display:grid;gap:8px">
+              <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="display:flex;align-items:center;gap:8px;color:var(--saqz-muted)"><span style="width:10px;height:10px;border-radius:3px;background:var(--saqz-blue)"></span>Assinaturas de plano</span><strong style="font-weight:700">{{ splitPlanos }}</strong></span>
+              <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="display:flex;align-items:center;gap:8px;color:var(--saqz-muted)"><span style="width:10px;height:10px;border-radius:3px;background:#C7F300"></span>Taxa de 4% sobre mensalidades</span><strong style="font-weight:700">{{ splitTaxa }}</strong></span>
+            </div>
+            <div style="display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--saqz-ice)"><span style="{{ splitBar1 }}"></span><span style="{{ splitBar2 }}"></span></div>
+            <span style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--saqz-border);padding-top:12px"><span style="color:var(--saqz-muted)">Volume processado nas mensalidades dos grupos</span><strong style="font-weight:700">{{ splitVolume }}</strong></span>
+          </div>
+        </div>
+        <div style="display:grid;gap:16px;align-content:start">
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:12px;align-content:start">
+            <strong style="font-size:15px;font-weight:700">Receita por plano · julho</strong>
+            <sc-for list="{{ planoBars }}" as="p" hint-placeholder-count="3">
+              <div style="display:grid;gap:6px"><span style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--saqz-muted)">{{ p.label }}</span><strong style="font-weight:700">{{ p.val }}</strong></span><span style="{{ p.bar }}"></span></div>
+            </sc-for>
+          </div>
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:10px;align-content:start">
+            <strong style="font-size:15px;font-weight:700">Onde a galera joga</strong>
+            <sc-for list="{{ cidades }}" as="c" hint-placeholder-count="4">
+              <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">{{ c.nome }}</span><strong style="font-weight:700">{{ c.val }}</strong></span>
+            </sc-for>
+          </div>
+          <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:10px;align-content:start">
+            <strong style="font-size:15px;font-weight:700">Precisa da sua mão</strong>
+            <button type="button" sc-camel-on-click="{{ goRecCob }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:var(--saqz-error);flex:0 0 auto"></span><span style="flex:1">3 cobranças de plano falharam — R$ 59,70 em risco</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
+            <button type="button" sc-camel-on-click="{{ goSup }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:var(--saqz-warning);flex:0 0 auto"></span><span style="flex:1">{{ pendDenuncia }}</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
+            <button type="button" sc-camel-on-click="{{ goCup }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left"><span style="width:8px;height:8px;border-radius:50%;background:#C7F300;flex:0 0 auto"></span><span style="flex:1">GALERA10 vence em 12 dias — 9 assinaturas usam</span><span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isUsu }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border);flex-wrap:wrap">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Usuários</strong>
+      <input value="{{ uBusca }}" sc-camel-on-change="{{ onUBusca }}" placeholder="Buscar por nome ou e-mail" style="border:1px solid var(--saqz-border);border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:inherit;color:var(--saqz-navy);width:240px;box-sizing:border-box">
+      <sc-raw-select value="{{ uPlano }}" sc-camel-on-change="{{ onUPlano }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
+        <option value="todos">Plano: todos</option><option value="Amador">Amador (grátis)</option><option value="Organizador">Organizador</option><option value="Quadra Cheia">Quadra Cheia</option>
+      </sc-raw-select>
+      <sc-raw-select value="{{ uStatus }}" sc-camel-on-change="{{ onUStatus }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
+        <option value="todos">Status: todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo há 30 dias</option><option value="suspenso">Suspenso</option>
+      </sc-raw-select>
+      <sc-raw-select value="{{ uCidade }}" sc-camel-on-change="{{ onUCidade }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
+        <option value="todas">Cidade: todas</option><option>São Paulo</option><option>Recife</option><option>Curitiba</option><option>Fortaleza</option><option>Florianópolis</option>
+      </sc-raw-select>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ uCount }}</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:grid;grid-template-columns:2.4fr 1.1fr 0.7fr 1.1fr 1fr 0.9fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>USUÁRIO</span><span>CIDADE</span><span>GRUPOS</span><span>PLANO</span><span>STATUS</span><span>ÚLTIMO ACESSO</span><span></span></span>
+        <sc-for list="{{ usuariosRows }}" as="u" hint-placeholder-count="8">
+          <button type="button" sc-camel-on-click="{{ u.onOpen }}" style="display:grid;grid-template-columns:2.4fr 1.1fr 0.7fr 1.1fr 1fr 0.9fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+            <span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--saqz-ice);font-size:11px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)">{{ u.ini }}</span><span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.email }}</span></span></span>
+            <span style="color:var(--saqz-muted)">{{ u.cidade }}</span>
+            <span style="color:var(--saqz-muted)">{{ u.grupos }}</span>
+            <span><span style="{{ u.planoStyle }}">{{ u.plano }}</span></span>
+            <span><span style="{{ u.statusStyle }}">{{ u.statusTxt }}</span></span>
+            <span style="color:var(--saqz-muted)">{{ u.acesso }}</span>
+            <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
+          </button>
+        </sc-for>
+        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">{{ uRodape }}</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isUsuDet }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <button type="button" sc-camel-on-click="{{ goUsu }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Usuários</button>
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ ud.nome }}</strong>
+      <span style="{{ udStatusStyle }}">{{ udStatusTxt }}</span>
+      <span style="margin-left:auto"></span>
+      <span sc-camel-on-click="{{ onSuspender }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-error);background:var(--saqz-white)" style-hover="background:rgba(229,72,77,.06)">{{ udBtnLabel }}</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-content:start">
+      <div style="display:grid;gap:16px;align-content:start">
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:18px 20px;display:grid;gap:12px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <span style="width:52px;height:52px;border-radius:50%;background:var(--saqz-ice);font-size:16px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)">{{ ud.ini }}</span>
+            <span style="min-width:0"><strong style="display:block;font-size:17px;font-weight:700">{{ ud.nome }}</strong><span style="display:block;margin-top:2px;font-size:13px;color:var(--saqz-muted)">{{ ud.email }}</span></span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-top:1px solid var(--saqz-border);padding-top:12px">
+            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Cidade</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.cidade }}</strong></span>
+            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">No Saqz desde</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.desde }}</strong></span>
+            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Último acesso</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.acesso }}</strong></span>
+            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Presenças em julho</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.presencas }}</strong></span>
+          </div>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Grupos</strong></div>
+          <sc-for list="{{ udGrupos }}" as="g" hint-placeholder-count="2">
+            <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:flex;align-items:center;gap:10px;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:12px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+              <span style="flex:1;min-width:0"><strong style="display:block;font-weight:600">{{ g.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ g.sub }}</span></span>
+              <span style="font-size:12.5px;color:var(--saqz-muted)">{{ g.papel }}</span>
+              <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:grid;gap:16px;align-content:start">
+        <div style="background:var(--saqz-ice);border-radius:20px;padding:18px 20px;display:grid;gap:10px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--saqz-blue)">ASSINATURA</span>
+          <strong style="font-size:19px;font-weight:800;letter-spacing:-0.02em">{{ ud.planoTitulo }}</strong>
+          <span style="font-size:13.5px;color:var(--saqz-muted)">{{ ud.planoSub }}</span>
+          <sc-if value="{{ udTemAssin }}" hint-placeholder-val="{{ false }}">
+            <span sc-camel-on-click="{{ onVerAssin }}" style="display:inline-block;justify-self:start;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-blue);background:var(--saqz-white);border-radius:999px;padding:9px 16px" style-hover="background:#fff;box-shadow:0 0 0 3px rgba(6,56,223,.11)">Ver assinatura e cobranças</span>
+          </sc-if>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Últimos pagamentos</strong></div>
+          <sc-for list="{{ udPagtos }}" as="p" hint-placeholder-count="3">
+            <span style="display:grid;grid-template-columns:70px 1fr 90px 100px;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span style="color:var(--saqz-muted)">{{ p.data }}</span><span style="font-weight:600">{{ p.desc }}</span><span style="color:var(--saqz-muted)">{{ p.valor }}</span><span style="justify-self:end"><span style="{{ p.statusStyle }}">{{ p.statusTxt }}</span></span></span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isGru }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border);flex-wrap:wrap">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Grupos</strong>
+      <input value="{{ gBusca }}" sc-camel-on-change="{{ onGBusca }}" placeholder="Buscar grupo ou organizador" style="border:1px solid var(--saqz-border);border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:inherit;color:var(--saqz-navy);width:240px;box-sizing:border-box">
+      <sc-raw-select value="{{ gCidade }}" sc-camel-on-change="{{ onGCidade }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
+        <option value="todas">Cidade: todas</option><option>São Paulo</option><option>Recife</option><option>Curitiba</option><option>Fortaleza</option><option>Florianópolis</option>
+      </sc-raw-select>
+      <sc-raw-select value="{{ gModo }}" sc-camel-on-change="{{ onGModo }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
+        <option value="todas">Modalidade: todas</option><option value="quadra">Quadra</option><option value="praia">Praia</option><option value="futevôlei">Futevôlei</option>
+      </sc-raw-select>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ gCount }}</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:grid;grid-template-columns:2fr 1.4fr 1fr 0.8fr 1.1fr 1fr 1fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>GRUPO</span><span>ORGANIZADOR</span><span>CIDADE</span><span>MEMBROS</span><span>MENSALIDADES/MÊS</span><span>TAXA (4%)</span><span>STATUS</span><span></span></span>
+        <sc-for list="{{ gruposRows }}" as="g" hint-placeholder-count="8">
+          <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:grid;grid-template-columns:2fr 1.4fr 1fr 0.8fr 1.1fr 1fr 1fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+            <span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ g.modalidade }}</span></span>
+            <span style="color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.organizador }}</span>
+            <span style="color:var(--saqz-muted)">{{ g.cidade }}</span>
+            <span style="color:var(--saqz-muted)">{{ g.membros }}</span>
+            <span style="color:var(--saqz-muted)">{{ g.mensal }}</span>
+            <strong style="color:var(--saqz-success);font-weight:700">{{ g.taxa }}</strong>
+            <span><span style="{{ g.statusStyle }}">{{ g.statusTxt }}</span></span>
+            <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
+          </button>
+        </sc-for>
+        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">{{ gRodape }}</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isGruDet }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <button type="button" sc-camel-on-click="{{ goGru }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Grupos</button>
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ gd.nome }}</strong>
+      <span style="{{ gdStatusStyle }}">{{ gdStatusTxt }}</span>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">Criado em {{ gd.criado }}</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Organizador</span><strong style="display:block;margin-top:6px;font-size:15px;font-weight:700">{{ gd.organizador }}</strong><span style="display:block;margin-top:3px;font-size:12px;color:var(--saqz-muted)">{{ gd.planoOrg }}</span></div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Membros</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.membros }}</strong></div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Jogos em julho</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.jogos }}</strong></div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Mensalidades/mês</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.mensal }}</strong></div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Taxa pra plataforma</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em;color:var(--saqz-success)">{{ gd.taxa }}</strong><span style="display:block;margin-top:3px;font-size:12px;color:var(--saqz-muted)">4% do volume</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Sobre o grupo</strong></div>
+          <div style="padding:14px 20px;display:grid;gap:10px">
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Modalidade</span><strong style="font-weight:600">{{ gd.modalidade }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Local</span><strong style="font-weight:600">{{ gd.local }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Rotina</span><strong style="font-weight:600">{{ gd.rotina }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Mensalidade por membro</span><strong style="font-weight:600">{{ gd.mensalMembro }}</strong></span>
+            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Presença média</span><strong style="font-weight:600">{{ gd.presenca }}</strong></span>
+          </div>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Últimos jogos</strong></div>
+          <sc-for list="{{ gdJogos }}" as="j" hint-placeholder-count="4">
+            <span style="display:grid;grid-template-columns:70px 1fr 110px;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span style="color:var(--saqz-muted)">{{ j.data }}</span><span style="font-weight:600">{{ j.desc }}</span><span style="color:var(--saqz-muted);text-align:right">{{ j.presenca }}</span></span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isRec }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:14px">Receita</strong>
+      <button type="button" sc-camel-on-click="{{ onTabAss }}" style="{{ tabAss }}">Assinaturas</button>
+      <button type="button" sc-camel-on-click="{{ onTabCob }}" style="{{ tabCob }}">Cobranças</button>
+      <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">MRR R$ 1.295 · taxa de julho R$ 746</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
+      <sc-if value="{{ isTabAss }}" hint-placeholder-val="{{ true }}">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:grid;grid-template-columns:1.8fr 1.1fr 0.7fr 0.9fr 1fr 1fr 0.9fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>ASSINANTE</span><span>PLANO</span><span>CICLO</span><span>VALOR</span><span>CUPOM</span><span>STATUS</span><span>DESDE</span><span></span></span>
+        <sc-for list="{{ assinRows }}" as="a" hint-placeholder-count="8">
+          <button type="button" sc-camel-on-click="{{ a.onOpen }}" style="display:grid;grid-template-columns:1.8fr 1.1fr 0.7fr 0.9fr 1fr 1fr 0.9fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+            <strong style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.nome }}</strong>
+            <span><span style="{{ a.planoStyle }}">{{ a.plano }}</span></span>
+            <span style="color:var(--saqz-muted)">{{ a.ciclo }}</span>
+            <span style="font-weight:600">{{ a.valor }}</span>
+            <span style="color:var(--saqz-muted)">{{ a.cupom }}</span>
+            <span><span style="{{ a.statusStyle }}">{{ a.statusTxt }}</span></span>
+            <span style="color:var(--saqz-muted)">{{ a.desde }}</span>
+            <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
+          </button>
+        </sc-for>
+        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">Mostrando 8 de 53 assinaturas ativas ou recentes.</span>
+      </div>
+      </sc-if>
+      <sc-if value="{{ isTabCob }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:grid;grid-template-columns:0.6fr 1.6fr 1.6fr 0.8fr 1fr 150px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>DATA</span><span>DE QUEM</span><span>O QUE</span><span>VALOR</span><span>STATUS</span><span></span></span>
+        <sc-for list="{{ cobRows }}" as="c" hint-placeholder-count="8">
+          <span style="display:grid;grid-template-columns:0.6fr 1.6fr 1.6fr 0.8fr 1fr 150px;gap:10px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px;box-sizing:border-box">
+            <span style="color:var(--saqz-muted)">{{ c.data }}</span>
+            <strong style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.nome }}</strong>
+            <span style="color:var(--saqz-muted)">{{ c.tipo }}</span>
+            <span style="font-weight:600">{{ c.valor }}</span>
+            <span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span>
+            <span style="justify-self:end"><sc-if value="{{ c.temAcao }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ c.onAcao }}" style="{{ c.acaoStyle }}">{{ c.acaoTxt }}</span></sc-if></span>
+          </span>
+        </sc-for>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isAssDet }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <button type="button" sc-camel-on-click="{{ goRec }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Receita</button>
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">Assinatura de {{ ad.nome }}</strong>
+      <span style="{{ adStatusStyle }}">{{ adStatusTxt }}</span>
+      <span style="margin-left:auto"></span>
+      <sc-if value="{{ adAtiva }}" hint-placeholder-val="{{ false }}">
+        <span sc-camel-on-click="{{ onReembolsar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-navy);background:var(--saqz-white)" style-hover="background:var(--saqz-ice)">Reembolsar última cobrança</span>
+        <span sc-camel-on-click="{{ onCancelar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-error);background:var(--saqz-white)" style-hover="background:rgba(229,72,77,.06)">Cancelar plano</span>
+      </sc-if>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;grid-template-columns:1fr 1.3fr;gap:16px;align-content:start">
+      <div style="background:var(--saqz-ice);border-radius:20px;padding:18px 20px;display:grid;gap:10px;align-content:start">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--saqz-blue)">PLANO</span>
+        <strong style="font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ ad.plano }} · {{ ad.ciclo }}</strong>
+        <span style="font-size:14px;color:var(--saqz-muted)">{{ ad.valor }}</span>
+        <div style="display:grid;gap:8px;margin-top:4px;padding-top:12px;border-top:1px solid var(--saqz-border)">
+          <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Assinante desde</span><strong style="font-weight:700">{{ ad.desde }}</strong></span>
+          <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Cupom</span><strong style="font-weight:700">{{ ad.cupom }}</strong></span>
+          <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Próxima cobrança</span><strong style="font-weight:700">{{ ad.prox }}</strong></span>
+          <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Forma de pagamento</span><strong style="font-weight:700">{{ ad.forma }}</strong></span>
+        </div>
+      </div>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Histórico de cobranças</strong></div>
+        <sc-for list="{{ adHist }}" as="h" hint-placeholder-count="4">
+          <span style="display:grid;grid-template-columns:80px 1fr 100px 110px;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span style="color:var(--saqz-muted)">{{ h.data }}</span><span style="font-weight:600">{{ h.desc }}</span><span style="color:var(--saqz-muted)">{{ h.valor }}</span><span style="justify-self:end"><span style="{{ h.statusStyle }}">{{ h.statusTxt }}</span></span></span>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isCup }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;flex:1">Cupons</strong>
+      <span sc-camel-on-click="{{ onNovoCupom }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">Criar cupom</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>CÓDIGO</span><span>DESCONTO</span><span>VÁLIDO ATÉ</span><span>USOS</span><span>MRR COM DESCONTO</span><span>STATUS</span></span>
+        <sc-for list="{{ cuponsRows }}" as="c" hint-placeholder-count="3">
+          <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><strong style="font-weight:700;letter-spacing:.03em">{{ c.cod }}</strong><span style="color:var(--saqz-muted)">{{ c.desc }}</span><span style="color:var(--saqz-muted)">{{ c.validade }}</span><span>{{ c.usos }}</span><span style="color:var(--saqz-muted)">{{ c.mrr }}</span><span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span></span>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isSup }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;flex:1">Suporte e moderação</strong>
+      <span style="font-size:13px;color:var(--saqz-muted)">{{ supResumo }}</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:grid;grid-template-columns:1fr 1.6fr 1.8fr 1fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>STATUS</span><span>GRUPO</span><span>MOTIVO</span><span>ABERTA EM</span><span></span></span>
+        <sc-for list="{{ denRows }}" as="d" hint-placeholder-count="3">
+          <button type="button" sc-camel-on-click="{{ d.onOpen }}" style="display:grid;grid-template-columns:1fr 1.6fr 1.8fr 1fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:12px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+            <span><span style="{{ d.statusStyle }}">{{ d.statusTxt }}</span></span>
+            <strong style="font-weight:600">{{ d.grupo }}</strong>
+            <span style="color:var(--saqz-muted)">{{ d.motivo }}</span>
+            <span style="color:var(--saqz-muted)">{{ d.quando }}</span>
+            <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDenDet }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <button type="button" sc-camel-on-click="{{ goSup }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Suporte</button>
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ dd.motivo }}</strong>
+      <span style="{{ ddStatusStyle }}">{{ ddStatusTxt }}</span>
+      <span style="margin-left:auto"></span>
+      <sc-if value="{{ ddAberta }}" hint-placeholder-val="{{ false }}">
+        <span sc-camel-on-click="{{ onResolver }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">Marcar como resolvida</span>
+      </sc-if>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-content:start">
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:18px 20px;display:grid;gap:12px;align-content:start">
+        <strong style="font-size:15px;font-weight:700">O que foi relatado</strong>
+        <p style="margin:0;font-size:14.5px;line-height:1.6">{{ dd.desc }}</p>
+        <span style="font-size:12.5px;color:var(--saqz-muted)">Aberta em {{ dd.quando }} · relatada por {{ dd.por }} · identidade protegida</span>
+      </div>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:18px 20px;display:grid;gap:10px;align-content:start">
+        <strong style="font-size:15px;font-weight:700">Contexto</strong>
+        <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Grupo</span><strong style="font-weight:600">{{ dd.grupo }}</strong></span>
+        <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Organizador</span><strong style="font-weight:600">{{ dd.organizador }}</strong></span>
+        <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Denúncias anteriores</span><strong style="font-weight:600">{{ dd.anteriores }}</strong></span>
+        <span sc-camel-on-click="{{ ddVerGrupo }}" style="display:inline-block;justify-self:start;margin-top:4px;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-blue);background:var(--saqz-ice);border-radius:999px;padding:9px 16px" style-hover="box-shadow:0 0 0 3px rgba(6,56,223,.11)">Ver grupo</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  </main>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onModalFechar }}">
+      <div style="width:440px;background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
+        <strong style="display:block;font-size:18px;font-weight:800;letter-spacing:-0.01em">{{ modalTitulo }}</strong>
+        <p style="margin:10px 0 0;font-size:14px;line-height:1.55;color:var(--saqz-muted)">{{ modalTexto }}</p>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+          <span sc-camel-on-click="{{ onModalFechar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;color:var(--saqz-navy)" style-hover="background:var(--saqz-ice)">Voltar</span>
+          <span sc-camel-on-click="{{ onModalConfirm }}" style="{{ modalConfirmStyle }}">{{ modalConfirmTxt }}</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ cupomOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onCupomFechar }}">
+      <div style="width:460px;background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
+        <strong style="display:block;font-size:18px;font-weight:800;letter-spacing:-0.01em">Criar cupom</strong>
+        <div style="display:grid;gap:12px;margin-top:16px">
+          <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Código<input value="{{ ncCod }}" sc-camel-on-change="{{ onNcCod }}" placeholder="EX.: VOLTA15" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy);text-transform:uppercase;letter-spacing:.03em"></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Desconto (%)<input value="{{ ncDesc }}" sc-camel-on-change="{{ onNcDesc }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Dura (meses)<input value="{{ ncMeses }}" sc-camel-on-change="{{ onNcMeses }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+          </div>
+          <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Válido até<input value="{{ ncVal }}" sc-camel-on-change="{{ onNcVal }}" placeholder="dd/mm/aaaa" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+          <span sc-camel-on-click="{{ onCupomFechar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;color:var(--saqz-navy)" style-hover="background:var(--saqz-ice)">Voltar</span>
+          <span sc-camel-on-click="{{ onCriarCupom }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">Criar cupom</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="{{ toastStyle }}">
+    <span style="flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#C7F300;color:#0E1738;display:grid;place-items:center"><span class="msr" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 700,'opsz' 24">check</span></span>
+    <span style="color:#fff;font-size:14px;font-weight:600">{{ toastTexto }}</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;receita&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
+class Component extends DCLogic {
+  state = {
+    page: this.props.paginaInicial ?? "visao",
+    selU: null, selG: null, selA: null, selD: null,
+    periodo: "30",
+    uBusca: "", uPlano: "todos", uStatus: "todos", uCidade: "todas",
+    gBusca: "", gCidade: "todas", gModo: "todas",
+    rTab: "ass",
+    suspensos: {}, canceladas: {}, reembolsos: {}, resolvidas: {},
+    cupons: [
+      { cod: "GALERA10", desc: "10% por 6 meses", validade: "15/08/2026", usos: 9, ativo: true, mrr: "R$ 161,19" },
+      { cod: "SAQUE20", desc: "20% no primeiro mês", validade: "30/06/2026", usos: 14, ativo: false, mrr: "—" }
+    ],
+    cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "31/12/2026" },
+    modal: null, toast: null
+  };
+
+  USERS = [
+    { id: "u1", nome: "Bianca Souza", email: "bianca.souza@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "hoje", desde: "12/05/2026", presencas: 6, assinId: "a1", meusGrupos: [{ gid: "g7", papel: "Organizadora" }] },
+    { id: "u2", nome: "Thiago Melo", email: "thiago.melo@hotmail.com", cidade: "Recife", plano: "Quadra Cheia", status: "ativo", grupos: 4, acesso: "hoje", desde: "03/03/2026", presencas: 11, assinId: "a2", meusGrupos: [{ gid: "g3", papel: "Organizador" }] },
+    { id: "u3", nome: "Carla Nunes", email: "carla.nunes@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "ontem", desde: "28/04/2026", presencas: 8, assinId: "a3", meusGrupos: [{ gid: "g2", papel: "Organizadora" }] },
+    { id: "u4", nome: "Renato Alves", email: "renato.alves@gmail.com", cidade: "Fortaleza", plano: "Organizador", status: "ativo", grupos: 1, acesso: "há 2 dias", desde: "30/07/2026", presencas: 3, assinId: "a4", meusGrupos: [{ gid: "g8", papel: "Organizador" }] },
+    { id: "u5", nome: "Diego Farias", email: "diego.farias@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "hoje", desde: "19/06/2026", presencas: 7, assinId: "a5", meusGrupos: [{ gid: "g5", papel: "Organizador" }] },
+    { id: "u6", nome: "Marina Costa", email: "marina.costa@gmail.com", cidade: "São Paulo", plano: "Amador", status: "ativo", grupos: 0, acesso: "hoje", desde: "07/06/2026", presencas: 9, assinId: null, meusGrupos: [{ gid: "g1", papel: "Membro" }, { gid: "g2", papel: "Membro" }] },
+    { id: "u7", nome: "Pedro Sales", email: "pedro.sales@gmail.com", cidade: "Recife", plano: "Amador", status: "ativo", grupos: 0, acesso: "há 3 dias", desde: "22/05/2026", presencas: 5, assinId: null, meusGrupos: [{ gid: "g3", papel: "Membro" }] },
+    { id: "u8", nome: "Ana Beatriz Lima", email: "ana.blima@gmail.com", cidade: "São Paulo", plano: "Amador", status: "inativo", grupos: 0, acesso: "há 34 dias", desde: "10/04/2026", presencas: 0, assinId: null, meusGrupos: [{ gid: "g1", papel: "Membro" }] },
+    { id: "u9", nome: "João Vitor Ramos", email: "jvramos@gmail.com", cidade: "Curitiba", plano: "Quadra Cheia", status: "ativo", grupos: 3, acesso: "ontem", desde: "15/03/2026", presencas: 10, assinId: "a6", meusGrupos: [{ gid: "g4", papel: "Organizador" }] },
+    { id: "u10", nome: "Fernanda Dias", email: "fernanda.dias@gmail.com", cidade: "Florianópolis", plano: "Organizador", status: "ativo", grupos: 1, acesso: "há 8 dias", desde: "02/05/2026", presencas: 2, assinId: "a7", meusGrupos: [{ gid: "g6", papel: "Organizadora" }] },
+    { id: "u11", nome: "Rafael Torres", email: "rafa.torres@gmail.com", cidade: "São Paulo", plano: "Amador", status: "ativo", grupos: 0, acesso: "hoje", desde: "30/06/2026", presencas: 8, assinId: null, meusGrupos: [{ gid: "g1", papel: "Membro" }] },
+    { id: "u12", nome: "Camila Rocha", email: "camila.rocha@gmail.com", cidade: "São Paulo", plano: "Organizador", status: "ativo", grupos: 1, acesso: "hoje", desde: "20/02/2026", presencas: 9, assinId: "a8", meusGrupos: [{ gid: "g1", papel: "Organizadora" }] }
+  ];
+
+  GRUPOS = [
+    { id: "g1", nome: "Vôlei do CERET", organizador: "Camila Rocha", uid: "u12", planoOrg: "Organizador", cidade: "São Paulo", local: "CERET — Quadra 2, Tatuapé", modalidade: "quadra", membros: 38, mensal: 2280, status: "ativo", jogos: 9, criado: "20/02/2026", rotina: "Ter e qui, 19h30", mensalMembro: "R$ 60/mês", presenca: "82%" },
+    { id: "g2", nome: "Areia do Ibira", organizador: "Carla Nunes", uid: "u3", planoOrg: "Organizador", cidade: "São Paulo", local: "Ibirapuera — arena de areia", modalidade: "praia", membros: 26, mensal: 1560, status: "ativo", jogos: 5, criado: "28/04/2026", rotina: "Sáb, 9h", mensalMembro: "R$ 60/mês", presenca: "76%" },
+    { id: "g3", nome: "Futevôlei da Ponte", organizador: "Thiago Melo", uid: "u2", planoOrg: "Quadra Cheia", cidade: "Recife", local: "Praia de Boa Viagem", modalidade: "futevôlei", membros: 22, mensal: 1320, status: "ativo", jogos: 8, criado: "03/03/2026", rotina: "Qua e dom, 7h", mensalMembro: "R$ 60/mês", presenca: "88%" },
+    { id: "g4", nome: "Quarta da Rede", organizador: "João Vitor Ramos", uid: "u9", planoOrg: "Quadra Cheia", cidade: "Curitiba", local: "Ginásio do Portão", modalidade: "quadra", membros: 19, mensal: 950, status: "ativo", jogos: 4, criado: "15/03/2026", rotina: "Qua, 20h", mensalMembro: "R$ 50/mês", presenca: "79%" },
+    { id: "g5", nome: "Racha do Morumbi", organizador: "Diego Farias", uid: "u5", planoOrg: "Organizador", cidade: "São Paulo", local: "Clube Alto da Boa Vista", modalidade: "quadra", membros: 24, mensal: 0, status: "analise", jogos: 6, criado: "19/06/2026", rotina: "Sex, 21h", mensalMembro: "cobra fora do app", presenca: "71%" },
+    { id: "g6", nome: "Sábado na Areia", organizador: "Fernanda Dias", uid: "u10", planoOrg: "Organizador (cancelado)", cidade: "Florianópolis", local: "Praia dos Ingleses", modalidade: "praia", membros: 15, mensal: 600, status: "risco", jogos: 3, criado: "02/05/2026", rotina: "Sáb, 10h", mensalMembro: "R$ 40/mês", presenca: "64%" },
+    { id: "g7", nome: "Vôlei da Firma", organizador: "Bianca Souza", uid: "u1", planoOrg: "Organizador", cidade: "São Paulo", local: "SESC Belenzinho", modalidade: "quadra", membros: 17, mensal: 680, status: "ativo", jogos: 4, criado: "12/05/2026", rotina: "Seg, 19h", mensalMembro: "R$ 40/mês", presenca: "74%" },
+    { id: "g8", nome: "Praia do Futuro", organizador: "Renato Alves", uid: "u4", planoOrg: "Organizador", cidade: "Fortaleza", local: "Praia do Futuro, barraca 42", modalidade: "praia", membros: 21, mensal: 840, status: "ativo", jogos: 5, criado: "30/07/2026", rotina: "Dom, 8h", mensalMembro: "R$ 40/mês", presenca: "80%" }
+  ];
+
+  ASSIN = [
+    { id: "a1", uid: "u1", nome: "Bianca Souza", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "atrasada", desde: "12/05/2026", prox: "aguardando pagamento", forma: "Cartão ····4412", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 19,90", status: "falhou" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 19,90", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 19,90", status: "paga" }] },
+    { id: "a2", uid: "u2", nome: "Thiago Melo", plano: "Quadra Cheia", ciclo: "mensal", valor: "R$ 39,90/mês", cupom: "—", status: "ativa", desde: "03/03/2026", prox: "01/09, Pix", forma: "Pix", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 39,90", status: "paga" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 39,90", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 39,90", status: "paga" }] },
+    { id: "a3", uid: "u3", nome: "Carla Nunes", plano: "Organizador", ciclo: "anual", valor: "R$ 199/ano", cupom: "—", status: "ativa", desde: "28/04/2026", prox: "28/04/2027, cartão", forma: "Cartão ····9080", hist: [{ data: "28/07", desc: "Renovação anual", valor: "R$ 199,00", status: "paga" }] },
+    { id: "a4", uid: "u4", nome: "Renato Alves", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "atrasada", desde: "30/07/2026", prox: "aguardando pagamento", forma: "Cartão ····2210", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 19,90", status: "falhou" }, { data: "30/07", desc: "Primeira cobrança", valor: "R$ 19,90", status: "paga" }] },
+    { id: "a5", uid: "u5", nome: "Diego Farias", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "atrasada", desde: "19/06/2026", prox: "aguardando pagamento", forma: "Cartão ····7731", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 19,90", status: "falhou" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 19,90", status: "paga" }] },
+    { id: "a6", uid: "u9", nome: "João Vitor Ramos", plano: "Quadra Cheia", ciclo: "mensal", valor: "R$ 39,90/mês", cupom: "—", status: "ativa", desde: "15/03/2026", prox: "01/09, cartão", forma: "Cartão ····5104", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 39,90", status: "paga" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 39,90", status: "paga" }] },
+    { id: "a7", uid: "u10", nome: "Fernanda Dias", plano: "Organizador", ciclo: "mensal", valor: "R$ 19,90/mês", cupom: "—", status: "cancelada", desde: "02/05/2026", prox: "— cancelada em 12/07", forma: "Pix", hist: [{ data: "01/07", desc: "Mensalidade julho", valor: "R$ 19,90", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 19,90", status: "paga" }] },
+    { id: "a8", uid: "u12", nome: "Camila Rocha", plano: "Organizador", ciclo: "mensal", valor: "R$ 17,91/mês", cupom: "GALERA10", status: "ativa", desde: "20/02/2026", prox: "01/09, Pix", forma: "Pix", hist: [{ data: "01/08", desc: "Mensalidade agosto", valor: "R$ 17,91", status: "paga" }, { data: "01/07", desc: "Mensalidade julho", valor: "R$ 17,91", status: "paga" }, { data: "01/06", desc: "Mensalidade junho", valor: "R$ 17,91", status: "paga" }] }
+  ];
+
+  COBR = [
+    { id: "c1", data: "01/08", nome: "Thiago Melo", tipo: "Plano Quadra Cheia", valor: "R$ 39,90", status: "paga", aid: "a2" },
+    { id: "c2", data: "01/08", nome: "Bianca Souza", tipo: "Plano Organizador", valor: "R$ 19,90", status: "falhou", aid: "a1" },
+    { id: "c3", data: "01/08", nome: "Renato Alves", tipo: "Plano Organizador", valor: "R$ 19,90", status: "falhou", aid: "a4" },
+    { id: "c4", data: "01/08", nome: "Diego Farias", tipo: "Plano Organizador", valor: "R$ 19,90", status: "falhou", aid: "a5" },
+    { id: "c5", data: "01/08", nome: "Camila Rocha", tipo: "Plano Organizador · GALERA10", valor: "R$ 17,91", status: "paga", aid: "a8" },
+    { id: "c6", data: "31/07", nome: "Vôlei do CERET", tipo: "Taxa de 4% · mensalidades de julho", valor: "R$ 91,20", status: "paga", aid: null },
+    { id: "c7", data: "31/07", nome: "Areia do Ibira", tipo: "Taxa de 4% · mensalidades de julho", valor: "R$ 62,40", status: "paga", aid: null },
+    { id: "c8", data: "28/07", nome: "Carla Nunes", tipo: "Plano Organizador · renovação anual", valor: "R$ 199,00", status: "paga", aid: "a3" }
+  ];
+
+  DEN = [
+    { id: "d1", grupo: "Racha do Morumbi", gid: "g5", organizador: "Diego Farias", motivo: "Cobrança fora do app", quando: "01/08", por: "um membro do grupo", anteriores: "nenhuma", aberta: true, desc: "O membro relata que o organizador cobra as mensalidades por Pix direto e usa o Saqz só para presença, mas anuncia no grupo que a cobrança é oficial do app. Pediu verificação para não cair em golpe." },
+    { id: "d2", grupo: "Vôlei da Firma", gid: "g7", organizador: "Bianca Souza", motivo: "Convites em massa", quando: "22/07", por: "um usuário convidado", anteriores: "nenhuma", aberta: false, desc: "Usuário recebeu convites repetidos de um número desconhecido usando o link do grupo. Resolvido: link de convite trocado e orientação enviada à organizadora." },
+    { id: "d3", grupo: "Quarta da Rede", gid: "g4", organizador: "João Vitor Ramos", motivo: "Perfil com nome ofensivo", quando: "15/07", por: "um membro do grupo", anteriores: "nenhuma", aberta: false, desc: "Perfil com apelido ofensivo dentro do grupo. Resolvido: usuário renomeou o perfil após aviso." }
+  ];
+
+  PER = {
+    "30": { label: "julho (fechado)", nota: "vs junho", split: { p: "R$ 1.090", t: "R$ 746", vol: "R$ 18.640", w1: 59, w2: 41 }, kpis: [
+      { label: "Receita total", valor: "R$ 1.836", sub: "", delta: "▲ 21% vs junho", up: true },
+      { label: "Novos usuários", valor: "58", sub: "", delta: "▲ 9% vs junho", up: true },
+      { label: "Usuários ativos (30d)", valor: "418", sub: "· 65% de 642", delta: "▲ 4 p.p. vs junho", up: true },
+      { label: "Grupos ativos", valor: "61", sub: "", delta: "▲ 7 novos no mês", up: true },
+      { label: "Jogos realizados", valor: "236", sub: "", delta: "▲ 12% vs junho", up: true },
+      { label: "Churn de assinaturas", valor: "5,4%", sub: "", delta: "▲ 3 cancelamentos", up: false }
+    ] },
+    "90": { label: "maio — julho", nota: "vs fev — abr", split: { p: "R$ 2.750", t: "R$ 1.836", vol: "R$ 45.900", w1: 60, w2: 40 }, kpis: [
+      { label: "Receita total", valor: "R$ 4.586", sub: "", delta: "▲ 2,4× vs trimestre anterior", up: true },
+      { label: "Novos usuários", valor: "163", sub: "", delta: "▲ 31% vs trimestre anterior", up: true },
+      { label: "Usuários ativos (30d)", valor: "418", sub: "· 65% de 642", delta: "▲ 9 p.p. no trimestre", up: true },
+      { label: "Grupos ativos", valor: "61", sub: "", delta: "▲ 19 novos no trimestre", up: true },
+      { label: "Jogos realizados", valor: "655", sub: "", delta: "▲ 38% vs trimestre anterior", up: true },
+      { label: "Churn de assinaturas", valor: "4,8%", sub: "", delta: "▲ 7 cancelamentos", up: false }
+    ] },
+    "all": { label: "fev — jul (6 meses)", nota: "desde o lançamento", split: { p: "R$ 5.310", t: "R$ 3.630", vol: "R$ 90.750", w1: 59, w2: 41 }, kpis: [
+      { label: "Receita acumulada", valor: "R$ 8.940", sub: "", delta: "▲ desde fevereiro", up: true },
+      { label: "Usuários no total", valor: "642", sub: "", delta: "▲ 58 só em julho", up: true },
+      { label: "Usuários ativos (30d)", valor: "418", sub: "· 65% de 642", delta: "▲ retenção crescendo", up: true },
+      { label: "Grupos criados", valor: "74", sub: "· 61 ativos", delta: "▲ 82% seguem ativos", up: true },
+      { label: "Jogos realizados", valor: "1.480", sub: "", delta: "▲ 236 em julho", up: true },
+      { label: "Churn médio mensal", valor: "4,1%", sub: "", delta: "▲ 11 cancelamentos no total", up: false }
+    ] }
+  };
+
+  SPARKS = ["M2 38 L22 34 L42 30 L62 24 L82 18 L102 12 L118 6", "M2 34 L22 30 L42 32 L62 24 L82 22 L102 14 L118 10", "M2 30 L22 28 L42 26 L62 26 L82 22 L102 18 L118 16", "M2 36 L22 34 L42 30 L62 28 L82 24 L102 20 L118 14", "M2 32 L22 28 L42 30 L62 22 L82 20 L102 16 L118 12", "M2 22 L22 26 L42 20 L62 28 L82 24 L102 30 L118 26"];
+
+  chip(bg, c) { return `display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:${bg};color:${c};white-space:nowrap`; }
+  chipPlano(p) { return p === "Organizador" ? this.chip("#F4F8FB", "#0638DF") : p === "Quadra Cheia" ? this.chip("#F4F8FB", "#0E1738") : this.chip("#F5F5F7", "#667085"); }
+  chipStatus(s) {
+    const m = { ativo: ["rgba(23,178,106,.12)", "#17B26A", "Ativo"], ativa: ["rgba(23,178,106,.12)", "#17B26A", "Ativa"], paga: ["rgba(23,178,106,.12)", "#17B26A", "Paga"], inativo: ["#F5F5F7", "#667085", "Inativo"], suspenso: ["rgba(229,72,77,.12)", "#E5484D", "Suspenso"], atrasada: ["rgba(245,166,35,.16)", "#8a5a00", "Atrasada"], falhou: ["rgba(229,72,77,.12)", "#E5484D", "Falhou"], cancelada: ["#F5F5F7", "#667085", "Cancelada"], reembolsada: ["#F5F5F7", "#667085", "Reembolsada"], analise: ["rgba(245,166,35,.16)", "#8a5a00", "Em análise"], risco: ["rgba(245,166,35,.16)", "#8a5a00", "Sem plano"], aberta: ["rgba(245,166,35,.16)", "#8a5a00", "Aberta"], resolvida: ["rgba(23,178,106,.12)", "#17B26A", "Resolvida"], vencido: ["#F5F5F7", "#667085", "Vencido"] };
+    const [bg, c, t] = m[s] || m.ativo;
+    return { style: this.chip(bg, c), txt: t };
+  }
+  go(page, extra) { this.setState({ page, ...(extra || {}) }); }
+  aviso(t) {
+    clearTimeout(this._tt);
+    this.setState({ toast: t });
+    this._tt = setTimeout(() => this.setState({ toast: null }), 3200);
+  }
+  set(k) { return e => this.setState({ [k]: e.target.value }); }
+
+  renderVals() {
+    const st = this.state;
+    const navS = on => `position:relative;width:42px;height:42px;border-radius:12px;border:0;display:grid;place-items:center;cursor:pointer;font-family:inherit;background:${on ? "var(--saqz-ice)" : "transparent"};color:${on ? "var(--saqz-blue)" : "var(--saqz-navy)"}`;
+    const navB = on => on ? "position:absolute;left:-11px;top:11px;bottom:11px;width:3px;border-radius:3px;background:#C7F300" : "display:none";
+    const pageKey = { visao: "vis", usuarios: "usu", usuario: "usu", grupos: "gru", grupo: "gru", receita: "rec", assinatura: "rec", cupons: "cup", suporte: "sup", denuncia: "sup" }[st.page];
+    const per = this.PER[st.periodo];
+    const kpis = per.kpis.map((k, i) => ({ ...k, spark: this.SPARKS[i], cor: k.up ? "#0638DF" : "#E5484D", dStyle: `display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:${k.up ? "#17B26A" : "#E5484D"}` }));
+    const denAbertas = this.DEN.filter(d => d.aberta && !st.resolvidas[d.id]).length;
+
+    const usuarios = this.USERS.map(u => ({ ...u, status: st.suspensos[u.id] ? "suspenso" : u.status }));
+    const q = st.uBusca.trim().toLowerCase();
+    const usuariosF = usuarios.filter(u => (!q || (u.nome + u.email).toLowerCase().includes(q)) && (st.uPlano === "todos" || u.plano === st.uPlano) && (st.uStatus === "todos" || u.status === st.uStatus) && (st.uCidade === "todas" || u.cidade === st.uCidade));
+    const ini = n => n.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+    const usuariosRows = usuariosF.map(u => {
+      const cs = this.chipStatus(u.status);
+      return { ini: ini(u.nome), nome: u.nome, email: u.email, cidade: u.cidade, grupos: String(u.grupos), plano: u.plano, planoStyle: this.chipPlano(u.plano), statusTxt: cs.txt, statusStyle: cs.style, acesso: u.acesso, onOpen: () => this.go("usuario", { selU: u.id }) };
+    });
+
+    const uSel = usuarios.find(u => u.id === st.selU) || usuarios[0];
+    const aDoU = this.ASSIN.find(a => a.id === uSel.assinId);
+    const udStatus = this.chipStatus(uSel.status);
+    const ud = { ...uSel, ini: ini(uSel.nome), planoTitulo: uSel.plano === "Amador" ? "Amador · grátis" : aDoU ? `${aDoU.plano} · ${aDoU.ciclo}` : uSel.plano, planoSub: uSel.plano === "Amador" ? "Sem cobrança. Pode criar 1 grupo de até 20 membros." : aDoU ? `${aDoU.valor} · ${st.canceladas[aDoU.id] ? "cancelada" : aDoU.status === "atrasada" ? "pagamento atrasado" : "em dia"} · desde ${aDoU.desde}` : "" };
+    const udGrupos = uSel.meusGrupos.map(m => {
+      const g = this.GRUPOS.find(x => x.id === m.gid);
+      return { nome: g.nome, sub: `${g.cidade} · ${g.membros} membros · ${g.rotina}`, papel: m.papel, onOpen: () => this.go("grupo", { selG: g.id }) };
+    });
+    const udPagtos = (aDoU ? aDoU.hist : []).map(h => { const cs = this.chipStatus(h.status); return { ...h, statusTxt: cs.txt, statusStyle: cs.style }; });
+
+    const q2 = st.gBusca.trim().toLowerCase();
+    const gruposF = this.GRUPOS.filter(g => (!q2 || (g.nome + g.organizador).toLowerCase().includes(q2)) && (st.gCidade === "todas" || g.cidade === st.gCidade) && (st.gModo === "todas" || g.modalidade === st.gModo));
+    const money = n => n ? "R$ " + n.toLocaleString("pt-BR") : "—";
+    const gruposRows = gruposF.map(g => {
+      const cs = this.chipStatus(g.status);
+      return { nome: g.nome, modalidade: g.modalidade[0].toUpperCase() + g.modalidade.slice(1), organizador: g.organizador, cidade: g.cidade, membros: String(g.membros), mensal: money(g.mensal), taxa: g.mensal ? "R$ " + (g.mensal * 0.04).toFixed(2).replace(".", ",") : "—", statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("grupo", { selG: g.id }) };
+    });
+
+    const gSel = this.GRUPOS.find(g => g.id === st.selG) || this.GRUPOS[0];
+    const gdStatus = this.chipStatus(gSel.status);
+    const gd = { ...gSel, modalidade: gSel.modalidade[0].toUpperCase() + gSel.modalidade.slice(1), membros: String(gSel.membros), jogos: String(gSel.jogos), mensal: money(gSel.mensal), taxa: gSel.mensal ? "R$ " + (gSel.mensal * 0.04).toFixed(2).replace(".", ",") : "—" };
+    const gdJogos = [
+      { data: "31/07", desc: `${gSel.rotina.split(",")[0]} · jogo da semana`, presenca: `${Math.max(8, gSel.membros - 6)} confirmados` },
+      { data: "24/07", desc: "Jogo da semana", presenca: `${Math.max(7, gSel.membros - 9)} confirmados` },
+      { data: "17/07", desc: "Jogo da semana", presenca: `${Math.max(9, gSel.membros - 7)} confirmados` },
+      { data: "10/07", desc: "Jogo da semana", presenca: `${Math.max(6, gSel.membros - 10)} confirmados` }
+    ];
+
+    const tab = on => `border:0;background:${on ? "var(--saqz-ice)" : "transparent"};color:${on ? "var(--saqz-blue)" : "var(--saqz-navy)"};font-family:inherit;font-size:13.5px;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer`;
+    const assinRows = this.ASSIN.map(a => {
+      const status = st.canceladas[a.id] ? "cancelada" : a.status;
+      const cs = this.chipStatus(status);
+      return { nome: a.nome, plano: a.plano, planoStyle: this.chipPlano(a.plano), ciclo: a.ciclo, valor: a.valor, cupom: a.cupom, statusTxt: cs.txt, statusStyle: cs.style, desde: a.desde, onOpen: () => this.go("assinatura", { selA: a.id }) };
+    });
+    const cobRows = this.COBR.map(c => {
+      const status = st.reembolsos[c.id] ? "reembolsada" : c.status;
+      const cs = this.chipStatus(status);
+      const pode = status === "paga" && c.aid;
+      const falhou = status === "falhou";
+      return { data: c.data, nome: c.nome, tipo: c.tipo, valor: c.valor, statusTxt: cs.txt, statusStyle: cs.style, temAcao: pode || falhou,
+        acaoTxt: falhou ? "Tentar de novo" : "Reembolsar",
+        acaoStyle: "display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:var(--saqz-ice)",
+        onAcao: falhou
+          ? () => this.aviso(`Nova tentativa de cobrança enviada para ${c.nome}.`)
+          : () => this.setState({ modal: { titulo: `Reembolsar ${c.valor} de ${c.nome}?`, texto: "O valor volta pela mesma forma de pagamento em até 5 dias úteis. A assinatura continua ativa.", confirm: "Reembolsar", danger: false, acao: () => { this.setState(s => ({ reembolsos: { ...s.reembolsos, [c.id]: true }, modal: null })); this.aviso("Reembolso enviado. Cai em até 5 dias úteis."); } } }) };
+    });
+
+    const aSel = this.ASSIN.find(a => a.id === st.selA) || this.ASSIN[0];
+    const adCancelada = !!st.canceladas[aSel.id];
+    const adStatus = this.chipStatus(adCancelada ? "cancelada" : aSel.status);
+    const ad = { ...aSel, prox: adCancelada ? "— cancelada, vale até o fim do período pago" : aSel.prox };
+    const adHist = aSel.hist.map(h => { const cs = this.chipStatus(h.status); return { ...h, statusTxt: cs.txt, statusStyle: cs.style }; });
+
+    const cuponsRows = st.cupons.map(c => {
+      const cs = this.chipStatus(c.ativo ? "ativo" : "vencido");
+      return { ...c, usos: String(c.usos), statusTxt: cs.txt, statusStyle: cs.style };
+    });
+
+    const denRows = this.DEN.map(d => {
+      const aberta = d.aberta && !st.resolvidas[d.id];
+      const cs = this.chipStatus(aberta ? "aberta" : "resolvida");
+      return { grupo: d.grupo, motivo: d.motivo, quando: d.quando, statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("denuncia", { selD: d.id }) };
+    });
+    const dSel = this.DEN.find(d => d.id === st.selD) || this.DEN[0];
+    const ddAberta = dSel.aberta && !st.resolvidas[dSel.id];
+    const ddStatus = this.chipStatus(ddAberta ? "aberta" : "resolvida");
+
+    const modal = st.modal;
+    return {
+      sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sSup: navS(pageKey === "sup"),
+      bVis: navB(pageKey === "vis"), bUsu: navB(pageKey === "usu"), bGru: navB(pageKey === "gru"), bRec: navB(pageKey === "rec"), bCup: navB(pageKey === "cup"), bSup: navB(pageKey === "sup"),
+      supDot: denAbertas ? "position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--saqz-error);box-shadow:0 0 0 2px #fff" : "display:none",
+      goVis: () => this.go("visao"), goUsu: () => this.go("usuarios"), goGru: () => this.go("grupos"), goRec: () => this.go("receita"), goCup: () => this.go("cupons"), goSup: () => this.go("suporte"),
+      goRecCob: () => this.go("receita", { rTab: "cob" }),
+      isVis: st.page === "visao", isUsu: st.page === "usuarios", isUsuDet: st.page === "usuario", isGru: st.page === "grupos", isGruDet: st.page === "grupo", isRec: st.page === "receita", isAssDet: st.page === "assinatura", isCup: st.page === "cupons", isSup: st.page === "suporte", isDenDet: st.page === "denuncia",
+      periodo: st.periodo, onPeriodo: this.set("periodo"), perLabel: per.label, perNota: per.nota,
+      kpis, cohort: [
+        { sem: "29/06 – 05/07", cad: "16", ativ: "12 · 75%", grupo: "3 · 19%", pago: "2 · 12%", pagoStyle: "color:#17B26A" },
+        { sem: "06/07 – 12/07", cad: "13", ativ: "10 · 77%", grupo: "2 · 15%", pago: "2 · 15%", pagoStyle: "color:#17B26A" },
+        { sem: "13/07 – 19/07", cad: "18", ativ: "15 · 83%", grupo: "4 · 22%", pago: "3 · 17%", pagoStyle: "color:#17B26A" },
+        { sem: "20/07 – 26/07", cad: "11", ativ: "8 · 73%", grupo: "1 · 9%", pago: "1 · 9%", pagoStyle: "color:#667085" },
+        { sem: "27/07 – 02/08", cad: "14", ativ: "11 · 79%", grupo: "2 · 14%", pago: "cedo demais", pagoStyle: "color:#667085" }
+      ],
+      splitPlanos: per.split.p, splitTaxa: per.split.t, splitVolume: per.split.vol,
+      splitBar1: `width:${per.split.w1}%;background:var(--saqz-blue)`, splitBar2: `width:${per.split.w2}%;background:#C7F300`,
+      planoBars: [
+        { label: "Organizador · 41 assinantes", val: "R$ 816", bar: "display:block;height:10px;border-radius:999px;background:var(--saqz-blue);width:63%" },
+        { label: "Quadra Cheia · 12 assinantes", val: "R$ 479", bar: "display:block;height:10px;border-radius:999px;background:var(--saqz-blue);opacity:.45;width:37%" },
+        { label: "Taxa sobre mensalidades", val: "R$ 746", bar: "display:block;height:10px;border-radius:999px;background:#C7F300;width:58%" }
+      ],
+      cidades: [{ nome: "São Paulo", val: "31 grupos" }, { nome: "Recife", val: "9 grupos" }, { nome: "Curitiba", val: "7 grupos" }, { nome: "Outras 8 cidades", val: "14 grupos" }],
+      pendDenuncia: denAbertas ? `${denAbertas} denúncia aberta — Racha do Morumbi` : "Nenhuma denúncia aberta",
+      uBusca: st.uBusca, onUBusca: this.set("uBusca"), uPlano: st.uPlano, onUPlano: this.set("uPlano"), uStatus: st.uStatus, onUStatus: this.set("uStatus"), uCidade: st.uCidade, onUCidade: this.set("uCidade"),
+      usuariosRows, uCount: `${usuariosF.length} de 642 usuários`, uRodape: "Mostrando os 12 usuários mais recentes que batem com o filtro · 642 no total.",
+      ud, udStatusTxt: udStatus.txt, udStatusStyle: udStatus.style, udGrupos, udPagtos, udTemAssin: !!aDoU,
+      udBtnLabel: st.suspensos[uSel.id] ? "Reativar usuário" : "Suspender usuário",
+      onSuspender: st.suspensos[uSel.id]
+        ? () => { this.setState(s => { const sus = { ...s.suspensos }; delete sus[uSel.id]; return { suspensos: sus }; }); this.aviso(`${uSel.nome.split(" ")[0]} está de volta ao app.`); }
+        : () => this.setState({ modal: { titulo: `Suspender ${uSel.nome}?`, texto: "A pessoa perde o acesso ao app na hora e os grupos que organiza ficam sem organizador até você reativar. Dá pra desfazer quando quiser.", confirm: "Suspender usuário", danger: true, acao: () => { this.setState(s => ({ suspensos: { ...s.suspensos, [uSel.id]: true }, modal: null })); this.aviso("Usuário suspenso."); } } }),
+      onVerAssin: () => aDoU && this.go("assinatura", { selA: aDoU.id }),
+      gBusca: st.gBusca, onGBusca: this.set("gBusca"), gCidade: st.gCidade, onGCidade: this.set("gCidade"), gModo: st.gModo, onGModo: this.set("gModo"),
+      gruposRows, gCount: `${gruposF.length} de 61 grupos ativos`, gRodape: "Mostrando os 8 grupos com mais movimento que batem com o filtro · 61 ativos no total.",
+      gd, gdStatusTxt: gdStatus.txt, gdStatusStyle: gdStatus.style, gdJogos,
+      tabAss: tab(st.rTab === "ass"), tabCob: tab(st.rTab === "cob"), onTabAss: () => this.setState({ rTab: "ass" }), onTabCob: () => this.setState({ rTab: "cob" }), isTabAss: st.rTab === "ass", isTabCob: st.rTab === "cob",
+      assinRows, cobRows,
+      ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !adCancelada && aSel.status !== "cancelada",
+      onCancelar: () => this.setState({ modal: { titulo: `Cancelar o plano de ${aSel.nome}?`, texto: "A assinatura para de renovar e vale até o fim do período já pago. Os grupos continuam no ar até lá.", confirm: "Cancelar plano", danger: true, acao: () => { this.setState(s => ({ canceladas: { ...s.canceladas, [aSel.id]: true }, modal: null })); this.aviso("Plano cancelado. Vale até o fim do período pago."); } } }),
+      onReembolsar: () => this.setState({ modal: { titulo: `Reembolsar a última cobrança de ${aSel.nome}?`, texto: `${aSel.hist[0].valor} voltam pela mesma forma de pagamento em até 5 dias úteis. A assinatura continua ativa.`, confirm: "Reembolsar", danger: false, acao: () => { this.setState({ modal: null }); this.aviso("Reembolso enviado. Cai em até 5 dias úteis."); } } }),
+      cuponsRows,
+      onNovoCupom: () => this.setState({ cupomOpen: true }),
+      onCupomFechar: () => this.setState({ cupomOpen: false }),
+      cupomOpen: st.cupomOpen,
+      ncCod: st.nc.cod, ncDesc: st.nc.desc, ncMeses: st.nc.meses, ncVal: st.nc.val,
+      onNcCod: e => this.setState(s => ({ nc: { ...s.nc, cod: e.target.value.toUpperCase() } })),
+      onNcDesc: e => this.setState(s => ({ nc: { ...s.nc, desc: e.target.value } })),
+      onNcMeses: e => this.setState(s => ({ nc: { ...s.nc, meses: e.target.value } })),
+      onNcVal: e => this.setState(s => ({ nc: { ...s.nc, val: e.target.value } })),
+      onCriarCupom: () => {
+        const n = st.nc;
+        if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
+        this.setState(s => ({ cupons: [{ cod: n.cod.trim(), desc: `${n.desc || "10"}% por ${n.meses || "3"} meses`, validade: n.val || "31/12/2026", usos: 0, ativo: true, mrr: "—" }, ...s.cupons], cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "31/12/2026" } }));
+        this.aviso(`Cupom ${n.cod.trim()} criado.`);
+      },
+      denRows, supResumo: denAbertas ? `${denAbertas} aberta · ${this.DEN.length - denAbertas} resolvidas` : `Tudo em dia · ${this.DEN.length} resolvidas`,
+      dd: dSel, ddStatusTxt: ddStatus.txt, ddStatusStyle: ddStatus.style, ddAberta,
+      onResolver: () => { this.setState(s => ({ resolvidas: { ...s.resolvidas, [dSel.id]: true } })); this.aviso("Denúncia resolvida."); },
+      ddVerGrupo: () => this.go("grupo", { selG: dSel.gid }),
+      modalOpen: !!modal, modalTitulo: modal ? modal.titulo : "", modalTexto: modal ? modal.texto : "", modalConfirmTxt: modal ? modal.confirm : "",
+      modalConfirmStyle: `display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;color:#fff;background:${modal && modal.danger ? "var(--saqz-error)" : "var(--saqz-blue)"}`,
+      onModalConfirm: () => modal && modal.acao(),
+      onModalFechar: () => this.setState({ modal: null }),
+      pare: e => e.stopPropagation(),
+      toastStyle: `position:fixed;left:50%;bottom:26px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:#0E1738;border-radius:999px;padding:12px 18px;box-shadow:0 12px 40px rgba(14,23,56,.24);z-index:60;transition:opacity .16s ease;pointer-events:none;opacity:${st.toast ? 1 : 0}`,
+      toastTexto: st.toast || ""
+    };
+  }
+}
+</script>
+
+
+</body></html>
