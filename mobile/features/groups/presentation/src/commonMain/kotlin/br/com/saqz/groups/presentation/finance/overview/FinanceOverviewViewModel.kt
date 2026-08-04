@@ -18,7 +18,7 @@ import kotlin.time.Instant
 
 class FinanceOverviewViewModel(
     private val gateway: FinanceOverviewGateway,
-    nowPort: GroupNowPort,
+    private val nowPort: GroupNowPort,
 ) : MviViewModel<FinanceOverviewState, FinanceOverviewIntent, FinanceOverviewEffect>(
     initialState = financeOverviewInitialState(nowPort.now()),
 ) {
@@ -37,13 +37,15 @@ class FinanceOverviewViewModel(
     }
 
     private fun load(selection: FinanceOverviewPeriodSelection) {
-        val period = state.value.periods.first { it.selection == selection }
+        val periods = financeOverviewPeriodOptions(financeOverviewDate(nowPort.now()))
+        val period = periods.first { it.selection == selection }
         val generation = ++loadGeneration
         update {
             it.copy(
                 isLoading = true,
                 loadFailed = false,
                 selectedPeriod = selection,
+                periods = periods,
             )
         }
         viewModelScope.launch {
@@ -63,9 +65,11 @@ class FinanceOverviewViewModel(
 }
 
 private fun financeOverviewInitialState(now: Instant): FinanceOverviewState {
-    val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
-    return FinanceOverviewState(periods = financeOverviewPeriodOptions(today))
+    return FinanceOverviewState(periods = financeOverviewPeriodOptions(financeOverviewDate(now)))
 }
+
+private fun financeOverviewDate(now: Instant): LocalDate =
+    now.toLocalDateTime(TimeZone.currentSystemDefault()).date
 
 internal fun financeOverviewPeriodOptions(today: LocalDate): List<FinanceOverviewPeriodOption> {
     val previousMonth = today.minus(DatePeriod(months = 1))
@@ -131,10 +135,11 @@ private fun Long.formatCurrency(): String {
 }
 
 private fun Long.formatSignedCurrency(direction: FinanceDirection?): String {
+    if (direction == null) return formatCurrency()
+
     val amount = when (direction) {
         FinanceDirection.In -> kotlin.math.abs(this)
         FinanceDirection.Out -> -kotlin.math.abs(this)
-        null -> this
     }
     val sign = if (amount >= 0) "+" else "-"
     return "$sign${kotlin.math.abs(amount).formatCurrency()}"

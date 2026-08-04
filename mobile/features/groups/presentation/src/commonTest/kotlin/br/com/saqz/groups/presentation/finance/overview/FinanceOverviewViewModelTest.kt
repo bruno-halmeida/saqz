@@ -57,6 +57,29 @@ class FinanceOverviewViewModelTest {
     }
 
     @Test
+    fun `transaction without direction keeps the amount without a direction sign`() = runTest {
+        val transaction = FinanceOverviewTransaction(
+            id = "transaction-unknown",
+            groupId = "group-1",
+            groupName = "Grupo",
+            kind = "LAUNCH",
+            direction = null,
+            memberName = null,
+            description = null,
+            amountCents = 1_200,
+            occurredAt = "2026-07-02T10:00:00Z",
+        )
+        val viewModel = FinanceOverviewViewModel(
+            FakeFinanceOverviewGateway(
+                result = SaqzResult.Success(overview(recentTransactions = listOf(transaction))),
+            ),
+            now,
+        )
+
+        assertEquals("R$ 12,00", viewModel.state.value.recentTransactions.single().amount)
+    }
+
+    @Test
     fun `period intents map previous month and year to endpoint queries`() = runTest {
         val gateway = FakeFinanceOverviewGateway()
         val viewModel = FinanceOverviewViewModel(gateway, now)
@@ -73,6 +96,37 @@ class FinanceOverviewViewModelTest {
             gateway.queries,
         )
         assertEquals(FinanceOverviewPeriodSelection.Year, viewModel.state.value.selectedPeriod)
+    }
+
+    @Test
+    fun `refresh recomputes period options after the current month changes`() = runTest {
+        var currentNow = Instant.parse("2026-07-31T12:00:00Z")
+        val rollingNow = GroupNowPort { currentNow }
+        val gateway = FakeFinanceOverviewGateway()
+        val viewModel = FinanceOverviewViewModel(gateway, rollingNow)
+
+        currentNow = Instant.parse("2026-08-01T12:00:00Z")
+        viewModel.onIntent(FinanceOverviewIntent.Retry)
+
+        assertEquals(
+            listOf(
+                FinanceOverviewQuery(month = "2026-07"),
+                FinanceOverviewQuery(month = "2026-08"),
+            ),
+            gateway.queries,
+        )
+        assertEquals(
+            FinanceOverviewQuery(month = "2026-08"),
+            viewModel.state.value.periods.first {
+                it.selection == FinanceOverviewPeriodSelection.CurrentMonth
+            }.query,
+        )
+        assertEquals(
+            FinanceOverviewQuery(month = "2026-07"),
+            viewModel.state.value.periods.first {
+                it.selection == FinanceOverviewPeriodSelection.PreviousMonth
+            }.query,
+        )
     }
 
     @Test
