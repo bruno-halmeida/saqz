@@ -154,7 +154,7 @@ class AccessSessionController(
 
     @DeleteMapping("/api/session")
     fun delete(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<Void> {
-        deleteAccount.execute(identity.subject)
+        if (!deleteAccount.execute(identity.subject)) throw AccountSuspendedException()
         return ResponseEntity.noContent().build()
     }
 }

@@ -93,6 +93,14 @@ class AdminUsersEndpointIntegrationTest {
     }
 
     @Test
+    fun `delete de conta suspensa tambem responde 403`() {
+        val response = exchange("DELETE", "/api/session", "suspended-token")
+
+        assertEquals(403, response.statusCode())
+        assertEquals("ACCOUNT_SUSPENDED", objectMapper.readTree(response.body())["code"].stringValue())
+    }
+
+    @Test
     fun `perfil de conta suspensa tambem responde 403`() {
         val request = HttpRequest.newBuilder(URI.create("http://localhost:$port/api/session/profile"))
             .method("PATCH", HttpRequest.BodyPublishers.ofString("{\"nickname\": \"Novo\"}"))
@@ -198,6 +206,9 @@ class AdminUsersEndpointIntegrationTest {
             },
             repository = object : br.com.saqz.access.application.session.AccountDeletionRepository {
                 override fun softDelete(subject: String): UUID? = null
+
+                override fun suspendedAt(subject: String): Instant? =
+                    if (subject == "suspended-subject") Instant.parse("2026-08-01T00:00:00Z") else null
             },
             groupCleanup = object : br.com.saqz.access.application.session.AccountGroupCleanup {
                 override fun deleteOwnedGroups(ownerUserId: UUID) = Unit
