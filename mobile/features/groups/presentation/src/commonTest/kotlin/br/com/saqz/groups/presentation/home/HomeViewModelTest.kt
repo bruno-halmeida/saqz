@@ -350,6 +350,36 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `reconciled waitlist copies the server position to the UI model before refresh`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(nextGame = sampleNextGame().copy(confirmedCount = 12, capacity = 12))
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(
+                    ownAttendance = HomeOwnAttendance(AttendanceStatus.Waitlisted, 3),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        // Otimista: sem posição conhecida, o chip omite o número (não mostra "0º").
+        assertNull(viewModel.state.value.member?.nextGame?.waitlistPosition)
+
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Waitlisted, 3)))
+        advanceUntilIdle()
+
+        // Reconciliado: a posição do servidor já está na UI, sem esperar o refresh.
+        assertEquals(3L, viewModel.state.value.member?.nextGame?.waitlistPosition)
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+    }
+
+    @Test
     fun `full game uses waitlist optimistic state and server toast`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()

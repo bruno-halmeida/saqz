@@ -229,6 +229,13 @@ class HomeViewModel(
                                 nextGame = previousMember.nextGame.copy(
                                     ownAttendance = actualStatus,
                                     waitlistKind = reconciledKind ?: previousMember.nextGame.waitlistKind,
+                                    // O servidor já traz a posição; copiar para a UI evita
+                                    // o chip "Reserva · 0º" entre a reconciliação e o refresh.
+                                    waitlistPosition = if (actualStatus == AttendanceStatus.Waitlisted) {
+                                        attendance.waitlistPosition
+                                    } else {
+                                        null
+                                    },
                                 ),
                             ),
                             responding = false,

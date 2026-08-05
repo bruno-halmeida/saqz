@@ -47,8 +47,11 @@ import br.com.saqz.groups.resources.home_waitlist_reserva_bell
 import br.com.saqz.groups.resources.home_waitlist_reserva_box_body
 import br.com.saqz.groups.resources.home_waitlist_reserva_box_title
 import br.com.saqz.groups.resources.home_waitlist_reserva_chip
+import br.com.saqz.groups.resources.home_waitlist_reserva_chip_no_position
 import br.com.saqz.groups.resources.home_waitlist_reserva_leave
+import br.com.saqz.groups.resources.home_waitlist_row_a11y
 import br.com.saqz.groups.resources.home_waitlist_section_confirmed
+import br.com.saqz.groups.resources.home_waitlist_section_confirmed_action
 import br.com.saqz.groups.resources.home_waitlist_section_queue
 import br.com.saqz.groups.resources.home_waitlist_view_game
 import br.com.saqz.groups.resources.home_waitlist_you
@@ -69,11 +72,14 @@ internal object HomeWaitlistTags {
 
 /**
  * Chip de espera do hero — warning com dot. O texto varia conforme o tipo de espera.
+ * A posição só aparece quando conhecida; sem ela o chip omite o número (não mostra "0º").
  */
 @Composable
 internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier: Modifier = Modifier) {
     val text = when (kind) {
-        HomeWaitlistKind.Reserva -> stringResource(Res.string.home_waitlist_reserva_chip, position?.toInt() ?: 0)
+        HomeWaitlistKind.Reserva -> position?.let {
+            stringResource(Res.string.home_waitlist_reserva_chip, it.toInt())
+        } ?: stringResource(Res.string.home_waitlist_reserva_chip_no_position)
         HomeWaitlistKind.AvulsoList -> stringResource(Res.string.home_waitlist_avulso_chip)
     }
     SaqzStatusChip(
@@ -280,7 +286,7 @@ internal fun HomeWaitlistConfirmedSection(
     ) {
         SaqzSectionHeader(
             title = stringResource(Res.string.home_waitlist_section_confirmed),
-            action = "$confirmedCount de $capacity",
+            action = stringResource(Res.string.home_waitlist_section_confirmed_action, confirmedCount, capacity),
         )
         SaqzCard {
             if (confirmedRoster.isEmpty()) {
@@ -333,12 +339,13 @@ private fun HomeWaitlistQueueRow(row: HomeWaitlistRowUi) {
     } else {
         row.name
     }
+    val a11yLabel = stringResource(Res.string.home_waitlist_row_a11y, nameText, row.position.toInt())
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (row.isSelf) Modifier.background(colors.surfaceSoft) else Modifier)
             .testTag(HomeWaitlistTags.queueRow(row.position))
-            .semantics { contentDescription = "$nameText, ${row.position}º na espera" }
+            .semantics { contentDescription = a11yLabel }
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
