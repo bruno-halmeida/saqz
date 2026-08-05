@@ -6,6 +6,8 @@ import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.composeapp.shell.SaqzShellGroupsTab
+import br.com.saqz.composeapp.shell.SaqzShellHomeTab
 import br.com.saqz.groups.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
@@ -13,6 +15,7 @@ import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * O gate de sessão: cada [SessionAccessState] resolve para um destino, e `Ready` é o único
@@ -51,19 +54,44 @@ class SaqzNavHostTest {
 
     @Test
     fun readyRoutesToTheEmptyShell() {
-        assertEquals(listOf(SaqzShellDestination), stackFor(SessionAccessState.Ready(session)))
+        assertEquals(listOf(SaqzShellDestination.Home), stackFor(SessionAccessState.Ready(session)))
     }
 
     @Test
     fun authenticatedInviteExploreReturnsToTheShell() {
         val stack = NavBackStack<NavKey>(
-            SaqzShellDestination,
+            SaqzShellDestination.Home,
             GroupsRoute.InviteLanding("invite-explore"),
         )
 
         stack.openInviteExplore()
 
-        assertEquals(listOf<NavKey>(SaqzShellDestination), stack.toList())
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack.toList())
+    }
+
+    // VUL-193: os callbacks do invite landing (BrowseOtherGroups e OpenAnotherGroup,
+    // mais o back da top-bar que emite BrowseOtherGroups) prometem a lista de grupos.
+    // Fazem `openInviteOtherGroups()` → `resetTo(SaqzShellDestination.Groups)`, e o destino
+    // carrega a aba Grupos no `initialTab` — sem isto o reset cairia na aba Início (default)
+    // e quebraria a promessa.
+    @Test
+    fun inviteBrowseOtherGroupsLandsOnTheGroupsTab() {
+        val stack = NavBackStack<NavKey>(
+            SaqzShellDestination.Home,
+            GroupsRoute.InviteLanding("invite-other"),
+        )
+
+        stack.openInviteOtherGroups()
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Groups), stack.toList())
+        assertEquals(SaqzShellGroupsTab, SaqzShellDestination.Groups.resolvedTab())
+    }
+
+    @Test
+    fun loginLandsOnTheHomeTabByDefault() {
+        // O destino que o login alcança (default) carrega a aba Início.
+        assertEquals(SaqzShellHomeTab, SaqzShellDestination.Home.resolvedTab())
+        assertNull(SaqzShellDestination.Home.initialTab)
     }
 
     @Test
@@ -92,7 +120,7 @@ class SaqzNavHostTest {
             SessionAccessState.Bootstrapping,
             SessionAccessState.BootstrapError,
         ).forEach { state ->
-            val stack = mutableListOf<NavKey>(SaqzShellDestination, GroupsRoute.Details("ceret"))
+            val stack = mutableListOf<NavKey>(SaqzShellDestination.Home, GroupsRoute.Details("ceret"))
             reconcileAccessStack(stack, state)
             assertEquals(1, stack.size, "$state deveria colapsar o stack")
         }
@@ -111,7 +139,7 @@ class SaqzNavHostTest {
     @Test
     fun repeatedReadyKeepsTheStackedGroupRoutes() {
         val ready = SessionAccessState.Ready(session)
-        val stack = mutableListOf<NavKey>(SaqzShellDestination)
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Home)
         reconcileAccessStack(stack, ready)
         stack += GroupsRoute.Details("ceret")
         stack += GroupsRoute.Members("ceret")
@@ -123,7 +151,7 @@ class SaqzNavHostTest {
 
         assertEquals(
             listOf<NavKey>(
-                SaqzShellDestination,
+                SaqzShellDestination.Home,
                 GroupsRoute.Details("ceret"),
                 GroupsRoute.Members("ceret"),
                 ProfileRoute.Edit,
@@ -139,7 +167,7 @@ class SaqzNavHostTest {
     fun readyReplacesAnAccessStackWithTheShell() {
         val stack = mutableListOf<NavKey>(AccessRoute.Login)
         reconcileAccessStack(stack, SessionAccessState.Ready(session))
-        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack)
     }
 
     // VUL-84, o mesmo de cima com o fluxo 1 empilhado: a base errada cai inteira, não só a
@@ -154,14 +182,14 @@ class SaqzNavHostTest {
 
         reconcileAccessStack(stack, SessionAccessState.Ready(session))
 
-        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack)
     }
 
     // VUL-72 (b): sair da sessão limpa tudo, inclusive o que estava empilhado.
     @Test
     fun signingOutFromADeepStackClearsItBackToLogin() {
         val stack = mutableListOf<NavKey>(
-            SaqzShellDestination,
+            SaqzShellDestination.Home,
             GroupsRoute.Details("ceret"),
             GroupsRoute.Schedule("ceret"),
             ProfileRoute.Exit("atleta@example.test"),
@@ -208,7 +236,7 @@ class SaqzNavHostTest {
     // com o destino, então a canonicalização acontece mesmo na primeira passagem.
     @Test
     fun aRestoredStackFromADeadSessionIsCanonicalized() {
-        val stale = mutableListOf<NavKey>(SaqzShellDestination, GroupsRoute.Details("ceret"))
+        val stale = mutableListOf<NavKey>(SaqzShellDestination.Home, GroupsRoute.Details("ceret"))
 
         reconcileAccessStack(stale, SessionAccessState.SignedOut, restoring = true)
 
@@ -238,7 +266,7 @@ class SaqzNavHostTest {
     @Test
     fun completingTheAuthenticatedResetDropsTheConsumedFormToTheShell() {
         val stack = mutableListOf<NavKey>(
-            SaqzShellDestination,
+            SaqzShellDestination.Home,
             AccessRoute.ForgotPassword,
             AccessRoute.ResetCode("ana@exemplo.com"),
             AccessRoute.NewPassword("ana@exemplo.com", "ticket-do-reset"),
@@ -246,14 +274,14 @@ class SaqzNavHostTest {
 
         stack.completePasswordReset(SessionAccessState.Ready(session))
 
-        assertEquals(listOf<NavKey>(SaqzShellDestination, AccessRoute.PasswordChanged), stack)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home, AccessRoute.PasswordChanged), stack)
     }
 
     @Test
     fun passwordChangedSignInReturnsToTheLiveSessionDestination() {
         val authenticated = mutableListOf<NavKey>(AccessRoute.PasswordChanged)
         authenticated.finishPasswordChanged(SessionAccessState.Ready(session))
-        assertEquals(listOf<NavKey>(SaqzShellDestination), authenticated)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), authenticated)
 
         val signedOut = mutableListOf<NavKey>(AccessRoute.PasswordChanged)
         signedOut.finishPasswordChanged(SessionAccessState.SignedOut)
@@ -268,7 +296,7 @@ class SaqzNavHostTest {
     @Test
     fun creatingAGroupFromPlanActiveDropsThePlansSegment() {
         val stack = mutableListOf<NavKey>(
-            SaqzShellDestination,
+            SaqzShellDestination.Home,
             SubscriptionsRoute.PlanSelection,
             SubscriptionsRoute.Payment(planId = "Organizador", cycle = "Monthly"),
             SubscriptionsRoute.PlanActive,
@@ -276,7 +304,7 @@ class SaqzNavHostTest {
 
         stack.dropPlansSegment()
 
-        assertEquals(listOf<NavKey>(SaqzShellDestination), stack)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack)
     }
 
     // A base de grupos empilhada por baixo (VUL-72) não é parte do segmento de planos, e
@@ -284,14 +312,14 @@ class SaqzNavHostTest {
     @Test
     fun dropPlansSegmentLeavesUnrelatedRoutesUntouched() {
         val stack = mutableListOf<NavKey>(
-            SaqzShellDestination,
+            SaqzShellDestination.Home,
             GroupsRoute.Details("ceret"),
             SubscriptionsRoute.PlanSelection,
         )
 
         stack.dropPlansSegment()
 
-        assertEquals(listOf<NavKey>(SaqzShellDestination, GroupsRoute.Details("ceret")), stack)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home, GroupsRoute.Details("ceret")), stack)
     }
 
     private companion object {

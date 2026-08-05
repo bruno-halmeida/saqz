@@ -274,9 +274,10 @@ internal fun SaqzNavHost(
                     onIntent = { onIntent(AccessIntent.Session(it)) },
                 )
             }
-            entry<SaqzShellDestination> {
+            entry<SaqzShellDestination> { route ->
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
+                    initialTab = route.resolvedTab(),
                     financeTab = {
                         FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
                     },
@@ -499,13 +500,13 @@ internal fun SaqzNavHost(
                     },
                     onRequest = {},
                     onBrowseOtherGroups = {
-                        backStack.resetTo(SaqzShellDestination)
+                        backStack.openInviteOtherGroups()
                     },
                     onExploreApp = {
                         backStack.openInviteExplore()
                     },
                     onOpenAnotherGroup = {
-                        backStack.resetTo(SaqzShellDestination)
+                        backStack.openInviteOtherGroups()
                     },
                     onRequestNewInvite = pop,
                     initialRequestSent = route.requestSent,
@@ -611,7 +612,17 @@ private fun InviteError.toRouteError(): InviteLandingRouteError = when (this) {
 }
 
 internal fun NavBackStack<NavKey>.openInviteExplore() {
-    resetTo(SaqzShellDestination)
+    // "Explorar o app" é a entrada geral — o default do shell (aba Início, VUL-193).
+    resetTo(SaqzShellDestination.Home)
+}
+
+/**
+ * VUL-193: os callbacks do invite landing (BrowseOtherGroups e OpenAnotherGroup, mais o
+ * back da top-bar) prometem a lista de grupos. O destino carrega `initialTab = Grupos`
+ * para o shell abrir na aba certa — sem isto o reset cairia na aba Início (default).
+ */
+internal fun NavBackStack<NavKey>.openInviteOtherGroups() {
+    resetTo(SaqzShellDestination.Groups)
 }
 
 internal fun pendingInviteStorageFailureRoute(
@@ -644,7 +655,7 @@ internal fun MutableList<NavKey>.finishPasswordChanged(session: SessionAccessSta
 }
 
 private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this) {
-    is SessionAccessState.Ready -> SaqzShellDestination
+    is SessionAccessState.Ready -> SaqzShellDestination.Home
     SessionAccessState.SignedOut,
     is SessionAccessState.CompletingIdentity,
     SessionAccessState.Bootstrapping,
@@ -752,5 +763,5 @@ private fun SessionAccessState.toDestination(): NavKey = when (this) {
     SessionAccessState.SignedOut -> AccessRoute.Login
     is SessionAccessState.CompletingIdentity -> AccessRoute.IdentityCompletion
     SessionAccessState.Bootstrapping, SessionAccessState.BootstrapError -> AccessRoute.Bootstrap
-    is SessionAccessState.Ready -> SaqzShellDestination
+    is SessionAccessState.Ready -> SaqzShellDestination.Home
 }
