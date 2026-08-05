@@ -126,6 +126,7 @@ class HomeViewModel(
     override fun onIntent(intent: HomeIntent) {
         when (intent) {
             HomeIntent.Retry -> load()
+            HomeIntent.Refresh -> load(softRefresh = true)
             is HomeIntent.Respond -> respond(intent.intent)
             HomeIntent.DismissToast -> update { it.copy(toast = null) }
             HomeIntent.OpenGroups -> emit(HomeEffect.OpenGroups)

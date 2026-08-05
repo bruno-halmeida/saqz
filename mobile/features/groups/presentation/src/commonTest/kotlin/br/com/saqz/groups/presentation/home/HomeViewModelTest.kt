@@ -691,6 +691,41 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `refresh drops the notice when the admin settles the charge`() = runTest {
+        // A volta ao app é a única forma de saber que a cobrança foi baixada lá fora.
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())),
+                SaqzResult.Success(sampleHome()),
+            ),
+        )
+        assertEquals(2, viewModel.state.value.ownCharges?.groups?.size)
+
+        viewModel.onIntent(HomeIntent.Refresh)
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.ownCharges)
+    }
+
+    @Test
+    fun `refresh keeps the screen mounted when the reload fails`() = runTest {
+        // Recarga por baixo: falhar na volta ao app não pode trocar a Home por erro.
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())),
+                SaqzResult.Failure(HomeError.Data(DataError.Connectivity)),
+            ),
+        )
+
+        viewModel.onIntent(HomeIntent.Refresh)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(2, viewModel.state.value.ownCharges?.groups?.size)
+    }
+
+    @Test
     fun `copy pix emits the key of the group and ignores a group without one`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(

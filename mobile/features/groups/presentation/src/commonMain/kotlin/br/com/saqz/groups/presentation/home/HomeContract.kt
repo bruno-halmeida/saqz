@@ -168,6 +168,12 @@ data class HomeAdminReadModelUi(
 
 sealed interface HomeIntent {
     data object Retry : HomeIntent
+
+    /**
+     * Recarga por baixo, sem esqueleto nem tela de erro: é a volta ao app (VUL-202). O que
+     * mudou lá fora — o admin baixando a cobrança — só chega por aqui.
+     */
+    data object Refresh : HomeIntent
     data class Respond(val intent: br.com.saqz.groups.domain.attendance.AttendanceIntent) : HomeIntent
     data object DismissToast : HomeIntent
     data object OpenGroups : HomeIntent
