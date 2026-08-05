@@ -185,7 +185,7 @@ class HomeScreenTest {
 
         assertEquals(
             listOf(
-                HomeIntent.OpenMembers("ceret"),
+                HomeIntent.OpenInvite("ceret"),
                 HomeIntent.OpenCashbox("ceret"),
                 HomeIntent.OpenGameSettlement("ceret", "game-1"),
             ),

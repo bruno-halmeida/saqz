@@ -283,7 +283,7 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
                     stringResource(Res.string.home_admin_waiting_entry_chip, group.entryRequestCount),
                 ),
                 tag = HomeAdminTags.entryRequests(group.id),
-                action = HomeIntent.OpenMembers(group.id),
+                action = HomeIntent.OpenInvite(group.id),
             ),
         )
     }
