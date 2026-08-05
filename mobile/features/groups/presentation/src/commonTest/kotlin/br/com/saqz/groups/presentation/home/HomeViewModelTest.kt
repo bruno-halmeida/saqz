@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.home
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
@@ -239,6 +240,89 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `respond rechecks the deadline after the home was loaded`() = runTest {
+        var currentNow = Instant.parse("2026-07-28T20:00:00Z")
+        val clock = GroupNowPort { currentNow }
+        val attendance = FakeAttendanceGateway()
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = attendance,
+            now = clock,
+        )
+
+        assertTrue(viewModel.state.value.member?.nextGame?.confirmationOpen == true)
+        currentNow = Instant.parse("2026-07-28T22:00:00Z")
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(0, attendance.respondCalls)
+        assertFalse(viewModel.state.value.responding)
+    }
+
+    @Test
+    fun `avulso with mensalista priority uses waitlist optimistic state and server toast`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(
+            nextGame = sampleNextGame().copy(
+                membershipType = AthleteMembershipType.AVULSO,
+                mensalistaPriority = true,
+            ),
+        )
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(
+                    ownAttendance = HomeOwnAttendance(AttendanceStatus.Waitlisted, 1),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Waitlisted, 1)))
+        advanceUntilIdle()
+
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(HomeToast.Waitlisted, viewModel.state.value.toast)
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.home?.member?.nextGame?.ownAttendance?.status)
+    }
+
+    @Test
+    fun `full game uses waitlist optimistic state and server toast`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(nextGame = sampleNextGame().copy(confirmedCount = 12, capacity = 12))
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(
+                    ownAttendance = HomeOwnAttendance(AttendanceStatus.Waitlisted, 1),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Waitlisted, 1)))
+        advanceUntilIdle()
+
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(HomeToast.Waitlisted, viewModel.state.value.toast)
+    }
+
+    @Test
     fun `older response cannot overwrite a newer retry generation`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()
@@ -263,6 +347,7 @@ class HomeViewModelTest {
     private fun viewModel(
         homeGateway: HomeGateway,
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),
+        now: GroupNowPort = this.now,
     ) = HomeViewModel(
         homeGateway = homeGateway,
         athleteGateway = FakeAthleteGateway(
@@ -270,6 +355,20 @@ class HomeViewModelTest {
         ),
         attendanceGateway = attendanceGateway,
         now = now,
+    )
+}
+
+private fun serverMutation(
+    status: AttendanceStatus,
+    waitlistPosition: Long?,
+) = br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation().let { mutation ->
+    mutation.copy(
+        value = mutation.value.copy(
+            attendance = mutation.value.attendance.copy(
+                status = status,
+                waitlistPosition = waitlistPosition,
+            ),
+        ),
     )
 }
 

@@ -63,4 +63,5 @@
     <string name="home_weekday_sunday_short">Dom</string>
     <string name="home_toast_confirmed">Presença confirmada. Bom jogo!</string>
     <string name="home_toast_declined">Sua vaga foi liberada.</string>
+    <string name="home_toast_waitlisted">As vagas acabaram. Você entrou na lista de espera.</string>
 </resources>

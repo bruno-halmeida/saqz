@@ -71,9 +71,10 @@ import br.com.saqz.groups.resources.home_retry
 import br.com.saqz.groups.resources.home_status_confirmed
 import br.com.saqz.groups.resources.home_status_declined
 import br.com.saqz.groups.resources.home_status_pending
-import br.com.saqz.groups.resources.home_waitlisted
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
+import br.com.saqz.groups.resources.home_toast_waitlisted
+import br.com.saqz.groups.resources.home_waitlisted
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeTags {
@@ -204,6 +205,7 @@ private fun HomeContent(
                         when (toast) {
                             HomeToast.Confirmed -> Res.string.home_toast_confirmed
                             HomeToast.Declined -> Res.string.home_toast_declined
+                            HomeToast.Waitlisted -> Res.string.home_toast_waitlisted
                         },
                     ),
                 )

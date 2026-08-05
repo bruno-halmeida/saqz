@@ -5,6 +5,7 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -146,13 +147,15 @@ class HomeViewModel(
         val game = current.home?.member?.nextGame ?: return
         val member = current.member ?: return
         val gameUi = member.nextGame ?: return
+        val deadline = runCatching { Instant.parse(game.confirmationDeadline) }.getOrNull() ?: return
+        if (now.now() >= deadline) return
         if (current.responding || !gameUi.confirmationOpen || game.ownAttendance?.status == AttendanceStatus.Waitlisted) return
 
         val generation = ++responseGeneration
         val loadAtStart = loadGeneration
         val previousHome = checkNotNull(current.home)
         val previousMember = member
-        val optimisticStatus = intent.toStatus()
+        val optimisticStatus = game.optimisticStatus(intent)
         update {
             it.copy(
                 home = previousHome.copy(
@@ -179,7 +182,27 @@ class HomeViewModel(
             if (generation < responseGeneration || loadAtStart < loadGeneration) return@launch
             when (result) {
                 is SaqzResult.Success -> {
-                    update { it.copy(toast = intent.toToast()) }
+                    val attendance = result.value.value.attendance
+                    val actualStatus = attendance.status
+                    update {
+                        it.copy(
+                            home = previousHome.copy(
+                                member = previousHome.member.copy(
+                                    nextGame = previousHome.member.nextGame?.copy(
+                                        ownAttendance = HomeOwnAttendance(
+                                            status = actualStatus,
+                                            waitlistPosition = attendance.waitlistPosition,
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            member = previousMember.copy(
+                                nextGame = previousMember.nextGame.copy(ownAttendance = actualStatus),
+                            ),
+                            responding = false,
+                            toast = actualStatus.toToast(),
+                        )
+                    }
                     load()
                 }
                 is SaqzResult.Failure -> update {
@@ -307,14 +330,18 @@ class HomeViewModel(
 
     private fun String.capitalized() = replaceFirstChar { it.titlecase() }
 
-    private fun AttendanceIntent.toStatus() = when (this) {
-        AttendanceIntent.Confirm -> AttendanceStatus.Confirmed
-        AttendanceIntent.Decline -> AttendanceStatus.Declined
+    private fun HomeNextGame.optimisticStatus(intent: AttendanceIntent) = when {
+        intent == AttendanceIntent.Decline -> AttendanceStatus.Declined
+        ownAttendance?.status == AttendanceStatus.Confirmed -> AttendanceStatus.Confirmed
+        membershipType == AthleteMembershipType.AVULSO && mensalistaPriority -> AttendanceStatus.Waitlisted
+        confirmedCount >= capacity -> AttendanceStatus.Waitlisted
+        else -> AttendanceStatus.Confirmed
     }
 
-    private fun AttendanceIntent.toToast() = when (this) {
-        AttendanceIntent.Confirm -> HomeToast.Confirmed
-        AttendanceIntent.Decline -> HomeToast.Declined
+    private fun AttendanceStatus.toToast() = when (this) {
+        AttendanceStatus.Confirmed -> HomeToast.Confirmed
+        AttendanceStatus.Declined -> HomeToast.Declined
+        AttendanceStatus.Waitlisted -> HomeToast.Waitlisted
     }
 }
 

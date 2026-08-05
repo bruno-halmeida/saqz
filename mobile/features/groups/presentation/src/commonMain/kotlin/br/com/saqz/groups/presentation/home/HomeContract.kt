@@ -62,6 +62,7 @@ data class HomeGroupUi(
 enum class HomeToast {
     Confirmed,
     Declined,
+    Waitlisted,
 }
 
 sealed interface HomeIntent {
