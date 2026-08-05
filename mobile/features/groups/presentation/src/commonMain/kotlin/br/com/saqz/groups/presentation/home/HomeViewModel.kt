@@ -45,6 +45,7 @@ import br.com.saqz.groups.resources.home_subtitle_confirmed
 import br.com.saqz.groups.resources.home_subtitle_declined
 import br.com.saqz.groups.resources.home_subtitle_no_game
 import br.com.saqz.groups.resources.home_subtitle_no_response
+import br.com.saqz.groups.resources.home_subtitle_waitlisted
 import br.com.saqz.groups.resources.home_time
 import br.com.saqz.groups.resources.home_weekday_friday
 import br.com.saqz.groups.resources.home_weekday_friday_short
@@ -121,6 +122,7 @@ class HomeViewModel(
                     is SaqzResult.Failure -> showFailure(generation, profileResult.error.toUiError())
                     is SaqzResult.Success -> {
                         val member = homeResult.value.member.toUi()
+                        if (generation < loadGeneration) return@launch
                         update {
                             it.copy(
                                 isLoading = false,
@@ -202,6 +204,10 @@ class HomeViewModel(
         return HomeMemberUi(
             subtitle = when {
                 nextGameUi == null -> getString(Res.string.home_subtitle_no_game)
+                nextGameUi.ownAttendance == AttendanceStatus.Waitlisted -> getString(
+                    Res.string.home_subtitle_waitlisted,
+                    nextGameUi.groupName,
+                )
                 nextGameUi.ownAttendance == AttendanceStatus.Confirmed -> getString(
                     Res.string.home_subtitle_confirmed,
                     nextGameUi.weekday,

@@ -71,6 +71,22 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `waitlisted home formats the waitlist subtitle`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Waitlisted, 1))),
+                ),
+            ),
+        )
+
+        assertEquals(
+            "Você está na lista de espera de Vôlei do CERET.",
+            viewModel.state.value.member?.subtitle,
+        )
+    }
+
+    @Test
     fun `home failure exposes the standard retry error`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
@@ -98,6 +114,35 @@ class HomeViewModelTest {
         first.complete(SaqzResult.Success(sampleHome(id = "first")))
 
         assertEquals("second", viewModel.state.value.home?.member?.groups?.singleOrNull()?.id?.value)
+    }
+
+    @Test
+    fun `refresh during member formatting cannot overwrite the newer generation`() = runTest {
+        val first = CompletableDeferred<SaqzResult<HomeReadModel, HomeError>>()
+        val second = CompletableDeferred<SaqzResult<HomeReadModel, HomeError>>()
+        var viewModel: HomeViewModel? = null
+        var retryTriggered = false
+        val nowDuringFormatting = GroupNowPort {
+            if (!retryTriggered) {
+                retryTriggered = true
+                viewModel?.onIntent(HomeIntent.Retry)
+                second.complete(SaqzResult.Success(sampleHome(id = "newer", nextGame = sampleNextGame())))
+            }
+            Instant.parse("2026-07-28T12:00:00Z")
+        }
+
+        val candidate = HomeViewModel(
+            homeGateway = DeferredHomeGateway(first, second),
+            athleteGateway = FakeAthleteGateway(),
+            attendanceGateway = FakeAttendanceGateway(),
+            now = nowDuringFormatting,
+        )
+        viewModel = candidate
+
+        first.complete(SaqzResult.Success(sampleHome(id = "older", nextGame = sampleNextGame())))
+        advanceUntilIdle()
+
+        assertEquals("newer", candidate.state.value.home?.member?.groups?.single()?.id?.value)
     }
 
     @Test

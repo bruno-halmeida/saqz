@@ -8,6 +8,7 @@
     <string name="home_subtitle_no_response">%1$s tem jogo. Confirma?</string>
     <string name="home_subtitle_confirmed">Você joga %1$s, %2$s.</string>
     <string name="home_subtitle_declined">Você está fora de %1$s.</string>
+    <string name="home_subtitle_waitlisted">Você está na lista de espera de %1$s.</string>
     <string name="home_subtitle_no_game">Semana sem jogo por aqui.</string>
     <string name="home_game_date_time">%1$s, %2$s · %3$s</string>
     <string name="home_game_next">PRÓXIMO JOGO</string>
