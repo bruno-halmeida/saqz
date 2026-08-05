@@ -56,6 +56,35 @@ data class MySubscription(
     val readOnly: Boolean,
     val pastDueSince: String?,
     val canceledAt: String?,
+    // VUL-196: binding pronto para quando o endpoint de leitura passar a devolver os dois —
+    // hoje o backend não expõe, então ambos chegam nulos e a UI cai no rótulo genérico.
+    val cardLast4: String? = null,
+    val cardBrand: String? = null,
+)
+
+/** Dados de cartão: só em memória (`PaymentState`), nunca em `SavedStateHandle` — PCI (VUL-196). */
+data class CreditCardInfo(
+    val holderName: String,
+    val number: String,
+    val expiryMonth: String,
+    val expiryYear: String,
+    val ccv: String,
+)
+
+/**
+ * `name`/`email`/`cpfCnpj` não duplicam campo de UI: [CreateSubscriptionCommand.name]/`email`/
+ * `cpfCnpj` já carregam a mesma informação (sessão + CPF/CNPJ do formulário), então o
+ * `PaymentViewModel` os reaproveita ao montar este bloco em vez de pedir de novo ao portador.
+ */
+data class CreditCardHolderInfo(
+    val name: String,
+    val email: String,
+    val cpfCnpj: String,
+    val postalCode: String,
+    val addressNumber: String,
+    val phone: String,
+    val addressComplement: String? = null,
+    val mobilePhone: String? = null,
 )
 
 data class CreateSubscriptionCommand(
@@ -67,6 +96,8 @@ data class CreateSubscriptionCommand(
     val email: String,
     val cpfCnpj: String,
     val couponCode: String? = null,
+    val creditCard: CreditCardInfo? = null,
+    val creditCardHolderInfo: CreditCardHolderInfo? = null,
 )
 
 data class CreatedSubscription(
@@ -119,6 +150,9 @@ sealed interface SubscriptionError : SaqzError {
     data object CouponExpired : SubscriptionError // 410 COUPON_EXPIRED
     data object CouponAlreadyRedeemed : SubscriptionError // 409 COUPON_ALREADY_REDEEMED
     data object DowngradeBlocked : SubscriptionError // 409 DOWNGRADE_BLOCKED
+
+    /** 402 card_declined — `reason` é o código Asaas (não exibir), `message` já vem em PT-BR. */
+    data class CardDeclined(val reason: String, val message: String) : SubscriptionError
     data class Data(val error: DataError) : SubscriptionError
 }
 

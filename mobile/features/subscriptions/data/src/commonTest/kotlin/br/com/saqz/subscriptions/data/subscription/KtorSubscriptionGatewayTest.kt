@@ -194,6 +194,54 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
+    fun `create sends credit card and holder info blocks when present`() = runTest {
+        gateway { request ->
+            val body = request.json()
+            val card = body.getValue("creditCard").jsonObject
+            val holder = body.getValue("creditCardHolderInfo").jsonObject
+            assertEquals("Ana Silva", card.getValue("holderName").jsonPrimitive.content)
+            assertEquals("4111111111111111", card.getValue("number").jsonPrimitive.content)
+            assertEquals("12", card.getValue("expiryMonth").jsonPrimitive.content)
+            assertEquals("2028", card.getValue("expiryYear").jsonPrimitive.content)
+            assertEquals("123", card.getValue("ccv").jsonPrimitive.content)
+            assertEquals("Ana Silva", holder.getValue("name").jsonPrimitive.content)
+            assertEquals("ana@exemplo.com", holder.getValue("email").jsonPrimitive.content)
+            assertEquals("12345678900", holder.getValue("cpfCnpj").jsonPrimitive.content)
+            assertEquals("01310100", holder.getValue("postalCode").jsonPrimitive.content)
+            assertEquals("1000", holder.getValue("addressNumber").jsonPrimitive.content)
+            assertEquals("11999990000", holder.getValue("phone").jsonPrimitive.content)
+            json(CREATED_PIX)
+        }.create(createCardCommand())
+    }
+
+    @Test
+    fun `create without card selection omits credit card blocks`() = runTest {
+        gateway { request ->
+            val body = request.json()
+            assertFalse("creditCard" in body.keys)
+            assertFalse("creditCardHolderInfo" in body.keys)
+            json(CREATED_PIX)
+        }.create(createCommand())
+    }
+
+    @Test
+    fun `create card declined maps reason and pt-br message`() = runTest {
+        val result = gateway { respond(CARD_DECLINED, HttpStatusCode.PaymentRequired, jsonHeaders()) }
+            .create(createCardCommand())
+        val error = assertIs<SubscriptionError.CardDeclined>(assertIs<SaqzResult.Failure<SubscriptionError>>(result).error)
+        assertEquals("insufficient_funds", error.reason)
+        assertEquals("Saldo insuficiente.", error.message)
+    }
+
+    @Test
+    fun `card declined does not retry even with a request id`() = runTest {
+        var calls = 0
+        gateway { calls++; respond(CARD_DECLINED, HttpStatusCode.PaymentRequired, jsonHeaders()) }
+            .create(createCardCommand())
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun `create invalid customer data maps exact field errors`() = runTest {
         val result = gateway {
             problemResponse(400, "VALIDATION_FAILED", mapOf("cpfCnpj" to listOf("is invalid")))
@@ -328,6 +376,25 @@ class KtorSubscriptionGatewayTest {
         couponCode = "BEMVINDO10",
     )
 
+    private fun createCardCommand() = createCommand().copy(
+        billingType = BillingType.CreditCard,
+        creditCard = CreditCardInfo(
+            holderName = "Ana Silva",
+            number = "4111111111111111",
+            expiryMonth = "12",
+            expiryYear = "2028",
+            ccv = "123",
+        ),
+        creditCardHolderInfo = CreditCardHolderInfo(
+            name = "Ana Silva",
+            email = "ana@exemplo.com",
+            cpfCnpj = "12345678900",
+            postalCode = "01310100",
+            addressNumber = "1000",
+            phone = "11999990000",
+        ),
+    )
+
     private fun gateway(
         delays: MutableList<Long>? = null,
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
@@ -401,6 +468,8 @@ class KtorSubscriptionGatewayTest {
         const val COUPON_EXPIRED = """{"status":"EXPIRED"}"""
         const val MY_SUBSCRIPTION = """{"status":"ACTIVE","entitled":true,"plan":"ORGANIZADOR","cycle":"MONTHLY","pendingPlan":"ILIMITADO","pendingPlanEffectiveAt":"2026-09-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z","paymentMethod":"PIX","usage":{"groupsUsed":2,"groupsLimit":3},"readOnly":false,"pastDueSince":null,"canceledAt":null}"""
         const val CREATED_PIX = """{"ownerUserId":"owner-1","planId":"TITULAR","cycle":"MONTHLY","status":"ACTIVE","asaasSubscriptionId":"sub-1","currentPeriodEnd":"2026-08-30T00:00:00Z","billingType":"PIX","pixCopyPaste":"00020126chavepix","invoiceUrl":null}"""
+        // VUL-196: contrato pinado do Asaas (VUL-194) — sem `status`/`correlationId`.
+        const val CARD_DECLINED = """{"error":"card_declined","reason":"insufficient_funds","message":"Saldo insuficiente."}"""
         const val CHANGE_PLAN = """{"planId":"ILIMITADO","pendingPlanId":null,"pendingPlanEffectiveAt":null,"pendingUpgradePlanId":"ILIMITADO","status":"ACTIVE","chargedCents":3000,"pixCopyPaste":"00020126chavepix","invoiceUrl":null}"""
         const val CANCELED = """{"status":"CANCELED","canceledAt":"2026-08-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z"}"""
         const val RECEIPTS = """{"receipts":[{"asaasEventId":"evt-1","asaasPaymentId":"pay-1","valueCents":4990,"confirmedAt":"2026-07-01T00:00:00Z","processedAt":"2026-07-01T00:05:00Z"}]}"""

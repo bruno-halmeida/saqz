@@ -40,14 +40,21 @@ data class NetworkConfig(
 
 @Serializable
 data class ApiProblem(
-    val status: Int,
+    val status: Int = 0,
     val code: String? = null,
-    val correlationId: String,
+    val correlationId: String? = null,
     val fieldErrors: Map<String, List<String>>? = null,
     val retryAfterSeconds: Int? = null,
     val remainingAttempts: Int? = null,
     val expiredAt: String? = null,
     val conflictGameId: String? = null,
+    // VUL-196: forma pinada de recusa do Asaas (402 card_declined), shape distinto do
+    // "problem" padrão do backend — sem `status`/`correlationId`. `status`/`correlationId`
+    // ganharam default acima só para este decode não falhar; todo outro caminho do app
+    // continua enviando os dois, então nada muda pra eles.
+    val error: String? = null,
+    val reason: String? = null,
+    val message: String? = null,
 )
 
 sealed interface NetworkError {

@@ -8,6 +8,8 @@ import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.CouponValidation
 import br.com.saqz.subscriptions.domain.subscription.CreateSubscriptionCommand
 import br.com.saqz.subscriptions.domain.subscription.CreatedSubscription
+import br.com.saqz.subscriptions.domain.subscription.CreditCardHolderInfo
+import br.com.saqz.subscriptions.domain.subscription.CreditCardInfo
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfo
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfoProvider
 import br.com.saqz.subscriptions.domain.subscription.Plan
@@ -90,6 +92,21 @@ class PaymentViewModel(
         when (intent) {
             is PaymentIntent.UpdateCpfCnpj -> updateCpfCnpj(intent.value)
             is PaymentIntent.SelectBillingType -> selectBillingType(intent.value)
+            is PaymentIntent.UpdateCardNumber ->
+                updateCardForm { it.copy(number = intent.value.filter(Char::isDigit).take(MAX_CARD_NUMBER_DIGITS)) }
+            is PaymentIntent.UpdateCardExpiry ->
+                updateCardForm { it.copy(expiry = intent.value.filter(Char::isDigit).take(MAX_CARD_EXPIRY_DIGITS)) }
+            is PaymentIntent.UpdateCardCvv ->
+                updateCardForm { it.copy(cvv = intent.value.filter(Char::isDigit).take(MAX_CARD_CVV_DIGITS)) }
+            is PaymentIntent.UpdateCardHolderName -> updateCardForm { it.copy(holderName = intent.value) }
+            is PaymentIntent.UpdateCardPostalCode ->
+                updateCardForm { it.copy(postalCode = intent.value.filter(Char::isDigit).take(MAX_POSTAL_CODE_DIGITS)) }
+            is PaymentIntent.UpdateCardAddressNumber -> updateCardForm { it.copy(addressNumber = intent.value) }
+            is PaymentIntent.UpdateCardAddressComplement -> updateCardForm { it.copy(addressComplement = intent.value) }
+            is PaymentIntent.UpdateCardPhone ->
+                updateCardForm { it.copy(phone = intent.value.filter(Char::isDigit).take(MAX_PHONE_DIGITS)) }
+            is PaymentIntent.UpdateCardMobilePhone ->
+                updateCardForm { it.copy(mobilePhone = intent.value.filter(Char::isDigit).take(MAX_PHONE_DIGITS)) }
             PaymentIntent.Submit -> submit()
             PaymentIntent.RegeneratePix -> submit(skipValidation = true)
             PaymentIntent.ConfirmPayment -> checkNow()
@@ -107,6 +124,12 @@ class PaymentViewModel(
     private fun selectBillingType(billingType: BillingType) {
         savedStateHandle[KEY_BILLING_TYPE] = billingType.name
         update { it.copy(billingType = billingType) }
+    }
+
+    // PCI: `cardForm` só passa por `update`, nunca por `savedStateHandle` — ver doc de
+    // [PaymentState.cardForm].
+    private fun updateCardForm(transform: (CardFormState) -> CardFormState) {
+        update { it.copy(cardForm = transform(it.cardForm).copy(errors = emptySet())) }
     }
 
     private fun loadSummary() {
@@ -146,10 +169,25 @@ class PaymentViewModel(
             update { it.copy(submitError = UiText.Res(Res.string.payment_error_no_session)) }
             return
         }
+        val isCard = state.value.billingType == BillingType.CreditCard
+        if (isCard && !skipValidation) {
+            val cardErrors = validateCardForm(state.value.cardForm)
+            if (cardErrors.isNotEmpty()) {
+                update { it.copy(cardForm = it.cardForm.copy(errors = cardErrors)) }
+                return
+            }
+        }
         pollJob?.cancel()
         submitJob?.cancel()
         submitJob = viewModelScope.launch {
-            update { it.copy(isSubmitting = true, submitError = null, cpfCnpjError = null) }
+            update {
+                it.copy(
+                    isSubmitting = true,
+                    submitError = null,
+                    cpfCnpjError = null,
+                    cardForm = it.cardForm.copy(errors = emptySet()),
+                )
+            }
             subscriptionGateway.create(
                 CreateSubscriptionCommand(
                     requestId = requestId,
@@ -160,10 +198,18 @@ class PaymentViewModel(
                     email = currentCustomer.email.orEmpty(),
                     cpfCnpj = digits,
                     couponCode = state.value.couponCode,
+                    creditCard = if (isCard) state.value.cardForm.toCreditCardInfo() else null,
+                    creditCardHolderInfo = if (isCard) {
+                        state.value.cardForm.toHolderInfo(currentCustomer, digits)
+                    } else {
+                        null
+                    },
                 ),
             ).onSuccess { created ->
                 onCreated(created)
             }.onFailure { error ->
+                // Recusa (VUL-196): os dados do portador ficam como estão — só os erros de
+                // campo somem, para "tentar outro cartão" não obrigar a redigitar tudo.
                 update { it.copy(isSubmitting = false, submitError = error.toUiText()) }
             }
         }
@@ -251,8 +297,38 @@ class PaymentViewModel(
         const val KEY_INVOICE_URL = "payment_invoice_url"
         const val POLL_INTERVAL_MS = 5_000L
         const val MAX_CPF_CNPJ_DIGITS = 14
+        const val MAX_CARD_NUMBER_DIGITS = 19
+        const val MAX_CARD_EXPIRY_DIGITS = 4
+        const val MAX_CARD_CVV_DIGITS = 4
+        const val MAX_POSTAL_CODE_DIGITS = 8
+        const val MAX_PHONE_DIGITS = 11
     }
 }
+
+/**
+ * `creditCardHolderInfo.name`/`email`/`cpfCnpj` reaproveitam a sessão e o CPF/CNPJ já
+ * capturado no formulário — ver doc de [CardFormState]. Só CEP/número/telefone são
+ * realmente novos aqui, junto com os dados do cartão em si.
+ */
+private fun CardFormState.toCreditCardInfo() = CreditCardInfo(
+    holderName = holderName.trim(),
+    number = number.filter(Char::isDigit),
+    expiryMonth = expiry.filter(Char::isDigit).take(2),
+    // ponytail: assume século 20xx — não existe cartão de crédito ainda válido de 19xx.
+    expiryYear = "20" + expiry.filter(Char::isDigit).drop(2),
+    ccv = cvv.filter(Char::isDigit),
+)
+
+private fun CardFormState.toHolderInfo(customer: CustomerInfo, cpfCnpj: String) = CreditCardHolderInfo(
+    name = customer.displayName,
+    email = customer.email.orEmpty(),
+    cpfCnpj = cpfCnpj,
+    postalCode = postalCode.filter(Char::isDigit),
+    addressNumber = addressNumber.trim(),
+    phone = phone.filter(Char::isDigit),
+    addressComplement = addressComplement.trim().ifBlank { null },
+    mobilePhone = mobilePhone.filter(Char::isDigit).ifBlank { null },
+)
 
 // Mesma regra do backend (`CreateSubscription.isValidCpfCnpj`): 11 dígitos (CPF) ou 14 (CNPJ).
 internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || digits.length == 14
@@ -263,12 +339,13 @@ internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || di
 // `AlreadySubscribed`, que continua com a mensagem genérica.
 // ponytail: mensagem única para o resto dos motivos de recusa — a 8a/8b já validou o
 // cupom antes de chegar aqui, e nenhum deles muda a ação do usuário: tentar de novo.
-private fun SubscriptionError.toUiText(): UiText =
-    if (this is SubscriptionError.PendingCheckoutMismatch) {
-        UiText.Res(Res.string.payment_error_conflict_pending_checkout)
-    } else {
-        UiText.Res(Res.string.payment_error_generic)
-    }
+private fun SubscriptionError.toUiText(): UiText = when (this) {
+    is SubscriptionError.PendingCheckoutMismatch -> UiText.Res(Res.string.payment_error_conflict_pending_checkout)
+    // VUL-196: `message` já vem em PT-BR do backend — é dinâmico (varia por motivo de
+    // recusa), então é String no estado (AGENTS.md §8), não UiText.Res.
+    is SubscriptionError.CardDeclined -> UiText.Raw(message)
+    else -> UiText.Res(Res.string.payment_error_generic)
+}
 
 private fun requirePlan(planId: String) = Plan.valueOf(planId)
 private fun requireCycle(cycle: String) = SubscriptionCycle.valueOf(cycle)

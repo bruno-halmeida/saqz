@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,11 +19,16 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.core.common.formatting.formatBrl
+import br.com.saqz.designsystem.CardExpiryVisualTransformation
+import br.com.saqz.designsystem.CardNumberVisualTransformation
+import br.com.saqz.designsystem.CepVisualTransformation
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.designsystem.CpfVisualTransformation
+import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -39,11 +45,30 @@ import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.subscriptions.presentation.payment.CardFormError
+import br.com.saqz.subscriptions.presentation.payment.CardFormState
 import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
 import br.com.saqz.subscriptions.presentation.payment.PaymentIntent
 import br.com.saqz.subscriptions.presentation.payment.PaymentState
 import br.com.saqz.subscriptions.presentation.payment.PaymentViewModel
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.card_capture_address_complement_label
+import br.com.saqz.subscriptions.resources.card_capture_address_number_error
+import br.com.saqz.subscriptions.resources.card_capture_address_number_label
+import br.com.saqz.subscriptions.resources.card_capture_cvv_error
+import br.com.saqz.subscriptions.resources.card_capture_cvv_label
+import br.com.saqz.subscriptions.resources.card_capture_expiry_error
+import br.com.saqz.subscriptions.resources.card_capture_expiry_label
+import br.com.saqz.subscriptions.resources.card_capture_holder_name_error
+import br.com.saqz.subscriptions.resources.card_capture_holder_name_label
+import br.com.saqz.subscriptions.resources.card_capture_mobile_phone_label
+import br.com.saqz.subscriptions.resources.card_capture_number_error
+import br.com.saqz.subscriptions.resources.card_capture_number_label
+import br.com.saqz.subscriptions.resources.card_capture_phone_error
+import br.com.saqz.subscriptions.resources.card_capture_phone_label
+import br.com.saqz.subscriptions.resources.card_capture_postal_code_error
+import br.com.saqz.subscriptions.resources.card_capture_postal_code_label
+import br.com.saqz.subscriptions.resources.card_capture_section_title
 import br.com.saqz.subscriptions.resources.payment_back_confirm_body
 import br.com.saqz.subscriptions.resources.payment_back_confirm_leave
 import br.com.saqz.subscriptions.resources.payment_back_confirm_stay
@@ -77,6 +102,15 @@ internal object PaymentTags {
     const val CardCopy = "payment-card-copy"
     const val Confirm = "payment-confirm"
     const val BackConfirmationSheet = "payment-back-confirmation-sheet"
+    const val CardNumber = "payment-card-number"
+    const val CardExpiry = "payment-card-expiry"
+    const val CardCvv = "payment-card-cvv"
+    const val CardHolderName = "payment-card-holder-name"
+    const val CardPostalCode = "payment-card-postal-code"
+    const val CardAddressNumber = "payment-card-address-number"
+    const val CardAddressComplement = "payment-card-address-complement"
+    const val CardPhone = "payment-card-phone"
+    const val CardMobilePhone = "payment-card-mobile-phone"
 }
 
 /**
@@ -183,6 +217,9 @@ private fun PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) ->
             invalid = state.cpfCnpjError != null,
             modifier = Modifier.testTag(PaymentTags.CpfCnpj),
         )
+        if (state.billingType == BillingType.CreditCard) {
+            CardCaptureSection(state.cardForm, onIntent)
+        }
         state.submitError?.let {
             Text(it.asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
         }
@@ -192,6 +229,137 @@ private fun PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) ->
             loading = state.isSubmitting,
             fullWidth = true,
             modifier = Modifier.testTag(PaymentTags.Submit),
+        )
+    }
+}
+
+/**
+ * Número/validade/CVV/nome do cartão + CEP/número/telefone do portador (VUL-196).
+ * `creditCardHolderInfo.name`/`email`/`cpfCnpj` reaproveitam sessão + CPF/CNPJ de cima —
+ * ver doc de [CardFormState], por isso não têm campo próprio aqui.
+ */
+@Composable
+private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) -> Unit) {
+    val metrics = SaqzTheme.metrics
+    Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+        Text(
+            stringResource(Res.string.card_capture_section_title),
+            style = SaqzTheme.typography.label,
+            color = SaqzTheme.colors.textPrimary,
+        )
+        SaqzInput(
+            value = form.number,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardNumber(it)) },
+            label = stringResource(Res.string.card_capture_number_label),
+            keyboardType = KeyboardType.Number,
+            visualTransformation = CardNumberVisualTransformation(),
+            errorText = if (CardFormError.NumberInvalid in form.errors) {
+                stringResource(Res.string.card_capture_number_error)
+            } else {
+                null
+            },
+            invalid = CardFormError.NumberInvalid in form.errors,
+            modifier = Modifier.testTag(PaymentTags.CardNumber),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+            SaqzInput(
+                value = form.expiry,
+                onValueChange = { onIntent(PaymentIntent.UpdateCardExpiry(it)) },
+                label = stringResource(Res.string.card_capture_expiry_label),
+                keyboardType = KeyboardType.Number,
+                visualTransformation = CardExpiryVisualTransformation(),
+                errorText = if (CardFormError.ExpiryInvalid in form.errors) {
+                    stringResource(Res.string.card_capture_expiry_error)
+                } else {
+                    null
+                },
+                invalid = CardFormError.ExpiryInvalid in form.errors,
+                modifier = Modifier.weight(1f).testTag(PaymentTags.CardExpiry),
+            )
+            // CVV: `Password` + `revealable = false` mascara sem oferecer olho de mostrar
+            // (PCI, VUL-196) — o mesmo mecanismo do "confirmar nova senha" do 1g.
+            SaqzInput(
+                value = form.cvv,
+                onValueChange = { onIntent(PaymentIntent.UpdateCardCvv(it)) },
+                label = stringResource(Res.string.card_capture_cvv_label),
+                kind = SaqzInputKind.Password,
+                revealable = false,
+                keyboardType = KeyboardType.NumberPassword,
+                errorText = if (CardFormError.CvvInvalid in form.errors) {
+                    stringResource(Res.string.card_capture_cvv_error)
+                } else {
+                    null
+                },
+                invalid = CardFormError.CvvInvalid in form.errors,
+                modifier = Modifier.weight(1f).testTag(PaymentTags.CardCvv),
+            )
+        }
+        SaqzInput(
+            value = form.holderName,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardHolderName(it)) },
+            label = stringResource(Res.string.card_capture_holder_name_label),
+            errorText = if (CardFormError.HolderNameRequired in form.errors) {
+                stringResource(Res.string.card_capture_holder_name_error)
+            } else {
+                null
+            },
+            invalid = CardFormError.HolderNameRequired in form.errors,
+            modifier = Modifier.testTag(PaymentTags.CardHolderName),
+        )
+        SaqzInput(
+            value = form.postalCode,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardPostalCode(it)) },
+            label = stringResource(Res.string.card_capture_postal_code_label),
+            keyboardType = KeyboardType.Number,
+            visualTransformation = CepVisualTransformation(),
+            errorText = if (CardFormError.PostalCodeInvalid in form.errors) {
+                stringResource(Res.string.card_capture_postal_code_error)
+            } else {
+                null
+            },
+            invalid = CardFormError.PostalCodeInvalid in form.errors,
+            modifier = Modifier.testTag(PaymentTags.CardPostalCode),
+        )
+        SaqzInput(
+            value = form.addressNumber,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardAddressNumber(it)) },
+            label = stringResource(Res.string.card_capture_address_number_label),
+            keyboardType = KeyboardType.Number,
+            errorText = if (CardFormError.AddressNumberRequired in form.errors) {
+                stringResource(Res.string.card_capture_address_number_error)
+            } else {
+                null
+            },
+            invalid = CardFormError.AddressNumberRequired in form.errors,
+            modifier = Modifier.testTag(PaymentTags.CardAddressNumber),
+        )
+        SaqzInput(
+            value = form.addressComplement,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardAddressComplement(it)) },
+            label = stringResource(Res.string.card_capture_address_complement_label),
+            modifier = Modifier.testTag(PaymentTags.CardAddressComplement),
+        )
+        SaqzInput(
+            value = form.phone,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardPhone(it)) },
+            label = stringResource(Res.string.card_capture_phone_label),
+            kind = SaqzInputKind.Phone,
+            visualTransformation = PhoneVisualTransformation(),
+            errorText = if (CardFormError.PhoneInvalid in form.errors) {
+                stringResource(Res.string.card_capture_phone_error)
+            } else {
+                null
+            },
+            invalid = CardFormError.PhoneInvalid in form.errors,
+            modifier = Modifier.testTag(PaymentTags.CardPhone),
+        )
+        SaqzInput(
+            value = form.mobilePhone,
+            onValueChange = { onIntent(PaymentIntent.UpdateCardMobilePhone(it)) },
+            label = stringResource(Res.string.card_capture_mobile_phone_label),
+            kind = SaqzInputKind.Phone,
+            visualTransformation = PhoneVisualTransformation(),
+            modifier = Modifier.testTag(PaymentTags.CardMobilePhone),
         )
     }
 }
@@ -339,6 +507,50 @@ private fun PaymentWaitingPixPreview() = SaqzTheme {
         state = PreviewFormState.copy(
             pixCopyPaste = "00020126580014BR.GOV.BCB.PIX0136chave-fake-1234",
             isWaitingConfirmation = true,
+        ),
+        onIntent = {},
+        onBack = {},
+    )
+}
+
+@Preview
+@Composable
+private fun PaymentCardFormPreview() = SaqzTheme {
+    PaymentScreen(
+        state = PreviewFormState.copy(
+            billingType = BillingType.CreditCard,
+            cardForm = CardFormState(
+                number = "4111111111111111",
+                expiry = "1228",
+                cvv = "123",
+                holderName = "Ana Silva",
+                postalCode = "01310100",
+                addressNumber = "1000",
+                phone = "11999990000",
+            ),
+        ),
+        onIntent = {},
+        onBack = {},
+    )
+}
+
+// VUL-196 — recusa do Asaas (402 card_declined): mensagem em PT-BR, dados do portador intactos.
+@Preview
+@Composable
+private fun PaymentCardDeclinedPreview() = SaqzTheme {
+    PaymentScreen(
+        state = PreviewFormState.copy(
+            billingType = BillingType.CreditCard,
+            cardForm = CardFormState(
+                number = "4111111111111111",
+                expiry = "1228",
+                cvv = "123",
+                holderName = "Ana Silva",
+                postalCode = "01310100",
+                addressNumber = "1000",
+                phone = "11999990000",
+            ),
+            submitError = UiText.Raw("Cartão recusado pela operadora. Tente outro cartão."),
         ),
         onIntent = {},
         onBack = {},

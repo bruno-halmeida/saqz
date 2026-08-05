@@ -8,6 +8,8 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
+import br.com.saqz.subscriptions.presentation.payment.CardFormError
+import br.com.saqz.subscriptions.presentation.payment.CardFormState
 import br.com.saqz.subscriptions.presentation.payment.PaymentState
 import br.com.saqz.subscriptions.presentation.payment.ui.PaymentScreen
 import br.com.saqz.subscriptions.resources.Res
@@ -60,11 +62,16 @@ class Payment8cScreenshotTest {
 
     private fun name(state: PaymentState) = when {
         state.cpfCnpjError != null -> "8c-4-cpf-cnpj-invalido"
+        // VUL-196: recusa do cartão é distinta do erro genérico — mostra a mensagem PT-BR
+        // do backend por cima do formulário já preenchido, não do card de erro solto.
+        state.billingType == BillingType.CreditCard && state.submitError != null -> "8c-3d-cartao-recusado"
         state.submitError != null -> "8c-5-erro-generico"
         state.isSubmitting -> "8c-6-enviando"
         state.isCheckingNow -> "8c-9-confirmando"
         state.invoiceUrl != null -> "8c-8-cartao-aguardando"
         state.pixCopyPaste != null -> "8c-7-pix-aguardando"
+        state.billingType == BillingType.CreditCard && state.cardForm.errors.isNotEmpty() -> "8c-3c-form-cartao-erros"
+        state.billingType == BillingType.CreditCard && state.cardForm.number.isNotBlank() -> "8c-3b-form-cartao-preenchido"
         state.billingType == BillingType.CreditCard -> "8c-3-form-cartao"
         state.discountPercent != null -> "8c-2-form-pix-cupom"
         else -> "8c-1-form-pix"
@@ -78,6 +85,17 @@ class Payment8cScreenshotTest {
         cpfCnpj = "12345678909",
     )
 
+    // VUL-196 — cartão preenchido com dado realista, para conferir todas as máscaras juntas.
+    private val filledCardForm = CardFormState(
+        number = "4111111111111111",
+        expiry = "1228",
+        cvv = "123",
+        holderName = "Ana Silva",
+        postalCode = "01310100",
+        addressNumber = "1000",
+        phone = "11999990000",
+    )
+
     // Pix escolhido (default), com CPF/CNPJ preenchido para conferir a máscara.
     @Test
     fun formPix() = screen(base)
@@ -88,9 +106,44 @@ class Payment8cScreenshotTest {
         base.copy(couponCode = "BEMVINDO10", discountPercent = 10, priceCents = 4_491L),
     )
 
-    // Cartão selecionado — o segmentado muda de posição, mas o formulário é o mesmo.
+    // Cartão selecionado, campos de captura ainda vazios (VUL-196).
     @Test
     fun formCartao() = screen(base.copy(billingType = BillingType.CreditCard))
+
+    // Cartão preenchido — todas as máscaras (número, validade, CEP, telefone) juntas.
+    @Test
+    fun formCartaoPreenchido() = screen(
+        base.copy(billingType = BillingType.CreditCard, cardForm = filledCardForm),
+    )
+
+    // Validação campo a campo (VUL-196): cada erro embaixo do campo dele, não um card genérico.
+    @Test
+    fun formCartaoComErros() = screen(
+        base.copy(
+            billingType = BillingType.CreditCard,
+            cardForm = CardFormState(
+                errors = setOf(
+                    CardFormError.NumberInvalid,
+                    CardFormError.ExpiryInvalid,
+                    CardFormError.CvvInvalid,
+                    CardFormError.HolderNameRequired,
+                    CardFormError.PostalCodeInvalid,
+                    CardFormError.AddressNumberRequired,
+                    CardFormError.PhoneInvalid,
+                ),
+            ),
+        ),
+    )
+
+    // 402 card_declined (VUL-194/VUL-196): mensagem PT-BR do backend, dados do portador intactos.
+    @Test
+    fun cartaoRecusado() = screen(
+        base.copy(
+            billingType = BillingType.CreditCard,
+            cardForm = filledCardForm,
+            submitError = UiText.Raw("Cartão recusado pela operadora. Tente outro cartão."),
+        ),
+    )
 
     // CPF/CNPJ com menos de 11 dígitos, erro embaixo do campo.
     @Test

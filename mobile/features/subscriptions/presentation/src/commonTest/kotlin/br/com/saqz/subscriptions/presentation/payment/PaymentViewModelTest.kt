@@ -31,6 +31,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -382,11 +383,138 @@ class PaymentViewModelTest {
         withPaymentViewModel(gateway = gateway) { viewModel ->
             viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
             viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
             viewModel.onIntent(PaymentIntent.Submit)
             runCurrent()
 
             assertEquals(BillingType.CreditCard, gateway.createCalls.single().billingType)
         }
+    }
+
+    /**
+     * VUL-196: `creditCard`/`creditCardHolderInfo` só entram no comando quando o cartão é a
+     * forma escolhida — `name`/`email`/`cpfCnpj` do holder info reaproveitam sessão e o
+     * CPF/CNPJ já digitado (ver doc de `CardFormState`), sem campo próprio pra eles.
+     */
+    @Test
+    fun `submitting with card billing sends the credit card and holder info blocks`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Success(createdPix().copy(billingType = BillingType.CreditCard))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            val command = gateway.createCalls.single()
+            val card = assertNotNull(command.creditCard)
+            assertEquals("Ana Silva", card.holderName)
+            assertEquals("4111111111111111", card.number)
+            assertEquals("12", card.expiryMonth)
+            assertEquals("2028", card.expiryYear)
+            assertEquals("123", card.ccv)
+
+            val holderInfo = assertNotNull(command.creditCardHolderInfo)
+            assertEquals("Ana Silva", holderInfo.name)
+            assertEquals("ana@exemplo.com", holderInfo.email)
+            assertEquals("12345678900", holderInfo.cpfCnpj)
+            assertEquals("01310100", holderInfo.postalCode)
+            assertEquals("1000", holderInfo.addressNumber)
+            assertEquals("11999990000", holderInfo.phone)
+        }
+    }
+
+    @Test
+    fun `submitting card billing with pix billing sends neither credit card block`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply { createResult = SaqzResult.Success(createdPix()) }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            val command = gateway.createCalls.single()
+            assertNull(command.creditCard)
+            assertNull(command.creditCardHolderInfo)
+        }
+    }
+
+    @Test
+    fun `invalid card fields block submit without calling create`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway()
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            viewModel.onIntent(PaymentIntent.UpdateCardNumber("1234"))
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertTrue(gateway.createCalls.isEmpty())
+            assertTrue(CardFormError.NumberInvalid in viewModel.state.value.cardForm.errors)
+        }
+    }
+
+    @Test
+    fun `editing any card field clears the previous errors`() = runTest(mainDispatcher) {
+        withPaymentViewModel { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+            assertTrue(viewModel.state.value.cardForm.errors.isNotEmpty())
+
+            viewModel.onIntent(PaymentIntent.UpdateCardNumber("4111111111111111"))
+
+            assertTrue(viewModel.state.value.cardForm.errors.isEmpty())
+        }
+    }
+
+    /**
+     * VUL-196: 402 card_declined mostra a mensagem PT-BR do backend e não apaga o que o
+     * portador digitou — "tentar outro cartão" não pode virar "redigitar tudo".
+     */
+    @Test
+    fun `card declined surfaces the backend message and keeps the holder data`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Failure(SubscriptionError.CardDeclined("insufficient_funds", "Saldo insuficiente."))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(UiText.Raw("Saldo insuficiente."), viewModel.state.value.submitError)
+            assertFalse(viewModel.state.value.isSubmitting)
+            assertEquals("4111111111111111", viewModel.state.value.cardForm.number)
+            assertEquals("Ana Silva", viewModel.state.value.cardForm.holderName)
+        }
+    }
+
+    /** PCI (VUL-196): nada do bloco de cartão pode sobreviver a process death. */
+    @Test
+    fun `card fields never reach the saved state handle`() = runTest(mainDispatcher) {
+        val savedStateHandle = SavedStateHandle()
+        withPaymentViewModel(savedStateHandle = savedStateHandle) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            fillValidCardForm(viewModel)
+
+            assertEquals("4111111111111111", viewModel.state.value.cardForm.number)
+            val persistedValues = savedStateHandle.keys().map { savedStateHandle.get<Any?>(it) }
+            assertTrue(persistedValues.none { it == "4111111111111111" || it == "123" })
+        }
+    }
+
+    private fun fillValidCardForm(viewModel: PaymentViewModel) {
+        viewModel.onIntent(PaymentIntent.UpdateCardNumber("4111111111111111"))
+        viewModel.onIntent(PaymentIntent.UpdateCardExpiry("1228"))
+        viewModel.onIntent(PaymentIntent.UpdateCardCvv("123"))
+        viewModel.onIntent(PaymentIntent.UpdateCardHolderName("Ana Silva"))
+        viewModel.onIntent(PaymentIntent.UpdateCardPostalCode("01310100"))
+        viewModel.onIntent(PaymentIntent.UpdateCardAddressNumber("1000"))
+        viewModel.onIntent(PaymentIntent.UpdateCardPhone("11999990000"))
     }
 
     /**
