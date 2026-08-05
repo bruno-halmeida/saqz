@@ -14,7 +14,7 @@ fun MemberEditorRoot(
     onBack: () -> Unit,
     onRemove: () -> Unit,
     viewModel: MemberEditorViewModel = koinViewModel(
-        key = "$groupId/$userId",
+        key = "member-editor/$groupId/$userId",
         parameters = { parametersOf(groupId, userId) },
     ),
 ) {

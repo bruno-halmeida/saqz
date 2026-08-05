@@ -127,6 +127,23 @@ internal fun SaqzNavHost(
     // jogaria fora o stack que acabou de ser restaurado — girar o aparelho no meio do 1b, ou
     // voltar do app de e-mail durante o 1e, devolveria a pessoa ao login.
     val restoring = remember { booleanArrayOf(true) }
+    // Os contadores vivem **fora** do `NavDisplay`: um lançamento salvo empurra o número para
+    // telas que estão paradas no fundo da pilha, e quem estiver lá recarrega quando voltar.
+    // Por isso eles sobrevivem ao pop das entradas, à rotação e à morte de processo — e por
+    // isso nenhum Root pode ler `> 0` como "recarregue" (VUL-205): depois do primeiro
+    // lançamento da sessão o número nunca mais volta a zero, e uma entrada **nova** nasceria
+    // somando o `Retry` ao `init { load() }` da ViewModel recém-construída.
+    //
+    // O que cada Root guarda é o valor de quando a ViewModel dele nasceu, em `rememberSaveable`
+    // — é o que empata com o ciclo de vida do `ViewModelStore` da entrada, porque os dois
+    // decorators abaixo morrem juntos no mesmo `onPop`: `removeState` joga fora o estado
+    // salvo e `clearViewModelStoreOwnerForKey` limpa o store. Com `remember` puro a referência
+    // se perderia enquanto a entrada está no fundo da pilha (o `SaveableStateProvider` só
+    // guarda o que é saveable), e aí a recarga que o lançamento pediu nunca aconteceria.
+    //
+    // ponytail: sobra o encontro de morte de processo com contador já incrementado — o estado
+    // salvo volta e o store não, então a primeira reentrada naquela tela carrega duas vezes.
+    // Se incomodar, a referência passa a viver no `SavedStateHandle` da própria ViewModel.
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
@@ -221,10 +238,15 @@ internal fun SaqzNavHost(
         //
         // - `entryDecorators` **substitui** a lista padrão do `navigation3-ui`, que é
         //   `listOf(rememberSaveableStateHolderNavEntryDecorator())` (NavDisplay.kt:259 e
-        //   343 do 1.1.1). Omitir o saveable não custa só o `rememberSaveable` do app: no
-        //   1.1.1 é ele quem provê o `LocalSavedStateRegistryOwner` por entrada, e sem
-        //   esse owner o `ViewModelStoreNavEntryDecorator` estoura no primeiro quadro
-        //   ("The Lifecycle state is already beyond INITIALIZED");
+        //   343 do 1.1.1). Omitir o saveable não custa só o `rememberSaveable` do app: sem
+        //   ele não há `LocalSavedStateRegistryOwner` por entrada, e o
+        //   `ViewModelStoreNavEntryDecorator` estoura no primeiro quadro ("The Lifecycle
+        //   state is already beyond INITIALIZED"). **Quem provê esse owner é o Compose, não
+        //   o navigation3**: o decorator só chama `SaveableStateProvider`/`removeState`, e
+        //   é o `SaveableStateHolderImpl` do `compose runtime-saveable` que faz o
+        //   `LocalSavedStateRegistryOwner provides registry` (SaveableStateHolder.kt:82-86
+        //   do 1.11.2). O requisito é da versão do Compose: baixar `runtime-saveable`
+        //   derruba o app com esse mesmo erro, com os dois decorators no lugar;
         // - a ordem é esta porque `decorateEntry` (DecoratedNavEntries.kt:224-229) faz
         //   `foldRight`: o **primeiro** da lista é o mais externo. Trocar os dois de lugar
         //   deixa o decorator de ViewModel lendo o owner de fora da entrada — o mesmo

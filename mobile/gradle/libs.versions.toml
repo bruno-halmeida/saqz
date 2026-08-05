@@ -23,7 +23,10 @@ kotlin-qrcode = "4.5.0"
 koin-bom = "4.2.2"
 ktor = "3.5.1"
 lucide = "1.1.0"
-lifecycle = "2.9.6"
+# VUL-205: 2.10.0 é o que o app já rodava. O `lifecycle-viewmodel-navigation3` do VUL-204
+# exige `-viewmodel`/`-compose`/`-savedstate` em 2.10.0, e a resolução por maior versão
+# ganhava do 2.9.6 declarado aqui — o catálogo dizia uma versão e o APK carregava outra.
+lifecycle = "2.10.0"
 lifecycle-navigation3 = "2.10.0"
 min-sdk = "23"
 navigation3-runtime = "1.1.1"

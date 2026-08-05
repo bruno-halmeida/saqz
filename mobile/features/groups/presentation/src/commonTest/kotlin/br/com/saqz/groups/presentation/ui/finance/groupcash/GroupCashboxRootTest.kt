@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.finance.groupcash
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
@@ -100,33 +101,46 @@ class GroupCashboxRootTest {
             athleteFinanceGateway = FakeAthleteFinanceGateway(),
             now = now,
         )
-        var showingCashbox by mutableStateOf(true)
+        var showingCashbox by mutableStateOf(false)
         var refreshVersion by mutableIntStateOf(0)
 
         setContent {
+            // VUL-205: o detalhe entra primeiro e o caixa empilha por cima, como no
+            // `SaqzNavHost` — e cada lado dentro de um `SaveableStateProvider`, que é o que o
+            // `NavDisplay` dá a cada entrada: o conteúdo sai de composição enquanto a outra
+            // tela está na frente, mas o estado salvo dele fica. Sem isso o detalhe montaria
+            // pela primeira vez já com o contador incrementado, que é o caso de entrada
+            // **nova** — e aí não recarregar é o certo, porque a ViewModel acabou de carregar.
+            val stateHolder = rememberSaveableStateHolder()
             SaqzTheme {
                 if (showingCashbox) {
-                    GroupCashboxRoot(
-                        groupId = "group-1",
-                        onBack = { showingCashbox = false },
-                        onMutationSuccess = {
-                            detailsGateway.chargesResult = SaqzResult.Success(ChargeList(emptyList()))
-                            refreshVersion++
-                        },
-                        onOpenStatement = {},
-                        viewModel = cashboxViewModel,
-                    )
+                    stateHolder.SaveableStateProvider("cashbox") {
+                        GroupCashboxRoot(
+                            groupId = "group-1",
+                            onBack = { showingCashbox = false },
+                            onMutationSuccess = {
+                                detailsGateway.chargesResult = SaqzResult.Success(ChargeList(emptyList()))
+                                refreshVersion++
+                            },
+                            onOpenStatement = {},
+                            viewModel = cashboxViewModel,
+                        )
+                    }
                 } else {
-                    GroupDetailsRoot(
-                        groupId = "group-1",
-                        onBack = {},
-                        onEffect = {},
-                        viewModel = detailsViewModel,
-                        refreshVersion = refreshVersion,
-                    )
+                    stateHolder.SaveableStateProvider("details") {
+                        GroupDetailsRoot(
+                            groupId = "group-1",
+                            onBack = {},
+                            onEffect = {},
+                            viewModel = detailsViewModel,
+                            refreshVersion = refreshVersion,
+                        )
+                    }
                 }
             }
         }
+        waitForIdle()
+        runOnIdle { showingCashbox = true }
         waitForIdle()
 
         onNodeWithText("Recebi").performClick()

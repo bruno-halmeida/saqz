@@ -13,7 +13,10 @@ fun StatementRoot(
     groupId: String,
     onBack: () -> Unit,
     onEffect: (StatementEffect) -> Unit,
-    viewModel: StatementViewModel = koinViewModel(key = groupId, parameters = { parametersOf(groupId) }),
+    viewModel: StatementViewModel = koinViewModel(
+        key = "statement/$groupId",
+        parameters = { parametersOf(groupId) },
+    ),
     refreshVersion: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()

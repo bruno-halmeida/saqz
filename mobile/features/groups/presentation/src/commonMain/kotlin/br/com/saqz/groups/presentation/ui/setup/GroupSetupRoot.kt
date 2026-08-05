@@ -50,7 +50,7 @@ fun GroupSetupRoot(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GroupSetupViewModel = koinViewModel(
-        key = mode.toString(),
+        key = "group-setup/$mode",
         parameters = { parametersOf(mode) },
     ),
 ) {
