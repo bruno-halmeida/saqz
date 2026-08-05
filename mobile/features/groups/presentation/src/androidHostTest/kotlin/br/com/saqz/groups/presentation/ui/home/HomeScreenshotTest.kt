@@ -13,6 +13,7 @@ import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
+import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
@@ -75,6 +76,60 @@ class HomeScreenshotTest {
 
     @Test
     fun adminAndMemberMixed() = captureAdmin("home-admin-member-mixed", mixedAdminState())
+
+    // VUL-202: os quatro estados do aviso de cobrança em aberto. "Sem pendência" é a mesma
+    // Home de sempre e entra na pasta do ticket de propósito — é a foto do que precisa
+    // continuar igual quando o admin baixa a cobrança.
+    @Test
+    fun withoutOwnCharges() = captureOwnCharges("home-sem-cobranca", state())
+
+    @Test
+    fun ownChargesOnTime() = captureOwnCharges(
+        "home-cobranca-no-prazo",
+        state().copy(ownCharges = previewOwnCharges()),
+    )
+
+    @Test
+    fun ownChargesOverdue() = captureOwnCharges(
+        "home-cobranca-vencida",
+        state().copy(ownCharges = previewOwnChargesOverdue()),
+    )
+
+    /**
+     * O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. Sem o
+     * card "Da última vez" — ele não tem nada com o assunto e empurrava o "Esperando você"
+     * para fora do quadro, que é justamente o rótulo que esta cena existe para comparar.
+     */
+    @Test
+    fun ownChargesForAnAdminWhoAlsoOwes() = captureOwnCharges(
+        "home-cobranca-admin-que-deve",
+        adminState().let { admin ->
+            admin.copy(
+                ownCharges = previewOwnCharges(),
+                member = checkNotNull(admin.member).copy(lastCompletedGame = null),
+            )
+        },
+    )
+
+    @Test
+    fun ownChargesBannerOnTime() = captureBanner("aviso-no-prazo", previewOwnCharges())
+
+    @Test
+    fun ownChargesBannerOverdue() = captureBanner("aviso-vencido", previewOwnChargesOverdue())
+
+    private fun captureBanner(name: String, charges: HomeOwnChargesUi) {
+        compose.setContent {
+            SaqzTheme {
+                HomeOwnChargesBanner(charges = charges, onClick = {})
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("screenshots/vul-202/$name.png")
+    }
+
+    private fun captureOwnCharges(name: String, state: HomeState) {
+        capture(name, state, "vul-202")
+    }
 
     private fun capture(name: String, state: HomeState) {
         capture(name, state, "vul-191")

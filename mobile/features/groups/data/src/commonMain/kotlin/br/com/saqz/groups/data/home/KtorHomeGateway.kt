@@ -17,6 +17,9 @@ import br.com.saqz.groups.domain.home.HomeMemberReadModel
 import br.com.saqz.groups.domain.home.HomeMonthlyCharges
 import br.com.saqz.groups.domain.home.HomeNextGame
 import br.com.saqz.groups.domain.home.HomeOwnAttendance
+import br.com.saqz.groups.domain.home.HomeOwnChargeGroup
+import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
+import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeRosterMember
 import br.com.saqz.groups.domain.home.HomeRosterPreview
@@ -124,9 +127,36 @@ internal data class HomeAdminTransport(
 )
 
 @Serializable
+internal data class HomeOwnChargeOldestTransport(
+    val kind: String,
+    val month: String? = null,
+)
+
+@Serializable
+internal data class HomeOwnChargeGroupTransport(
+    val groupId: String,
+    val groupName: String,
+    val count: Int,
+    val totalCents: Long,
+    val nextDueDate: String,
+    val overdue: Boolean,
+    val pixKey: String?,
+    val pixLabel: String?,
+    val oldest: HomeOwnChargeOldestTransport,
+)
+
+@Serializable
+internal data class HomeOwnChargesTransport(
+    val groupCount: Int,
+    val totalCents: Long,
+    val groups: List<HomeOwnChargeGroupTransport>,
+)
+
+@Serializable
 internal data class HomeResponseTransport(
     val member: HomeMemberTransport,
     val admin: HomeAdminTransport?,
+    val ownCharges: HomeOwnChargesTransport? = null,
 )
 
 class KtorHomeGateway(
@@ -180,7 +210,40 @@ private fun HomeResponseTransport.toDomain(): HomeReadModel? {
         admin == null -> null
         else -> admin.toDomain()
     }
-    return HomeReadModel(member = memberDomain, admin = adminDomain)
+    return HomeReadModel(member = memberDomain, admin = adminDomain, ownCharges = ownCharges?.toDomain())
+}
+
+/**
+ * Bloco `oldest` com competência que não bate com o contrato derruba **o grupo**, não a
+ * Home inteira: o aviso é secundário e o resto do agregado continua útil. Grupo de fora é
+ * dívida que a pessoa não vê, então o contador do topo cai junto — um "R$ 80,00 em aberto"
+ * com uma linha só embaixo seria pior que a linha faltando.
+ */
+private fun HomeOwnChargesTransport.toDomain(): HomeOwnCharges? {
+    val groupsDomain = groups.mapNotNull { it.toDomain() }
+    if (groupsDomain.size != groups.size || groupsDomain.isEmpty()) return null
+    return HomeOwnCharges(groupCount = groupCount, totalCents = totalCents, groups = groupsDomain)
+}
+
+private fun HomeOwnChargeGroupTransport.toDomain(): HomeOwnChargeGroup? {
+    val oldestDomain = oldest.toDomain() ?: return null
+    return HomeOwnChargeGroup(
+        groupId = GroupId(groupId),
+        groupName = groupName,
+        count = count,
+        totalCents = totalCents,
+        nextDueDate = nextDueDate,
+        overdue = overdue,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
+        oldest = oldestDomain,
+    )
+}
+
+private fun HomeOwnChargeOldestTransport.toDomain(): HomeOwnChargeOldest? = when (kind) {
+    "MONTHLY" -> month?.let(HomeOwnChargeOldest::Monthly)
+    "GAME" -> HomeOwnChargeOldest.Game
+    else -> null
 }
 
 private fun HomeMemberTransport.toDomain(): HomeMemberReadModel? {

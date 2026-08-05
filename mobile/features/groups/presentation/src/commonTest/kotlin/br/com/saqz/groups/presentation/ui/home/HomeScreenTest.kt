@@ -209,6 +209,66 @@ class HomeScreenTest {
         onNodeWithText("Presença confirmada. Bom jogo!").assertIsDisplayed()
     }
 
+    @Test
+    fun `home without pending charges renders neither the section nor the notice`() = runComposeUiTest {
+        setScreen(nextGameState())
+
+        onAllNodesWithTag(HomeTags.OwnCharges).assertCountEquals(0)
+        onAllNodesWithTag(HomeTags.ownChargePix("ceret")).assertCountEquals(0)
+    }
+
+    @Test
+    fun `own charges section names the direction the competence and the due date`() = runComposeUiTest {
+        setScreen(nextGameState().copy(ownCharges = previewOwnCharges()))
+
+        onNodeWithTag(HomeTags.OwnCharges).assertIsDisplayed()
+        onNodeWithText("Minhas cobranças").assertIsDisplayed()
+        onNodeWithText("O que você deve aos seus grupos").assertIsDisplayed()
+        onNodeWithText("Mensalidade · Julho").assertIsDisplayed()
+        onNodeWithText("Vence em 05/08").assertIsDisplayed()
+        onNodeWithText("R$ 80,00").assertIsDisplayed()
+        onNodeWithText("ceret@volei.com.br").assertIsDisplayed()
+    }
+
+    @Test
+    fun `own charges row opens the group and the pix card copies the key`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState().copy(ownCharges = previewOwnCharges()), intents::add)
+
+        onNodeWithTag(HomeTags.ownCharge("ceret")).performClick()
+        onNodeWithTag(HomeTags.ownChargePixCopy("ceret")).performClick()
+
+        assertEquals(
+            listOf<HomeIntent>(HomeIntent.OpenGroup("ceret"), HomeIntent.CopyPix("ceret")),
+            intents,
+        )
+    }
+
+    @Test
+    fun `overdue charge keeps the wording of the server flag`() = runComposeUiTest {
+        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue()))
+
+        onNodeWithText("Venceu em 05/07").assertIsDisplayed()
+        onNodeWithText("2 cobranças em aberto").assertIsDisplayed()
+        // O grupo sem chave não desenha card de Pix, e o outro desenha.
+        onAllNodesWithTag(HomeTags.ownChargePix("pacaembu")).assertCountEquals(0)
+        onNodeWithTag(HomeTags.ownChargePix("ceret")).assertIsDisplayed()
+    }
+
+    @Test
+    fun `charge banner carries the aggregate text and opens the home`() = runComposeUiTest {
+        var opened = 0
+        setContent {
+            SaqzTheme {
+                HomeOwnChargesBanner(charges = previewOwnCharges(), onClick = { opened++ })
+            }
+        }
+
+        onNodeWithText("Você tem R$ 80,00 em aberto").assertIsDisplayed()
+        onNodeWithTag(HomeTags.OwnChargesBanner).performClick()
+        assertEquals(1, opened)
+    }
+
     private fun ComposeUiTest.setScreen(
         state: HomeState,
         onIntent: (HomeIntent) -> Unit = {},

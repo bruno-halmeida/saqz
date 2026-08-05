@@ -24,9 +24,14 @@ import br.com.saqz.groups.domain.home.HomeMemberReadModel
 import br.com.saqz.groups.domain.home.HomeMonthlyCharges
 import br.com.saqz.groups.domain.home.HomeNextGame
 import br.com.saqz.groups.domain.home.HomeOwnAttendance
+import br.com.saqz.groups.domain.home.HomeOwnChargeGroup
+import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
+import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.details.monthResource as longMonthResource
 import br.com.saqz.groups.presentation.toUiError
+import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_admin_hero_deadline
@@ -57,6 +62,16 @@ import br.com.saqz.groups.resources.home_month_may
 import br.com.saqz.groups.resources.home_month_november
 import br.com.saqz.groups.resources.home_month_october
 import br.com.saqz.groups.resources.home_month_september
+import br.com.saqz.groups.resources.home_own_charges_banner
+import br.com.saqz.groups.resources.home_own_charges_banner_groups
+import br.com.saqz.groups.resources.home_own_charges_cd_banner
+import br.com.saqz.groups.resources.home_own_charges_count
+import br.com.saqz.groups.resources.own_charges_date
+import br.com.saqz.groups.resources.own_charges_due
+import br.com.saqz.groups.resources.own_charges_due_overdue
+import br.com.saqz.groups.resources.own_charges_game
+import br.com.saqz.groups.resources.own_charges_monthly
+import br.com.saqz.groups.resources.own_charges_monthly_unknown
 import br.com.saqz.groups.resources.home_subtitle_confirmed
 import br.com.saqz.groups.resources.home_subtitle_declined
 import br.com.saqz.groups.resources.home_subtitle_no_game
@@ -83,6 +98,7 @@ import br.com.saqz.groups.resources.home_weekday_wednesday_short
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.plus
@@ -120,7 +136,18 @@ class HomeViewModel(
             is HomeIntent.OpenGameSettlement -> emit(HomeEffect.OpenGameSettlement(intent.groupId, intent.gameId))
             is HomeIntent.OpenGameEditor -> emit(HomeEffect.OpenGameEditor(intent.groupId))
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
+            is HomeIntent.CopyPix -> copyPix(intent.groupId)
         }
+    }
+
+    /** Grupo sem chave, ou sem pendência, não emite nada — intent inválido volta cedo. */
+    private fun copyPix(groupId: String) {
+        val pix = state.value.ownCharges
+            ?.groups
+            ?.firstOrNull { it.groupId == groupId }
+            ?.pix
+            ?: return
+        emit(HomeEffect.CopyPix(pix.key))
     }
 
     private fun load(softRefresh: Boolean = false) {
@@ -160,6 +187,11 @@ class HomeViewModel(
                         val admin = homeResult.value.admin?.toUi()
                         if (generation < loadGeneration) return@launch
                         val adminSubtitle = admin?.let { deriveAdminSubtitle(it, member.groups.size) }
+                        if (generation < loadGeneration) return@launch
+                        // Formatar suspende (`getString`): a guarda é re-checada depois de
+                        // cada bloco, não só no retorno da rede.
+                        val ownCharges = homeResult.value.ownCharges?.toUi()
+                        if (generation < loadGeneration) return@launch
                         update {
                             it.copy(
                                 isLoading = false,
@@ -173,6 +205,7 @@ class HomeViewModel(
                                 ),
                                 responding = false,
                                 responseFailed = false,
+                                ownCharges = ownCharges,
                             )
                         }
                     }
@@ -480,6 +513,60 @@ class HomeViewModel(
             count = count,
             formattedTotal = formatBrl(totalCents),
             month = getString(monthIndex.monthResource()),
+        )
+    }
+
+    /**
+     * VUL-202 — o que **o usuário deve**, do bloco `ownCharges` do VUL-201. `overdue` vem
+     * calculado no servidor (no fuso de cobrança do contrato) e é só consumido: recalcular
+     * aqui com o relógio do aparelho erraria justamente para quem viaja ou virou o dia.
+     *
+     * O texto do aviso sai dos agregados do topo, não da soma das linhas — é o mesmo número
+     * que o backend usou para decidir que existe pendência.
+     */
+    private suspend fun HomeOwnCharges.toUi(): HomeOwnChargesUi {
+        val total = formatBrl(totalCents)
+        val bannerText = if (groupCount > 1) {
+            getString(Res.string.home_own_charges_banner_groups, total, groupCount)
+        } else {
+            getString(Res.string.home_own_charges_banner, total)
+        }
+        return HomeOwnChargesUi(
+            bannerText = bannerText,
+            bannerContentDescription = getString(Res.string.home_own_charges_cd_banner, bannerText),
+            overdue = groups.any { it.overdue },
+            groups = groups.map { it.toUi() },
+        )
+    }
+
+    private suspend fun HomeOwnChargeGroup.toUi() = HomeOwnChargeGroupUi(
+        groupId = groupId.value,
+        groupName = groupName,
+        competence = when (val competence = oldest) {
+            // Mês por extenso ("Julho"), o mesmo da tela irmã — o `monthResource()` deste
+            // arquivo é a forma curta do card de data ("JUL") e diria outra coisa aqui.
+            is HomeOwnChargeOldest.Monthly -> competence.month.monthIndexOrNull()
+                ?.let { getString(Res.string.own_charges_monthly, getString(it.longMonthResource())) }
+                ?: getString(Res.string.own_charges_monthly_unknown)
+            HomeOwnChargeOldest.Game -> getString(Res.string.own_charges_game)
+        },
+        amountLabel = formatBrl(totalCents),
+        dueLabel = getString(
+            if (overdue) Res.string.own_charges_due_overdue else Res.string.own_charges_due,
+            formatCivilDate(nextDueDate),
+        ),
+        overdue = overdue,
+        countLabel = count.takeIf { it > 1 }?.let { getString(Res.string.home_own_charges_count, it) },
+        pix = pixKey?.trim()?.takeIf { it.isNotEmpty() }?.let { PixUi(it, pixLabel) },
+    )
+
+    /** "2026-08-05" → "05/08". Data civil do payload: formata, não converte de instante. */
+    private suspend fun formatCivilDate(value: String): String {
+        val date = runCatching { LocalDate.parse(value) }.getOrNull() ?: return value
+        return getString(
+            Res.string.own_charges_date,
+            date.day.twoDigits(),
+            (date.month.ordinal + 1).twoDigits(),
         )
     }
 

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 
 @Immutable
 data class HomeState(
@@ -16,6 +17,39 @@ data class HomeState(
     val responding: Boolean = false,
     val responseFailed: Boolean = false,
     val toast: HomeToast? = null,
+    /**
+     * VUL-202 — o que **o usuário deve**. Fora de [HomeMemberUi] porque o aviso do shell lê
+     * daqui em qualquer aba, inclusive quando a Home nem chegou a ser montada.
+     */
+    val ownCharges: HomeOwnChargesUi? = null,
+)
+
+/**
+ * O aviso permanente (banner) e a seção da Home saem do mesmo bloco: [bannerText] é o
+ * agregado já formatado, [overdue] é o tom (warning só com alguma vencida) e [groups] são
+ * as linhas. `null` no estado significa "nada em aberto" — é assim que os dois somem.
+ */
+@Immutable
+data class HomeOwnChargesUi(
+    val bannerText: String,
+    val bannerContentDescription: String,
+    val overdue: Boolean,
+    val groups: List<HomeOwnChargeGroupUi>,
+)
+
+@Immutable
+data class HomeOwnChargeGroupUi(
+    val groupId: String,
+    val groupName: String,
+    /** "Mensalidade · Julho" ou "Jogo avulso" — a competência da mais antiga. */
+    val competence: String,
+    val amountLabel: String,
+    /** "Vence em 05/08" × "Venceu em 05/08", pelo `overdue` que vem do servidor. */
+    val dueLabel: String,
+    val overdue: Boolean,
+    /** Só quando há mais de uma cobrança no grupo; `null` cala a linha. */
+    val countLabel: String?,
+    val pix: PixUi?,
 )
 
 @Immutable
@@ -144,6 +178,7 @@ sealed interface HomeIntent {
     data class OpenGameSettlement(val groupId: String, val gameId: String) : HomeIntent
     data class OpenGameEditor(val groupId: String) : HomeIntent
     data class OpenInvite(val groupId: String) : HomeIntent
+    data class CopyPix(val groupId: String) : HomeIntent
 }
 
 sealed interface HomeEffect {
@@ -155,4 +190,5 @@ sealed interface HomeEffect {
     data class OpenGameSettlement(val groupId: String, val gameId: String) : HomeEffect
     data class OpenGameEditor(val groupId: String) : HomeEffect
     data class OpenInvite(val groupId: String) : HomeEffect
+    data class CopyPix(val key: String) : HomeEffect
 }

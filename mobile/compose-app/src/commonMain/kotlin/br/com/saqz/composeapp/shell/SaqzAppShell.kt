@@ -51,10 +51,12 @@ private const val SaqzShellFinanceTab = "financeiro"
  * [groupsTab] é a aba Grupos — o `:compose-app` passa o `GroupListRoot` já com as lambdas
  * de navegação ligadas, porque quem conhece o `NavDisplay` é ele (AGENTS.md §6).
  *
- * [banner] é a faixa persistente acima do conteúdo, e hoje só a de e-mail não confirmado
- * (VUL-91) mora lá. Entra por slot e não por `Boolean`: quem sabe se ela tem o que dizer é
- * quem tem o estado da sessão, e o shell não tem — nem precisa ter, porque a faixa não
- * decide nada aqui dentro.
+ * [banner] é a faixa persistente acima do conteúdo — a de e-mail não confirmado (VUL-91) e a
+ * de cobrança em aberto (VUL-202) disputam esse lugar. Entra por slot e não por `Boolean`:
+ * quem sabe se ela tem o que dizer é quem tem o estado da sessão e o da Home, e o shell não
+ * tem nenhum dos dois — nem precisa, porque a faixa não decide nada aqui dentro. O slot
+ * recebe a volta para a aba Início, porque a aba ativa é estado do shell e o aviso de
+ * cobrança leva para lá.
  *
  * Início é a aba inicial do shell (VUL-193): o login cai aqui, e [homeTab] recebe a Home do
  * Fluxo 6. Perfil recebe o conteúdo real por [profileTab]; Financeiro recebe o caixa geral
@@ -81,7 +83,7 @@ internal fun SaqzAppShell(
     homeTab: @Composable (onOpenGroups: () -> Unit) -> Unit = {},
     profileTab: @Composable () -> Unit = {},
     financeTab: @Composable () -> Unit = {},
-    banner: @Composable () -> Unit = {},
+    banner: @Composable (onOpenHome: () -> Unit) -> Unit = {},
 ) {
     // `rememberSaveable`, não `remember`: aba ativa e catálogo aberto são estado de
     // navegação, e o AGENTS.md §5 proíbe `remember` para estado de aplicação. Com
@@ -143,7 +145,7 @@ internal fun SaqzAppShell(
                 Modifier.windowInsetsPadding(WindowInsets.statusBars)
             },
         ) {
-            banner()
+            banner { selectedTab = SaqzShellHomeTab }
         }
         Box(
             modifier = Modifier

@@ -633,8 +633,11 @@ private const val MONTHS_IN_YEAR = 12
 private const val OWN_CHARGES_HISTORY_LIMIT = 6
 
 // Os nomes de mês já existem no módulo (fluxo 5, caixa geral). Reusar é o que evita uma
-// segunda tabela de doze strings dizendo a mesma coisa.
-private fun Int.monthResource(): StringResource = when (this) {
+// segunda tabela de doze strings dizendo a mesma coisa — e é por isso que esta é
+// `internal`: a Home (VUL-202) formata a mesma competência e importa daqui em vez de
+// escrever a terceira cópia. O `monthResource` da Home é outra coisa: a forma curta
+// ("JUL") do card de data.
+internal fun Int.monthResource(): StringResource = when (this) {
     1 -> Res.string.finance_overview_month_january
     2 -> Res.string.finance_overview_month_february
     3 -> Res.string.finance_overview_month_march

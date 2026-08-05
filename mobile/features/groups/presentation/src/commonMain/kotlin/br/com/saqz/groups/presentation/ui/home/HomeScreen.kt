@@ -92,8 +92,16 @@ internal object HomeTags {
     const val ResponseNo = "home-response-no"
     const val ResponseError = "home-response-error"
     const val Toast = "home-toast"
+    const val OwnCharges = "home-own-charges"
+    const val OwnChargesBanner = "home-own-charges-banner"
 
     fun group(id: String) = "home-group-$id"
+
+    fun ownCharge(id: String) = "home-own-charge-$id"
+
+    fun ownChargePix(id: String) = "home-own-charge-pix-$id"
+
+    fun ownChargePixCopy(id: String) = "home-own-charge-pix-copy-$id"
 }
 
 @Composable
@@ -194,6 +202,9 @@ private fun HomeContent(
                         HomeWaitlistExtras(game = it)
                     }
                 } ?: HomeNoGame(onIntent)
+                // VUL-202: abaixo do hero e acima de "Seus grupos". Antes do bloco do admin
+                // de propósito — o que a pessoa deve vem antes do que ela administra.
+                state.ownCharges?.let { HomeOwnChargesSection(ownCharges = it, onIntent = onIntent) }
                 member.lastCompletedGame?.let { HomeLastGame(it) }
                 member.admin?.let { admin ->
                     HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
@@ -587,6 +598,18 @@ private fun HomeFailurePreview() = SaqzTheme {
 @Composable
 private fun HomeContentPreview() = SaqzTheme {
     HomeScreen(previewState(), onIntent = {})
+}
+
+@Preview(name = "Home com cobrança no prazo", widthDp = 390, heightDp = 1000)
+@Composable
+private fun HomeOwnChargesPreview() = SaqzTheme {
+    HomeScreen(previewState().copy(ownCharges = previewOwnCharges()), onIntent = {})
+}
+
+@Preview(name = "Home com cobrança vencida", widthDp = 390, heightDp = 1200)
+@Composable
+private fun HomeOwnChargesOverduePreview() = SaqzTheme {
+    HomeScreen(previewState().copy(ownCharges = previewOwnChargesOverdue()), onIntent = {})
 }
 
 @Preview(name = "Home sem jogo", widthDp = 390, heightDp = 844)

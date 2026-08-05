@@ -19,6 +19,9 @@ import br.com.saqz.groups.domain.home.HomeMemberGroup
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
 import br.com.saqz.groups.domain.home.HomeNextGame
 import br.com.saqz.groups.domain.home.HomeOwnAttendance
+import br.com.saqz.groups.domain.home.HomeOwnChargeGroup
+import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
+import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeRosterPreview
 import br.com.saqz.groups.domain.home.HomeRosterMember
@@ -29,6 +32,7 @@ import br.com.saqz.groups.port.GroupNowPort
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -632,6 +636,75 @@ class HomeViewModelTest {
         assertNull(viewModel.state.value.toast)
     }
 
+    @Test
+    fun `own charges format the banner the competence and the pix of each group`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())),
+            ),
+        )
+
+        val charges = viewModel.state.value.ownCharges
+        assertEquals("Você tem R$ 140,00 em aberto em 2 grupos", charges?.bannerText)
+        assertTrue(charges?.bannerContentDescription?.endsWith("ver suas cobranças.") == true)
+        assertTrue(charges?.overdue == true)
+        val monthly = charges?.groups?.first()
+        assertEquals("Vôlei do CERET", monthly?.groupName)
+        assertEquals("Mensalidade · Julho", monthly?.competence)
+        assertEquals("R$ 80,00", monthly?.amountLabel)
+        assertEquals("Venceu em 05/08", monthly?.dueLabel)
+        assertEquals("2 cobranças em aberto", monthly?.countLabel)
+        assertEquals("ceret@volei.com.br", monthly?.pix?.key)
+        val game = charges?.groups?.last()
+        assertEquals("Jogo avulso", game?.competence)
+        assertEquals("Vence em 12/08", game?.dueLabel)
+        assertNull(game?.countLabel)
+        assertNull(game?.pix)
+    }
+
+    @Test
+    fun `single group banner drops the group count and the overdue tone`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        ownCharges = HomeOwnCharges(
+                            groupCount = 1,
+                            totalCents = 8000,
+                            groups = listOf(sampleOwnChargeGroup(overdue = false)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("Você tem R$ 80,00 em aberto", viewModel.state.value.ownCharges?.bannerText)
+        assertFalse(viewModel.state.value.ownCharges?.overdue == true)
+        assertEquals("Vence em 05/08", viewModel.state.value.ownCharges?.groups?.single()?.dueLabel)
+    }
+
+    @Test
+    fun `home without pending charges leaves the notice off`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
+
+        assertNull(viewModel.state.value.ownCharges)
+    }
+
+    @Test
+    fun `copy pix emits the key of the group and ignores a group without one`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())),
+            ),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-2"))
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+
+        // O grupo sem chave não emitiu nada: o primeiro efeito é o do grupo que tem Pix.
+        assertEquals(HomeEffect.CopyPix("ceret@volei.com.br"), viewModel.effects.first())
+    }
+
     private fun viewModel(
         homeGateway: HomeGateway,
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),
@@ -679,11 +752,51 @@ private class DeferredHomeGateway(
         if (reads++ == 0) first.await() else second.await()
 }
 
+private fun sampleOwnChargeGroup(
+    id: String = "group-1",
+    name: String = "Vôlei do CERET",
+    count: Int = 2,
+    totalCents: Long = 8000,
+    nextDueDate: String = "2026-08-05",
+    overdue: Boolean = true,
+    pixKey: String? = "ceret@volei.com.br",
+    oldest: HomeOwnChargeOldest = HomeOwnChargeOldest.Monthly("2026-07"),
+) = HomeOwnChargeGroup(
+    groupId = GroupId(id),
+    groupName = name,
+    count = count,
+    totalCents = totalCents,
+    nextDueDate = nextDueDate,
+    overdue = overdue,
+    pixKey = pixKey,
+    pixLabel = "Ana Souza · Nubank",
+    oldest = oldest,
+)
+
+private fun sampleOwnCharges() = HomeOwnCharges(
+    groupCount = 2,
+    totalCents = 14000,
+    groups = listOf(
+        sampleOwnChargeGroup(),
+        sampleOwnChargeGroup(
+            id = "group-2",
+            name = "Vôlei Pacaembu",
+            count = 1,
+            totalCents = 6000,
+            nextDueDate = "2026-08-12",
+            overdue = false,
+            pixKey = null,
+            oldest = HomeOwnChargeOldest.Game,
+        ),
+    ),
+)
+
 private fun sampleHome(
     id: String = "group-1",
     nextGame: HomeNextGame? = null,
     admin: HomeAdminReadModel? = null,
     role: GroupRole = GroupRole.ATHLETE,
+    ownCharges: HomeOwnCharges? = null,
 ) = HomeReadModel(
     member = HomeMemberReadModel(
         nextGame = nextGame,
@@ -699,6 +812,7 @@ private fun sampleHome(
         ),
     ),
     admin = admin,
+    ownCharges = ownCharges,
 )
 
 private fun sampleNextGame(

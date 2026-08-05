@@ -62,6 +62,7 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
 import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
+import br.com.saqz.groups.presentation.ui.home.HomeOwnChargesBannerRoot
 import br.com.saqz.groups.presentation.ui.home.HomeRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
 import br.com.saqz.groups.presentation.ui.invite.InviteLandingRoot
@@ -313,9 +314,15 @@ internal fun SaqzNavHost(
                             refreshVersion = profileRefreshVersion,
                         )
                     },
-                    banner = {
-                        // A faixa do VUL-91 só existe com e-mail por confirmar, e some
-                        // sozinha quando a sessão disser que confirmou.
+                    banner = { onOpenHome ->
+                        // Uma faixa por vez, e a de e-mail vem primeiro (VUL-202). Não é
+                        // hierarquia de importância: é que a do e-mail **acaba** — some no
+                        // toque seguinte à confirmação — e a de cobrança dura semanas, até
+                        // o admin baixar a cobrança. Empilhadas seriam dois blocos escuros
+                        // sobre o conteúdo; com a cobrança na frente, quem tem mensalidade
+                        // em aberto nunca mais veria o aviso de e-mail. O contrário não
+                        // perde nada: a cobrança continua na seção da Home o tempo todo, e
+                        // a faixa dela aparece assim que o e-mail sai da frente.
                         val ready = state.session as? SessionAccessState.Ready
                         if (ready != null && !ready.emailVerified) {
                             EmailVerificationBanner(
@@ -323,6 +330,8 @@ internal fun SaqzNavHost(
                                     onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
                                 },
                             )
+                        } else {
+                            HomeOwnChargesBannerRoot(onOpenHome = onOpenHome)
                         }
                     },
                     groupsTab = {
