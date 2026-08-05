@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 
 /**
  * 2e e 2f do fluxo 2 — uma tela, duas visões. `isAdmin` não esconde um chip: ele troca
@@ -23,6 +24,7 @@ data class GroupDetailsState(
     val nextGame: NextGameUi? = null,
     val attendance: AttendanceSummaryUi? = null,
     val cashbox: CashboxUi? = null,
+    val ownCharges: OwnChargesUi? = null,
     val venue: VenueUi? = null,
     val latestNotice: NoticeUi? = null,
     val memberPreview: List<MemberPreviewUi> = emptyList(),
@@ -95,6 +97,37 @@ enum class GroupDetailsResponseStatus { Confirmed, Declined, Waitlisted }
 @Immutable
 data class CashboxUi(val summary: String? = null)
 
+/**
+ * VUL-203 — as cobranças **do próprio usuário** naquele grupo (`ownCharges`). Nunca as de
+ * terceiro: o caixa completo continua sendo o caminho de admin.
+ *
+ * O estado é nulo quando não há nada a mostrar — usuário sem cobrança alguma no grupo —, e
+ * a seção some. [isLoading] e [failed] são locais à seção de propósito: nem o skeleton nem
+ * o erro dela derrubam o resto da tela do grupo.
+ *
+ * [pix] só chega preenchido quando existe pendência: sem dívida, o card de copiar a chave
+ * seria um convite a pagar o que já está pago.
+ */
+@Immutable
+data class OwnChargesUi(
+    val pending: List<OwnChargeUi> = emptyList(),
+    val history: List<OwnChargeUi> = emptyList(),
+    val pix: PixUi? = null,
+    val isLoading: Boolean = false,
+    val failed: Boolean = false,
+)
+
+@Immutable
+data class OwnChargeUi(
+    val id: String,
+    val title: String,
+    val dueLabel: String,
+    val amountLabel: String,
+    val status: OwnChargeStatusUi,
+)
+
+enum class OwnChargeStatusUi { Pending, Paid, Waived, Cancelled }
+
 @Immutable
 data class VenueUi(val name: String, val address: String)
 
@@ -160,6 +193,11 @@ sealed interface GroupDetailsIntent {
 
     data object RetryRoster : GroupDetailsIntent
 
+    // VUL-203 — minhas cobranças
+    data object RetryOwnCharges : GroupDetailsIntent
+
+    data object CopyPix : GroupDetailsIntent
+
     data class Respond(val intent: AttendanceIntent) : GroupDetailsIntent
 
     data class ToggleAutoConfirmation(val enabled: Boolean) : GroupDetailsIntent
@@ -189,4 +227,7 @@ sealed interface GroupDetailsEffect {
     data object OpenMap : GroupDetailsEffect
 
     data object Left : GroupDetailsEffect
+
+    /** Copiar a chave Pix é da área de transferência, não do back stack: morre no Root. */
+    data class CopyPix(val key: String) : GroupDetailsEffect
 }

@@ -21,6 +21,8 @@ import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.finance.AthleteFinanceGateway
+import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
@@ -32,11 +34,34 @@ import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
+import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
+import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.finance_overview_month_april
+import br.com.saqz.groups.resources.finance_overview_month_august
+import br.com.saqz.groups.resources.finance_overview_month_december
+import br.com.saqz.groups.resources.finance_overview_month_february
+import br.com.saqz.groups.resources.finance_overview_month_january
+import br.com.saqz.groups.resources.finance_overview_month_july
+import br.com.saqz.groups.resources.finance_overview_month_june
+import br.com.saqz.groups.resources.finance_overview_month_march
+import br.com.saqz.groups.resources.finance_overview_month_may
+import br.com.saqz.groups.resources.finance_overview_month_november
+import br.com.saqz.groups.resources.finance_overview_month_october
+import br.com.saqz.groups.resources.finance_overview_month_september
+import br.com.saqz.groups.resources.own_charges_date
+import br.com.saqz.groups.resources.own_charges_due
+import br.com.saqz.groups.resources.own_charges_due_history
+import br.com.saqz.groups.resources.own_charges_due_overdue
+import br.com.saqz.groups.resources.own_charges_game
+import br.com.saqz.groups.resources.own_charges_monthly
+import br.com.saqz.groups.resources.own_charges_monthly_unknown
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -51,6 +76,7 @@ class GroupDetailsViewModel(
     private val athleteGateway: AthleteGateway,
     private val statementGateway: FinanceStatementGateway,
     private val organizerFinanceGateway: OrganizerFinanceGateway,
+    private val athleteFinanceGateway: AthleteFinanceGateway,
     private val now: GroupNowPort,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
@@ -58,6 +84,10 @@ class GroupDetailsViewModel(
     private var responseGeneration = 0L
     private var autoConfirmationGeneration = 0L
     private var rosterGeneration = 0L
+    private var ownChargesGeneration = 0L
+
+    /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
+    private var loadedGroup: Group? = null
 
     init {
         load()
@@ -82,9 +112,9 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenVenueMap -> emit(GroupDetailsEffect.OpenMap)
             GroupDetailsIntent.Leave -> emit(GroupDetailsEffect.Left)
             GroupDetailsIntent.RetryRoster -> retryRoster()
-            GroupDetailsIntent.ViewGame -> state.value.nextGame?.let {
-                emit(GroupDetailsEffect.OpenGame(groupId, it.gameId))
-            }
+            GroupDetailsIntent.RetryOwnCharges -> retryOwnCharges()
+            GroupDetailsIntent.CopyPix -> copyPix()
+            GroupDetailsIntent.ViewGame -> viewGame()
             GroupDetailsIntent.ConfirmAttendance,
             GroupDetailsIntent.NotifyPending,
             GroupDetailsIntent.OpenNotices,
@@ -95,28 +125,135 @@ class GroupDetailsViewModel(
         }
     }
 
+    private fun viewGame() {
+        val game = state.value.nextGame ?: return
+        emit(GroupDetailsEffect.OpenGame(groupId, game.gameId))
+    }
+
+    private fun copyPix() {
+        val pix = state.value.ownCharges?.pix ?: return
+        emit(GroupDetailsEffect.CopyPix(pix.key))
+    }
+
     private fun load() {
         val generation = ++loadGeneration
         responseGeneration++
         autoConfirmationGeneration++
         rosterGeneration++
+        ownChargesGeneration++
+        loadedGroup = null
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch {
             when (val groupResult = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
                 is SaqzResult.Success -> {
                     val group = groupResult.value.group
+                    if (generation == loadGeneration) loadedGroup = group
                     when (val gamesResult = gameGateway.list(GroupId(groupId))) {
                         is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
                         is SaqzResult.Success -> {
                             loadNextGame(generation, group, gamesResult.value)
                             loadAdminCashbox(generation, group)
+                            loadOwnCharges(generation, group)
                         }
                     }
                 }
             }
         }
     }
+
+    private fun retryOwnCharges() {
+        val group = loadedGroup ?: return
+        if (state.value.ownCharges?.isLoading == true) return
+        val generation = loadGeneration
+        viewModelScope.launch { loadOwnCharges(generation, group) }
+    }
+
+    /**
+     * VUL-203 — o que **eu** devo neste grupo. Falha aqui não derruba a tela: a seção
+     * mostra o próprio erro com "tentar novamente", e o resto do detalhe segue montado.
+     */
+    @Suppress("ReturnCount")
+    private suspend fun loadOwnCharges(generation: Int, group: Group) {
+        if (generation != loadGeneration) return
+        val ownGeneration = ++ownChargesGeneration
+        update { it.copy(ownCharges = OwnChargesUi(isLoading = true)) }
+        val result = athleteFinanceGateway.ownCharges(GroupId(groupId))
+        if (generation != loadGeneration || ownGeneration != ownChargesGeneration) return
+        val ownCharges = when (result) {
+            is SaqzResult.Failure -> OwnChargesUi(failed = true)
+            // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
+            is SaqzResult.Success -> result.value.charges.toOwnCharges(group)
+        }
+        if (generation != loadGeneration || ownGeneration != ownChargesGeneration) return
+        update { it.copy(ownCharges = ownCharges) }
+    }
+
+    /**
+     * Hoje é hoje **no fuso de cobrança do grupo**, nunca no do aparelho: é o que decide
+     * "vence" ou "venceu" para quem viaja. O vencimento e a competência já chegam como
+     * data civil do endpoint, então se formatam sem conversão de instante.
+     */
+    private suspend fun List<Charge>.toOwnCharges(group: Group): OwnChargesUi? {
+        if (isEmpty()) return null
+        val today = currentDate(group.timeZone.id)
+        val pending = filter { it.status == ChargeStatus.Pending }
+            .sortedBy { it.dueDate }
+            .map { it.toOwnCharge(today) }
+        val history = filterNot { it.status == ChargeStatus.Pending }
+            .sortedByDescending { it.dueDate }
+            .map { it.toOwnCharge(today) }
+        return OwnChargesUi(
+            pending = pending,
+            history = history,
+            pix = group.profile?.pixKey?.trim()?.takeIf { it.isNotEmpty() && pending.isNotEmpty() }
+                ?.let { PixUi(it, group.profile?.pixLabel) },
+        )
+    }
+
+    private suspend fun Charge.toOwnCharge(today: LocalDate) = OwnChargeUi(
+        id = id,
+        title = when (kind) {
+            ChargeKind.Game -> getString(Res.string.own_charges_game)
+            ChargeKind.Monthly -> month?.monthName()
+                ?.let { getString(Res.string.own_charges_monthly, it) }
+                ?: getString(Res.string.own_charges_monthly_unknown)
+        },
+        dueLabel = getString(
+            when {
+                status != ChargeStatus.Pending -> Res.string.own_charges_due_history
+                dueDate < today.toString() -> Res.string.own_charges_due_overdue
+                else -> Res.string.own_charges_due
+            },
+            formatDate(dueDate),
+        ),
+        amountLabel = formatBrl(amountCents),
+        status = status.toOwnChargeStatus(),
+    )
+
+    private fun ChargeStatus.toOwnChargeStatus() = when (this) {
+        ChargeStatus.Pending -> OwnChargeStatusUi.Pending
+        ChargeStatus.Paid -> OwnChargeStatusUi.Paid
+        ChargeStatus.Waived -> OwnChargeStatusUi.Waived
+        ChargeStatus.Cancelled -> OwnChargeStatusUi.Cancelled
+    }
+
+    /** "2026-08" → "Agosto". Chave inválida devolve `null` e o rótulo cai no genérico. */
+    private suspend fun String.monthName(): String? = substringAfter('-', "")
+        .toIntOrNull()
+        ?.takeIf { it in 1..MONTHS_IN_YEAR }
+        ?.let { getString(it.monthResource()) }
+
+    private suspend fun formatDate(value: String): String {
+        val date = runCatching { LocalDate.parse(value) }.getOrNull() ?: return value
+        return getString(
+            Res.string.own_charges_date,
+            date.day.twoDigits(),
+            (date.month.ordinal + 1).twoDigits(),
+        )
+    }
+
+    private fun Int.twoDigits() = toString().padStart(2, '0')
 
     @Suppress("ReturnCount")
     private suspend fun loadAdminCashbox(generation: Int, group: Group) {
@@ -486,6 +623,26 @@ class GroupDetailsViewModel(
     }
 
     private fun LocalDate.monthKey() = "$year-${month.ordinal.plus(1).toString().padStart(2, '0')}"
+}
+
+private const val MONTHS_IN_YEAR = 12
+
+// Os nomes de mês já existem no módulo (fluxo 5, caixa geral). Reusar é o que evita uma
+// segunda tabela de doze strings dizendo a mesma coisa.
+@Suppress("MagicNumber")
+private fun Int.monthResource(): StringResource = when (this) {
+    1 -> Res.string.finance_overview_month_january
+    2 -> Res.string.finance_overview_month_february
+    3 -> Res.string.finance_overview_month_march
+    4 -> Res.string.finance_overview_month_april
+    5 -> Res.string.finance_overview_month_may
+    6 -> Res.string.finance_overview_month_june
+    7 -> Res.string.finance_overview_month_july
+    8 -> Res.string.finance_overview_month_august
+    9 -> Res.string.finance_overview_month_september
+    10 -> Res.string.finance_overview_month_october
+    11 -> Res.string.finance_overview_month_november
+    else -> Res.string.finance_overview_month_december
 }
 
 private fun List<Game>.nextPublishedGame(now: Instant): Game? {

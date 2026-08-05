@@ -3,6 +3,8 @@ package br.com.saqz.groups.presentation.ui.details
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
@@ -24,9 +26,17 @@ fun GroupDetailsRoot(
     refreshVersion: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val clipboard = LocalClipboardManager.current
     LaunchedEffect(refreshVersion) {
         if (refreshVersion > 0) viewModel.onIntent(GroupDetailsIntent.Retry)
     }
-    ObserveAsEvents(viewModel.effects, onEvent = onEffect)
+    // Copiar o Pix (VUL-203) é área de transferência, não destino: morre aqui em vez de
+    // subir para o `NavDisplay` como um efeito de navegação que ninguém navega.
+    ObserveAsEvents(viewModel.effects) { effect ->
+        when (effect) {
+            is GroupDetailsEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            else -> onEffect(effect)
+        }
+    }
     GroupDetailsScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
 }

@@ -1,0 +1,19 @@
+<resources>
+    <string name="own_charges_title">Minhas cobranças</string>
+    <string name="own_charges_pending_title">Em aberto</string>
+    <string name="own_charges_history_title">Histórico</string>
+    <string name="own_charges_monthly">Mensalidade · %1$s</string>
+    <string name="own_charges_monthly_unknown">Mensalidade</string>
+    <string name="own_charges_game">Jogo avulso</string>
+    <string name="own_charges_date">%1$s/%2$s</string>
+    <string name="own_charges_due">Vence em %1$s</string>
+    <string name="own_charges_due_overdue">Venceu em %1$s</string>
+    <string name="own_charges_due_history">Vencimento %1$s</string>
+    <string name="own_charges_status_pending">Em aberto</string>
+    <string name="own_charges_status_paid">Paga</string>
+    <string name="own_charges_status_waived">Isenta</string>
+    <string name="own_charges_status_cancelled">Cancelada</string>
+    <string name="own_charges_note">Pagamento é manual: copie a chave Pix e avise o organizador.</string>
+    <string name="own_charges_failure">Não foi possível carregar suas cobranças.</string>
+    <string name="own_charges_retry">Tentar novamente</string>
+</resources>

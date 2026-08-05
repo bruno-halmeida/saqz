@@ -38,6 +38,7 @@ import br.com.saqz.groups.domain.game.SeriesBoundaryCommand
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.game.VersionedSeries
 import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
+import br.com.saqz.groups.domain.finance.AthleteFinanceGateway
 import br.com.saqz.groups.domain.finance.ChargeList
 import br.com.saqz.groups.domain.finance.ChargeStatusCommand
 import br.com.saqz.groups.domain.finance.ExpenseList
@@ -417,6 +418,19 @@ class FakeFinanceStatementGateway(
     var statementDeferred: CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>? = null,
 ) : FinanceStatementGateway {
     override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery) = statementDeferred?.await() ?: result
+}
+
+class FakeAthleteFinanceGateway(
+    var ownChargesResult: SaqzResult<ChargeList, FinanceError> = SaqzResult.Success(ChargeList(emptyList())),
+    var ownChargesDeferred: CompletableDeferred<SaqzResult<ChargeList, FinanceError>>? = null,
+) : AthleteFinanceGateway {
+    var ownChargesCalls = 0
+        private set
+
+    override suspend fun ownCharges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
+        ownChargesCalls++
+        return ownChargesDeferred?.await() ?: ownChargesResult
+    }
 }
 
 class FakeOrganizerFinanceGateway(

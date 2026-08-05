@@ -55,8 +55,6 @@ import br.com.saqz.groups.resources.group_cashbox_note
 import br.com.saqz.groups.resources.group_cashbox_open
 import br.com.saqz.groups.resources.group_cashbox_operation_failure
 import br.com.saqz.groups.resources.group_cashbox_overdue_action
-import br.com.saqz.groups.resources.group_cashbox_pix_copy
-import br.com.saqz.groups.resources.group_cashbox_pix_title
 import br.com.saqz.groups.resources.group_cashbox_received_action
 import br.com.saqz.groups.resources.group_cashbox_register
 import br.com.saqz.groups.resources.group_cashbox_received
@@ -65,6 +63,7 @@ import br.com.saqz.groups.resources.group_cashbox_statement
 import br.com.saqz.groups.resources.group_cashbox_received_monthly_suffix
 import br.com.saqz.groups.resources.group_cashbox_title
 import br.com.saqz.groups.resources.sheet_charge_missing_pix
+import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.whatsappChargeUrl
@@ -183,7 +182,14 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
         if (state.debtors.isNotEmpty()) {
             DebtorsSection(state = state, canCharge = canCharge, onIntent = onIntent)
         }
-        state.pix?.let { PixCard(pix = it, onCopy = { onIntent(CopyPix) }) }
+        state.pix?.let {
+            PixCard(
+                pix = it,
+                onCopy = { onIntent(CopyPix) },
+                cardTag = GroupCashboxTags.Pix,
+                copyTag = GroupCashboxTags.PixCopy,
+            )
+        }
         SaqzButton(
             label = stringResource(Res.string.group_cashbox_statement),
             onClick = { onIntent(ViewFullStatement) },
@@ -407,18 +413,3 @@ private fun DebtorRow(
     }
 }
 
-@Composable
-private fun PixCard(pix: PixUi, onCopy: () -> Unit) = SaqzCard(modifier = Modifier.testTag(GroupCashboxTags.Pix)) {
-    SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_pix_title))
-    Text(text = pix.key, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
-    pix.label?.takeIf(String::isNotBlank)?.let {
-        Text(text = it, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-    }
-    SaqzButton(
-        label = stringResource(Res.string.group_cashbox_pix_copy),
-        onClick = onCopy,
-        variant = SaqzButtonVariant.Secondary,
-        fullWidth = true,
-        modifier = Modifier.testTag(GroupCashboxTags.PixCopy),
-    )
-}
