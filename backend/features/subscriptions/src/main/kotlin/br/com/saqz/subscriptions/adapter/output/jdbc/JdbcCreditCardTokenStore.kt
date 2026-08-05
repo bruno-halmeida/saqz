@@ -9,7 +9,7 @@ class JdbcCreditCardTokenStore(
 ) : CreditCardTokenStore {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun save(asaasSubscriptionId: String, token: String, lastFourDigits: String?, brand: String?) {
+    override fun save(asaasSubscriptionId: String, token: String?, lastFourDigits: String?, brand: String?) {
         jdbc.sql(
             """
             UPDATE subscriptions

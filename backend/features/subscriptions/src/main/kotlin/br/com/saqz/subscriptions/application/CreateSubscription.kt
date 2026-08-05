@@ -197,10 +197,15 @@ class CreateSubscription(
             remoteIp = command.remoteIp,
         )
 
+    /**
+     * Roda em toda criação/reativação, com ou sem cartão: a linha de `subscriptions` é reaproveitada
+     * por owner, então uma reativação em PIX depois de uma assinatura de cartão cancelada precisa
+     * limpar o token/last4/brand antigos — senão ficam órfãos, apontando para um cartão que não tem
+     * mais nenhuma relação com o `asaasSubscriptionId` atual (achado do Codex no PR #179).
+     */
     private fun persistCreditCardToken(creation: AsaasSubscriptionCreation) {
-        val card = creation.creditCard ?: return
-        val token = card.token ?: return
-        creditCardTokens.save(creation.asaasSubscriptionId, token, card.lastFourDigits, card.brand)
+        val card = creation.creditCard
+        creditCardTokens.save(creation.asaasSubscriptionId, card?.token, card?.lastFourDigits, card?.brand)
     }
 
     private fun reactivate(
