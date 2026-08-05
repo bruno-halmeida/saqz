@@ -119,6 +119,18 @@ class HomeViewModel(
     private var loadGeneration = 0L
     private var responseGeneration = 0L
 
+    /**
+     * Há carga no ar. Existe para a recarga por baixo (VUL-202) não repetir o que já está
+     * acontecendo: na abertura do app o `init` dispara a carga e o primeiro `resume` da
+     * faixa chega microssegundos depois — sem esta guarda seriam **duas** idas ao
+     * `GET /api/me/home` e ao `ownProfile()` na tela de entrada, que é justamente o
+     * desperdício que o agregado do Fluxo 6 existe para não ter.
+     *
+     * Só a recarga por baixo é descartada. `Retry` é pedido explícito da pessoa e passa
+     * por cima de qualquer coisa em voo.
+     */
+    private var loadInFlight = false
+
     init {
         load()
     }
@@ -152,8 +164,13 @@ class HomeViewModel(
     }
 
     private fun load(softRefresh: Boolean = false) {
+        // A guarda é sobre carga concorrente, não sobre "primeira vez": a faixa pode entrar
+        // em composição muito depois da carga inicial, com dado velho e nada em voo, e aí a
+        // recarga é exatamente o que se quer.
+        if (softRefresh && loadInFlight) return
         val generation = ++loadGeneration
         responseGeneration++
+        loadInFlight = true
         update {
             if (softRefresh) {
                 it.copy(loadFailed = false, error = null, responseFailed = false)
@@ -167,7 +184,7 @@ class HomeViewModel(
                 )
             }
         }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             val homeRequest = async { homeGateway.read() }
             val profileRequest = async { athleteGateway.ownProfile() }
             val homeResult = homeRequest.await()
@@ -213,6 +230,10 @@ class HomeViewModel(
                 }
             }
         }
+        // Libera pelo fim do job, e não no corpo dele: os `return@launch` da guarda de
+        // geração e um cancelamento do escopo também têm que devolver a chave. A checagem
+        // impede que uma carga velha destrave enquanto a nova ainda está no ar.
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 
     private fun respond(intent: AttendanceIntent) {

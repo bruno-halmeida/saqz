@@ -691,6 +691,53 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `app start does not load twice when the banner resumes over the initial load`() = runTest {
+        // Abertura: o `init` carrega e o primeiro resume da faixa chega logo atrás, com a
+        // carga ainda no ar. Duas idas à rede na tela de entrada é o que a guarda impede.
+        val gate = CompletableDeferred<Unit>()
+        val gateway = CountingHomeGateway(
+            SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())),
+            gate = gate,
+        )
+        val viewModel = viewModel(homeGateway = gateway)
+
+        viewModel.onIntent(HomeIntent.Refresh)
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(1, gateway.reads)
+        // E a carga que sobrou é a boa: o descarte não pode custar o dado.
+        assertEquals(2, viewModel.state.value.ownCharges?.groups?.size)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `refresh with nothing in flight reaches the gateway`() = runTest {
+        val gateway = CountingHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())))
+        val viewModel = viewModel(homeGateway = gateway)
+        assertEquals(1, gateway.reads)
+
+        viewModel.onIntent(HomeIntent.Refresh)
+        advanceUntilIdle()
+
+        assertEquals(2, gateway.reads)
+    }
+
+    @Test
+    fun `retry is not discarded by a refresh in flight`() = runTest {
+        // A trava é só para a recarga por baixo: quem tocou "tentar novamente" pediu.
+        val gate = CompletableDeferred<Unit>()
+        val gateway = CountingHomeGateway(SaqzResult.Success(sampleHome()), gate = gate)
+        val viewModel = viewModel(homeGateway = gateway)
+
+        viewModel.onIntent(HomeIntent.Retry)
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, gateway.reads)
+    }
+
+    @Test
     fun `refresh drops the notice when the admin settles the charge`() = runTest {
         // A volta ao app é a única forma de saber que a cobrança foi baixada lá fora.
         val viewModel = viewModel(
@@ -775,6 +822,24 @@ private class SequenceHomeGateway(
 
     override suspend fun read(): SaqzResult<HomeReadModel, HomeError> =
         results.getOrElse(reads++) { results.last() }
+}
+
+/**
+ * Conta as idas ao gateway e, com [gate], segura a resposta para a carga ficar **em voo**
+ * enquanto o teste dispara a próxima — é assim que a abertura do app se reproduz.
+ */
+private class CountingHomeGateway(
+    private val result: SaqzResult<HomeReadModel, HomeError>,
+    private val gate: CompletableDeferred<Unit>? = null,
+) : HomeGateway {
+    var reads = 0
+        private set
+
+    override suspend fun read(): SaqzResult<HomeReadModel, HomeError> {
+        reads++
+        gate?.await()
+        return result
+    }
 }
 
 private class DeferredHomeGateway(
