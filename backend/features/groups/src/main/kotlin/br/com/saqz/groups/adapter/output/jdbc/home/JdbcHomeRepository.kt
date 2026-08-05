@@ -82,6 +82,7 @@ class JdbcHomeRepository(
         groupName = result.getString("group_name"),
         gameId = result.getObject("game_id", UUID::class.java),
         local = result.getString("local"),
+        zoneId = result.getString("zone_id"),
         startsAt = result.getTimestamp("starts_at").toInstant(),
         confirmationDeadline = result.getTimestamp("confirmation_deadline").toInstant(),
         capacity = result.getInt("capacity"),
@@ -113,6 +114,7 @@ class JdbcHomeRepository(
         groupId = result.getObject("group_id", UUID::class.java),
         groupName = result.getString("group_name"),
         gameId = result.getObject("game_id", UUID::class.java),
+        zoneId = result.getString("zone_id"),
         startsAt = result.getTimestamp("starts_at").toInstant(),
         confirmedCount = result.getInt("confirmed_count"),
         ownPlayed = result.getBoolean("own_played"),
@@ -186,6 +188,7 @@ class JdbcHomeRepository(
                    groups.name AS group_name,
                    games.id AS game_id,
                    games.venue_name AS local,
+                   games.zone_id,
                    games.starts_at,
                    games.confirmation_deadline,
                    games.capacity,
@@ -271,6 +274,7 @@ class JdbcHomeRepository(
             SELECT games.group_id,
                    groups.name AS group_name,
                    games.id AS game_id,
+                   games.zone_id,
                    games.starts_at,
                    (
                        SELECT count(*)

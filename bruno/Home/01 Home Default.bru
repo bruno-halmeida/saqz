@@ -16,6 +16,12 @@ tests {
     expect(res.body.member.groups).to.be.an("array");
     expect(res.body.member).to.have.property("nextGame");
     expect(res.body.member).to.have.property("lastCompletedGame");
+    if (res.body.member.nextGame !== null) {
+      expect(res.body.member.nextGame).to.have.property("zoneId");
+    }
+    if (res.body.member.lastCompletedGame !== null) {
+      expect(res.body.member.lastCompletedGame).to.have.property("zoneId");
+    }
   });
   test("home admin contract when present", function () {
     expect(res.body).to.have.property("admin");

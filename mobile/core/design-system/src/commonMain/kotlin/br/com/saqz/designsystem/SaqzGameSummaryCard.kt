@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.game_stat_going
@@ -50,6 +51,9 @@ fun SaqzGameSummaryCard(
     eyebrow: String,
     title: String,
     modifier: Modifier = Modifier,
+    trailingEyebrow: String? = null,
+    tone: SaqzCardTone = SaqzCardTone.Default,
+    cornerRadius: Dp? = null,
     venue: String? = null,
     address: String? = null,
     going: Int? = null,
@@ -61,9 +65,26 @@ fun SaqzGameSummaryCard(
     // A marca d'água entra DEPOIS do card: o fundo do card é opaco — branco agora, ice
     // antes — e engoliria a bola se ela fosse desenhada antes. O clip no raio do card
     // corta o que passa da borda.
-    Box(modifier = modifier.clip(RoundedCornerShape(SaqzTheme.metrics.cardRadius))) {
-        SaqzCard {
-            Text(text = eyebrow, style = SaqzTheme.typography.eyebrow, color = colors.primary)
+    Box(modifier = modifier.clip(RoundedCornerShape(cornerRadius ?: SaqzTheme.metrics.cardRadius))) {
+        SaqzCard(tone = tone, cornerRadius = cornerRadius) {
+            if (trailingEyebrow == null) {
+                Text(text = eyebrow, style = SaqzTheme.typography.eyebrow, color = colors.primary)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = eyebrow, style = SaqzTheme.typography.eyebrow, color = colors.primary)
+                    Text(
+                        text = trailingEyebrow,
+                        style = SaqzTheme.typography.caption.copy(
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        ),
+                        color = colors.textSecondary,
+                    )
+                }
+            }
             Text(text = title, style = SaqzTheme.typography.title, color = colors.textPrimary)
             if (venue != null) {
                 GameLocation(venue = venue, address = address)

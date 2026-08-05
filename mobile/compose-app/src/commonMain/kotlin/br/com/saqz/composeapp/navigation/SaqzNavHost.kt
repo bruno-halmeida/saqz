@@ -278,7 +278,12 @@ internal fun SaqzNavHost(
                     financeTab = {
                         FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
                     },
-                    homeTab = { HomeRoot() },
+                    homeTab = { onOpenGroups ->
+                        HomeRoot(
+                            onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
+                            onOpenGroups = onOpenGroups,
+                        )
+                    },
                     profileTab = {
                         OwnProfileRoot(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },

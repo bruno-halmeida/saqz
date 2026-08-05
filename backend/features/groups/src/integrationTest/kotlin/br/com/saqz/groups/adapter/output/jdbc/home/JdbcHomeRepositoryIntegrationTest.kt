@@ -86,6 +86,7 @@ class JdbcHomeRepositoryIntegrationTest {
         assertEquals(next, home.member.nextGame?.gameId)
         assertEquals("Owner home", home.member.nextGame?.groupName)
         assertEquals("Home court", home.member.nextGame?.local)
+        assertEquals("America/Sao_Paulo", home.member.nextGame?.zoneId)
         assertEquals(4, home.member.nextGame?.capacity)
         assertEquals(1, home.member.nextGame?.confirmedCount)
         assertEquals(1, home.member.nextGame?.declinedCount)
@@ -102,6 +103,7 @@ class JdbcHomeRepositoryIntegrationTest {
         )
         assertEquals(listOf(1L, 2L), home.member.nextGame?.rosterPreview?.waitlisted?.map { it.waitlistPosition })
         assertEquals(latestCompleted, home.member.lastCompletedGame?.gameId)
+        assertEquals("America/Sao_Paulo", home.member.lastCompletedGame?.zoneId)
         assertEquals(1, home.member.lastCompletedGame?.confirmedCount)
         assertTrue(home.member.lastCompletedGame?.ownPlayed == true)
 
