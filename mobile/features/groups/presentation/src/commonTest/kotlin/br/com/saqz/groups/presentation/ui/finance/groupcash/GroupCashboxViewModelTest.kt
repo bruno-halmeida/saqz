@@ -211,6 +211,36 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `recebi network failure from the receipt sheet closes the sheet instead of reopening it`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(
+            updateResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)),
+        )
+        val viewModel = viewModel(organizer = organizer)
+        viewModel.onIntent(GroupCashboxIntent.OpenReceipt("monthly-pending"))
+        assertEquals("monthly-pending", viewModel.state.value.receiptSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending"))
+
+        assertNull(viewModel.state.value.receiptSheetChargeId)
+        assertTrue(viewModel.state.value.operationFailed)
+    }
+
+    @Test
+    fun `recebi version conflict from the receipt sheet closes the sheet instead of reopening it`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(
+            updateResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(organizer = organizer)
+        viewModel.onIntent(GroupCashboxIntent.OpenReceipt("monthly-pending"))
+        assertEquals("monthly-pending", viewModel.state.value.receiptSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending"))
+
+        assertNull(viewModel.state.value.receiptSheetChargeId)
+        assertTrue(viewModel.state.value.operationFailed)
+    }
+
+    @Test
     fun `monthless game overdue banner stays generic for previous month`() = runTest {
         val viewModel = viewModel(
             organizer = FakeOrganizerFinanceGateway(
