@@ -196,7 +196,7 @@ class GameSettlementViewModel(
             when (result) {
                 is SaqzResult.Success -> load()
                 is SaqzResult.Failure -> update {
-                    previous.copy(operationFailed = true, updatingChargeId = null)
+                    previous.copy(operationFailed = true, updatingChargeId = null, receiptSheetChargeId = null)
                 }
             }
         }
