@@ -18,7 +18,7 @@ fun GroupCashboxRoot(
     onOpenNewEntry: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
-    viewModel: GroupCashboxViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    viewModel: GroupCashboxViewModel = koinViewModel(key = groupId, parameters = { parametersOf(groupId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current

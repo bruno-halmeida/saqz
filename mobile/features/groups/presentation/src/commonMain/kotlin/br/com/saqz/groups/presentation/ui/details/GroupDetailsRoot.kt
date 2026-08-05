@@ -22,7 +22,11 @@ fun GroupDetailsRoot(
     groupId: String,
     onBack: () -> Unit,
     onEffect: (GroupDetailsEffect) -> Unit,
-    viewModel: GroupDetailsViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    // VUL-204: o `groupId` entra na chave do store. Quem separa o grupo A do B é o escopo
+    // por destino do `NavDisplay` (cada `GroupsRoute.Details` é uma entrada com store
+    // próprio); a chave é a segunda tranca, e é ela que mantém o Root correto sozinho —
+    // montado fora de um `NavEntry`, sem ela A e B cairiam na mesma instância.
+    viewModel: GroupDetailsViewModel = koinViewModel(key = groupId, parameters = { parametersOf(groupId) }),
     refreshVersion: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()

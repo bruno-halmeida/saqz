@@ -29,7 +29,8 @@ fun GroupScheduleRoot(
     onOpenGame: (String) -> Unit,
     refreshVersion: Int = 0,
 ) {
-    val viewModel: GroupScheduleViewModel = koinViewModel(parameters = { parametersOf(groupId) })
+    val viewModel: GroupScheduleViewModel =
+        koinViewModel(key = groupId, parameters = { parametersOf(groupId) })
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(refreshVersion) {
         if (refreshVersion > 0) viewModel.onIntent(GroupScheduleIntent.Retry)

@@ -52,17 +52,12 @@ fun HomeRoot(
  * É um Root — resolve a **mesma** [HomeViewModel] da aba Início, então são uma instância e
  * uma chamada a `GET /api/me/home`: o aviso não tem carregador próprio e não duplica
  * requisição. O que faz as duas composições caírem na mesma instância é o
- * `LocalViewModelStoreOwner`, e neste app **ele é a Activity**, não o destino do shell: o
- * `NavDisplay` do `SaqzNavHost` é montado sem `entryDecorators`, e
- * `lifecycle-viewmodel-navigation3` está no version catalog mas não é dependência do
- * `:compose-app`. Ou seja, o compartilhamento é real, mas por escopo de Activity — e com
- * ele vem o efeito de a instância **não** morrer quando o shell sai do stack (inclusive num
- * logout que não recria a Activity). O [LifecycleResumeEffect] abaixo segura esse lado:
- * quem entra de novo recarrega, e o dado de quem entrou depois substitui o de antes.
- *
- * ponytail: teto conhecido — entre montar a faixa e a recarga voltar, o valor exibido ainda
- * é o da sessão anterior. O conserto é escopo por destino (`entryDecorators` no `NavDisplay`
- * com `lifecycle-viewmodel-navigation3`), que é do app inteiro e não deste ticket.
+ * `LocalViewModelStoreOwner`, e desde o VUL-204 ele é o **destino do shell** — a faixa e a
+ * aba Início são compostas dentro do mesmo `entry<SaqzShellDestination>`, logo no mesmo
+ * `ViewModelStore`. Antes o owner era a Activity: o compartilhamento acontecia igual, mas a
+ * instância **não** morria quando o shell saía do stack, e um logout sem recriar a Activity
+ * entregava a Home da conta anterior para quem entrasse depois. Agora o store morre com a
+ * entrada, e a sessão nova começa com ViewModel nova.
  *
  * O recarregamento na volta é o que torna o aviso **permanente e vivo**: sem ele a faixa
  * só se atualizaria no `init` da instância, e continuaria cobrando depois de o admin dar

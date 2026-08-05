@@ -13,7 +13,10 @@ fun MemberEditorRoot(
     userId: String,
     onBack: () -> Unit,
     onRemove: () -> Unit,
-    viewModel: MemberEditorViewModel = koinViewModel(parameters = { parametersOf(groupId, userId) }),
+    viewModel: MemberEditorViewModel = koinViewModel(
+        key = "$groupId/$userId",
+        parameters = { parametersOf(groupId, userId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

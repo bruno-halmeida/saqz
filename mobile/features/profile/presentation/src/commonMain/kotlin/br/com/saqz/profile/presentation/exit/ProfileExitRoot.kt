@@ -12,7 +12,7 @@ fun ProfileExitRoot(
     email: String,
     onClose: () -> Unit,
     onLogout: () -> Unit,
-    viewModel: ProfileExitViewModel = koinViewModel(parameters = { parametersOf(email) }),
+    viewModel: ProfileExitViewModel = koinViewModel(key = email, parameters = { parametersOf(email) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
