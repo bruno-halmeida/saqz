@@ -63,16 +63,18 @@ class NewEntryViewModel(
     private fun applyPrefill(intent: NewEntryIntent.ApplyPrefill) {
         if (savedState.get<Boolean>(KEY_PREFILL_APPLIED) == true) return
         when (intent.prefill) {
-            NewEntryPrefill.GameCourt -> {
+            is NewEntryPrefill.GameCourt -> {
                 savedState[KEY_PREFILL_APPLIED] = true
                 savedState[KEY_DIRECTION] = NewEntryDirection.Out.name
                 savedState[KEY_CATEGORY] = NewEntryCategory.Court.name
                 savedState[KEY_DESCRIPTION] = intent.description
+                savedState[KEY_DATE] = intent.prefill.localDate
                 update {
                     it.copy(
                         direction = NewEntryDirection.Out,
                         category = NewEntryCategory.Court,
                         description = intent.description,
+                        date = intent.prefill.localDate,
                         error = null,
                     )
                 }

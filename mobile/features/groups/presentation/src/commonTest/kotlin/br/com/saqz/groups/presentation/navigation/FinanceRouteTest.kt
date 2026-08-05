@@ -12,7 +12,7 @@ class FinanceRouteTest {
             FinanceRoute.GroupCashbox("group-1"),
             FinanceRoute.Statement("group-2"),
             FinanceRoute.NewEntry("group-2"),
-            FinanceRoute.NewEntry("group-2", NewEntryPrefill.GameCourt),
+            FinanceRoute.NewEntry("group-2", NewEntryPrefill.GameCourt("2026-08-12")),
             FinanceRoute.GameSettlement("group-3", "game-1"),
         )
 

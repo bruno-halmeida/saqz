@@ -13,6 +13,7 @@ data class GameSettlementState(
     val error: GroupUiError? = null,
     val groupId: String = "",
     val groupName: String = "",
+    val gameLocalDate: String = "",
     val header: GameSettlementHeaderUi? = null,
     val monthlyMemberCount: Int = 0,
     val paidDiaristCount: Int = 0,
@@ -75,7 +76,7 @@ sealed interface GameSettlementIntent {
 }
 
 sealed interface GameSettlementEffect {
-    data class OpenNewEntry(val groupId: String) : GameSettlementEffect
+    data class OpenNewEntry(val groupId: String, val localDate: String) : GameSettlementEffect
     data class OpenCashbox(val groupId: String) : GameSettlementEffect
     data class CopyPix(val key: String) : GameSettlementEffect
 }

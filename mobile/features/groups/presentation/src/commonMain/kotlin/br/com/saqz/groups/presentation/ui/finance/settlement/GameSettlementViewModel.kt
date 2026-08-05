@@ -69,7 +69,7 @@ class GameSettlementViewModel(
                 emit(GameSettlementEffect.CopyPix(pix.key))
             }
             GameSettlementIntent.OpenCourtExpense -> if (!state.value.isLoading) {
-                emit(GameSettlementEffect.OpenNewEntry(groupId))
+                emit(GameSettlementEffect.OpenNewEntry(groupId, state.value.gameLocalDate))
             }
             GameSettlementIntent.EndSettlement -> if (state.value.isSummary) load()
             GameSettlementIntent.OpenCashbox -> emit(GameSettlementEffect.OpenCashbox(groupId))
@@ -275,6 +275,7 @@ class GameSettlementViewModel(
             isLoading = false,
             groupId = groupId,
             groupName = groupName,
+            gameLocalDate = game.localDate,
             header = GameSettlementHeaderUi(
                 dateTime = dateTime,
                 venue = listOfNotNull(game.venue.name, game.venue.court).joinToString(" — "),

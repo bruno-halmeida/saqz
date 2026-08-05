@@ -37,6 +37,7 @@ import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -74,6 +75,24 @@ class GameSettlementViewModelTest {
         assertEquals(8_000L, state.costCents)
         assertEquals(listOf("member-avulso-paid", "member-avulso-pending"), state.diarists.map { it.memberId })
         assertFalse(state.isSummary)
+    }
+
+    @Test
+    fun `opens court expense with the local date of a past game and includes its cost`() = runTest {
+        val pastDate = "2026-08-03"
+        val pastGame = sampleVersionedGame().game.copy(
+            localDate = pastDate,
+            startsAt = "2026-08-03T22:30:00Z",
+            status = br.com.saqz.groups.domain.game.GameStatus.Completed,
+            venue = br.com.saqz.groups.domain.game.GameVenue("venue", "CERET", "Rua", "Quadra 2"),
+        )
+        val finance = SettlementFinanceGateway(charges = charges(), expenses = expenses(pastDate))
+        val viewModel = viewModel(finance, game = pastGame)
+
+        viewModel.onIntent(GameSettlementIntent.OpenCourtExpense)
+
+        assertEquals(GameSettlementEffect.OpenNewEntry("group-1", pastDate), viewModel.effects.first())
+        assertEquals(8_000L, viewModel.state.value.costCents)
     }
 
     @Test
@@ -126,17 +145,16 @@ class GameSettlementViewModelTest {
         group: br.com.saqz.groups.domain.group.Group = sampleGroup(
             profile = sampleGroup().profile?.copy(pixKey = "pix@saqz.com"),
         ),
+        game: br.com.saqz.groups.domain.game.Game = sampleVersionedGame().game.copy(
+            status = br.com.saqz.groups.domain.game.GameStatus.Completed,
+            venue = br.com.saqz.groups.domain.game.GameVenue("venue", "CERET", "Rua", "Quadra 2"),
+        ),
     ) = GameSettlementViewModel(
         groupId = "group-1",
         gameId = "game-1",
         gameGateway = FakeGameGateway(
             readResult = SaqzResult.Success(
-                sampleVersionedGame().copy(
-                    game = sampleVersionedGame().game.copy(
-                        status = br.com.saqz.groups.domain.game.GameStatus.Completed,
-                        venue = br.com.saqz.groups.domain.game.GameVenue("venue", "CERET", "Rua", "Quadra 2"),
-                    ),
-                ),
+                sampleVersionedGame().copy(game = game),
             ),
         ),
         groupGateway = FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(group))),
@@ -215,13 +233,13 @@ class GameSettlementViewModelTest {
         ),
     )
 
-    private fun expenses() = listOf(
+    private fun expenses(expenseDate: String = "2026-08-04") = listOf(
         Expense(
             id = "court-expense",
             groupId = GroupId("group-1"),
             description = "Aluguel da quadra",
             amountCents = 8_000L,
-            expenseDate = "2026-08-04",
+            expenseDate = expenseDate,
             category = ExpenseCategory.Venue,
             status = ExpenseStatus.Active,
             version = 1L,

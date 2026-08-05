@@ -22,7 +22,7 @@ fun NewEntryRoot(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val prefillDescription = prefill?.let {
         when (it) {
-            NewEntryPrefill.GameCourt -> stringResource(Res.string.game_settlement_court_expense_description_prefill)
+            is NewEntryPrefill.GameCourt -> stringResource(Res.string.game_settlement_court_expense_description_prefill)
         }
     }
     LaunchedEffect(viewModel, prefill, prefillDescription) {

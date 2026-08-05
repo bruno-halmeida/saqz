@@ -18,8 +18,9 @@ enum class NewEntryCategory {
 }
 
 @Serializable
-enum class NewEntryPrefill {
-    GameCourt,
+sealed interface NewEntryPrefill {
+    @Serializable
+    data class GameCourt(val localDate: String) : NewEntryPrefill
 }
 
 @Immutable

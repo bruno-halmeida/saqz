@@ -15,7 +15,7 @@ fun GameSettlementRoot(
     groupId: String,
     gameId: String,
     onBack: () -> Unit,
-    onOpenNewEntry: (String) -> Unit,
+    onOpenNewEntry: (String, String) -> Unit,
     onOpenCashbox: (String) -> Unit,
     refreshVersion: Int = 0,
     viewModel: GameSettlementViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
@@ -27,7 +27,7 @@ fun GameSettlementRoot(
     }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            is GameSettlementEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId)
+            is GameSettlementEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId, effect.localDate)
             is GameSettlementEffect.OpenCashbox -> onOpenCashbox(effect.groupId)
             is GameSettlementEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
         }

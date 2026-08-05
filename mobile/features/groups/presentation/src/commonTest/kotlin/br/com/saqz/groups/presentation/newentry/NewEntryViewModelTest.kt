@@ -67,11 +67,18 @@ class NewEntryViewModelTest {
     fun `game court prefill selects an outgoing court expense`() {
         val viewModel = viewModel()
 
-        viewModel.onIntent(NewEntryIntent.ApplyPrefill(NewEntryPrefill.GameCourt, "Aluguel da quadra"))
+        viewModel.onIntent(
+            NewEntryIntent.ApplyPrefill(NewEntryPrefill.GameCourt("2026-08-03"), "Aluguel da quadra"),
+        )
 
         assertEquals(NewEntryDirection.Out, viewModel.state.value.direction)
         assertEquals(NewEntryCategory.Court, viewModel.state.value.category)
         assertEquals("Aluguel da quadra", viewModel.state.value.description)
+        assertEquals("2026-08-03", viewModel.state.value.date)
+
+        viewModel.onIntent(NewEntryIntent.DateChanged("04082026"))
+
+        assertEquals("2026-08-04", viewModel.state.value.date)
     }
 
     @Test
