@@ -176,6 +176,9 @@ class CancelSubscriptionTest {
             valueCents: Long,
             billingType: AsaasBillingType,
             idempotencyKey: String,
+            creditCard: CreditCardDetails?,
+            creditCardHolderInfo: CreditCardHolderInfo?,
+            remoteIp: String?,
         ) = error("unused")
 
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")

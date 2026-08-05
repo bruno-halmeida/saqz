@@ -2,9 +2,13 @@ package br.com.saqz.subscriptions.adapter.output.asaas
 
 import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasConcurrentOperationException
+import br.com.saqz.subscriptions.application.AsaasCreditCardInfo
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.AsaasPaymentSnapshot
+import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
+import br.com.saqz.subscriptions.application.CreditCardDetails
+import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import com.fasterxml.jackson.databind.JsonNode
@@ -60,13 +64,17 @@ class HttpAsaasGateway(
         valueCents: Long,
         billingType: AsaasBillingType,
         idempotencyKey: String,
-    ): String =
-        withIdempotency(
+        creditCard: CreditCardDetails?,
+        creditCardHolderInfo: CreditCardHolderInfo?,
+        remoteIp: String?,
+    ): AsaasSubscriptionCreation {
+        var createdCreditCard: AsaasCreditCardInfo? = null
+        val id = withIdempotency(
             storeKey = idempotencyKey,
             collectionPath = "/subscriptions",
             externalReference = idempotencyKey,
         ) {
-            val body = mapOf(
+            val body = mutableMapOf<String, Any?>(
                 "customer" to asaasCustomerId,
                 "billingType" to asaasBillingType(billingType),
                 "value" to centsToDecimal(valueCents),
@@ -75,11 +83,65 @@ class HttpAsaasGateway(
                 "description" to "Assinatura Saqz ${plan.name}",
                 "externalReference" to idempotencyKey,
             )
-            // 60s só no caminho de cartão — a Asaas recomenda esse mínimo para o round trip de
-            // autorização+antifraude; os demais endpoints seguem no requestTimeout padrão (15s).
-            val timeout = if (billingType == AsaasBillingType.CREDIT_CARD) CARD_REQUEST_TIMEOUT else requestTimeout
-            requireId(post("/subscriptions", body, timeout), "subscription")
+            // Presença/formato já foram validados em CreateSubscription.execute() — a única
+            // chamadora real. Aqui só serializa o que veio; nunca duplica a validação de negócio.
+            if (billingType == AsaasBillingType.CREDIT_CARD) {
+                creditCard?.let { body["creditCard"] = creditCardBody(it) }
+                creditCardHolderInfo?.let { body["creditCardHolderInfo"] = creditCardHolderInfoBody(it) }
+                remoteIp?.let { body["remoteIp"] = it }
+            }
+            val response = postSubscriptionCreate(body, billingType)
+            createdCreditCard = creditCardInfoOf(response)
+            requireId(response, "subscription")
         }
+        return AsaasSubscriptionCreation(id, createdCreditCard)
+    }
+
+    /** 60s only on the card path — Asaas recommends it for authorization+antifraude round trips. */
+    private fun postSubscriptionCreate(body: Map<String, Any?>, billingType: AsaasBillingType): JsonNode {
+        val timeout = if (billingType == AsaasBillingType.CREDIT_CARD) CARD_REQUEST_TIMEOUT else requestTimeout
+        return try {
+            post("/subscriptions", body, timeout)
+        } catch (ex: AsaasException) {
+            if (billingType == AsaasBillingType.CREDIT_CARD && ex.statusCode in 400..499) {
+                throw CardDeclinedException(
+                    asaasCode = ex.errorCode ?: "unknown",
+                    asaasDescription = ex.errorDescription ?: "Cartão recusado",
+                    cause = ex,
+                )
+            }
+            throw ex
+        }
+    }
+
+    private fun creditCardInfoOf(response: JsonNode): AsaasCreditCardInfo? {
+        val node = response.path("creditCard")
+        if (node.isMissingNode || node.isNull) return null
+        return AsaasCreditCardInfo(
+            token = node.path("creditCardToken").asText(null)?.takeIf { it.isNotBlank() },
+            lastFourDigits = node.path("creditCardNumber").asText(null)?.takeIf { it.isNotBlank() },
+            brand = node.path("creditCardBrand").asText(null)?.takeIf { it.isNotBlank() },
+        )
+    }
+
+    private fun creditCardBody(card: CreditCardDetails): Map<String, String> = mapOf(
+        "holderName" to card.holderName,
+        "number" to card.number,
+        "expiryMonth" to card.expiryMonth,
+        "expiryYear" to card.expiryYear,
+        "ccv" to card.ccv,
+    )
+
+    private fun creditCardHolderInfoBody(holder: CreditCardHolderInfo): Map<String, String?> = mapOf(
+        "name" to holder.name,
+        "email" to holder.email,
+        "cpfCnpj" to holder.cpfCnpj,
+        "postalCode" to holder.postalCode,
+        "addressNumber" to holder.addressNumber,
+        "phone" to holder.phone,
+        "addressComplement" to holder.addressComplement,
+        "mobilePhone" to holder.mobilePhone,
+    )
 
     override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) {
         val body = mapOf("value" to centsToDecimal(valueCents))
@@ -307,9 +369,12 @@ class HttpAsaasGateway(
         val status = response.statusCode()
         val responseBody = response.body().orEmpty()
         if (status !in 200..299) {
+            val firstError = parseErrors(responseBody).firstOrNull()
             throw AsaasException(
                 statusCode = status,
                 message = "Asaas $method $path failed with HTTP $status: ${errorSummary(responseBody)}",
+                errorCode = firstError?.code,
+                errorDescription = firstError?.description,
             )
         }
         if (responseBody.isBlank()) {
@@ -326,23 +391,29 @@ class HttpAsaasGateway(
         return id
     }
 
-    private fun errorSummary(body: String): String {
-        if (body.isBlank()) return "(empty body)"
+    private data class AsaasErrorDetail(val code: String, val description: String)
+
+    private fun parseErrors(body: String): List<AsaasErrorDetail> {
+        if (body.isBlank()) return emptyList()
         return try {
-            val root = objectMapper.readTree(body)
-            val errors = root.path("errors")
-            if (errors.isArray && errors.size() > 0) {
-                errors.joinToString("; ") { item ->
-                    val code = item.path("code").asText("unknown")
-                    val description = item.path("description").asText("")
-                    "$code: $description".trimEnd(':', ' ')
-                }
-            } else {
-                body.take(500)
+            val errors = objectMapper.readTree(body).path("errors")
+            if (!errors.isArray || errors.isEmpty) return emptyList()
+            errors.map { item ->
+                AsaasErrorDetail(
+                    code = item.path("code").asText("unknown"),
+                    description = item.path("description").asText(""),
+                )
             }
         } catch (_: Exception) {
-            body.take(500)
+            emptyList()
         }
+    }
+
+    private fun errorSummary(body: String): String {
+        if (body.isBlank()) return "(empty body)"
+        val errors = parseErrors(body)
+        if (errors.isEmpty()) return body.take(500)
+        return errors.joinToString("; ") { "${it.code}: ${it.description}".trimEnd(':', ' ') }
     }
 
     private fun today(): LocalDate = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC)

@@ -6,6 +6,12 @@ import java.util.UUID
 
 interface AsaasGateway {
     fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String): String
+
+    /**
+     * [creditCard]/[creditCardHolderInfo]/[remoteIp] only apply when [billingType] is
+     * `CREDIT_CARD` — null otherwise. Throws [br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException]
+     * (not a generic Asaas error) when Asaas rejects the card itself.
+     */
     fun createSubscription(
         asaasCustomerId: String,
         plan: Plan,
@@ -13,7 +19,10 @@ interface AsaasGateway {
         valueCents: Long,
         billingType: AsaasBillingType,
         idempotencyKey: String,
-    ): String
+        creditCard: CreditCardDetails? = null,
+        creditCardHolderInfo: CreditCardHolderInfo? = null,
+        remoteIp: String? = null,
+    ): AsaasSubscriptionCreation
     fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long)
 
     /** Stops future Asaas billing; local access still follows currentPeriodEnd / grace. */
@@ -45,4 +54,37 @@ data class AsaasPaymentSnapshot(
     val id: String,
     val status: String?,
     val invoiceUrl: String?,
+)
+
+/** Dados de cartao do checkout direto (VUL-194) — nunca logados, nunca persistidos como estao. */
+data class CreditCardDetails(
+    val holderName: String,
+    val number: String,
+    val expiryMonth: String,
+    val expiryYear: String,
+    val ccv: String,
+)
+
+data class CreditCardHolderInfo(
+    val name: String,
+    val email: String,
+    val cpfCnpj: String,
+    val postalCode: String,
+    val addressNumber: String,
+    val phone: String,
+    val addressComplement: String? = null,
+    val mobilePhone: String? = null,
+)
+
+/** Recorte do `creditCard` da resposta de criacao — token/last4/brand, nunca o PAN. */
+data class AsaasCreditCardInfo(
+    val token: String?,
+    val lastFourDigits: String?,
+    val brand: String?,
+)
+
+data class AsaasSubscriptionCreation(
+    val asaasSubscriptionId: String,
+    /** Null quando billingType nao e CREDIT_CARD, ou quando o id veio de recuperacao/reconciliacao. */
+    val creditCard: AsaasCreditCardInfo? = null,
 )

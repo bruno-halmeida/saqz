@@ -111,7 +111,7 @@ class ProcessAsaasWebhook(
             id = newEventId(),
             asaasEventId = command.asaasEventId,
             type = command.eventType,
-            payload = command.rawPayload,
+            payload = maskCardNumbers(command.rawPayload),
             now = now,
             ownerUserId = ownerUserId,
         )
@@ -324,5 +324,20 @@ class ProcessAsaasWebhook(
             if (left.size != right.size) return false
             return MessageDigest.isEqual(left, right)
         }
+
+        /**
+         * A Asaas nunca deveria mandar o PAN completo no webhook — o objeto `creditCard` só traz
+         * os 4 últimos dígitos + token —, mas este payload fica anos em `subscription_events` para
+         * auditoria. Mascara defensivamente qualquer `number`/`creditCardNumber` de 13-19 dígitos
+         * antes de persistir, caso isso mude do lado da Asaas (PCI é inegociável — VUL-194).
+         */
+        private val PAN_FIELD_PATTERN = Regex(""""(number|creditCardNumber)"\s*:\s*"(\d{13,19})"""")
+
+        fun maskCardNumbers(rawPayload: String): String =
+            PAN_FIELD_PATTERN.replace(rawPayload) { match ->
+                val field = match.groupValues[1]
+                val digits = match.groupValues[2]
+                "\"$field\":\"${"*".repeat(digits.length - 4)}${digits.takeLast(4)}\""
+            }
     }
 }
