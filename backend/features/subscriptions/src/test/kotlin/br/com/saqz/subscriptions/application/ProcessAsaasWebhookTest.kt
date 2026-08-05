@@ -12,6 +12,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -196,6 +197,104 @@ class ProcessAsaasWebhookTest {
         assertEquals(Plan.ORGANIZADOR, sub.plan)
         assertEquals(periodEnd, sub.currentPeriodEnd)
         assertEquals(listOf("sub_123" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.updates)
+    }
+
+    @Test
+    fun `refund revokes access immediately instead of keeping the paid cycle`() {
+        val futureEnd = Instant.parse("2026-08-30T00:00:00Z")
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-07-01T00:00:00Z"),
+                currentPeriodEnd = futureEnd,
+                lastConfirmedPaymentId = "pay_refunded",
+            ),
+        )
+
+        val result = useCase.execute(
+            token,
+            command(eventId = "evt_refund", type = ProcessAsaasWebhook.EVENT_PAYMENT_REFUNDED, paymentId = "pay_refunded"),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.CANCELED, sub.status)
+        assertEquals(fixedNow, sub.canceledAt)
+        // Periodo cortado para agora: sem isto CANCELED seguiria dando acesso ate 30/08.
+        assertEquals(fixedNow, sub.currentPeriodEnd)
+        assertFalse(sub.isEntitlingAt(fixedNow))
+    }
+
+    @Test
+    fun `cash payment undone also revokes`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-07-01T00:00:00Z"),
+                currentPeriodEnd = Instant.parse("2026-08-30T00:00:00Z"),
+                lastConfirmedPaymentId = "pay_cash",
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(
+                eventId = "evt_cash_undone",
+                type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED_IN_CASH_UNDONE,
+                paymentId = "pay_cash",
+            ),
+        )
+
+        assertFalse(subscriptions.get("sub_123").isEntitlingAt(fixedNow))
+    }
+
+    @Test
+    fun `refund of an older charge does not revoke the cycle a renewal already paid`() {
+        val futureEnd = Instant.parse("2026-08-30T00:00:00Z")
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-06-01T00:00:00Z"),
+                currentPeriodEnd = futureEnd,
+                lastConfirmedPaymentId = "pay_agosto",
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_refund_old", type = ProcessAsaasWebhook.EVENT_PAYMENT_REFUNDED, paymentId = "pay_junho"),
+        )
+
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.ACTIVE, sub.status)
+        assertEquals(futureEnd, sub.currentPeriodEnd)
+    }
+
+    @Test
+    fun `plain cancellation keeps access until the end of the paid cycle`() {
+        val futureEnd = Instant.parse("2026-08-30T00:00:00Z")
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-07-01T00:00:00Z"),
+                currentPeriodEnd = futureEnd,
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(eventId = "evt_sub_del", type = ProcessAsaasWebhook.EVENT_SUBSCRIPTION_DELETED),
+        )
+
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.CANCELED, sub.status)
+        // Diferenca deliberada para o estorno: o ciclo pago e preservado.
+        assertEquals(futureEnd, sub.currentPeriodEnd)
+        assertTrue(sub.isEntitlingAt(fixedNow))
     }
 
     @Test

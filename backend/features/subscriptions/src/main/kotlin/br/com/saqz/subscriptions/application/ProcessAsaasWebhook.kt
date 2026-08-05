@@ -126,8 +126,25 @@ class ProcessAsaasWebhook(
                 if (current.status == SubscriptionStatus.CANCELED) return
                 applyOverdue(command, current, now)
             }
+            in REVOKING_EVENT_TYPES -> applyRefund(command, current, now)
             EVENT_SUBSCRIPTION_DELETED -> subscriptions.save(cancel(current, now))
         }
+    }
+
+    /**
+     * Cancelamento comum preserva o ciclo ja pago (ver [cancel]); estorno nao — o pagamento que
+     * sustentava o acesso deixou de existir, entao o periodo e cortado para agora e
+     * `isEntitlingAt` passa a devolver false na mesma hora.
+     *
+     * So revoga se o estorno for da cobranca que confirmou o acesso atual: estorno de uma
+     * cobranca antiga, ja superada por uma renovacao, nao pode derrubar o ciclo vigente.
+     */
+    private fun applyRefund(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
+        val paymentId = command.asaasPaymentId
+        val sustainsCurrentAccess = current.lastConfirmedPaymentId == null ||
+            (paymentId != null && paymentId == current.lastConfirmedPaymentId)
+        if (!sustainsCurrentAccess) return
+        subscriptions.save(revoke(current, now))
     }
 
     private fun applyConfirmedPayment(command: AsaasWebhookCommand, current: Subscription, now: Instant) {
@@ -237,6 +254,14 @@ class ProcessAsaasWebhook(
             pastDueSince = current.pastDueSince ?: now,
         )
 
+    private fun revoke(current: Subscription, now: Instant): Subscription =
+        current.copy(
+            status = SubscriptionStatus.CANCELED,
+            canceledAt = current.canceledAt ?: now,
+            // Corta o ciclo: CANCELED so continua dando acesso enquanto currentPeriodEnd > now.
+            currentPeriodEnd = if (current.currentPeriodEnd.isAfter(now)) now else current.currentPeriodEnd,
+        )
+
     private fun cancel(current: Subscription, now: Instant): Subscription =
         current.copy(
             status = SubscriptionStatus.CANCELED,
@@ -254,6 +279,12 @@ class ProcessAsaasWebhook(
         const val EVENT_PAYMENT_RECEIVED = "PAYMENT_RECEIVED"
         const val EVENT_PAYMENT_OVERDUE = "PAYMENT_OVERDUE"
         const val EVENT_SUBSCRIPTION_DELETED = "SUBSCRIPTION_DELETED"
+
+        /** Estorno concluido: o dinheiro voltou ao pagador. */
+        const val EVENT_PAYMENT_REFUNDED = "PAYMENT_REFUNDED"
+
+        /** Baixa manual desfeita — o recebimento deixou de existir. */
+        const val EVENT_PAYMENT_RECEIVED_IN_CASH_UNDONE = "PAYMENT_RECEIVED_IN_CASH_UNDONE"
         const val WEBHOOK_TOKEN_HEADER = "asaas-access-token"
 
         /** Os dois eventos que comprovam pagamento — [ListReceipts] lista os dois. */
@@ -262,7 +293,17 @@ class ProcessAsaasWebhook(
             EVENT_PAYMENT_RECEIVED,
         )
 
-        private val DOMAIN_EVENT_TYPES = CONFIRMING_EVENT_TYPES + setOf(
+        /**
+         * Dinheiro devolvido revoga o acesso na hora — nao existe carencia para quem foi
+         * estornado. Estorno PARCIAL (PAYMENT_PARTIALLY_REFUNDED) fica de fora de proposito:
+         * o pagador continua tendo pago parte do ciclo.
+         */
+        private val REVOKING_EVENT_TYPES = setOf(
+            EVENT_PAYMENT_REFUNDED,
+            EVENT_PAYMENT_RECEIVED_IN_CASH_UNDONE,
+        )
+
+        private val DOMAIN_EVENT_TYPES = CONFIRMING_EVENT_TYPES + REVOKING_EVENT_TYPES + setOf(
             EVENT_PAYMENT_OVERDUE,
             EVENT_SUBSCRIPTION_DELETED,
         )
