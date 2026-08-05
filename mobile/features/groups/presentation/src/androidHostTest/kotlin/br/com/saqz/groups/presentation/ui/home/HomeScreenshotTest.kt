@@ -128,6 +128,6 @@ class HomeScreenshotTest {
             HomeWaitlistRowUi(name = "Bruna Silva", position = 2, isSelf = true),
             HomeWaitlistRowUi(name = "Tiago Moraes", position = 3, isSelf = false),
         ),
-        mensalistaConfirmedCount = 9,
+        confirmedCountTotal = 9,
     )
 }

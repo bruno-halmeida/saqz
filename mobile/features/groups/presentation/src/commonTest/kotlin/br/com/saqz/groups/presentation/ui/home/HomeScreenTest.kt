@@ -116,7 +116,7 @@ class HomeScreenTest {
                         br.com.saqz.groups.presentation.home.HomeWaitlistRowUi("Lucas Pereira", 1, false),
                         br.com.saqz.groups.presentation.home.HomeWaitlistRowUi("Bruna Silva", 2, true),
                     ),
-                    mensalistaConfirmedCount = 9,
+                    confirmedCountTotal = 9,
                 ),
             ),
             intents::add,
@@ -124,7 +124,7 @@ class HomeScreenTest {
 
         onNodeWithText("Lista de espera").assertIsDisplayed()
         onNodeWithText("Os mensalistas entram primeiro.").assertIsDisplayed()
-        onNodeWithText("2º na lista · 9 mensalistas confirmados").assertIsDisplayed()
+        onNodeWithText("2º na lista · 9 confirmados").assertIsDisplayed()
         onNodeWithText("Quer entrar direto nos próximos?").assertIsDisplayed()
         onNodeWithTag(HomeWaitlistTags.QueueSection).assertIsDisplayed()
         onNodeWithText("Você").assertIsDisplayed()

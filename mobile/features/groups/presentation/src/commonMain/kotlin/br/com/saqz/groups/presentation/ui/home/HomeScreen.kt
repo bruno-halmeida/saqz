@@ -418,7 +418,7 @@ private fun HomeWaitlistExtras(
             game.waitlistPosition?.let { position ->
                 HomeWaitlistPositionLine(
                     position = position,
-                    mensalistaCount = game.mensalistaConfirmedCount,
+                    confirmedCount = game.confirmedCountTotal,
                 )
             }
             HomeWaitlistQueueSection(rows = game.waitlistedRoster)
@@ -670,5 +670,5 @@ private fun avulsoListPreviewGame() = HomeNextGameUi(
         br.com.saqz.groups.presentation.home.HomeWaitlistRowUi(name = "Bruna Silva", position = 2, isSelf = true),
         br.com.saqz.groups.presentation.home.HomeWaitlistRowUi(name = "Tiago Moraes", position = 3, isSelf = false),
     ),
-    mensalistaConfirmedCount = 9,
+    confirmedCountTotal = 9,
 )

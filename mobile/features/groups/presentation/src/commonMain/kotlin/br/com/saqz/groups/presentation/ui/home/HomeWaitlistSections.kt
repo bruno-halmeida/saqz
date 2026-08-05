@@ -256,12 +256,12 @@ internal fun HomeWaitlistUpsellCard(modifier: Modifier = Modifier) {
 }
 
 /**
- * Linha muted do avulso (6e): "{posição}º na lista · {N} mensalistas confirmados".
+ * Linha muted do avulso (6e): "{posição}º na lista · {N} confirmados".
  */
 @Composable
-internal fun HomeWaitlistPositionLine(position: Long, mensalistaCount: Int, modifier: Modifier = Modifier) {
+internal fun HomeWaitlistPositionLine(position: Long, confirmedCount: Int, modifier: Modifier = Modifier) {
     Text(
-        text = stringResource(Res.string.home_waitlist_avulso_position, position.toInt(), mensalistaCount),
+        text = stringResource(Res.string.home_waitlist_avulso_position, position.toInt(), confirmedCount),
         style = SaqzTheme.typography.support,
         color = SaqzTheme.colors.textSecondary,
         modifier = modifier.fillMaxWidth(),

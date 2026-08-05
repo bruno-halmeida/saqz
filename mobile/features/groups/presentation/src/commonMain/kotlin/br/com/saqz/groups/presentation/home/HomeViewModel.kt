@@ -309,8 +309,10 @@ class HomeViewModel(
         } ?: startsAt
         val time = startsAtLocal?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
         val weekday = startsAtLocal?.let { getString(it.date.dayOfWeek.longResource()) } ?: ""
-        val ownPosition = ownAttendance?.waitlistPosition
-        val waitlistedRows = rosterPreview.waitlisted.mapNotNull { member ->
+        val ownPosition = ownAttendance
+            ?.takeIf { it.status == AttendanceStatus.Waitlisted }
+            ?.waitlistPosition
+        val previewWaitlistedRows = rosterPreview.waitlisted.mapNotNull { member ->
             val pos = member.waitlistPosition ?: return@mapNotNull null
             HomeWaitlistRowUi(
                 name = member.displayName,
@@ -318,6 +320,13 @@ class HomeViewModel(
                 isSelf = ownPosition != null && pos == ownPosition,
             )
         }.sortedBy { it.position }
+        val waitlistedRows = if (
+            ownPosition != null && previewWaitlistedRows.none { it.position == ownPosition }
+        ) {
+            previewWaitlistedRows + HomeWaitlistRowUi(name = "", position = ownPosition, isSelf = true)
+        } else {
+            previewWaitlistedRows
+        }
         return HomeNextGameUi(
             groupId = groupId.value,
             gameId = gameId,
@@ -337,7 +346,7 @@ class HomeViewModel(
             waitlistPosition = ownPosition,
             confirmedRoster = rosterPreview.confirmed.map { it.displayName },
             waitlistedRoster = waitlistedRows,
-            mensalistaConfirmedCount = confirmedCount,
+            confirmedCountTotal = confirmedCount,
             deadlineBellLabel = deadline?.let { bellDeadlineLabel(it) } ?: "",
         )
     }

@@ -65,7 +65,7 @@ data class HomeNextGameUi(
     val waitlistPosition: Long? = null,
     val confirmedRoster: List<String> = emptyList(),
     val waitlistedRoster: List<HomeWaitlistRowUi> = emptyList(),
-    val mensalistaConfirmedCount: Int = 0,
+    val confirmedCountTotal: Int = 0,
     val deadlineBellLabel: String = "",
 )
 

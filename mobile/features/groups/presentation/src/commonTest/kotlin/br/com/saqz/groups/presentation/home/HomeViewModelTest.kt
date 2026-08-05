@@ -17,6 +17,7 @@ import br.com.saqz.groups.domain.home.HomeNextGame
 import br.com.saqz.groups.domain.home.HomeOwnAttendance
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeRosterPreview
+import br.com.saqz.groups.domain.home.HomeRosterMember
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
@@ -377,6 +378,36 @@ class HomeViewModelTest {
         // Reconciliado: a posição do servidor já está na UI, sem esperar o refresh.
         assertEquals(3L, viewModel.state.value.member?.nextGame?.waitlistPosition)
         assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+    }
+
+    @Test
+    fun `waitlist preview appends self when server position is outside preview`() = runTest {
+        val preview = (1..5).map { position ->
+            HomeRosterMember("Pessoa $position", position.toLong())
+        }
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Waitlisted, 7)).copy(
+                            membershipType = AthleteMembershipType.AVULSO,
+                            mensalistaPriority = true,
+                            rosterPreview = HomeRosterPreview(
+                                confirmed = emptyList(),
+                                waitlisted = preview,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val rows = viewModel.state.value.member?.nextGame?.waitlistedRoster.orEmpty()
+        assertEquals(6, rows.size)
+        assertEquals(5L, rows[4].position)
+        assertEquals(7L, rows.last().position)
+        assertTrue(rows.last().isSelf)
+        assertEquals("", rows.last().name)
     }
 
     @Test

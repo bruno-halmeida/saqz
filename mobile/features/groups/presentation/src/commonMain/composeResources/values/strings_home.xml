@@ -39,7 +39,7 @@
     <string name="home_waitlist_avulso_chip">Lista de espera</string>
     <string name="home_waitlist_avulso_box_title">Os mensalistas entram primeiro.</string>
     <string name="home_waitlist_avulso_box_body">Você está na lista de espera porque joga como avulso. Assim que o admin liberar sua vaga, a gente te avisa.</string>
-    <string name="home_waitlist_avulso_position">%1$dº na lista · %2$d mensalistas confirmados</string>
+    <string name="home_waitlist_avulso_position">%1$dº na lista · %2$d confirmados</string>
     <string name="home_waitlist_avulso_leave">Sair da lista</string>
     <string name="home_waitlist_avulso_upsell_title">Quer entrar direto nos próximos?</string>
     <string name="home_waitlist_avulso_upsell_body">Mensalistas têm vaga garantida. Peça pro admin te incluir.</string>
