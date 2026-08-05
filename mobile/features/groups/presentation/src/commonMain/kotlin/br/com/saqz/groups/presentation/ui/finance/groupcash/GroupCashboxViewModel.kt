@@ -154,7 +154,7 @@ class GroupCashboxViewModel(
                     emit(GroupCashboxEffect.MutationSucceeded)
                 }
                 is SaqzResult.Failure -> update {
-                    previous.copy(operationFailed = true, updatingChargeId = null)
+                    previous.copy(operationFailed = true, updatingChargeId = null, receiptSheetChargeId = null)
                 }
             }
         }
