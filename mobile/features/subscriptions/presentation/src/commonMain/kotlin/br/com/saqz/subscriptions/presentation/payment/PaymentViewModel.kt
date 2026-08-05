@@ -3,6 +3,7 @@ package br.com.saqz.subscriptions.presentation.payment
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.designsystem.MAX_CARD_NUMBER_DIGITS
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.CouponValidation
@@ -332,7 +333,6 @@ class PaymentViewModel(
         const val KEY_INVOICE_URL = "payment_invoice_url"
         const val POLL_INTERVAL_MS = 5_000L
         const val MAX_CPF_CNPJ_DIGITS = 14
-        const val MAX_CARD_NUMBER_DIGITS = 19
         const val MAX_CARD_EXPIRY_DIGITS = 4
         const val MAX_CARD_CVV_DIGITS = 4
         const val MAX_POSTAL_CODE_DIGITS = 8
