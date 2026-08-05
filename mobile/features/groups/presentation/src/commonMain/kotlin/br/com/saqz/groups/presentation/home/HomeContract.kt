@@ -26,6 +26,25 @@ data class HomeMemberUi(
     val groups: List<HomeGroupUi>,
 )
 
+/**
+ * Tipo de espera do membro no próximo jogo, derivado num único ponto do ViewModel:
+ * `membershipType == Avulso && mensalistaPriority == true` ⇒ [AvulsoList]; caso
+ * contrário ⇒ [Reserva]. O hero e o subtítulo do cabeçalho consomem o mesmo valor.
+ */
+enum class HomeWaitlistKind { Reserva, AvulsoList }
+
+/**
+ * Linha da lista de espera (6e): nome, posição na fila e flag do próprio usuário
+ * (a linha dele recebe destaque ice e "Você" no lugar do nome). O match da própria
+ * linha é por `waitlistPosition` — o backend não envia id de membro no roster.
+ */
+@Immutable
+data class HomeWaitlistRowUi(
+    val name: String,
+    val position: Long,
+    val isSelf: Boolean,
+)
+
 @Immutable
 data class HomeNextGameUi(
     val groupId: String,
@@ -42,6 +61,12 @@ data class HomeNextGameUi(
     val weekday: String,
     val time: String,
     val confirmationOpen: Boolean = true,
+    val waitlistKind: HomeWaitlistKind? = null,
+    val waitlistPosition: Long? = null,
+    val confirmedRoster: List<String> = emptyList(),
+    val waitlistedRoster: List<HomeWaitlistRowUi> = emptyList(),
+    val mensalistaConfirmedCount: Int = 0,
+    val deadlineBellLabel: String = "",
 )
 
 @Immutable
@@ -71,9 +96,11 @@ sealed interface HomeIntent {
     data object DismissToast : HomeIntent
     data object OpenGroups : HomeIntent
     data class OpenGroup(val groupId: String) : HomeIntent
+    data class OpenGame(val groupId: String, val gameId: String) : HomeIntent
 }
 
 sealed interface HomeEffect {
     data object OpenGroups : HomeEffect
     data class OpenGroup(val groupId: String) : HomeEffect
+    data class OpenGame(val groupId: String, val gameId: String) : HomeEffect
 }

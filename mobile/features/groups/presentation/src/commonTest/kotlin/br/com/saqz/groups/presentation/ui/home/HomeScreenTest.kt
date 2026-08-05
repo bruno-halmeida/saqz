@@ -19,6 +19,7 @@ import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -85,12 +86,51 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `waitlisted state replaces the two response buttons with a warning chip`() = runComposeUiTest {
-        setScreen(nextGameState(nextGame = nextGame(AttendanceStatus.Waitlisted)))
+    fun `waitlisted reserva state renders the reserva chip box and leave and view game actions`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(
+            nextGameState(nextGame = nextGame(AttendanceStatus.Waitlisted).copy(waitlistKind = HomeWaitlistKind.Reserva, waitlistPosition = 1)),
+            intents::add,
+        )
 
-        onNodeWithText("Lista de espera").assertIsDisplayed()
+        onNodeWithText("Reserva · 1º").assertIsDisplayed()
+        onNodeWithText("As vagas acabaram. Você entrou na reserva.").assertIsDisplayed()
         onAllNodesWithText("Vou").assertCountEquals(0)
         onAllNodesWithText("Não vou").assertCountEquals(0)
+        onNodeWithTag(HomeWaitlistTags.ReservaLeave).assertIsDisplayed()
+        onNodeWithTag(HomeWaitlistTags.ReservaViewGame).performClick()
+        onNodeWithTag(HomeWaitlistTags.ConfirmedSection).assertIsDisplayed()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGame("ceret", "game-1")), intents)
+    }
+
+    @Test
+    fun `waitlisted avulso list state renders the queue section with the self row highlighted`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(
+            nextGameState(
+                nextGame = nextGame(AttendanceStatus.Waitlisted).copy(
+                    waitlistKind = HomeWaitlistKind.AvulsoList,
+                    waitlistPosition = 2,
+                    waitlistedRoster = listOf(
+                        br.com.saqz.groups.presentation.home.HomeWaitlistRowUi("Lucas Pereira", 1, false),
+                        br.com.saqz.groups.presentation.home.HomeWaitlistRowUi("Bruna Silva", 2, true),
+                    ),
+                    mensalistaConfirmedCount = 9,
+                ),
+            ),
+            intents::add,
+        )
+
+        onNodeWithText("Lista de espera").assertIsDisplayed()
+        onNodeWithText("Os mensalistas entram primeiro.").assertIsDisplayed()
+        onNodeWithText("2º na lista · 9 mensalistas confirmados").assertIsDisplayed()
+        onNodeWithText("Quer entrar direto nos próximos?").assertIsDisplayed()
+        onNodeWithTag(HomeWaitlistTags.QueueSection).assertIsDisplayed()
+        onNodeWithText("Você").assertIsDisplayed()
+        onNodeWithTag(HomeWaitlistTags.AvulsoLeave).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.Respond(AttendanceIntent.Decline)), intents)
     }
 
     @Test

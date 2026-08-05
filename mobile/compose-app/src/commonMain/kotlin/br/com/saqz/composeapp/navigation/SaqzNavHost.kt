@@ -284,6 +284,9 @@ internal fun SaqzNavHost(
                         HomeRoot(
                             onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
                             onOpenGroups = onOpenGroups,
+                            onOpenGame = { groupId, gameId ->
+                                backStack.add(GroupsRoute.GameDetail(groupId, gameId))
+                            },
                         )
                     },
                     profileTab = {

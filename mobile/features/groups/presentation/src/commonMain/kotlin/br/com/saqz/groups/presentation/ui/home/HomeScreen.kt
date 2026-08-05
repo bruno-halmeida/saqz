@@ -39,7 +39,6 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
-import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.saqzInitials
@@ -53,6 +52,7 @@ import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeToast
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_error_message
 import br.com.saqz.groups.resources.home_error_title
@@ -74,7 +74,6 @@ import br.com.saqz.groups.resources.home_status_pending
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_waitlisted
-import br.com.saqz.groups.resources.home_waitlisted
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeTags {
@@ -186,6 +185,7 @@ private fun HomeContent(
                         responseFailed = state.responseFailed,
                         onIntent = onIntent,
                     )
+                    HomeWaitlistExtras(game = it, onIntent = onIntent)
                 } ?: HomeNoGame(onIntent)
                 member.lastCompletedGame?.let { HomeLastGame(it) }
                 HomeGroups(member.groups, onIntent)
@@ -258,11 +258,25 @@ private fun HomeHero(
             color = colors.textSecondary,
         )
         when (game.ownAttendance) {
-            AttendanceStatus.Waitlisted -> SaqzStatusChip(
-                text = stringResource(Res.string.home_waitlisted),
-                tone = br.com.saqz.designsystem.SaqzChipTone.Warning,
-                dot = true,
-            )
+            AttendanceStatus.Waitlisted -> {
+                val kind = game.waitlistKind ?: HomeWaitlistKind.Reserva
+                HomeWaitlistChip(kind = kind, position = game.waitlistPosition)
+                HomeWaitlistInfoBox(kind = kind)
+                HomeWaitlistActions(
+                    kind = kind,
+                    responding = responding,
+                    onLeave = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+                    onViewGame = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
+                )
+                if (responseFailed) {
+                    Text(
+                        text = stringResource(Res.string.home_response_error),
+                        style = SaqzTheme.typography.support,
+                        color = colors.errorForeground,
+                        modifier = Modifier.testTag(HomeTags.ResponseError),
+                    )
+                }
+            }
             else -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -372,6 +386,43 @@ private fun HomeStatus(status: AttendanceStatus?) {
             style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
             color = colors.textPrimary,
         )
+    }
+}
+
+/**
+ * Seções extras que aparecem abaixo do hero só quando o membro está em espera:
+ * reserva (6b) mostra os confirmados e o card sino; lista do avulso (6e) mostra a
+ * linha de posição, a fila e o upsell. Decomposto em `HomeWaitlistSections.kt`
+ * para o VUL-192 (home do admin) reutilizar as peças.
+ */
+@Composable
+private fun HomeWaitlistExtras(
+    game: HomeNextGameUi,
+    onIntent: (HomeIntent) -> Unit,
+) {
+    if (game.ownAttendance != AttendanceStatus.Waitlisted) return
+    val kind = game.waitlistKind ?: HomeWaitlistKind.Reserva
+    when (kind) {
+        HomeWaitlistKind.Reserva -> {
+            HomeWaitlistConfirmedSection(
+                confirmedRoster = game.confirmedRoster,
+                confirmedCount = game.confirmedCount,
+                capacity = game.capacity,
+            )
+            if (game.deadlineBellLabel.isNotEmpty()) {
+                HomeWaitlistBellCard(label = game.deadlineBellLabel)
+            }
+        }
+        HomeWaitlistKind.AvulsoList -> {
+            game.waitlistPosition?.let { position ->
+                HomeWaitlistPositionLine(
+                    position = position,
+                    mensalistaCount = game.mensalistaConfirmedCount,
+                )
+            }
+            HomeWaitlistQueueSection(rows = game.waitlistedRoster)
+            HomeWaitlistUpsellCard()
+        }
     }
 }
 
@@ -527,6 +578,18 @@ private fun HomeEmptyPreview() = SaqzTheme {
     HomeScreen(previewState(nextGame = null), onIntent = {})
 }
 
+@Preview(name = "Home reserva (6b)", widthDp = 390, heightDp = 1200)
+@Composable
+private fun HomeReservaPreview() = SaqzTheme {
+    HomeScreen(previewState(nextGame = reservaPreviewGame()), onIntent = {})
+}
+
+@Preview(name = "Home lista de espera do avulso (6e)", widthDp = 390, heightDp = 1200)
+@Composable
+private fun HomeAvulsoListPreview() = SaqzTheme {
+    HomeScreen(previewState(nextGame = avulsoListPreviewGame()), onIntent = {})
+}
+
 private fun previewState(
     nextGame: HomeNextGameUi? = HomeNextGameUi(
         groupId = "ceret",
@@ -560,4 +623,51 @@ private fun previewState(
             HomeGroupUi("pacaembu", "Vôlei Pacaembu", "14 pessoas · 6 jogos"),
         ),
     ),
+)
+
+private fun reservaPreviewGame() = HomeNextGameUi(
+    groupId = "ceret",
+    gameId = "game-1",
+    groupName = "Vôlei do CERET",
+    dateTime = "Ter, 28/07 · 19h30",
+    local = "CERET — Quadra 2 · Tatuapé",
+    deadline = "As confirmações encerram hoje às 18h.",
+    confirmedSummary = "12 de 12 confirmados",
+    confirmedCount = 12,
+    capacity = 12,
+    rosterNames = listOf("Ana Souza", "Bruna Lima", "Caio", "Duda"),
+    ownAttendance = AttendanceStatus.Waitlisted,
+    weekday = "terça",
+    time = "19h30",
+    confirmationOpen = true,
+    waitlistKind = HomeWaitlistKind.Reserva,
+    waitlistPosition = 1,
+    confirmedRoster = listOf("Ana Souza", "Bruna Lima", "Caio", "Duda", "Eva", "Tiago"),
+    deadlineBellLabel = "Avisamos você se abrir vaga até 18h00 de 28/07.",
+)
+
+private fun avulsoListPreviewGame() = HomeNextGameUi(
+    groupId = "ceret",
+    gameId = "game-1",
+    groupName = "Vôlei do CERET",
+    dateTime = "Ter, 28/07 · 19h30",
+    local = "CERET — Quadra 2 · Tatuapé",
+    deadline = "As confirmações encerram hoje às 18h.",
+    confirmedSummary = "9 de 12 confirmados",
+    confirmedCount = 9,
+    capacity = 12,
+    rosterNames = listOf("Ana Souza", "Bruna Lima", "Caio"),
+    ownAttendance = AttendanceStatus.Waitlisted,
+    weekday = "terça",
+    time = "19h30",
+    confirmationOpen = true,
+    waitlistKind = HomeWaitlistKind.AvulsoList,
+    waitlistPosition = 2,
+    confirmedRoster = listOf("Ana Souza", "Bruna Lima", "Caio"),
+    waitlistedRoster = listOf(
+        br.com.saqz.groups.presentation.home.HomeWaitlistRowUi(name = "Lucas Pereira", position = 1, isSelf = false),
+        br.com.saqz.groups.presentation.home.HomeWaitlistRowUi(name = "Bruna Silva", position = 2, isSelf = true),
+        br.com.saqz.groups.presentation.home.HomeWaitlistRowUi(name = "Tiago Moraes", position = 3, isSelf = false),
+    ),
+    mensalistaConfirmedCount = 9,
 )
