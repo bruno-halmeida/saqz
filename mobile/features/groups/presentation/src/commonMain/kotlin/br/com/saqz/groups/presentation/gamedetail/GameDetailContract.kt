@@ -69,6 +69,7 @@ data class GameDetailWaitlistUi(
 sealed interface GameDetailIntent {
     data object Retry : GameDetailIntent
     data object Edit : GameDetailIntent
+    data object OpenSettlement : GameDetailIntent
     data object RequestCancel : GameDetailIntent
     data object ConfirmCancel : GameDetailIntent
     data object DismissCancel : GameDetailIntent
@@ -80,5 +81,6 @@ sealed interface GameDetailIntent {
 }
 sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect
+    data object OpenSettlement : GameDetailEffect
     data object Cancelled : GameDetailEffect
 }

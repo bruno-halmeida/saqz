@@ -49,6 +49,7 @@ import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
+import br.com.saqz.groups.presentation.newentry.NewEntryPrefill
 import br.com.saqz.groups.presentation.newentry.NewEntryEffect
 import br.com.saqz.groups.presentation.newentry.NewEntryRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -56,9 +57,9 @@ import br.com.saqz.groups.presentation.statement.StatementEffect
 import br.com.saqz.groups.presentation.statement.StatementRoot
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
-import br.com.saqz.groups.presentation.ui.finance.FinancePlaceholderScreen
 import br.com.saqz.groups.presentation.ui.finance.overview.FinanceOverviewRoot
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
+import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
 import br.com.saqz.groups.presentation.ui.home.HomeRoot
@@ -128,6 +129,7 @@ internal fun SaqzNavHost(
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupCashboxRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var settlementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -375,18 +377,31 @@ internal fun SaqzNavHost(
                 NewEntryRoot(
                     groupId = route.groupId,
                     onBack = pop,
+                    prefill = route.prefill,
                     onEffect = { effect ->
                         when (effect) {
                             NewEntryEffect.Saved -> {
                                 pop()
                                 statementRefreshVersion++
                                 groupCashboxRefreshVersion++
+                                settlementRefreshVersion++
                             }
                         }
                     },
                 )
             }
-            entry<FinanceRoute.GameSettlement> { FinancePlaceholderScreen() }
+            entry<FinanceRoute.GameSettlement> { route ->
+                GameSettlementRoot(
+                    groupId = route.groupId,
+                    gameId = route.gameId,
+                    onBack = pop,
+                    refreshVersion = settlementRefreshVersion,
+                    onOpenNewEntry = { groupId, localDate ->
+                        backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))
+                    },
+                    onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
+                )
+            }
             entry<SubscriptionsRoute.PlanSelection> {
                 PlanSelectionRoot(
                     onBack = pop,
@@ -543,6 +558,9 @@ internal fun SaqzNavHost(
                     gameId = route.gameId,
                     onBack = pop,
                     onOpenEditor = { backStack.add(GroupsRoute.GameEditor(route.groupId, route.gameId)) },
+                    onOpenSettlement = {
+                        backStack.add(FinanceRoute.GameSettlement(route.groupId, route.gameId))
+                    },
                     onCancel = {
                         scheduleRefreshVersion++
                         pop()
