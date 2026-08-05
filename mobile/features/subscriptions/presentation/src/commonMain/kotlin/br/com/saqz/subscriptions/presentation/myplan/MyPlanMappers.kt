@@ -74,7 +74,7 @@ internal fun MySubscription.toCardUi(plans: List<PlanDetails>): MyPlanCardUi {
         // still follows currentPeriodEnd"). Mostrar como próxima cobrança seria falso.
         nextChargeDate = if (canceled) null else isoDateToPtBr(currentPeriodEnd),
         accessUntilDate = if (canceled) isoDateToPtBr(currentPeriodEnd) else null,
-        paymentMethodLabel = paymentMethod?.toUiText(),
+        paymentMethodLabel = paymentMethodLabel(),
         pendingChangeLine = pendingLine,
     )
 }

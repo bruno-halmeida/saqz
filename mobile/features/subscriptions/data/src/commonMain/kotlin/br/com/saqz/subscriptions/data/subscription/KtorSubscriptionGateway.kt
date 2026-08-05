@@ -75,6 +75,30 @@ internal data class MySubscriptionTransport(
     val readOnly: Boolean,
     val pastDueSince: String? = null,
     val canceledAt: String? = null,
+    // VUL-196: o endpoint ainda não expõe — chega nulo até o backend adicionar.
+    val cardLast4: String? = null,
+    val cardBrand: String? = null,
+)
+
+@Serializable
+private data class CreditCardTransport(
+    val holderName: String,
+    val number: String,
+    val expiryMonth: String,
+    val expiryYear: String,
+    val ccv: String,
+)
+
+@Serializable
+private data class CreditCardHolderInfoTransport(
+    val name: String,
+    val email: String,
+    val cpfCnpj: String,
+    val postalCode: String,
+    val addressNumber: String,
+    val phone: String,
+    val addressComplement: String? = null,
+    val mobilePhone: String? = null,
 )
 
 @Serializable
@@ -87,6 +111,8 @@ private data class CreateSubscriptionRequestTransport(
     val email: String,
     val cpfCnpj: String,
     val couponCode: String? = null,
+    val creditCard: CreditCardTransport? = null,
+    val creditCardHolderInfo: CreditCardHolderInfoTransport? = null,
 )
 
 @Serializable
@@ -215,6 +241,27 @@ private fun CreateSubscriptionCommand.toRequest() = CreateSubscriptionRequestTra
     email = email,
     cpfCnpj = cpfCnpj,
     couponCode = couponCode,
+    creditCard = creditCard?.toRequest(),
+    creditCardHolderInfo = creditCardHolderInfo?.toRequest(),
+)
+
+private fun CreditCardInfo.toRequest() = CreditCardTransport(
+    holderName = holderName,
+    number = number,
+    expiryMonth = expiryMonth,
+    expiryYear = expiryYear,
+    ccv = ccv,
+)
+
+private fun CreditCardHolderInfo.toRequest() = CreditCardHolderInfoTransport(
+    name = name,
+    email = email,
+    cpfCnpj = cpfCnpj,
+    postalCode = postalCode,
+    addressNumber = addressNumber,
+    phone = phone,
+    addressComplement = addressComplement,
+    mobilePhone = mobilePhone,
 )
 
 private fun ChangePlanCommand.toRequest() = ChangePlanRequestTransport(requestId, targetPlanId.toTransport())
@@ -291,6 +338,8 @@ private fun MySubscriptionTransport.toDomain() = MySubscription(
     readOnly = readOnly,
     pastDueSince = pastDueSince,
     canceledAt = canceledAt,
+    cardLast4 = cardLast4,
+    cardBrand = cardBrand,
 )
 
 private fun SubscriptionUsageTransport.toDomain() = SubscriptionUsage(groupsUsed, groupsLimit)
@@ -362,8 +411,14 @@ private fun SubscriptionStatusTransport.toDomain() = when (this) {
 }
 
 internal fun NetworkError.toSubscriptionError(): SubscriptionError = when (this) {
-    is NetworkError.ApiProblemError -> when (problem.code) {
-        "VALIDATION_FAILED" -> SubscriptionError.Validation(
+    is NetworkError.ApiProblemError -> when {
+        // VUL-196: shape pinado do Asaas (402), sem `code` — discrimina por `error`, não pelo
+        // "problem" padrão do backend. `reason`/`message` sempre vêm juntos nesse contrato.
+        problem.error == "card_declined" -> SubscriptionError.CardDeclined(
+            reason = problem.reason.orEmpty(),
+            message = problem.message.orEmpty(),
+        )
+        problem.code == "VALIDATION_FAILED" -> SubscriptionError.Validation(
             DataError.Validation(
                 ValidationDetails(
                     globalMessages = emptyList(),
@@ -371,13 +426,13 @@ internal fun NetworkError.toSubscriptionError(): SubscriptionError = when (this)
                 ),
             ),
         )
-        "SUBSCRIPTION_NOT_FOUND" -> SubscriptionError.NotFound
-        "SUBSCRIPTION_CONFLICT" -> SubscriptionError.Conflict
-        "SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH" -> SubscriptionError.PendingCheckoutMismatch
-        "COUPON_NOT_FOUND" -> SubscriptionError.CouponNotFound
-        "COUPON_EXPIRED" -> SubscriptionError.CouponExpired
-        "COUPON_ALREADY_REDEEMED" -> SubscriptionError.CouponAlreadyRedeemed
-        "DOWNGRADE_BLOCKED" -> SubscriptionError.DowngradeBlocked
+        problem.code == "SUBSCRIPTION_NOT_FOUND" -> SubscriptionError.NotFound
+        problem.code == "SUBSCRIPTION_CONFLICT" -> SubscriptionError.Conflict
+        problem.code == "SUBSCRIPTION_PENDING_CHECKOUT_MISMATCH" -> SubscriptionError.PendingCheckoutMismatch
+        problem.code == "COUPON_NOT_FOUND" -> SubscriptionError.CouponNotFound
+        problem.code == "COUPON_EXPIRED" -> SubscriptionError.CouponExpired
+        problem.code == "COUPON_ALREADY_REDEEMED" -> SubscriptionError.CouponAlreadyRedeemed
+        problem.code == "DOWNGRADE_BLOCKED" -> SubscriptionError.DowngradeBlocked
         else -> SubscriptionError.Data(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> SubscriptionError.Data(status.toDataError())

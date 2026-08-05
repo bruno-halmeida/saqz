@@ -8,6 +8,8 @@ import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.CouponValidation
 import br.com.saqz.subscriptions.domain.subscription.CreateSubscriptionCommand
 import br.com.saqz.subscriptions.domain.subscription.CreatedSubscription
+import br.com.saqz.subscriptions.domain.subscription.CreditCardHolderInfo
+import br.com.saqz.subscriptions.domain.subscription.CreditCardInfo
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfo
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfoProvider
 import br.com.saqz.subscriptions.domain.subscription.Plan
@@ -60,8 +62,24 @@ class PaymentViewModel(
 ) {
     // Sobrevive à process death via [KEY_REQUEST_ID]: reenviar `create()` com o mesmo id é
     // como o backend idempotente reemite o checkout em vez de cobrar duas vezes (VUL-107).
-    private val requestId: String =
+    // `var`, não `val` (VUL-196 round 3): o dedup do backend é por `requestId`, não por
+    // payload — depois de uma recusa de cartão, reenviar a MESMA chave sob um comando
+    // DIFERENTE devolveria a recusa cacheada em vez de avaliar o pagamento novo. Ver
+    // [lastDeclinedCommand].
+    private var requestId: String =
         savedStateHandle[KEY_REQUEST_ID] ?: newRequestId().also { savedStateHandle[KEY_REQUEST_ID] = it }
+
+    /**
+     * O último `CreateSubscriptionCommand` que voltou `CardDeclined`, ou `null` fora dessa
+     * janela. `submit()` compara o comando efetivo contra este a cada tentativa — não um
+     * intent por intent (round 3 só cobria edição de campo do cartão; achado do Codex no
+     * PR #181: trocar pra Pix ou corrigir o CPF passavam por fora e reenviavam a chave
+     * recusada sob um payload diferente). Comparar o comando cobre qualquer campo que mude
+     * o que é enviado, existente ou futuro, sem precisar marcar "sujo" em cada intent.
+     *
+     * Em memória, nunca em `savedStateHandle`: carrega o bloco do cartão recusado (PCI).
+     */
+    private var lastDeclinedCommand: CreateSubscriptionCommand? = null
 
     private var customer: CustomerInfo? = null
 
@@ -90,6 +108,21 @@ class PaymentViewModel(
         when (intent) {
             is PaymentIntent.UpdateCpfCnpj -> updateCpfCnpj(intent.value)
             is PaymentIntent.SelectBillingType -> selectBillingType(intent.value)
+            is PaymentIntent.UpdateCardNumber ->
+                updateCardForm { it.copy(number = intent.value.filter(Char::isDigit).take(MAX_CARD_NUMBER_DIGITS)) }
+            is PaymentIntent.UpdateCardExpiry ->
+                updateCardForm { it.copy(expiry = intent.value.filter(Char::isDigit).take(MAX_CARD_EXPIRY_DIGITS)) }
+            is PaymentIntent.UpdateCardCvv ->
+                updateCardForm { it.copy(cvv = intent.value.filter(Char::isDigit).take(MAX_CARD_CVV_DIGITS)) }
+            is PaymentIntent.UpdateCardHolderName -> updateCardForm { it.copy(holderName = intent.value) }
+            is PaymentIntent.UpdateCardPostalCode ->
+                updateCardForm { it.copy(postalCode = intent.value.filter(Char::isDigit).take(MAX_POSTAL_CODE_DIGITS)) }
+            is PaymentIntent.UpdateCardAddressNumber -> updateCardForm { it.copy(addressNumber = intent.value) }
+            is PaymentIntent.UpdateCardAddressComplement -> updateCardForm { it.copy(addressComplement = intent.value) }
+            is PaymentIntent.UpdateCardPhone ->
+                updateCardForm { it.copy(phone = intent.value.filter(Char::isDigit).take(MAX_PHONE_DIGITS)) }
+            is PaymentIntent.UpdateCardMobilePhone ->
+                updateCardForm { it.copy(mobilePhone = intent.value.filter(Char::isDigit).take(MAX_PHONE_DIGITS)) }
             PaymentIntent.Submit -> submit()
             PaymentIntent.RegeneratePix -> submit(skipValidation = true)
             PaymentIntent.ConfirmPayment -> checkNow()
@@ -107,6 +140,20 @@ class PaymentViewModel(
     private fun selectBillingType(billingType: BillingType) {
         savedStateHandle[KEY_BILLING_TYPE] = billingType.name
         update { it.copy(billingType = billingType) }
+    }
+
+    // PCI: `cardForm` só passa por `update`, nunca por `savedStateHandle` — ver doc de
+    // [PaymentState.cardForm].
+    private fun updateCardForm(transform: (CardFormState) -> CardFormState) {
+        update { it.copy(cardForm = transform(it.cardForm).copy(errors = emptySet())) }
+    }
+
+    // VUL-196 round 3: chamado de `submit()` quando o comando efetivo mudou desde a última
+    // recusa de cartão — ver [lastDeclinedCommand]. Persiste como o requestId original:
+    // sobrevive a process death como qualquer outro requestId em uso.
+    private fun rotateRequestId() {
+        requestId = newRequestId()
+        savedStateHandle[KEY_REQUEST_ID] = requestId
     }
 
     private fun loadSummary() {
@@ -146,28 +193,62 @@ class PaymentViewModel(
             update { it.copy(submitError = UiText.Res(Res.string.payment_error_no_session)) }
             return
         }
+        val isCard = state.value.billingType == BillingType.CreditCard
+        if (isCard && !skipValidation) {
+            val cardErrors = validateCardForm(state.value.cardForm)
+            if (cardErrors.isNotEmpty()) {
+                update { it.copy(cardForm = it.cardForm.copy(errors = cardErrors)) }
+                return
+            }
+        }
+        val candidate = buildCommand(currentCustomer, digits, isCard)
+        // VUL-196 round 4: o comando efetivo mudou desde a recusa (trocou de forma de
+        // pagamento, corrigiu o CPF, editou o cartão — qualquer campo) — rotaciona ANTES de
+        // montar o corpo final, senão o dedup do backend devolveria a recusa cacheada para
+        // um pagamento que nunca chegou a ser avaliado. Payload idêntico é o retry de
+        // verdade (recusa sem mudança, ou falha transitória) e mantém a chave de propósito.
+        val declined = lastDeclinedCommand
+        val command = if (declined != null && declined.withoutRequestId() != candidate.withoutRequestId()) {
+            rotateRequestId()
+            candidate.copy(requestId = requestId)
+        } else {
+            candidate
+        }
         pollJob?.cancel()
         submitJob?.cancel()
         submitJob = viewModelScope.launch {
-            update { it.copy(isSubmitting = true, submitError = null, cpfCnpjError = null) }
-            subscriptionGateway.create(
-                CreateSubscriptionCommand(
-                    requestId = requestId,
-                    planId = state.value.plan,
-                    cycle = state.value.cycle,
-                    billingType = state.value.billingType,
-                    name = currentCustomer.displayName,
-                    email = currentCustomer.email.orEmpty(),
-                    cpfCnpj = digits,
-                    couponCode = state.value.couponCode,
-                ),
-            ).onSuccess { created ->
+            update {
+                it.copy(
+                    isSubmitting = true,
+                    submitError = null,
+                    cpfCnpjError = null,
+                    cardForm = it.cardForm.copy(errors = emptySet()),
+                )
+            }
+            subscriptionGateway.create(command).onSuccess { created ->
+                lastDeclinedCommand = null
                 onCreated(created)
             }.onFailure { error ->
+                // Recusa (VUL-196): os dados do portador ficam como estão — só os erros de
+                // campo somem, para "tentar outro cartão" não obrigar a redigitar tudo.
+                lastDeclinedCommand = if (error is SubscriptionError.CardDeclined) command else null
                 update { it.copy(isSubmitting = false, submitError = error.toUiText()) }
             }
         }
     }
+
+    private fun buildCommand(customer: CustomerInfo, cpfCnpj: String, isCard: Boolean) = CreateSubscriptionCommand(
+        requestId = requestId,
+        planId = state.value.plan,
+        cycle = state.value.cycle,
+        billingType = state.value.billingType,
+        name = customer.displayName,
+        email = customer.email.orEmpty(),
+        cpfCnpj = cpfCnpj,
+        couponCode = state.value.couponCode,
+        creditCard = if (isCard) state.value.cardForm.toCreditCardInfo() else null,
+        creditCardHolderInfo = if (isCard) state.value.cardForm.toHolderInfo(customer, cpfCnpj) else null,
+    )
 
     /**
      * `resolveCheckout()` no backend pode devolver sucesso com os dois campos nulos se a
@@ -251,8 +332,42 @@ class PaymentViewModel(
         const val KEY_INVOICE_URL = "payment_invoice_url"
         const val POLL_INTERVAL_MS = 5_000L
         const val MAX_CPF_CNPJ_DIGITS = 14
+        const val MAX_CARD_NUMBER_DIGITS = 19
+        const val MAX_CARD_EXPIRY_DIGITS = 4
+        const val MAX_CARD_CVV_DIGITS = 4
+        const val MAX_POSTAL_CODE_DIGITS = 8
+        const val MAX_PHONE_DIGITS = 11
     }
 }
+
+/**
+ * `creditCardHolderInfo.name`/`email`/`cpfCnpj` reaproveitam a sessão e o CPF/CNPJ já
+ * capturado no formulário — ver doc de [CardFormState]. Só CEP/número/telefone são
+ * realmente novos aqui, junto com os dados do cartão em si.
+ */
+private fun CardFormState.toCreditCardInfo() = CreditCardInfo(
+    holderName = holderName.trim(),
+    number = number.filter(Char::isDigit),
+    expiryMonth = expiry.filter(Char::isDigit).take(2),
+    // ponytail: assume século 20xx — não existe cartão de crédito ainda válido de 19xx.
+    expiryYear = "20" + expiry.filter(Char::isDigit).drop(2),
+    ccv = cvv.filter(Char::isDigit),
+)
+
+private fun CardFormState.toHolderInfo(customer: CustomerInfo, cpfCnpj: String) = CreditCardHolderInfo(
+    name = customer.displayName,
+    email = customer.email.orEmpty(),
+    cpfCnpj = cpfCnpj,
+    postalCode = postalCode.filter(Char::isDigit),
+    addressNumber = addressNumber.trim(),
+    phone = phone.filter(Char::isDigit),
+    addressComplement = addressComplement.trim().ifBlank { null },
+    mobilePhone = mobilePhone.filter(Char::isDigit).ifBlank { null },
+)
+
+// VUL-196 round 4: `requestId` nunca entra na comparação "o payload mudou desde a
+// recusa?" — ele É a coisa que a comparação decide se rotaciona.
+private fun CreateSubscriptionCommand.withoutRequestId() = copy(requestId = "")
 
 // Mesma regra do backend (`CreateSubscription.isValidCpfCnpj`): 11 dígitos (CPF) ou 14 (CNPJ).
 internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || digits.length == 14
@@ -263,12 +378,13 @@ internal fun isValidCpfCnpj(digits: String): Boolean = digits.length == 11 || di
 // `AlreadySubscribed`, que continua com a mensagem genérica.
 // ponytail: mensagem única para o resto dos motivos de recusa — a 8a/8b já validou o
 // cupom antes de chegar aqui, e nenhum deles muda a ação do usuário: tentar de novo.
-private fun SubscriptionError.toUiText(): UiText =
-    if (this is SubscriptionError.PendingCheckoutMismatch) {
-        UiText.Res(Res.string.payment_error_conflict_pending_checkout)
-    } else {
-        UiText.Res(Res.string.payment_error_generic)
-    }
+private fun SubscriptionError.toUiText(): UiText = when (this) {
+    is SubscriptionError.PendingCheckoutMismatch -> UiText.Res(Res.string.payment_error_conflict_pending_checkout)
+    // VUL-196: `message` já vem em PT-BR do backend — é dinâmico (varia por motivo de
+    // recusa), então é String no estado (AGENTS.md §8), não UiText.Res.
+    is SubscriptionError.CardDeclined -> UiText.Raw(message)
+    else -> UiText.Res(Res.string.payment_error_generic)
+}
 
 private fun requirePlan(planId: String) = Plan.valueOf(planId)
 private fun requireCycle(cycle: String) = SubscriptionCycle.valueOf(cycle)

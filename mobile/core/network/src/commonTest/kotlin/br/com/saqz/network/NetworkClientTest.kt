@@ -158,6 +158,36 @@ class NetworkClientTest {
         assertEquals(NetworkError.HttpStatus(502), assertFailure(result))
     }
 
+    /**
+     * Achado do Codex no PR #181: `ApiProblem.status` tinha ganhado default (`= 0`) para o
+     * decode alternativo do VUL-196 (402 card_declined) não falhar. Efeito colateral: um
+     * corpo JSON válido mas sem `status` — `{}` de um proxy na frente da API, por exemplo —
+     * também decodificava como `ApiProblem(status=0)` em vez de cair em `HttpStatus(503)`,
+     * e `isRetryableFailure` só re-tenta `ApiProblemError` com `status` em 500..599. Um 503
+     * "silencioso" desses parava de ser retentado no app inteiro. `status` voltou a ser
+     * obrigatório; o shape do VUL-196 tem um decode próprio em `ApiProblemErrorMapper`.
+     */
+    @Test
+    fun `empty JSON error body maps only HTTP status instead of a zeroed problem`() = runTest {
+        val result = client(responding("{}", HttpStatusCode.ServiceUnavailable))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        assertEquals(NetworkError.HttpStatus(503), assertFailure(result))
+    }
+
+    @Test
+    fun `card declined shape maps to an ApiProblem carrying the real HTTP status`() = runTest {
+        val body = """{"error":"card_declined","reason":"insufficient_funds","message":"Saldo insuficiente."}"""
+        val result = client(responding(body, HttpStatusCode.PaymentRequired))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        val problem = assertIs<NetworkError.ApiProblemError>(assertFailure(result)).problem
+        assertEquals(402, problem.status)
+        assertEquals("card_declined", problem.error)
+        assertEquals("insufficient_funds", problem.reason)
+        assertEquals("Saldo insuficiente.", problem.message)
+    }
+
     @Test
     fun `oversized error body is not parsed or retained`() = runTest {
         val secret = "sensitive-body-" + "x".repeat(100)
