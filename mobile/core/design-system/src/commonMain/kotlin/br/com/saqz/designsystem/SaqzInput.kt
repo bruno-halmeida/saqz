@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
@@ -125,6 +127,7 @@ fun SaqzInput(
     trailingContent: (@Composable () -> Unit)? = null,
     placeholder: String? = null,
     keyboardType: KeyboardType = keyboardTypeFor(kind),
+    ime: SaqzFormIme? = null,
     singleLine: Boolean = true,
     minLines: Int = 1,
     showLabel: Boolean = true,
@@ -155,7 +158,11 @@ fun SaqzInput(
         singleLine = singleLine,
         minLines = minLines,
         visualTransformation = transformation,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = ime?.imeAction ?: ImeAction.Default,
+        ),
+        keyboardActions = ime?.keyboardActions ?: KeyboardActions.Default,
         textStyle = textStyle,
         modifier = fieldModifier,
     )
@@ -187,6 +194,7 @@ fun SaqzInput(
     trailingContent: (@Composable () -> Unit)? = null,
     placeholder: String? = null,
     keyboardType: KeyboardType = keyboardTypeFor(kind),
+    ime: SaqzFormIme? = null,
     singleLine: Boolean = true,
     minLines: Int = 1,
     showLabel: Boolean = true,
@@ -217,7 +225,11 @@ fun SaqzInput(
         singleLine = singleLine,
         minLines = minLines,
         visualTransformation = transformation,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = ime?.imeAction ?: ImeAction.Default,
+        ),
+        keyboardActions = ime?.keyboardActions ?: KeyboardActions.Default,
         textStyle = textStyle,
         modifier = fieldModifier,
     )
