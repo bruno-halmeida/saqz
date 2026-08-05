@@ -550,8 +550,8 @@ class PaymentViewModelTest {
     }
 
     /**
-     * Recusas não-cartão (conflito, sessão etc.) não mexem em `cardDeclinedPendingEdit` —
-     * só `CardDeclined` rotaciona a chave na próxima edição. Falha transitória do mesmo
+     * Recusas não-cartão (conflito, sessão etc.) não gravam `lastDeclinedCommand` — só
+     * `CardDeclined` rotaciona a chave quando o comando muda. Falha transitória do mesmo
      * payload é o caso que já funcionava antes deste ticket; este teste trava que continua.
      */
     @Test
@@ -571,6 +571,62 @@ class PaymentViewModelTest {
 
             assertEquals(2, gateway.createCalls.size)
             assertEquals(gateway.createCalls[0].requestId, gateway.createCalls[1].requestId)
+        }
+    }
+
+    /**
+     * VUL-196 round 4 (achado do Codex no PR #181, extensão do round 3): rotacionar só na
+     * edição de campo do CARTÃO não bastava — trocar pra Pix depois de uma recusa passa por
+     * `selectBillingType`, fora de `updateCardForm`, e reenviaria a chave recusada sob um
+     * comando sem bloco de cartão nenhum. `submit()` agora compara o comando efetivo
+     * inteiro, então qualquer campo que mude o payload (billing type incluso) rotaciona.
+     */
+    @Test
+    fun `switching to pix after a card decline rotates the request id`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Failure(SubscriptionError.CardDeclined("insufficient_funds", "Saldo insuficiente."))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+            val declinedRequestId = gateway.createCalls.single().requestId
+
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.Pix))
+            gateway.createResult = SaqzResult.Success(createdPix())
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(2, gateway.createCalls.size)
+            assertNotEquals(declinedRequestId, gateway.createCalls[1].requestId)
+            assertNull(gateway.createCalls[1].creditCard)
+        }
+    }
+
+    /** Mesmo achado do round 4: corrigir o CPF/CNPJ depois de uma recusa também rotaciona. */
+    @Test
+    fun `correcting the cpf cnpj after a card decline rotates the request id`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Failure(SubscriptionError.CardDeclined("insufficient_funds", "Saldo insuficiente."))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+            val declinedRequestId = gateway.createCalls.single().requestId
+
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("98765432100"))
+            gateway.createResult = SaqzResult.Success(createdPix().copy(billingType = BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(2, gateway.createCalls.size)
+            assertNotEquals(declinedRequestId, gateway.createCalls[1].requestId)
+            assertEquals("98765432100", gateway.createCalls[1].cpfCnpj)
         }
     }
 
