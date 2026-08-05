@@ -19,6 +19,10 @@ data class SaqzTypography(
     val caption: TextStyle,
     val eyebrow: TextStyle,
     val navigation: TextStyle,
+    val compactTitle: TextStyle,
+    val compactMeta: TextStyle,
+    val dateDay: TextStyle,
+    val dateMonth: TextStyle,
 ) {
     companion object {
         val Default = SaqzTypography(
@@ -75,6 +79,30 @@ data class SaqzTypography(
                 lineHeight = 14.sp,
                 fontWeight = FontWeight(600),
                 letterSpacing = 0.em,
+            ),
+            compactTitle = TextStyle(
+                fontSize = 14.5.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight(700),
+                letterSpacing = 0.em,
+            ),
+            compactMeta = TextStyle(
+                fontSize = 12.5.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight(400),
+                letterSpacing = 0.em,
+            ),
+            dateDay = TextStyle(
+                fontSize = 17.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight(800),
+                letterSpacing = 0.em,
+            ),
+            dateMonth = TextStyle(
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight(700),
+                letterSpacing = 0.08.em,
             ),
         )
     }

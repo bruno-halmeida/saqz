@@ -41,7 +41,7 @@ import org.koin.dsl.module
  */
 fun groupsPresentationModule(): Module = module {
     viewModel { GroupListViewModel(get(), get(), get()) }
-    viewModel { HomeViewModel(get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->
         val mode = params.get<GroupSetupMode>()

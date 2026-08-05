@@ -75,7 +75,7 @@ internal fun SaqzAppShell(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
-    homeTab: @Composable () -> Unit = {},
+    homeTab: @Composable (onOpenGroups: () -> Unit) -> Unit = {},
     profileTab: @Composable () -> Unit = {},
     financeTab: @Composable () -> Unit = {},
     banner: @Composable () -> Unit = {},
@@ -138,7 +138,7 @@ internal fun SaqzAppShell(
             ) {
                 when (activeTab) {
                     SaqzShellGroupsTab -> groupsTab()
-                    SaqzShellHomeTab -> homeTab()
+                    SaqzShellHomeTab -> homeTab { activeTab = SaqzShellGroupsTab }
                     SaqzShellProfileTab -> profileTab()
                     SaqzShellFinanceTab -> financeTab()
                     else -> Unit

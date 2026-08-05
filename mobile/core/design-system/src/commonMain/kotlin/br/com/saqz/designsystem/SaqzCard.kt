@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 
@@ -44,11 +45,12 @@ fun SaqzCard(
     modifier: Modifier = Modifier,
     tone: SaqzCardTone = SaqzCardTone.Default,
     padded: Boolean = true,
+    cornerRadius: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    val shape = RoundedCornerShape(metrics.cardRadius)
+    val shape = RoundedCornerShape(cornerRadius ?: metrics.cardRadius)
     Column(
         modifier = modifier
             .fillMaxWidth()

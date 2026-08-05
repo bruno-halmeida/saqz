@@ -71,6 +71,10 @@ private fun SaqzTypography.withFontFamily(family: FontFamily) = SaqzTypography(
     caption = caption.copy(fontFamily = family),
     eyebrow = eyebrow.copy(fontFamily = family),
     navigation = navigation.copy(fontFamily = family),
+    compactTitle = compactTitle.copy(fontFamily = family),
+    compactMeta = compactMeta.copy(fontFamily = family),
+    dateDay = dateDay.copy(fontFamily = family),
+    dateMonth = dateMonth.copy(fontFamily = family),
 )
 
 // Material 2 stays a primitive: its color/type/shape subsets are derived from the

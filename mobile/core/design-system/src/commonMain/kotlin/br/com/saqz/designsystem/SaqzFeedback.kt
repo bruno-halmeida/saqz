@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.offline_queued
@@ -52,6 +53,9 @@ fun SaqzEmptyState(
     icon: ImageVector? = null,
     action: String? = null,
     onAction: (() -> Unit)? = null,
+    actionVariant: SaqzButtonVariant = SaqzButtonVariant.Primary,
+    actionFullWidth: Boolean = false,
+    iconBadgeSize: Dp? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -67,7 +71,9 @@ fun SaqzEmptyState(
             // anterior via LocalContentColor não resolvia: SaqzIcon recebe `tint` explícito
             // e nunca lê o local.
             Box(
-                modifier = Modifier.size(EMPTY_STATE_BADGE).background(colors.surfaceSoft, CircleShape),
+                modifier = Modifier
+                    .size(iconBadgeSize ?: EMPTY_STATE_BADGE)
+                    .background(colors.surfaceSoft, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 SaqzIcon(icon = icon, tint = colors.primary, size = EMPTY_STATE_GLYPH)
@@ -88,7 +94,12 @@ fun SaqzEmptyState(
             )
         }
         if (action != null && onAction != null) {
-            SaqzButton(label = action, onClick = onAction)
+            SaqzButton(
+                label = action,
+                onClick = onAction,
+                variant = actionVariant,
+                fullWidth = actionFullWidth,
+            )
         }
     }
 }
