@@ -43,15 +43,44 @@ class GroupCashboxViewModel(
     override fun onIntent(intent: GroupCashboxIntent) {
         when (intent) {
             GroupCashboxIntent.Retry -> load()
-            GroupCashboxIntent.ChargeMissing -> Unit
-            GroupCashboxIntent.Register,
-            GroupCashboxIntent.ViewFullStatement,
-            -> emit(GroupCashboxEffect.OpenStatement(groupId))
+            GroupCashboxIntent.ChargeMissing -> openChargeSheet()
+            is GroupCashboxIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
+            GroupCashboxIntent.Register -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
+            GroupCashboxIntent.ViewFullStatement -> emit(GroupCashboxEffect.OpenStatement(groupId))
+            is GroupCashboxIntent.OpenReceipt -> openReceiptSheet(intent.chargeId)
+            GroupCashboxIntent.DismissChargeSheet -> update {
+                it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
+            }
+            GroupCashboxIntent.DismissReceiptSheet -> update { it.copy(receiptSheetChargeId = null) }
             GroupCashboxIntent.CopyPix -> state.value.pix?.let {
                 emit(GroupCashboxEffect.CopyPix(it.key))
             }
-            is GroupCashboxIntent.MarkReceived -> markReceived(intent.chargeId)
+            is GroupCashboxIntent.MarkReceived -> markReceived(intent.chargeId, intent.paidMethod)
         }
+    }
+
+    private fun openChargeSheet(chargeId: String? = null) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.pix?.key.isNullOrBlank() ||
+            current.debtors.isEmpty() ||
+            (chargeId != null && current.debtors.none { it.chargeId == chargeId })
+        ) return
+        update {
+            it.copy(
+                chargeSheetOpen = true,
+                chargeSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+            )
+        }
+    }
+
+    private fun openReceiptSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.debtors.none { it.chargeId == chargeId }
+        ) return
+        update { it.copy(receiptSheetChargeId = chargeId, chargeSheetOpen = false, chargeSheetChargeId = null) }
     }
 
     private fun load() {
@@ -103,7 +132,7 @@ class GroupCashboxViewModel(
         }
     }
 
-    private fun markReceived(chargeId: String) {
+    private fun markReceived(chargeId: String, paidMethod: PaidMethod) {
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null) return
         val debtor = current.debtors.firstOrNull { it.chargeId == chargeId } ?: return
@@ -116,7 +145,7 @@ class GroupCashboxViewModel(
                 groupId = GroupId(groupId),
                 chargeId = debtor.chargeId,
                 version = FinanceVersionToken("\"${debtor.chargeVersion}\""),
-                command = ChargeStatusCommand(ChargeStatus.Paid, paidMethod = PaidMethod.Pix),
+                command = ChargeStatusCommand(ChargeStatus.Paid, paidMethod = paidMethod),
             )
             if (generation != receiptGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {
@@ -204,6 +233,10 @@ class GroupCashboxViewModel(
         chargeVersion = version,
         month = month,
         isOverdue = isOverdue,
+        referenceLabel = when (kind) {
+            ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
+            ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"
+        },
     )
 
     private fun GroupCashboxState.optimisticallyReceive(debtor: DebtorUi): GroupCashboxState {
@@ -230,6 +263,7 @@ class GroupCashboxViewModel(
             updatingChargeId = debtor.chargeId,
             cashboxEmpty = false,
             operationFailed = false,
+            receiptSheetChargeId = null,
         )
     }
 

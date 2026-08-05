@@ -126,6 +126,7 @@ internal fun SaqzNavHost(
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var groupCashboxRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
@@ -342,8 +343,11 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     onBack = pop,
                     onMutationSuccess = { groupDetailsRefreshVersion++ },
+                    refreshVersion = groupCashboxRefreshVersion,
+                    onOpenNewEntry = { groupId ->
+                        backStack.add(FinanceRoute.NewEntry(groupId))
+                    },
                     onOpenStatement = { groupId ->
-                        // TODO(pós-merge VUL-180): retarget para NewEntry
                         backStack.add(FinanceRoute.Statement(groupId))
                     },
                 )
@@ -371,6 +375,7 @@ internal fun SaqzNavHost(
                             NewEntryEffect.Saved -> {
                                 pop()
                                 statementRefreshVersion++
+                                groupCashboxRefreshVersion++
                             }
                         }
                     },

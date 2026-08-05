@@ -238,17 +238,80 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
-    fun `register and full statement emit the same navigation effect while charging stays disabled`() = runTest {
+    fun `register opens new entry and full statement stays on the statement route`() = runTest {
         val viewModel = viewModel()
 
         viewModel.onIntent(GroupCashboxIntent.Register)
-        assertEquals(GroupCashboxEffect.OpenStatement("group-1"), viewModel.effects.first())
+        assertEquals(GroupCashboxEffect.OpenNewEntry("group-1"), viewModel.effects.first())
 
         viewModel.onIntent(GroupCashboxIntent.ViewFullStatement)
         assertEquals(GroupCashboxEffect.OpenStatement("group-1"), viewModel.effects.first())
 
         viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
+        assertTrue(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
         assertFalse(viewModel.state.value.operationFailed)
+    }
+
+    @Test
+    fun `charge missing does not open a sheet when there are no pending debtors`() = runTest {
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(emptyList())),
+            ),
+        )
+
+        viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
+
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
+    }
+
+    @Test
+    fun `charge missing does not open without a group Pix even with pending debtors`() = runTest {
+        val viewModel = viewModel(
+            group = FakeGroupGateway(
+                readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup())),
+            ),
+        )
+
+        assertTrue(viewModel.state.value.debtors.isNotEmpty())
+        assertNull(viewModel.state.value.pix)
+
+        viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
+
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
+    }
+
+    @Test
+    fun `individual charge does not open a sheet for an unknown debtor`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.ChargeIndividual("stale-charge"))
+
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
+    }
+
+    @Test
+    fun `recebi opens the receipt sheet for the selected debtor`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.OpenReceipt("monthly-pending"))
+
+        assertEquals("monthly-pending", viewModel.state.value.receiptSheetChargeId)
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+    }
+
+    @Test
+    fun `receipt confirmation sends the selected paid method`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending", PaidMethod.Cash))
+
+        assertEquals(PaidMethod.Cash, organizer.lastCommand?.paidMethod)
     }
 
     @Test

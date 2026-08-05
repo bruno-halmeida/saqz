@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -23,10 +24,14 @@ class GroupCashboxScreenTest {
         onNodeWithTag(GroupCashboxTags.Pix).assertExists()
         onNodeWithText("Camila").assertExists()
         onNodeWithText("Recebi").assertExists()
-        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsEnabled()
 
         onNodeWithTag(GroupCashboxTags.Register).performClick()
-        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Register), intents)
+        onNodeWithText("Cobrar").performClick()
+        assertEquals(
+            listOf<GroupCashboxIntent>(GroupCashboxIntent.Register, GroupCashboxIntent.ChargeIndividual("charge-1")),
+            intents,
+        )
     }
 
     @Test
@@ -41,7 +46,28 @@ class GroupCashboxScreenTest {
     }
 
     @Test
-    fun `overdue state shows named members and disabled charge CTA`() = runComposeUiTest {
+    fun `missing Pix disables charge CTAs and explains where to configure it`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(pix = null), intents::add)
+
+        onNodeWithText("Cadastre o Pix do grupo em Editar grupo").assertExists()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.chargeIndividual("charge-1")).assertIsNotEnabled()
+        assertEquals(emptyList(), intents)
+    }
+
+    @Test
+    fun `no pending debtors disables charge missing CTA even with Pix`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(debtors = emptyList()), intents::add)
+
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        assertEquals(emptyList(), intents)
+    }
+
+    @Test
+    fun `overdue state shows named members and active charge CTA`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(
             loadedState.copy(
@@ -55,8 +81,9 @@ class GroupCashboxScreenTest {
 
         onNodeWithTag(GroupCashboxTags.Overdue).assertExists()
         onNodeWithText("Camila, Pedro e Thiago estão com julho em aberto").assertExists()
-        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsNotEnabled()
-        assertEquals(emptyList<GroupCashboxIntent>(), intents)
+        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsEnabled()
+        onNodeWithTag(GroupCashboxTags.OverdueCharge).performClick()
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ChargeMissing), intents)
     }
 
     @Test
