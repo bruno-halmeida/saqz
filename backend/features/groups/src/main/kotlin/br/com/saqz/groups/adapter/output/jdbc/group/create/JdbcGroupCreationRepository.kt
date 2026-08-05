@@ -196,8 +196,9 @@ class JdbcGroupCreationRepository(
             .param("mensalistaPriority", profile.mensalistaPriority)
             .param("promotionMode", profile.promotionMode?.name)
             .param("autoConfirmEnabled", profile.autoConfirmEnabled)
-            .param("pixKey", profile.pixKey)
-            .param("pixLabel", profile.pixLabel)
+            // Na criação não existe "manter valor atual": vazio e ausente significam o mesmo (sem Pix).
+            .param("pixKey", profile.pixKey?.ifEmpty { null })
+            .param("pixLabel", profile.pixLabel?.ifEmpty { null })
     }
 
     private fun ResultSet.toStoredGroup() = StoredGroup(

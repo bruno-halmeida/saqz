@@ -238,6 +238,38 @@ class JdbcGroupCreationRepositoryIntegrationTest {
     }
 
     @Test
+    fun `creates group with pix key and label when provided`() {
+        val owner = insertUser("pix-filled-owner")
+        val group = success(
+            useCase.execute(
+                owner,
+                UUID.randomUUID(),
+                validProfile(pixKey = "racha@saqz.test", pixLabel = "Tesoureiro"),
+                "UTC",
+            ),
+        ).group
+
+        assertEquals("racha@saqz.test", text("SELECT pix_key FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals("Tesoureiro", text("SELECT pix_label FROM access_groups WHERE id = '${group.id}'"))
+    }
+
+    @Test
+    fun `creates group with blank pix key and label as null columns`() {
+        val owner = insertUser("pix-blank-owner")
+        val group = success(
+            useCase.execute(
+                owner,
+                UUID.randomUUID(),
+                validProfile(pixKey = "", pixLabel = ""),
+                "UTC",
+            ),
+        ).group
+
+        assertTrue(boolean("SELECT pix_key IS NULL FROM access_groups WHERE id = '${group.id}'"))
+        assertTrue(boolean("SELECT pix_label IS NULL FROM access_groups WHERE id = '${group.id}'"))
+    }
+
+    @Test
     fun `creates game config fields from explicit input`() {
         val owner = insertUser("game-config-owner")
         val group = success(
@@ -446,6 +478,8 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         mensalistaPriority: Boolean? = null,
         promotionMode: GroupPromotionMode? = null,
         autoConfirmEnabled: Boolean? = null,
+        pixKey: String? = null,
+        pixLabel: String? = null,
     ) = GroupProfileDefaultsInput(
         name = name,
         modality = modality,
@@ -466,6 +500,8 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
         autoConfirmEnabled = autoConfirmEnabled,
+        pixKey = pixKey,
+        pixLabel = pixLabel,
     )
 
     private fun execute(sql: String) {
