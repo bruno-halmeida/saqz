@@ -46,7 +46,9 @@ class KtorHomeGatewayTest {
         assertEquals("America/Sao_Paulo", home.member.lastCompletedGame?.zoneId)
         assertEquals(1, home.admin?.groups?.single()?.entryRequestCount)
         assertEquals(2400L, home.admin?.groups?.single()?.monthlyCharges?.totalCents)
+        assertEquals("2026-08", home.admin?.groups?.single()?.monthlyCharges?.billingMonth)
         assertEquals("game-2", home.admin?.groups?.single()?.gameToSettle?.gameId)
+        assertEquals("America/Sao_Paulo", home.admin?.groups?.single()?.gameToSettle?.zoneId)
     }
 
     @Test
@@ -139,10 +141,11 @@ class KtorHomeGatewayTest {
                   "id": "group-1",
                   "name": "Vôlei do CERET",
                   "entryRequestCount": 1,
-                  "monthlyCharges": {"count": 3, "totalCents": 2400},
+                  "monthlyCharges": {"count": 3, "totalCents": 2400, "month": "2026-08"},
                   "gameToSettle": {
                     "gameId": "game-2",
                     "startsAt": "2026-08-13T22:30:00Z",
+                    "zoneId": "America/Sao_Paulo",
                     "pendingCount": 2,
                     "totalCents": 1800
                   }

@@ -27,6 +27,12 @@ tests {
     expect(res.body).to.have.property("admin");
     if (res.body.admin !== null) {
       expect(res.body.admin.groups).to.be.an("array");
+      res.body.admin.groups.forEach(function (group) {
+        expect(group.monthlyCharges).to.have.property("month");
+        if (group.gameToSettle !== null) {
+          expect(group.gameToSettle).to.have.property("zoneId");
+        }
+      });
     }
   });
 }

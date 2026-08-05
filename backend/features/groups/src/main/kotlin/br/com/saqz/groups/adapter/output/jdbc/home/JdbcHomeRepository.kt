@@ -56,7 +56,7 @@ class JdbcHomeRepository(
         val adminGroups = jdbc.sql(ADMIN_GROUPS)
             .param("actor", actorId)
             .param("billingMonth", currentMonth.atDay(1))
-            .query(::mapAdminGroup)
+            .query { rs, row -> mapAdminGroup(rs, row, currentMonth) }
             .list()
 
         return HomeReadModel(
@@ -120,18 +120,24 @@ class JdbcHomeRepository(
         ownPlayed = result.getBoolean("own_played"),
     )
 
-    private fun mapAdminGroup(result: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int) = HomeAdminGroup(
+    private fun mapAdminGroup(
+        result: ResultSet,
+        @Suppress("UNUSED_PARAMETER") row: Int,
+        currentMonth: YearMonth,
+    ) = HomeAdminGroup(
         id = result.getObject("group_id", UUID::class.java),
         name = result.getString("group_name"),
         entryRequestCount = result.getInt("entry_request_count"),
         monthlyCharges = HomeMonthlyCharges(
             count = result.getInt("monthly_pending_count"),
             totalCents = result.getLong("monthly_pending_cents"),
+            billingMonth = currentMonth,
         ),
         gameToSettle = result.getObject("settlement_game_id", UUID::class.java)?.let {
             HomeGameToSettle(
                 gameId = it,
                 startsAt = result.getTimestamp("settlement_starts_at").toInstant(),
+                zoneId = result.getString("settlement_zone_id"),
                 pendingCount = result.getInt("settlement_pending_count"),
                 totalCents = result.getLong("settlement_pending_cents"),
             )
@@ -334,6 +340,7 @@ class JdbcHomeRepository(
                 SELECT games.group_id,
                        games.id AS game_id,
                        games.starts_at,
+                       games.zone_id,
                        count(charges.id) AS pending_count,
                        sum(charges.amount_cents) AS pending_cents,
                        row_number() OVER (
@@ -349,7 +356,7 @@ class JdbcHomeRepository(
                 JOIN administered_groups administered
                     ON administered.group_id = games.group_id
                 WHERE games.status = 'COMPLETED'
-                GROUP BY games.group_id, games.id, games.starts_at
+                GROUP BY games.group_id, games.id, games.starts_at, games.zone_id
             )
             SELECT administered.group_id,
                    administered.group_name,
@@ -358,6 +365,7 @@ class JdbcHomeRepository(
                    coalesce(monthly_pending.monthly_pending_cents, 0) AS monthly_pending_cents,
                    settlements.game_id AS settlement_game_id,
                    settlements.starts_at AS settlement_starts_at,
+                   settlements.zone_id AS settlement_zone_id,
                    settlements.pending_count AS settlement_pending_count,
                    settlements.pending_cents AS settlement_pending_cents
             FROM administered_groups administered

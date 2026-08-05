@@ -70,11 +70,13 @@ data class HomeMemberReadModel(
 data class HomeMonthlyCharges(
     val count: Int,
     val totalCents: Long,
+    val billingMonth: YearMonth,
 )
 
 data class HomeGameToSettle(
     val gameId: UUID,
     val startsAt: Instant,
+    val zoneId: String,
     val pendingCount: Int,
     val totalCents: Long,
 )

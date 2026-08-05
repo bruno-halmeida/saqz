@@ -97,12 +97,14 @@ internal data class HomeMemberTransport(
 internal data class HomeMonthlyChargesTransport(
     val count: Int,
     val totalCents: Long,
+    val month: String,
 )
 
 @Serializable
 internal data class HomeGameToSettleTransport(
     val gameId: String,
     val startsAt: String,
+    val zoneId: String,
     val pendingCount: Int,
     val totalCents: Long,
 )
@@ -255,11 +257,16 @@ private fun HomeAdminGroupTransport.toDomain() = HomeAdminGroup(
     id = GroupId(id),
     name = name,
     entryRequestCount = entryRequestCount,
-    monthlyCharges = HomeMonthlyCharges(monthlyCharges.count, monthlyCharges.totalCents),
+    monthlyCharges = HomeMonthlyCharges(
+        count = monthlyCharges.count,
+        totalCents = monthlyCharges.totalCents,
+        billingMonth = monthlyCharges.month,
+    ),
     gameToSettle = gameToSettle?.let {
         HomeGameToSettle(
             gameId = it.gameId,
             startsAt = it.startsAt,
+            zoneId = it.zoneId,
             pendingCount = it.pendingCount,
             totalCents = it.totalCents,
         )
