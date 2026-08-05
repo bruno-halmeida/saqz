@@ -96,7 +96,7 @@
     <string name="home_admin_waiting_title">Esperando você</string>
     <string name="home_admin_waiting_entry_requests">%1$d pedidos para entrar</string>
     <string name="home_admin_waiting_entry_requests_meta">%1$s</string>
-    <string name="home_admin_waiting_monthly">%1$d mensalidades em aberto</string>
+    <string name="home_admin_waiting_monthly">%1$d mensalidades a receber</string>
     <string name="home_admin_waiting_monthly_meta">%1$s · %2$s</string>
     <string name="home_admin_waiting_settle">Acertar o jogo de %1$s</string>
     <string name="home_admin_waiting_settle_meta">%1$d diaristas · %2$s a receber</string>
@@ -110,11 +110,16 @@
     <string name="home_admin_cd_score_out">%1$d não vão</string>
     <string name="home_admin_cd_score_pending">%1$d pendentes</string>
     <string name="home_admin_cd_waiting_entry_requests">%1$d pedidos para entrar em %2$s</string>
-    <string name="home_admin_cd_waiting_monthly">%1$d mensalidades em aberto em %2$s</string>
+    <string name="home_admin_cd_waiting_monthly">%1$d mensalidades a receber em %2$s</string>
     <string name="home_admin_cd_waiting_settle">Acertar o jogo de %1$s em %2$s</string>
     <string name="home_admin_cd_shortcut_create_game">Criar jogo</string>
     <string name="home_admin_cd_shortcut_invite">Convidar</string>
     <string name="home_admin_cd_shortcut_cashbox">Caixa</string>
     <string name="home_admin_cd_shortcut_groups">Grupos</string>
     <string name="home_admin_cd_group_admin">Administrador</string>
+    <string name="home_own_charges_caption">O que você deve aos seus grupos</string>
+    <string name="home_own_charges_count">%1$d cobranças em aberto</string>
+    <string name="home_own_charges_banner">Você tem %1$s em aberto</string>
+    <string name="home_own_charges_banner_groups">Você tem %1$s em aberto em %2$d grupos</string>
+    <string name="home_own_charges_cd_banner">%1$s. Abrir a Início para ver suas cobranças.</string>
 </resources>

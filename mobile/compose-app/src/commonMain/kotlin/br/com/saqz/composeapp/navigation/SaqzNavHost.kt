@@ -62,6 +62,7 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
 import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
+import br.com.saqz.groups.presentation.ui.home.HomeOwnChargesBannerRoot
 import br.com.saqz.groups.presentation.ui.home.HomeRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
 import br.com.saqz.groups.presentation.ui.invite.InviteLandingRoot
@@ -313,17 +314,41 @@ internal fun SaqzNavHost(
                             refreshVersion = profileRefreshVersion,
                         )
                     },
-                    banner = {
-                        // A faixa do VUL-91 só existe com e-mail por confirmar, e some
-                        // sozinha quando a sessão disser que confirmou.
+                    banner = { onOpenHome ->
+                        // Uma faixa por vez — duas seriam dois blocos escuros sobre o
+                        // conteúdo —, e o desempate é por **estado da dívida**, não por
+                        // ordem fixa (VUL-202):
+                        //
+                        // - **cobrança vencida ganha de tudo.** A ordem fixa "e-mail
+                        //   primeiro" partia de que a faixa de e-mail acaba, e ela não
+                        //   acaba: o VUL-76 tirou a trava do backend de propósito, então
+                        //   quem nunca confirma entra e fica. Quem entrou por convite, não
+                        //   abriu o e-mail e vive na aba Grupos passaria meses devendo sem
+                        //   um sinal fora da Início — exatamente a aba que não visita;
+                        // - **no prazo, o e-mail passa na frente.** Aí o argumento de
+                        //   duração continua valendo, e a cobrança não se perde: a seção da
+                        //   Home fica lá o tempo todo, e a faixa aparece assim que a
+                        //   pendência vence ou o e-mail sai da frente.
+                        //
+                        // Quem decide é o `HomeOwnChargesBannerRoot`, porque `overdue` só
+                        // existe no estado da Home; a faixa de e-mail entra lá como slot. O
+                        // Root é montado sempre — inclusive com o e-mail na frente —, e é
+                        // dele o recarregamento na volta ao app.
                         val ready = state.session as? SessionAccessState.Ready
-                        if (ready != null && !ready.emailVerified) {
-                            EmailVerificationBanner(
-                                onRefresh = {
-                                    onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
-                                },
-                            )
-                        }
+                        HomeOwnChargesBannerRoot(
+                            onOpenHome = onOpenHome,
+                            emailBanner = if (ready != null && !ready.emailVerified) {
+                                {
+                                    EmailVerificationBanner(
+                                        onRefresh = {
+                                            onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
+                                        },
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                        )
                     },
                     groupsTab = {
                         // A aba Grupos é o 2n. `GroupsRoute.List` não vira `entry` porque

@@ -92,9 +92,48 @@ data class HomeAdminReadModel(
     val groups: List<HomeAdminGroup>,
 )
 
+/**
+ * Competência da cobrança pendente mais antiga do usuário no grupo (VUL-201). É só o
+ * rótulo: o mês para a mensalidade, nada para o jogo avulso — o vencimento de quem paga
+ * mora em [HomeOwnChargeGroup.nextDueDate], e o resto do bloco do jogo (id, início, fuso)
+ * não é desenhado em lugar nenhum desta jornada.
+ */
+sealed interface HomeOwnChargeOldest {
+    /** [month] é a competência crua do backend, `"YYYY-MM"`. */
+    data class Monthly(val month: String) : HomeOwnChargeOldest
+
+    data object Game : HomeOwnChargeOldest
+}
+
+/**
+ * O que **o usuário deve** num grupo. [overdue] vem calculado no servidor, no fuso de
+ * cobrança do contrato — o cliente não recalcula, e por isso [nextDueDate] pode ficar como
+ * a data civil crua (`"YYYY-MM-DD"`) que só se formata.
+ */
+data class HomeOwnChargeGroup(
+    val groupId: GroupId,
+    val groupName: String,
+    val count: Int,
+    val totalCents: Long,
+    val nextDueDate: String,
+    val overdue: Boolean,
+    val pixKey: String?,
+    val pixLabel: String?,
+    val oldest: HomeOwnChargeOldest,
+)
+
+/** Os agregados no topo existem para o aviso do shell: um texto, sem varrer os grupos. */
+data class HomeOwnCharges(
+    val groupCount: Int,
+    val totalCents: Long,
+    val groups: List<HomeOwnChargeGroup>,
+)
+
 data class HomeReadModel(
     val member: HomeMemberReadModel,
     val admin: HomeAdminReadModel?,
+    /** `null` quando não há pendência nenhuma — é o que apaga aviso e seção. */
+    val ownCharges: HomeOwnCharges? = null,
 )
 
 sealed interface HomeError : SaqzError {

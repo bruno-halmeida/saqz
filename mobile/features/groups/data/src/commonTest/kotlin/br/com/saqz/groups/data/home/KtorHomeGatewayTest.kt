@@ -10,6 +10,7 @@ import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.SessionInvalidator
 import br.com.saqz.network.TokenResult
 import br.com.saqz.groups.domain.home.HomeError
+import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
 import br.com.saqz.groups.domain.home.HomeReadModel
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -49,6 +50,46 @@ class KtorHomeGatewayTest {
         assertEquals("2026-08", home.admin?.groups?.single()?.monthlyCharges?.billingMonth)
         assertEquals("game-2", home.admin?.groups?.single()?.gameToSettle?.gameId)
         assertEquals("America/Sao_Paulo", home.admin?.groups?.single()?.gameToSettle?.zoneId)
+    }
+
+    @Test
+    fun `read maps the own charges block with both competence kinds`() = runTest {
+        val result = gateway { respond(HOME_JSON, headers = jsonHeaders()) }.read()
+
+        val charges = assertIs<SaqzResult.Success<HomeReadModel>>(result).value.ownCharges
+        assertEquals(2, charges?.groupCount)
+        assertEquals(14000L, charges?.totalCents)
+        val monthly = charges?.groups?.first()
+        assertEquals("group-1", monthly?.groupId?.value)
+        assertEquals(2, monthly?.count)
+        assertEquals("2026-08-05", monthly?.nextDueDate)
+        assertEquals(true, monthly?.overdue)
+        assertEquals("ceret@volei.com.br", monthly?.pixKey)
+        assertEquals("2026-07", assertIs<HomeOwnChargeOldest.Monthly>(monthly?.oldest).month)
+        val game = charges?.groups?.last()
+        assertEquals(false, game?.overdue)
+        assertEquals(null, game?.pixKey)
+        assertEquals(HomeOwnChargeOldest.Game, game?.oldest)
+    }
+
+    @Test
+    fun `own charges with unknown competence kind drops the block instead of the home`() = runTest {
+        val result = gateway {
+            respond(HOME_JSON.replace("\"kind\": \"GAME\"", "\"kind\": \"PIZZA\""), headers = jsonHeaders())
+        }.read()
+
+        val home = assertIs<SaqzResult.Success<HomeReadModel>>(result).value
+        assertEquals(null, home.ownCharges)
+        assertEquals("game-1", home.member.nextGame?.gameId)
+    }
+
+    @Test
+    fun `home without the own charges block reads as no pending charge`() = runTest {
+        val result = gateway {
+            respond(HOME_JSON.replace("\"ownCharges\"", "\"ignoredOwnCharges\""), headers = jsonHeaders())
+        }.read()
+
+        assertEquals(null, assertIs<SaqzResult.Success<HomeReadModel>>(result).value.ownCharges)
     }
 
     @Test
@@ -150,6 +191,48 @@ class KtorHomeGatewayTest {
                     "totalCents": 1800
                   }
                 }]
+              },
+              "ownCharges": {
+                "groupCount": 2,
+                "totalCents": 14000,
+                "groups": [
+                  {
+                    "groupId": "group-1",
+                    "groupName": "Vôlei do CERET",
+                    "count": 2,
+                    "totalCents": 8000,
+                    "nextDueDate": "2026-08-05",
+                    "overdue": true,
+                    "pixKey": "ceret@volei.com.br",
+                    "pixLabel": "Ana Souza · Nubank",
+                    "oldest": {
+                      "kind": "MONTHLY",
+                      "month": "2026-07",
+                      "gameId": null,
+                      "gameStartsAt": null,
+                      "gameZoneId": null,
+                      "dueDate": "2026-07-05"
+                    }
+                  },
+                  {
+                    "groupId": "group-2",
+                    "groupName": "Vôlei Pacaembu",
+                    "count": 1,
+                    "totalCents": 6000,
+                    "nextDueDate": "2026-08-12",
+                    "overdue": false,
+                    "pixKey": null,
+                    "pixLabel": null,
+                    "oldest": {
+                      "kind": "GAME",
+                      "month": null,
+                      "gameId": "game-9",
+                      "gameStartsAt": "2026-08-01T22:30:00Z",
+                      "gameZoneId": "America/Sao_Paulo",
+                      "dueDate": "2026-08-12"
+                    }
+                  }
+                ]
               }
             }
         """.trimIndent()
