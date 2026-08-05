@@ -4,6 +4,7 @@
 #   backend      -> https://saqz-api.brunoalmeida.dev
 #   adm-web      -> https://saqzweb.brunoalmeida.dev
 #   landing-page -> https://saqz.app
+#   mailpit      -> https://saqz-mail.brunoalmeida.dev (exige SAQZ_MAILPIT_AUTH no .env)
 # Database: Supabase (dev) via IPv4 session pooler; local postgres disabled.
 services:
   backend:
@@ -62,6 +63,27 @@ services:
       - "traefik.http.middlewares.saqz-landing-www.redirectregex.replacement=https://saqz.app/$${1}"
       - "traefik.http.middlewares.saqz-landing-www.redirectregex.permanent=true"
       - "traefik.http.routers.saqz-landing.middlewares=saqz-landing-www"
+
+  # A caixa de teste do ambiente: e aqui que o QA le o codigo de quatro digitos do reset
+  # de senha. O Mailpit ja subia neste overlay (o backend entrega nele desde sempre), mas
+  # sem router ficava alcancavel so de dentro da rede do servidor.
+  #
+  # `MP_UI_AUTH` e obrigatorio, e o `:?` derruba o `up` se a variavel faltar. O Mailpit nao
+  # pede autenticacao por padrao: publicado sem isto, o endereco entrega o codigo de reset
+  # de qualquer conta do ambiente para quem o descobrir. A trava fica no proprio Mailpit, e
+  # nao num middleware do Traefik, porque assim ela vale tambem para a porta 8025 publicada
+  # na maquina e para a API HTTP que o e2e vai usar para ler o codigo.
+  mailpit:
+    restart: unless-stopped
+    environment:
+      MP_UI_AUTH: ${SAQZ_MAILPIT_AUTH:?defina SAQZ_MAILPIT_AUTH no .env como usuario:senha}
+    networks:
+      - default
+      - local-server-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.saqz-mail.rule=Host(`saqz-mail.brunoalmeida.dev`)"
+      - "traefik.http.services.saqz-mail.loadbalancer.server.port=8025"
 
   # Local postgres kept available under a profile, but not started by default
   # (the dev database now lives on Supabase).
