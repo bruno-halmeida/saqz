@@ -112,7 +112,6 @@ internal fun GroupCashboxScreen(
         ChargeSheet(
             open = state.chargeSheetOpen,
             debtors = chargeDebtors,
-            monthLabel = state.monthLabel,
             pixKey = state.pix?.key,
             pixLabel = state.pix?.label,
             onClose = { onIntent(GroupCashboxIntent.DismissChargeSheet) },

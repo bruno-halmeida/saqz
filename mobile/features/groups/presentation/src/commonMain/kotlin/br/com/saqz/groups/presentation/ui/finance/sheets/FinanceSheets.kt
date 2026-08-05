@@ -48,6 +48,7 @@ import br.com.saqz.groups.resources.sheet_receipt_method_other
 import br.com.saqz.groups.resources.sheet_receipt_method_pix
 import br.com.saqz.groups.resources.sheet_receipt_reference
 import br.com.saqz.groups.resources.sheet_receipt_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object FinanceSheetsTags {
@@ -70,7 +71,6 @@ internal object FinanceSheetsTags {
 internal fun ChargeSheet(
     open: Boolean,
     debtors: List<DebtorUi>,
-    monthLabel: String,
     pixKey: String?,
     pixLabel: String?,
     onClose: () -> Unit,
@@ -83,6 +83,10 @@ internal fun ChargeSheet(
     val selectedDebtor = debtors.firstOrNull { it.chargeId == selectedChargeId }
         ?: debtors.firstOrNull()
     val totalLabel = br.com.saqz.core.common.formatting.formatBrl(debtors.sumOf { it.amountCents })
+    val referenceLabel = debtors
+        .map { it.referenceLabel }
+        .distinct()
+        .joinToString(" / ")
     val message = selectedDebtor?.let {
         stringResource(Res.string.sheet_charge_message, it.name, it.amountLabel, pixKey.orEmpty())
     }
@@ -91,8 +95,8 @@ internal fun ChargeSheet(
         open = open,
         onClose = onClose,
         modifier = Modifier.testTag(FinanceSheetsTags.Charge),
-        title = stringResource(Res.string.sheet_charge_title, debtors.size),
-        description = stringResource(Res.string.sheet_charge_summary, totalLabel, monthLabel),
+        title = pluralStringResource(Res.plurals.sheet_charge_title, debtors.size, debtors.size),
+        description = stringResource(Res.string.sheet_charge_summary, totalLabel, referenceLabel),
         splitFooter = {
             SaqzButton(
                 label = stringResource(Res.string.sheet_charge_cancel),

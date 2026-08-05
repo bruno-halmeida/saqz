@@ -1,5 +1,8 @@
 <resources>
-    <string name="sheet_charge_title">Cobrar %1$d mensalidades</string>
+    <plurals name="sheet_charge_title">
+        <item quantity="one">Cobrar %1$d cobrança</item>
+        <item quantity="other">Cobrar %1$d cobranças</item>
+    </plurals>
     <string name="sheet_charge_summary">%1$s em aberto · %2$s</string>
     <string name="sheet_charge_description">Escolha quem vai receber a cobrança</string>
     <string name="sheet_charge_missing_pix">Cadastre o Pix do grupo em Editar grupo</string>

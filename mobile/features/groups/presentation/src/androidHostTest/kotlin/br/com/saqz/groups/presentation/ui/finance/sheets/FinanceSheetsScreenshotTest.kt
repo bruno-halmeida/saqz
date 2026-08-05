@@ -35,7 +35,6 @@ class FinanceSheetsScreenshotTest {
         ChargeSheet(
             open = true,
             debtors = debtors,
-            monthLabel = "agosto de 2026",
             pixKey = "pix@saqz.com",
             pixLabel = "Vôlei do CERET",
             onClose = {},

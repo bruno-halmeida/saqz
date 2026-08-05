@@ -29,7 +29,6 @@ class FinanceSheetsTest {
                 ChargeSheet(
                     open = true,
                     debtors = debtors,
-                    monthLabel = "agosto de 2026",
                     pixKey = "pix@saqz.com",
                     pixLabel = "Vôlei do CERET",
                     onClose = {},
@@ -39,8 +38,8 @@ class FinanceSheetsTest {
             }
         }
 
-        onNodeWithText("Cobrar 2 mensalidades").assertExists()
-        onNodeWithText("R$\u00A0100,00 em aberto · agosto de 2026").assertExists()
+        onNodeWithText("Cobrar 2 cobranças").assertExists()
+        onNodeWithText("R$\u00A0100,00 em aberto · Mensalista · agosto / Diarista · jogo de 28/07").assertExists()
         onNodeWithText("Cobrar no WhatsApp").assertExists()
         onNodeWithText("pix@saqz.com").assertExists()
         onNodeWithText("Vôlei do CERET").assertExists()
@@ -53,6 +52,29 @@ class FinanceSheetsTest {
         assertEquals("charge-pedro", sentPair.first.chargeId)
         assertTrue(sentPair.second.contains("Pedro"))
         assertTrue(sentPair.second.contains("pix@saqz.com"))
+    }
+
+    @Test
+    fun `charge sheet uses singular title and debtor reference in summary`() = runComposeUiTest {
+        val debtor = debtor("charge-game", "Ana", 7_000L, "Diarista · jogo de 28/07")
+
+        setContent {
+            SaqzTheme {
+                ChargeSheet(
+                    open = true,
+                    debtors = listOf(debtor),
+                    pixKey = "pix@saqz.com",
+                    pixLabel = "Vôlei do CERET",
+                    onClose = {},
+                    onCopyPix = {},
+                    onSend = { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Cobrar 1 cobrança").assertExists()
+        onNodeWithText("R$\u00A070,00 em aberto", substring = true).assertExists()
+        onNodeWithText("Diarista · jogo de 28/07", substring = true).assertExists()
     }
 
     @Test
