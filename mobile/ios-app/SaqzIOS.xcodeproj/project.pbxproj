@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 71;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -27,14 +27,14 @@
 		A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */; };
 		A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000011 /* IOSAppCompositionTests.swift */; };
 		A50000000000000000000002 /* IOSAuthenticatedLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */; };
-		B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */; };
+		B60000000000000000000001 /* GroupsPhoto/IOSGroupPhotoAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* GroupsPhoto/IOSGroupPhotoAdapters.swift */; };
 		B60000000000000000000002 /* IOSGroupPhotoAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */; };
 		B60000000000000000000003 /* IOSGroupPhotoLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */; };
-		C70000000000000000000001 /* IOSGroupDraftAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000011 /* IOSGroupDraftAdapters.swift */; };
+		C70000000000000000000001 /* GroupsDraft/IOSGroupDraftAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000011 /* GroupsDraft/IOSGroupDraftAdapters.swift */; };
+		C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */; };
 		D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */; };
 		D80000000000000000000002 /* IOSProfilePhotoAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */; };
-		C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */; };
-		E90000000000000000000001 /* IOSInviteAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000011 /* IOSInviteAdapters.swift */; };
+		E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,14 +76,14 @@
 		A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdaptersTests.swift; sourceTree = "<group>"; };
 		A50000000000000000000011 /* IOSAppCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppCompositionTests.swift; sourceTree = "<group>"; };
 		A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthenticatedLifecycleUITests.swift; sourceTree = "<group>"; };
-		B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsPhoto/IOSGroupPhotoAdapters.swift; sourceTree = "<group>"; };
+		B60000000000000000000011 /* GroupsPhoto/IOSGroupPhotoAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsPhoto/IOSGroupPhotoAdapters.swift; sourceTree = "<group>"; };
 		B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoAdaptersTests.swift; sourceTree = "<group>"; };
 		B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoLifecycleUITests.swift; sourceTree = "<group>"; };
-		C70000000000000000000011 /* IOSGroupDraftAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsDraft/IOSGroupDraftAdapters.swift; sourceTree = "<group>"; };
+		C70000000000000000000011 /* GroupsDraft/IOSGroupDraftAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsDraft/IOSGroupDraftAdapters.swift; sourceTree = "<group>"; };
 		C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupDraftAdaptersTests.swift; sourceTree = "<group>"; };
 		D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapter.swift; sourceTree = "<group>"; };
 		D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapterTests.swift; sourceTree = "<group>"; };
-		E90000000000000000000011 /* IOSInviteAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsInvite/IOSInviteAdapters.swift; sourceTree = "<group>"; };
+		E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsInvite/IOSInviteAdapters.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,10 +134,10 @@
 				A30000000000000000000011 /* IOSLinkAdapter.swift */,
 				A40000000000000000000011 /* IOSLocalAccessAdapters.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
-				B60000000000000000000011 /* IOSGroupPhotoAdapters.swift */,
-				C70000000000000000000011 /* IOSGroupDraftAdapters.swift */,
+				B60000000000000000000011 /* GroupsPhoto/IOSGroupPhotoAdapters.swift */,
+				C70000000000000000000011 /* GroupsDraft/IOSGroupDraftAdapters.swift */,
 				D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */,
-				E90000000000000000000011 /* IOSInviteAdapters.swift */,
+				E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
 			);
@@ -367,10 +367,10 @@
 				A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */,
 				A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
-				B60000000000000000000001 /* IOSGroupPhotoAdapters.swift in Sources */,
-				C70000000000000000000001 /* IOSGroupDraftAdapters.swift in Sources */,
+				B60000000000000000000001 /* GroupsPhoto/IOSGroupPhotoAdapters.swift in Sources */,
+				C70000000000000000000001 /* GroupsDraft/IOSGroupDraftAdapters.swift in Sources */,
 				D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */,
-				E90000000000000000000001 /* IOSInviteAdapters.swift in Sources */,
+				E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,26 +459,32 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				BRANCH_DOMAIN = saqz.test-app.link;
-				BRANCH_LIVE_KEY = missing-branch-live-key;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				BRANCH_DOMAIN = "saqz.test-app.link";
+				BRANCH_LIVE_KEY = "missing-branch-live-key";
 				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
 				BRANCH_TEST_MODE = YES;
 				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 8A3G5G4G2B;
 				ENABLE_PREVIEWS = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SaqzIOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SAQZ_API_BASE_URL = "http://127.0.0.1:8080";
+				SAQZ_API_BASE_URL = "https://saqz-api.brunoalmeida.dev";
 				SAQZ_ENVIRONMENT = dev;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "";
@@ -489,22 +495,28 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				BRANCH_DOMAIN = missing-branch-live-domain.invalid;
-				BRANCH_LIVE_KEY = missing-branch-live-key;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				BRANCH_DOMAIN = "missing-branch-live-domain.invalid";
+				BRANCH_LIVE_KEY = "missing-branch-live-key";
 				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
 				BRANCH_TEST_MODE = NO;
 				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 8A3G5G4G2B;
 				ENABLE_PREVIEWS = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SaqzIOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz;
 				PRODUCT_NAME = "$(TARGET_NAME)";
