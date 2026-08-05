@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -42,6 +43,18 @@ class GroupCashboxScreenTest {
         onNodeWithText("Comece definindo a mensalidade ou registrando o aluguel da quadra").assertExists()
         onNodeWithText("Registrar primeiro lançamento").performClick()
         assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Register), intents)
+    }
+
+    @Test
+    fun `missing Pix disables charge CTAs and explains where to configure it`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(pix = null), intents::add)
+
+        onNodeWithText("Cadastre o Pix do grupo em Editar grupo").assertExists()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.chargeIndividual("charge-1")).assertIsNotEnabled()
+        assertEquals(emptyList(), intents)
     }
 
     @Test

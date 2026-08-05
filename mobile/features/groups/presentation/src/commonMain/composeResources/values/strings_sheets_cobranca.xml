@@ -2,6 +2,7 @@
     <string name="sheet_charge_title">Cobrar %1$d mensalidades</string>
     <string name="sheet_charge_summary">%1$s em aberto · %2$s</string>
     <string name="sheet_charge_description">Escolha quem vai receber a cobrança</string>
+    <string name="sheet_charge_missing_pix">Cadastre o Pix do grupo em Editar grupo</string>
     <string name="sheet_charge_whatsapp">Cobrar no WhatsApp</string>
     <string name="sheet_charge_message">Oi, %1$s! A cobrança está em aberto no valor de %2$s. Você pode pagar via Pix pela chave %3$s.</string>
     <string name="sheet_charge_whatsapp_description">Mensagem individual com valor e chave Pix</string>
