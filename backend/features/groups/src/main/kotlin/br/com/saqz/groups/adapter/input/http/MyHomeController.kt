@@ -8,6 +8,9 @@ import br.com.saqz.groups.application.home.HomeMemberReadModel
 import br.com.saqz.groups.application.home.HomeMonthlyCharges
 import br.com.saqz.groups.application.home.HomeNextGame
 import br.com.saqz.groups.application.home.HomeOwnAttendance
+import br.com.saqz.groups.application.home.HomeOwnChargeGroup
+import br.com.saqz.groups.application.home.HomeOwnChargeOldest
+import br.com.saqz.groups.application.home.HomeOwnChargesReadModel
 import br.com.saqz.groups.application.home.HomeQuery
 import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRosterMember
@@ -16,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 data class HomeGroupResponse(
@@ -102,9 +106,37 @@ data class HomeAdminResponse(
     val groups: List<HomeAdminGroupResponse>,
 )
 
+data class HomeOwnChargeOldestResponse(
+    val kind: String,
+    val month: String?,
+    val gameId: UUID?,
+    val gameStartsAt: Instant?,
+    val gameZoneId: String?,
+    val dueDate: LocalDate,
+)
+
+data class HomeOwnChargeGroupResponse(
+    val groupId: UUID,
+    val groupName: String,
+    val count: Int,
+    val totalCents: Long,
+    val nextDueDate: LocalDate,
+    val overdue: Boolean,
+    val pixKey: String?,
+    val pixLabel: String?,
+    val oldest: HomeOwnChargeOldestResponse,
+)
+
+data class HomeOwnChargesResponse(
+    val groupCount: Int,
+    val totalCents: Long,
+    val groups: List<HomeOwnChargeGroupResponse>,
+)
+
 data class HomeResponse(
     val member: HomeMemberResponse,
     val admin: HomeAdminResponse?,
+    val ownCharges: HomeOwnChargesResponse?,
 )
 
 @RestController
@@ -120,7 +152,33 @@ class MyHomeController(
 private fun HomeReadModel.toResponse() = HomeResponse(
     member = member.toResponse(),
     admin = admin?.let { HomeAdminResponse(it.groups.map(HomeAdminGroup::toResponse)) },
+    ownCharges = ownCharges?.toResponse(),
 )
+
+private fun HomeOwnChargesReadModel.toResponse() = HomeOwnChargesResponse(
+    groupCount = groupCount,
+    totalCents = totalCents,
+    groups = groups.map(HomeOwnChargeGroup::toResponse),
+)
+
+private fun HomeOwnChargeGroup.toResponse() = HomeOwnChargeGroupResponse(
+    groupId = groupId,
+    groupName = groupName,
+    count = count,
+    totalCents = totalCents,
+    nextDueDate = nextDueDate,
+    overdue = overdue,
+    pixKey = pixKey,
+    pixLabel = pixLabel,
+    oldest = oldest.toResponse(),
+)
+
+private fun HomeOwnChargeOldest.toResponse() = when (this) {
+    is HomeOwnChargeOldest.Monthly ->
+        HomeOwnChargeOldestResponse("MONTHLY", month.toString(), null, null, null, dueDate)
+    is HomeOwnChargeOldest.Game ->
+        HomeOwnChargeOldestResponse("GAME", null, gameId, startsAt, zoneId, dueDate)
+}
 
 private fun HomeMemberReadModel.toResponse() = HomeMemberResponse(
     nextGame = nextGame?.toResponse(),

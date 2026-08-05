@@ -5,6 +5,7 @@ import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.util.UUID
@@ -93,13 +94,47 @@ data class HomeAdminReadModel(
     val groups: List<HomeAdminGroup>,
 )
 
+/** Competência da cobrança pendente mais antiga do usuário no grupo. */
+sealed interface HomeOwnChargeOldest {
+    val dueDate: LocalDate
+
+    data class Monthly(val month: YearMonth, override val dueDate: LocalDate) : HomeOwnChargeOldest
+
+    data class Game(
+        val gameId: UUID,
+        val startsAt: Instant,
+        val zoneId: String,
+        override val dueDate: LocalDate,
+    ) : HomeOwnChargeOldest
+}
+
+data class HomeOwnChargeGroup(
+    val groupId: UUID,
+    val groupName: String,
+    val count: Int,
+    val totalCents: Long,
+    val nextDueDate: LocalDate,
+    val overdue: Boolean,
+    val pixKey: String?,
+    val pixLabel: String?,
+    val oldest: HomeOwnChargeOldest,
+)
+
+data class HomeOwnChargesReadModel(
+    val groupCount: Int,
+    val totalCents: Long,
+    val groups: List<HomeOwnChargeGroup>,
+)
+
 data class HomeReadModel(
     val member: HomeMemberReadModel,
     val admin: HomeAdminReadModel?,
+    val ownCharges: HomeOwnChargesReadModel? = null,
 )
 
 interface HomeRepository {
-    fun find(actorId: UUID, now: Instant, currentMonth: YearMonth): HomeReadModel
+    /** [today] é a data no fuso de cobrança: dele saem a competência corrente e o "vencida". */
+    fun find(actorId: UUID, now: Instant, today: LocalDate): HomeReadModel
 }
 
 class HomeQuery(
@@ -109,6 +144,6 @@ class HomeQuery(
 ) {
     fun execute(actorId: UUID): HomeReadModel {
         val now = Instant.now(clock)
-        return repository.find(actorId, now, YearMonth.from(now.atZone(zoneId)))
+        return repository.find(actorId, now, now.atZone(zoneId).toLocalDate())
     }
 }
