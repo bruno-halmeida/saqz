@@ -162,7 +162,7 @@ fun PaymentScreen(
                 if (state.hasCheckout) {
                     PaymentCheckoutSection(state, onIntent)
                 } else {
-                    PaymentFormSection(state, onIntent, this)
+                    PaymentFormSection(state, onIntent)
                 }
             }
         }
@@ -193,7 +193,7 @@ private fun PaymentSummaryCard(state: PaymentState) {
 }
 
 @Composable
-private fun PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) -> Unit, scope: SaqzFormScope) {
+private fun SaqzFormScope.PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
     val options = listOf(stringResource(Res.string.payment_billing_pix), stringResource(Res.string.payment_billing_card))
     Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
@@ -210,13 +210,13 @@ private fun PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) ->
             label = stringResource(Res.string.payment_cpf_cnpj_label),
             kind = SaqzInputKind.Text,
             visualTransformation = CpfVisualTransformation(),
-            ime = if (state.billingType == BillingType.CreditCard) scope.imeNext() else scope.imeDone(),
+            ime = if (state.billingType == BillingType.CreditCard) imeNext() else imeDone(),
             errorText = state.cpfCnpjError?.asString(),
             invalid = state.cpfCnpjError != null,
             modifier = Modifier.testTag(PaymentTags.CpfCnpj),
         )
         if (state.billingType == BillingType.CreditCard) {
-            CardCaptureSection(state.cardForm, onIntent, scope)
+            CardCaptureSection(state.cardForm, onIntent)
         }
         state.submitError?.let {
             Text(it.asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
@@ -237,7 +237,7 @@ private fun PaymentFormSection(state: PaymentState, onIntent: (PaymentIntent) ->
  * ver doc de [CardFormState], por isso não têm campo próprio aqui.
  */
 @Composable
-private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) -> Unit, scope: SaqzFormScope) {
+private fun SaqzFormScope.CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
     Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
         Text(
@@ -251,7 +251,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             label = stringResource(Res.string.card_capture_number_label),
             keyboardType = KeyboardType.Number,
             visualTransformation = CardNumberVisualTransformation(),
-            ime = scope.imeNext(),
+            ime = imeNext(),
             errorText = if (CardFormError.NumberInvalid in form.errors) {
                 stringResource(Res.string.card_capture_number_error)
             } else {
@@ -267,7 +267,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
                 label = stringResource(Res.string.card_capture_expiry_label),
                 keyboardType = KeyboardType.Number,
                 visualTransformation = CardExpiryVisualTransformation(),
-                ime = scope.imeNext(),
+                ime = imeNext(),
                 errorText = if (CardFormError.ExpiryInvalid in form.errors) {
                     stringResource(Res.string.card_capture_expiry_error)
                 } else {
@@ -285,7 +285,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
                 kind = SaqzInputKind.Password,
                 revealable = false,
                 keyboardType = KeyboardType.NumberPassword,
-                ime = scope.imeNext(),
+                ime = imeNext(),
                 errorText = if (CardFormError.CvvInvalid in form.errors) {
                     stringResource(Res.string.card_capture_cvv_error)
                 } else {
@@ -299,7 +299,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             value = form.holderName,
             onValueChange = { onIntent(PaymentIntent.UpdateCardHolderName(it)) },
             label = stringResource(Res.string.card_capture_holder_name_label),
-            ime = scope.imeNext(),
+            ime = imeNext(),
             errorText = if (CardFormError.HolderNameRequired in form.errors) {
                 stringResource(Res.string.card_capture_holder_name_error)
             } else {
@@ -314,7 +314,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             label = stringResource(Res.string.card_capture_postal_code_label),
             keyboardType = KeyboardType.Number,
             visualTransformation = CepVisualTransformation(),
-            ime = scope.imeNext(),
+            ime = imeNext(),
             errorText = if (CardFormError.PostalCodeInvalid in form.errors) {
                 stringResource(Res.string.card_capture_postal_code_error)
             } else {
@@ -328,7 +328,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             onValueChange = { onIntent(PaymentIntent.UpdateCardAddressNumber(it)) },
             label = stringResource(Res.string.card_capture_address_number_label),
             keyboardType = KeyboardType.Number,
-            ime = scope.imeNext(),
+            ime = imeNext(),
             errorText = if (CardFormError.AddressNumberRequired in form.errors) {
                 stringResource(Res.string.card_capture_address_number_error)
             } else {
@@ -341,7 +341,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             value = form.addressComplement,
             onValueChange = { onIntent(PaymentIntent.UpdateCardAddressComplement(it)) },
             label = stringResource(Res.string.card_capture_address_complement_label),
-            ime = scope.imeNext(),
+            ime = imeNext(),
             modifier = Modifier.testTag(PaymentTags.CardAddressComplement),
         )
         SaqzInput(
@@ -350,7 +350,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             label = stringResource(Res.string.card_capture_phone_label),
             kind = SaqzInputKind.Phone,
             visualTransformation = PhoneVisualTransformation(),
-            ime = scope.imeNext(),
+            ime = imeNext(),
             errorText = if (CardFormError.PhoneInvalid in form.errors) {
                 stringResource(Res.string.card_capture_phone_error)
             } else {
@@ -365,7 +365,7 @@ private fun CardCaptureSection(form: CardFormState, onIntent: (PaymentIntent) ->
             label = stringResource(Res.string.card_capture_mobile_phone_label),
             kind = SaqzInputKind.Phone,
             visualTransformation = PhoneVisualTransformation(),
-            ime = scope.imeDone(),
+            ime = imeDone(),
             modifier = Modifier.testTag(PaymentTags.CardMobilePhone),
         )
     }
