@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.composeapp.catalog.SaqzCatalogScreen
 import br.com.saqz.composeapp.resources.Res
-import br.com.saqz.composeapp.resources.shell_nav_games
 import br.com.saqz.composeapp.resources.shell_nav_finance
 import br.com.saqz.composeapp.resources.shell_nav_groups
 import br.com.saqz.composeapp.resources.shell_nav_home
@@ -42,7 +41,6 @@ internal const val SaqzShellTabContentTag = "saqz-shell-tab-content"
 internal const val SaqzShellGroupsTab = "grupos"
 internal const val SaqzShellProfileTab = "perfil"
 internal const val SaqzShellHomeTab = "inicio"
-private const val SaqzShellGamesTab = "jogos"
 private const val SaqzShellFinanceTab = "financeiro"
 
 /**
@@ -58,12 +56,15 @@ private const val SaqzShellFinanceTab = "financeiro"
  * quem tem o estado da sessão, e o shell não tem — nem precisa ter, porque a faixa não
  * decide nada aqui dentro.
  *
- * **Jogos fica inerte**, como manda o VUL-72: o toque não leva a lugar nenhum enquanto o
- * fluxo 4 não existir. Início é a aba inicial do shell (VUL-193): o login cai aqui, e
- * [homeTab] recebe a Home do Fluxo 6. Perfil recebe o conteúdo real por [profileTab];
- * Financeiro recebe o caixa geral por [financeTab];
- * a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra e da entrada
- * opcional do catálogo de desenvolvimento.
+ * Início é a aba inicial do shell (VUL-193): o login cai aqui, e [homeTab] recebe a Home do
+ * Fluxo 6. Perfil recebe o conteúdo real por [profileTab]; Financeiro recebe o caixa geral
+ * por [financeTab]; a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra
+ * e da entrada opcional do catálogo de desenvolvimento.
+ *
+ * A barra tem **três abas para membro comum** e **quatro para quem administra grupo**
+ * (VUL-200): [financeTabVisible] acende a aba Financeiro. Quem decide é o host — o shell não
+ * conhece papel nenhum, só desenha o que recebe. Jogos saiu de vez: a agenda mora no detalhe
+ * do grupo e o próximo jogo já está na Home.
  *
  * ponytail: sem ViewModel — a aba ativa cabe em `rememberSaveable` (AD-031: "ViewModel
  * só quando há estado assíncrono, persistência ou comportamento real"). Vira rota de
@@ -75,6 +76,7 @@ internal fun SaqzAppShell(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
     initialTab: String = SaqzShellHomeTab,
+    financeTabVisible: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
     homeTab: @Composable (onOpenGroups: () -> Unit) -> Unit = {},
     profileTab: @Composable () -> Unit = {},
@@ -96,7 +98,15 @@ internal fun SaqzAppShell(
     // `rememberSaveable` semeia só na primeira composição — trocar `initialTab` depois não
     // sobrescreve a aba que a pessoa escolheu, e a rotação devolve a aba em uso.
     var catalogOpen by rememberSaveable { mutableStateOf(false) }
-    var activeTab by rememberSaveable { mutableStateOf(initialTab) }
+    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
+    val navItems = shellNavItems(financeTabVisible)
+    // VUL-200: a aba ativa é sempre uma aba que a barra desenha. Aba que sumiu da barra
+    // cai na Início — vale para a Caixa de quem deixou de administrar grupo (o papel pode
+    // mudar debaixo da tela), para um `initialTab` desconhecido e para o "jogos" que um
+    // `rememberSaveable` de versão anterior ainda possa restaurar. Derivado em vez de
+    // efeito: assim não existe um quadro sequer com a aba ativa apontando para item que
+    // não está lá.
+    val activeTab = if (navItems.any { it.id == selectedTab }) selectedTab else SaqzShellHomeTab
     // Uma saída, dois gatilhos: a seta da barra e o back do sistema (botão no Android,
     // gesto no iOS) chamam o mesmo fechamento. Sem isto o back agiria no shell por baixo
     // — ou sairia do app — com o catálogo ainda na tela.
@@ -145,7 +155,7 @@ internal fun SaqzAppShell(
             ) {
                 when (activeTab) {
                     SaqzShellGroupsTab -> groupsTab()
-                    SaqzShellHomeTab -> homeTab { activeTab = SaqzShellGroupsTab }
+                    SaqzShellHomeTab -> homeTab { selectedTab = SaqzShellGroupsTab }
                     SaqzShellProfileTab -> profileTab()
                     SaqzShellFinanceTab -> financeTab()
                     else -> Unit
@@ -164,34 +174,40 @@ internal fun SaqzAppShell(
             )
         }
         SaqzBottomNav(
-            items = shellNavItems(),
+            // Sem `when`: a barra só emite id que ela mesma desenha, e todo item da barra
+            // tem tela. O despacho é a atribuição.
+            items = navItems,
             activeId = activeTab,
-            onSelect = { id ->
-                when (id) {
-                    SaqzShellGroupsTab, SaqzShellProfileTab, SaqzShellFinanceTab -> activeTab = id
-                    SaqzShellHomeTab -> activeTab = id
-                    // TODO(Fluxo 4 · Jogos): sem tela, sem destino.
-                    SaqzShellGamesTab -> Unit
-                    else -> Unit
-                }
-            },
+            onSelect = { selectedTab = it },
         )
     }
 }
 
 @Composable
-private fun shellNavItems() = listOf(
+private fun shellNavItems(financeTabVisible: Boolean) = listOfNotNull(
     SaqzNavItem(SaqzShellHomeTab, stringResource(Res.string.shell_nav_home), SaqzIcons.Home),
-    SaqzNavItem(SaqzShellGamesTab, stringResource(Res.string.shell_nav_games), SaqzIcons.Calendar),
     SaqzNavItem(SaqzShellGroupsTab, stringResource(Res.string.shell_nav_groups), SaqzIcons.Users),
-    SaqzNavItem(SaqzShellFinanceTab, stringResource(Res.string.shell_nav_finance), SaqzIcons.CreditCard),
+    SaqzNavItem(SaqzShellFinanceTab, stringResource(Res.string.shell_nav_finance), SaqzIcons.CreditCard)
+        .takeIf { financeTabVisible },
     SaqzNavItem(SaqzShellProfileTab, stringResource(Res.string.shell_nav_profile), SaqzIcons.User),
 )
 
+/** Membro comum: três abas. */
 @Preview
 @Composable
 private fun SaqzAppShellPreview() = SaqzTheme {
     SaqzAppShell(
+        homeTab = { Box(Modifier.fillMaxWidth().fillMaxSize()) },
+        groupsTab = { Box(Modifier.fillMaxWidth().fillMaxSize()) },
+    )
+}
+
+/** Quem administra algum grupo: as mesmas três mais a Caixa. */
+@Preview
+@Composable
+private fun SaqzAppShellAdminPreview() = SaqzTheme {
+    SaqzAppShell(
+        financeTabVisible = true,
         homeTab = { Box(Modifier.fillMaxWidth().fillMaxSize()) },
         groupsTab = { Box(Modifier.fillMaxWidth().fillMaxSize()) },
     )

@@ -1,6 +1,7 @@
 package br.com.saqz.composeapp.shell
 
 import androidx.compose.material.Text
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,17 +14,32 @@ import kotlin.test.Test
 @OptIn(ExperimentalTestApi::class)
 class SaqzAppShellTest {
 
+    /** VUL-200: membro comum tem três abas, e Jogos não existe mais para ninguém. */
     @Test
-    fun opensOnTheHomeTab() = runComposeUiTest {
+    fun opensOnTheHomeTabWithThreeTabsForAPlainMember() = runComposeUiTest {
         setContent { SaqzTheme { SaqzAppShell(homeTab = { Text(HomeTab) }, groupsTab = { Text(GroupsTab) }) } }
         onNodeWithTag(SaqzShellTabContentTag).assertIsDisplayed()
         // VUL-193: o login cai na aba Início, não em Grupos.
         onNodeWithText(HomeTab).assertIsDisplayed()
         onNodeWithText(GroupsTab).assertDoesNotExist()
-        // A barra é do shell: os cinco itens estão aqui, não nas telas de grupo.
-        listOf("Início", "Jogos", "Grupos", "Financeiro", "Perfil").forEach {
+        // A barra é do shell: os itens estão aqui, não nas telas de grupo.
+        listOf("Início", "Grupos", "Perfil").forEach { onNodeWithText(it).assertIsDisplayed() }
+        onNodeWithText("Jogos").assertDoesNotExist()
+        onNodeWithText("Financeiro").assertDoesNotExist()
+    }
+
+    /** VUL-200: quem administra algum grupo ganha a quarta aba. */
+    @Test
+    fun showsTheFinanceTabForWhoeverAdministersAGroup() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(financeTabVisible = true, homeTab = { Text(HomeTab) })
+            }
+        }
+        listOf("Início", "Grupos", "Financeiro", "Perfil").forEach {
             onNodeWithText(it).assertIsDisplayed()
         }
+        onNodeWithText("Jogos").assertDoesNotExist()
     }
 
     @Test
@@ -31,6 +47,7 @@ class SaqzAppShellTest {
         setContent {
             SaqzTheme {
                 SaqzAppShell(
+                    financeTabVisible = true,
                     groupsTab = { Text(GroupsTab) },
                     financeTab = { Text(FinanceTab) },
                 )
@@ -46,21 +63,31 @@ class SaqzAppShellTest {
         onNodeWithText(GroupsTab).assertIsDisplayed()
     }
 
+    /**
+     * VUL-200: o papel pode mudar debaixo da tela — quem deixa de administrar grupo perde a
+     * aba, e a aba ativa não pode continuar apontando para ela.
+     */
     @Test
-    fun homeTabRendersAndGamesTabRemainsInert() = runComposeUiTest {
+    fun fallsBackToHomeWhenTheFinanceTabDisappears() = runComposeUiTest {
+        val administers = mutableStateOf(true)
         setContent {
             SaqzTheme {
                 SaqzAppShell(
-                    groupsTab = { Text(GroupsTab) },
+                    financeTabVisible = administers.value,
                     homeTab = { Text(HomeTab) },
+                    financeTab = { Text(FinanceTab) },
                 )
             }
         }
-        // VUL-193: Início já é a aba inicial; o conteúdo aparece sem trocar de aba.
-        onNodeWithText(HomeTab).assertIsDisplayed()
-        onNodeWithText("Jogos").performClick()
+        onNodeWithText("Financeiro").performClick()
         waitForIdle()
-        // Jogos é inerte (Fluxo 4): o toque não troca de aba, Início continua visível.
+        onNodeWithText(FinanceTab).assertIsDisplayed()
+
+        administers.value = false
+        waitForIdle()
+
+        onNodeWithText("Financeiro").assertDoesNotExist()
+        onNodeWithText(FinanceTab).assertDoesNotExist()
         onNodeWithText(HomeTab).assertIsDisplayed()
     }
 

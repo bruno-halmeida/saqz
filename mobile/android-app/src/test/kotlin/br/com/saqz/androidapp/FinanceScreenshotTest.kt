@@ -9,19 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
-import br.com.saqz.composeapp.resources.Res
-import br.com.saqz.composeapp.resources.shell_nav_finance
-import br.com.saqz.composeapp.resources.shell_nav_games
-import br.com.saqz.composeapp.resources.shell_nav_groups
-import br.com.saqz.composeapp.resources.shell_nav_home
-import br.com.saqz.composeapp.resources.shell_nav_profile
 import br.com.saqz.designsystem.SaqzBottomNav
-import br.com.saqz.designsystem.SaqzIcons
-import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
-import org.jetbrains.compose.resources.stringResource
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,11 +31,12 @@ class FinanceScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
+    // VUL-200: a barra de quem administra grupo — é a única em que o item Caixa existe.
     @Test
     fun shellFinanceItem() = capture("finance-shell-item") {
         Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
             Spacer(Modifier.weight(1f))
-            SaqzBottomNav(items = navItems(), activeId = "grupos", onSelect = {})
+            SaqzBottomNav(items = administratorNavItems(), activeId = "grupos", onSelect = {})
         }
     }
 
@@ -52,13 +44,4 @@ class FinanceScreenshotTest {
         compose.setContent { SaqzTheme { content() } }
         compose.onRoot().captureRoboImage("screenshots/vul-178/$name.png")
     }
-
-    @Composable
-    private fun navItems() = listOf(
-        SaqzNavItem("inicio", stringResource(Res.string.shell_nav_home), SaqzIcons.Home),
-        SaqzNavItem("jogos", stringResource(Res.string.shell_nav_games), SaqzIcons.Calendar),
-        SaqzNavItem("grupos", stringResource(Res.string.shell_nav_groups), SaqzIcons.Users),
-        SaqzNavItem("financeiro", stringResource(Res.string.shell_nav_finance), SaqzIcons.CreditCard),
-        SaqzNavItem("perfil", stringResource(Res.string.shell_nav_profile), SaqzIcons.User),
-    )
 }
