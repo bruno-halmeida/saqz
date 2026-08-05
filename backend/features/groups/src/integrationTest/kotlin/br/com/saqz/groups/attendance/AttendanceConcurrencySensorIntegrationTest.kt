@@ -11,15 +11,11 @@ import br.com.saqz.groups.application.game.GameSideEffectPort
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameMutation
 import br.com.saqz.groups.testing.*
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Instant
 import java.util.UUID
@@ -30,12 +26,9 @@ import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AttendanceConcurrencySensorIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
 
-    @BeforeAll fun start() { postgres.startAndAwaitJdbc(); dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password) }
-    @BeforeEach fun reset() { flyway().clean(); flyway().migrate() }
-    @AfterAll fun stop() = postgres.stop()
+    @BeforeEach fun reset() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
     @Test fun `sensor final spot never overbooks`() { val f = fixture(2); confirmed(f, member(f.group, "occupied")); val racers = listOf(f.member, member(f.group, "racer")); race(racers.map { id -> { f.responses.execute(id, f.group, f.game, intent = AttendanceIntent.CONFIRM) } }); assertEquals(2, countStatus("CONFIRMED")); assertEquals(1, racers.count { status(it) == "CONFIRMED" }); assertEquals(1, racers.count { status(it) == "WAITLISTED" }) }
     @Test fun `sensor full confirms allocate unique contiguous fifo`() { val f = fixture(2); repeat(2) { confirmed(f, member(f.group, "occupied-$it")) }; val racers = (1..3).map { member(f.group, "racer-$it") }; race(racers.map { id -> { f.responses.execute(id, f.group, f.game, intent = AttendanceIntent.CONFIRM) } }); assertEquals(listOf(1, 2, 3), queryInts("SELECT waitlist_sequence FROM game_attendance WHERE status='WAITLISTED' ORDER BY waitlist_sequence")); assertEquals(3, count("attendance_events")) }
@@ -85,7 +78,6 @@ class AttendanceConcurrencySensorIntegrationTest {
     private fun <T> query(sql: String, read: (java.sql.ResultSet) -> T): T = connection().use { c -> c.createStatement().use { s -> s.executeQuery(sql).use { r -> check(r.next()); read(r) } } }
     private fun execute(sql: String) { connection().use { c -> c.createStatement().use { it.execute(sql) } } }
     private fun connection(): Connection = dataSource.connection
-    private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private data class Fixture(val owner: UUID, val member: UUID, val group: UUID, val game: UUID, val responses: RespondAttendance, val capacities: AdjustGameCapacity, val waiters: List<UUID> = emptyList())
     private companion object { val NOW: Instant = Instant.now().plusSeconds(300) }
 }

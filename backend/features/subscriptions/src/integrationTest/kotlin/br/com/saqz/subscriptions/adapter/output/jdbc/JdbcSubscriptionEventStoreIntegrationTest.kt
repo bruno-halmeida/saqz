@@ -1,17 +1,12 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
+import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.subscriptions.application.ProcessAsaasWebhook
 import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
-import br.com.saqz.subscriptions.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -19,25 +14,14 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcSubscriptionEventStoreIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var store: JdbcSubscriptionEventStore
 
-    @BeforeAll
-    fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
-
     @BeforeEach
     fun resetDatabase() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allSubscriptionsFeatureMigrationLocations(), owner = this).dataSource
         store = JdbcSubscriptionEventStore(dataSource)
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @Test
     fun `lists processed events by owner with database pagination`() {
@@ -82,10 +66,4 @@ class JdbcSubscriptionEventStoreIntegrationTest {
         )
         processedAt?.let { store.markProcessed(eventId, it) }
     }
-
-    private fun flyway(): Flyway = Flyway.configure()
-        .dataSource(dataSource)
-        .locations(*allSubscriptionsFeatureMigrationLocations())
-        .cleanDisabled(false)
-        .load()
 }

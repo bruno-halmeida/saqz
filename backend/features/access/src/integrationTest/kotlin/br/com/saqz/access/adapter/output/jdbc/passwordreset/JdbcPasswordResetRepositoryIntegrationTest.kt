@@ -4,16 +4,11 @@ import br.com.saqz.access.application.passwordreset.AttemptOutcome
 import br.com.saqz.access.application.passwordreset.NewResetCode
 import br.com.saqz.access.application.passwordreset.ReplaceCodeOutcome
 import br.com.saqz.access.application.passwordreset.ResetSecretHasher
-import br.com.saqz.access.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
 import java.time.Duration
 import java.time.Instant
@@ -28,7 +23,7 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcPasswordResetRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private val database = TestPostgres.migrated("classpath:db/migration")
     private lateinit var repository: JdbcPasswordResetRepository
     private val hasher = ResetSecretHasher("segredo-de-teste-com-trinta-e-dois")
     private val now: Instant = Instant.parse("2026-07-28T12:00:00Z")
@@ -36,15 +31,7 @@ class JdbcPasswordResetRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        val dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
-        repository = JdbcPasswordResetRepository(dataSource)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
+        repository = JdbcPasswordResetRepository(database.dataSource)
     }
 
     @BeforeEach
@@ -299,5 +286,5 @@ class JdbcPasswordResetRepositoryIntegrationTest {
         }
     }
 
-    private fun connection() = DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password)
+    private fun connection() = DriverManager.getConnection(database.jdbcUrl, database.username, database.password)
 }

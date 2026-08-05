@@ -4,16 +4,11 @@ import br.com.saqz.groups.application.finance.statement.FinanceStatementDirectio
 import br.com.saqz.groups.application.finance.statement.FinanceStatementQuery
 import br.com.saqz.groups.application.finance.statement.FinanceStatementType
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.time.Instant
 import java.time.ZoneId
 import java.time.YearMonth
@@ -24,23 +19,12 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcFinanceStatementRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
-
-    @BeforeAll
-    fun start() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
 
     @BeforeEach
     fun reset() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource
     }
-
-    @AfterAll
-    fun stop() = postgres.stop()
 
     @Test
     fun `exposes the group time zone for default month resolution`() {
@@ -191,12 +175,6 @@ class JdbcFinanceStatementRepositoryIntegrationTest {
     private fun execute(sql: String) {
         dataSource.connection.use { connection -> connection.createStatement().use { it.execute(sql) } }
     }
-
-    private fun flyway() = Flyway.configure()
-        .dataSource(dataSource)
-        .locations(*allGroupFeatureMigrationLocations())
-        .cleanDisabled(false)
-        .load()
 
     private data class Fixture(val group: UUID, val owner: UUID, val member: UUID)
 

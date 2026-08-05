@@ -1,15 +1,12 @@
 package br.com.saqz.groups.adapter.output.jdbc.migration
 
 import br.com.saqz.groups.testing.accessMigrationLocation
-import br.com.saqz.groups.testing.startAndAwaitJdbc
+import br.com.saqz.postgrestesting.TestPostgres
 import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -19,19 +16,12 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GroupProfileMigrationIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private val migrationLocation = accessMigrationLocation()
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
+        dataSource = TestPostgres.empty().dataSource
     }
 
     @Test

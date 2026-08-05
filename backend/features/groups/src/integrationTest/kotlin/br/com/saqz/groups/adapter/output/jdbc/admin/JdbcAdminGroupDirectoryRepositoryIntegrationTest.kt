@@ -1,15 +1,10 @@
 package br.com.saqz.groups.adapter.output.jdbc.admin
 
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.DriverManager
@@ -21,31 +16,19 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    // O diretório junta o plano do organizador: precisa das migrações de subscriptions também.
+    private val database = TestPostgres.migrated(
+        "filesystem:" + migrations("access"),
+        "filesystem:" + migrations("groups"),
+        "filesystem:" + migrations("subscriptions"),
+    )
     private lateinit var repository: JdbcAdminGroupDirectoryRepository
 
     private val now: Instant = Instant.parse("2026-08-03T12:00:00Z")
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        val dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        // O diretório junta o plano do organizador: precisa das migrações de subscriptions também.
-        Flyway.configure()
-            .dataSource(dataSource)
-            .locations(
-                "filesystem:" + migrations("access"),
-                "filesystem:" + migrations("groups"),
-                "filesystem:" + migrations("subscriptions"),
-            )
-            .load()
-            .migrate()
-        repository = JdbcAdminGroupDirectoryRepository(dataSource)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
+        repository = JdbcAdminGroupDirectoryRepository(database.dataSource)
     }
 
     @BeforeEach
@@ -224,7 +207,7 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     }
 
     private fun execute(sql: String) {
-        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
             connection.createStatement().use { it.execute(sql) }
         }
     }

@@ -4,16 +4,12 @@ import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
 import br.com.saqz.access.application.photo.UserPhotoImage
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
-import br.com.saqz.access.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -27,26 +23,15 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcUserPhotoRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var photos: JdbcUserPhotoRepository
     private lateinit var sessions: JdbcSessionRepository
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource)
-            .locations("classpath:db/migration", groupMigrationLocation())
-            .load()
-            .migrate()
+        dataSource = TestPostgres.migrated("classpath:db/migration", groupMigrationLocation()).dataSource
         photos = JdbcUserPhotoRepository(dataSource)
         sessions = JdbcSessionRepository(dataSource)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
     }
 
     @BeforeEach

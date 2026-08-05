@@ -3,16 +3,11 @@ package br.com.saqz.groups.adapter.output.jdbc.finance
 import br.com.saqz.groups.application.finance.overview.FinanceOverviewPeriod
 import br.com.saqz.groups.domain.finance.expense.ExpenseDirection
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
@@ -23,23 +18,12 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcFinanceOverviewRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
-
-    @BeforeAll
-    fun start() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
 
     @BeforeEach
     fun reset() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource
     }
-
-    @AfterAll
-    fun stop() = postgres.stop()
 
     @Test
     fun `owner and admin groups expose accumulated formula period totals and structured health`() {
@@ -199,12 +183,6 @@ class JdbcFinanceOverviewRepositoryIntegrationTest {
     private fun expense(group: UUID, actor: UUID, description: String, amount: Long, date: String, direction: ExpenseDirection) {
         execute("INSERT INTO group_expenses (id,group_id,description,amount_cents,expense_date,category,custom_category,notes,direction,status,created_by_user_id,changed_by_user_id,version,created_at,updated_at) VALUES ('${UUID.randomUUID()}','$group','$description',$amount,DATE '$date','${if (direction == ExpenseDirection.IN) "RACHA" else "VENUE"}',NULL,'Nota','${direction.name}','ACTIVE','$actor','$actor',1,TIMESTAMPTZ '2026-08-01 10:00:00+00',TIMESTAMPTZ '2026-08-01 10:00:00+00')")
     }
-
-    private fun flyway() = Flyway.configure()
-        .dataSource(dataSource)
-        .locations(*allGroupFeatureMigrationLocations())
-        .cleanDisabled(false)
-        .load()
 
     private fun execute(sql: String) {
         dataSource.connection.use { connection ->

@@ -1,19 +1,16 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
-import br.com.saqz.groups.testing.startAndAwaitJdbc
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.manage.RotateInviteCommand
+import br.com.saqz.postgrestesting.TestPostgres
 import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Instant
 import java.time.Duration
@@ -30,7 +27,6 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcInviteManagementRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var repository: JdbcInviteManagementRepository
     private lateinit var transaction: JdbcTransactionRunner
@@ -38,8 +34,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+        dataSource = TestPostgres.empty().dataSource
         val flyway = Flyway.configure().dataSource(dataSource)
             .locations(*allGroupFeatureMigrationLocations())
             .target("23")
@@ -55,9 +50,6 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         repository = JdbcInviteManagementRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @BeforeEach
     fun clearData() {

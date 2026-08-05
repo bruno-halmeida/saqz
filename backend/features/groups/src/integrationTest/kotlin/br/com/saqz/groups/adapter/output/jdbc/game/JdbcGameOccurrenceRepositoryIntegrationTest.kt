@@ -19,16 +19,11 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameDraftInput
 import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Instant
 import java.time.LocalDate
@@ -46,16 +41,9 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcGameOccurrenceRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
 
-    @BeforeAll fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
-
-    @BeforeEach fun resetDatabase() { flyway().clean(); flyway().migrate() }
-    @AfterAll fun stopDatabase() = postgres.stop()
+    @BeforeEach fun resetDatabase() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
     @Test fun `creation context copies group venue slot and scalar defaults`() {
         val fixture = fixture()
@@ -320,7 +308,6 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
     )
 
     private fun transaction() = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
-    private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }
     private fun int(sql: String): Int = query(sql) { it.getInt(1) }
     private fun string(sql: String): String = query(sql) { it.getString(1) }

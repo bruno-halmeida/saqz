@@ -1,16 +1,12 @@
 package br.com.saqz.groups.adapter.output.jdbc.migration
 
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
+import br.com.saqz.postgrestesting.TestPostgres
 import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -18,23 +14,12 @@ import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GameMigrationIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
-
-    @BeforeAll
-    fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
 
     @BeforeEach
     fun resetDatabase() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @Test
     fun `v4 creates series slots and games tables`() {

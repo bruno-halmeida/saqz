@@ -1,6 +1,5 @@
 package br.com.saqz.groups.adapter.output.jdbc.group.settings
 
-import br.com.saqz.groups.testing.startAndAwaitJdbc
 import br.com.saqz.groups.testing.accessMigrationLocation
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -16,15 +15,12 @@ import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
 import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.domain.group.RegularSlotInput
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -40,16 +36,13 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcGroupSettingsRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var transaction: JdbcTransactionRunner
     private lateinit var useCase: UpdateGroupSettings
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        dataSource = TestPostgres.migrated(accessMigrationLocation()).dataSource
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
         transaction = JdbcTransactionRunner(dataSource)
@@ -60,9 +53,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
             GroupAccessPolicy(),
         )
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @BeforeEach
     fun clearData() {

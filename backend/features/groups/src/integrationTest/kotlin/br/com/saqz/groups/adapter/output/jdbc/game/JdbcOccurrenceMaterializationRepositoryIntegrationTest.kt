@@ -9,16 +9,11 @@ import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.groups.domain.game.recurrence.WeeklySeriesRule
 import br.com.saqz.groups.domain.game.recurrence.WeeklySlotRule
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Clock
 import java.time.DayOfWeek
@@ -33,20 +28,11 @@ import kotlin.test.assertIs
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
 
-    @BeforeAll fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
-
     @BeforeEach fun resetDatabase() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource
     }
-
-    @AfterAll fun stopDatabase() = postgres.stop()
 
     @Test fun `materializer inserts bounded draft occurrence snapshots`() {
         val fixture = fixture()
@@ -180,12 +166,6 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         )
         return Fixture(materializer, rule, venue)
     }
-
-    private fun flyway() = Flyway.configure()
-        .dataSource(dataSource)
-        .locations(*allGroupFeatureMigrationLocations())
-        .cleanDisabled(false)
-        .load()
 
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }
     private fun int(sql: String): Int = query(sql) { it.getInt(1) }

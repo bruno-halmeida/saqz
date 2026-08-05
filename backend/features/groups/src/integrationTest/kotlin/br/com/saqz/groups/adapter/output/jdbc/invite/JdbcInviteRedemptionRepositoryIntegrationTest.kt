@@ -1,6 +1,5 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
-import br.com.saqz.groups.testing.startAndAwaitJdbc
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
@@ -15,16 +14,13 @@ import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.sql.Timestamp
 import java.time.Clock
@@ -44,7 +40,6 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcInviteRedemptionRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private val now = Instant.parse("2026-07-16T18:00:00Z")
     private val code = InviteCode.from(
         Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { 11 }),
@@ -55,15 +50,10 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).load().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations()).dataSource
         repository = JdbcInviteRedemptionRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @BeforeEach
     fun clearData() {

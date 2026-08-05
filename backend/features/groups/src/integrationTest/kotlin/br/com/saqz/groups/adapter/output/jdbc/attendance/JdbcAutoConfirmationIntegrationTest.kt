@@ -22,16 +22,11 @@ import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.groups.domain.game.recurrence.WeeklySeriesRule
 import br.com.saqz.groups.domain.game.recurrence.WeeklySlotRule
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Clock
 import java.time.DayOfWeek
@@ -47,23 +42,12 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcAutoConfirmationIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
-
-    @BeforeAll
-    fun start() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
 
     @BeforeEach
     fun reset() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource
     }
-
-    @AfterAll
-    fun stop() = postgres.stop()
 
     @Test
     fun `publish confirms opted in mensalistas by entry date and waitlists excess`() {
@@ -204,7 +188,6 @@ class JdbcAutoConfirmationIntegrationTest {
         execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-$id',true,'User',now(),now())")
     }
 
-    private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }
     private fun count(sql: String): Int = requireNotNull(query(sql) { it.getInt(1) })
     private fun string(sql: String): String = requireNotNull(query(sql) { it.getString(1) })

@@ -1,16 +1,11 @@
 package br.com.saqz.access.adapter.output.jdbc.admin
 
 import br.com.saqz.access.application.admin.PlatformAdminView
-import br.com.saqz.access.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -18,20 +13,12 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcPlatformAdminRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private val database = TestPostgres.migrated("classpath:db/migration")
     private lateinit var repository: JdbcPlatformAdminRepository
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        val dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
-        repository = JdbcPlatformAdminRepository(dataSource)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
+        repository = JdbcPlatformAdminRepository(database.dataSource)
     }
 
     @BeforeEach
@@ -90,7 +77,7 @@ class JdbcPlatformAdminRepositoryIntegrationTest {
     }
 
     private fun execute(sql: String) {
-        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
             connection.createStatement().use { it.execute(sql) }
         }
     }

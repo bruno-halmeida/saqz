@@ -1,6 +1,5 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
-import br.com.saqz.access.testing.startAndAwaitJdbc
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.ProfileCompletion
@@ -8,16 +7,13 @@ import br.com.saqz.access.application.session.PhoneVisibility
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
+import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.sharedkernel.RequestIdentity
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.nio.file.Files
 import java.nio.file.Path
@@ -33,24 +29,13 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcSessionRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var repository: JdbcSessionRepository
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource)
-            .locations("classpath:db/migration", groupMigrationLocation())
-            .load()
-            .migrate()
+        dataSource = TestPostgres.migrated("classpath:db/migration", groupMigrationLocation()).dataSource
         repository = JdbcSessionRepository(dataSource)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
     }
 
     @BeforeEach

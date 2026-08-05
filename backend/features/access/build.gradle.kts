@@ -23,7 +23,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(project(":postgres-testing"))
     testImplementation(libs.greenmail)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

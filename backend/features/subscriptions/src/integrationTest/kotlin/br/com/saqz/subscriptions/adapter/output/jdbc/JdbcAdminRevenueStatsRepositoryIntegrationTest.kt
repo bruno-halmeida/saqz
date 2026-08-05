@@ -3,17 +3,12 @@ package br.com.saqz.subscriptions.adapter.output.jdbc
 import br.com.saqz.subscriptions.application.ChurnStats
 import br.com.saqz.subscriptions.application.PlanSplitEntry
 import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
-import br.com.saqz.subscriptions.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
 import java.time.Instant
 import java.time.LocalDate
@@ -22,26 +17,14 @@ import kotlin.test.assertEquals
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcAdminRevenueStatsRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private val database = TestPostgres.migrated(*allSubscriptionsFeatureMigrationLocations())
     private lateinit var repository: JdbcAdminRevenueStatsRepository
 
     private val now: Instant = Instant.parse("2026-08-03T12:00:00Z")
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        val dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure()
-            .dataSource(dataSource)
-            .locations(*allSubscriptionsFeatureMigrationLocations())
-            .load()
-            .migrate()
-        repository = JdbcAdminRevenueStatsRepository(dataSource)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
+        repository = JdbcAdminRevenueStatsRepository(database.dataSource)
     }
 
     @BeforeEach
@@ -203,7 +186,7 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
     }
 
     private fun execute(sql: String) {
-        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+        DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
             connection.createStatement().use { it.execute(sql) }
         }
     }

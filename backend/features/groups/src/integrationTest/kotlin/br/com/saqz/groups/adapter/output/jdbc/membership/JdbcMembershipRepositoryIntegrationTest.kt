@@ -1,19 +1,15 @@
 package br.com.saqz.groups.adapter.output.jdbc.membership
 
-import br.com.saqz.groups.testing.startAndAwaitJdbc
 import br.com.saqz.groups.testing.accessMigrationLocation
 import br.com.saqz.groups.application.membership.ChangeMemberRoleCommand
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.PersistedMembershipRole
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.util.UUID
 import java.util.concurrent.Callable
@@ -25,21 +21,15 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcMembershipRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var repository: JdbcMembershipRepository
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(accessMigrationLocation()).load().migrate()
+        dataSource = TestPostgres.migrated(accessMigrationLocation()).dataSource
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         repository = JdbcMembershipRepository(dataSource)
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @BeforeEach
     fun clearData() {

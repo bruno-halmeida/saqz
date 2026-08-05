@@ -1,12 +1,9 @@
 package br.com.saqz.groups.adapter.output.jdbc.migration
 
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.*
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -14,12 +11,9 @@ import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AttendanceMigrationIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
 
-    @BeforeAll fun start() { postgres.startAndAwaitJdbc(); dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password) }
-    @BeforeEach fun reset() { flyway().clean(); flyway().migrate() }
-    @AfterAll fun stop() = postgres.stop()
+    @BeforeEach fun reset() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
     @Test fun `v6 creates current attendance and event tables`() = assertEquals(2, int("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('game_attendance','attendance_events')"))
     @Test fun `v29 adds the promotion request idempotency column`() = assertEquals(1, int("SELECT count(*) FROM information_schema.columns WHERE table_name='attendance_events' AND column_name='request_id'"))
@@ -54,7 +48,6 @@ class AttendanceMigrationIntegrationTest {
     private fun user(subject: String): UUID { val id = UUID.randomUUID(); execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-${UUID.randomUUID()}',true,'User',now(),now())"); return id }
     private fun attendance(f: Fixture, status: String, sequence: Long? = null, version: Long = 1, responded: String = "now()", updated: String = "now()"): UUID { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name) VALUES ('${f.game}','${f.group}','${f.member}','$status',${sequence ?: "NULL"},$responded,$updated,$version,'Member')"); return f.member }
     private fun event(f: Fixture, source: String, old: String?, new: String, reason: String?): UUID { val id = UUID.randomUUID(); execute("INSERT INTO attendance_events (id,game_id,group_id,member_user_id,actor_user_id,source,old_status,new_status,reason,occurred_at) VALUES ('$id','${f.game}','${f.group}','${f.member}','${f.owner}','$source',${old.q()},'$new',${reason.q()},now())"); return id }
-    private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private fun execute(sql: String) { connection().use { c -> c.createStatement().use { it.execute(sql) } } }
     private fun int(sql: String) = query(sql) { it.getInt(1) }
     private fun string(sql: String) = query(sql) { it.getString(1) }

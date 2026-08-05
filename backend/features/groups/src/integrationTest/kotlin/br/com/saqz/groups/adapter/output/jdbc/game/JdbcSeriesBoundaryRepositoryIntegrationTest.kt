@@ -14,16 +14,11 @@ import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.groups.domain.game.recurrence.WeeklySeriesRule
 import br.com.saqz.groups.domain.game.recurrence.WeeklySlotRule
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Clock
 import java.time.DayOfWeek
@@ -39,12 +34,9 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcSeriesBoundaryRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
 
-    @BeforeAll fun startDatabase() { postgres.startAndAwaitJdbc(); dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password) }
-    @BeforeEach fun resetDatabase() { flyway().clean(); flyway().migrate() }
-    @AfterAll fun stopDatabase() = postgres.stop()
+    @BeforeEach fun resetDatabase() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
     @Test fun `only this edit detaches selected identity and leaves sibling unchanged`() {
         val fixture = fixture(); val selected = game(fixture, DATE); val sibling = game(fixture, DATE.plusWeeks(1))
@@ -238,7 +230,6 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
     }
 
     private fun snapshot(date: LocalDate, title: String): GameSnapshot { val starts = date.atTime(20,0).toInstant(ZoneOffset.ofHours(-3)); return GameSnapshot(title, GameVenueSnapshot(null,"Arena Nova","Avenida Central 500",null), date, LocalTime.of(20,0), IanaTimeZone.from("America/Sao_Paulo"), starts, 100, 20, starts.minusSeconds(7200), 3000, "Alterado") }
-    private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private fun execute(sql: String) { dataSource.connection.use { it.createStatement().use { statement -> statement.execute(sql) } } }
     private fun int(sql: String): Int = query(sql) { it.getInt(1) }
     private fun string(sql: String): String = query(sql) { it.getString(1) }

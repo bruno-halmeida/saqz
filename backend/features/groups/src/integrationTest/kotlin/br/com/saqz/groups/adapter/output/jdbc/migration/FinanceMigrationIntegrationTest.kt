@@ -1,12 +1,10 @@
 package br.com.saqz.groups.adapter.output.jdbc.migration
 
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
+import br.com.saqz.postgrestesting.TestPostgres
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.*
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
@@ -17,10 +15,8 @@ import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FinanceMigrationIntegrationTest {
-    private val postgres=PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"));private lateinit var dataSource:DriverManagerDataSource
-    @BeforeAll fun start(){postgres.startAndAwaitJdbc();dataSource=DriverManagerDataSource(postgres.jdbcUrl,postgres.username,postgres.password)}
-    @BeforeEach fun reset(){flyway().clean();flyway().migrate()}
-    @AfterAll fun stop()=postgres.stop()
+    private lateinit var dataSource:DriverManagerDataSource
+    @BeforeEach fun reset(){dataSource=TestPostgres.migrated(*allGroupFeatureMigrationLocations(),owner=this).dataSource}
 
     @Test fun `v5 creates finance and audit tables`()=assertEquals(4,int("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('group_charges','group_charge_events','group_expenses','group_expense_events')"))
     @Test fun `game charge stores immutable identity and audit fields`(){val f=fixture();val c=charge(f,"GAME",game=f.game);assertEquals(2500,int("SELECT amount_cents FROM group_charges WHERE id='$c'"));assertEquals("PENDING",string("SELECT status FROM group_charges WHERE id='$c'"))}

@@ -5,18 +5,13 @@ import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
+import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
-import br.com.saqz.subscriptions.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -24,23 +19,15 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcSubscriptionPlanLookupIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var jdbc: JdbcClient
     private lateinit var subscriptions: JdbcSubscriptionRepository
     private lateinit var lookup: JdbcSubscriptionPlanLookup
     private val ownerId = UUID.randomUUID()
 
-    @BeforeAll
-    fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-    }
-
     @BeforeEach
     fun resetDatabase() {
-        flyway().clean()
-        flyway().migrate()
+        dataSource = TestPostgres.migrated(*allSubscriptionsFeatureMigrationLocations(), owner = this).dataSource
         jdbc = JdbcClient.create(dataSource)
         subscriptions = JdbcSubscriptionRepository(dataSource)
         lookup = JdbcSubscriptionPlanLookup(dataSource)
@@ -54,9 +41,6 @@ class JdbcSubscriptionPlanLookupIntegrationTest {
             .param("subject", "subject-$ownerId")
             .update()
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @Test
     fun `an active subscription is entitling`() {
@@ -126,10 +110,4 @@ class JdbcSubscriptionPlanLookupIntegrationTest {
         status = status,
         firstConfirmedAt = firstConfirmedAt,
     )
-
-    private fun flyway(): Flyway = Flyway.configure()
-        .dataSource(dataSource)
-        .locations(*allSubscriptionsFeatureMigrationLocations())
-        .cleanDisabled(false)
-        .load()
 }

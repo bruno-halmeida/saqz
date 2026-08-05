@@ -8,16 +8,12 @@ import br.com.saqz.groups.application.invite.preview.RecordInvalidPreviewInviteA
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
-import br.com.saqz.groups.testing.startAndAwaitJdbc
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.sql.Timestamp
 import java.time.Instant
@@ -31,7 +27,6 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcInvitePreviewRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private val now = Instant.parse("2026-07-16T18:00:00Z")
     private val code = InviteCode.from(
         Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { 21 }),
@@ -42,15 +37,10 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
 
     @BeforeAll
     fun startDatabase() {
-        postgres.startAndAwaitJdbc()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).load().migrate()
+        dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations()).dataSource
         repository = JdbcInvitePreviewRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @BeforeEach
     fun clearData() {

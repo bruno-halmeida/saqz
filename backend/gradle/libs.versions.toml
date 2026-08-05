@@ -4,6 +4,9 @@ spring-boot = "4.1.0"
 firebase-admin = "9.10.0"
 archunit = "1.4.2"
 junit = "5.14.1"
+zonky-embedded-postgres = "2.1.0"
+# Binarios reais do PostgreSQL para os testes de integracao; espelha o major de producao (16).
+zonky-postgres-binaries = "16.9.0"
 twelvemonkeys = "3.13.1"
 greenmail = "2.1.3"
 
@@ -21,6 +24,8 @@ postgresql = { module = "org.postgresql:postgresql" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 spring-jdbc = { module = "org.springframework:spring-jdbc" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+zonky-embedded-postgres = { module = "io.zonky.test:embedded-postgres", version.ref = "zonky-embedded-postgres" }
+zonky-postgres-binaries-bom = { module = "io.zonky.test.postgres:embedded-postgres-binaries-bom", version.ref = "zonky-postgres-binaries" }
 twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
 
 [plugins]

@@ -21,6 +21,7 @@ import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.dao.PessimisticLockingFailureException
 
 class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandRepository, GameQueryRepository {
     private val jdbc = JdbcClient.create(dataSource)
@@ -73,7 +74,16 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         .optional()
         .orElse(null)
 
-    override fun create(game: Game): GameWriteResult {
+    // Dois creates simultâneos no mesmo horário podem se enroscar na checagem da exclusion
+    // constraint (deadlock 40P01) e o Postgres derruba um deles. Repetir uma vez converge:
+    // o vencedor já commitou e a reexecução cai no caminho normal de ScheduleConflict.
+    override fun create(game: Game): GameWriteResult = try {
+        createOnce(game)
+    } catch (failure: PessimisticLockingFailureException) {
+        createOnce(game)
+    }
+
+    private fun createOnce(game: Game): GameWriteResult {
         val inserted = try {
             bind(jdbc.sql(INSERT_GAME), game).update()
         } catch (failure: DataIntegrityViolationException) {

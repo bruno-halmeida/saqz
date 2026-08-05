@@ -29,6 +29,7 @@ class BackendArchitectureTest {
         assertEquals(
             setOf(
                 ":shared-kernel",
+                ":postgres-testing",
                 ":features:access",
                 ":features:groups",
                 ":features:identity",
@@ -147,7 +148,7 @@ class BackendArchitectureTest {
             .findAll(settings)
             .map { it.groupValues[1] }
             .toList()
-        val allowedProjects = setOf(":shared-kernel", ":features:access", ":features:groups", ":features:identity", ":features:subscriptions", ":bootstrap")
+        val allowedProjects = setOf(":shared-kernel", ":postgres-testing", ":features:access", ":features:groups", ":features:identity", ":features:subscriptions", ":bootstrap")
         val projectDependencies = Regex("project\\(\\s*\"([^\"]+)\"\\s*\\)")
             .findAll(configuration)
             .map { it.groupValues[1] }

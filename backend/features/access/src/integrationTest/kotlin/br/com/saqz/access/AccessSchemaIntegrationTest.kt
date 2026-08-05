@@ -1,15 +1,11 @@
 package br.com.saqz.access
 
-import br.com.saqz.access.testing.startAndAwaitJdbc
+import br.com.saqz.postgrestesting.TestPostgres
 import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
 import java.sql.SQLException
 import java.util.UUID
@@ -20,22 +16,16 @@ import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AccessSchemaIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
+    private val database = TestPostgres.empty()
     private lateinit var flyway: Flyway
 
     @BeforeAll
     fun migrateEmptyDatabase() {
-        postgres.startAndAwaitJdbc()
         flyway = Flyway.configure()
-            .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+            .dataSource(database.jdbcUrl, database.username, database.password)
             .locations("classpath:db/migration")
             .load()
         assertEquals(13, flyway.migrate().migrationsExecuted)
-    }
-
-    @AfterAll
-    fun stopDatabase() {
-        postgres.stop()
     }
 
     @BeforeEach
@@ -145,50 +135,40 @@ class AccessSchemaIntegrationTest {
 
     @Test
     fun `v20 assigns ADMINS to a user that existed before the migration`() {
-        val legacyPostgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
-        legacyPostgres.startAndAwaitJdbc()
-        try {
-            val legacyDataSource = DriverManagerDataSource(
-                legacyPostgres.jdbcUrl,
-                legacyPostgres.username,
-                legacyPostgres.password,
-            )
-            val beforeV20 = Flyway.configure()
-                .dataSource(legacyDataSource)
-                .locations("classpath:db/migration")
-                .target("12")
-                .load()
-            assertEquals(7, beforeV20.migrate().migrationsExecuted)
+        val legacyDataSource = TestPostgres.empty().dataSource
+        val beforeV20 = Flyway.configure()
+            .dataSource(legacyDataSource)
+            .locations("classpath:db/migration")
+            .target("12")
+            .load()
+        assertEquals(7, beforeV20.migrate().migrationsExecuted)
 
-            val userId = UUID.randomUUID()
-            legacyDataSource.connection.use { connection ->
-                connection.createStatement().use { statement ->
-                    statement.execute(
-                        "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) " +
-                            "VALUES ('$userId', 'legacy-profile-user', true, 'Legacy User', now(), now())",
-                    )
+        val userId = UUID.randomUUID()
+        legacyDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    "INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) " +
+                        "VALUES ('$userId', 'legacy-profile-user', true, 'Legacy User', now(), now())",
+                )
+            }
+        }
+
+        val afterV20 = Flyway.configure()
+            .dataSource(legacyDataSource)
+            .locations("classpath:db/migration")
+            .target("20")
+            .load()
+        assertEquals(1, afterV20.migrate().migrationsExecuted)
+
+        legacyDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery(
+                    "SELECT phone_visibility FROM access_users WHERE id = '$userId'",
+                ).use { result ->
+                    result.next()
+                    assertEquals("ADMINS", result.getString(1))
                 }
             }
-
-            val afterV20 = Flyway.configure()
-                .dataSource(legacyDataSource)
-                .locations("classpath:db/migration")
-                .target("20")
-                .load()
-            assertEquals(1, afterV20.migrate().migrationsExecuted)
-
-            legacyDataSource.connection.use { connection ->
-                connection.createStatement().use { statement ->
-                    statement.executeQuery(
-                        "SELECT phone_visibility FROM access_users WHERE id = '$userId'",
-                    ).use { result ->
-                        result.next()
-                        assertEquals("ADMINS", result.getString(1))
-                    }
-                }
-            }
-        } finally {
-            legacyPostgres.stop()
         }
     }
 
@@ -521,7 +501,7 @@ class AccessSchemaIntegrationTest {
             }
         }
 
-    private fun connection() = DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password)
+    private fun connection() = DriverManager.getConnection(database.jdbcUrl, database.username, database.password)
 
     private fun assertSqlFails(block: () -> Unit) {
         assertFailsWith<SQLException>(block = block)

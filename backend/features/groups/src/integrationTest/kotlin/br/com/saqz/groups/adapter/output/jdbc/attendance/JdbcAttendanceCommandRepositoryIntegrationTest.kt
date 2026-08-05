@@ -7,17 +7,14 @@ import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.testing.*
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
@@ -29,12 +26,9 @@ import kotlin.test.assertSame
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JdbcAttendanceCommandRepositoryIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
 
-    @BeforeAll fun start() { postgres.startAndAwaitJdbc(); dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password) }
-    @BeforeEach fun reset() { flyway().clean(); flyway().migrate() }
-    @AfterAll fun stop() = postgres.stop()
+    @BeforeEach fun reset() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
     @Test fun `self confirmation below capacity persists current response and audit`() { val f = fixture(); val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.CONFIRMED, saved.status); assertEquals(1, count("game_attendance")); assertEquals(1, count("attendance_events")) }
     @Test fun `confirmation at capacity receives first monotonic waitlist position`() { val f = fixture(capacity = 2); repeat(2) { attendance(f, member(f.group, "confirmed-$it"), "CONFIRMED") }; val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.WAITLISTED, saved.status); assertEquals(1, saved.waitlistSequence) }
@@ -384,7 +378,9 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     private fun service(repository: AttendanceCommandRepository = JdbcAttendanceCommandRepository(dataSource)) = RespondAttendance(JdbcTransactionRunner(dataSource), repository, chargePort(), { now() })
     private fun capacity(f: Fixture) = AdjustGameCapacity(JdbcTransactionRunner(dataSource), JdbcAttendanceCommandRepository(dataSource), chargePort(), { now() })
     private fun chargePort() = AttendanceChargeAdapter(ChargeTransactions(JdbcTransactionRunner(dataSource), JdbcChargeTransactionRepository(dataSource)) { now() })
-    private fun now() = Instant.now()
+    // timestamptz guarda microssegundos; sem truncar, o objeto devolvido na primeira chamada
+    // (nanos da JVM em Linux) nunca bate com o relido do banco no replay.
+    private fun now() = Instant.now().truncatedTo(ChronoUnit.MICROS)
     private fun attendance(f: Fixture, member: UUID, status: String, name: String = "Member") { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','$status',now(),now(),'$name')") }
     private fun waitlist(f: Fixture, member: UUID, sequence: Long, name: String = "Member") { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','WAITLISTED',$sequence,now(),now(),'$name')") }
     // `membership` stays the third positional parameter so the mensalista/avulso cases keep reading
@@ -394,7 +390,6 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     private fun rosterOf(f: Fixture, actor: UUID) = JdbcAttendanceCommandRepository(dataSource).roster(actor, f.group, f.game)
     private fun snapshotName(member: UUID) = string("SELECT member_display_name FROM game_attendance WHERE member_user_id='$member'")
     private fun success(result: AttendanceCommandResult) = assertIs<AttendanceCommandResult.Success>(result).attendance
-    private fun flyway() = Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).cleanDisabled(false).load()
     private fun execute(sql: String) { connection().use { c -> c.createStatement().use { it.execute(sql) } } }
     private fun count(table: String) = int("SELECT count(*) FROM $table")
     private fun int(sql: String) = query(sql) { it.getInt(1) }
