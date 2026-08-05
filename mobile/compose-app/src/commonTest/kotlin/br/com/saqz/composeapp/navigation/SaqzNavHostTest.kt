@@ -329,8 +329,9 @@ class SaqzNavHostTest {
 
     /**
      * VUL-200: a aba Caixa depende do papel que a própria sessão já carrega. Owner e admin
-     * acendem; atleta não — o `GET /api/me/finance/overview` filtra por admin, e para o
-     * atleta a aba abria uma tela zerada.
+     * acendem; atleta não. Os dois papéis são o mesmo conjunto que o
+     * `GET /api/me/finance/overview` enxerga (`owner_user_id = :actorId OR
+     * memberships.role = 'ADMIN'`) — para o atleta a aba abria uma tela zerada.
      */
     @Test
     fun onlyOwnerOrAdminMembershipsLightUpTheFinanceTab() {

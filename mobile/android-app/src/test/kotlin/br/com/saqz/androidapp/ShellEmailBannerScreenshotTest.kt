@@ -14,8 +14,6 @@ import br.com.saqz.composeapp.resources.shell_email_resent
 import br.com.saqz.composeapp.resources.shell_email_unverified
 import br.com.saqz.composeapp.shell.EmailVerificationBannerContent
 import br.com.saqz.designsystem.SaqzBottomNav
-import br.com.saqz.designsystem.SaqzIcons
-import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -72,19 +70,12 @@ class ShellEmailBannerScreenshotTest {
                     verticalArrangement = Arrangement.SpaceBetween,
                 ) {
                     banner()
-                    SaqzBottomNav(items = NavItems, activeId = "grupos", onSelect = {})
+                    // A faixa aparece para qualquer pessoa, então a cena usa a barra do
+                    // membro comum (VUL-200): três abas, sem Jogos e sem Caixa.
+                    SaqzBottomNav(items = memberNavItems(), activeId = "grupos", onSelect = {})
                 }
             }
         }
         compose.onRoot().captureRoboImage("screenshots/vul-91/$name.png")
-    }
-
-    private companion object {
-        val NavItems = listOf(
-            SaqzNavItem("inicio", "Início", SaqzIcons.Home),
-            SaqzNavItem("jogos", "Jogos", SaqzIcons.Calendar),
-            SaqzNavItem("grupos", "Grupos", SaqzIcons.Users),
-            SaqzNavItem("perfil", "Perfil", SaqzIcons.User),
-        )
     }
 }

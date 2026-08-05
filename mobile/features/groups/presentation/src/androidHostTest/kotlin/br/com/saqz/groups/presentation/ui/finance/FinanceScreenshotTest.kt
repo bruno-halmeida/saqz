@@ -10,9 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.SaqzBottomNav
-import br.com.saqz.designsystem.SaqzIcons
-import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.ui.finance.overview.FinanceOverviewSamples
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -44,13 +43,7 @@ class FinanceScreenshotTest {
                         FinancePlaceholderScreen()
                     }
                     SaqzBottomNav(
-                        items = listOf(
-                            SaqzNavItem("inicio", "Início", SaqzIcons.Home),
-                            SaqzNavItem("jogos", "Jogos", SaqzIcons.Calendar),
-                            SaqzNavItem("grupos", "Grupos", SaqzIcons.Users),
-                            SaqzNavItem("financeiro", "Financeiro", SaqzIcons.CreditCard),
-                            SaqzNavItem("perfil", "Perfil", SaqzIcons.User),
-                        ),
+                        items = FinanceOverviewSamples.navItems,
                         activeId = "financeiro",
                         onSelect = {},
                     )

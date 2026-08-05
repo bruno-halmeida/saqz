@@ -64,8 +64,10 @@ class SaqzAppShellTest {
     }
 
     /**
-     * VUL-200: o papel pode mudar debaixo da tela — quem deixa de administrar grupo perde a
-     * aba, e a aba ativa não pode continuar apontando para ela.
+     * VUL-200: a guarda defensiva da aba ativa. A visibilidade cair com a Caixa aberta não
+     * acontece hoje (a sessão não recarrega memberships com o shell montado), mas é a regra
+     * que impede a aba ativa de apontar para item que a barra não desenha — e é ela também
+     * que cobre os casos reais, `initialTab` desconhecido e `"jogos"` restaurado.
      */
     @Test
     fun fallsBackToHomeWhenTheFinanceTabDisappears() = runComposeUiTest {

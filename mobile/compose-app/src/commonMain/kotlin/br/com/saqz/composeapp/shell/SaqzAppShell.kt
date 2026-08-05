@@ -100,12 +100,14 @@ internal fun SaqzAppShell(
     var catalogOpen by rememberSaveable { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
     val navItems = shellNavItems(financeTabVisible)
-    // VUL-200: a aba ativa é sempre uma aba que a barra desenha. Aba que sumiu da barra
-    // cai na Início — vale para a Caixa de quem deixou de administrar grupo (o papel pode
-    // mudar debaixo da tela), para um `initialTab` desconhecido e para o "jogos" que um
-    // `rememberSaveable` de versão anterior ainda possa restaurar. Derivado em vez de
-    // efeito: assim não existe um quadro sequer com a aba ativa apontando para item que
-    // não está lá.
+    // VUL-200: a aba ativa é sempre uma aba que a barra desenha; a que não está lá cai na
+    // Início. Dois casos são reais hoje — um `initialTab` desconhecido, e o `"jogos"` que
+    // um `rememberSaveable` gravado por versão anterior ainda restaure. O terceiro é
+    // defensivo: [financeTabVisible] virar `false` com a Caixa aberta não acontece hoje,
+    // porque a única re-emissão de `Ready` com o shell montado (`refreshEmailVerification`)
+    // preserva as memberships — mas é o que faz a regra valer também no dia em que a sessão
+    // recarregar de verdade. Derivado em vez de efeito: assim não existe um quadro sequer
+    // com a aba ativa apontando para item que não está na barra.
     val activeTab = if (navItems.any { it.id == selectedTab }) selectedTab else SaqzShellHomeTab
     // Uma saída, dois gatilhos: a seta da barra e o back do sistema (botão no Android,
     // gesto no iOS) chamam o mesmo fechamento. Sem isto o back agiria no shell por baixo
@@ -158,6 +160,10 @@ internal fun SaqzAppShell(
                     SaqzShellHomeTab -> homeTab { selectedTab = SaqzShellGroupsTab }
                     SaqzShellProfileTab -> profileTab()
                     SaqzShellFinanceTab -> financeTab()
+                    // Inalcançável: [activeTab] só assume id que [shellNavItems] desenha, e
+                    // todos os quatro estão acima. A armadilha é aba nova — item na barra
+                    // sem `when` aqui rende tela em branco, em silêncio. Não dá para selar
+                    // um `when` de `String`, então fica a regra: item novo, branch novo.
                     else -> Unit
                 }
             }

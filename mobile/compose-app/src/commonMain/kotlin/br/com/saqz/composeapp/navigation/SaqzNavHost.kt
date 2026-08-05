@@ -662,8 +662,11 @@ private val AdministratorRoles = setOf("OWNER", "ADMIN")
 
 /**
  * VUL-200: a aba Caixa só existe para quem administra algum grupo — o
- * `GET /api/me/finance/overview` já filtra por `memberships.role = 'ADMIN'`, então para os
- * outros ela abria uma tela zerada.
+ * `GET /api/me/finance/overview` já filtra por `owner_user_id = :actorId OR
+ * memberships.role = 'ADMIN'` (CTE `administered_groups`), então para os outros ela abria
+ * uma tela zerada. **Os dois lados do `OR` importam**: o dono entra pela coluna do grupo, e
+ * a membership dele é `OWNER` — por isso [AdministratorRoles] tem os dois papéis, e reduzir
+ * a lista a `ADMIN` esconderia a aba de quem é dono do próprio grupo.
  *
  * A fonte do papel é a **própria sessão**, não o `ownProfile()`: o `AccessSession` já chega
  * com `memberships` e `role` do `PUT /api/session`, e o shell só existe em

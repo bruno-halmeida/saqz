@@ -65,10 +65,12 @@ class OwnProfileScreenshotTest {
                         imageLoader = imageLoader,
                         modifier = Modifier.weight(1f),
                     )
+                    // A barra do membro comum (VUL-200): Jogos saiu do app e a Caixa só
+                    // aparece para quem administra grupo. Quem manda é o `shellNavItems` do
+                    // `SaqzAppShell`; aqui é amostra, porque a feature não enxerga o shell.
                     SaqzBottomNav(
                         items = listOf(
                             SaqzNavItem("home", "Início", SaqzIcons.Home),
-                            SaqzNavItem("games", "Jogos", SaqzIcons.Calendar),
                             SaqzNavItem("groups", "Grupos", SaqzIcons.Users),
                             SaqzNavItem("profile", "Perfil", SaqzIcons.User),
                         ),
