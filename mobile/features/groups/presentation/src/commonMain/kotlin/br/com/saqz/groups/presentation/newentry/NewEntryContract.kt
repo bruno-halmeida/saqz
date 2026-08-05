@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.newentry
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.finance.FinanceDirection
 import br.com.saqz.groups.presentation.GroupUiError
+import kotlinx.serialization.Serializable
 
 enum class NewEntryDirection {
     In,
@@ -14,6 +15,11 @@ enum class NewEntryCategory {
     Material,
     Racha,
     Other,
+}
+
+@Serializable
+enum class NewEntryPrefill {
+    GameCourt,
 }
 
 @Immutable
@@ -36,6 +42,7 @@ sealed interface NewEntryIntent {
     data class SelectCategory(val category: NewEntryCategory) : NewEntryIntent
     data class CustomCategoryChanged(val value: String) : NewEntryIntent
     data class DateChanged(val value: String) : NewEntryIntent
+    data class ApplyPrefill(val prefill: NewEntryPrefill, val description: String) : NewEntryIntent
     data object Save : NewEntryIntent
 }
 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 5g · acerto do jogo; 5i · resumo derivado quando não há GAME PENDING -->
+    <string name="game_settlement_title">Acerto do jogo</string>
+    <string name="game_settlement_open">Encerrar jogo e acertar</string>
+    <string name="game_settlement_header">JOGO ENCERRADO</string>
+    <string name="game_settlement_ended">ENCERRADO</string>
+    <string name="game_settlement_note">Toque em &apos;Recebi&apos; quando o Pix ou o dinheiro chegar. Nada é cobrado automaticamente.</string>
+    <string name="game_settlement_debt_note">A dívida continua no caixa até você marcar como recebida.</string>
+    <string name="game_settlement_diarist_meta">Diaristas</string>
+    <string name="game_settlement_diarists_empty">Nenhum diarista para acertar</string>
+    <string name="game_settlement_monthly_members_body">Já estão cobertos pela mensalidade.</string>
+    <string name="game_settlement_charge_missing">Cobrar quem falta</string>
+    <string name="game_settlement_receipt">Recebi</string>
+    <string name="game_settlement_received_status">Recebido</string>
+    <string name="game_settlement_waived_status">Dispensado</string>
+    <string name="game_settlement_end">Encerrar acerto</string>
+    <string name="game_settlement_end_helper">Receba todos os diaristas para encerrar o acerto.</string>
+    <string name="game_settlement_view_cashbox">Ver o caixa do grupo</string>
+    <string name="game_settlement_court_expense">Custo do jogo</string>
+    <string name="game_settlement_court_expense_description">Registrar aluguel da quadra</string>
+    <string name="game_settlement_summary">Resumo do acerto</string>
+    <string name="game_settlement_result">Resultado</string>
+    <string name="game_settlement_negative_result">A diferença saiu do saldo. Considere ajustar o valor do diarista.</string>
+    <string name="game_settlement_court_expense_description_prefill">Aluguel da quadra</string>
+    <string name="game_settlement_receipt_failure">Não foi possível registrar o recebimento. Tente novamente.</string>
+    <string name="game_settlement_summary_diarists_one">1 diarista × %1$s</string>
+    <string name="game_settlement_summary_diarists_other">%1$d diaristas × %2$s</string>
+    <plurals name="game_settlement_players">
+        <item quantity="one">%1$d pessoa jogou</item>
+        <item quantity="other">%1$d pessoas jogaram</item>
+    </plurals>
+    <plurals name="game_settlement_progress">
+        <item quantity="one">%1$d de %2$d diarista acertou · faltam %3$s</item>
+        <item quantity="other">%1$d de %2$d diaristas acertaram · faltam %3$s</item>
+    </plurals>
+    <plurals name="game_settlement_monthly_members">
+        <item quantity="one">1 mensalista</item>
+        <item quantity="other">%1$d mensalistas</item>
+    </plurals>
+</resources>

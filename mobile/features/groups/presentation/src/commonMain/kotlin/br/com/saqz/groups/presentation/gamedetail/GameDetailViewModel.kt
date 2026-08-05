@@ -59,6 +59,11 @@ class GameDetailViewModel(
         when (intent) {
             GameDetailIntent.Retry -> load()
             GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)
+            GameDetailIntent.OpenSettlement -> if (
+                state.value.isAdmin && state.value.header?.statusTone == GameDetailStatusTone.Completed
+            ) {
+                emit(GameDetailEffect.OpenSettlement)
+            }
             GameDetailIntent.RequestCancel -> if (state.value.header?.statusTone == GameDetailStatusTone.Published) {
                 update { it.copy(cancelDialogOpen = true, cancelFailed = false) }
             }

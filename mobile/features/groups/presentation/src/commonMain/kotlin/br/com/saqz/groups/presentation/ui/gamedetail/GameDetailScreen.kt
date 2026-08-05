@@ -64,6 +64,7 @@ import br.com.saqz.groups.resources.game_detail_status_draft
 import br.com.saqz.groups.resources.game_detail_status_published
 import br.com.saqz.groups.resources.game_detail_title
 import br.com.saqz.groups.resources.game_detail_you
+import br.com.saqz.groups.resources.game_settlement_open
 import br.com.saqz.groups.resources.group_details_pending
 import org.jetbrains.compose.resources.stringResource
 internal object GameDetailTags {
@@ -106,6 +107,7 @@ internal fun GameDetailScreen(
                         GameDetailAdminActions(
                             cancelling = state.cancelling,
                             canCancel = state.header?.statusTone == GameDetailStatusTone.Published,
+                            canSettle = state.header?.statusTone == GameDetailStatusTone.Completed,
                             onIntent = onIntent,
                         )
                     }
@@ -225,6 +227,7 @@ private fun GameDetailConfirmedList(confirmed: List<GameDetailConfirmedUi>) {
 private fun GameDetailAdminActions(
     cancelling: Boolean,
     canCancel: Boolean,
+    canSettle: Boolean,
     onIntent: (GameDetailIntent) -> Unit,
 ) = Column(
     Modifier.fillMaxWidth(),
@@ -244,6 +247,13 @@ private fun GameDetailAdminActions(
             fullWidth = true,
             enabled = !cancelling,
             loading = cancelling,
+        )
+    }
+    if (canSettle) {
+        SaqzButton(
+            stringResource(Res.string.game_settlement_open),
+            { onIntent(GameDetailIntent.OpenSettlement) },
+            fullWidth = true,
         )
     }
 }

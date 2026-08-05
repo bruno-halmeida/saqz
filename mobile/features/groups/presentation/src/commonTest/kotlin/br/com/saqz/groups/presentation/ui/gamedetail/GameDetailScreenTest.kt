@@ -31,6 +31,26 @@ class GameDetailScreenTest {
 
         onAllNodesWithText("Cancelar jogo").assertCountEquals(0)
         onNodeWithText("Editar jogo").assertExists()
+        onNodeWithText("Encerrar jogo e acertar").assertExists()
+    }
+
+    @Test
+    fun `settlement action is hidden for non completed games`() = runComposeUiTest {
+        setScreen(GameDetailStatusTone.Published)
+
+        onAllNodesWithText("Encerrar jogo e acertar").assertCountEquals(0)
+    }
+
+    @Test
+    fun `settlement action is hidden from athletes`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailPreviewData.admin.copy(
+                isAdmin = false,
+                header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Completed),
+            ),
+        )
+
+        onAllNodesWithText("Encerrar jogo e acertar").assertCountEquals(0)
     }
 
     @Test

@@ -15,6 +15,7 @@ fun GameDetailRoot(
     gameId: String,
     onBack: () -> Unit,
     onOpenEditor: () -> Unit,
+    onOpenSettlement: () -> Unit = {},
     onCancel: () -> Unit = onBack,
     viewModel: GameDetailViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
 ) {
@@ -22,6 +23,7 @@ fun GameDetailRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             GameDetailEffect.OpenEditor -> onOpenEditor()
+            GameDetailEffect.OpenSettlement -> onOpenSettlement()
             GameDetailEffect.Cancelled -> onCancel()
         }
     }

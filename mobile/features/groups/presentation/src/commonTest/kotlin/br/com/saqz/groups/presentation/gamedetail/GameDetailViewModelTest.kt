@@ -33,6 +33,7 @@ import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleCancelledGame
+import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleAttendanceDetail
 import br.com.saqz.groups.presentation.sampleAttendanceRoster
 import br.com.saqz.groups.presentation.sampleVersionedAttendanceCapacity
@@ -75,6 +76,40 @@ class GameDetailViewModelTest {
         assertNotNull(viewModel.state.value.attendance)
         assertEquals(2, viewModel.state.value.attendance?.declined)
         assertEquals(3, viewModel.state.value.attendance?.pending)
+    }
+
+    @Test
+    fun `completed game settlement intent emits only for organizer`() = runTest {
+        val completed = sampleVersionedGame().copy(
+            game = sampleVersionedGame().game.copy(status = GameStatus.Completed),
+        )
+        val organizer = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(completed)),
+            FakeGroupGateway(),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
+        )
+        organizer.onIntent(GameDetailIntent.OpenSettlement)
+
+        assertEquals(GameDetailEffect.OpenSettlement, organizer.effects.first())
+
+        val athlete = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(completed)),
+            FakeGroupGateway(
+                SaqzResult.Success(
+                    sampleVersionedGroup(sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE)),
+                ),
+            ),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
+        )
+        athlete.onIntent(GameDetailIntent.OpenSettlement)
+
+        assertEquals(false, athlete.state.value.isAdmin)
     }
 
     @Test

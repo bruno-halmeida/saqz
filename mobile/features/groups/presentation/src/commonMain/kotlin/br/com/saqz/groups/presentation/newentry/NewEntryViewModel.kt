@@ -55,7 +55,28 @@ class NewEntryViewModel(
                 update { it.copy(customCategory = intent.value, error = null) }
             }
             is NewEntryIntent.DateChanged -> updateDate(intent.value)
+            is NewEntryIntent.ApplyPrefill -> applyPrefill(intent)
             NewEntryIntent.Save -> save()
+        }
+    }
+
+    private fun applyPrefill(intent: NewEntryIntent.ApplyPrefill) {
+        if (savedState.get<Boolean>(KEY_PREFILL_APPLIED) == true) return
+        when (intent.prefill) {
+            NewEntryPrefill.GameCourt -> {
+                savedState[KEY_PREFILL_APPLIED] = true
+                savedState[KEY_DIRECTION] = NewEntryDirection.Out.name
+                savedState[KEY_CATEGORY] = NewEntryCategory.Court.name
+                savedState[KEY_DESCRIPTION] = intent.description
+                update {
+                    it.copy(
+                        direction = NewEntryDirection.Out,
+                        category = NewEntryCategory.Court,
+                        description = intent.description,
+                        error = null,
+                    )
+                }
+            }
         }
     }
 
@@ -197,3 +218,4 @@ private const val KEY_CATEGORY = "new-entry-category"
 private const val KEY_CUSTOM_CATEGORY = "new-entry-custom-category"
 private const val KEY_DATE = "new-entry-date"
 private const val KEY_REQUEST_ID = "new-entry-request-id"
+private const val KEY_PREFILL_APPLIED = "new-entry-prefill-applied"

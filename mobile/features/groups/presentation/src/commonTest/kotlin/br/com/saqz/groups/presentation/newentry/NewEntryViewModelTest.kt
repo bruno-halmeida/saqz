@@ -64,6 +64,17 @@ class NewEntryViewModelTest {
     }
 
     @Test
+    fun `game court prefill selects an outgoing court expense`() {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(NewEntryIntent.ApplyPrefill(NewEntryPrefill.GameCourt, "Aluguel da quadra"))
+
+        assertEquals(NewEntryDirection.Out, viewModel.state.value.direction)
+        assertEquals(NewEntryCategory.Court, viewModel.state.value.category)
+        assertEquals("Aluguel da quadra", viewModel.state.value.description)
+    }
+
+    @Test
     fun `shortcut and numeric date input keep cents and ISO command values`() = runTest(dispatcher) {
         val gateway = FakeOrganizerGateway()
         val viewModel = viewModel(gateway = gateway)
