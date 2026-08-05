@@ -2,7 +2,7 @@ package br.com.saqz.groups.application.home
 
 import java.time.Clock
 import java.time.Instant
-import java.time.YearMonth
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -19,7 +19,7 @@ class HomeTest {
     )
 
     @Test
-    fun usesCurrentInstantAndBillingMonthInConfiguredZone() {
+    fun usesCurrentInstantAndTodayInConfiguredZone() {
         val repository = RecordingRepository(expected)
 
         val result = HomeQuery(
@@ -31,7 +31,7 @@ class HomeTest {
         assertSame(expected, result)
         assertEquals(actor, repository.actorId)
         assertEquals(now, repository.now)
-        assertEquals(YearMonth.of(2026, 7), repository.currentMonth)
+        assertEquals(LocalDate.of(2026, 7, 31), repository.today)
     }
 
     private class RecordingRepository(
@@ -39,12 +39,12 @@ class HomeTest {
     ) : HomeRepository {
         var actorId: UUID? = null
         var now: Instant? = null
-        var currentMonth: YearMonth? = null
+        var today: LocalDate? = null
 
-        override fun find(actorId: UUID, now: Instant, currentMonth: YearMonth): HomeReadModel {
+        override fun find(actorId: UUID, now: Instant, today: LocalDate): HomeReadModel {
             this.actorId = actorId
             this.now = now
-            this.currentMonth = currentMonth
+            this.today = today
             return result
         }
     }

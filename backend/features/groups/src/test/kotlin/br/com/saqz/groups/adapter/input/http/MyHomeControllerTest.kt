@@ -9,6 +9,9 @@ import br.com.saqz.groups.application.home.HomeMemberReadModel
 import br.com.saqz.groups.application.home.HomeMonthlyCharges
 import br.com.saqz.groups.application.home.HomeNextGame
 import br.com.saqz.groups.application.home.HomeOwnAttendance
+import br.com.saqz.groups.application.home.HomeOwnChargeGroup
+import br.com.saqz.groups.application.home.HomeOwnChargeOldest
+import br.com.saqz.groups.application.home.HomeOwnChargesReadModel
 import br.com.saqz.groups.application.home.HomeQuery
 import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRepository
@@ -20,6 +23,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.sharedkernel.RequestIdentity
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.util.UUID
@@ -30,6 +34,7 @@ import org.junit.jupiter.api.Test
 class MyHomeControllerTest {
     private val actor = UUID.randomUUID()
     private val group = UUID.randomUUID()
+    private val otherGroup = UUID.randomUUID()
     private val nextGame = UUID.randomUUID()
     private val completedGame = UUID.randomUUID()
     private val identity = RequestIdentity("subject", emailVerified = true)
@@ -95,6 +100,51 @@ class MyHomeControllerTest {
             ),
             response.admin,
         )
+        assertEquals(
+            HomeOwnChargesResponse(
+                groupCount = 2,
+                totalCents = 900,
+                groups = listOf(
+                    HomeOwnChargeGroupResponse(
+                        groupId = group,
+                        groupName = "Grupo Praia",
+                        count = 2,
+                        totalCents = 600,
+                        nextDueDate = LocalDate.of(2026, 7, 10),
+                        overdue = true,
+                        pixKey = "racha@saqz.test",
+                        pixLabel = "Tesoureiro",
+                        oldest = HomeOwnChargeOldestResponse(
+                            kind = "MONTHLY",
+                            month = "2026-07",
+                            gameId = null,
+                            gameStartsAt = null,
+                            gameZoneId = null,
+                            dueDate = LocalDate.of(2026, 7, 10),
+                        ),
+                    ),
+                    HomeOwnChargeGroupResponse(
+                        groupId = otherGroup,
+                        groupName = "Grupo Quadra",
+                        count = 1,
+                        totalCents = 300,
+                        nextDueDate = LocalDate.of(2026, 8, 10),
+                        overdue = false,
+                        pixKey = null,
+                        pixLabel = null,
+                        oldest = HomeOwnChargeOldestResponse(
+                            kind = "GAME",
+                            month = null,
+                            gameId = completedGame,
+                            gameStartsAt = now.minusSeconds(86_400),
+                            gameZoneId = "America/Sao_Paulo",
+                            dueDate = LocalDate.of(2026, 8, 10),
+                        ),
+                    ),
+                ),
+            ),
+            response.ownCharges,
+        )
     }
 
     @Test
@@ -112,6 +162,7 @@ class MyHomeControllerTest {
         assertNull(response.member.lastCompletedGame)
         assertEquals(emptyList(), response.member.groups)
         assertNull(response.admin)
+        assertNull(response.ownCharges)
     }
 
     private fun controller(
@@ -119,7 +170,7 @@ class MyHomeControllerTest {
         fixed: HomeReadModel? = null,
     ): MyHomeController {
         val repository = object : HomeRepository {
-            override fun find(actorId: UUID, now: Instant, currentMonth: YearMonth): HomeReadModel {
+            override fun find(actorId: UUID, now: Instant, today: LocalDate): HomeReadModel {
                 onFind(actorId)
                 return fixed ?: HomeReadModel(
                     member = HomeMemberReadModel(
@@ -161,8 +212,44 @@ class MyHomeControllerTest {
                                 id = group,
                                 name = "Grupo Praia",
                                 entryRequestCount = 2,
-                                monthlyCharges = HomeMonthlyCharges(3, 450, currentMonth),
+                                monthlyCharges = HomeMonthlyCharges(3, 450, YearMonth.from(today)),
                                 gameToSettle = HomeGameToSettle(completedGame, now.minusSeconds(86_400), "America/Sao_Paulo", 2, 500),
+                            ),
+                        ),
+                    ),
+                    ownCharges = HomeOwnChargesReadModel(
+                        groupCount = 2,
+                        totalCents = 900,
+                        groups = listOf(
+                            HomeOwnChargeGroup(
+                                groupId = group,
+                                groupName = "Grupo Praia",
+                                count = 2,
+                                totalCents = 600,
+                                nextDueDate = LocalDate.of(2026, 7, 10),
+                                overdue = true,
+                                pixKey = "racha@saqz.test",
+                                pixLabel = "Tesoureiro",
+                                oldest = HomeOwnChargeOldest.Monthly(
+                                    month = YearMonth.of(2026, 7),
+                                    dueDate = LocalDate.of(2026, 7, 10),
+                                ),
+                            ),
+                            HomeOwnChargeGroup(
+                                groupId = otherGroup,
+                                groupName = "Grupo Quadra",
+                                count = 1,
+                                totalCents = 300,
+                                nextDueDate = LocalDate.of(2026, 8, 10),
+                                overdue = false,
+                                pixKey = null,
+                                pixLabel = null,
+                                oldest = HomeOwnChargeOldest.Game(
+                                    gameId = completedGame,
+                                    startsAt = now.minusSeconds(86_400),
+                                    zoneId = "America/Sao_Paulo",
+                                    dueDate = LocalDate.of(2026, 8, 10),
+                                ),
                             ),
                         ),
                     ),

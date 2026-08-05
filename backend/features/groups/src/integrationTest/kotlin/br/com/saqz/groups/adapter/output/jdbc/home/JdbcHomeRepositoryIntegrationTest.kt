@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.home
 
+import br.com.saqz.groups.application.home.HomeOwnChargeOldest
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.util.UUID
@@ -76,7 +78,7 @@ class JdbcHomeRepositoryIntegrationTest {
         val home = repository().find(
             actorId = actor,
             now = Instant.parse("2026-08-01T12:00:00Z"),
-            currentMonth = YearMonth.of(2026, 8),
+            today = LocalDate.of(2026, 8, 1),
         )
 
         assertEquals(listOf("Admin home", "Athlete only", "Member home", "Owner home"), home.member.groups.map { it.name })
@@ -122,6 +124,146 @@ class JdbcHomeRepositoryIntegrationTest {
         assertEquals(500, adminAdmin.gameToSettle?.totalCents)
         assertEquals(YearMonth.of(2026, 8), adminAdmin.monthlyCharges.billingMonth)
         assertTrue(admin.groups.none { it.name == "Athlete only" })
+        assertNull(home.ownCharges)
+    }
+
+    @Test
+    fun aggregatesOwnPendingChargesPerGroupWithPixAndOverdueFlag() {
+        val actor = user("own-actor", "Own Actor")
+        val other = user("own-other", "Other Person")
+        val owner = user("own-owner", "Own Owner")
+        val monthlyGroup = group("Cobranca A", owner)
+        val gameGroup = group("Cobranca B", owner)
+        val deletedGroup = group("Cobranca C", owner)
+        membership(monthlyGroup, actor)
+        membership(gameGroup, actor)
+        membership(deletedGroup, actor)
+        pix(monthlyGroup, "racha@saqz.test", "Tesoureiro")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$deletedGroup'")
+
+        // Competência mais antiga (julho) vence depois da mais nova: separa "mais antiga" de "mais próxima".
+        monthlyCharge(monthlyGroup, actor, 900, "2026-07-01", "PENDING", owner, dueDate = "2026-08-15")
+        monthlyCharge(monthlyGroup, actor, 600, "2026-08-01", "PENDING", owner, dueDate = "2026-08-05")
+        monthlyCharge(monthlyGroup, actor, 111, "2026-06-01", "PAID", owner)
+        monthlyCharge(monthlyGroup, actor, 112, "2026-05-01", "WAIVED", owner)
+        monthlyCharge(monthlyGroup, actor, 113, "2026-04-01", "CANCELLED", owner)
+        monthlyCharge(monthlyGroup, other, 222, "2026-07-01", "PENDING", owner)
+        val played = game(gameGroup, "2026-07-20T10:00:00Z", "COMPLETED", capacity = 4)
+        gameCharge(gameGroup, actor, played, 300, "PENDING", owner, dueDate = "2026-07-25")
+        monthlyCharge(deletedGroup, actor, 400, "2026-07-01", "PENDING", owner)
+
+        val ownCharges = requireNotNull(
+            repository().find(
+                actorId = actor,
+                now = Instant.parse("2026-08-01T12:00:00Z"),
+                today = LocalDate.of(2026, 8, 1),
+            ).ownCharges,
+        )
+
+        assertEquals(2, ownCharges.groupCount)
+        assertEquals(1_800, ownCharges.totalCents)
+        assertEquals(listOf("Cobranca A", "Cobranca B"), ownCharges.groups.map { it.groupName })
+
+        val monthly = ownCharges.groups.single { it.groupName == "Cobranca A" }
+        assertEquals(monthlyGroup, monthly.groupId)
+        assertEquals(2, monthly.count)
+        assertEquals(1_500, monthly.totalCents)
+        assertEquals(LocalDate.of(2026, 8, 5), monthly.nextDueDate)
+        assertEquals(false, monthly.overdue)
+        assertEquals("racha@saqz.test", monthly.pixKey)
+        assertEquals("Tesoureiro", monthly.pixLabel)
+        assertEquals(
+            HomeOwnChargeOldest.Monthly(YearMonth.of(2026, 7), LocalDate.of(2026, 8, 15)),
+            monthly.oldest,
+        )
+
+        val byGame = ownCharges.groups.single { it.groupName == "Cobranca B" }
+        assertEquals(1, byGame.count)
+        assertEquals(300, byGame.totalCents)
+        assertEquals(LocalDate.of(2026, 7, 25), byGame.nextDueDate)
+        assertTrue(byGame.overdue)
+        assertNull(byGame.pixKey)
+        assertNull(byGame.pixLabel)
+        assertEquals(
+            HomeOwnChargeOldest.Game(
+                gameId = played,
+                startsAt = Instant.parse("2026-07-20T10:00:00Z"),
+                zoneId = "America/Sao_Paulo",
+                dueDate = LocalDate.of(2026, 7, 25),
+            ),
+            byGame.oldest,
+        )
+    }
+
+    @Test
+    fun treatsAChargeDueTodayInTheBillingZoneAsNotOverdue() {
+        val actor = user("own-today-actor", "Today Actor")
+        val owner = user("own-today-owner", "Today Owner")
+        val group = group("Vence hoje", owner)
+        membership(group, actor)
+        monthlyCharge(group, actor, 500, "2026-08-01", "PENDING", owner, dueDate = "2026-08-01")
+
+        val ownCharges = requireNotNull(
+            repository().find(
+                actorId = actor,
+                now = Instant.parse("2026-08-01T12:00:00Z"),
+                today = LocalDate.of(2026, 8, 1),
+            ).ownCharges,
+        )
+
+        assertEquals(false, ownCharges.groups.single().overdue)
+    }
+
+    @Test
+    fun keepsShowingOwnChargesToWhoLeftTheGroup() {
+        val actor = user("own-left-actor", "Left Actor")
+        val neverJoined = user("own-never-actor", "Never Actor")
+        val owner = user("own-left-owner", "Left Owner")
+        val inactiveGroup = group("Saiu do grupo", owner)
+        val noMembershipGroup = group("Sem vinculo", owner)
+        membership(inactiveGroup, actor, active = false)
+        monthlyCharge(inactiveGroup, actor, 700, "2026-07-01", "PENDING", owner)
+        monthlyCharge(noMembershipGroup, neverJoined, 800, "2026-07-01", "PENDING", owner)
+
+        val left = requireNotNull(ownChargesOf(actor))
+        val never = requireNotNull(ownChargesOf(neverJoined))
+
+        // A cobrança é o vínculo: sair do grupo (ou nunca ter membership) não apaga a dívida.
+        assertEquals(listOf("Saiu do grupo"), left.groups.map { it.groupName })
+        assertEquals(700, left.totalCents)
+        assertEquals(listOf("Sem vinculo"), never.groups.map { it.groupName })
+        assertEquals(800, never.totalCents)
+    }
+
+    @Test
+    fun ranksTheOldestChargeByCompetenceInTheGameOwnZone() {
+        val actor = user("own-zone-actor", "Zone Actor")
+        val owner = user("own-zone-owner", "Zone Owner")
+        val group = group("Fuso do jogo", owner)
+        membership(group, actor)
+
+        // 05:00Z é 31/07 em Los_Angeles (fuso do jogo) e 01/08 tanto em UTC quanto em Sao_Paulo
+        // (fuso do grupo): só a conversão pelo zone_id do jogo coloca o jogo antes da mensalidade.
+        val played = game(group, "2026-08-01T05:00:00Z", "COMPLETED", capacity = 4, zone = "America/Los_Angeles")
+        gameCharge(group, actor, played, 300, "PENDING", owner, dueDate = "2026-08-10")
+        // Vencimento mais cedo que o do jogo: se a competência empatar, o desempate por due_date
+        // elege a mensalidade e o teste falha — em vez de virar moeda no desempate por id.
+        monthlyCharge(group, actor, 600, "2026-08-01", "PENDING", owner, dueDate = "2026-08-05")
+
+        val single = requireNotNull(ownChargesOf(actor)).groups.single()
+
+        assertEquals(2, single.count)
+        assertEquals(900, single.totalCents)
+        assertEquals(LocalDate.of(2026, 8, 5), single.nextDueDate)
+        assertEquals(
+            HomeOwnChargeOldest.Game(
+                gameId = played,
+                startsAt = Instant.parse("2026-08-01T05:00:00Z"),
+                zoneId = "America/Los_Angeles",
+                dueDate = LocalDate.of(2026, 8, 10),
+            ),
+            single.oldest,
+        )
     }
 
     @Test
@@ -129,16 +271,23 @@ class JdbcHomeRepositoryIntegrationTest {
         val home = repository().find(
             actorId = UUID.randomUUID(),
             now = Instant.parse("2026-08-01T12:00:00Z"),
-            currentMonth = YearMonth.of(2026, 8),
+            today = LocalDate.of(2026, 8, 1),
         )
 
         assertTrue(home.member.groups.isEmpty())
         assertNull(home.member.nextGame)
         assertNull(home.member.lastCompletedGame)
         assertNull(home.admin)
+        assertNull(home.ownCharges)
     }
 
     private fun repository() = JdbcHomeRepository(dataSource)
+
+    private fun ownChargesOf(actor: UUID) = repository().find(
+        actorId = actor,
+        now = Instant.parse("2026-08-01T12:00:00Z"),
+        today = LocalDate.of(2026, 8, 1),
+    ).ownCharges
 
     private fun user(subject: String, displayName: String): UUID {
         val id = UUID.randomUUID()
@@ -173,10 +322,16 @@ class JdbcHomeRepositoryIntegrationTest {
         )
     }
 
-    private fun game(group: UUID, startsAt: String, status: String, capacity: Int): UUID {
+    private fun game(
+        group: UUID,
+        startsAt: String,
+        status: String,
+        capacity: Int,
+        zone: String = "America/Sao_Paulo",
+    ): UUID {
         val id = UUID.randomUUID()
         val start = Instant.parse(startsAt)
-        val local = start.atZone(ZoneId.of("America/Sao_Paulo"))
+        val local = start.atZone(ZoneId.of(zone))
         val deadline = start.minusSeconds(86_400)
         val localDate = local.toLocalDate()
         val localTime = local.toLocalTime()
@@ -184,7 +339,7 @@ class JdbcHomeRepositoryIntegrationTest {
             "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline," +
                 "venue_name,venue_address,capacity,status,created_at,updated_at) " +
                 "VALUES ('$id','$group','Home game',DATE '$localDate',TIME '$localTime'," +
-                "'America/Sao_Paulo',TIMESTAMPTZ '$startsAt',90,TIMESTAMPTZ '$deadline','Home court','Home address'," +
+                "'$zone',TIMESTAMPTZ '$startsAt',90,TIMESTAMPTZ '$deadline','Home court','Home address'," +
                 "$capacity,'$status',now(),now())",
         )
         return id
@@ -205,6 +360,10 @@ class JdbcHomeRepositoryIntegrationTest {
         )
     }
 
+    private fun pix(group: UUID, key: String, label: String) {
+        execute("UPDATE access_groups SET pix_key = '$key', pix_label = '$label' WHERE id = '$group'")
+    }
+
     private fun entryRequest(group: UUID, user: UUID) {
         execute("INSERT INTO group_entry_requests (group_id,user_id,requested_at) VALUES ('$group','$user',now())")
     }
@@ -216,13 +375,14 @@ class JdbcHomeRepositoryIntegrationTest {
         billingMonth: String,
         status: String,
         actor: UUID,
+        dueDate: String = billingMonth,
     ) {
         val id = UUID.randomUUID()
         val displayName = memberName(member)
         execute(
             "INSERT INTO group_charges (id,group_id,member_user_id,kind,billing_month,amount_cents,due_date,status," +
                 "created_by_user_id,changed_by_user_id,created_at,updated_at,member_display_name) " +
-                "VALUES ('$id','$group','$member','MONTHLY',DATE '$billingMonth',$amount,DATE '$billingMonth','$status'," +
+                "VALUES ('$id','$group','$member','MONTHLY',DATE '$billingMonth',$amount,DATE '$dueDate','$status'," +
                 "'$actor','$actor',now(),now(),'$displayName')",
         )
     }
@@ -234,13 +394,14 @@ class JdbcHomeRepositoryIntegrationTest {
         amount: Long,
         status: String,
         actor: UUID,
+        dueDate: String = "2026-08-01",
     ) {
         val id = UUID.randomUUID()
         val displayName = memberName(member)
         execute(
             "INSERT INTO group_charges (id,group_id,member_user_id,kind,game_id,amount_cents,due_date,status," +
                 "created_by_user_id,changed_by_user_id,created_at,updated_at,member_display_name) " +
-                "VALUES ('$id','$group','$member','GAME','$game',$amount,DATE '2026-08-01','$status'," +
+                "VALUES ('$id','$group','$member','GAME','$game',$amount,DATE '$dueDate','$status'," +
                 "'$actor','$actor',now(),now(),'$displayName')",
         )
     }

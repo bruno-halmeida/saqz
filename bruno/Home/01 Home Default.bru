@@ -23,6 +23,29 @@ tests {
       expect(res.body.member.lastCompletedGame).to.have.property("zoneId");
     }
   });
+  test("home own charges contract when present", function () {
+    expect(res.body).to.have.property("ownCharges");
+    if (res.body.ownCharges !== null) {
+      expect(res.body.ownCharges.groups).to.be.an("array").that.is.not.empty;
+      expect(res.body.ownCharges.groupCount).to.equal(res.body.ownCharges.groups.length);
+      var total = 0;
+      res.body.ownCharges.groups.forEach(function (group) {
+        expect(group.count).to.be.above(0);
+        expect(group).to.have.property("pixKey");
+        expect(group).to.have.property("pixLabel");
+        expect(group.nextDueDate).to.match(/^\d{4}-\d{2}-\d{2}$/);
+        expect(group.overdue).to.be.a("boolean");
+        expect(group.oldest.kind).to.be.oneOf(["MONTHLY", "GAME"]);
+        if (group.oldest.kind === "MONTHLY") {
+          expect(group.oldest.month).to.match(/^\d{4}-\d{2}$/);
+        } else {
+          expect(group.oldest).to.have.property("gameZoneId");
+        }
+        total += group.totalCents;
+      });
+      expect(res.body.ownCharges.totalCents).to.equal(total);
+    }
+  });
   test("home admin contract when present", function () {
     expect(res.body).to.have.property("admin");
     if (res.body.admin !== null) {

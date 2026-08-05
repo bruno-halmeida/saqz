@@ -9,6 +9,9 @@ import br.com.saqz.groups.application.home.HomeMemberReadModel
 import br.com.saqz.groups.application.home.HomeMonthlyCharges
 import br.com.saqz.groups.application.home.HomeNextGame
 import br.com.saqz.groups.application.home.HomeOwnAttendance
+import br.com.saqz.groups.application.home.HomeOwnChargeGroup
+import br.com.saqz.groups.application.home.HomeOwnChargeOldest
+import br.com.saqz.groups.application.home.HomeOwnChargesReadModel
 import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRepository
 import br.com.saqz.groups.application.home.HomeRosterMember
@@ -20,6 +23,7 @@ import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.util.UUID
 import javax.sql.DataSource
@@ -29,7 +33,8 @@ class JdbcHomeRepository(
 ) : HomeRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun find(actorId: UUID, now: Instant, currentMonth: YearMonth): HomeReadModel {
+    override fun find(actorId: UUID, now: Instant, today: LocalDate): HomeReadModel {
+        val currentMonth = YearMonth.from(today)
         val memberGroups = jdbc.sql(MEMBER_GROUPS)
             .param("actor", actorId)
             .param("now", Timestamp.from(now))
@@ -58,6 +63,11 @@ class JdbcHomeRepository(
             .param("billingMonth", currentMonth.atDay(1))
             .query { rs, row -> mapAdminGroup(rs, row, currentMonth) }
             .list()
+        val ownChargeGroups = jdbc.sql(OWN_CHARGES)
+            .param("actor", actorId)
+            .param("today", today)
+            .query(::mapOwnChargeGroup)
+            .list()
 
         return HomeReadModel(
             member = HomeMemberReadModel(
@@ -66,6 +76,13 @@ class JdbcHomeRepository(
                 groups = memberGroups,
             ),
             admin = adminGroups.takeIf { it.isNotEmpty() }?.let(::HomeAdminReadModel),
+            ownCharges = ownChargeGroups.takeIf { it.isNotEmpty() }?.let {
+                HomeOwnChargesReadModel(
+                    groupCount = it.size,
+                    totalCents = it.sumOf(HomeOwnChargeGroup::totalCents),
+                    groups = it,
+                )
+            },
         )
     }
 
@@ -143,6 +160,28 @@ class JdbcHomeRepository(
             )
         },
     )
+
+    private fun mapOwnChargeGroup(result: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int): HomeOwnChargeGroup {
+        val oldestDueDate = result.getObject("oldest_due_date", LocalDate::class.java)
+        return HomeOwnChargeGroup(
+            groupId = result.getObject("group_id", UUID::class.java),
+            groupName = result.getString("group_name"),
+            count = result.getInt("pending_count"),
+            totalCents = result.getLong("pending_cents"),
+            nextDueDate = result.getObject("next_due_date", LocalDate::class.java),
+            overdue = result.getBoolean("overdue"),
+            pixKey = result.getString("pix_key"),
+            pixLabel = result.getString("pix_label"),
+            oldest = result.getObject("oldest_month", LocalDate::class.java)
+                ?.let { HomeOwnChargeOldest.Monthly(YearMonth.from(it), oldestDueDate) }
+                ?: HomeOwnChargeOldest.Game(
+                    gameId = result.getObject("oldest_game_id", UUID::class.java),
+                    startsAt = result.getTimestamp("oldest_game_starts_at").toInstant(),
+                    zoneId = result.getString("oldest_game_zone_id"),
+                    dueDate = oldestDueDate,
+                ),
+        )
+    }
 
     private fun HomeNextGame.withRoster(rows: List<RosterRow>) = copy(
         rosterPreview = HomeRosterPreview(
@@ -377,6 +416,66 @@ class JdbcHomeRepository(
                 ON settlements.group_id = administered.group_id
                AND settlements.position = 1
             ORDER BY administered.group_name, administered.group_id
+        """
+
+        // Cobranças do próprio ator: a cobrança é o vínculo, então não filtra por membership
+        // (quem saiu do grupo continua devendo). "Mais antiga" é por competência — mês da
+        // mensalidade ou data local do jogo —, e não pela data de vencimento.
+        const val OWN_CHARGES = """
+            WITH pending AS (
+                SELECT charges.id,
+                       charges.group_id,
+                       charges.billing_month,
+                       charges.game_id,
+                       charges.due_date,
+                       charges.amount_cents,
+                       games.starts_at AS game_starts_at,
+                       games.zone_id AS game_zone_id,
+                       row_number() OVER (
+                           PARTITION BY charges.group_id
+                           ORDER BY coalesce(
+                                        charges.billing_month,
+                                        (games.starts_at AT TIME ZONE games.zone_id)::date
+                                    ),
+                                    charges.due_date,
+                                    charges.id
+                       ) AS position
+                FROM group_charges charges
+                LEFT JOIN games
+                    ON games.group_id = charges.group_id
+                   AND games.id = charges.game_id
+                WHERE charges.member_user_id = :actor
+                  AND charges.status = 'PENDING'
+            ),
+            totals AS (
+                SELECT group_id,
+                       count(*) AS pending_count,
+                       sum(amount_cents) AS pending_cents,
+                       min(due_date) AS next_due_date
+                FROM pending
+                GROUP BY group_id
+            )
+            SELECT groups.id AS group_id,
+                   groups.name AS group_name,
+                   groups.pix_key,
+                   groups.pix_label,
+                   totals.pending_count,
+                   totals.pending_cents,
+                   totals.next_due_date,
+                   totals.next_due_date < :today AS overdue,
+                   oldest.billing_month AS oldest_month,
+                   oldest.game_id AS oldest_game_id,
+                   oldest.game_starts_at AS oldest_game_starts_at,
+                   oldest.game_zone_id AS oldest_game_zone_id,
+                   oldest.due_date AS oldest_due_date
+            FROM totals
+            JOIN access_groups groups
+                ON groups.id = totals.group_id
+               AND groups.deleted_at IS NULL
+            JOIN pending oldest
+                ON oldest.group_id = totals.group_id
+               AND oldest.position = 1
+            ORDER BY groups.name, groups.id
         """
     }
 }
