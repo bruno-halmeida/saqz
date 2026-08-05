@@ -75,7 +75,8 @@ class GetMySubscription(
     }
 
     companion object {
-        val PAST_DUE_GRACE: java.time.Duration = java.time.Duration.ofDays(7)
+        /** Mesma carencia do entitlement — fonte unica em [Subscription.PAST_DUE_GRACE]. */
+        val PAST_DUE_GRACE: java.time.Duration = Subscription.PAST_DUE_GRACE
         val CANCELED_GRACE: java.time.Duration = java.time.Duration.ofDays(30)
 
         fun isReadOnly(subscription: Subscription, now: Instant): Boolean = when (subscription.status) {

@@ -1,6 +1,7 @@
 package br.com.saqz.subscriptions.domain
 
 import br.com.saqz.subscriptions.application.AsaasBillingType
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -42,7 +43,26 @@ data class Subscription(
      */
     fun isEntitlingAt(now: Instant): Boolean = when (status) {
         SubscriptionStatus.ACTIVE -> true
-        SubscriptionStatus.PAST_DUE -> firstConfirmedAt != null
+        SubscriptionStatus.PAST_DUE -> firstConfirmedAt != null && withinPastDueGrace(now)
         SubscriptionStatus.CANCELED -> firstConfirmedAt != null && currentPeriodEnd.isAfter(now)
+    }
+
+    /**
+     * Inadimplente mantém o acesso por [PAST_DUE_GRACE] contados do vencimento, e depois perde.
+     * Antes disto a cláusula era só `firstConfirmedAt != null`: quem pagasse uma única vez ficava
+     * com o plano para sempre, sem nunca mais pagar.
+     *
+     * `pastDueSince` nulo são linhas legadas (o campo passou a ser sempre preenchido em
+     * `markPastDue`/`blankSubscription`) — para elas o acesso é preservado, mesma escolha do
+     * `GetMySubscription.isReadOnly`, para não cortar ninguém por dado ausente.
+     */
+    private fun withinPastDueGrace(now: Instant): Boolean {
+        val since = pastDueSince ?: return true
+        return now.isBefore(since.plus(PAST_DUE_GRACE))
+    }
+
+    companion object {
+        /** Carência de inadimplência. Espelhada no intervalo do `JdbcSubscriptionPlanLookup`. */
+        val PAST_DUE_GRACE: Duration = Duration.ofDays(7)
     }
 }
