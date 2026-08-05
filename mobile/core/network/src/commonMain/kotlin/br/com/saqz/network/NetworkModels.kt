@@ -40,7 +40,12 @@ data class NetworkConfig(
 
 @Serializable
 data class ApiProblem(
-    val status: Int = 0,
+    // `status` fica obrigatório de propósito: um corpo qualquer (`{}` de um proxy, por
+    // exemplo) tem que FALHAR o decode e cair em `NetworkError.HttpStatus` — é o status
+    // real do transporte que decide se `retryTransport` re-tenta. Um default aqui faria
+    // `{}` virar `ApiProblem(status=0)`, e um 503 "silencioso" nunca mais seria retentado
+    // (achado do Codex no PR #181: P2 sobre a versão anterior deste arquivo).
+    val status: Int,
     val code: String? = null,
     val correlationId: String? = null,
     val fieldErrors: Map<String, List<String>>? = null,
@@ -48,10 +53,9 @@ data class ApiProblem(
     val remainingAttempts: Int? = null,
     val expiredAt: String? = null,
     val conflictGameId: String? = null,
-    // VUL-196: forma pinada de recusa do Asaas (402 card_declined), shape distinto do
-    // "problem" padrão do backend — sem `status`/`correlationId`. `status`/`correlationId`
-    // ganharam default acima só para este decode não falhar; todo outro caminho do app
-    // continua enviando os dois, então nada muda pra eles.
+    // VUL-196: preenchidos só pelo decode alternativo em `ApiProblemErrorMapper` — a forma
+    // pinada de recusa do Asaas (402 card_declined) não tem `status`/`code`/`correlationId`
+    // nenhum, então nunca decodifica como `ApiProblem` pelo caminho padrão.
     val error: String? = null,
     val reason: String? = null,
     val message: String? = null,

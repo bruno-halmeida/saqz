@@ -337,6 +337,26 @@ class KtorSubscriptionGatewayTest {
     @Test fun `unknown 5xx problem maps server error`() = assertDataError(DataError.Server, problem(503, "UNKNOWN").toSubscriptionError())
     @Test fun `unknown 4xx problem maps unknown error`() = assertDataError(DataError.Unknown, problem(400, "UNKNOWN").toSubscriptionError())
 
+    /**
+     * Achado do Codex no PR #181: uma versão anterior do decode do VUL-196 dava default a
+     * `ApiProblem.status`, e um 503 com corpo genérico (`{}`, sem o "problem" padrão do
+     * backend — o caso real de um proxy na frente da API) decodificava como
+     * `ApiProblem(status=0)` em vez de cair em `HttpStatus(503)`. `isRetryableFailure` só
+     * re-tenta `ApiProblemError` com `status` em 500..599, então esse 503 parava de ser
+     * retentado silenciosamente. Este teste prova que o retry acontece de novo.
+     */
+    @Test
+    fun `plans retries on a 503 with a generic empty body`() = runTest {
+        var calls = 0
+        val result = gateway { request ->
+            calls++
+            if (calls == 1) respond("{}", HttpStatusCode.ServiceUnavailable, jsonHeaders()) else json(PLANS)
+        }.plans()
+
+        assertIs<SaqzResult.Success<List<PlanDetails>>>(result)
+        assertEquals(2, calls)
+    }
+
     @Test
     fun `read retries three times with exact schedule`() = runTest {
         var calls = 0
