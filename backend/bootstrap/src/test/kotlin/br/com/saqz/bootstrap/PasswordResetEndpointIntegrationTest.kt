@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap
 
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
+import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.access.application.passwordreset.PasswordAccounts
 import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
 import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
@@ -20,12 +21,9 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import tools.jackson.databind.ObjectMapper
 import java.net.URI
 import java.net.http.HttpClient
-import java.sql.DriverManager
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Clock
@@ -362,37 +360,23 @@ class PasswordResetEndpointIntegrationTest {
     }
 
     companion object {
-        /**
-         * Esperar a porta aceitar JDBC não é zelo: o container sobe com a porta já
-         * mapeada antes de o Postgres aceitar TCP, e o Flyway do `accessFlyway` conecta
-         * na subida do contexto. Sem a espera, a suíte inteira reprova com "Connection
-         * refused" — mesma razão do `startAndAwaitJdbc` do módulo access.
-         */
-        private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine")).apply {
-            start()
-            val deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos()
-            var ready = false
-            while (!ready && System.nanoTime() < deadline) {
-                ready = runCatching { DriverManager.getConnection(jdbcUrl, username, password).use { } }.isSuccess
-                if (!ready) Thread.sleep(100)
-            }
-            check(ready) { "PostgreSQL port did not become JDBC-ready" }
-        }
+        // TestPostgres.empty() so retorna com o banco aceitando JDBC; o accessFlyway
+        // migra este banco vazio na subida do contexto, como em producao.
+        private val database = TestPostgres.empty()
         private val smtp = GreenMail(ServerSetup(0, "127.0.0.1", ServerSetup.PROTOCOL_SMTP)).apply { start() }
 
         @JvmStatic
         @AfterAll
         fun stopDependencies() {
             smtp.stop()
-            postgres.stop()
         }
 
         @JvmStatic
         @DynamicPropertySource
         fun properties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
+            registry.add("spring.datasource.url") { database.jdbcUrl }
+            registry.add("spring.datasource.username") { database.username }
+            registry.add("spring.datasource.password") { database.password }
             registry.add("saqz.firebase.emulator.enabled") { "true" }
             registry.add("saqz.branch.domain") { "https://join.test" }
             registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }

@@ -5,7 +5,7 @@ plugins {
 group = "br.com.saqz"
 version = "0.1.0-SNAPSHOT"
 
-// O zonky declara binarios de todos os sistemas como dependencia de runtime;
+// O zonky declara o executavel de todos os sistemas como dependencia de runtime;
 // excluimos o grupo inteiro e adicionamos so o artefato do sistema atual para
 // nao baixar centenas de MB de PostgreSQL que nunca rodam aqui.
 val osBinary = run {

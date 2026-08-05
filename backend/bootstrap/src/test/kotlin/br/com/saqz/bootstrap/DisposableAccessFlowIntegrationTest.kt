@@ -10,10 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
+import br.com.saqz.postgrestesting.TestPostgres
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.net.URI
 import java.net.URLDecoder
 import java.net.http.HttpClient
@@ -27,7 +26,6 @@ import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
-import java.sql.DriverManager
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
 import kotlin.test.assertEquals
@@ -77,7 +75,6 @@ class DisposableAccessFlowIntegrationTest {
         state.resolve("pids").readLines().forEach { pid ->
             assertFalse(ProcessHandle.of(pid.toLong()).map(ProcessHandle::isAlive).orElse(false), pid)
         }
-        postgres.stop()
         state.toFile().deleteRecursively()
     }
 
@@ -316,23 +313,16 @@ class DisposableAccessFlowIntegrationTest {
     private fun fixtureLog() = state.resolve("fixture.log").takeIf(Files::exists)?.readText().orEmpty()
 
     companion object {
-        private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine")).apply {
-            start()
-            val deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos()
-            var ready = false
-            while (!ready && System.nanoTime() < deadline) {
-                ready = runCatching { DriverManager.getConnection(jdbcUrl, username, password).use { } }.isSuccess
-                if (!ready) Thread.sleep(100)
-            }
-            check(ready) { "PostgreSQL port did not become JDBC-ready" }
-        }
+        // TestPostgres.empty() so retorna com o banco aceitando JDBC; o accessFlyway
+        // migra este banco vazio na subida do contexto, como em producao.
+        private val database = TestPostgres.empty()
 
         @JvmStatic
         @DynamicPropertySource
         fun postgresProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
+            registry.add("spring.datasource.url") { database.jdbcUrl }
+            registry.add("spring.datasource.username") { database.username }
+            registry.add("spring.datasource.password") { database.password }
             registry.add("saqz.firebase.emulator.enabled") { "true" }
             registry.add("saqz.branch.domain") { "https://join.test" }
             registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }

@@ -13,19 +13,14 @@ import br.com.saqz.groups.adapter.output.jdbc.group.delete.JdbcGroupDeletionRepo
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.delete.DeleteGroup
 import br.com.saqz.sharedkernel.RequestIdentity
-import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.AfterAll
+import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
-import java.sql.DriverManager
-import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -34,23 +29,16 @@ import kotlin.test.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DeleteAccountIntegrationTest {
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"))
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var sessionRepository: JdbcSessionRepository
     private lateinit var deleteAccount: DeleteAccount
 
     @BeforeAll
     fun startDatabase() {
-        postgres.start()
-        awaitDatabase()
-        dataSource = DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate()
+        dataSource = TestPostgres.migrated("classpath:db/migration").dataSource
         sessionRepository = JdbcSessionRepository(dataSource)
         deleteAccount = accountDeletion()
     }
-
-    @AfterAll
-    fun stopDatabase() = postgres.stop()
 
     @BeforeEach
     fun clearData() {
@@ -103,20 +91,6 @@ class DeleteAccountIntegrationTest {
         assertEquals(3, count("SELECT count(*) FROM access_users"))
         assertEquals(0, count("SELECT count(*) FROM game_attendance WHERE member_user_id = '${replacement.user.id}'"))
         assertEquals(0, count("SELECT count(*) FROM group_charges WHERE member_user_id = '${replacement.user.id}'"))
-    }
-
-    private fun awaitDatabase() {
-        val deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos()
-        var lastFailure: Exception? = null
-        while (System.nanoTime() < deadline) {
-            try {
-                DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { return }
-            } catch (failure: Exception) {
-                lastFailure = failure
-                Thread.sleep(100)
-            }
-        }
-        throw IllegalStateException("PostgreSQL did not become ready", lastFailure)
     }
 
     private fun accountDeletion(): DeleteAccount {
