@@ -323,6 +323,29 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `successful response keeps reconciled state when soft refresh fails`() = runTest {
+        val initial = sampleHome(nextGame = sampleNextGame())
+        val attendance = FakeAttendanceGateway(
+            respondResult = SaqzResult.Success(serverMutation(AttendanceStatus.Confirmed, null)),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(initial),
+                SaqzResult.Failure(HomeError.Data(DataError.Server)),
+            ),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(HomeToast.Confirmed, viewModel.state.value.toast)
+        assertFalse(viewModel.state.value.loadFailed)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
     fun `older response cannot overwrite a newer retry generation`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()

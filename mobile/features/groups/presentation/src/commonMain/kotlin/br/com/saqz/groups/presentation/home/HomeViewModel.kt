@@ -98,17 +98,21 @@ class HomeViewModel(
         }
     }
 
-    private fun load() {
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
         responseGeneration++
         update {
-            it.copy(
-                isLoading = true,
-                loadFailed = false,
-                error = null,
-                responding = false,
-                responseFailed = false,
-            )
+            if (softRefresh) {
+                it.copy(loadFailed = false, error = null, responseFailed = false)
+            } else {
+                it.copy(
+                    isLoading = true,
+                    loadFailed = false,
+                    error = null,
+                    responding = false,
+                    responseFailed = false,
+                )
+            }
         }
         viewModelScope.launch {
             val homeRequest = async { homeGateway.read() }
@@ -118,9 +122,13 @@ class HomeViewModel(
             if (generation < loadGeneration) return@launch
 
             when (homeResult) {
-                is SaqzResult.Failure -> showFailure(generation, homeResult.error.toUiError())
+                is SaqzResult.Failure -> if (!softRefresh) {
+                    showFailure(generation, homeResult.error.toUiError())
+                }
                 is SaqzResult.Success -> when (profileResult) {
-                    is SaqzResult.Failure -> showFailure(generation, profileResult.error.toUiError())
+                    is SaqzResult.Failure -> if (!softRefresh) {
+                        showFailure(generation, profileResult.error.toUiError())
+                    }
                     is SaqzResult.Success -> {
                         val member = homeResult.value.member.toUi()
                         if (generation < loadGeneration) return@launch
@@ -203,7 +211,7 @@ class HomeViewModel(
                             toast = actualStatus.toToast(),
                         )
                     }
-                    load()
+                    load(softRefresh = true)
                 }
                 is SaqzResult.Failure -> update {
                     it.copy(
