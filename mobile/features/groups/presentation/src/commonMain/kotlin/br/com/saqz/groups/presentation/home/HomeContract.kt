@@ -24,6 +24,8 @@ data class HomeMemberUi(
     val nextGame: HomeNextGameUi?,
     val lastCompletedGame: HomeLastCompletedGameUi?,
     val groups: List<HomeGroupUi>,
+    val admin: HomeAdminReadModelUi? = null,
+    val adminSubtitle: String? = null,
 )
 
 /**
@@ -67,6 +69,9 @@ data class HomeNextGameUi(
     val waitlistedRoster: List<HomeWaitlistRowUi> = emptyList(),
     val confirmedCountTotal: Int = 0,
     val deadlineBellLabel: String = "",
+    val declinedCount: Int = 0,
+    val pendingCount: Int = 0,
+    val adminHeroDeadlineLabel: String = "",
 )
 
 @Immutable
@@ -82,12 +87,49 @@ data class HomeGroupUi(
     val id: String,
     val name: String,
     val meta: String,
+    val isAdmin: Boolean = false,
 )
 
 enum class HomeToast {
     Confirmed,
     Declined,
     Waitlisted,
+}
+
+@Immutable
+data class HomeMonthlyChargesUi(
+    val count: Int,
+    val formattedTotal: String,
+    val month: String,
+)
+
+@Immutable
+data class HomeGameToSettleUi(
+    val gameId: String,
+    val formattedDate: String,
+    val diaristCount: Int,
+    val formattedTotal: String,
+)
+
+@Immutable
+data class HomeAdminGroupUi(
+    val id: String,
+    val name: String,
+    val entryRequestCount: Int,
+    val monthlyCharges: HomeMonthlyChargesUi?,
+    val gameToSettle: HomeGameToSettleUi?,
+)
+
+@Immutable
+data class HomeAdminReadModelUi(
+    val groups: List<HomeAdminGroupUi>,
+) {
+    val totalPendingItems: Int
+        get() = groups.sumOf { group ->
+            (if (group.entryRequestCount > 0) 1 else 0) +
+                (if (group.monthlyCharges != null) 1 else 0) +
+                (if (group.gameToSettle != null) 1 else 0)
+        }
 }
 
 sealed interface HomeIntent {
@@ -97,10 +139,20 @@ sealed interface HomeIntent {
     data object OpenGroups : HomeIntent
     data class OpenGroup(val groupId: String) : HomeIntent
     data class OpenGame(val groupId: String, val gameId: String) : HomeIntent
+    data class OpenMembers(val groupId: String) : HomeIntent
+    data class OpenCashbox(val groupId: String) : HomeIntent
+    data class OpenGameSettlement(val groupId: String, val gameId: String) : HomeIntent
+    data class OpenGameEditor(val groupId: String) : HomeIntent
+    data class OpenInvite(val groupId: String) : HomeIntent
 }
 
 sealed interface HomeEffect {
     data object OpenGroups : HomeEffect
     data class OpenGroup(val groupId: String) : HomeEffect
     data class OpenGame(val groupId: String, val gameId: String) : HomeEffect
+    data class OpenMembers(val groupId: String) : HomeEffect
+    data class OpenCashbox(val groupId: String) : HomeEffect
+    data class OpenGameSettlement(val groupId: String, val gameId: String) : HomeEffect
+    data class OpenGameEditor(val groupId: String) : HomeEffect
+    data class OpenInvite(val groupId: String) : HomeEffect
 }

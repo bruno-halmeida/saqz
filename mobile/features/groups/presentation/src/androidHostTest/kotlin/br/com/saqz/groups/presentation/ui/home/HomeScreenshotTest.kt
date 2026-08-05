@@ -6,6 +6,10 @@ import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
+import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
+import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
+import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
+import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
@@ -28,6 +32,7 @@ import org.robolectric.annotation.GraphicsMode
     qualifiers = RobolectricDeviceQualifiers.Pixel7,
     application = Application::class,
 )
+@Suppress("TooManyFunctions")
 class HomeScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
@@ -62,14 +67,31 @@ class HomeScreenshotTest {
     @Test
     fun empty() = capture("home-empty", state(nextGame = null))
 
+    @Test
+    fun adminWithPendingItems() = captureAdmin("home-admin-pending", adminState())
+
+    @Test
+    fun adminWithoutPendingItems() = captureAdmin("home-admin-empty", adminState(withPendingItems = false))
+
+    @Test
+    fun adminAndMemberMixed() = captureAdmin("home-admin-member-mixed", mixedAdminState())
+
     private fun capture(name: String, state: HomeState) {
+        capture(name, state, "vul-191")
+    }
+
+    private fun captureAdmin(name: String, state: HomeState) {
+        capture(name, state, "vul-192")
+    }
+
+    private fun capture(name: String, state: HomeState, directory: String) {
         compose.setContent {
             SaqzTheme {
                 HomeScreen(state = state, onIntent = {})
             }
         }
         compose.waitForIdle()
-        compose.onRoot().captureRoboImage("screenshots/vul-191/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 
     private fun state(
@@ -129,5 +151,72 @@ class HomeScreenshotTest {
             HomeWaitlistRowUi(name = "Tiago Moraes", position = 3, isSelf = false),
         ),
         confirmedCountTotal = 9,
+    )
+
+    private fun adminState(withPendingItems: Boolean = true): HomeState {
+        val admin = HomeAdminGroupUi(
+            id = "ceret",
+            name = "Vôlei do CERET",
+            entryRequestCount = if (withPendingItems) 3 else 0,
+            monthlyCharges = if (withPendingItems) {
+                HomeMonthlyChargesUi(count = 2, formattedTotal = "R$ 640,00", month = "JUL")
+            } else {
+                null
+            },
+            gameToSettle = if (withPendingItems) {
+                HomeGameToSettleUi(
+                    gameId = "game-1",
+                    formattedDate = "28/07",
+                    diaristCount = 4,
+                    formattedTotal = "R$ 320,00",
+                )
+            } else {
+                null
+            },
+        )
+        val memberState = state().copy(
+            member = checkNotNull(state().member).copy(
+                nextGame = checkNotNull(state().member).nextGame?.copy(
+                    declinedCount = 1,
+                    pendingCount = 2,
+                    adminHeroDeadlineLabel = "Encerra 28/07 · 18h",
+                ),
+            ),
+        )
+        return memberState.copy(
+            member = checkNotNull(memberState.member).copy(
+                groups = checkNotNull(memberState.member).groups.map { group ->
+                    if (group.id == "ceret") group.copy(isAdmin = true) else group
+                },
+                subtitle = if (withPendingItems) {
+                    "2 grupos · 3 coisas esperando você"
+                } else {
+                    "Terça tem jogo. Confirma?"
+                },
+                adminSubtitle = if (withPendingItems) "2 grupos · 3 coisas esperando você" else null,
+                admin = HomeAdminReadModelUi(listOf(admin)),
+            ),
+        )
+    }
+
+    private fun mixedAdminState() = state().copy(
+        member = checkNotNull(state().member).copy(
+            subtitle = "2 grupos · 1 coisas esperando você",
+            adminSubtitle = "2 grupos · 1 coisas esperando você",
+            groups = checkNotNull(state().member).groups.map { group ->
+                if (group.id == "pacaembu") group.copy(isAdmin = true) else group
+            },
+            admin = HomeAdminReadModelUi(
+                listOf(
+                    HomeAdminGroupUi(
+                        id = "pacaembu",
+                        name = "Vôlei Pacaembu",
+                        entryRequestCount = 1,
+                        monthlyCharges = null,
+                        gameToSettle = null,
+                    ),
+                ),
+            ),
+        ),
     )
 }

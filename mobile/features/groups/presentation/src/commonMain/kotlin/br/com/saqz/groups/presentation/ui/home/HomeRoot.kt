@@ -13,6 +13,11 @@ fun HomeRoot(
     onOpenGroup: (String) -> Unit = {},
     onOpenGroups: () -> Unit = {},
     onOpenGame: (String, String) -> Unit = { _, _ -> },
+    onOpenMembers: (String) -> Unit = {},
+    onOpenCashbox: (String) -> Unit = {},
+    onOpenGameSettlement: (String, String) -> Unit = { _, _ -> },
+    onOpenGameEditor: (String) -> Unit = {},
+    onOpenInvite: (String) -> Unit = {},
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -21,6 +26,11 @@ fun HomeRoot(
             HomeEffect.OpenGroups -> onOpenGroups()
             is HomeEffect.OpenGroup -> onOpenGroup(effect.groupId)
             is HomeEffect.OpenGame -> onOpenGame(effect.groupId, effect.gameId)
+            is HomeEffect.OpenMembers -> onOpenMembers(effect.groupId)
+            is HomeEffect.OpenCashbox -> onOpenCashbox(effect.groupId)
+            is HomeEffect.OpenGameSettlement -> onOpenGameSettlement(effect.groupId, effect.gameId)
+            is HomeEffect.OpenGameEditor -> onOpenGameEditor(effect.groupId)
+            is HomeEffect.OpenInvite -> onOpenInvite(effect.groupId)
         }
     }
     HomeScreen(state = state, onIntent = viewModel::onIntent)
