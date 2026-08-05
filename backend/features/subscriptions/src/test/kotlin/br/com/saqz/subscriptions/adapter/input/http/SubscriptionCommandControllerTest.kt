@@ -90,14 +90,15 @@ class SubscriptionCommandControllerTest {
     }
 
     @Test
-    fun `credit card declined by asaas maps to its own exception with the mapped reason`() {
+    fun `credit card declined by asaas maps to its own exception with the asaas code as reason`() {
         val controller = controllerForNewSubscription(DecliningAsaasGateway)
 
         val error = assertThrows<CreditCardDeclinedException> {
             controller.create(identity, cardRequest(), MockHttpServletRequest())
         }
 
-        assertEquals("INVALID_CARD_DATA", error.reason)
+        assertEquals("invalid_creditCard", error.reason)
+        assertEquals("Transação não autorizada.", error.description)
     }
 
     @Test

@@ -45,8 +45,12 @@ sealed interface CreateSubscriptionResult {
     data object InvalidCustomerDetails : CreateSubscriptionResult
     data class InvalidCreditCardDetails(val fieldErrors: Map<String, List<String>>) : CreateSubscriptionResult
 
-    /** Cartão recusado pela Asaas — motivo mapeado do código de recusa, nunca dado de cartão. */
-    data class CardDeclined(val reason: CardDeclineReason, val asaasDescription: String) : CreateSubscriptionResult
+    /**
+     * Cartão recusado pela Asaas. `reason` é o código de recusa da Asaas repassado como veio
+     * (ex.: "invalid_creditCard") — contrato pinado com o mobile (VUL-196), não inventar um
+     * enum próprio aqui. `asaasDescription` já vem em PT-BR da Asaas.
+     */
+    data class CardDeclined(val reason: String, val asaasDescription: String) : CreateSubscriptionResult
 
     /** An unconfirmed subscription is pending for a DIFFERENT plan/cycle than this request. */
     data object PendingCheckoutMismatch : CreateSubscriptionResult
@@ -105,10 +109,7 @@ class CreateSubscription(
                 }
             }
         } catch (ex: CardDeclinedException) {
-            return CreateSubscriptionResult.CardDeclined(
-                reason = CardDeclineReason.fromAsaasCode(ex.asaasCode),
-                asaasDescription = ex.asaasDescription,
-            )
+            return CreateSubscriptionResult.CardDeclined(reason = ex.asaasCode, asaasDescription = ex.asaasDescription)
         }
 
         val committed = when (outcome) {

@@ -6,6 +6,7 @@ import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.subscriptions.adapter.input.http.CreditCardDeclinedException
 import br.com.saqz.subscriptions.adapter.input.http.ReceiptController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver
 import br.com.saqz.subscriptions.application.ListReceipts
@@ -107,6 +108,22 @@ class SafeDiagnosticsIntegrationTest {
         val response = get("/test/invalid-receipt-pagination", "pagination-secret-token")
 
         assertProblem(response, 400, "VALIDATION_FAILED")
+    }
+
+    @Test
+    fun `card declined has the shape pinned with the mobile client (VUL-196), not the generic problem`() {
+        verifier.result = TokenVerification.Verified(RequestIdentity("card-declined-subject"))
+
+        val response = get("/test/card-declined", "card-declined-token")
+
+        assertEquals(402, response.statusCode())
+        assertEquals("application/json", response.headers().firstValue("Content-Type").get())
+        val body = objectMapper.readTree(response.body())
+        assertEquals("card_declined", body["error"].stringValue())
+        assertEquals("invalid_creditCard", body["reason"].stringValue())
+        assertEquals("Transação não autorizada. Verifique os dados do cartão.", body["message"].stringValue())
+        assertFalse(body.has("status"))
+        assertFalse(body.has("correlationId"))
     }
 
     @Test
@@ -323,6 +340,12 @@ class SafeDiagnosticsIntegrationTest {
 
         @GetMapping("/test/invalid-receipt-pagination")
         fun invalidReceiptPagination(): Nothing = throw InvalidReceiptPaginationException()
+
+        @GetMapping("/test/card-declined")
+        fun cardDeclined(): Nothing = throw CreditCardDeclinedException(
+            reason = "invalid_creditCard",
+            description = "Transação não autorizada. Verifique os dados do cartão.",
+        )
 
         @PostMapping("/test/unexpected")
         fun failWithBody(): Nothing = error("unexpected failure")

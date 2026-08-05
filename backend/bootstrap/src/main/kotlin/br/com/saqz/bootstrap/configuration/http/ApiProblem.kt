@@ -15,6 +15,4 @@ data class ApiProblem(
     val remainingAttempts: Int? = null,
     val expiredAt: Instant? = null,
     val conflictGameId: String? = null,
-    /** Motivo mapeado do código de recusa da Asaas — nunca dado de cartão. */
-    val cardDeclineReason: String? = null,
 )

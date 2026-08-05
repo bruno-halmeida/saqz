@@ -130,7 +130,7 @@ class CreateSubscriptionTest {
         val result = useCase.execute(cardCommand())
 
         val declined = assertIs<CreateSubscriptionResult.CardDeclined>(result)
-        assertEquals(CardDeclineReason.INVALID_CARD_DATA, declined.reason)
+        assertEquals("invalid_creditCard", declined.reason)
         assertEquals("Transação não autorizada.", declined.asaasDescription)
         assertNull(subscriptions.findByOwnerUserId(ownerId))
         assertTrue(creditCardTokens.saved.isEmpty())

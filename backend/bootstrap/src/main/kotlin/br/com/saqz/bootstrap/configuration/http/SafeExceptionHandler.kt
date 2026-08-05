@@ -467,19 +467,13 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 409, ErrorCode.DOWNGRADE_BLOCKED)
     }
 
+    /** Shape pinado com o mobile (VUL-196) — não o `ApiProblem` genérico. Ver [ApiProblemWriter.writeCardDeclined]. */
     @ExceptionHandler(CreditCardDeclinedException::class)
     fun creditCardDeclined(
         failure: CreditCardDeclinedException,
-        request: HttpServletRequest,
         response: HttpServletResponse,
     ) {
-        problemWriter.write(
-            request,
-            response,
-            402,
-            ErrorCode.CARD_DECLINED,
-            cardDeclineReason = failure.reason,
-        )
+        problemWriter.writeCardDeclined(response, failure.reason, failure.description)
     }
 
     /**

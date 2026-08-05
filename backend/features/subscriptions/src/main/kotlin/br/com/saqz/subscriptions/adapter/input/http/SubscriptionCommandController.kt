@@ -114,7 +114,11 @@ class CouponExpiredException : RuntimeException()
 class CouponAlreadyRedeemedException : RuntimeException()
 class DowngradeBlockedException : RuntimeException()
 
-/** Cartão recusado pela Asaas — carrega só o motivo mapeado e a descrição, nunca dado de cartão. */
+/**
+ * Cartão recusado pela Asaas. `reason` é o código de recusa da Asaas (ex.: "invalid_creditCard"),
+ * `description` a mensagem PT-BR da Asaas — nunca dado de cartão. Vira o 402 pinado com o mobile
+ * (VUL-196) em [br.com.saqz.bootstrap.configuration.http.SafeExceptionHandler].
+ */
 class CreditCardDeclinedException(
     val reason: String,
     val description: String,
@@ -196,7 +200,7 @@ class SubscriptionCommandController(
             is CreateSubscriptionResult.InvalidCreditCardDetails ->
                 throw InvalidSubscriptionRequestException(result.fieldErrors)
             is CreateSubscriptionResult.CardDeclined ->
-                throw CreditCardDeclinedException(result.reason.name, result.asaasDescription)
+                throw CreditCardDeclinedException(result.reason, result.asaasDescription)
         }
     }
 
