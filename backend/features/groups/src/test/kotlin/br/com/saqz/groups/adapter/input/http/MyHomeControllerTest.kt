@@ -46,6 +46,7 @@ class MyHomeControllerTest {
         assertEquals(group, response.member.nextGame?.groupId)
         assertEquals(nextGame, response.member.nextGame?.gameId)
         assertEquals("Quadra Central", response.member.nextGame?.local)
+        assertEquals("America/Sao_Paulo", response.member.nextGame?.zoneId)
         assertEquals(now.plusSeconds(3_600), response.member.nextGame?.startsAt)
         assertEquals(now, response.member.nextGame?.confirmationDeadline)
         assertEquals(12, response.member.nextGame?.capacity)
@@ -73,6 +74,7 @@ class MyHomeControllerTest {
                 groupId = group,
                 groupName = "Grupo Praia",
                 gameId = completedGame,
+                zoneId = "America/Sao_Paulo",
                 startsAt = now.minusSeconds(86_400),
                 confirmedCount = 10,
                 ownPlayed = true,
@@ -126,6 +128,7 @@ class MyHomeControllerTest {
                             groupName = "Grupo Praia",
                             gameId = nextGame,
                             local = "Quadra Central",
+                            zoneId = "America/Sao_Paulo",
                             startsAt = now.plusSeconds(3_600),
                             confirmationDeadline = now,
                             capacity = 12,
@@ -145,6 +148,7 @@ class MyHomeControllerTest {
                             groupId = group,
                             groupName = "Grupo Praia",
                             gameId = completedGame,
+                            zoneId = "America/Sao_Paulo",
                             startsAt = now.minusSeconds(86_400),
                             confirmedCount = 10,
                             ownPlayed = true,

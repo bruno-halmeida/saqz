@@ -39,9 +39,11 @@ class KtorHomeGatewayTest {
         assertEquals(26, home.member.groups.single().memberCount)
         assertEquals("game-1", home.member.nextGame?.gameId)
         assertEquals("Quadra do Ibirapuera", home.member.nextGame?.local)
+        assertEquals("America/Sao_Paulo", home.member.nextGame?.zoneId)
         assertEquals("WAITLISTED", home.member.nextGame?.ownAttendance?.status?.name?.uppercase())
         assertEquals(3L, home.member.nextGame?.rosterPreview?.waitlisted?.single()?.waitlistPosition)
         assertEquals("game-0", home.member.lastCompletedGame?.gameId)
+        assertEquals("America/Sao_Paulo", home.member.lastCompletedGame?.zoneId)
         assertEquals(1, home.admin?.groups?.single()?.entryRequestCount)
         assertEquals(2400L, home.admin?.groups?.single()?.monthlyCharges?.totalCents)
         assertEquals("game-2", home.admin?.groups?.single()?.gameToSettle?.gameId)
@@ -99,6 +101,7 @@ class KtorHomeGatewayTest {
                   "groupName": "Vôlei do CERET",
                   "gameId": "game-1",
                   "local": "Quadra do Ibirapuera",
+                  "zoneId": "America/Sao_Paulo",
                   "startsAt": "2026-08-12T22:30:00Z",
                   "confirmationDeadline": "2026-08-12T18:30:00Z",
                   "capacity": 12,
@@ -118,6 +121,7 @@ class KtorHomeGatewayTest {
                   "groupId": "group-1",
                   "groupName": "Vôlei do CERET",
                   "gameId": "game-0",
+                  "zoneId": "America/Sao_Paulo",
                   "startsAt": "2026-08-05T22:30:00Z",
                   "confirmedCount": 10,
                   "ownPlayed": true

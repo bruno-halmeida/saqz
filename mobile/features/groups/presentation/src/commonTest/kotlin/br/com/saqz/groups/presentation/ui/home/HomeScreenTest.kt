@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.home
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -90,6 +91,14 @@ class HomeScreenTest {
         onNodeWithText("Lista de espera").assertIsDisplayed()
         onAllNodesWithText("Vou").assertCountEquals(0)
         onAllNodesWithText("Não vou").assertCountEquals(0)
+    }
+
+    @Test
+    fun `closed confirmation deadline disables the two response buttons`() = runComposeUiTest {
+        setScreen(nextGameState(nextGame = nextGame().copy(confirmationOpen = false)))
+
+        onNodeWithText("Vou").assertIsNotEnabled()
+        onNodeWithText("Não vou").assertIsNotEnabled()
     }
 
     @Test

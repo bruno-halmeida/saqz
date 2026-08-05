@@ -71,6 +71,26 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `formats game date and time in the game's timezone`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(
+                            startsAt = "2026-08-12T22:30:00Z",
+                            confirmationDeadline = "2026-08-12T21:00:00Z",
+                            zoneId = "America/Sao_Paulo",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("Qua, 12/08 · 19h30", viewModel.state.value.member?.nextGame?.dateTime)
+        assertEquals("19h30", viewModel.state.value.member?.nextGame?.time)
+    }
+
+    @Test
     fun `waitlisted home formats the waitlist subtitle`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
@@ -193,6 +213,32 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `closed confirmation deadline does not mutate or send attendance response`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(
+                            confirmationDeadline = "2026-07-28T11:00:00Z",
+                        ),
+                    ),
+                ),
+            ),
+            attendanceGateway = attendance,
+        )
+
+        assertFalse(viewModel.state.value.member?.nextGame?.confirmationOpen == true)
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(0, attendance.respondCalls)
+        assertFalse(viewModel.state.value.responding)
+        assertFalse(viewModel.state.value.responseFailed)
+    }
+
+    @Test
     fun `older response cannot overwrite a newer retry generation`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()
@@ -268,13 +314,17 @@ private fun sampleHome(
 
 private fun sampleNextGame(
     attendance: HomeOwnAttendance? = null,
+    startsAt: String = "2026-07-28T19:30:00-03:00",
+    confirmationDeadline: String = "2026-07-28T18:00:00-03:00",
+    zoneId: String = "America/Sao_Paulo",
 ) = HomeNextGame(
     groupId = GroupId("group-1"),
     groupName = "Vôlei do CERET",
     gameId = "game-1",
     local = "CERET — Quadra 2 · Tatuapé",
-    startsAt = "2026-07-28T19:30:00-03:00",
-    confirmationDeadline = "2026-07-28T18:00:00-03:00",
+    zoneId = zoneId,
+    startsAt = startsAt,
+    confirmationDeadline = confirmationDeadline,
     capacity = 12,
     confirmedCount = 9,
     declinedCount = 1,

@@ -41,6 +41,7 @@ data class HomeNextGameUi(
     val ownAttendance: AttendanceStatus?,
     val weekday: String,
     val time: String,
+    val confirmationOpen: Boolean = true,
 )
 
 @Immutable

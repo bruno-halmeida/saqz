@@ -12,8 +12,8 @@
     <string name="home_subtitle_no_game">Semana sem jogo por aqui.</string>
     <string name="home_game_date_time">%1$s, %2$s · %3$s</string>
     <string name="home_game_next">PRÓXIMO JOGO</string>
-    <string name="home_date">%1$02d/%2$02d</string>
-    <string name="home_time">%1$02dh%2$02d</string>
+    <string name="home_date">%1$s/%2$s</string>
+    <string name="home_time">%1$sh%2$s</string>
     <string name="home_deadline_today">As confirmações encerram hoje às %1$s.</string>
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>

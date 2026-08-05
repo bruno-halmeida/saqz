@@ -271,7 +271,7 @@ private fun HomeHero(
                         danger = false,
                         selected = game.ownAttendance == AttendanceStatus.Confirmed,
                         loading = responding && game.ownAttendance == AttendanceStatus.Confirmed,
-                        enabled = !responding,
+                        enabled = game.confirmationOpen && !responding,
                         modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
                         onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
                     )
@@ -280,7 +280,7 @@ private fun HomeHero(
                         danger = true,
                         selected = game.ownAttendance == AttendanceStatus.Declined,
                         loading = responding && game.ownAttendance == AttendanceStatus.Declined,
-                        enabled = !responding,
+                        enabled = game.confirmationOpen && !responding,
                         modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
                         onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
                     )

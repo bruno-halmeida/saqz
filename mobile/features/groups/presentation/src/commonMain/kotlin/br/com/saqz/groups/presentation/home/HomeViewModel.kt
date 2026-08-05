@@ -145,7 +145,8 @@ class HomeViewModel(
         val current = state.value
         val game = current.home?.member?.nextGame ?: return
         val member = current.member ?: return
-        if (current.responding || game.ownAttendance?.status == AttendanceStatus.Waitlisted) return
+        val gameUi = member.nextGame ?: return
+        if (current.responding || !gameUi.confirmationOpen || game.ownAttendance?.status == AttendanceStatus.Waitlisted) return
 
         val generation = ++responseGeneration
         val loadAtStart = loadGeneration
@@ -163,7 +164,7 @@ class HomeViewModel(
                     ),
                 ),
                 member = previousMember.copy(
-                    nextGame = previousMember.nextGame?.copy(ownAttendance = optimisticStatus),
+                    nextGame = gameUi.copy(ownAttendance = optimisticStatus),
                 ),
                 responding = true,
                 responseFailed = false,
@@ -199,8 +200,7 @@ class HomeViewModel(
     }
 
     private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi {
-        val zone = TimeZone.currentSystemDefault()
-        val nextGameUi = nextGame?.toUi(zone)
+        val nextGameUi = nextGame?.toUi()
         return HomeMemberUi(
             subtitle = when {
                 nextGameUi == null -> getString(Res.string.home_subtitle_no_game)
@@ -220,23 +220,25 @@ class HomeViewModel(
                 else -> getString(Res.string.home_subtitle_no_response, nextGameUi.weekday.capitalized())
             },
             nextGame = nextGameUi,
-            lastCompletedGame = lastCompletedGame?.toUi(zone),
+            lastCompletedGame = lastCompletedGame?.toUi(),
             groups = groups.map { it.toUi() },
         )
     }
 
-    private suspend fun HomeNextGame.toUi(zone: TimeZone): HomeNextGameUi {
+    private suspend fun HomeNextGame.toUi(): HomeNextGameUi {
+        val zone = gameTimeZone(zoneId)
+        val deadlineInstant = runCatching { Instant.parse(confirmationDeadline) }.getOrNull()
         val startsAtLocal = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
-        val deadline = runCatching { Instant.parse(confirmationDeadline).toLocalDateTime(zone) }.getOrNull()
+        val deadline = deadlineInstant?.toLocalDateTime(zone)
         val dateTime = startsAtLocal?.let {
             getString(
                 Res.string.home_game_date_time,
                 getString(it.date.dayOfWeek.shortResource()),
-                getString(Res.string.home_date, it.day, it.month.ordinal + 1),
-                getString(Res.string.home_time, it.hour, it.minute),
+                getString(Res.string.home_date, it.day.twoDigits(), (it.month.ordinal + 1).twoDigits()),
+                getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()),
             )
         } ?: startsAt
-        val time = startsAtLocal?.let { getString(Res.string.home_time, it.hour, it.minute) } ?: startsAt
+        val time = startsAtLocal?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
         val weekday = startsAtLocal?.let { getString(it.date.dayOfWeek.longResource()) } ?: ""
         return HomeNextGameUi(
             groupId = groupId.value,
@@ -244,20 +246,23 @@ class HomeViewModel(
             groupName = groupName,
             dateTime = dateTime,
             local = local,
-            deadline = deadlineLabel(deadline),
+            deadline = deadlineLabel(deadline, zone),
             confirmedSummary = getString(Res.string.home_confirmed_summary, confirmedCount, capacity),
             confirmedCount = confirmedCount,
             capacity = capacity,
             rosterNames = rosterPreview.confirmed.map { it.displayName },
             ownAttendance = ownAttendance?.status,
+            confirmationOpen = deadlineInstant?.let { now.now() < it } == true,
             weekday = weekday,
             time = time,
         )
     }
 
-    private suspend fun HomeLastCompletedGame.toUi(zone: TimeZone): HomeLastCompletedGameUi {
-        val local = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
-        val time = local?.let { getString(Res.string.home_time, it.hour, it.minute) } ?: startsAt
+    private suspend fun HomeLastCompletedGame.toUi(): HomeLastCompletedGameUi {
+        val local = runCatching {
+            Instant.parse(startsAt).toLocalDateTime(gameTimeZone(zoneId))
+        }.getOrNull()
+        val time = local?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
         val month = local?.let { getString((it.month.ordinal + 1).monthResource()) } ?: ""
         return HomeLastCompletedGameUi(
             day = local?.day?.toString() ?: startsAt,
@@ -277,21 +282,26 @@ class HomeViewModel(
         meta = getString(Res.string.home_group_meta, memberCount, gamesPlayed),
     )
 
-    private suspend fun deadlineLabel(deadline: kotlinx.datetime.LocalDateTime?): String {
+    private suspend fun deadlineLabel(deadline: kotlinx.datetime.LocalDateTime?, zone: TimeZone): String {
         if (deadline == null) return ""
-        val today = now.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val today = now.now().toLocalDateTime(zone).date
         val date = deadline.date
-        val time = getString(Res.string.home_time, deadline.hour, deadline.minute)
+        val time = getString(Res.string.home_time, deadline.hour.twoDigits(), deadline.minute.twoDigits())
         return when {
             date == today -> getString(Res.string.home_deadline_today, time)
             date == today.plus(kotlinx.datetime.DatePeriod(days = 1)) -> getString(Res.string.home_deadline_tomorrow, time)
             else -> getString(
                 Res.string.home_deadline_date,
-                getString(Res.string.home_date, date.day, date.month.ordinal + 1),
+                getString(Res.string.home_date, date.day.twoDigits(), (date.month.ordinal + 1).twoDigits()),
                 time,
             )
         }
     }
+
+    private fun gameTimeZone(zoneId: String): TimeZone =
+        runCatching { TimeZone.of(zoneId) }.getOrDefault(TimeZone.UTC)
+
+    private fun Int.twoDigits() = toString().padStart(2, '0')
 
     private fun String.firstName() = trim().substringBefore(' ').ifBlank { trim() }
 
