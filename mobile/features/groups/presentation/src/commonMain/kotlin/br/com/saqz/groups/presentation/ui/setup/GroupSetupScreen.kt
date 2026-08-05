@@ -42,6 +42,8 @@ import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.validate
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_pix_error_key
+import br.com.saqz.groups.resources.group_pix_error_label
 import br.com.saqz.groups.resources.group_setup_create_action
 import br.com.saqz.groups.resources.group_setup_create_title
 import br.com.saqz.groups.resources.group_setup_delete_action
@@ -75,6 +77,8 @@ internal object GroupSetupTags {
     const val MensalistaPriority = "group-game-config-mensalista-priority"
     const val PromotionMode = "group-game-config-promotion-mode"
     const val AutoConfirm = "group-game-config-auto-confirm"
+    const val PixKey = "group-setup-pix-key"
+    const val PixLabel = "group-setup-pix-label"
     const val VenueName = "group-setup-venue-name"
     const val VenueAddress = "group-setup-venue-address"
     const val Recurrence = "group-setup-recurrence"
@@ -268,6 +272,14 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
             onPromotionModeSelect = { onIntent(GroupSetupIntent.SelectPromotionMode(it)) },
             onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
             onAutoConfirmChange = { onIntent(GroupSetupIntent.ToggleAutoConfirm(it)) },
+        )
+        GroupPixSection(
+            pixKey = state.pixKey,
+            pixLabel = state.pixLabel,
+            pixKeyError = state.errorText(GroupSetupError.PixKeyTooShort, Res.string.group_pix_error_key),
+            pixLabelError = state.errorText(GroupSetupError.PixLabelTooShort, Res.string.group_pix_error_label),
+            onPixKeyChange = { onIntent(GroupSetupIntent.UpdatePixKey(it)) },
+            onPixLabelChange = { onIntent(GroupSetupIntent.UpdatePixLabel(it)) },
         )
     }
 }

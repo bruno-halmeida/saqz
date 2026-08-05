@@ -1,0 +1,26 @@
+meta {
+  name: Home
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/me/home
+  body: none
+  auth: bearer
+}
+auth:bearer { token: {{idToken}} }
+tests {
+  test("home member contract", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.member).to.exist;
+    expect(res.body.member.groups).to.be.an("array");
+    expect(res.body.member).to.have.property("nextGame");
+    expect(res.body.member).to.have.property("lastCompletedGame");
+  });
+  test("home admin contract when present", function () {
+    expect(res.body).to.have.property("admin");
+    if (res.body.admin !== null) {
+      expect(res.body.admin.groups).to.be.an("array");
+    }
+  });
+}

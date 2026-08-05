@@ -79,8 +79,14 @@ class JdbcGroupSettingsRepository(
                 mensalista_priority = COALESCE(CAST(:mensalistaPriority AS boolean), mensalista_priority),
                 promotion_mode = COALESCE(:promotionMode, promotion_mode),
                 auto_confirm_enabled = COALESCE(CAST(:autoConfirmEnabled AS boolean), auto_confirm_enabled),
-                pix_key = COALESCE(:pixKey, pix_key),
-                pix_label = COALESCE(:pixLabel, pix_label),
+                pix_key = CASE
+                    WHEN CAST(:pixKey AS varchar) IS NULL THEN pix_key
+                    ELSE NULLIF(BTRIM(CAST(:pixKey AS varchar)), '')
+                END,
+                pix_label = CASE
+                    WHEN CAST(:pixLabel AS varchar) IS NULL THEN pix_label
+                    ELSE NULLIF(BTRIM(CAST(:pixLabel AS varchar)), '')
+                END,
                 entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
                 default_venue_id = null,
                 version = version + 1,
@@ -108,8 +114,6 @@ class JdbcGroupSettingsRepository(
             .param("mensalistaPriority", profile.mensalistaPriority)
             .param("promotionMode", profile.promotionMode?.name)
             .param("autoConfirmEnabled", profile.autoConfirmEnabled)
-            // ponytail: campo omitido preserva o Pix armazenado (mesma regra da config de jogos);
-            // para trocar, mande a chave nova — este contrato não expõe limpar.
             .param("pixKey", profile.pixKey)
             .param("pixLabel", profile.pixLabel)
             .param("entryRequiresApproval", command.entryRequiresApproval)

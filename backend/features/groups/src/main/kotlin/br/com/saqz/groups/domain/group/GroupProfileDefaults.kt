@@ -127,8 +127,9 @@ object GroupProfileDefaultsValidator {
         val customLevel = optionalText(input.customLevel, "customLevel", 2, 40, errors)
         val customPlayStyle = optionalText(input.customPlayStyle, "customPlayStyle", 2, 40, errors)
         // Texto livre: o Pix aceita CPF, e-mail, telefone e chave aleatória, e produto não quer validar formato.
-        val pixKey = optionalText(input.pixKey, "pixKey", 2, 140, errors)
-        val pixLabel = optionalText(input.pixLabel, "pixLabel", 2, 80, errors)
+        // String vazia é um comando explícito de limpeza; null continua significando omissão no update.
+        val pixKey = optionalPixText(input.pixKey, "pixKey", 140, errors)
+        val pixLabel = optionalPixText(input.pixLabel, "pixLabel", 80, errors)
         val venue = validateVenue(input.defaultVenue, errors)
         val slots = validateSlots(input.regularSlots, errors)
 
@@ -274,6 +275,19 @@ object GroupProfileDefaultsValidator {
     ): String? {
         val normalized = blankToNull(raw)?.trim() ?: return null
         validateText(normalized, field, min, max, errors)
+        return normalized
+    }
+
+    private fun optionalPixText(
+        raw: String?,
+        field: String,
+        max: Int,
+        errors: MutableList<GroupValidationError>,
+    ): String? {
+        if (raw == null) return null
+        val normalized = raw.trim()
+        if (normalized.isEmpty()) return ""
+        validateText(normalized, field, 2, max, errors)
         return normalized
     }
 

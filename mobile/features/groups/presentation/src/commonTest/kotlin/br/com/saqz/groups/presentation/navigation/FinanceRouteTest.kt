@@ -10,6 +10,7 @@ class FinanceRouteTest {
         val routes = listOf(
             FinanceRoute.GroupCashbox("group-1"),
             FinanceRoute.Statement("group-2"),
+            FinanceRoute.NewEntry("group-2"),
             FinanceRoute.GameSettlement("group-3", "game-1"),
         )
 

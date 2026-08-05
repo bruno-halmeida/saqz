@@ -94,6 +94,16 @@ class GroupSetupValidatorTest {
     }
 
     @Test
+    fun `pix abaixo de dois code points acusa erro no campo e vazio limpa sem erro`() {
+        assertEquals(
+            setOf(GroupSetupError.PixKeyTooShort, GroupSetupError.PixLabelTooShort),
+            validate(state().copy(pixKey = "🏐", pixLabel = "A")),
+        )
+        assertTrue(validate(state().copy(pixKey = "", pixLabel = "  ")).isEmpty())
+        assertTrue(validate(state().copy(pixKey = "🏐🏐", pixLabel = "Ab")).isEmpty())
+    }
+
+    @Test
     fun `categoria personalizada exige nome proprio`() {
         val errors = validate(state { copy(level = GroupLevel.CUSTOM, customLevel = null) })
 
@@ -183,6 +193,8 @@ class GroupSetupValidatorTest {
         val errors = validate(
             GroupSetupState(
                 mode = GroupSetupMode.Create,
+                pixKey = "A",
+                pixLabel = "A",
                 form = GroupSetupForm(
                     description = "A",
                     level = GroupLevel.CUSTOM,
