@@ -13,16 +13,16 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val homeGateway: HomeGateway,
     private val athleteGateway: AthleteGateway,
-) : MviViewModel<HomeState, HomeAction, Nothing>(HomeState()) {
+) : MviViewModel<HomeState, HomeIntent, Nothing>(HomeState()) {
     private var loadGeneration = 0
 
     init {
         load()
     }
 
-    override fun onIntent(intent: HomeAction) {
+    override fun onIntent(intent: HomeIntent) {
         when (intent) {
-            HomeAction.Retry -> load()
+            HomeIntent.Retry -> load()
         }
     }
 

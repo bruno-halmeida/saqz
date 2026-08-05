@@ -40,7 +40,7 @@ class HomeScreenshotTest {
     private fun capture(name: String, state: HomeState) {
         compose.setContent {
             SaqzTheme {
-                HomeScreen(state = state, onAction = {})
+                HomeScreen(state = state, onIntent = {})
             }
         }
         compose.onRoot().captureRoboImage("screenshots/vul-189/$name.png")

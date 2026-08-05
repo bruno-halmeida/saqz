@@ -11,5 +11,5 @@ fun HomeRoot(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HomeScreen(state = state, onAction = viewModel::onIntent)
+    HomeScreen(state = state, onIntent = viewModel::onIntent)
 }

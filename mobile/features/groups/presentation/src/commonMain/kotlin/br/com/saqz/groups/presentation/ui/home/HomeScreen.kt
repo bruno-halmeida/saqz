@@ -15,7 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.presentation.home.HomeAction
+import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_error_message
@@ -35,13 +35,13 @@ internal object HomeTags {
 @Composable
 fun HomeScreen(
     state: HomeState,
-    onAction: (HomeAction) -> Unit,
+    onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
         state.isLoading -> HomeSkeleton(modifier)
         state.loadFailed -> HomeFailure(
-            onRetry = { onAction(HomeAction.Retry) },
+            onRetry = { onIntent(HomeIntent.Retry) },
             modifier = modifier,
         )
         else -> HomeContent(state, modifier)
@@ -120,17 +120,17 @@ private fun HomeContent(
 @Preview(name = "Home carregando", widthDp = 390, heightDp = 844)
 @Composable
 private fun HomeLoadingPreview() = SaqzTheme {
-    HomeScreen(HomeState(), onAction = {})
+    HomeScreen(HomeState(), onIntent = {})
 }
 
 @Preview(name = "Home erro", widthDp = 390, heightDp = 844)
 @Composable
 private fun HomeFailurePreview() = SaqzTheme {
-    HomeScreen(HomeState(isLoading = false, loadFailed = true), onAction = {})
+    HomeScreen(HomeState(isLoading = false, loadFailed = true), onIntent = {})
 }
 
 @Preview(name = "Home carregada", widthDp = 390, heightDp = 844)
 @Composable
 private fun HomeContentPreview() = SaqzTheme {
-    HomeScreen(HomeState(isLoading = false, displayName = "Bruno"), onAction = {})
+    HomeScreen(HomeState(isLoading = false, displayName = "Bruno"), onIntent = {})
 }

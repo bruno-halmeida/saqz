@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.presentation.home.HomeAction
+import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeState
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,13 +24,13 @@ class HomeScreenTest {
 
     @Test
     fun `error state renders the standard retry action`() = runComposeUiTest {
-        val actions = mutableListOf<HomeAction>()
-        setScreen(HomeState(isLoading = false, loadFailed = true), actions::add)
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(HomeState(isLoading = false, loadFailed = true), intents::add)
 
         onNodeWithTag(HomeTags.Error).assertIsDisplayed()
         onNodeWithText("Não foi possível carregar sua Home").assertIsDisplayed()
         onNodeWithText("Tentar novamente").performClick()
-        assertEquals(listOf<HomeAction>(HomeAction.Retry), actions)
+        assertEquals(listOf<HomeIntent>(HomeIntent.Retry), intents)
     }
 
     @Test
@@ -44,10 +44,10 @@ class HomeScreenTest {
 
     private fun ComposeUiTest.setScreen(
         state: HomeState,
-        onAction: (HomeAction) -> Unit = {},
+        onIntent: (HomeIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
-            HomeScreen(state = state, onAction = onAction)
+            HomeScreen(state = state, onIntent = onIntent)
         }
     }
 }

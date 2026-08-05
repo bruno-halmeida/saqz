@@ -72,7 +72,7 @@ class HomeViewModelTest {
             athleteGateway = FakeAthleteGateway(),
         )
 
-        viewModel.onIntent(HomeAction.Retry)
+        viewModel.onIntent(HomeIntent.Retry)
         second.complete(SaqzResult.Success(sampleHome("second")))
         first.complete(SaqzResult.Success(sampleHome("first")))
 

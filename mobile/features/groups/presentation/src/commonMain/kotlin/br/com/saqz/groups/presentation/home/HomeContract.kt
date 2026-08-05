@@ -13,6 +13,6 @@ data class HomeState(
     val home: HomeReadModel? = null,
 )
 
-sealed interface HomeAction {
-    data object Retry : HomeAction
+sealed interface HomeIntent {
+    data object Retry : HomeIntent
 }
