@@ -31,6 +31,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -490,6 +491,86 @@ class PaymentViewModelTest {
             assertFalse(viewModel.state.value.isSubmitting)
             assertEquals("4111111111111111", viewModel.state.value.cardForm.number)
             assertEquals("Ana Silva", viewModel.state.value.cardForm.holderName)
+        }
+    }
+
+    /**
+     * VUL-196 round 3 (achado do Codex no PR #181): o dedup do backend é por `requestId`,
+     * não por payload — reenviar a MESMA chave depois de uma recusa devolveria a recusa
+     * cacheada em vez de autorizar o cartão novo. Editar qualquer campo do cartão depois
+     * de uma recusa tem que rotacionar a chave.
+     */
+    @Test
+    fun `editing a card field after a decline rotates the request id`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Failure(SubscriptionError.CardDeclined("insufficient_funds", "Saldo insuficiente."))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+            val declinedRequestId = gateway.createCalls.single().requestId
+
+            // Corrige o número recusado — troca de cartão de verdade, não um replay.
+            viewModel.onIntent(PaymentIntent.UpdateCardNumber("5555555555554444"))
+            gateway.createResult = SaqzResult.Success(createdPix().copy(billingType = BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(2, gateway.createCalls.size)
+            assertNotEquals(declinedRequestId, gateway.createCalls[1].requestId)
+        }
+    }
+
+    /**
+     * A metade que fecha o achado: sem editar nada, "Pagar" de novo depois de uma recusa
+     * é o retry do MESMO payload — tem que continuar idempotente (mesma chave), senão o
+     * backend cobraria duas vezes um cartão que só falhou uma vez por instabilidade.
+     */
+    @Test
+    fun `resubmitting a decline without edits keeps the same request id`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Failure(SubscriptionError.CardDeclined("insufficient_funds", "Saldo insuficiente."))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(2, gateway.createCalls.size)
+            assertEquals(gateway.createCalls[0].requestId, gateway.createCalls[1].requestId)
+        }
+    }
+
+    /**
+     * Recusas não-cartão (conflito, sessão etc.) não mexem em `cardDeclinedPendingEdit` —
+     * só `CardDeclined` rotaciona a chave na próxima edição. Falha transitória do mesmo
+     * payload é o caso que já funcionava antes deste ticket; este teste trava que continua.
+     */
+    @Test
+    fun `transient failure without editing the card keeps the same request id`() = runTest(mainDispatcher) {
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Failure(SubscriptionError.Conflict)
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            viewModel.onIntent(PaymentIntent.SelectBillingType(BillingType.CreditCard))
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            fillValidCardForm(viewModel)
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(2, gateway.createCalls.size)
+            assertEquals(gateway.createCalls[0].requestId, gateway.createCalls[1].requestId)
         }
     }
 
