@@ -13,7 +13,7 @@
     <string name="own_charges_status_paid">Paga</string>
     <string name="own_charges_status_waived">Isenta</string>
     <string name="own_charges_status_cancelled">Cancelada</string>
-    <string name="own_charges_note">Pagamento é manual: copie a chave Pix e avise o organizador.</string>
+    <string name="own_charges_note">Pagamento é manual: copie a chave Pix e pague fora do app — a baixa acontece no caixa do grupo.</string>
     <string name="own_charges_failure">Não foi possível carregar suas cobranças.</string>
     <string name="own_charges_retry">Tentar novamente</string>
 </resources>

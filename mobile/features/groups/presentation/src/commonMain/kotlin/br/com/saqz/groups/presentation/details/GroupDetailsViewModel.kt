@@ -200,8 +200,12 @@ class GroupDetailsViewModel(
         val pending = filter { it.status == ChargeStatus.Pending }
             .sortedBy { it.dueDate }
             .map { it.toOwnCharge(today) }
+        // ponytail: histórico cortado nas 6 mais recentes — a lista não pagina e isto é um
+        // `Column` não-lazy dentro da tela mais aberta do app; um mensalista de dois anos
+        // comporia 24 linhas toda vez. Quem quiser tudo vai pelo extrato (VUL-176).
         val history = filterNot { it.status == ChargeStatus.Pending }
             .sortedByDescending { it.dueDate }
+            .take(OWN_CHARGES_HISTORY_LIMIT)
             .map { it.toOwnCharge(today) }
         return OwnChargesUi(
             pending = pending,
@@ -626,10 +630,10 @@ class GroupDetailsViewModel(
 }
 
 private const val MONTHS_IN_YEAR = 12
+private const val OWN_CHARGES_HISTORY_LIMIT = 6
 
 // Os nomes de mês já existem no módulo (fluxo 5, caixa geral). Reusar é o que evita uma
 // segunda tabela de doze strings dizendo a mesma coisa.
-@Suppress("MagicNumber")
 private fun Int.monthResource(): StringResource = when (this) {
     1 -> Res.string.finance_overview_month_january
     2 -> Res.string.finance_overview_month_february

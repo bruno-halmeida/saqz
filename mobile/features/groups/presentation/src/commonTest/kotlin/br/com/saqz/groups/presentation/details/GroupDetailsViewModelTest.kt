@@ -786,13 +786,16 @@ class GroupDetailsViewModelTest {
         )
         val viewModel = viewModel(groupGateway = pixGroupGateway(), athleteFinanceGateway = finance)
 
-        assertNull(viewModel.state.value.ownCharges?.pix)
+        val settled = assertNotNull(viewModel.state.value.ownCharges)
+        assertEquals(1, settled.history.size)
+        assertNull(settled.pix)
 
         finance.ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08"))))
         viewModel.onIntent(GroupDetailsIntent.RetryOwnCharges)
 
-        assertEquals("ceret@volei.com.br", viewModel.state.value.ownCharges?.pix?.key)
-        assertEquals("Lucas Prado", viewModel.state.value.ownCharges?.pix?.label)
+        val pending = assertNotNull(viewModel.state.value.ownCharges).pix
+        assertEquals("ceret@volei.com.br", assertNotNull(pending).key)
+        assertEquals("Lucas Prado", pending.label)
     }
 
     @Test
@@ -823,9 +826,38 @@ class GroupDetailsViewModelTest {
         finance.ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08"))))
         viewModel.onIntent(GroupDetailsIntent.RetryOwnCharges)
 
-        assertFalse(viewModel.state.value.ownCharges?.failed ?: true)
-        assertEquals(listOf("mensal"), viewModel.state.value.ownCharges?.pending?.map { it.id })
+        val reloaded = assertNotNull(viewModel.state.value.ownCharges)
+        assertFalse(reloaded.failed)
+        assertEquals(listOf("mensal"), reloaded.pending.map { it.id })
         assertEquals(2, finance.ownChargesCalls)
+    }
+
+    // A lista não pagina e o card não é lazy: o histórico longo para nas 6 mais recentes.
+    @Test
+    fun `historico longo para nas seis cobrancas mais recentes`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(
+                        (1..24).map { index ->
+                            val year = 2025 + (index - 1) / 12
+                            val key = "$year-${(((index - 1) % 12) + 1).toString().padStart(2, '0')}"
+                            ownCharge(
+                                id = "paga-$index",
+                                month = key,
+                                dueDate = "$key-10",
+                                status = ChargeStatus.Paid,
+                            )
+                        },
+                    ),
+                ),
+            ),
+        )
+
+        val history = assertNotNull(viewModel.state.value.ownCharges).history
+        assertEquals(6, history.size)
+        assertEquals("Vencimento 10/12", history.first().dueLabel)
     }
 
     @Test
