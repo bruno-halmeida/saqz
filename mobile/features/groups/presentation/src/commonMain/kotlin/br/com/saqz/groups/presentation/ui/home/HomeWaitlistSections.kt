@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,12 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzAvatar
+import br.com.saqz.designsystem.SaqzAvatarStack
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -122,7 +120,7 @@ internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Mo
                 .background(colors.surfaceSoft, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            SaqzIcon(icon = icon, tint = iconColor, size = 20.dp)
+            SaqzIcon(icon = icon, tint = iconColor)
         }
         Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(
@@ -141,11 +139,14 @@ internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Mo
 
 /**
  * Botões em grid 1fr/1fr: secundário sm "Sair da reserva/lista" e primário sm "Ver o jogo".
+ * "Sair" desabilita quando o prazo encerrou (o `respond()` early-returna e o toque seria
+ * no-op silencioso); "Ver o jogo" continua habilitado — navegação, não resposta.
  */
 @Composable
 internal fun HomeWaitlistActions(
     kind: HomeWaitlistKind,
     responding: Boolean,
+    confirmationOpen: Boolean,
     onLeave: () -> Unit,
     onViewGame: () -> Unit,
     modifier: Modifier = Modifier,
@@ -173,7 +174,7 @@ internal fun HomeWaitlistActions(
             size = SaqzButtonSize.Sm,
             fullWidth = true,
             loading = responding,
-            enabled = !responding,
+            enabled = confirmationOpen && !responding,
         )
         SaqzButton(
             label = viewLabel,
@@ -207,7 +208,7 @@ internal fun HomeWaitlistBellCard(label: String, modifier: Modifier = Modifier) 
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(metrics.subGrid * 2),
     ) {
-        SaqzIcon(icon = SaqzIcons.Bell, tint = colors.primary, size = 20.dp)
+        SaqzIcon(icon = SaqzIcons.Bell, tint = colors.primary)
         Text(
             text = label,
             style = SaqzTheme.typography.support,
@@ -232,7 +233,7 @@ internal fun HomeWaitlistUpsellCard(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(metrics.subGrid * 2),
     ) {
-        SaqzIcon(icon = SaqzIcons.CreditCard, tint = colors.primary, size = 20.dp)
+        SaqzIcon(icon = SaqzIcons.CreditCard, tint = colors.primary)
         Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(
                 text = stringResource(Res.string.home_waitlist_avulso_upsell_title),
@@ -289,15 +290,7 @@ internal fun HomeWaitlistConfirmedSection(
                     color = SaqzTheme.colors.textSecondary,
                 )
             } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy((-8).dp),
-                    verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
-                ) {
-                    confirmedRoster.forEach { name ->
-                        SaqzAvatar(name = name, size = 32.dp, background = SaqzTheme.colors.surface)
-                    }
-                }
+                SaqzAvatarStack(names = confirmedRoster)
             }
         }
     }

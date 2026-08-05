@@ -171,6 +171,10 @@ class HomeViewModel(
         val previousHome = checkNotNull(current.home)
         val previousMember = member
         val optimisticStatus = game.optimisticStatus(intent)
+        // O kind é derivado de `membershipType`/`mensalistaPriority` (o ViewModel já tem
+        // os dois no `HomeNextGame`), não do `ownAttendance` — quem confirma e cai direto
+        // na lista sem attendance prévia precisa ver o kind certo já no update otimista.
+        val optimisticKind = if (optimisticStatus == AttendanceStatus.Waitlisted) game.waitlistKind() else null
         update {
             it.copy(
                 home = previousHome.copy(
@@ -182,7 +186,10 @@ class HomeViewModel(
                     ),
                 ),
                 member = previousMember.copy(
-                    nextGame = gameUi.copy(ownAttendance = optimisticStatus),
+                    nextGame = gameUi.copy(
+                        ownAttendance = optimisticStatus,
+                        waitlistKind = optimisticKind ?: gameUi.waitlistKind,
+                    ),
                 ),
                 responding = true,
                 responseFailed = false,
@@ -199,6 +206,13 @@ class HomeViewModel(
                 is SaqzResult.Success -> {
                     val attendance = result.value.value.attendance
                     val actualStatus = attendance.status
+                    // O kind reconciliado também deriva de `membershipType`/`mensalistaPriority`
+                    // do `HomeNextGame`, não do status — consistente com o caminho otimista.
+                    val reconciledKind = if (actualStatus == AttendanceStatus.Waitlisted) {
+                        previousHome.member.nextGame?.waitlistKind()
+                    } else {
+                        null
+                    }
                     update {
                         it.copy(
                             home = previousHome.copy(
@@ -212,7 +226,10 @@ class HomeViewModel(
                                 ),
                             ),
                             member = previousMember.copy(
-                                nextGame = previousMember.nextGame.copy(ownAttendance = actualStatus),
+                                nextGame = previousMember.nextGame.copy(
+                                    ownAttendance = actualStatus,
+                                    waitlistKind = reconciledKind ?: previousMember.nextGame.waitlistKind,
+                                ),
                             ),
                             responding = false,
                             toast = actualStatus.toToast(),

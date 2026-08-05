@@ -327,6 +327,29 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `avulso without prior attendance shows waitlist kind on optimistic confirm`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(
+            nextGame = sampleNextGame().copy(
+                membershipType = AthleteMembershipType.AVULSO,
+                mensalistaPriority = true,
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        // O kind já é AvulsoList no update otimista, antes do refresh — sem attendance
+        // prévio o hero não pode mostrar "Reserva" para um avulso com prioridade.
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.member?.nextGame?.waitlistKind)
+    }
+
+    @Test
     fun `full game uses waitlist optimistic state and server toast`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()

@@ -265,6 +265,7 @@ private fun HomeHero(
                 HomeWaitlistActions(
                     kind = kind,
                     responding = responding,
+                    confirmationOpen = game.confirmationOpen,
                     onLeave = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
                     onViewGame = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
                 )

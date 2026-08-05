@@ -142,6 +142,22 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `closed deadline disables the waitlist leave button but keeps view game enabled`() = runComposeUiTest {
+        setScreen(
+            nextGameState(
+                nextGame = nextGame(AttendanceStatus.Waitlisted).copy(
+                    waitlistKind = HomeWaitlistKind.Reserva,
+                    waitlistPosition = 1,
+                    confirmationOpen = false,
+                ),
+            ),
+        )
+
+        onNodeWithTag(HomeWaitlistTags.ReservaLeave).assertIsNotEnabled()
+        onNodeWithTag(HomeWaitlistTags.ReservaViewGame).assertIsDisplayed()
+    }
+
+    @Test
     fun `toast state renders the confirmation feedback`() = runComposeUiTest {
         setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.Confirmed))
 
