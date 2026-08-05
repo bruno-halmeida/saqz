@@ -163,8 +163,10 @@ internal class FirebaseSdkAuthClient(
         done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
     ) {
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-            val user = task.result?.user
-            if (!task.isSuccessful || user == null) {
+            // `task.result` LANCA RuntimeExecutionException quando a task falhou — nao
+            // devolve null. Ler antes de checar isSuccessful derruba o app na main thread.
+            val user = if (task.isSuccessful) task.result?.user else null
+            if (user == null) {
                 done(task.exception.toFailure())
                 return@addOnCompleteListener
             }
@@ -220,8 +222,8 @@ internal class FirebaseSdkAuthClient(
     override fun idToken(forceRefresh: Boolean, done: (AndroidProviderResult<String>) -> Unit) {
         val user = auth.currentUser ?: return done(missingUser())
         user.getIdToken(forceRefresh).addOnCompleteListener { task ->
-            val token = task.result?.token
-            if (task.isSuccessful && token != null) done(AndroidProviderResult.Success(token))
+            val token = if (task.isSuccessful) task.result?.token else null
+            if (token != null) done(AndroidProviderResult.Success(token))
             else done(task.exception.toFailure())
         }
     }
@@ -237,8 +239,8 @@ internal class FirebaseSdkAuthClient(
     private fun com.google.android.gms.tasks.Task<com.google.firebase.auth.AuthResult>.completeWithUser(
         done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
     ) = addOnCompleteListener { task ->
-        val user = task.result?.user
-        if (task.isSuccessful && user != null) done(AndroidProviderResult.Success(user.toProvider()))
+        val user = if (task.isSuccessful) task.result?.user else null
+        if (user != null) done(AndroidProviderResult.Success(user.toProvider()))
         else done(task.exception.toFailure())
     }
 
