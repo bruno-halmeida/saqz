@@ -103,7 +103,7 @@ class HttpAsaasGateway(
         return try {
             post("/subscriptions", body, timeout)
         } catch (ex: AsaasException) {
-            if (billingType == AsaasBillingType.CREDIT_CARD && ex.statusCode in 400..499) {
+            if (billingType == AsaasBillingType.CREDIT_CARD && isCardDeclineError(ex)) {
                 throw CardDeclinedException(
                     asaasCode = ex.errorCode ?: "unknown",
                     asaasDescription = ex.errorDescription ?: "Cartão recusado",
@@ -112,6 +112,18 @@ class HttpAsaasGateway(
             }
             throw ex
         }
+    }
+
+    /**
+     * Só os códigos de recusa/validação de CARTÃO da Asaas viram CardDeclined. Qualquer outro 4xx
+     * no caminho de cartão (401 de API key inválida, 429 de rate limit, 404, etc.) precisa continuar
+     * como AsaasException genérica — mapear TODO 4xx como recusa mascarava uma indisponibilidade da
+     * Asaas como "cartão recusado" para o usuário (achado do Codex no PR #179).
+     */
+    private fun isCardDeclineError(ex: AsaasException): Boolean {
+        if (ex.statusCode !in 400..499) return false
+        val code = ex.errorCode?.lowercase() ?: return false
+        return CARD_DECLINE_ERROR_CODES.any { code.contains(it) }
     }
 
     private fun creditCardInfoOf(response: JsonNode): AsaasCreditCardInfo? {
@@ -439,6 +451,14 @@ class HttpAsaasGateway(
 
         /** Asaas recommends at least 60s on the credit card path (authorization + antifraude). */
         val CARD_REQUEST_TIMEOUT: Duration = Duration.ofSeconds(60)
+
+        /**
+         * A Asaas, por padrão, só documenta o código genérico "invalid_creditCard" para recusa
+         * (o real motivo fica escondido por segurança antifraude, salvo "detailed errors" habilitado
+         * com o gerente de conta). `contains` cobre variantes tipo "invalid_creditCardHolderInfo".
+         */
+        private val CARD_DECLINE_ERROR_CODES = setOf("invalid_creditcard")
+
         val DEFAULT_ABANDON_AFTER: Duration = Duration.ofSeconds(30)
         const val DEFAULT_MAX_IDEMPOTENCY_POLLS: Int = 3
 

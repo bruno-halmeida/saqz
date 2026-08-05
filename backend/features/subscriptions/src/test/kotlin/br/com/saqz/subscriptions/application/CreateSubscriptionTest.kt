@@ -91,12 +91,41 @@ class CreateSubscriptionTest {
     }
 
     @Test
-    fun `does not persist a token when asaas does not return one`() {
+    fun `clears (does not leave stale) credit card columns when asaas does not return a token`() {
         gateway.creditCardResult = null
 
         useCase.execute(cardCommand())
 
-        assertTrue(creditCardTokens.saved.isEmpty())
+        assertEquals(
+            RecordingCreditCardTokenStore.Saved("sub_1", null, null, null),
+            creditCardTokens.saved.single(),
+        )
+    }
+
+    @Test
+    fun `reactivating with pix clears a stale credit card token left by a prior card subscription`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old_card",
+                billingType = AsaasBillingType.CREDIT_CARD,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.CANCELED,
+                canceledAt = fixedNow.minusSeconds(60),
+            ),
+        )
+        // baseCommand() defaults to PIX — no card fields, nothing for gateway to return.
+
+        val result = useCase.execute(baseCommand())
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals(
+            RecordingCreditCardTokenStore.Saved("sub_1", null, null, null),
+            creditCardTokens.saved.single(),
+        )
     }
 
     @Test
@@ -615,11 +644,11 @@ class CreateSubscriptionTest {
     }
 
     private class RecordingCreditCardTokenStore : CreditCardTokenStore {
-        data class Saved(val asaasSubscriptionId: String, val token: String, val lastFourDigits: String?, val brand: String?)
+        data class Saved(val asaasSubscriptionId: String, val token: String?, val lastFourDigits: String?, val brand: String?)
 
         val saved = mutableListOf<Saved>()
 
-        override fun save(asaasSubscriptionId: String, token: String, lastFourDigits: String?, brand: String?) {
+        override fun save(asaasSubscriptionId: String, token: String?, lastFourDigits: String?, brand: String?) {
             saved += Saved(asaasSubscriptionId, token, lastFourDigits, brand)
         }
     }

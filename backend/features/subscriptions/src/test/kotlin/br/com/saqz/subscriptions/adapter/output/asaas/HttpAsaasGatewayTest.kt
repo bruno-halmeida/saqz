@@ -214,6 +214,30 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
+    fun `createSubscription does not map an unrelated 4xx like an invalid api key to CardDeclinedException`() {
+        server.enqueue(
+            json(401, """{"errors":[{"code":"invalid_access_token","description":"Chave de API inválida."}]}"""),
+        )
+
+        val error = assertThrows<AsaasException> {
+            gateway.createSubscription(
+                asaasCustomerId = "cus_CARD",
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                valueCents = 3_990,
+                billingType = AsaasBillingType.CREDIT_CARD,
+                idempotencyKey = "sub-card-authfail-1",
+                creditCard = sampleCreditCard(),
+                creditCardHolderInfo = sampleCreditCardHolderInfo(),
+                remoteIp = "203.0.113.5",
+            )
+        }
+
+        assertEquals(401, error.statusCode)
+        assertFalse(error is CardDeclinedException)
+    }
+
+    @Test
     fun `createSubscription uses 60s timeout for credit card billing but 15s for pix`() {
         val timeouts = mutableListOf<Duration?>()
         val delegate = HttpClient.newHttpClient()
