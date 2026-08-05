@@ -44,17 +44,22 @@ class SaqzAppShellTest {
         onNodeWithText(GroupsTab).assertIsDisplayed()
     }
 
-    // VUL-72: Início e Jogos ficam inertes até os fluxos 6 e 4 existirem — tocar neles não
-    // pode trocar o conteúdo nem esconder a lista.
     @Test
-    fun homeAndGamesTabsAreInert() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(groupsTab = { Text(GroupsTab) }) } }
+    fun homeTabRendersAndGamesTabRemainsInert() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    groupsTab = { Text(GroupsTab) },
+                    homeTab = { Text(HomeTab) },
+                )
+            }
+        }
         onNodeWithText("Início").performClick()
         waitForIdle()
-        onNodeWithText(GroupsTab).assertIsDisplayed()
+        onNodeWithText(HomeTab).assertIsDisplayed()
         onNodeWithText("Jogos").performClick()
         waitForIdle()
-        onNodeWithText(GroupsTab).assertIsDisplayed()
+        onNodeWithText(HomeTab).assertIsDisplayed()
     }
 
     /**
@@ -84,6 +89,7 @@ class SaqzAppShellTest {
 
     private companion object {
         const val GroupsTab = "conteúdo-da-aba-grupos"
+        const val HomeTab = "conteúdo-da-aba-inicio"
         const val FinanceTab = "conteúdo-da-aba-financeiro"
         const val ProfileTab = "conteúdo-da-aba-perfil"
     }

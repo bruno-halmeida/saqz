@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_greeting">Fala, %1$s!</string>
+    <string name="home_placeholder">Os conteúdos da sua Home aparecem aqui.</string>
+    <string name="home_error_title">Não foi possível carregar sua Home</string>
+    <string name="home_error_message">Tente novamente em alguns instantes.</string>
+    <string name="home_retry">Tentar novamente</string>
+</resources>

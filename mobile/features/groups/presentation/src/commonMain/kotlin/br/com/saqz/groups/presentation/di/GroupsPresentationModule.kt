@@ -15,6 +15,7 @@ import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewViewModel
 import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
 import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
+import br.com.saqz.groups.presentation.home.HomeViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.newentry.NewEntryViewModel
@@ -40,6 +41,7 @@ import org.koin.dsl.module
  */
 fun groupsPresentationModule(): Module = module {
     viewModel { GroupListViewModel(get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->
         val mode = params.get<GroupSetupMode>()

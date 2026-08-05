@@ -58,8 +58,9 @@ private const val SaqzShellFinanceTab = "financeiro"
  * quem tem o estado da sessão, e o shell não tem — nem precisa ter, porque a faixa não
  * decide nada aqui dentro.
  *
- * **Início e Jogos ficam inertes**, como manda o VUL-72: o toque não leva a lugar nenhum
- * enquanto os fluxos 6 e 4 não existirem. Perfil recebe o conteúdo real por [profileTab];
+ * **Jogos fica inerte**, como manda o VUL-72: o toque não leva a lugar nenhum enquanto o
+ * fluxo 4 não existir. Início recebe o esqueleto do Fluxo 6 por [homeTab]. Perfil recebe o
+ * conteúdo real por [profileTab];
  * Financeiro recebe o caixa geral por [financeTab];
  * a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra e da entrada
  * opcional do catálogo de desenvolvimento.
@@ -74,6 +75,7 @@ internal fun SaqzAppShell(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
+    homeTab: @Composable () -> Unit = {},
     profileTab: @Composable () -> Unit = {},
     financeTab: @Composable () -> Unit = {},
     banner: @Composable () -> Unit = {},
@@ -136,6 +138,7 @@ internal fun SaqzAppShell(
             ) {
                 when (activeTab) {
                     SaqzShellGroupsTab -> groupsTab()
+                    SaqzShellHomeTab -> homeTab()
                     SaqzShellProfileTab -> profileTab()
                     SaqzShellFinanceTab -> financeTab()
                     else -> Unit
@@ -159,8 +162,9 @@ internal fun SaqzAppShell(
             onSelect = { id ->
                 when (id) {
                     SaqzShellGroupsTab, SaqzShellProfileTab, SaqzShellFinanceTab -> activeTab = id
-                    // TODO(Fluxo 6 · Home): sem tela, sem destino.
-                    SaqzShellHomeTab, SaqzShellGamesTab -> Unit
+                    SaqzShellHomeTab -> activeTab = id
+                    // TODO(Fluxo 4 · Jogos): sem tela, sem destino.
+                    SaqzShellGamesTab -> Unit
                     else -> Unit
                 }
             },
