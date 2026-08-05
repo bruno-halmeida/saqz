@@ -302,7 +302,8 @@ class ProcessAsaasWebhook(
         const val EVENT_SUBSCRIPTION_DELETED = "SUBSCRIPTION_DELETED"
         const val WEBHOOK_TOKEN_HEADER = "asaas-access-token"
 
-        private val CONFIRMING_EVENT_TYPES = setOf(
+        /** Os dois eventos que comprovam pagamento — [ListReceipts] lista os dois. */
+        val CONFIRMING_EVENT_TYPES = setOf(
             EVENT_PAYMENT_CONFIRMED,
             EVENT_PAYMENT_RECEIVED,
         )

@@ -65,8 +65,8 @@ class JdbcSubscriptionEventStore(
         return count > 0
     }
 
-    override fun listProcessedByTypeForOwner(
-        type: String,
+    override fun listProcessedByTypesForOwner(
+        types: Collection<String>,
         ownerUserId: UUID,
         limit: Int,
         offset: Int,
@@ -75,14 +75,14 @@ class JdbcSubscriptionEventStore(
             """
             SELECT id, asaas_event_id, type, payload, processed_at
             FROM subscription_events
-            WHERE type = :type
+            WHERE type IN (:types)
               AND owner_user_id = :ownerUserId
               AND processed_at IS NOT NULL
             ORDER BY processed_at DESC, id DESC
             LIMIT :limit OFFSET :offset
             """.trimIndent(),
         )
-            .param("type", type)
+            .param("types", types)
             .param("ownerUserId", ownerUserId)
             .param("limit", limit)
             .param("offset", offset)

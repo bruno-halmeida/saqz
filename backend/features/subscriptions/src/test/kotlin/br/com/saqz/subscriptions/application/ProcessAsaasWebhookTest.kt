@@ -856,13 +856,13 @@ class ProcessAsaasWebhookTest {
 
         override fun exists(asaasEventId: String): Boolean = rows.containsKey(asaasEventId)
 
-        override fun listProcessedByTypeForOwner(
-            type: String,
+        override fun listProcessedByTypesForOwner(
+            types: Collection<String>,
             ownerUserId: UUID,
             limit: Int,
             offset: Int,
         ) = rows.values
-            .filter { it.type == type && it.ownerUserId == ownerUserId && it.processedAt != null }
+            .filter { it.type in types && it.ownerUserId == ownerUserId && it.processedAt != null }
             .sortedByDescending { it.processedAt }
             .drop(offset)
             .take(limit)

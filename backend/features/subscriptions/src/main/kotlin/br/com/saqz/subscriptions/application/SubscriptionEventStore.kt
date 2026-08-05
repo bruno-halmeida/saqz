@@ -23,9 +23,9 @@ interface SubscriptionEventStore {
     /** True when this asaasEventId was already inserted (prior delivery). */
     fun exists(asaasEventId: String): Boolean
 
-    /** Processed webhook rows of the given type and owner, newest first. */
-    fun listProcessedByTypeForOwner(
-        type: String,
+    /** Processed webhook rows of the given types and owner, newest first. */
+    fun listProcessedByTypesForOwner(
+        types: Collection<String>,
         ownerUserId: UUID,
         limit: Int,
         offset: Int,

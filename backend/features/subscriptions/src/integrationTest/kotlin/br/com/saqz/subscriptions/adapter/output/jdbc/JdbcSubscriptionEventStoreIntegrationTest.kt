@@ -51,14 +51,14 @@ class JdbcSubscriptionEventStoreIntegrationTest {
         insert("evt_other_owner", otherOwnerId, secondProcessedAt)
         insert("evt_unprocessed", ownerId, null)
 
-        val firstPage = store.listProcessedByTypeForOwner(
-            ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+        val firstPage = store.listProcessedByTypesForOwner(
+            ProcessAsaasWebhook.CONFIRMING_EVENT_TYPES,
             ownerId,
             limit = 1,
             offset = 0,
         )
-        val secondPage = store.listProcessedByTypeForOwner(
-            ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+        val secondPage = store.listProcessedByTypesForOwner(
+            ProcessAsaasWebhook.CONFIRMING_EVENT_TYPES,
             ownerId,
             limit = 1,
             offset = 1,

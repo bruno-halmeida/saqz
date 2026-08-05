@@ -47,6 +47,49 @@ class ListReceiptsTest {
     }
 
     @Test
+    fun `a PAYMENT_RECEIVED-only payment still produces a receipt`() {
+        // Boleto/PIX que liquida sem CONFIRMED: sem isto o app nunca via recibo e o botao
+        // "Ja paguei" ficava girando contra uma lista vazia.
+        val events = FakeEventStore(
+            listOf(
+                event(
+                    id = "evt_recv",
+                    type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED,
+                    payload = """{"id":"evt_recv","event":"PAYMENT_RECEIVED","payment":{"id":"pay_boleto","value":59.90,"subscription":"sub_mine"}}""",
+                ),
+            ),
+        )
+
+        val receipts = ListReceipts(events).execute(ownerId)
+
+        assertEquals(1, receipts.size)
+        assertEquals("pay_boleto", receipts.single().asaasPaymentId)
+        assertEquals(5_990L, receipts.single().valueCents)
+    }
+
+    @Test
+    fun `CONFIRMED and RECEIVED for one charge collapse into a single receipt`() {
+        val events = FakeEventStore(
+            listOf(
+                event(
+                    id = "evt_conf",
+                    payload = """{"id":"evt_conf","event":"PAYMENT_CONFIRMED","payment":{"id":"pay_same","value":59.90}}""",
+                ),
+                event(
+                    id = "evt_recv",
+                    type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED,
+                    payload = """{"id":"evt_recv","event":"PAYMENT_RECEIVED","payment":{"id":"pay_same","value":59.90}}""",
+                ),
+            ),
+        )
+
+        val receipts = ListReceipts(events).execute(ownerId)
+
+        assertEquals(1, receipts.size)
+        assertEquals("evt_conf", receipts.single().asaasEventId)
+    }
+
+    @Test
     fun `applies limit and offset to owner-scoped events`() {
         val events = FakeEventStore(
             listOf(
@@ -130,11 +173,12 @@ class ListReceiptsTest {
         id: String,
         payload: String,
         ownerUserId: UUID = ownerId,
+        type: String = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
     ) = StoredEvent(
         event = SubscriptionEvent(
             id = UUID.randomUUID(),
             asaasEventId = id,
-            type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+            type = type,
             payload = payload,
             processedAt = processedAt,
         ),
@@ -160,13 +204,13 @@ class ListReceiptsTest {
 
         override fun exists(asaasEventId: String) = rows.any { it.event.asaasEventId == asaasEventId }
 
-        override fun listProcessedByTypeForOwner(
-            type: String,
+        override fun listProcessedByTypesForOwner(
+            types: Collection<String>,
             ownerUserId: UUID,
             limit: Int,
             offset: Int,
         ) = rows
-            .filter { it.ownerUserId == ownerUserId && it.event.type == type }
+            .filter { it.ownerUserId == ownerUserId && it.event.type in types }
             .drop(offset)
             .take(limit)
             .map { it.event }
