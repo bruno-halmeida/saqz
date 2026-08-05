@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -16,10 +17,14 @@ fun GroupCashboxRoot(
     onOpenStatement: (String) -> Unit,
     onOpenNewEntry: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
+    refreshVersion: Int = 0,
     viewModel: GroupCashboxViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    LaunchedEffect(viewModel, refreshVersion) {
+        if (refreshVersion > 0) viewModel.onIntent(GroupCashboxIntent.Retry)
+    }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupCashboxEffect.OpenStatement -> onOpenStatement(effect.groupId)

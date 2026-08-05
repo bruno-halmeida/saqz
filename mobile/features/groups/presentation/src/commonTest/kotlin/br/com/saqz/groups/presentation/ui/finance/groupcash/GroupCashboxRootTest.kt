@@ -21,6 +21,7 @@ import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeList
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.ChargeStatusCommand
+import br.com.saqz.groups.domain.finance.ChargeTotals
 import br.com.saqz.groups.domain.finance.ExpenseList
 import br.com.saqz.groups.domain.finance.ExpenseWriteCommand
 import br.com.saqz.groups.domain.finance.FinanceError
@@ -137,13 +138,73 @@ class GroupCashboxRootTest {
         onNodeWithText("Saldo R$\u00A00,00 · 0 mensalidades em aberto").assertExists()
         assertEquals(1, refreshVersion)
     }
+
+    @Test
+    fun `refresh version reloads the cashbox after a saved new entry`() = runComposeUiTest {
+        val charge = Charge(
+            id = "monthly-pending",
+            groupId = GroupId("group-1"),
+            memberId = "member-1",
+            kind = ChargeKind.Monthly,
+            month = "2026-08",
+            amountCents = 7_000L,
+            dueDate = "2026-08-20",
+            status = ChargeStatus.Pending,
+            version = 1,
+            audit = emptyList(),
+        )
+        val cashboxGateway = RootTestOrganizerFinanceGateway(charge)
+        val cashboxViewModel = GroupCashboxViewModel(
+            groupId = "group-1",
+            groupGateway = FakeGroupGateway(),
+            membershipGateway = FakeGroupMembershipGateway(),
+            statementGateway = FakeFinanceStatementGateway(
+                result = SaqzResult.Success(
+                    FinanceStatementPage(
+                        month = "2026-08",
+                        items = emptyList(),
+                        summary = FinanceStatementSummary(0L, 0L, 0L, 0L),
+                        limit = 20,
+                        offset = 0,
+                        hasMore = false,
+                    ),
+                ),
+            ),
+            organizerFinanceGateway = cashboxGateway,
+            now = GroupNowPort { Instant.parse("2026-08-20T12:00:00Z") },
+        )
+        var refreshVersion by mutableIntStateOf(0)
+
+        setContent {
+            SaqzTheme {
+                GroupCashboxRoot(
+                    groupId = "group-1",
+                    onBack = {},
+                    onOpenStatement = {},
+                    refreshVersion = refreshVersion,
+                    viewModel = cashboxViewModel,
+                )
+            }
+        }
+        waitForIdle()
+
+        cashboxGateway.chargesResult = SaqzResult.Success(
+            ChargeList(emptyList(), ChargeTotals(0L, 0L, 0L, 0L)),
+        )
+        refreshVersion++
+        waitForIdle()
+
+        onNodeWithTag(GroupCashboxTags.Empty).assertExists()
+    }
 }
 
 private class RootTestOrganizerFinanceGateway(
     private val charge: Charge,
 ) : OrganizerFinanceGateway {
+    var chargesResult: SaqzResult<ChargeList, FinanceError> = SaqzResult.Success(ChargeList(listOf(charge)))
+
     override suspend fun charges(groupId: GroupId) =
-        SaqzResult.Success(ChargeList(listOf(charge)))
+        chargesResult
 
     override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) =
         error("not used in this screen") as SaqzResult<ChargeList, FinanceError>

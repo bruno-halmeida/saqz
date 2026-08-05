@@ -254,6 +254,30 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `charge missing does not open a sheet when there are no pending debtors`() = runTest {
+        val viewModel = viewModel(
+            organizer = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(chargeList(emptyList())),
+            ),
+        )
+
+        viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
+
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
+    }
+
+    @Test
+    fun `individual charge does not open a sheet for an unknown debtor`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.ChargeIndividual("stale-charge"))
+
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
+    }
+
+    @Test
     fun `recebi opens the receipt sheet for the selected debtor`() = runTest {
         val viewModel = viewModel()
 

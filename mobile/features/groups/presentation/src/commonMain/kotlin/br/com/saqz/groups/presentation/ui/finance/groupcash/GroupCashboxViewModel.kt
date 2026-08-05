@@ -60,7 +60,11 @@ class GroupCashboxViewModel(
     }
 
     private fun openChargeSheet(chargeId: String? = null) {
-        if (state.value.isLoading || state.value.updatingChargeId != null) return
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.debtors.isEmpty() ||
+            (chargeId != null && current.debtors.none { it.chargeId == chargeId })
+        ) return
         update {
             it.copy(
                 chargeSheetOpen = true,
