@@ -145,6 +145,8 @@ class JdbcHomeRepositoryIntegrationTest {
         monthlyCharge(monthlyGroup, actor, 900, "2026-07-01", "PENDING", owner, dueDate = "2026-08-15")
         monthlyCharge(monthlyGroup, actor, 600, "2026-08-01", "PENDING", owner, dueDate = "2026-08-05")
         monthlyCharge(monthlyGroup, actor, 111, "2026-06-01", "PAID", owner)
+        monthlyCharge(monthlyGroup, actor, 112, "2026-05-01", "WAIVED", owner)
+        monthlyCharge(monthlyGroup, actor, 113, "2026-04-01", "CANCELLED", owner)
         monthlyCharge(monthlyGroup, other, 222, "2026-07-01", "PENDING", owner)
         val played = game(gameGroup, "2026-07-20T10:00:00Z", "COMPLETED", capacity = 4)
         gameCharge(gameGroup, actor, played, 300, "PENDING", owner, dueDate = "2026-07-25")
@@ -213,6 +215,58 @@ class JdbcHomeRepositoryIntegrationTest {
     }
 
     @Test
+    fun keepsShowingOwnChargesToWhoLeftTheGroup() {
+        val actor = user("own-left-actor", "Left Actor")
+        val neverJoined = user("own-never-actor", "Never Actor")
+        val owner = user("own-left-owner", "Left Owner")
+        val inactiveGroup = group("Saiu do grupo", owner)
+        val noMembershipGroup = group("Sem vinculo", owner)
+        membership(inactiveGroup, actor, active = false)
+        monthlyCharge(inactiveGroup, actor, 700, "2026-07-01", "PENDING", owner)
+        monthlyCharge(noMembershipGroup, neverJoined, 800, "2026-07-01", "PENDING", owner)
+
+        val left = requireNotNull(ownChargesOf(actor))
+        val never = requireNotNull(ownChargesOf(neverJoined))
+
+        // A cobrança é o vínculo: sair do grupo (ou nunca ter membership) não apaga a dívida.
+        assertEquals(listOf("Saiu do grupo"), left.groups.map { it.groupName })
+        assertEquals(700, left.totalCents)
+        assertEquals(listOf("Sem vinculo"), never.groups.map { it.groupName })
+        assertEquals(800, never.totalCents)
+    }
+
+    @Test
+    fun ranksTheOldestChargeByCompetenceInTheGameOwnZone() {
+        val actor = user("own-zone-actor", "Zone Actor")
+        val owner = user("own-zone-owner", "Zone Owner")
+        val group = group("Fuso do jogo", owner)
+        membership(group, actor)
+
+        // 05:00Z é 31/07 em Los_Angeles (fuso do jogo) e 01/08 tanto em UTC quanto em Sao_Paulo
+        // (fuso do grupo): só a conversão pelo zone_id do jogo coloca o jogo antes da mensalidade.
+        val played = game(group, "2026-08-01T05:00:00Z", "COMPLETED", capacity = 4, zone = "America/Los_Angeles")
+        gameCharge(group, actor, played, 300, "PENDING", owner, dueDate = "2026-08-10")
+        // Vencimento mais cedo que o do jogo: se a competência empatar, o desempate por due_date
+        // elege a mensalidade e o teste falha — em vez de virar moeda no desempate por id.
+        monthlyCharge(group, actor, 600, "2026-08-01", "PENDING", owner, dueDate = "2026-08-05")
+
+        val single = requireNotNull(ownChargesOf(actor)).groups.single()
+
+        assertEquals(2, single.count)
+        assertEquals(900, single.totalCents)
+        assertEquals(LocalDate.of(2026, 8, 5), single.nextDueDate)
+        assertEquals(
+            HomeOwnChargeOldest.Game(
+                gameId = played,
+                startsAt = Instant.parse("2026-08-01T05:00:00Z"),
+                zoneId = "America/Los_Angeles",
+                dueDate = LocalDate.of(2026, 8, 10),
+            ),
+            single.oldest,
+        )
+    }
+
+    @Test
     fun returnsEmptyMemberDataAndNoAdminBlockForUnknownActor() {
         val home = repository().find(
             actorId = UUID.randomUUID(),
@@ -228,6 +282,12 @@ class JdbcHomeRepositoryIntegrationTest {
     }
 
     private fun repository() = JdbcHomeRepository(dataSource)
+
+    private fun ownChargesOf(actor: UUID) = repository().find(
+        actorId = actor,
+        now = Instant.parse("2026-08-01T12:00:00Z"),
+        today = LocalDate.of(2026, 8, 1),
+    ).ownCharges
 
     private fun user(subject: String, displayName: String): UUID {
         val id = UUID.randomUUID()
@@ -262,10 +322,16 @@ class JdbcHomeRepositoryIntegrationTest {
         )
     }
 
-    private fun game(group: UUID, startsAt: String, status: String, capacity: Int): UUID {
+    private fun game(
+        group: UUID,
+        startsAt: String,
+        status: String,
+        capacity: Int,
+        zone: String = "America/Sao_Paulo",
+    ): UUID {
         val id = UUID.randomUUID()
         val start = Instant.parse(startsAt)
-        val local = start.atZone(ZoneId.of("America/Sao_Paulo"))
+        val local = start.atZone(ZoneId.of(zone))
         val deadline = start.minusSeconds(86_400)
         val localDate = local.toLocalDate()
         val localTime = local.toLocalTime()
@@ -273,7 +339,7 @@ class JdbcHomeRepositoryIntegrationTest {
             "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline," +
                 "venue_name,venue_address,capacity,status,created_at,updated_at) " +
                 "VALUES ('$id','$group','Home game',DATE '$localDate',TIME '$localTime'," +
-                "'America/Sao_Paulo',TIMESTAMPTZ '$startsAt',90,TIMESTAMPTZ '$deadline','Home court','Home address'," +
+                "'$zone',TIMESTAMPTZ '$startsAt',90,TIMESTAMPTZ '$deadline','Home court','Home address'," +
                 "$capacity,'$status',now(),now())",
         )
         return id
