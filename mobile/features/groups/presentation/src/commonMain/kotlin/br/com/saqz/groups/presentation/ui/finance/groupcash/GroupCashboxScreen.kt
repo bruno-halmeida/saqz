@@ -161,7 +161,8 @@ private fun LoadFailure(onRetry: () -> Unit) = Column(
 @Composable
 private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
-    val canCharge = state.pix?.key?.isNotBlank() == true
+    val hasPix = state.pix?.key?.isNotBlank() == true
+    val canCharge = hasPix && state.debtors.isNotEmpty()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -169,7 +170,7 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap * 2),
     ) {
-        CashboxHeader(state = state, canCharge = canCharge, onIntent = onIntent)
+        CashboxHeader(state = state, canCharge = canCharge, hasPix = hasPix, onIntent = onIntent)
         Text(
             text = stringResource(Res.string.group_cashbox_note),
             style = SaqzTheme.typography.support,
@@ -198,6 +199,7 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
 private fun CashboxHeader(
     state: GroupCashboxState,
     canCharge: Boolean,
+    hasPix: Boolean,
     onIntent: (GroupCashboxIntent) -> Unit,
 ) {
     val colors = SaqzTheme.colors
@@ -239,7 +241,7 @@ private fun CashboxHeader(
                 modifier = Modifier.weight(1f).testTag(GroupCashboxTags.Register),
             )
         }
-        if (!canCharge) {
+        if (!hasPix) {
             Text(
                 text = stringResource(Res.string.sheet_charge_missing_pix),
                 style = SaqzTheme.typography.support,

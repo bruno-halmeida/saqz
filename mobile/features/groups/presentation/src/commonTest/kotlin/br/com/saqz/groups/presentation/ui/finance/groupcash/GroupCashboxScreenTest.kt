@@ -58,6 +58,15 @@ class GroupCashboxScreenTest {
     }
 
     @Test
+    fun `no pending debtors disables charge missing CTA even with Pix`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(debtors = emptyList()), intents::add)
+
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        assertEquals(emptyList(), intents)
+    }
+
+    @Test
     fun `overdue state shows named members and active charge CTA`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(
