@@ -194,7 +194,10 @@ class GameSettlementViewModel(
             )
             if (generation != mutationGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {
-                is SaqzResult.Success -> load()
+                is SaqzResult.Success -> {
+                    load()
+                    emit(GameSettlementEffect.MutationSucceeded)
+                }
                 is SaqzResult.Failure -> update {
                     previous.copy(operationFailed = true, updatingChargeId = null, receiptSheetChargeId = null)
                 }

@@ -17,6 +17,7 @@ fun GameSettlementRoot(
     onBack: () -> Unit,
     onOpenNewEntry: (String, String) -> Unit,
     onOpenCashbox: (String) -> Unit,
+    onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
     viewModel: GameSettlementViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
 ) {
@@ -30,6 +31,7 @@ fun GameSettlementRoot(
             is GameSettlementEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId, effect.localDate)
             is GameSettlementEffect.OpenCashbox -> onOpenCashbox(effect.groupId)
             is GameSettlementEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            GameSettlementEffect.MutationSucceeded -> onMutationSuccess()
         }
     }
     GameSettlementScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
