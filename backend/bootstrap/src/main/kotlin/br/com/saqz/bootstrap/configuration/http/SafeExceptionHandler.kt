@@ -47,6 +47,7 @@ import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedExce
 import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
 import br.com.saqz.subscriptions.adapter.input.http.CouponExpiredException
 import br.com.saqz.subscriptions.adapter.input.http.CouponNotFoundException
+import br.com.saqz.subscriptions.adapter.input.http.CreditCardDeclinedException
 import br.com.saqz.subscriptions.adapter.input.http.DowngradeBlockedException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidCouponRequestException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestException
@@ -464,6 +465,15 @@ class SafeExceptionHandler(
     @ExceptionHandler(DowngradeBlockedException::class)
     fun downgradeBlocked(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.DOWNGRADE_BLOCKED)
+    }
+
+    /** Shape pinado com o mobile (VUL-196) — não o `ApiProblem` genérico. Ver [ApiProblemWriter.writeCardDeclined]. */
+    @ExceptionHandler(CreditCardDeclinedException::class)
+    fun creditCardDeclined(
+        failure: CreditCardDeclinedException,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.writeCardDeclined(response, failure.reason, failure.description)
     }
 
     /**

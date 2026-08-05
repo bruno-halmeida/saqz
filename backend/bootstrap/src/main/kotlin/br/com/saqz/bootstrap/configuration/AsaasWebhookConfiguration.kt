@@ -13,6 +13,7 @@ import br.com.saqz.subscriptions.adapter.output.asaas.HttpAsaasGateway
 import br.com.saqz.groups.adapter.output.jdbc.plan.JdbcOwnerPlanUsageLookup
 import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAsaasIdempotencyStore
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCreditCardTokenStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionEventStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.AsaasGateway
@@ -21,6 +22,7 @@ import br.com.saqz.subscriptions.application.CancelSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.CreateSubscription
+import br.com.saqz.subscriptions.application.CreditCardTokenStore
 import br.com.saqz.subscriptions.application.ListReceipts
 import br.com.saqz.subscriptions.application.ProcessAsaasWebhook
 import br.com.saqz.subscriptions.application.SubscriptionEventStore
@@ -64,6 +66,10 @@ class AsaasWebhookConfiguration {
     @Bean
     fun subscriptionEventStore(dataSource: DataSource): SubscriptionEventStore =
         JdbcSubscriptionEventStore(dataSource)
+
+    @Bean
+    fun creditCardTokenStore(dataSource: DataSource): CreditCardTokenStore =
+        JdbcCreditCardTokenStore(dataSource)
 
     @Bean
     fun subscriptionsTransactionRunner(dataSource: DataSource): SubscriptionsTransactionRunner =
@@ -112,7 +118,8 @@ class AsaasWebhookConfiguration {
         asaasGateway: AsaasGateway,
         transaction: SubscriptionsTransactionRunner,
         clock: Clock,
-    ) = CreateSubscription(subscriptions, coupons, asaasGateway, transaction, clock)
+        creditCardTokens: CreditCardTokenStore,
+    ) = CreateSubscription(subscriptions, coupons, asaasGateway, transaction, clock, creditCardTokens)
 
     @Bean
     fun changePlan(

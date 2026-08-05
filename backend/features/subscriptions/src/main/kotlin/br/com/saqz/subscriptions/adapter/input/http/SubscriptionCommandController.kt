@@ -10,10 +10,13 @@ import br.com.saqz.subscriptions.application.ChangePlanResult
 import br.com.saqz.subscriptions.application.CreateSubscription
 import br.com.saqz.subscriptions.application.CreateSubscriptionCommand
 import br.com.saqz.subscriptions.application.CreateSubscriptionResult
+import br.com.saqz.subscriptions.application.CreditCardDetails
+import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -27,6 +30,25 @@ fun interface SubscriptionActorResolver {
     fun resolve(identity: RequestIdentity): UUID
 }
 
+data class CreditCardRequest @JsonCreator constructor(
+    @JsonProperty("holderName") val holderName: String?,
+    @JsonProperty("number") val number: String?,
+    @JsonProperty("expiryMonth") val expiryMonth: String?,
+    @JsonProperty("expiryYear") val expiryYear: String?,
+    @JsonProperty("ccv") val ccv: String?,
+)
+
+data class CreditCardHolderInfoRequest @JsonCreator constructor(
+    @JsonProperty("name") val name: String?,
+    @JsonProperty("email") val email: String?,
+    @JsonProperty("cpfCnpj") val cpfCnpj: String?,
+    @JsonProperty("postalCode") val postalCode: String?,
+    @JsonProperty("addressNumber") val addressNumber: String?,
+    @JsonProperty("phone") val phone: String?,
+    @JsonProperty("addressComplement") val addressComplement: String? = null,
+    @JsonProperty("mobilePhone") val mobilePhone: String? = null,
+)
+
 data class CreateSubscriptionRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: String?,
     @JsonProperty("planId") val planId: String?,
@@ -36,6 +58,9 @@ data class CreateSubscriptionRequest @JsonCreator constructor(
     @JsonProperty("email") val email: String?,
     @JsonProperty("cpfCnpj") val cpfCnpj: String?,
     @JsonProperty("couponCode") val couponCode: String? = null,
+    /** Obrigatório quando billingType é CREDIT_CARD; validado em [CreateSubscription]. */
+    @JsonProperty("creditCard") val creditCard: CreditCardRequest? = null,
+    @JsonProperty("creditCardHolderInfo") val creditCardHolderInfo: CreditCardHolderInfoRequest? = null,
 )
 
 data class ChangePlanRequest @JsonCreator constructor(
@@ -89,6 +114,16 @@ class CouponExpiredException : RuntimeException()
 class CouponAlreadyRedeemedException : RuntimeException()
 class DowngradeBlockedException : RuntimeException()
 
+/**
+ * Cartão recusado pela Asaas. `reason` é o código de recusa da Asaas (ex.: "invalid_creditCard"),
+ * `description` a mensagem PT-BR da Asaas — nunca dado de cartão. Vira o 402 pinado com o mobile
+ * (VUL-196) em [br.com.saqz.bootstrap.configuration.http.SafeExceptionHandler].
+ */
+class CreditCardDeclinedException(
+    val reason: String,
+    val description: String,
+) : RuntimeException()
+
 @RestController
 class SubscriptionCommandController(
     private val actors: SubscriptionActorResolver,
@@ -100,6 +135,7 @@ class SubscriptionCommandController(
     fun create(
         @AuthenticationPrincipal identity: RequestIdentity,
         @RequestBody request: CreateSubscriptionRequest,
+        servletRequest: HttpServletRequest,
     ): ResponseEntity<CreateSubscriptionResponse> {
         val ownerUserId = actors.resolve(identity)
         val command = CreateSubscriptionCommand(
@@ -112,6 +148,28 @@ class SubscriptionCommandController(
             email = request.email ?: invalid("email"),
             cpfCnpj = request.cpfCnpj ?: invalid("cpfCnpj"),
             couponCode = request.couponCode,
+            creditCard = request.creditCard?.let {
+                CreditCardDetails(
+                    holderName = it.holderName.orEmpty(),
+                    number = it.number.orEmpty(),
+                    expiryMonth = it.expiryMonth.orEmpty(),
+                    expiryYear = it.expiryYear.orEmpty(),
+                    ccv = it.ccv.orEmpty(),
+                )
+            },
+            creditCardHolderInfo = request.creditCardHolderInfo?.let {
+                CreditCardHolderInfo(
+                    name = it.name.orEmpty(),
+                    email = it.email.orEmpty(),
+                    cpfCnpj = it.cpfCnpj.orEmpty(),
+                    postalCode = it.postalCode.orEmpty(),
+                    addressNumber = it.addressNumber.orEmpty(),
+                    phone = it.phone.orEmpty(),
+                    addressComplement = it.addressComplement,
+                    mobilePhone = it.mobilePhone,
+                )
+            },
+            remoteIp = resolveRemoteIp(servletRequest),
         )
         return when (val result = createSubscription.execute(command)) {
             is CreateSubscriptionResult.Success -> ResponseEntity.status(HttpStatus.CREATED).body(
@@ -139,6 +197,10 @@ class SubscriptionCommandController(
                     "cpfCnpj" to listOf("must have 11 (CPF) or 14 (CNPJ) digits"),
                 ),
             )
+            is CreateSubscriptionResult.InvalidCreditCardDetails ->
+                throw InvalidSubscriptionRequestException(result.fieldErrors)
+            is CreateSubscriptionResult.CardDeclined ->
+                throw CreditCardDeclinedException(result.reason, result.asaasDescription)
         }
     }
 

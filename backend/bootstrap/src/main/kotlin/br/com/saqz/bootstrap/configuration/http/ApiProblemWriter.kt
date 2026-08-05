@@ -30,4 +30,18 @@ class ApiProblemWriter(
             ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds, remainingAttempts, expiredAt, conflictGameId),
         )
     }
+
+    /**
+     * Shape fixo pinado com o mobile (VUL-196) — não é o `ApiProblem` genérico (sem
+     * status/correlationId no corpo). `reason` é o código de recusa da Asaas repassado como
+     * veio; `message` a descrição PT-BR da Asaas. Não mudar sem avisar o time mobile.
+     */
+    fun writeCardDeclined(response: HttpServletResponse, reason: String, message: String) {
+        response.status = 402
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        objectMapper.writeValue(
+            response.outputStream,
+            mapOf("error" to "card_declined", "reason" to reason, "message" to message),
+        )
+    }
 }

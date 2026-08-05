@@ -2,6 +2,9 @@ package br.com.saqz.subscriptions.adapter.output.asaas
 
 import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasConcurrentOperationException
+import br.com.saqz.subscriptions.application.AsaasGateway
+import br.com.saqz.subscriptions.application.CreditCardDetails
+import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import okhttp3.mockwebserver.MockResponse
@@ -10,6 +13,9 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -23,7 +29,7 @@ import kotlin.test.assertTrue
 class HttpAsaasGatewayTest {
     private lateinit var server: MockWebServer
     private lateinit var store: InMemoryAsaasIdempotencyStore
-    private lateinit var gateway: HttpAsaasGateway
+    private lateinit var gateway: AsaasGateway
 
     private val fixedInstant = Instant.parse("2026-07-30T12:00:00Z")
     private val fixedClock = Clock.fixed(fixedInstant, ZoneOffset.UTC)
@@ -135,7 +141,8 @@ class HttpAsaasGatewayTest {
             idempotencyKey = "sub-owner-1-TITULAR",
         )
 
-        assertEquals("sub_XYZ", id)
+        assertEquals("sub_XYZ", id.asaasSubscriptionId)
+        assertNull(id.creditCard)
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertTrue(request.body.readUtf8().contains("\"billingType\":\"PIX\""))
@@ -153,6 +160,139 @@ class HttpAsaasGatewayTest {
 
         assertTrue(server.takeRequest().body.readUtf8().contains("\"billingType\":\"CREDIT_CARD\""))
     }
+
+    @Test
+    fun `createSubscription includes creditCard, creditCardHolderInfo and remoteIp in the body`() {
+        server.enqueue(json(200, """{"id":"sub_CARD_FULL","creditCard":{"creditCardToken":"tok_1","creditCardNumber":"1111","creditCardBrand":"VISA"}}"""))
+
+        val result = gateway.createSubscription(
+            asaasCustomerId = "cus_CARD",
+            plan = Plan.ORGANIZADOR,
+            cycle = SubscriptionCycle.MONTHLY,
+            valueCents = 5_990,
+            billingType = AsaasBillingType.CREDIT_CARD,
+            idempotencyKey = "sub-card-full-1",
+            creditCard = sampleCreditCard(),
+            creditCardHolderInfo = sampleCreditCardHolderInfo(),
+            remoteIp = "203.0.113.5",
+        )
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"holderName\":\"Bruno Almeida\""))
+        assertTrue(body.contains("\"number\":\"4111111111111111\""))
+        assertTrue(body.contains("\"postalCode\":\"01310930\""))
+        assertTrue(body.contains("\"remoteIp\":\"203.0.113.5\""))
+        assertEquals("sub_CARD_FULL", result.asaasSubscriptionId)
+        assertEquals("tok_1", result.creditCard?.token)
+        assertEquals("1111", result.creditCard?.lastFourDigits)
+        assertEquals("VISA", result.creditCard?.brand)
+    }
+
+    @Test
+    fun `createSubscription maps a declined card to CardDeclinedException, not a generic AsaasException`() {
+        server.enqueue(
+            json(400, """{"errors":[{"code":"invalid_creditCard","description":"Transação não autorizada."}]}"""),
+        )
+
+        val error = assertThrows<CardDeclinedException> {
+            gateway.createSubscription(
+                asaasCustomerId = "cus_CARD",
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                valueCents = 3_990,
+                billingType = AsaasBillingType.CREDIT_CARD,
+                idempotencyKey = "sub-card-declined-1",
+                creditCard = sampleCreditCard(),
+                creditCardHolderInfo = sampleCreditCardHolderInfo(),
+                remoteIp = "203.0.113.5",
+            )
+        }
+
+        assertEquals("invalid_creditCard", error.asaasCode)
+        assertEquals("Transação não autorizada.", error.asaasDescription)
+        assertNull(store.find("sub-card-declined-1"))
+    }
+
+    @Test
+    fun `createSubscription uses 60s timeout for credit card billing but 15s for pix`() {
+        val timeouts = mutableListOf<Duration?>()
+        val delegate = HttpClient.newHttpClient()
+        val capturingClient = capturingHttpClient(delegate) { timeouts += it }
+        val capturingGateway = HttpAsaasGateway(
+            settings = AsaasClientSettings(baseUrl = server.url("/v3").toString().trimEnd('/'), apiKey = apiKey),
+            idempotencyStore = InMemoryAsaasIdempotencyStore(),
+            httpClient = capturingClient,
+            clock = fixedClock,
+            idempotencyPollWait = { },
+        )
+        server.enqueue(json(200, """{"id":"sub_PIX_TIMEOUT"}"""))
+        server.enqueue(json(200, """{"id":"sub_CARD_TIMEOUT"}"""))
+
+        capturingGateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-timeout-pix",
+        )
+        capturingGateway.createSubscription(
+            asaasCustomerId = "cus_1",
+            plan = Plan.TITULAR,
+            cycle = SubscriptionCycle.MONTHLY,
+            valueCents = 100,
+            billingType = AsaasBillingType.CREDIT_CARD,
+            idempotencyKey = "sub-timeout-card",
+            creditCard = sampleCreditCard(),
+            creditCardHolderInfo = sampleCreditCardHolderInfo(),
+            remoteIp = "203.0.113.5",
+        )
+
+        assertEquals(listOf(Duration.ofSeconds(15), Duration.ofSeconds(60)), timeouts)
+    }
+
+    private fun sampleCreditCard() = CreditCardDetails(
+        holderName = "Bruno Almeida",
+        number = "4111111111111111",
+        expiryMonth = "12",
+        expiryYear = "2030",
+        ccv = "123",
+    )
+
+    private fun sampleCreditCardHolderInfo() = CreditCardHolderInfo(
+        name = "Bruno Almeida",
+        email = "bruno@example.com",
+        cpfCnpj = "52998224725",
+        postalCode = "01310930",
+        addressNumber = "100",
+        phone = "11999999999",
+    )
+
+    /** Delegates the real call to [delegate] but first records the timeout the caller asked for. */
+    private fun capturingHttpClient(delegate: HttpClient, onSend: (Duration?) -> Unit): HttpClient =
+        object : HttpClient() {
+            override fun cookieHandler() = delegate.cookieHandler()
+            override fun connectTimeout() = delegate.connectTimeout()
+            override fun followRedirects(): Redirect = delegate.followRedirects()
+            override fun proxy() = delegate.proxy()
+            override fun sslContext(): javax.net.ssl.SSLContext = delegate.sslContext()
+            override fun sslParameters(): javax.net.ssl.SSLParameters = delegate.sslParameters()
+            override fun authenticator() = delegate.authenticator()
+            override fun version(): Version = delegate.version()
+            override fun executor() = delegate.executor()
+            override fun <T : Any?> send(
+                request: HttpRequest,
+                responseBodyHandler: HttpResponse.BodyHandler<T>,
+            ): HttpResponse<T> {
+                onSend(request.timeout().orElse(null))
+                return delegate.send(request, responseBodyHandler)
+            }
+            override fun <T : Any?> sendAsync(
+                request: HttpRequest,
+                responseBodyHandler: HttpResponse.BodyHandler<T>,
+            ) = throw UnsupportedOperationException()
+            override fun <T : Any?> sendAsync(
+                request: HttpRequest,
+                responseBodyHandler: HttpResponse.BodyHandler<T>,
+                pushPromiseHandler: HttpResponse.PushPromiseHandler<T>?,
+            ) = throw UnsupportedOperationException()
+            override fun newWebSocketBuilder() = throw UnsupportedOperationException()
+        }
 
     @Test
     fun `createSubscription maps annual cycle to YEARLY`() {
@@ -178,8 +318,8 @@ class HttpAsaasGatewayTest {
             "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 3_990, AsaasBillingType.PIX, "sub-retry-1",
         )
 
-        assertEquals("sub_FIRST", first)
-        assertEquals("sub_FIRST", second)
+        assertEquals("sub_FIRST", first.asaasSubscriptionId)
+        assertEquals("sub_FIRST", second.asaasSubscriptionId)
         assertEquals(1, server.requestCount)
     }
 
@@ -200,7 +340,7 @@ class HttpAsaasGatewayTest {
         val recovered = gateway.createSubscription(
             "cus_ok", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-fail-1",
         )
-        assertEquals("sub_RECOVERED", recovered)
+        assertEquals("sub_RECOVERED", recovered.asaasSubscriptionId)
     }
 
     @Test
@@ -217,7 +357,7 @@ class HttpAsaasGatewayTest {
             "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-ambig-1",
         )
 
-        assertEquals("sub_ALREADY", id)
+        assertEquals("sub_ALREADY", id.asaasSubscriptionId)
         assertEquals("sub_ALREADY", store.find("sub-ambig-1")?.resourceId)
     }
 
@@ -250,7 +390,7 @@ class HttpAsaasGatewayTest {
             "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-old",
         )
 
-        assertEquals("sub_NEW", id)
+        assertEquals("sub_NEW", id.asaasSubscriptionId)
         assertEquals(2, server.requestCount)
         assertEquals("GET", server.takeRequest().method)
         assertEquals("POST", server.takeRequest().method)
@@ -270,7 +410,7 @@ class HttpAsaasGatewayTest {
             "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-abandoned",
         )
 
-        assertEquals("sub_ORPHAN", id)
+        assertEquals("sub_ORPHAN", id.asaasSubscriptionId)
         assertEquals("sub_ORPHAN", store.find("sub-abandoned")?.resourceId)
     }
 

@@ -1,5 +1,7 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.subscriptions.adapter.output.asaas.AsaasException
+import br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException
 import br.com.saqz.subscriptions.domain.Coupon
 import br.com.saqz.subscriptions.domain.CouponRedemption
 import br.com.saqz.subscriptions.domain.Plan
@@ -27,6 +29,7 @@ class CreateSubscriptionTest {
     private lateinit var subscriptions: FakeSubscriptionRepository
     private lateinit var coupons: FakeCouponRepository
     private lateinit var gateway: FakeAsaasGateway
+    private lateinit var creditCardTokens: RecordingCreditCardTokenStore
     private lateinit var useCase: CreateSubscription
 
     @BeforeEach
@@ -34,6 +37,7 @@ class CreateSubscriptionTest {
         subscriptions = FakeSubscriptionRepository()
         coupons = FakeCouponRepository()
         gateway = FakeAsaasGateway()
+        creditCardTokens = RecordingCreditCardTokenStore()
         useCase = CreateSubscription(
             subscriptions = subscriptions,
             coupons = coupons,
@@ -42,7 +46,94 @@ class CreateSubscriptionTest {
                 override fun <T> inTransaction(block: () -> T): T = block()
             },
             clock = clock,
+            creditCardTokens = creditCardTokens,
         )
+    }
+
+    private fun validCreditCard() = CreditCardDetails(
+        holderName = "Bruno Almeida",
+        number = "4111111111111111",
+        expiryMonth = "12",
+        expiryYear = "2030",
+        ccv = "123",
+    )
+
+    private fun validCreditCardHolderInfo() = CreditCardHolderInfo(
+        name = "Bruno Almeida",
+        email = "bruno@example.com",
+        cpfCnpj = "52998224725",
+        postalCode = "01310930",
+        addressNumber = "100",
+        phone = "11999999999",
+    )
+
+    private fun cardCommand() = baseCommand().copy(
+        billingType = AsaasBillingType.CREDIT_CARD,
+        creditCard = validCreditCard(),
+        creditCardHolderInfo = validCreditCardHolderInfo(),
+        remoteIp = "203.0.113.5",
+    )
+
+    @Test
+    fun `creates subscription with credit card and persists the returned token`() {
+        gateway.creditCardResult = AsaasCreditCardInfo(token = "card_tok_1", lastFourDigits = "1111", brand = "VISA")
+
+        val result = useCase.execute(cardCommand())
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals(validCreditCard(), gateway.lastCreditCard)
+        assertEquals(validCreditCardHolderInfo(), gateway.lastCreditCardHolderInfo)
+        assertEquals("203.0.113.5", gateway.lastRemoteIp)
+        assertEquals(
+            RecordingCreditCardTokenStore.Saved("sub_1", "card_tok_1", "1111", "VISA"),
+            creditCardTokens.saved.single(),
+        )
+    }
+
+    @Test
+    fun `does not persist a token when asaas does not return one`() {
+        gateway.creditCardResult = null
+
+        useCase.execute(cardCommand())
+
+        assertTrue(creditCardTokens.saved.isEmpty())
+    }
+
+    @Test
+    fun `rejects credit card billing missing the card block with a field error, not a 500`() {
+        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.CREDIT_CARD))
+
+        val invalid = assertIs<CreateSubscriptionResult.InvalidCreditCardDetails>(result)
+        assertTrue(invalid.fieldErrors.containsKey("creditCard"))
+        assertTrue(invalid.fieldErrors.containsKey("creditCardHolderInfo"))
+        assertTrue(invalid.fieldErrors.containsKey("remoteIp"))
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `rejects malformed card expiry before calling asaas`() {
+        val result = useCase.execute(cardCommand().copy(creditCard = validCreditCard().copy(expiryMonth = "13")))
+
+        val invalid = assertIs<CreateSubscriptionResult.InvalidCreditCardDetails>(result)
+        assertTrue(invalid.fieldErrors.containsKey("creditCard.expiryMonth"))
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `card declined by asaas maps to CardDeclined with the mapped reason`() {
+        gateway.declineWith = CardDeclinedException(
+            asaasCode = "invalid_creditCard",
+            asaasDescription = "Transação não autorizada.",
+            cause = AsaasException(statusCode = 400, message = "declined"),
+        )
+
+        val result = useCase.execute(cardCommand())
+
+        val declined = assertIs<CreateSubscriptionResult.CardDeclined>(result)
+        assertEquals("invalid_creditCard", declined.reason)
+        assertEquals("Transação não autorizada.", declined.asaasDescription)
+        assertNull(subscriptions.findByOwnerUserId(ownerId))
+        assertTrue(creditCardTokens.saved.isEmpty())
     }
 
     @Test
@@ -345,7 +436,7 @@ class CreateSubscriptionTest {
         )
         gateway.pixPayload = "000201LEGACY"
 
-        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.CREDIT_CARD))
+        val result = useCase.execute(cardCommand())
 
         val success = assertIs<CreateSubscriptionResult.Success>(result)
         assertEquals("sub_old", success.subscription.asaasSubscriptionId)
@@ -396,7 +487,7 @@ class CreateSubscriptionTest {
     fun `credit card path returns invoice url`() {
         gateway.invoiceUrl = "https://asaas.test/i/abc"
 
-        val result = useCase.execute(baseCommand().copy(billingType = AsaasBillingType.CREDIT_CARD))
+        val result = useCase.execute(cardCommand())
 
         val success = assertIs<CreateSubscriptionResult.Success>(result)
         assertEquals("https://asaas.test/i/abc", success.invoiceUrl)
@@ -466,6 +557,11 @@ class CreateSubscriptionTest {
         var paymentStatus: String? = "PENDING"
         var findPaymentThrows: Boolean = false
         var lastSubscriptionValueCents: Long? = null
+        var creditCardResult: AsaasCreditCardInfo? = null
+        var declineWith: CardDeclinedException? = null
+        var lastCreditCard: CreditCardDetails? = null
+        var lastCreditCardHolderInfo: CreditCardHolderInfo? = null
+        var lastRemoteIp: String? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
 
         override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = "cus_1"
@@ -477,10 +573,17 @@ class CreateSubscriptionTest {
             valueCents: Long,
             billingType: AsaasBillingType,
             idempotencyKey: String,
-        ): String {
+            creditCard: CreditCardDetails?,
+            creditCardHolderInfo: CreditCardHolderInfo?,
+            remoteIp: String?,
+        ): AsaasSubscriptionCreation {
+            declineWith?.let { throw it }
             lastSubscriptionValueCents = valueCents
             subscriptionIdempotencyKeys += idempotencyKey
-            return "sub_1"
+            lastCreditCard = creditCard
+            lastCreditCardHolderInfo = creditCardHolderInfo
+            lastRemoteIp = remoteIp
+            return AsaasSubscriptionCreation("sub_1", creditCardResult)
         }
 
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
@@ -508,6 +611,16 @@ class CreateSubscriptionTest {
         override fun findPayment(asaasPaymentId: String): AsaasPaymentSnapshot? {
             if (findPaymentThrows) throw RuntimeException("payment lookup failed")
             return AsaasPaymentSnapshot(id = asaasPaymentId, status = paymentStatus, invoiceUrl = null)
+        }
+    }
+
+    private class RecordingCreditCardTokenStore : CreditCardTokenStore {
+        data class Saved(val asaasSubscriptionId: String, val token: String, val lastFourDigits: String?, val brand: String?)
+
+        val saved = mutableListOf<Saved>()
+
+        override fun save(asaasSubscriptionId: String, token: String, lastFourDigits: String?, brand: String?) {
+            saved += Saved(asaasSubscriptionId, token, lastFourDigits, brand)
         }
     }
 }

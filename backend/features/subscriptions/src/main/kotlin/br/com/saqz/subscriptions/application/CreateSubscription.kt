@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException
 import br.com.saqz.subscriptions.application.SubscriptionPricing.discountedPriceCents
 import br.com.saqz.subscriptions.application.SubscriptionPricing.initialPeriodEnd
 import br.com.saqz.subscriptions.domain.Coupon
@@ -22,6 +23,11 @@ data class CreateSubscriptionCommand(
     val email: String,
     val cpfCnpj: String,
     val couponCode: String? = null,
+    /** Obrigatórios (validados em [CreateSubscription.execute]) quando billingType é CREDIT_CARD. */
+    val creditCard: CreditCardDetails? = null,
+    val creditCardHolderInfo: CreditCardHolderInfo? = null,
+    /** IP do pagador — resolvido pelo controller a partir da request, nunca enviado pelo cliente. */
+    val remoteIp: String? = null,
 )
 
 sealed interface CreateSubscriptionResult {
@@ -37,6 +43,14 @@ sealed interface CreateSubscriptionResult {
     data object CouponExpired : CreateSubscriptionResult
     data object CouponAlreadyRedeemed : CreateSubscriptionResult
     data object InvalidCustomerDetails : CreateSubscriptionResult
+    data class InvalidCreditCardDetails(val fieldErrors: Map<String, List<String>>) : CreateSubscriptionResult
+
+    /**
+     * Cartão recusado pela Asaas. `reason` é o código de recusa da Asaas repassado como veio
+     * (ex.: "invalid_creditCard") — contrato pinado com o mobile (VUL-196), não inventar um
+     * enum próprio aqui. `asaasDescription` já vem em PT-BR da Asaas.
+     */
+    data class CardDeclined(val reason: String, val asaasDescription: String) : CreateSubscriptionResult
 
     /** An unconfirmed subscription is pending for a DIFFERENT plan/cycle than this request. */
     data object PendingCheckoutMismatch : CreateSubscriptionResult
@@ -48,6 +62,7 @@ class CreateSubscription(
     private val asaasGateway: AsaasGateway,
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock,
+    private val creditCardTokens: CreditCardTokenStore = CreditCardTokenStore { _, _, _, _ -> },
 ) {
     fun execute(command: CreateSubscriptionCommand): CreateSubscriptionResult {
         val name = command.name.trim()
@@ -56,6 +71,10 @@ class CreateSubscription(
         if (name.isBlank() || !isValidEmail(email) || !isValidCpfCnpj(cpfDigits)) {
             return CreateSubscriptionResult.InvalidCustomerDetails
         }
+        if (command.billingType == AsaasBillingType.CREDIT_CARD) {
+            val fieldErrors = validateCreditCard(command)
+            if (fieldErrors.isNotEmpty()) return CreateSubscriptionResult.InvalidCreditCardDetails(fieldErrors)
+        }
 
         val now = clock.instant()
 
@@ -63,30 +82,34 @@ class CreateSubscription(
         // Coupon resolution only runs for a genuinely new Asaas subscription (new or reactivated) — an
         // unconfirmed subscription being recovered must not re-check redemption, since it was already
         // recorded on the first attempt and would wrongly fail the retry.
-        val outcome = transaction.inTransaction {
-            subscriptions.lockOwner(command.ownerUserId)
-            val existing = subscriptions.findByOwnerUserIdForUpdate(command.ownerUserId)
-            when {
-                existing == null -> newSubscriptionOutcome(command, now) { c, v ->
-                    createNew(command, name, email, cpfDigits, c, v, now)
+        val outcome = try {
+            transaction.inTransaction {
+                subscriptions.lockOwner(command.ownerUserId)
+                val existing = subscriptions.findByOwnerUserIdForUpdate(command.ownerUserId)
+                when {
+                    existing == null -> newSubscriptionOutcome(command, now) { c, v ->
+                        createNew(command, name, email, cpfDigits, c, v, now)
+                    }
+                    existing.status == SubscriptionStatus.CANCELED ->
+                        newSubscriptionOutcome(command, now) { c, v ->
+                            reactivate(existing, command, name, email, cpfDigits, c, v, now)
+                        }
+                    existing.firstConfirmedAt == null ->
+                        // Legacy rows predating billingType have it null — only enforce the match once
+                        // we actually know what the existing charge's billing type was.
+                        if (existing.plan == command.plan &&
+                            existing.cycle == command.cycle &&
+                            (existing.billingType == null || existing.billingType == command.billingType)
+                        ) {
+                            CommitOutcome.Committed(existing)
+                        } else {
+                            CommitOutcome.Rejected(CreateSubscriptionResult.PendingCheckoutMismatch)
+                        }
+                    else -> CommitOutcome.Committed(existing) // confirmed active/past_due — AlreadySubscribed after commit
                 }
-                existing.status == SubscriptionStatus.CANCELED ->
-                    newSubscriptionOutcome(command, now) { c, v ->
-                        reactivate(existing, command, name, email, cpfDigits, c, v, now)
-                    }
-                existing.firstConfirmedAt == null ->
-                    // Legacy rows predating billingType have it null — only enforce the match once
-                    // we actually know what the existing charge's billing type was.
-                    if (existing.plan == command.plan &&
-                        existing.cycle == command.cycle &&
-                        (existing.billingType == null || existing.billingType == command.billingType)
-                    ) {
-                        CommitOutcome.Committed(existing)
-                    } else {
-                        CommitOutcome.Rejected(CreateSubscriptionResult.PendingCheckoutMismatch)
-                    }
-                else -> CommitOutcome.Committed(existing) // confirmed active/past_due — AlreadySubscribed after commit
             }
+        } catch (ex: CardDeclinedException) {
+            return CreateSubscriptionResult.CardDeclined(reason = ex.asaasCode, asaasDescription = ex.asaasDescription)
         }
 
         val committed = when (outcome) {
@@ -138,29 +161,46 @@ class CreateSubscription(
         now: Instant,
     ): Subscription {
         val customerId = asaasGateway.createCustomer(command.ownerUserId, name, email, cpfDigits)
-        val asaasSubscriptionId = asaasGateway.createSubscription(
+        val creation = createAsaasSubscription(command, customerId, valueCents)
+        val subscription = blankSubscription(
+            ownerUserId = command.ownerUserId,
+            plan = command.plan,
+            cycle = command.cycle,
+            customerId = customerId,
+            asaasSubscriptionId = creation.asaasSubscriptionId,
+            billingType = command.billingType,
+            now = now,
+            coupon = coupon,
+        )
+        subscriptions.insert(subscription)
+        persistCreditCardToken(creation)
+        if (coupon != null) {
+            coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
+        }
+        return subscription
+    }
+
+    private fun createAsaasSubscription(
+        command: CreateSubscriptionCommand,
+        customerId: String,
+        valueCents: Long,
+    ): AsaasSubscriptionCreation =
+        asaasGateway.createSubscription(
             asaasCustomerId = customerId,
             plan = command.plan,
             cycle = command.cycle,
             valueCents = valueCents,
             billingType = command.billingType,
             idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
+            creditCard = command.creditCard,
+            creditCardHolderInfo = command.creditCardHolderInfo,
+            remoteIp = command.remoteIp,
         )
-        val subscription = blankSubscription(
-            ownerUserId = command.ownerUserId,
-            plan = command.plan,
-            cycle = command.cycle,
-            customerId = customerId,
-            asaasSubscriptionId = asaasSubscriptionId,
-            billingType = command.billingType,
-            now = now,
-            coupon = coupon,
-        )
-        subscriptions.insert(subscription)
-        if (coupon != null) {
-            coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
-        }
-        return subscription
+
+    private fun persistCreditCardToken(creation: AsaasSubscriptionCreation) {
+        val card = creation.creditCard ?: return
+        val token = card.token ?: return
+        creditCardTokens.save(creation.asaasSubscriptionId, token, card.lastFourDigits, card.brand)
     }
 
     private fun reactivate(
@@ -174,25 +214,19 @@ class CreateSubscription(
         now: Instant,
     ): Subscription {
         val customerId = asaasGateway.createCustomer(command.ownerUserId, name, email, cpfDigits)
-        val asaasSubscriptionId = asaasGateway.createSubscription(
-            asaasCustomerId = customerId,
-            plan = command.plan,
-            cycle = command.cycle,
-            valueCents = valueCents,
-            billingType = command.billingType,
-            idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
-        )
+        val creation = createAsaasSubscription(command, customerId, valueCents)
         val reactivated = blankSubscription(
             ownerUserId = command.ownerUserId,
             plan = command.plan,
             cycle = command.cycle,
             customerId = customerId,
-            asaasSubscriptionId = asaasSubscriptionId,
+            asaasSubscriptionId = creation.asaasSubscriptionId,
             billingType = command.billingType,
             now = now,
             coupon = coupon,
         )
         subscriptions.save(reactivated)
+        persistCreditCardToken(creation)
         if (coupon != null && !coupons.hasRedemption(coupon.id, command.ownerUserId)) {
             coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
         }
@@ -306,4 +340,59 @@ class CreateSubscription(
 
     private fun isValidCpfCnpj(digits: String): Boolean =
         digits.length == 11 || digits.length == 14
+
+    /**
+     * Validação de presença/formato na borda — 400 com o campo, nunca 500 por dado faltando lá
+     * na frente na chamada à Asaas. Não valida Luhn do número: isso é da tela de captura (mobile,
+     * ticket seguinte); aqui é só sanidade de formato para não estourar na Asaas.
+     */
+    private fun validateCreditCard(command: CreateSubscriptionCommand): Map<String, List<String>> {
+        val errors = mutableMapOf<String, MutableList<String>>()
+        fun fail(field: String, message: String) {
+            errors.getOrPut(field) { mutableListOf() }.add(message)
+        }
+
+        val card = command.creditCard
+        if (card == null) {
+            fail("creditCard", "is required for CREDIT_CARD billing")
+        } else {
+            if (card.holderName.isBlank()) fail("creditCard.holderName", "is required")
+            if (card.number.filter { it.isDigit() }.length !in 13..19) {
+                fail("creditCard.number", "must have 13 to 19 digits")
+            }
+            if (!card.expiryMonth.matches(EXPIRY_MONTH_PATTERN)) {
+                fail("creditCard.expiryMonth", "must be 2 digits between 01 and 12")
+            }
+            if (!card.expiryYear.matches(FOUR_DIGITS_PATTERN)) fail("creditCard.expiryYear", "must have 4 digits")
+            if (!card.ccv.matches(CCV_PATTERN)) fail("creditCard.ccv", "must have 3 or 4 digits")
+        }
+
+        val holder = command.creditCardHolderInfo
+        if (holder == null) {
+            fail("creditCardHolderInfo", "is required for CREDIT_CARD billing")
+        } else {
+            if (holder.name.isBlank()) fail("creditCardHolderInfo.name", "is required")
+            if (!isValidEmail(holder.email.trim())) fail("creditCardHolderInfo.email", "must be a valid email")
+            if (!isValidCpfCnpj(holder.cpfCnpj.filter { it.isDigit() })) {
+                fail("creditCardHolderInfo.cpfCnpj", "must have 11 (CPF) or 14 (CNPJ) digits")
+            }
+            if (holder.postalCode.filter { it.isDigit() }.length != 8) {
+                fail("creditCardHolderInfo.postalCode", "must have 8 digits")
+            }
+            if (holder.addressNumber.isBlank()) fail("creditCardHolderInfo.addressNumber", "is required")
+            if (holder.phone.filter { it.isDigit() }.length < 10) {
+                fail("creditCardHolderInfo.phone", "must be a valid phone number")
+            }
+        }
+
+        if (command.remoteIp.isNullOrBlank()) fail("remoteIp", "is required for CREDIT_CARD billing")
+
+        return errors
+    }
+
+    private companion object {
+        val EXPIRY_MONTH_PATTERN = Regex("^(0[1-9]|1[0-2])$")
+        val FOUR_DIGITS_PATTERN = Regex("^\\d{4}$")
+        val CCV_PATTERN = Regex("^\\d{3,4}$")
+    }
 }

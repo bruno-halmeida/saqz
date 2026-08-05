@@ -479,6 +479,25 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
+    fun `masks a full card number in the stored raw payload, PCI defense in depth`() {
+        val eventId = "evt_pan_guard"
+        useCase.execute(
+            token,
+            AsaasWebhookCommand(
+                asaasEventId = eventId,
+                eventType = "PAYMENT_CREATED",
+                asaasSubscriptionId = null,
+                asaasPaymentId = null,
+                rawPayload = """{"id":"$eventId","event":"PAYMENT_CREATED","creditCard":{"number":"4111111111111111"}}""",
+            ),
+        )
+
+        val stored = events.rows.getValue(eventId).payload
+        assertTrue(stored.contains("\"number\":\"************1111\""))
+        assertFalse(stored.contains("4111111111111111"))
+    }
+
+    @Test
     fun `coupon cycles decrement and push full price when reaching zero`() {
         subscriptions.save(
             baseSubscription().copy(
@@ -1026,7 +1045,10 @@ class ProcessAsaasWebhookTest {
             valueCents: Long,
             billingType: AsaasBillingType,
             idempotencyKey: String,
-        ): String = error("unused")
+            creditCard: CreditCardDetails?,
+            creditCardHolderInfo: CreditCardHolderInfo?,
+            remoteIp: String?,
+        ): AsaasSubscriptionCreation = error("unused")
 
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) {
             calls.incrementAndGet()
