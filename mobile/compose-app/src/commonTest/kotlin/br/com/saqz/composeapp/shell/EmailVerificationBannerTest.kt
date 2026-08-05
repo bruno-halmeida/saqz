@@ -108,6 +108,7 @@ class EmailVerificationBannerTest {
             SaqzTheme {
                 SaqzAppShell(
                     banner = { EmailVerificationBanner(onRefresh = {}, auth = FakeAuthPort()) },
+                    homeTab = { Text(HomeTab) },
                     groupsTab = { Text(GroupsTab) },
                     profileTab = { Text(ProfileTab) },
                 )
@@ -115,7 +116,8 @@ class EmailVerificationBannerTest {
         }
 
         onNodeWithTag(SaqzEmailBannerTag).assertIsDisplayed()
-        onNodeWithText(GroupsTab).assertIsDisplayed()
+        // VUL-193: Início é a aba inicial; a faixa não a cobre.
+        onNodeWithText(HomeTab).assertIsDisplayed()
         onNodeWithText("Perfil").performClick()
         waitForIdle()
         onNodeWithText(ProfileTab).assertIsDisplayed()
@@ -147,6 +149,7 @@ class EmailVerificationBannerTest {
 
     private companion object {
         const val GroupsTab = "conteudo-grupos"
+        const val HomeTab = "conteudo-inicio"
         const val ProfileTab = "conteudo-perfil"
         const val Unverified = "Confirme seu e-mail para não perder o acesso à sua conta."
         const val Resent = "E-mail reenviado. Confira sua caixa de entrada."
