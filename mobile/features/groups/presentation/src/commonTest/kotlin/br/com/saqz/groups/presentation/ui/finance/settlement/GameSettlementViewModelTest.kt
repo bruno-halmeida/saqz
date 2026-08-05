@@ -129,6 +129,40 @@ class GameSettlementViewModelTest {
     }
 
     @Test
+    fun `recebi network failure from the receipt sheet closes the sheet instead of reopening it`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges = charges(),
+            expenses = expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Data(br.com.saqz.domain.DataError.Connectivity)),
+        )
+        val viewModel = viewModel(finance)
+        viewModel.onIntent(GameSettlementIntent.OpenReceipt("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.receiptSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.MarkReceived("game-pending", PaidMethod.Pix))
+
+        assertEquals(null, viewModel.state.value.receiptSheetChargeId)
+        assertTrue(viewModel.state.value.operationFailed)
+    }
+
+    @Test
+    fun `recebi version conflict from the receipt sheet closes the sheet instead of reopening it`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges = charges(),
+            expenses = expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(finance)
+        viewModel.onIntent(GameSettlementIntent.OpenReceipt("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.receiptSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.MarkReceived("game-pending", PaidMethod.Pix))
+
+        assertEquals(null, viewModel.state.value.receiptSheetChargeId)
+        assertTrue(viewModel.state.value.operationFailed)
+    }
+
+    @Test
     fun `charge action stays closed without a configured Pix`() = runTest {
         val group = sampleGroup(profile = sampleGroup().profile)
         val finance = SettlementFinanceGateway(charges = charges(), expenses = expenses())
@@ -252,6 +286,7 @@ class GameSettlementViewModelTest {
 private class SettlementFinanceGateway(
     charges: List<Charge>,
     expenses: List<Expense>,
+    private val updateResult: SaqzResult<VersionedCharge, FinanceError>? = null,
 ) : OrganizerFinanceGateway {
     private var currentCharges = charges
     private val currentExpenses = expenses
@@ -270,6 +305,7 @@ private class SettlementFinanceGateway(
     ): SaqzResult<VersionedCharge, FinanceError> {
         lastVersion = version
         lastCommand = command
+        updateResult?.let { return it }
         currentCharges = currentCharges.map { charge ->
             if (charge.id == chargeId) charge.copy(status = command.status) else charge
         }
