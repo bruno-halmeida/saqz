@@ -287,6 +287,13 @@ internal fun SaqzNavHost(
                             onOpenGame = { groupId, gameId ->
                                 backStack.add(GroupsRoute.GameDetail(groupId, gameId))
                             },
+                            onOpenMembers = { backStack.add(GroupsRoute.Members(it)) },
+                            onOpenCashbox = { backStack.add(FinanceRoute.GroupCashbox(it)) },
+                            onOpenGameSettlement = { groupId, gameId ->
+                                backStack.add(FinanceRoute.GameSettlement(groupId, gameId))
+                            },
+                            onOpenGameEditor = { backStack.add(GroupsRoute.GameEditor(it)) },
+                            onOpenInvite = { backStack.add(GroupsRoute.Invite(it)) },
                         )
                     },
                     profileTab = {

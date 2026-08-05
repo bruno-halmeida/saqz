@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -14,6 +15,10 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
+import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
+import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
+import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
+import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
@@ -158,6 +163,45 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `admin hero renders the three-way score without member response actions`() = runComposeUiTest {
+        setScreen(adminState())
+
+        onNodeWithTag(HomeAdminTags.Hero).assertIsDisplayed()
+        onNodeWithText("Vão").assertIsDisplayed()
+        onNodeWithText("Não vão").assertIsDisplayed()
+        onNodeWithText("Pendentes").assertIsDisplayed()
+        onAllNodesWithText("Vou").assertCountEquals(0)
+        onAllNodesWithText("Não vou").assertCountEquals(0)
+    }
+
+    @Test
+    fun `admin waiting rows expose the matching navigation intents`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(adminState(), intents::add)
+
+        onNodeWithTag(HomeAdminTags.entryRequests("ceret")).performClick()
+        onNodeWithTag(HomeAdminTags.monthly("ceret")).performClick()
+        onNodeWithTag(HomeAdminTags.settle("ceret")).performClick()
+
+        assertEquals(
+            listOf(
+                HomeIntent.OpenMembers("ceret"),
+                HomeIntent.OpenCashbox("ceret"),
+                HomeIntent.OpenGameSettlement("ceret", "game-1"),
+            ),
+            intents,
+        )
+    }
+
+    @Test
+    fun `admin without pending items hides the waiting section`() = runComposeUiTest {
+        setScreen(adminState(withPendingItems = false))
+
+        onNodeWithTag(HomeAdminTags.Shortcuts).assertIsDisplayed()
+        onAllNodesWithTag(HomeAdminTags.Waiting).assertCountEquals(0)
+    }
+
+    @Test
     fun `toast state renders the confirmation feedback`() = runComposeUiTest {
         setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.Confirmed))
 
@@ -205,4 +249,29 @@ private fun nextGame(status: AttendanceStatus? = null) = HomeNextGameUi(
     ownAttendance = status,
     weekday = "terça",
     time = "19h30",
+)
+
+private fun adminState(withPendingItems: Boolean = true) = nextGameState().copy(
+    member = checkNotNull(nextGameState().member).copy(
+        adminSubtitle = if (withPendingItems) "1 grupos · 3 coisas esperando você" else null,
+        admin = HomeAdminReadModelUi(
+            groups = listOf(
+                HomeAdminGroupUi(
+                    id = "ceret",
+                    name = "Vôlei do CERET",
+                    entryRequestCount = if (withPendingItems) 3 else 0,
+                    monthlyCharges = if (withPendingItems) {
+                        HomeMonthlyChargesUi(2, "R$ 640,00", "JUL")
+                    } else {
+                        null
+                    },
+                    gameToSettle = if (withPendingItems) {
+                        HomeGameToSettleUi("game-1", "28/07", 4, "R$ 320,00")
+                    } else {
+                        null
+                    },
+                ),
+            ),
+        ),
+    ),
 )

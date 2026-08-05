@@ -32,6 +32,7 @@ import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
+import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzGameSummaryCard
@@ -39,6 +40,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
+import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.saqzInitials
@@ -57,6 +59,7 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_error_message
 import br.com.saqz.groups.resources.home_error_title
 import br.com.saqz.groups.resources.home_game_next
+import br.com.saqz.groups.resources.home_admin_group_chip
 import br.com.saqz.groups.resources.home_groups_title
 import br.com.saqz.groups.resources.home_groups_view_all
 import br.com.saqz.groups.resources.home_greeting
@@ -170,7 +173,7 @@ private fun HomeContent(
                 .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
             verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
         ) {
-            HomeHeader(state.displayName, member?.subtitle)
+            HomeHeader(state.displayName, member?.adminSubtitle ?: member?.subtitle)
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),
@@ -179,15 +182,23 @@ private fun HomeContent(
                 )
             } else {
                 member.nextGame?.let {
-                    HomeHero(
-                        game = it,
-                        responding = state.responding,
-                        responseFailed = state.responseFailed,
-                        onIntent = onIntent,
-                    )
-                    HomeWaitlistExtras(game = it, onIntent = onIntent)
+                    if (isAdminOfNextGame(it, member.admin)) {
+                        HomeAdminHero(game = it)
+                    } else {
+                        HomeHero(
+                            game = it,
+                            responding = state.responding,
+                            responseFailed = state.responseFailed,
+                            onIntent = onIntent,
+                        )
+                        HomeWaitlistExtras(game = it)
+                    }
                 } ?: HomeNoGame(onIntent)
                 member.lastCompletedGame?.let { HomeLastGame(it) }
+                member.admin?.let { admin ->
+                    HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
+                    HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                }
                 HomeGroups(member.groups, onIntent)
             }
         }
@@ -399,7 +410,6 @@ private fun HomeStatus(status: AttendanceStatus?) {
 @Composable
 private fun HomeWaitlistExtras(
     game: HomeNextGameUi,
-    onIntent: (HomeIntent) -> Unit,
 ) {
     if (game.ownAttendance != AttendanceStatus.Waitlisted) return
     val kind = game.waitlistKind ?: HomeWaitlistKind.Reserva
@@ -540,16 +550,22 @@ private fun HomeGroupRow(group: HomeGroupUi, onClick: () -> Unit) {
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = group.name,
-                    style = SaqzTheme.typography.compactTitle,
-                    color = SaqzTheme.colors.textPrimary,
-                )
-                Text(
-                    text = group.meta,
-                    style = SaqzTheme.typography.compactMeta,
-                    color = SaqzTheme.colors.textSecondary,
-                )
+            Text(
+                text = group.name,
+                style = SaqzTheme.typography.compactTitle,
+                color = SaqzTheme.colors.textPrimary,
+            )
+            Text(
+                text = group.meta,
+                style = SaqzTheme.typography.compactMeta,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
+        if (group.isAdmin) {
+            SaqzStatusChip(
+                text = stringResource(Res.string.home_admin_group_chip),
+                tone = SaqzChipTone.Brand,
+            )
         }
         SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
     }

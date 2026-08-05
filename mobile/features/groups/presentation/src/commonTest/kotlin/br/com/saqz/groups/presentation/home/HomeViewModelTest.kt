@@ -10,6 +10,10 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.home.HomeError
+import br.com.saqz.groups.domain.home.HomeAdminGroup
+import br.com.saqz.groups.domain.home.HomeAdminReadModel
+import br.com.saqz.groups.domain.home.HomeGameToSettle
+import br.com.saqz.groups.domain.home.HomeMonthlyCharges
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.home.HomeMemberGroup
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
@@ -70,6 +74,37 @@ class HomeViewModelTest {
 
         assertEquals("Semana sem jogo por aqui.", viewModel.state.value.member?.subtitle)
         assertNull(viewModel.state.value.member?.nextGame)
+    }
+
+    @Test
+    fun `admin aggregate formats pending items and marks administered groups`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(),
+                        role = GroupRole.OWNER,
+                        admin = HomeAdminReadModel(
+                            groups = listOf(
+                                HomeAdminGroup(
+                                    id = GroupId("group-1"),
+                                    name = "Vôlei do CERET",
+                                    entryRequestCount = 2,
+                                    monthlyCharges = HomeMonthlyCharges(3, 64000),
+                                    gameToSettle = HomeGameToSettle("game-1", "2026-07-28T00:00:00Z", 4, 32000),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("1 grupos · 3 coisas esperando você", viewModel.state.value.member?.adminSubtitle)
+        assertEquals("R$ 640,00", viewModel.state.value.member?.admin?.groups?.single()?.monthlyCharges?.formattedTotal)
+        assertEquals(1, viewModel.state.value.member?.nextGame?.declinedCount)
+        assertEquals(2, viewModel.state.value.member?.nextGame?.pendingCount)
+        assertTrue(viewModel.state.value.member?.groups?.single()?.isAdmin == true)
     }
 
     @Test
@@ -586,6 +621,8 @@ private class DeferredHomeGateway(
 private fun sampleHome(
     id: String = "group-1",
     nextGame: HomeNextGame? = null,
+    admin: HomeAdminReadModel? = null,
+    role: GroupRole = GroupRole.ATHLETE,
 ) = HomeReadModel(
     member = HomeMemberReadModel(
         nextGame = nextGame,
@@ -594,13 +631,13 @@ private fun sampleHome(
             HomeMemberGroup(
                 id = GroupId(id),
                 name = "Vôlei do CERET",
-                role = GroupRole.ATHLETE,
+                role = role,
                 memberCount = 12,
                 gamesPlayed = 3,
             ),
         ),
     ),
-    admin = null,
+    admin = admin,
 )
 
 private fun sampleNextGame(
