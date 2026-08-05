@@ -26,7 +26,7 @@ fun GroupMembersRoot(
     onOpenProfile: (String) -> Unit,
     onOpenMemberEditor: (String) -> Unit,
     onOpenInvite: (String) -> Unit,
-    viewModel: GroupMembersViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    viewModel: GroupMembersViewModel = koinViewModel(key = groupId, parameters = { parametersOf(groupId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

@@ -17,7 +17,10 @@ fun GameDetailRoot(
     onOpenEditor: () -> Unit,
     onOpenSettlement: () -> Unit = {},
     onCancel: () -> Unit = onBack,
-    viewModel: GameDetailViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
+    viewModel: GameDetailViewModel = koinViewModel(
+        key = "$groupId/$gameId",
+        parameters = { parametersOf(groupId, gameId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

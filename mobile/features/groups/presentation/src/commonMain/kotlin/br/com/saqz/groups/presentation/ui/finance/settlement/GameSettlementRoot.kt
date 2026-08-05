@@ -19,7 +19,10 @@ fun GameSettlementRoot(
     onOpenCashbox: (String) -> Unit,
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
-    viewModel: GameSettlementViewModel = koinViewModel(parameters = { parametersOf(groupId, gameId) }),
+    viewModel: GameSettlementViewModel = koinViewModel(
+        key = "$groupId/$gameId",
+        parameters = { parametersOf(groupId, gameId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current

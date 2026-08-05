@@ -14,7 +14,10 @@ fun AthleteRegistrationRoot(
     groupId: String,
     onSave: () -> Unit,
     onBack: () -> Unit,
-    viewModel: AthleteRegistrationViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    viewModel: AthleteRegistrationViewModel = koinViewModel(
+        key = groupId,
+        parameters = { parametersOf(groupId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

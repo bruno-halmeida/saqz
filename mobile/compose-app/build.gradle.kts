@@ -54,6 +54,10 @@ kotlin {
             implementation(libs.navigation3.runtime)
             implementation(libs.navigation3.ui)
             implementation(libs.lifecycle.viewmodel.compose)
+            // VUL-204: o `ViewModelStoreNavEntryDecorator` — sem ele o
+            // `LocalViewModelStoreOwner` de dentro de um `NavEntry` é a Activity, e toda
+            // ViewModel de `koinViewModel()` vira singleton de processo.
+            implementation(libs.lifecycle.viewmodel.navigation3)
             // `LifecycleResumeEffect`: a faixa de e-mail (VUL-91) recarrega o usuário na
             // volta do plano de fundo.
             implementation(libs.lifecycle.runtime.compose)

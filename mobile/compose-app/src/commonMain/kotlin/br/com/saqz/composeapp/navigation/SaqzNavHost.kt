@@ -19,9 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
@@ -212,6 +214,25 @@ internal fun SaqzNavHost(
         // navigation3-ui 1.1.1), então isto nunca esvazia a base que o gate garante — é o
         // mesmo corpo do `onBack` padrão da própria biblioteca.
         onBack = pop,
+        // VUL-204: sem isto o `LocalViewModelStoreOwner` de dentro de uma entrada é a
+        // Activity, e toda ViewModel de `koinViewModel()` é singleton **de processo**.
+        //
+        // Os **dois** decorators, nesta ordem, e nenhum dos dois é opcional:
+        //
+        // - `entryDecorators` **substitui** a lista padrão do `navigation3-ui`, que é
+        //   `listOf(rememberSaveableStateHolderNavEntryDecorator())` (NavDisplay.kt:259 e
+        //   343 do 1.1.1). Omitir o saveable não custa só o `rememberSaveable` do app: no
+        //   1.1.1 é ele quem provê o `LocalSavedStateRegistryOwner` por entrada, e sem
+        //   esse owner o `ViewModelStoreNavEntryDecorator` estoura no primeiro quadro
+        //   ("The Lifecycle state is already beyond INITIALIZED");
+        // - a ordem é esta porque `decorateEntry` (DecoratedNavEntries.kt:224-229) faz
+        //   `foldRight`: o **primeiro** da lista é o mais externo. Trocar os dois de lugar
+        //   deixa o decorator de ViewModel lendo o owner de fora da entrada — o mesmo
+        //   estouro. Os dois casos estão travados em `SaqzNavHostViewModelScopeTest`.
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         entryProvider = entryProvider {
             entry<AccessRoute.Starting> { SaqzSpinner() }
             entry<AccessRoute.Login> {
