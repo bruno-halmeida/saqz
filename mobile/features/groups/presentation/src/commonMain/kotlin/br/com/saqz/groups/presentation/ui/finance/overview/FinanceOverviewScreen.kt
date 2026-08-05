@@ -32,6 +32,7 @@ import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewGroupUi
@@ -460,6 +461,19 @@ private fun FinanceOverviewTransactionRow(transaction: FinanceOverviewTransactio
 }
 
 internal object FinanceOverviewSamples {
+    /**
+     * A barra de quem administra grupo (VUL-200) — a única em que esta tela aparece: a aba
+     * Caixa só existe para OWNER/ADMIN, e o `GET /api/me/finance/overview` devolveria zeros
+     * para os outros. Jogos saiu do app. Quem manda é o `shellNavItems` do `SaqzAppShell`;
+     * aqui é amostra, porque a feature não enxerga o shell.
+     */
+    val navItems = listOf(
+        SaqzNavItem("inicio", "Início", SaqzIcons.Home),
+        SaqzNavItem("grupos", "Grupos", SaqzIcons.Users),
+        SaqzNavItem("financeiro", "Financeiro", SaqzIcons.CreditCard),
+        SaqzNavItem("perfil", "Perfil", SaqzIcons.User),
+    )
+
     private val options = listOf(
         FinanceOverviewPeriodOption(
             FinanceOverviewPeriodSelection.CurrentMonth,

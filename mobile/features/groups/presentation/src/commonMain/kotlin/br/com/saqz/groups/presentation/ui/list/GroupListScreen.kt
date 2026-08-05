@@ -148,9 +148,14 @@ internal object GroupListSamples {
 
     val failed = GroupListState(isLoading = false, loadFailed = true)
 
+    // A barra do membro comum (VUL-200): Jogos saiu do app e a Caixa só aparece para quem
+    // administra grupo. Uma amostra serve as quatro cenas da 2n, e o caso base é este — a
+    // cena da lista cheia tem um grupo com selo Admin, então aquela pessoa veria a quarta
+    // aba; a barra aqui é cenário da célula do export, não retrato do papel. Quem manda é
+    // o `shellNavItems` do `SaqzAppShell`; aqui é amostra, porque a feature não enxerga o
+    // shell.
     val navItems = listOf(
         SaqzNavItem(id = "inicio", label = "Início", icon = SaqzIcons.Home),
-        SaqzNavItem(id = "jogos", label = "Jogos", icon = SaqzIcons.Calendar),
         SaqzNavItem(id = "grupos", label = "Grupos", icon = SaqzIcons.Users),
         SaqzNavItem(id = "perfil", label = "Perfil", icon = SaqzIcons.User),
     )

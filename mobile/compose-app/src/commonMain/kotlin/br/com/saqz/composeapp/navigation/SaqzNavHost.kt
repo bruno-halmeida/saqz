@@ -278,6 +278,7 @@ internal fun SaqzNavHost(
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
                     initialTab = route.resolvedTab(),
+                    financeTabVisible = state.session.administersAnyGroup(),
                     financeTab = {
                         FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
                     },
@@ -655,6 +656,36 @@ internal fun MutableList<NavKey>.finishPasswordChanged(session: SessionAccessSta
     clear()
     add(session.passwordChangedDestination())
 }
+
+/** Os papéis que o backend devolve para quem administra o grupo. */
+private val AdministratorRoles = setOf("OWNER", "ADMIN")
+
+/**
+ * VUL-200: a aba Caixa só existe para quem administra algum grupo — o
+ * `GET /api/me/finance/overview` já filtra por `owner_user_id = :actorId OR
+ * memberships.role = 'ADMIN'` (CTE `administered_groups`), então para os outros ela abria
+ * uma tela zerada. **Os dois lados do `OR` importam**: o dono entra pela coluna do grupo, e
+ * a membership dele é `OWNER` — por isso [AdministratorRoles] tem os dois papéis, e reduzir
+ * a lista a `ADMIN` esconderia a aba de quem é dono do próprio grupo.
+ *
+ * A fonte do papel é a **própria sessão**, não o `ownProfile()`: o `AccessSession` já chega
+ * com `memberships` e `role` do `PUT /api/session`, e o shell só existe em
+ * [SessionAccessState.Ready] (o gate garante). Ou seja, o papel é conhecido **antes do
+ * primeiro quadro** do shell — nenhuma chamada de rede a mais, nenhuma guarda de geração, e
+ * principalmente nenhuma piscada da aba aparecendo depois que o perfil carrega.
+ *
+ * `role` é `String` crua de propósito no domínio de acesso ("membership role preserves
+ * access owned raw value"), então a comparação é nossa; `uppercase` porque quem escolhe a
+ * caixa do valor é o backend.
+ *
+ * ponytail: as memberships são as do bootstrap da sessão. Criar o primeiro grupo no meio da
+ * sessão só acende a aba no próximo bootstrap — o caixa daquele grupo continua a um toque
+ * pelo detalhe. Se isso incomodar, o conserto é um `SessionIntent` de recarregar a sessão
+ * depois do 2a, não um segundo carregador de papel aqui.
+ */
+internal fun SessionAccessState.administersAnyGroup(): Boolean =
+    this is SessionAccessState.Ready &&
+        session.memberships.any { it.role.value.uppercase() in AdministratorRoles }
 
 private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this) {
     is SessionAccessState.Ready -> SaqzShellDestination.Home

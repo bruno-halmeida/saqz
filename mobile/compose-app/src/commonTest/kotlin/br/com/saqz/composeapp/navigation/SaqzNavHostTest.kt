@@ -2,12 +2,15 @@ package br.com.saqz.composeapp.navigation
 
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import br.com.saqz.access.domain.session.AccessMembership
+import br.com.saqz.access.domain.session.AccessMembershipRole
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.composeapp.shell.SaqzShellGroupsTab
 import br.com.saqz.composeapp.shell.SaqzShellHomeTab
+import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
@@ -15,7 +18,9 @@ import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * O gate de sessão: cada [SessionAccessState] resolve para um destino, e `Ready` é o único
@@ -322,6 +327,30 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(SaqzShellDestination.Home, GroupsRoute.Details("ceret")), stack)
     }
 
+    /**
+     * VUL-200: a aba Caixa depende do papel que a própria sessão já carrega. Owner e admin
+     * acendem; atleta não. Os dois papéis são o mesmo conjunto que o
+     * `GET /api/me/finance/overview` enxerga (`owner_user_id = :actorId OR
+     * memberships.role = 'ADMIN'`) — para o atleta a aba abria uma tela zerada.
+     */
+    @Test
+    fun onlyOwnerOrAdminMembershipsLightUpTheFinanceTab() {
+        assertFalse(SessionAccessState.Ready(session).administersAnyGroup())
+        assertFalse(SessionAccessState.Ready(sessionWith("ATHLETE")).administersAnyGroup())
+        assertTrue(SessionAccessState.Ready(sessionWith("OWNER")).administersAnyGroup())
+        assertTrue(SessionAccessState.Ready(sessionWith("ADMIN")).administersAnyGroup())
+        // Basta um grupo administrado entre vários.
+        assertTrue(SessionAccessState.Ready(sessionWith("ATHLETE", "ADMIN")).administersAnyGroup())
+    }
+
+    // Fora de `Ready` não há sessão para consultar — e o shell nem existe (o gate colapsa).
+    @Test
+    fun theFinanceTabStaysHiddenWithoutASession() {
+        assertFalse(SessionAccessState.SignedOut.administersAnyGroup())
+        assertFalse(SessionAccessState.Bootstrapping.administersAnyGroup())
+        assertFalse(SessionAccessState.CompletingIdentity(session).administersAnyGroup())
+    }
+
     private companion object {
         val session = AccessSession(
             user = AccessUser(
@@ -330,6 +359,16 @@ class SaqzNavHostTest {
                 displayName = "Atleta",
             ),
             memberships = emptyList(),
+        )
+
+        fun sessionWith(vararg roles: String) = session.copy(
+            memberships = roles.mapIndexed { index, role ->
+                AccessMembership(
+                    groupId = GroupId("grupo-$index"),
+                    groupName = "Grupo $index",
+                    role = AccessMembershipRole(role),
+                )
+            },
         )
     }
 }
