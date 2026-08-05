@@ -7,12 +7,14 @@ import br.com.saqz.designsystem.UiText
 import br.com.saqz.subscriptions.domain.subscription.BillingType
 import br.com.saqz.subscriptions.domain.subscription.CouponValidation
 import br.com.saqz.subscriptions.domain.subscription.CreateSubscriptionCommand
+import br.com.saqz.subscriptions.domain.subscription.CreatedSubscription
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfo
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfoProvider
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.payment_error_checkout_unavailable
@@ -160,7 +162,7 @@ class PaymentViewModel(
                     couponCode = state.value.couponCode,
                 ),
             ).onSuccess { created ->
-                onCreated(created.pixCopyPaste, created.invoiceUrl)
+                onCreated(created)
             }.onFailure { error ->
                 update { it.copy(isSubmitting = false, submitError = error.toUiText()) }
             }
@@ -175,7 +177,20 @@ class PaymentViewModel(
      * como falha recuperável — mesmo padrão de `submitError` que uma recusa de `create()`
      * já usa, então "Pagar" de novo é o próprio retry (mesmo `requestId`, idempotente).
      */
-    private fun onCreated(pixCopyPaste: String?, invoiceUrl: String?) {
+    private fun onCreated(created: CreatedSubscription) {
+        // Cobranca ja paga: o backend consulta o Asaas na recuperacao do checkout e confirma
+        // na hora, entao a assinatura volta ACTIVE (nasce PAST_DUE). Sem este ramo o usuario
+        // que ja pagou cairia no erro de "checkout indisponivel" logo abaixo e seria convidado
+        // a pagar de novo — o webhook pode simplesmente nunca ter chegado.
+        if (created.status == SubscriptionStatus.Active) {
+            confirmed = true
+            pollJob?.cancel()
+            update { it.copy(isSubmitting = false, isWaitingConfirmation = false) }
+            emit(PaymentEffect.NavigateToPlanActive)
+            return
+        }
+        val pixCopyPaste = created.pixCopyPaste
+        val invoiceUrl = created.invoiceUrl
         if (pixCopyPaste == null && invoiceUrl == null) {
             update {
                 it.copy(isSubmitting = false, submitError = UiText.Res(Res.string.payment_error_checkout_unavailable))

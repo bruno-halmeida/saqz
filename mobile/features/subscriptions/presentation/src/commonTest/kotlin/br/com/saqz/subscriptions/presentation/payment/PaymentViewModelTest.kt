@@ -31,6 +31,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -125,6 +126,28 @@ class PaymentViewModelTest {
             runCurrent()
 
             assertEquals(listOf<PaymentEffect>(PaymentEffect.NavigateToPlanActive), effects)
+            assertFalse(viewModel.state.value.isWaitingConfirmation)
+        }
+    }
+
+    @Test
+    fun `charge already paid navigates to plan active instead of asking to pay again`() = runTest(mainDispatcher) {
+        // Backend consultou o Asaas na recuperacao, viu a cobranca paga e confirmou: volta
+        // ACTIVE e sem checkout. Antes disso o usuario caia no erro de checkout indisponivel.
+        val gateway = FakeSubscriptionGateway().apply {
+            createResult = SaqzResult.Success(createdPaid())
+            receiptsResults = listOf(SaqzResult.Success(emptyList()))
+        }
+        withPaymentViewModel(gateway = gateway) { viewModel ->
+            val effects = mutableListOf<PaymentEffect>()
+            backgroundScope.launch { viewModel.effects.collect { effects.add(it) } }
+
+            viewModel.onIntent(PaymentIntent.UpdateCpfCnpj("12345678900"))
+            viewModel.onIntent(PaymentIntent.Submit)
+            runCurrent()
+
+            assertEquals(listOf<PaymentEffect>(PaymentEffect.NavigateToPlanActive), effects)
+            assertNull(viewModel.state.value.submitError)
             assertFalse(viewModel.state.value.isWaitingConfirmation)
         }
     }

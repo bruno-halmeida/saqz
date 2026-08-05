@@ -144,7 +144,7 @@ class ProcessAsaasWebhook(
             applyPendingUpgrade(current, command.asaasPaymentId)
             return
         }
-        val confirmed = confirmPayment(current, command.asaasPaymentId, now)
+        val confirmed = PaymentConfirmation.confirm(current, command.asaasPaymentId, now)
         subscriptions.save(confirmed.subscription)
         confirmed.fullPriceCentsToPush?.let { cents ->
             asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents)
@@ -172,7 +172,7 @@ class ProcessAsaasWebhook(
      * comportamento que existia antes de PAYMENT_RECEIVED virar evento de dominio.
      */
     private fun isAlreadyConfirmed(current: Subscription, paymentId: String?): Boolean =
-        paymentId != null && paymentId == current.lastConfirmedPaymentId
+        PaymentConfirmation.isAlreadyConfirmed(current, paymentId)
 
     private fun isStaleOverdue(command: AsaasWebhookCommand, current: Subscription): Boolean {
         val dueDate = paymentDueDate(command.rawPayload) ?: return false
@@ -231,52 +231,6 @@ class ProcessAsaasWebhook(
         return fullPriceCents - (fullPriceCents * coupon.discountPercent / 100)
     }
 
-    private data class ConfirmOutcome(
-        val subscription: Subscription,
-        val fullPriceCentsToPush: Long?,
-    )
-
-    private fun confirmPayment(current: Subscription, paymentId: String?, now: Instant): ConfirmOutcome {
-        // First confirmation keeps the period set at create; renewals advance one cycle.
-        val periodEnd = if (current.firstConfirmedAt == null) {
-            current.currentPeriodEnd
-        } else {
-            advancePeriodEnd(current.currentPeriodEnd, current.cycle)
-        }
-        var next = current.copy(
-            status = SubscriptionStatus.ACTIVE,
-            currentPeriodEnd = periodEnd,
-            pastDueSince = null,
-            firstConfirmedAt = current.firstConfirmedAt ?: now,
-            lastConfirmedPaymentId = paymentId ?: current.lastConfirmedPaymentId,
-        )
-
-        // Any recurring PAYMENT_CONFIRMED while a downgrade is scheduled is the renewal that
-        // should apply it — do not gate on wall-clock vs pendingPlanEffectiveAt.
-        val pending = next.pendingPlan
-        if (pending != null) {
-            next = next.copy(
-                plan = pending,
-                pendingPlan = null,
-                pendingPlanEffectiveAt = null,
-            )
-        }
-
-        var fullPriceCentsToPush: Long? = null
-        val remaining = next.couponCyclesRemaining
-        if (remaining != null && remaining > 0) {
-            val after = remaining - 1
-            if (after == 0) {
-                next = next.copy(couponCyclesRemaining = null)
-                fullPriceCentsToPush = next.plan.priceCents(next.cycle)
-            } else {
-                next = next.copy(couponCyclesRemaining = after)
-            }
-        }
-
-        return ConfirmOutcome(next, fullPriceCentsToPush)
-    }
-
     private fun markPastDue(current: Subscription, now: Instant): Subscription =
         current.copy(
             status = SubscriptionStatus.PAST_DUE,
@@ -313,13 +267,8 @@ class ProcessAsaasWebhook(
             EVENT_SUBSCRIPTION_DELETED,
         )
 
-        fun advancePeriodEnd(currentPeriodEnd: Instant, cycle: SubscriptionCycle): Instant {
-            val zoned = currentPeriodEnd.atZone(ZoneOffset.UTC)
-            return when (cycle) {
-                SubscriptionCycle.MONTHLY -> zoned.plusMonths(1).toInstant()
-                SubscriptionCycle.ANNUAL -> zoned.plusYears(1).toInstant()
-            }
-        }
+        fun advancePeriodEnd(currentPeriodEnd: Instant, cycle: SubscriptionCycle): Instant =
+            PaymentConfirmation.advancePeriodEnd(currentPeriodEnd, cycle)
 
         fun Plan.priceCents(cycle: SubscriptionCycle): Long =
             when (cycle) {

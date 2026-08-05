@@ -340,6 +340,7 @@ class ChangePlanTest {
         override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-UPG"
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
+        override fun findPayment(asaasPaymentId: String) = null
     }
 
     /** Pix succeeds; invoice lookup throws — the successful pix must not be discarded. */
@@ -368,6 +369,8 @@ class ChangePlanTest {
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String): String =
             throw RuntimeException("invoice lookup failed")
+
+        override fun findPayment(asaasPaymentId: String) = throw RuntimeException("payment lookup failed")
     }
 
     private class RecordingTransactionRunner : SubscriptionsTransactionRunner {
@@ -418,6 +421,11 @@ class ChangePlanTest {
         override fun findPaymentInvoiceUrl(asaasPaymentId: String): String {
             checkoutCalledInsideTransaction = checkoutCalledInsideTransaction || transaction.active
             throw RuntimeException("invoice lookup failed")
+        }
+
+        override fun findPayment(asaasPaymentId: String): AsaasPaymentSnapshot {
+            checkoutCalledInsideTransaction = checkoutCalledInsideTransaction || transaction.active
+            throw RuntimeException("payment lookup failed")
         }
     }
 }

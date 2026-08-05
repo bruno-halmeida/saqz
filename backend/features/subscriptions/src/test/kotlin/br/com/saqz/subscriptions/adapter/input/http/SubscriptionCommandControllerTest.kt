@@ -164,5 +164,6 @@ class SubscriptionCommandControllerTest {
         override fun regeneratePixPayload(asaasChargeId: String) = error("unused")
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = error("unused")
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = error("unused")
+        override fun findPayment(asaasPaymentId: String) = error("unused")
     }
 }

@@ -66,15 +66,24 @@ internal class FakeCustomerInfoProvider(
     }
 }
 
+// PastDue e o que o backend devolve de fato num checkout novo (`blankSubscription`); Active
+// so volta quando a cobranca ja estava paga e o create confirmou na hora — ver `createdPaid`.
 internal fun createdPix(code: String = "00020126chavepix") = CreatedSubscription(
     ownerUserId = "owner-1",
     planId = Plan.Titular,
     cycle = SubscriptionCycle.Monthly,
-    status = SubscriptionStatus.Active,
+    status = SubscriptionStatus.PastDue,
     asaasSubscriptionId = "sub-1",
     currentPeriodEnd = "2026-08-30T00:00:00Z",
     billingType = BillingType.Pix,
     pixCopyPaste = code,
+    invoiceUrl = null,
+)
+
+/** Cobranca ja paga: backend confirmou na recuperacao e nao devolve checkout nenhum. */
+internal fun createdPaid() = createdPix().copy(
+    status = SubscriptionStatus.Active,
+    pixCopyPaste = null,
     invoiceUrl = null,
 )
 

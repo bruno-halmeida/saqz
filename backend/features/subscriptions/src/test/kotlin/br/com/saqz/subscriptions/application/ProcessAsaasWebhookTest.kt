@@ -948,5 +948,6 @@ class ProcessAsaasWebhookTest {
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? = null
 
         override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? = null
+        override fun findPayment(asaasPaymentId: String) = null
     }
 }

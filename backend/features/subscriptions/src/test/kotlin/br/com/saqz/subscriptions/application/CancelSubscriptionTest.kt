@@ -193,5 +193,6 @@ class CancelSubscriptionTest {
         override fun regeneratePixPayload(asaasChargeId: String) = error("unused")
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
+        override fun findPayment(asaasPaymentId: String) = null
     }
 }

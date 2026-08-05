@@ -4,6 +4,7 @@ import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasConcurrentOperationException
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
+import br.com.saqz.subscriptions.application.AsaasPaymentSnapshot
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import com.fasterxml.jackson.databind.JsonNode
@@ -125,9 +126,22 @@ class HttpAsaasGateway(
 
     override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
         val response = get("/payments/$asaasPaymentId")
-        return response.path("invoiceUrl").asText(null)?.takeIf { it.isNotBlank() }
-            ?: response.path("bankSlipUrl").asText(null)?.takeIf { it.isNotBlank() }
+        return invoiceUrlOf(response)
     }
+
+    override fun findPayment(asaasPaymentId: String): AsaasPaymentSnapshot? {
+        val response = get("/payments/$asaasPaymentId")
+        val id = response.path("id").asText(null)?.takeIf { it.isNotBlank() } ?: return null
+        return AsaasPaymentSnapshot(
+            id = id,
+            status = response.path("status").asText(null)?.takeIf { it.isNotBlank() },
+            invoiceUrl = invoiceUrlOf(response),
+        )
+    }
+
+    private fun invoiceUrlOf(response: JsonNode): String? =
+        response.path("invoiceUrl").asText(null)?.takeIf { it.isNotBlank() }
+            ?: response.path("bankSlipUrl").asText(null)?.takeIf { it.isNotBlank() }
 
     private fun withIdempotency(
         storeKey: String,

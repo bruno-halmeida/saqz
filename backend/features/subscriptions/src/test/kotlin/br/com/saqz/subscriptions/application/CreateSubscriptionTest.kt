@@ -164,6 +164,64 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `paid charge confirms the subscription instead of offering payment again`() {
+        // Webhook e push e pode ter se perdido: sem perguntar o status ao Asaas o usuario que
+        // ja pagou era convidado a pagar de novo.
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow.minusSeconds(3600),
+                firstConfirmedAt = null,
+            ),
+        )
+        gateway.paymentStatus = "RECEIVED"
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals(SubscriptionStatus.ACTIVE, success.subscription.status)
+        assertEquals(fixedNow, success.subscription.firstConfirmedAt)
+        assertEquals("pay_1", success.subscription.lastConfirmedPaymentId)
+        assertNull(success.subscription.pastDueSince)
+        // Nada de checkout: e assim que o app sabe que nao deve oferecer pagamento de novo.
+        assertNull(success.pixCopyPaste)
+        assertNull(success.invoiceUrl)
+        assertEquals(SubscriptionStatus.ACTIVE, subscriptions.findByOwnerUserId(ownerId)!!.status)
+    }
+
+    @Test
+    fun `pending charge still returns the existing checkout`() {
+        subscriptions.insert(
+            Subscription(
+                ownerUserId = ownerId,
+                plan = Plan.TITULAR,
+                cycle = SubscriptionCycle.MONTHLY,
+                asaasCustomerId = "cus_old",
+                asaasSubscriptionId = "sub_old",
+                billingType = AsaasBillingType.PIX,
+                currentPeriodEnd = fixedNow,
+                status = SubscriptionStatus.PAST_DUE,
+                pastDueSince = fixedNow,
+                firstConfirmedAt = null,
+            ),
+        )
+        gateway.paymentStatus = "PENDING"
+        gateway.pixPayload = "000201STILL-PENDING"
+
+        val success = assertIs<CreateSubscriptionResult.Success>(useCase.execute(baseCommand()))
+
+        assertEquals(SubscriptionStatus.PAST_DUE, success.subscription.status)
+        assertEquals("000201STILL-PENDING", success.pixCopyPaste)
+    }
+
+    @Test
     fun `reissues checkout when owner has unconfirmed subscription`() {
         subscriptions.insert(
             Subscription(
@@ -404,6 +462,9 @@ class CreateSubscriptionTest {
         var invoiceUrl: String? = null
         var invoiceUrlThrows: Boolean = false
         var latestPaymentIdThrows: Boolean = false
+        /** Status devolvido pelo GET /payments/{id}. PENDING = cobranca em aberto. */
+        var paymentStatus: String? = "PENDING"
+        var findPaymentThrows: Boolean = false
         var lastSubscriptionValueCents: Long? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
 
@@ -440,6 +501,13 @@ class CreateSubscriptionTest {
         override fun findPaymentInvoiceUrl(asaasPaymentId: String): String? {
             if (invoiceUrlThrows) throw RuntimeException("invoice lookup failed")
             return invoiceUrl
+        }
+
+        // invoiceUrl nulo aqui de proposito: mantem o fallback por findPaymentInvoiceUrl
+        // exercitado pelos testes que ja existiam.
+        override fun findPayment(asaasPaymentId: String): AsaasPaymentSnapshot? {
+            if (findPaymentThrows) throw RuntimeException("payment lookup failed")
+            return AsaasPaymentSnapshot(id = asaasPaymentId, status = paymentStatus, invoiceUrl = null)
         }
     }
 }
