@@ -113,11 +113,14 @@ class JdbcHomeRepositoryIntegrationTest {
         assertEquals(2, ownerAdmin.entryRequestCount)
         assertEquals(2, ownerAdmin.monthlyCharges.count)
         assertEquals(300, ownerAdmin.monthlyCharges.totalCents)
+        assertEquals(YearMonth.of(2026, 8), ownerAdmin.monthlyCharges.billingMonth)
         assertNull(ownerAdmin.gameToSettle)
         val adminAdmin = admin.groups.single { it.name == "Admin home" }
         assertEquals(settleLatest, adminAdmin.gameToSettle?.gameId)
+        assertEquals("America/Sao_Paulo", adminAdmin.gameToSettle?.zoneId)
         assertEquals(2, adminAdmin.gameToSettle?.pendingCount)
         assertEquals(500, adminAdmin.gameToSettle?.totalCents)
+        assertEquals(YearMonth.of(2026, 8), adminAdmin.monthlyCharges.billingMonth)
         assertTrue(admin.groups.none { it.name == "Athlete only" })
     }
 

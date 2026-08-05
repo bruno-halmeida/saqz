@@ -90,8 +90,8 @@ class HomeViewModelTest {
                                     id = GroupId("group-1"),
                                     name = "Vôlei do CERET",
                                     entryRequestCount = 2,
-                                    monthlyCharges = HomeMonthlyCharges(3, 64000),
-                                    gameToSettle = HomeGameToSettle("game-1", "2026-07-28T00:00:00Z", 4, 32000),
+                                    monthlyCharges = HomeMonthlyCharges(3, 64000, "2026-07"),
+                                    gameToSettle = HomeGameToSettle("game-1", "2026-07-28T00:00:00Z", "America/Sao_Paulo", 4, 32000),
                                 ),
                             ),
                         ),
@@ -102,9 +102,70 @@ class HomeViewModelTest {
 
         assertEquals("1 grupos · 3 coisas esperando você", viewModel.state.value.member?.adminSubtitle)
         assertEquals("R$ 640,00", viewModel.state.value.member?.admin?.groups?.single()?.monthlyCharges?.formattedTotal)
+        assertEquals("JUL", viewModel.state.value.member?.admin?.groups?.single()?.monthlyCharges?.month)
+        assertEquals("27/07", viewModel.state.value.member?.admin?.groups?.single()?.gameToSettle?.formattedDate)
         assertEquals(1, viewModel.state.value.member?.nextGame?.declinedCount)
         assertEquals(2, viewModel.state.value.member?.nextGame?.pendingCount)
         assertTrue(viewModel.state.value.member?.groups?.single()?.isAdmin == true)
+    }
+
+    @Test
+    fun `settle date formats in the game timezone not UTC`() = runTest {
+        // São Paulo 12/08 21:30 = 2026-08-13T00:30:00Z; em UTC seria "13/08".
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        admin = HomeAdminReadModel(
+                            groups = listOf(
+                                HomeAdminGroup(
+                                    id = GroupId("group-1"),
+                                    name = "Vôlei do CERET",
+                                    entryRequestCount = 0,
+                                    monthlyCharges = HomeMonthlyCharges(1, 100, "2026-07"),
+                                    gameToSettle = HomeGameToSettle("game-9", "2026-08-13T00:30:00Z", "America/Sao_Paulo", 1, 100),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("12/08", viewModel.state.value.member?.admin?.groups?.single()?.gameToSettle?.formattedDate)
+    }
+
+    @Test
+    fun `monthly label derives from the backend billing month not UTC now`() = runTest {
+        // Na virada do mês: 2026-08-01T02:00:00Z é 2026-07-31 23:00 em SP.
+        // O backend bucketiza em julho; o rótulo deve ser JUL, não AGO.
+        val nowAtBoundary = GroupNowPort { Instant.parse("2026-08-01T02:00:00Z") }
+        val viewModel = HomeViewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        admin = HomeAdminReadModel(
+                            groups = listOf(
+                                HomeAdminGroup(
+                                    id = GroupId("group-1"),
+                                    name = "Vôlei do CERET",
+                                    entryRequestCount = 0,
+                                    monthlyCharges = HomeMonthlyCharges(2, 64000, "2026-07"),
+                                    gameToSettle = null,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            athleteGateway = FakeAthleteGateway(
+                ownProfileResult = SaqzResult.Success(OwnAthleteProfile("me", "Bruna Silva", null, emptyList())),
+            ),
+            attendanceGateway = FakeAttendanceGateway(),
+            now = nowAtBoundary,
+        )
+
+        assertEquals("JUL", viewModel.state.value.member?.admin?.groups?.single()?.monthlyCharges?.month)
     }
 
     @Test

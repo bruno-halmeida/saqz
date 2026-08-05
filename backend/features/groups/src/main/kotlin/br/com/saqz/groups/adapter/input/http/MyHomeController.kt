@@ -79,11 +79,13 @@ data class HomeMemberResponse(
 data class HomeMonthlyChargesResponse(
     val count: Int,
     val totalCents: Long,
+    val month: String,
 )
 
 data class HomeGameToSettleResponse(
     val gameId: UUID,
     val startsAt: Instant,
+    val zoneId: String,
     val pendingCount: Int,
     val totalCents: Long,
 )
@@ -180,11 +182,12 @@ private fun HomeAdminGroup.toResponse() = HomeAdminGroupResponse(
     gameToSettle = gameToSettle?.toResponse(),
 )
 
-private fun HomeMonthlyCharges.toResponse() = HomeMonthlyChargesResponse(count, totalCents)
+private fun HomeMonthlyCharges.toResponse() = HomeMonthlyChargesResponse(count, totalCents, billingMonth.toString())
 
 private fun HomeGameToSettle.toResponse() = HomeGameToSettleResponse(
     gameId = gameId,
     startsAt = startsAt,
+    zoneId = zoneId,
     pendingCount = pendingCount,
     totalCents = totalCents,
 )

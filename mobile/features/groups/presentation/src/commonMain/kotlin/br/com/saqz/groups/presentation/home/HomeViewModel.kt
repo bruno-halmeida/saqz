@@ -471,10 +471,11 @@ class HomeViewModel(
         gameToSettle = gameToSettle?.takeIf { it.pendingCount > 0 }?.toUi(),
     )
 
-    // As mensalidades em aberto são do mês corrente; o mês vem do `now`, não do
-    // agregado — o backend não envia o mês no bloco admin.
+    // O mês das mensalidades vem da API (o backend bucketiza pelo
+    // `saqz.finance.monthly-charges.zone`); o rótulo deriva desse campo, não do
+    // `now` em UTC, para não errar na virada do mês.
     private suspend fun HomeMonthlyCharges.toUi(): HomeMonthlyChargesUi {
-        val monthIndex = (now.now().toLocalDateTime(TimeZone.UTC).month.ordinal + 1)
+        val monthIndex = billingMonth.monthIndexOrNull() ?: (now.now().toLocalDateTime(TimeZone.UTC).month.ordinal + 1)
         return HomeMonthlyChargesUi(
             count = count,
             formattedTotal = formatBrl(totalCents),
@@ -483,7 +484,7 @@ class HomeViewModel(
     }
 
     private suspend fun HomeGameToSettle.toUi(): HomeGameToSettleUi {
-        val zone = TimeZone.UTC
+        val zone = gameTimeZone(zoneId)
         val local = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
         val formattedDate = local?.let {
             getString(Res.string.home_date, it.day.twoDigits(), (it.month.ordinal + 1).twoDigits())
@@ -588,4 +589,12 @@ private fun Int.monthResource(): StringResource = when (this) {
     10 -> Res.string.home_month_october
     11 -> Res.string.home_month_november
     else -> Res.string.home_month_december
+}
+
+// "YYYY-MM" (formato do backend) → índice 1..12. Devolve null se o formato for
+// inesperado; quem chama cai no `now` em UTC como fallback de segurança.
+private fun String.monthIndexOrNull(): Int? = split("-").let { parts ->
+    if (parts.size != 2) return null
+    val month = parts[1].toIntOrNull() ?: return null
+    if (month in 1..12) month else null
 }
