@@ -7,6 +7,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.presentation.FakeAthleteFinanceGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
@@ -33,6 +34,7 @@ class GroupDetailsRootTest {
             athleteGateway = FakeAthleteGateway(),
             statementGateway = FakeFinanceStatementGateway(),
             organizerFinanceGateway = FakeOrganizerFinanceGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(),
             now = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
         )
         var refreshVersion by mutableIntStateOf(0)

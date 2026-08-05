@@ -29,6 +29,7 @@ import br.com.saqz.groups.domain.finance.MonthlyChargeCommand
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.finance.VersionedCharge
 import br.com.saqz.groups.domain.finance.VersionedExpense
+import br.com.saqz.groups.presentation.FakeAthleteFinanceGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
@@ -96,6 +97,7 @@ class GameSettlementRootTest {
             athleteGateway = FakeAthleteGateway(),
             statementGateway = statementGateway,
             organizerFinanceGateway = FakeOrganizerFinanceGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(),
             now = GroupNowPort { Instant.parse("2026-08-04T12:00:00Z") },
         )
         var showingSettlement by mutableStateOf(true)

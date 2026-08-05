@@ -716,6 +716,10 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
         // TODO(Fluxo 9 · Quadra): abrir a quadra no mapa é port nativo, não rota.
         GroupDetailsEffect.OpenMap -> Unit
+        // VUL-203: copiar o Pix é área de transferência e o `GroupDetailsRoot` já consome
+        // o efeito antes daqui. O ramo existe porque o `when` é sobre o tipo inteiro —
+        // não é `else`, e nenhum efeito de navegação cai nele.
+        is GroupDetailsEffect.CopyPix -> Unit
     }
 }
 

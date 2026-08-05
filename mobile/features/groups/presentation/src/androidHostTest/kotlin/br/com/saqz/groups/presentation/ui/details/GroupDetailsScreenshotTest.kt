@@ -59,6 +59,40 @@ class GroupDetailsScreenshotTest {
         directory = "vul-178",
     )
 
+    // VUL-203 — os quatro estados da seção de cobranças: com pendência (e Pix), quitada,
+    // carregando e com falha. Estado fora da cena é estado não conferido (AGENTS.md §11).
+    @Test
+    @Config(qualifiers = "+h2400dp")
+    fun ownCharges() = capture(
+        name = "group-details-own-charges",
+        state = GroupDetailsPreviewData.member,
+        directory = "vul-203",
+    )
+
+    @Test
+    @Config(qualifiers = "+h2400dp")
+    fun ownChargesSettled() = capture(
+        name = "group-details-own-charges-settled",
+        state = GroupDetailsPreviewData.memberOwnChargesSettled,
+        directory = "vul-203",
+    )
+
+    @Test
+    @Config(qualifiers = "+h2000dp")
+    fun ownChargesLoading() = capture(
+        name = "group-details-own-charges-loading",
+        state = GroupDetailsPreviewData.memberOwnChargesLoading,
+        directory = "vul-203",
+    )
+
+    @Test
+    @Config(qualifiers = "+h2000dp")
+    fun ownChargesFailed() = capture(
+        name = "group-details-own-charges-failed",
+        state = GroupDetailsPreviewData.memberOwnChargesFailed,
+        directory = "vul-203",
+    )
+
     private fun capture(name: String, state: GroupDetailsState, directory: String = "vul-69") = capture(name, directory) {
         GroupDetailsScreen(state = state, onBack = {}, onIntent = {})
     }

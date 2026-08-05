@@ -23,6 +23,7 @@ import br.com.saqz.groups.domain.finance.FinanceStatementSummary
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.group.GroupTimeZone
+import br.com.saqz.groups.presentation.FakeAthleteFinanceGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
@@ -717,6 +718,199 @@ class GroupDetailsViewModelTest {
         assertEquals(AthleteMembershipType.MENSALISTA, vm.state.value.membershipType)
     }
 
+    @Test
+    fun `sem cobranca no grupo a secao nao aparece`() = runTest {
+        val viewModel = viewModel(groupGateway = athleteGroupGateway())
+
+        assertNull(viewModel.state.value.ownCharges)
+    }
+
+    @Test
+    fun `pendentes vem antes do historico com competencia valor e vencimento`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            ownCharge("paga", month = "2026-07", dueDate = "2026-07-10", status = ChargeStatus.Paid),
+                            ownCharge("avulso", kind = ChargeKind.Game, dueDate = "2026-08-28"),
+                            ownCharge("mensal", month = "2026-08", dueDate = "2026-08-10"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val ownCharges = assertNotNull(viewModel.state.value.ownCharges)
+        assertEquals(listOf("mensal", "avulso"), ownCharges.pending.map { it.id })
+        assertEquals("Mensalidade · Agosto", ownCharges.pending.first().title)
+        assertEquals("R$ 70,00", ownCharges.pending.first().amountLabel)
+        assertEquals(OwnChargeStatusUi.Pending, ownCharges.pending.first().status)
+        assertEquals("Jogo avulso", ownCharges.pending.last().title)
+        assertEquals(listOf("paga"), ownCharges.history.map { it.id })
+        assertEquals("Vencimento 10/07", ownCharges.history.single().dueLabel)
+        assertEquals(OwnChargeStatusUi.Paid, ownCharges.history.single().status)
+    }
+
+    // O fuso é o do grupo, não o do aparelho nem UTC: às 23h de São Paulo ainda é dia 10,
+    // e uma cobrança que vence hoje não pode aparecer como vencida.
+    @Test
+    fun `vencimento usa o fuso de cobranca do grupo e nao UTC`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            ownCharge("hoje", month = "2026-08", dueDate = "2026-08-10"),
+                            ownCharge("ontem", month = "2026-07", dueDate = "2026-08-09"),
+                        ),
+                    ),
+                ),
+            ),
+            now = GroupNowPort { kotlin.time.Instant.parse("2026-08-11T02:00:00Z") },
+        )
+
+        val pending = assertNotNull(viewModel.state.value.ownCharges).pending
+        assertEquals("Vence em 10/08", pending.first { it.id == "hoje" }.dueLabel)
+        assertEquals("Venceu em 09/08", pending.first { it.id == "ontem" }.dueLabel)
+    }
+
+    @Test
+    fun `pix do grupo aparece so quando ha pendencia`() = runTest {
+        val finance = FakeAthleteFinanceGateway(
+            ownChargesResult = SaqzResult.Success(
+                ChargeList(listOf(ownCharge("paga", month = "2026-07", status = ChargeStatus.Paid))),
+            ),
+        )
+        val viewModel = viewModel(groupGateway = pixGroupGateway(), athleteFinanceGateway = finance)
+
+        val settled = assertNotNull(viewModel.state.value.ownCharges)
+        assertEquals(1, settled.history.size)
+        assertNull(settled.pix)
+
+        finance.ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08"))))
+        viewModel.onIntent(GroupDetailsIntent.RetryOwnCharges)
+
+        val pending = assertNotNull(viewModel.state.value.ownCharges).pix
+        assertEquals("ceret@volei.com.br", assertNotNull(pending).key)
+        assertEquals("Lucas Prado", pending.label)
+    }
+
+    @Test
+    fun `copiar pix emite a chave do grupo`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = pixGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08")))),
+            ),
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.CopyPix)
+
+        assertEquals(GroupDetailsEffect.CopyPix("ceret@volei.com.br"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `falha das cobrancas nao derruba a tela e o retry recarrega so a secao`() = runTest {
+        val finance = FakeAthleteFinanceGateway(
+            ownChargesResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)),
+        )
+        val viewModel = viewModel(groupGateway = athleteGroupGateway(), athleteFinanceGateway = finance)
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals("Vôlei do CERET", viewModel.state.value.header?.name)
+        assertTrue(viewModel.state.value.ownCharges?.failed == true)
+
+        finance.ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08"))))
+        viewModel.onIntent(GroupDetailsIntent.RetryOwnCharges)
+
+        val reloaded = assertNotNull(viewModel.state.value.ownCharges)
+        assertFalse(reloaded.failed)
+        assertEquals(listOf("mensal"), reloaded.pending.map { it.id })
+        assertEquals(2, finance.ownChargesCalls)
+    }
+
+    // A lista não pagina e o card não é lazy: o histórico longo para nas 6 mais recentes.
+    @Test
+    fun `historico longo para nas seis cobrancas mais recentes`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(
+                        (1..24).map { index ->
+                            val year = 2025 + (index - 1) / 12
+                            val key = "$year-${(((index - 1) % 12) + 1).toString().padStart(2, '0')}"
+                            ownCharge(
+                                id = "paga-$index",
+                                month = key,
+                                dueDate = "$key-10",
+                                status = ChargeStatus.Paid,
+                            )
+                        },
+                    ),
+                ),
+            ),
+        )
+
+        val history = assertNotNull(viewModel.state.value.ownCharges).history
+        assertEquals(6, history.size)
+        assertEquals("Vencimento 10/12", history.first().dueLabel)
+    }
+
+    @Test
+    fun `resposta antiga das cobrancas nao sobrescreve a recarga`() = runTest {
+        val stale = CompletableDeferred<SaqzResult<ChargeList, FinanceError>>()
+        val finance = FakeAthleteFinanceGateway(ownChargesDeferred = stale)
+        val viewModel = viewModel(groupGateway = athleteGroupGateway(), athleteFinanceGateway = finance)
+
+        assertTrue(viewModel.state.value.ownCharges?.isLoading == true)
+        finance.ownChargesDeferred = null
+        finance.ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("novo", month = "2026-08"))))
+        viewModel.onIntent(GroupDetailsIntent.Retry)
+
+        stale.complete(SaqzResult.Success(ChargeList(listOf(ownCharge("velho", month = "2026-07")))))
+        advanceUntilIdle()
+
+        assertEquals(listOf("novo"), viewModel.state.value.ownCharges?.pending?.map { it.id })
+    }
+
+    private fun ownCharge(
+        id: String,
+        kind: ChargeKind = ChargeKind.Monthly,
+        month: String? = null,
+        dueDate: String = "2026-08-10",
+        status: ChargeStatus = ChargeStatus.Pending,
+    ) = Charge(
+        id = id,
+        groupId = GroupId(GROUP_ID),
+        memberId = "me",
+        kind = kind,
+        month = month,
+        amountCents = 7_000L,
+        dueDate = dueDate,
+        status = status,
+        version = 1,
+        audit = emptyList(),
+    )
+
+    private fun pixGroupGateway() = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            sampleVersionedGroup(
+                sampleGroup(role = GroupRole.ATHLETE).let { group ->
+                    group.copy(
+                        profile = group.profile?.copy(
+                            pixKey = "ceret@volei.com.br",
+                            pixLabel = "Lucas Prado",
+                        ),
+                    )
+                },
+            ),
+        ),
+    )
+
     private fun viewModel(
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         gameGateway: FakeGameGateway = FakeGameGateway(),
@@ -724,6 +918,8 @@ class GroupDetailsViewModelTest {
         athleteGateway: FakeAthleteGateway = FakeAthleteGateway(),
         statementGateway: FakeFinanceStatementGateway = FakeFinanceStatementGateway(),
         organizerFinanceGateway: FakeOrganizerFinanceGateway = FakeOrganizerFinanceGateway(),
+        athleteFinanceGateway: FakeAthleteFinanceGateway = FakeAthleteFinanceGateway(),
+        now: GroupNowPort = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -732,7 +928,8 @@ class GroupDetailsViewModelTest {
         athleteGateway,
         statementGateway,
         organizerFinanceGateway,
-        GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
+        athleteFinanceGateway,
+        now,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

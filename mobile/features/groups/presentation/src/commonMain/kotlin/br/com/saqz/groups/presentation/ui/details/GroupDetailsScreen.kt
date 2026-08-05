@@ -30,7 +30,11 @@ import br.com.saqz.groups.presentation.details.MemberPreviewUi
 import br.com.saqz.groups.presentation.details.MemberStatusUi
 import br.com.saqz.groups.presentation.details.NextGameUi
 import br.com.saqz.groups.presentation.details.NoticeUi
+import br.com.saqz.groups.presentation.details.OwnChargeStatusUi
+import br.com.saqz.groups.presentation.details.OwnChargeUi
+import br.com.saqz.groups.presentation.details.OwnChargesUi
 import br.com.saqz.groups.presentation.details.VenueUi
+import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.presentation.ui.components.GroupVenueRow
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
@@ -58,6 +62,16 @@ internal object GroupDetailsTags {
     const val ManageSchedule = "group-details-manage-schedule"
     const val ManageInviteLink = "group-details-manage-invite-link"
     const val Leave = "group-details-leave"
+    const val OwnCharges = "group-details-own-charges"
+    const val OwnChargesPending = "group-details-own-charges-pending"
+    const val OwnChargesHistory = "group-details-own-charges-history"
+    const val OwnChargesPix = "group-details-own-charges-pix"
+    const val OwnChargesPixCopy = "group-details-own-charges-pix-copy"
+    const val OwnChargesSkeleton = "group-details-own-charges-skeleton"
+    const val OwnChargesFailure = "group-details-own-charges-failure"
+    const val OwnChargesRetry = "group-details-own-charges-retry"
+
+    fun ownCharge(chargeId: String) = "group-details-own-charge-$chargeId"
 }
 
 /**
@@ -102,6 +116,7 @@ internal fun GroupDetailsScreen(
                 if (state.isAdmin) {
                     state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
                 }
+                state.ownCharges?.let { GroupOwnChargesSection(ownCharges = it, onIntent = onIntent) }
                 state.venue?.let { GroupVenueCard(venue = it, isAdmin = state.isAdmin, onIntent = onIntent) }
                 if (!state.isAdmin) {
                     GroupShortcutTiles(onIntent = onIntent)
@@ -164,6 +179,50 @@ internal object GroupDetailsPreviewData {
         ),
     )
     val venue = VenueUi(name = "CERET — Quadra 2", address = "R. Canuto Abreu, s/n · Tatuapé")
+
+    // VUL-203 — uma pendente vencida, uma a vencer e o histórico com os três desfechos.
+    val ownCharges = OwnChargesUi(
+        pending = listOf(
+            OwnChargeUi(
+                id = "c-1",
+                title = "Mensalidade · Agosto",
+                dueLabel = "Venceu em 10/08",
+                amountLabel = "R$ 70,00",
+                status = OwnChargeStatusUi.Pending,
+            ),
+            OwnChargeUi(
+                id = "c-2",
+                title = "Jogo avulso",
+                dueLabel = "Vence em 28/08",
+                amountLabel = "R$ 25,00",
+                status = OwnChargeStatusUi.Pending,
+            ),
+        ),
+        history = listOf(
+            OwnChargeUi(
+                id = "c-3",
+                title = "Mensalidade · Julho",
+                dueLabel = "Vencimento 10/07",
+                amountLabel = "R$ 70,00",
+                status = OwnChargeStatusUi.Paid,
+            ),
+            OwnChargeUi(
+                id = "c-4",
+                title = "Mensalidade · Junho",
+                dueLabel = "Vencimento 10/06",
+                amountLabel = "R$ 70,00",
+                status = OwnChargeStatusUi.Waived,
+            ),
+            OwnChargeUi(
+                id = "c-5",
+                title = "Jogo avulso",
+                dueLabel = "Vencimento 03/06",
+                amountLabel = "R$ 25,00",
+                status = OwnChargeStatusUi.Cancelled,
+            ),
+        ),
+        pix = PixUi(key = "ceret@volei.com.br", label = "Lucas Prado"),
+    )
 
     val admin = GroupDetailsState(
         isLoading = false,
@@ -233,6 +292,16 @@ internal object GroupDetailsPreviewData {
             MemberPreviewUi("3", "Thiago Melo", "Central"),
         ),
         memberCount = 26,
+        ownCharges = ownCharges,
+    )
+
+    val memberOwnChargesLoading = member.copy(ownCharges = OwnChargesUi(isLoading = true))
+
+    val memberOwnChargesFailed = member.copy(ownCharges = OwnChargesUi(failed = true))
+
+    /** Sem pendência não há Pix: a seção fica só com o histórico. */
+    val memberOwnChargesSettled = member.copy(
+        ownCharges = ownCharges.copy(pending = emptyList(), pix = null),
     )
 }
 

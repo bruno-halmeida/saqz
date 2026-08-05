@@ -33,6 +33,7 @@ import br.com.saqz.groups.domain.finance.MonthlyChargeCommand
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.finance.VersionedCharge
 import br.com.saqz.groups.domain.finance.VersionedExpense
+import br.com.saqz.groups.presentation.FakeAthleteFinanceGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
@@ -96,6 +97,7 @@ class GroupCashboxRootTest {
             athleteGateway = FakeAthleteGateway(),
             statementGateway = statementGateway,
             organizerFinanceGateway = detailsGateway,
+            athleteFinanceGateway = FakeAthleteFinanceGateway(),
             now = now,
         )
         var showingCashbox by mutableStateOf(true)
