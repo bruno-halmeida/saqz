@@ -18,7 +18,7 @@ fun GameDetailRoot(
     onOpenSettlement: () -> Unit = {},
     onCancel: () -> Unit = onBack,
     viewModel: GameDetailViewModel = koinViewModel(
-        key = "$groupId/$gameId",
+        key = "game-detail/$groupId/$gameId",
         parameters = { parametersOf(groupId, gameId) },
     ),
 ) {

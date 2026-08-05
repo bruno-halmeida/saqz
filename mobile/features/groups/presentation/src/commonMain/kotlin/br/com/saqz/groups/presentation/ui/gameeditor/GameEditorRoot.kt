@@ -25,7 +25,7 @@ fun GameEditorRoot(
     // destino do `NavDisplay` o store morre junto com a entrada, então o sorteio virou
     // ruído: ele fazia o `key` depender de sorte para uma identidade que a rota já dá.
     val resolvedViewModel = viewModel ?: koinViewModel(
-        key = "$groupId/${gameId ?: "create"}",
+        key = "game-editor/$groupId/${gameId ?: "create"}",
         parameters = { parametersOf(groupId, gameId) },
     )
     val state by resolvedViewModel.state.collectAsStateWithLifecycle()

@@ -23,7 +23,7 @@ fun InviteLandingRoot(
     initialRequestSent: Boolean = false,
     initialRedeemError: InviteLandingRouteError? = null,
     viewModel: InviteLandingViewModel = koinViewModel(
-        key = code,
+        key = "invite-landing/$code",
         parameters = { parametersOf(code, initialRequestSent, initialRedeemError) },
     ),
 ) {

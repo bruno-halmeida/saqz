@@ -25,7 +25,7 @@ fun NewPasswordRoot(
     // VUL-204: o parâmetro entra na chave do store. O escopo por destino já separa duas
     // entradas com tokens diferentes; a chave é a segunda tranca — vale também para quem
     // montar o Root fora de um `NavEntry`.
-    viewModel: NewPasswordViewModel = koinViewModel(key = token) { parametersOf(token) },
+    viewModel: NewPasswordViewModel = koinViewModel(key = "new-password/$token") { parametersOf(token) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

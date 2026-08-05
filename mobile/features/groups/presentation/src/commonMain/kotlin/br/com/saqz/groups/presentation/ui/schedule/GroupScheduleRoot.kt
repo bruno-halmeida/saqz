@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.schedule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.schedule.GroupScheduleEffect
@@ -30,10 +31,14 @@ fun GroupScheduleRoot(
     refreshVersion: Int = 0,
 ) {
     val viewModel: GroupScheduleViewModel =
-        koinViewModel(key = groupId, parameters = { parametersOf(groupId) })
+        koinViewModel(key = "schedule/$groupId", parameters = { parametersOf(groupId) })
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(refreshVersion) {
-        if (refreshVersion > 0) viewModel.onIntent(GroupScheduleIntent.Retry)
+    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu — ver
+    // `GroupDetailsRoot`. Quem muda `scheduleRefreshVersion` é o cancelamento no detalhe do
+    // jogo, uma entrada acima desta.
+    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
+    LaunchedEffect(viewModel, refreshVersion) {
+        if (refreshVersion != loadedVersion) viewModel.onIntent(GroupScheduleIntent.Retry)
     }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {

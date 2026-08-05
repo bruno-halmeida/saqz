@@ -15,7 +15,7 @@ fun AthleteRegistrationRoot(
     onSave: () -> Unit,
     onBack: () -> Unit,
     viewModel: AthleteRegistrationViewModel = koinViewModel(
-        key = groupId,
+        key = "athlete-registration/$groupId",
         parameters = { parametersOf(groupId) },
     ),
 ) {

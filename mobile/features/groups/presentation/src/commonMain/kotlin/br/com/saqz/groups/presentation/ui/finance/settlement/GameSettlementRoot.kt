@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.finance.settlement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,14 +21,17 @@ fun GameSettlementRoot(
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
     viewModel: GameSettlementViewModel = koinViewModel(
-        key = "$groupId/$gameId",
+        key = "settlement/$groupId/$gameId",
         parameters = { parametersOf(groupId, gameId) },
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu — ver
+    // `GroupDetailsRoot`.
+    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
     LaunchedEffect(viewModel, refreshVersion) {
-        if (refreshVersion > 0) viewModel.onIntent(GameSettlementIntent.Retry)
+        if (refreshVersion != loadedVersion) viewModel.onIntent(GameSettlementIntent.Retry)
     }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {

@@ -121,7 +121,10 @@ fun PaymentRoot(
     route: SubscriptionsRoute.Payment,
     onBack: () -> Unit,
     onEffect: (PaymentEffect) -> Unit,
-    viewModel: PaymentViewModel = koinViewModel(key = route.toString(), parameters = { parametersOf(route) }),
+    viewModel: PaymentViewModel = koinViewModel(
+        key = "payment/$route",
+        parameters = { parametersOf(route) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects, onEvent = onEffect)

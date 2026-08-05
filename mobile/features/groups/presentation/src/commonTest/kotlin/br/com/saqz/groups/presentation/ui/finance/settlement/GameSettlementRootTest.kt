@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.finance.settlement
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -100,44 +101,54 @@ class GameSettlementRootTest {
             athleteFinanceGateway = FakeAthleteFinanceGateway(),
             now = GroupNowPort { Instant.parse("2026-08-04T12:00:00Z") },
         )
-        var showingSettlement by mutableStateOf(true)
+        var showingSettlement by mutableStateOf(false)
         var refreshVersion by mutableIntStateOf(0)
 
         setContent {
+            // VUL-205: o detalhe entra primeiro e o acerto empilha por cima, cada um no seu
+            // `SaveableStateProvider` — o mesmo que o `NavDisplay` dá a cada entrada. Ver o
+            // `GroupCashboxRootTest` equivalente.
+            val stateHolder = rememberSaveableStateHolder()
             SaqzTheme {
                 if (showingSettlement) {
-                    GameSettlementRoot(
-                        groupId = "group-1",
-                        gameId = "game-1",
-                        onBack = { showingSettlement = false },
-                        onOpenNewEntry = { _, _ -> },
-                        onOpenCashbox = {},
-                        onMutationSuccess = {
-                            statementGateway.result = SaqzResult.Success(
-                                FinanceStatementPage(
-                                    month = "2026-08",
-                                    items = emptyList(),
-                                    summary = FinanceStatementSummary(7_000L, 0L, 7_000L, 7_000L),
-                                    limit = 20,
-                                    offset = 0,
-                                    hasMore = false,
-                                ),
-                            )
-                            refreshVersion++
-                        },
-                        viewModel = settlementViewModel,
-                    )
+                    stateHolder.SaveableStateProvider("settlement") {
+                        GameSettlementRoot(
+                            groupId = "group-1",
+                            gameId = "game-1",
+                            onBack = { showingSettlement = false },
+                            onOpenNewEntry = { _, _ -> },
+                            onOpenCashbox = {},
+                            onMutationSuccess = {
+                                statementGateway.result = SaqzResult.Success(
+                                    FinanceStatementPage(
+                                        month = "2026-08",
+                                        items = emptyList(),
+                                        summary = FinanceStatementSummary(7_000L, 0L, 7_000L, 7_000L),
+                                        limit = 20,
+                                        offset = 0,
+                                        hasMore = false,
+                                    ),
+                                )
+                                refreshVersion++
+                            },
+                            viewModel = settlementViewModel,
+                        )
+                    }
                 } else {
-                    GroupDetailsRoot(
-                        groupId = "group-1",
-                        onBack = {},
-                        onEffect = {},
-                        viewModel = detailsViewModel,
-                        refreshVersion = refreshVersion,
-                    )
+                    stateHolder.SaveableStateProvider("details") {
+                        GroupDetailsRoot(
+                            groupId = "group-1",
+                            onBack = {},
+                            onEffect = {},
+                            viewModel = detailsViewModel,
+                            refreshVersion = refreshVersion,
+                        )
+                    }
                 }
             }
         }
+        waitForIdle()
+        runOnIdle { showingSettlement = true }
         waitForIdle()
 
         onNodeWithTag(GameSettlementTags.receipt("game-pending")).performClick()
