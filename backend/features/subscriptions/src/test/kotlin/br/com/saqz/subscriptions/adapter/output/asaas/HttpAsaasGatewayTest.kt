@@ -10,6 +10,9 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -153,6 +156,62 @@ class HttpAsaasGatewayTest {
 
         assertTrue(server.takeRequest().body.readUtf8().contains("\"billingType\":\"CREDIT_CARD\""))
     }
+
+    @Test
+    fun `createSubscription uses 60s timeout for credit card billing but 15s for pix`() {
+        val timeouts = mutableListOf<Duration?>()
+        val delegate = HttpClient.newHttpClient()
+        val capturingClient = capturingHttpClient(delegate) { timeouts += it }
+        val capturingGateway = HttpAsaasGateway(
+            settings = AsaasClientSettings(baseUrl = server.url("/v3").toString().trimEnd('/'), apiKey = apiKey),
+            idempotencyStore = InMemoryAsaasIdempotencyStore(),
+            httpClient = capturingClient,
+            clock = fixedClock,
+            idempotencyPollWait = { },
+        )
+        server.enqueue(json(200, """{"id":"sub_PIX_TIMEOUT"}"""))
+        server.enqueue(json(200, """{"id":"sub_CARD_TIMEOUT"}"""))
+
+        capturingGateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-timeout-pix",
+        )
+        capturingGateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.CREDIT_CARD, "sub-timeout-card",
+        )
+
+        assertEquals(listOf(Duration.ofSeconds(15), Duration.ofSeconds(60)), timeouts)
+    }
+
+    /** Delegates the real call to [delegate] but first records the timeout the caller asked for. */
+    private fun capturingHttpClient(delegate: HttpClient, onSend: (Duration?) -> Unit): HttpClient =
+        object : HttpClient() {
+            override fun cookieHandler() = delegate.cookieHandler()
+            override fun connectTimeout() = delegate.connectTimeout()
+            override fun followRedirects(): Redirect = delegate.followRedirects()
+            override fun proxy() = delegate.proxy()
+            override fun sslContext(): javax.net.ssl.SSLContext = delegate.sslContext()
+            override fun sslParameters(): javax.net.ssl.SSLParameters = delegate.sslParameters()
+            override fun authenticator() = delegate.authenticator()
+            override fun version(): Version = delegate.version()
+            override fun executor() = delegate.executor()
+            override fun <T : Any?> send(
+                request: HttpRequest,
+                responseBodyHandler: HttpResponse.BodyHandler<T>,
+            ): HttpResponse<T> {
+                onSend(request.timeout().orElse(null))
+                return delegate.send(request, responseBodyHandler)
+            }
+            override fun <T : Any?> sendAsync(
+                request: HttpRequest,
+                responseBodyHandler: HttpResponse.BodyHandler<T>,
+            ) = throw UnsupportedOperationException()
+            override fun <T : Any?> sendAsync(
+                request: HttpRequest,
+                responseBodyHandler: HttpResponse.BodyHandler<T>,
+                pushPromiseHandler: HttpResponse.PushPromiseHandler<T>?,
+            ) = throw UnsupportedOperationException()
+            override fun newWebSocketBuilder() = throw UnsupportedOperationException()
+        }
 
     @Test
     fun `createSubscription maps annual cycle to YEARLY`() {

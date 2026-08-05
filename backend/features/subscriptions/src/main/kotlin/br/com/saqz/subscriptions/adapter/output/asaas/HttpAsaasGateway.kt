@@ -75,7 +75,10 @@ class HttpAsaasGateway(
                 "description" to "Assinatura Saqz ${plan.name}",
                 "externalReference" to idempotencyKey,
             )
-            requireId(post("/subscriptions", body), "subscription")
+            // 60s só no caminho de cartão — a Asaas recomenda esse mínimo para o round trip de
+            // autorização+antifraude; os demais endpoints seguem no requestTimeout padrão (15s).
+            val timeout = if (billingType == AsaasBillingType.CREDIT_CARD) CARD_REQUEST_TIMEOUT else requestTimeout
+            requireId(post("/subscriptions", body, timeout), "subscription")
         }
 
     override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) {
@@ -261,21 +264,21 @@ class HttpAsaasGateway(
 
     private fun customerIdempotencyKey(ownerUserId: UUID): String = "customer:$ownerUserId"
 
-    private fun post(path: String, body: Map<String, Any?>): JsonNode =
-        exchange("POST", path, body)
+    private fun post(path: String, body: Map<String, Any?>, timeout: Duration = requestTimeout): JsonNode =
+        exchange("POST", path, body, timeout)
 
     private fun put(path: String, body: Map<String, Any?>): JsonNode =
-        exchange("PUT", path, body)
+        exchange("PUT", path, body, requestTimeout)
 
     private fun delete(path: String): JsonNode =
-        exchange("DELETE", path, body = null)
+        exchange("DELETE", path, body = null, timeout = requestTimeout)
 
     private fun get(path: String): JsonNode =
-        exchange("GET", path, body = null)
+        exchange("GET", path, body = null, timeout = requestTimeout)
 
-    private fun exchange(method: String, path: String, body: Map<String, Any?>?): JsonNode {
+    private fun exchange(method: String, path: String, body: Map<String, Any?>?, timeout: Duration): JsonNode {
         val builder = HttpRequest.newBuilder(URI.create(settings.baseUrl + path))
-            .timeout(requestTimeout)
+            .timeout(timeout)
             .header("access_token", settings.apiKey)
             .header("User-Agent", settings.userAgent)
             .header("Accept", "application/json")
@@ -362,6 +365,9 @@ class HttpAsaasGateway(
     companion object {
         val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(5)
         val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(15)
+
+        /** Asaas recommends at least 60s on the credit card path (authorization + antifraude). */
+        val CARD_REQUEST_TIMEOUT: Duration = Duration.ofSeconds(60)
         val DEFAULT_ABANDON_AFTER: Duration = Duration.ofSeconds(30)
         const val DEFAULT_MAX_IDEMPOTENCY_POLLS: Int = 3
 
