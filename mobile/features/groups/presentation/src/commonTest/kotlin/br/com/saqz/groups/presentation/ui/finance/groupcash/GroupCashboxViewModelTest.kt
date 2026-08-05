@@ -238,17 +238,39 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
-    fun `register and full statement emit the same navigation effect while charging stays disabled`() = runTest {
+    fun `register opens new entry and full statement stays on the statement route`() = runTest {
         val viewModel = viewModel()
 
         viewModel.onIntent(GroupCashboxIntent.Register)
-        assertEquals(GroupCashboxEffect.OpenStatement("group-1"), viewModel.effects.first())
+        assertEquals(GroupCashboxEffect.OpenNewEntry("group-1"), viewModel.effects.first())
 
         viewModel.onIntent(GroupCashboxIntent.ViewFullStatement)
         assertEquals(GroupCashboxEffect.OpenStatement("group-1"), viewModel.effects.first())
 
         viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
+        assertTrue(viewModel.state.value.chargeSheetOpen)
+        assertNull(viewModel.state.value.chargeSheetChargeId)
         assertFalse(viewModel.state.value.operationFailed)
+    }
+
+    @Test
+    fun `recebi opens the receipt sheet for the selected debtor`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.OpenReceipt("monthly-pending"))
+
+        assertEquals("monthly-pending", viewModel.state.value.receiptSheetChargeId)
+        assertFalse(viewModel.state.value.chargeSheetOpen)
+    }
+
+    @Test
+    fun `receipt confirmation sends the selected paid method`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.MarkReceived("monthly-pending", PaidMethod.Cash))
+
+        assertEquals(PaidMethod.Cash, organizer.lastCommand?.paidMethod)
     }
 
     @Test

@@ -1,7 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -23,10 +23,14 @@ class GroupCashboxScreenTest {
         onNodeWithTag(GroupCashboxTags.Pix).assertExists()
         onNodeWithText("Camila").assertExists()
         onNodeWithText("Recebi").assertExists()
-        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsEnabled()
 
         onNodeWithTag(GroupCashboxTags.Register).performClick()
-        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Register), intents)
+        onNodeWithText("Cobrar").performClick()
+        assertEquals(
+            listOf<GroupCashboxIntent>(GroupCashboxIntent.Register, GroupCashboxIntent.ChargeIndividual("charge-1")),
+            intents,
+        )
     }
 
     @Test
@@ -41,7 +45,7 @@ class GroupCashboxScreenTest {
     }
 
     @Test
-    fun `overdue state shows named members and disabled charge CTA`() = runComposeUiTest {
+    fun `overdue state shows named members and active charge CTA`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(
             loadedState.copy(
@@ -55,8 +59,9 @@ class GroupCashboxScreenTest {
 
         onNodeWithTag(GroupCashboxTags.Overdue).assertExists()
         onNodeWithText("Camila, Pedro e Thiago estão com julho em aberto").assertExists()
-        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsNotEnabled()
-        assertEquals(emptyList<GroupCashboxIntent>(), intents)
+        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsEnabled()
+        onNodeWithTag(GroupCashboxTags.OverdueCharge).performClick()
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ChargeMissing), intents)
     }
 
     @Test

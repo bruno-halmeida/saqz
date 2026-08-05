@@ -5,9 +5,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import br.com.saqz.groups.presentation.ui.finance.sheets.FinanceSheetsTags
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.GroupId
@@ -123,6 +127,9 @@ class GroupCashboxRootTest {
         waitForIdle()
 
         onNodeWithText("Recebi").performClick()
+        waitForIdle()
+        onAllNodesWithContentDescription("Fechar").assertCountEquals(2)
+        onNodeWithTag(FinanceSheetsTags.ReceiptConfirm).performClick()
         waitForIdle()
         onNodeWithContentDescription("Voltar").performClick()
         waitForIdle()

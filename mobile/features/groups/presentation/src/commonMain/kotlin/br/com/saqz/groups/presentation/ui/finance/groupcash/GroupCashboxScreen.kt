@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -13,6 +14,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import br.com.saqz.designsystem.SaqzAvatar
@@ -32,7 +34,9 @@ import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ChargeMissing
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.CopyPix
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ChargeIndividual
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.MarkReceived
+import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.OpenReceipt
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Register
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Retry
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ViewFullStatement
@@ -60,6 +64,9 @@ import br.com.saqz.groups.resources.group_cashbox_retry
 import br.com.saqz.groups.resources.group_cashbox_statement
 import br.com.saqz.groups.resources.group_cashbox_received_monthly_suffix
 import br.com.saqz.groups.resources.group_cashbox_title
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.whatsappChargeUrl
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupCashboxTags {
@@ -85,13 +92,41 @@ internal fun GroupCashboxScreen(
     onIntent: (GroupCashboxIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize().testTag(GroupCashboxTags.Screen)) {
-        SaqzTopAppBar(title = state.groupName.ifBlank { null }, onBack = onBack)
-        when {
-            state.isLoading -> LoadingContent()
-            state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })
-            else -> LoadedContent(state = state, onIntent = onIntent)
+    val uriHandler = LocalUriHandler.current
+    val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
+    val chargeDebtors = state.debtors.filter {
+        state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
+    }
+    Box(modifier = modifier.fillMaxSize().testTag(GroupCashboxTags.Screen)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SaqzTopAppBar(title = state.groupName.ifBlank { null }, onBack = onBack)
+            when {
+                state.isLoading -> LoadingContent()
+                state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })
+                else -> LoadedContent(state = state, onIntent = onIntent)
+            }
         }
+        ChargeSheet(
+            open = state.chargeSheetOpen,
+            debtors = chargeDebtors,
+            monthLabel = state.monthLabel,
+            pixKey = state.pix?.key,
+            pixLabel = state.pix?.label,
+            onClose = { onIntent(GroupCashboxIntent.DismissChargeSheet) },
+            onCopyPix = { onIntent(CopyPix) },
+            onSend = { _, message ->
+                uriHandler.openUri(whatsappChargeUrl(message))
+                onIntent(GroupCashboxIntent.DismissChargeSheet)
+            },
+        )
+        ReceiptSheet(
+            open = state.receiptSheetChargeId != null,
+            debtor = receiptDebtor,
+            onClose = { onIntent(GroupCashboxIntent.DismissReceiptSheet) },
+            onConfirm = { paidMethod ->
+                receiptDebtor?.let { onIntent(MarkReceived(it.chargeId, paidMethod)) }
+            },
+        )
     }
 }
 
@@ -186,7 +221,6 @@ private fun CashboxHeader(state: GroupCashboxState, onIntent: (GroupCashboxInten
                 onClick = { onIntent(GroupCashboxIntent.ChargeMissing) },
                 variant = SaqzButtonVariant.Secondary,
                 size = SaqzButtonSize.Sm,
-                enabled = false,
                 modifier = Modifier.weight(1f).testTag(GroupCashboxTags.ChargeMissing),
             )
             SaqzButton(
@@ -243,7 +277,6 @@ private fun OverdueBanner(banner: OverdueBannerUi, onIntent: (GroupCashboxIntent
         onClick = { onIntent(ChargeMissing) },
         variant = SaqzButtonVariant.Secondary,
         size = SaqzButtonSize.Sm,
-        enabled = false,
         modifier = Modifier.testTag(GroupCashboxTags.OverdueCharge),
     )
 }
@@ -328,14 +361,13 @@ private fun DebtorRow(debtor: DebtorUi, onIntent: (GroupCashboxIntent) -> Unit) 
         Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             SaqzButton(
                 label = stringResource(Res.string.group_cashbox_charge),
-                onClick = { onIntent(ChargeMissing) },
+                onClick = { onIntent(ChargeIndividual(debtor.chargeId)) },
                 variant = SaqzButtonVariant.Ghost,
                 size = SaqzButtonSize.Sm,
-                enabled = false,
             )
             SaqzButton(
                 label = stringResource(Res.string.group_cashbox_received_action),
-                onClick = { onIntent(MarkReceived(debtor.chargeId)) },
+                onClick = { onIntent(OpenReceipt(debtor.chargeId)) },
                 size = SaqzButtonSize.Sm,
                 loading = debtor.isUpdating,
             )

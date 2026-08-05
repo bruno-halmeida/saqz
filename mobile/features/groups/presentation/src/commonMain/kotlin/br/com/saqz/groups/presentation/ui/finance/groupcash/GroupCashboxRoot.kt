@@ -14,6 +14,7 @@ fun GroupCashboxRoot(
     groupId: String,
     onBack: () -> Unit,
     onOpenStatement: (String) -> Unit,
+    onOpenNewEntry: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
     viewModel: GroupCashboxViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
 ) {
@@ -22,6 +23,7 @@ fun GroupCashboxRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupCashboxEffect.OpenStatement -> onOpenStatement(effect.groupId)
+            is GroupCashboxEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId)
             is GroupCashboxEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
             GroupCashboxEffect.MutationSucceeded -> onMutationSuccess()
         }

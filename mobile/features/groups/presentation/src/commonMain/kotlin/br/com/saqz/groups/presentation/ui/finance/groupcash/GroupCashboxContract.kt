@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.domain.finance.PaidMethod
 
 @Immutable
 data class GroupCashboxState(
@@ -29,6 +30,9 @@ data class GroupCashboxState(
     val pix: PixUi? = null,
     val updatingChargeId: String? = null,
     val operationFailed: Boolean = false,
+    val chargeSheetOpen: Boolean = false,
+    val chargeSheetChargeId: String? = null,
+    val receiptSheetChargeId: String? = null,
 )
 
 @Immutable
@@ -43,6 +47,7 @@ data class DebtorUi(
     val month: String?,
     val isOverdue: Boolean = false,
     val isUpdating: Boolean = false,
+    val referenceLabel: String = "",
 )
 
 @Immutable
@@ -60,14 +65,22 @@ data class PixUi(
 sealed interface GroupCashboxIntent {
     data object Retry : GroupCashboxIntent
     data object ChargeMissing : GroupCashboxIntent
+    data class ChargeIndividual(val chargeId: String) : GroupCashboxIntent
     data object Register : GroupCashboxIntent
     data object ViewFullStatement : GroupCashboxIntent
-    data class MarkReceived(val chargeId: String) : GroupCashboxIntent
+    data class OpenReceipt(val chargeId: String) : GroupCashboxIntent
+    data class MarkReceived(
+        val chargeId: String,
+        val paidMethod: PaidMethod = PaidMethod.Pix,
+    ) : GroupCashboxIntent
+    data object DismissChargeSheet : GroupCashboxIntent
+    data object DismissReceiptSheet : GroupCashboxIntent
     data object CopyPix : GroupCashboxIntent
 }
 
 sealed interface GroupCashboxEffect {
     data class OpenStatement(val groupId: String) : GroupCashboxEffect
+    data class OpenNewEntry(val groupId: String) : GroupCashboxEffect
     data class CopyPix(val key: String) : GroupCashboxEffect
     data object MutationSucceeded : GroupCashboxEffect
 }

@@ -340,8 +340,10 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     onBack = pop,
                     onMutationSuccess = { groupDetailsRefreshVersion++ },
+                    onOpenNewEntry = { groupId ->
+                        backStack.add(FinanceRoute.NewEntry(groupId))
+                    },
                     onOpenStatement = { groupId ->
-                        // TODO(pós-merge VUL-180): retarget para NewEntry
                         backStack.add(FinanceRoute.Statement(groupId))
                     },
                 )

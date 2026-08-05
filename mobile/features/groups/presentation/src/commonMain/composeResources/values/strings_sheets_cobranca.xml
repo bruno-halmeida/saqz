@@ -1,0 +1,22 @@
+<resources>
+    <string name="sheet_charge_title">Cobrar %1$d mensalidades</string>
+    <string name="sheet_charge_summary">%1$s em aberto · %2$s</string>
+    <string name="sheet_charge_description">Escolha quem vai receber a cobrança</string>
+    <string name="sheet_charge_whatsapp">Cobrar no WhatsApp</string>
+    <string name="sheet_charge_message">Oi, %1$s! A cobrança está em aberto no valor de %2$s. Você pode pagar via Pix pela chave %3$s.</string>
+    <string name="sheet_charge_whatsapp_description">Mensagem individual com valor e chave Pix</string>
+    <string name="sheet_charge_pix_title">Pix do grupo</string>
+    <string name="sheet_charge_copy_pix">Copiar chave Pix</string>
+    <string name="sheet_charge_send">Enviar cobrança</string>
+    <string name="sheet_charge_cancel">Cancelar</string>
+
+    <string name="sheet_receipt_title">Confirmar recebimento</string>
+    <string name="sheet_receipt_amount">Valor recebido</string>
+    <string name="sheet_receipt_reference">Referente a</string>
+    <string name="sheet_receipt_method">Como recebeu</string>
+    <string name="sheet_receipt_method_pix">Pix</string>
+    <string name="sheet_receipt_method_cash">Dinheiro</string>
+    <string name="sheet_receipt_method_other">Outro</string>
+    <string name="sheet_receipt_confirm">Confirmar recebimento</string>
+    <string name="sheet_receipt_cancel">Cancelar</string>
+</resources>
