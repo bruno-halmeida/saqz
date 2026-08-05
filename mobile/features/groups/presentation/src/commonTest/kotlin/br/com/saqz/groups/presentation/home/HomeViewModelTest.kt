@@ -17,6 +17,7 @@ import br.com.saqz.groups.domain.home.HomeNextGame
 import br.com.saqz.groups.domain.home.HomeOwnAttendance
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeRosterPreview
+import br.com.saqz.groups.domain.home.HomeRosterMember
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
@@ -92,7 +93,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `waitlisted home formats the waitlist subtitle`() = runTest {
+    fun `waitlisted mensalista formats the reserva subtitle`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
                 SaqzResult.Success(
@@ -102,9 +103,41 @@ class HomeViewModelTest {
         )
 
         assertEquals(
+            "Você está na reserva de Vôlei do CERET.",
+            viewModel.state.value.member?.subtitle,
+        )
+        assertEquals(HomeWaitlistKind.Reserva, viewModel.state.value.member?.nextGame?.waitlistKind)
+    }
+
+    @Test
+    fun `waitlisted avulso with mensalista priority formats the avulso list subtitle`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Waitlisted, 2)).copy(
+                            membershipType = AthleteMembershipType.AVULSO,
+                            mensalistaPriority = true,
+                            rosterPreview = HomeRosterPreview(
+                                confirmed = listOf(),
+                                waitlisted = listOf(
+                                    br.com.saqz.groups.domain.home.HomeRosterMember("Lucas Pereira", 1),
+                                    br.com.saqz.groups.domain.home.HomeRosterMember("Bruna Silva", 2),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
             "Você está na lista de espera de Vôlei do CERET.",
             viewModel.state.value.member?.subtitle,
         )
+        assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.member?.nextGame?.waitlistKind)
+        assertEquals(2, viewModel.state.value.member?.nextGame?.waitlistedRoster?.size)
+        assertTrue(viewModel.state.value.member?.nextGame?.waitlistedRoster?.get(1)?.isSelf == true)
     }
 
     @Test
@@ -295,6 +328,89 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `avulso without prior attendance shows waitlist kind on optimistic confirm`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(
+            nextGame = sampleNextGame().copy(
+                membershipType = AthleteMembershipType.AVULSO,
+                mensalistaPriority = true,
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        // O kind já é AvulsoList no update otimista, antes do refresh — sem attendance
+        // prévio o hero não pode mostrar "Reserva" para um avulso com prioridade.
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.member?.nextGame?.waitlistKind)
+    }
+
+    @Test
+    fun `reconciled waitlist copies the server position to the UI model before refresh`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(nextGame = sampleNextGame().copy(confirmedCount = 12, capacity = 12))
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(
+                    ownAttendance = HomeOwnAttendance(AttendanceStatus.Waitlisted, 3),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        // Otimista: sem posição conhecida, o chip omite o número (não mostra "0º").
+        assertNull(viewModel.state.value.member?.nextGame?.waitlistPosition)
+
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Waitlisted, 3)))
+        advanceUntilIdle()
+
+        // Reconciliado: a posição do servidor já está na UI, sem esperar o refresh.
+        assertEquals(3L, viewModel.state.value.member?.nextGame?.waitlistPosition)
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+    }
+
+    @Test
+    fun `waitlist preview appends self when server position is outside preview`() = runTest {
+        val preview = (1..5).map { position ->
+            HomeRosterMember("Pessoa $position", position.toLong())
+        }
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Waitlisted, 7)).copy(
+                            membershipType = AthleteMembershipType.AVULSO,
+                            mensalistaPriority = true,
+                            rosterPreview = HomeRosterPreview(
+                                confirmed = emptyList(),
+                                waitlisted = preview,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val rows = viewModel.state.value.member?.nextGame?.waitlistedRoster.orEmpty()
+        assertEquals(6, rows.size)
+        assertEquals(5L, rows[4].position)
+        assertEquals(7L, rows.last().position)
+        assertTrue(rows.last().isSelf)
+        assertEquals("", rows.last().name)
+    }
+
+    @Test
     fun `full game uses waitlist optimistic state and server toast`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()
@@ -320,6 +436,59 @@ class HomeViewModelTest {
 
         assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
         assertEquals(HomeToast.Waitlisted, viewModel.state.value.toast)
+    }
+
+    @Test
+    fun `decline from waitlisted leaves the queue optimistically and toasts the freed spot`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(
+            nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Waitlisted, 2)).copy(
+                membershipType = AthleteMembershipType.AVULSO,
+                mensalistaPriority = true,
+            ),
+        )
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(
+                    ownAttendance = HomeOwnAttendance(AttendanceStatus.Declined, null),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(AttendanceStatus.Declined, viewModel.state.value.member?.nextGame?.ownAttendance)
+
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Declined, null)))
+        advanceUntilIdle()
+
+        assertEquals(AttendanceStatus.Declined, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(HomeToast.Declined, viewModel.state.value.toast)
+    }
+
+    @Test
+    fun `confirm from waitlisted is ignored`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Waitlisted, 1))),
+                ),
+            ),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(0, attendance.respondCalls)
+        assertFalse(viewModel.state.value.responding)
     }
 
     @Test

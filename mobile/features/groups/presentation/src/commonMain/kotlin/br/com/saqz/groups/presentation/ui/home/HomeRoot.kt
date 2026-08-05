@@ -12,6 +12,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeRoot(
     onOpenGroup: (String) -> Unit = {},
     onOpenGroups: () -> Unit = {},
+    onOpenGame: (String, String) -> Unit = { _, _ -> },
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -19,6 +20,7 @@ fun HomeRoot(
         when (effect) {
             HomeEffect.OpenGroups -> onOpenGroups()
             is HomeEffect.OpenGroup -> onOpenGroup(effect.groupId)
+            is HomeEffect.OpenGame -> onOpenGame(effect.groupId, effect.gameId)
         }
     }
     HomeScreen(state = state, onIntent = viewModel::onIntent)

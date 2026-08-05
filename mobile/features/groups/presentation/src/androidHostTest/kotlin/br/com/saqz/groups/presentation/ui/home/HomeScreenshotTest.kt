@@ -10,6 +10,8 @@ import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -52,6 +54,12 @@ class HomeScreenshotTest {
     fun waitlisted() = capture("home-content-waitlisted", state(AttendanceStatus.Waitlisted))
 
     @Test
+    fun reserva() = capture("home-reserva", state(AttendanceStatus.Waitlisted, reservaGame()))
+
+    @Test
+    fun avulsoList() = capture("home-avulso-list", state(AttendanceStatus.Waitlisted, avulsoListGame()))
+
+    @Test
     fun empty() = capture("home-empty", state(nextGame = null))
 
     private fun capture(name: String, state: HomeState) {
@@ -61,7 +69,7 @@ class HomeScreenshotTest {
             }
         }
         compose.waitForIdle()
-        compose.onRoot().captureRoboImage("screenshots/vul-190/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/vul-191/$name.png")
     }
 
     private fun state(
@@ -100,5 +108,26 @@ class HomeScreenshotTest {
         ownAttendance = status,
         weekday = "terça",
         time = "19h30",
+    )
+
+    private fun reservaGame() = nextGame(AttendanceStatus.Waitlisted).copy(
+        confirmedSummary = "12 de 12 confirmados",
+        confirmedCount = 12,
+        waitlistKind = HomeWaitlistKind.Reserva,
+        waitlistPosition = 1,
+        confirmedRoster = listOf("Ana Souza", "Bruna Lima", "Caio", "Duda", "Eva Lima", "Tiago Moraes"),
+        deadlineBellLabel = "Avisamos você se abrir vaga até 18h00 de 28/07.",
+    )
+
+    private fun avulsoListGame() = nextGame(AttendanceStatus.Waitlisted).copy(
+        waitlistKind = HomeWaitlistKind.AvulsoList,
+        waitlistPosition = 2,
+        confirmedRoster = listOf("Ana Souza", "Bruna Lima", "Caio"),
+        waitlistedRoster = listOf(
+            HomeWaitlistRowUi(name = "Lucas Pereira", position = 1, isSelf = false),
+            HomeWaitlistRowUi(name = "Bruna Silva", position = 2, isSelf = true),
+            HomeWaitlistRowUi(name = "Tiago Moraes", position = 3, isSelf = false),
+        ),
+        confirmedCountTotal = 9,
     )
 }

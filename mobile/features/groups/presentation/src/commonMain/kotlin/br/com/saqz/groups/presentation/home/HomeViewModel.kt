@@ -47,7 +47,10 @@ import br.com.saqz.groups.resources.home_subtitle_declined
 import br.com.saqz.groups.resources.home_subtitle_no_game
 import br.com.saqz.groups.resources.home_subtitle_no_response
 import br.com.saqz.groups.resources.home_subtitle_waitlisted
+import br.com.saqz.groups.resources.home_subtitle_waitlist_avulso
+import br.com.saqz.groups.resources.home_subtitle_waitlist_reserva
 import br.com.saqz.groups.resources.home_time
+import br.com.saqz.groups.resources.home_waitlist_reserva_bell
 import br.com.saqz.groups.resources.home_weekday_friday
 import br.com.saqz.groups.resources.home_weekday_friday_short
 import br.com.saqz.groups.resources.home_weekday_monday
@@ -95,6 +98,7 @@ class HomeViewModel(
             HomeIntent.DismissToast -> update { it.copy(toast = null) }
             HomeIntent.OpenGroups -> emit(HomeEffect.OpenGroups)
             is HomeIntent.OpenGroup -> emit(HomeEffect.OpenGroup(intent.groupId))
+            is HomeIntent.OpenGame -> emit(HomeEffect.OpenGame(intent.groupId, intent.gameId))
         }
     }
 
@@ -157,13 +161,20 @@ class HomeViewModel(
         val gameUi = member.nextGame ?: return
         val deadline = runCatching { Instant.parse(game.confirmationDeadline) }.getOrNull() ?: return
         if (now.now() >= deadline) return
-        if (current.responding || !gameUi.confirmationOpen || game.ownAttendance?.status == AttendanceStatus.Waitlisted) return
+        val isWaitlisted = game.ownAttendance?.status == AttendanceStatus.Waitlisted
+        // Confirm não faz sentido a partir da espera; Decline é o caminho de "Sair da
+        // reserva"/"Sair da lista" e por isso é liberado mesmo em Waitlisted.
+        if (current.responding || !gameUi.confirmationOpen || (isWaitlisted && intent != AttendanceIntent.Decline)) return
 
         val generation = ++responseGeneration
         val loadAtStart = loadGeneration
         val previousHome = checkNotNull(current.home)
         val previousMember = member
         val optimisticStatus = game.optimisticStatus(intent)
+        // O kind é derivado de `membershipType`/`mensalistaPriority` (o ViewModel já tem
+        // os dois no `HomeNextGame`), não do `ownAttendance` — quem confirma e cai direto
+        // na lista sem attendance prévia precisa ver o kind certo já no update otimista.
+        val optimisticKind = if (optimisticStatus == AttendanceStatus.Waitlisted) game.waitlistKind() else null
         update {
             it.copy(
                 home = previousHome.copy(
@@ -175,7 +186,10 @@ class HomeViewModel(
                     ),
                 ),
                 member = previousMember.copy(
-                    nextGame = gameUi.copy(ownAttendance = optimisticStatus),
+                    nextGame = gameUi.copy(
+                        ownAttendance = optimisticStatus,
+                        waitlistKind = optimisticKind ?: gameUi.waitlistKind,
+                    ),
                 ),
                 responding = true,
                 responseFailed = false,
@@ -192,6 +206,13 @@ class HomeViewModel(
                 is SaqzResult.Success -> {
                     val attendance = result.value.value.attendance
                     val actualStatus = attendance.status
+                    // O kind reconciliado também deriva de `membershipType`/`mensalistaPriority`
+                    // do `HomeNextGame`, não do status — consistente com o caminho otimista.
+                    val reconciledKind = if (actualStatus == AttendanceStatus.Waitlisted) {
+                        previousHome.member.nextGame?.waitlistKind()
+                    } else {
+                        null
+                    }
                     update {
                         it.copy(
                             home = previousHome.copy(
@@ -205,7 +226,17 @@ class HomeViewModel(
                                 ),
                             ),
                             member = previousMember.copy(
-                                nextGame = previousMember.nextGame.copy(ownAttendance = actualStatus),
+                                nextGame = previousMember.nextGame.copy(
+                                    ownAttendance = actualStatus,
+                                    waitlistKind = reconciledKind ?: previousMember.nextGame.waitlistKind,
+                                    // O servidor já traz a posição; copiar para a UI evita
+                                    // o chip "Reserva · 0º" entre a reconciliação e o refresh.
+                                    waitlistPosition = if (actualStatus == AttendanceStatus.Waitlisted) {
+                                        attendance.waitlistPosition
+                                    } else {
+                                        null
+                                    },
+                                ),
                             ),
                             responding = false,
                             toast = actualStatus.toToast(),
@@ -235,10 +266,17 @@ class HomeViewModel(
         return HomeMemberUi(
             subtitle = when {
                 nextGameUi == null -> getString(Res.string.home_subtitle_no_game)
-                nextGameUi.ownAttendance == AttendanceStatus.Waitlisted -> getString(
-                    Res.string.home_subtitle_waitlisted,
-                    nextGameUi.groupName,
-                )
+                nextGameUi.ownAttendance == AttendanceStatus.Waitlisted -> when (nextGameUi.waitlistKind) {
+                    HomeWaitlistKind.Reserva -> getString(
+                        Res.string.home_subtitle_waitlist_reserva,
+                        nextGameUi.groupName,
+                    )
+                    HomeWaitlistKind.AvulsoList -> getString(
+                        Res.string.home_subtitle_waitlist_avulso,
+                        nextGameUi.groupName,
+                    )
+                    null -> getString(Res.string.home_subtitle_waitlisted, nextGameUi.groupName)
+                }
                 nextGameUi.ownAttendance == AttendanceStatus.Confirmed -> getString(
                     Res.string.home_subtitle_confirmed,
                     nextGameUi.weekday,
@@ -271,6 +309,24 @@ class HomeViewModel(
         } ?: startsAt
         val time = startsAtLocal?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
         val weekday = startsAtLocal?.let { getString(it.date.dayOfWeek.longResource()) } ?: ""
+        val ownPosition = ownAttendance
+            ?.takeIf { it.status == AttendanceStatus.Waitlisted }
+            ?.waitlistPosition
+        val previewWaitlistedRows = rosterPreview.waitlisted.mapNotNull { member ->
+            val pos = member.waitlistPosition ?: return@mapNotNull null
+            HomeWaitlistRowUi(
+                name = member.displayName,
+                position = pos,
+                isSelf = ownPosition != null && pos == ownPosition,
+            )
+        }.sortedBy { it.position }
+        val waitlistedRows = if (
+            ownPosition != null && previewWaitlistedRows.none { it.position == ownPosition }
+        ) {
+            previewWaitlistedRows + HomeWaitlistRowUi(name = "", position = ownPosition, isSelf = true)
+        } else {
+            previewWaitlistedRows
+        }
         return HomeNextGameUi(
             groupId = groupId.value,
             gameId = gameId,
@@ -286,6 +342,12 @@ class HomeViewModel(
             confirmationOpen = deadlineInstant?.let { now.now() < it } == true,
             weekday = weekday,
             time = time,
+            waitlistKind = ownAttendance?.status?.let { waitlistKind() },
+            waitlistPosition = ownPosition,
+            confirmedRoster = rosterPreview.confirmed.map { it.displayName },
+            waitlistedRoster = waitlistedRows,
+            confirmedCountTotal = confirmedCount,
+            deadlineBellLabel = deadline?.let { bellDeadlineLabel(it) } ?: "",
         )
     }
 
@@ -344,6 +406,28 @@ class HomeViewModel(
         membershipType == AthleteMembershipType.AVULSO && mensalistaPriority -> AttendanceStatus.Waitlisted
         confirmedCount >= capacity -> AttendanceStatus.Waitlisted
         else -> AttendanceStatus.Confirmed
+    }
+
+    /**
+     * Ponto único de derivação do tipo de espera: `Avulso` com `mensalistaPriority`
+     * é a lista do avulso (6e); o resto é reserva (6b). O hero, o subtítulo do
+     * cabeçalho e o `optimisticStatus` usam a mesma regra.
+     */
+    private fun HomeNextGame.waitlistKind(): HomeWaitlistKind =
+        if (membershipType == AthleteMembershipType.AVULSO && mensalistaPriority) {
+            HomeWaitlistKind.AvulsoList
+        } else {
+            HomeWaitlistKind.Reserva
+        }
+
+    private suspend fun bellDeadlineLabel(deadline: kotlinx.datetime.LocalDateTime): String {
+        val time = getString(Res.string.home_time, deadline.hour.twoDigits(), deadline.minute.twoDigits())
+        val date = getString(
+            Res.string.home_date,
+            deadline.day.twoDigits(),
+            (deadline.month.ordinal + 1).twoDigits(),
+        )
+        return getString(Res.string.home_waitlist_reserva_bell, time, date)
     }
 
     private fun AttendanceStatus.toToast() = when (this) {
