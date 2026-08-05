@@ -79,4 +79,5 @@ sealed interface GameSettlementEffect {
     data class OpenNewEntry(val groupId: String, val localDate: String) : GameSettlementEffect
     data class OpenCashbox(val groupId: String) : GameSettlementEffect
     data class CopyPix(val key: String) : GameSettlementEffect
+    data object MutationSucceeded : GameSettlementEffect
 }

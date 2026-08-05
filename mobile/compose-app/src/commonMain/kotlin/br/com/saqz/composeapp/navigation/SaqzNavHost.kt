@@ -396,6 +396,7 @@ internal fun SaqzNavHost(
                                 statementRefreshVersion++
                                 groupCashboxRefreshVersion++
                                 settlementRefreshVersion++
+                                groupDetailsRefreshVersion++
                             }
                         }
                     },
@@ -406,6 +407,7 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     gameId = route.gameId,
                     onBack = pop,
+                    onMutationSuccess = { groupDetailsRefreshVersion++ },
                     refreshVersion = settlementRefreshVersion,
                     onOpenNewEntry = { groupId, localDate ->
                         backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))

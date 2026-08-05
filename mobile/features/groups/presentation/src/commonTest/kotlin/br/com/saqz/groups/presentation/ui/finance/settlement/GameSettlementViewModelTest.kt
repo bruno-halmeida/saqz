@@ -129,6 +129,16 @@ class GameSettlementViewModelTest {
     }
 
     @Test
+    fun `successful recebi emits a mutation effect for the parent refresh`() = runTest {
+        val finance = SettlementFinanceGateway(charges = charges(), expenses = expenses())
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.MarkReceived("game-pending", PaidMethod.Cash))
+
+        assertEquals(GameSettlementEffect.MutationSucceeded, viewModel.effects.first())
+    }
+
+    @Test
     fun `recebi network failure from the receipt sheet closes the sheet instead of reopening it`() = runTest {
         val finance = SettlementFinanceGateway(
             charges = charges(),
