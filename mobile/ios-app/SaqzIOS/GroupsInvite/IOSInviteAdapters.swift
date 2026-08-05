@@ -31,7 +31,7 @@ final class IOSInviteUrlStore: @preconcurrency GroupInviteUrlStorePort {
 }
 
 @MainActor
-final class IOSInviteShareAdapter: NSObject, @preconcurrency NativeInviteSharePort, NativeInviteClipboardPort {
+final class IOSInviteShareAdapter: NSObject, @preconcurrency NativeInviteSharePort, @preconcurrency NativeInviteClipboardPort {
     private let presenter: () -> UIViewController?
     init(presenter: @escaping () -> UIViewController?) {
         self.presenter = presenter

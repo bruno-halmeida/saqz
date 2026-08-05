@@ -120,7 +120,7 @@ sealed interface SessionIntent {
  *
  * Estava em cinco campos soltos — estado, geração, pendência, usuário e a saída em curso —
  * e cada guarda era um `if` lido de um campo seguido de uma escrita em outro. Duas etapas
- * com uma janela no meio: o `scope` da máquina roda em `Dispatchers.Default` e os intentos
+ * com uma janela no meio: as respostas assíncronas retomam entremeadas com os intentos que
  * chegam da interface, então entre conferir a geração e escrever o estado cabia um logout
  * inteiro, e a resposta da conta anterior aterrissava sobre o contexto novo.
  *

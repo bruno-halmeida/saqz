@@ -30,7 +30,10 @@ import org.koin.dsl.module
  * a ViewModel do portão.
  */
 internal val accessPresentationModule = module {
-    single { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
+    // Main, e não Default: os ports nativos do iOS são adapters `@MainActor`, e chamar um
+    // deles de fora da main é trap de runtime no Swift 6 — sob o Xcode o app não fecha, fica
+    // parado no debugger com a interface congelada. Tudo aqui é suspenso, nada bloqueia.
+    single { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
         .onOptions { onClose { scope -> scope?.cancel() } }
     single {
         SessionAccessStateMachine(get(), get(), get(), get()).also { machine ->

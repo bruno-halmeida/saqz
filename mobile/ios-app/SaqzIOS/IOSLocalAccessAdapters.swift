@@ -146,13 +146,13 @@ final class IOSLocalGroupStateAdapter: @preconcurrency LocalGroupStatePort {
     func writePendingAttendanceLink(value: String?, done: GroupResultCallback) { write(done) { try store.writePendingAttendanceLink(value) } }
 
     private func read(_ done: GroupValueCallback, _ operation: () throws -> String?) {
-        do { done.complete(result______: GroupValueResultSuccess(value: try operation())) }
-        catch { done.complete(result______: GroupValueResultFailure(code: .unknown)) }
+        do { done.complete(result________: GroupValueResultSuccess(value: try operation())) }
+        catch { done.complete(result________: GroupValueResultFailure(code: .unknown)) }
     }
 
     private func write(_ done: GroupResultCallback, _ operation: () throws -> Void) {
-        do { try operation(); done.complete(result_____: GroupOperationResultSuccess.shared) }
-        catch { done.complete(result_____: GroupOperationResultFailure(code: .unknown)) }
+        do { try operation(); done.complete(result_______: GroupOperationResultSuccess.shared) }
+        catch { done.complete(result_______: GroupOperationResultFailure(code: .unknown)) }
     }
 }
 

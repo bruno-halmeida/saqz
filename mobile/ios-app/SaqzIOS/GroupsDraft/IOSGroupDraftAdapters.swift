@@ -251,7 +251,7 @@ final class IOSGameDraftAdapter: GameDraftStorePort {
 final class IOSMonthlyDraftAdapter: MonthlyChargeDraftStorePort {
     private let store: IOSGroupDraftStore
     init(store: IOSGroupDraftStore) { self.store = store }
-    func read(groupId: String, done: @escaping (any MonthlyDraftReadResult) -> Void) { switch store.readMonthly(groupID: groupId) { case .success(let value): done(MonthlyDraftReadResultSuccess(draft: value)); case .missing: done(MonthlyDraftReadResultSuccess(draft: nil)); default: done(MonthlyDraftReadResultFailure.shared) } }
+    func read(groupId: String, done_ done: @escaping (any MonthlyDraftReadResult) -> Void) { switch store.readMonthly(groupID: groupId) { case .success(let value): done(MonthlyDraftReadResultSuccess(draft: value)); case .missing: done(MonthlyDraftReadResultSuccess(draft: nil)); default: done(MonthlyDraftReadResultFailure.shared) } }
     func write(draft: MonthlyChargeDraft, done___ done: @escaping (any MonthlyDraftWriteResult) -> Void) { done(store.writeMonthly(draft) ? MonthlyDraftWriteResultSuccess.shared : MonthlyDraftWriteResultFailure.shared) }
     func clear(groupId: String, commandKey: String, done: @escaping (any MonthlyDraftWriteResult) -> Void) { done(store.clearMonthly(groupID: groupId, commandKey: commandKey) ? MonthlyDraftWriteResultSuccess.shared : MonthlyDraftWriteResultFailure.shared) }
 }

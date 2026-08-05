@@ -65,7 +65,7 @@ final class IOSProfilePhotoAdapter: NSObject, @preconcurrency NativeProfilePhoto
         _ open: (@escaping (GroupPhotoSelectionResult?, Error?) -> Void) -> Void
     ) -> ProfilePhotoSelectionCancelable {
         guard !permissionDenied() else {
-            done.complete(result_______: denied)
+            done.complete(result_________: denied)
             return IOSProfilePhotoSelectionCancellation()
         }
         return openProfile(done, open)
@@ -150,7 +150,7 @@ private final class IOSProfilePhotoSelectionRequest: NSObject, @preconcurrency P
     private func finish(_ result: ProfilePhotoSelectionResult) {
         guard let next = done else { return }
         done = nil
-        next.complete(result_______: result)
+        next.complete(result_________: result)
     }
 }
 
