@@ -87,7 +87,7 @@ class SaqzCatalogScreenTest {
                 )
             }
         }
-        // VUL-72: o shell abre na aba Grupos; a entrada do catálogo vive na aba Perfil.
+        // VUL-193: o shell abre na aba Início; a entrada do catálogo vive na aba Perfil.
         onNodeWithText("Perfil").performClick()
         waitForIdle()
         onNodeWithTag(SaqzShellCatalogTag).performClick()

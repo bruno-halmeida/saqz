@@ -43,7 +43,7 @@ class SaqzCatalogBackTest {
         override val navigationEventDispatcher: NavigationEventDispatcher,
     ) : NavigationEventDispatcherOwner
 
-    // VUL-72: o shell abre na aba Grupos, e o placeholder que carrega "Sair" e a entrada do
+    // VUL-193: o shell abre na aba Início, e o placeholder que carrega "Sair" e a entrada do
     // catálogo passou a ser o conteúdo da aba Perfil.
     private fun ComposeUiTest.openProfileTab() {
         onNodeWithText("Perfil").performClick()

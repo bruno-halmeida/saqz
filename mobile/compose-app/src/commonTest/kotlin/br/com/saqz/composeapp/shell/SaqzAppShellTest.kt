@@ -14,10 +14,12 @@ import kotlin.test.Test
 class SaqzAppShellTest {
 
     @Test
-    fun opensOnTheGroupsTab() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(groupsTab = { Text(GroupsTab) }) } }
+    fun opensOnTheHomeTab() = runComposeUiTest {
+        setContent { SaqzTheme { SaqzAppShell(homeTab = { Text(HomeTab) }, groupsTab = { Text(GroupsTab) }) } }
         onNodeWithTag(SaqzShellTabContentTag).assertIsDisplayed()
-        onNodeWithText(GroupsTab).assertIsDisplayed()
+        // VUL-193: o login cai na aba Início, não em Grupos.
+        onNodeWithText(HomeTab).assertIsDisplayed()
+        onNodeWithText(GroupsTab).assertDoesNotExist()
         // A barra é do shell: os cinco itens estão aqui, não nas telas de grupo.
         listOf("Início", "Jogos", "Grupos", "Financeiro", "Perfil").forEach {
             onNodeWithText(it).assertIsDisplayed()
@@ -54,11 +56,11 @@ class SaqzAppShellTest {
                 )
             }
         }
-        onNodeWithText("Início").performClick()
-        waitForIdle()
+        // VUL-193: Início já é a aba inicial; o conteúdo aparece sem trocar de aba.
         onNodeWithText(HomeTab).assertIsDisplayed()
         onNodeWithText("Jogos").performClick()
         waitForIdle()
+        // Jogos é inerte (Fluxo 4): o toque não troca de aba, Início continua visível.
         onNodeWithText(HomeTab).assertIsDisplayed()
     }
 

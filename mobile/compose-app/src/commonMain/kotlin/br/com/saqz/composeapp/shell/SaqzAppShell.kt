@@ -41,7 +41,7 @@ internal const val SaqzShellTabContentTag = "saqz-shell-tab-content"
 
 internal const val SaqzShellGroupsTab = "grupos"
 internal const val SaqzShellProfileTab = "perfil"
-private const val SaqzShellHomeTab = "inicio"
+internal const val SaqzShellHomeTab = "inicio"
 private const val SaqzShellGamesTab = "jogos"
 private const val SaqzShellFinanceTab = "financeiro"
 
@@ -59,8 +59,8 @@ private const val SaqzShellFinanceTab = "financeiro"
  * decide nada aqui dentro.
  *
  * **Jogos fica inerte**, como manda o VUL-72: o toque não leva a lugar nenhum enquanto o
- * fluxo 4 não existir. Início recebe o esqueleto do Fluxo 6 por [homeTab]. Perfil recebe o
- * conteúdo real por [profileTab];
+ * fluxo 4 não existir. Início é a aba inicial do shell (VUL-193): o login cai aqui, e
+ * [homeTab] recebe a Home do Fluxo 6. Perfil recebe o conteúdo real por [profileTab];
  * Financeiro recebe o caixa geral por [financeTab];
  * a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra e da entrada
  * opcional do catálogo de desenvolvimento.
@@ -74,6 +74,7 @@ private const val SaqzShellFinanceTab = "financeiro"
 internal fun SaqzAppShell(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
+    initialTab: String = SaqzShellHomeTab,
     groupsTab: @Composable () -> Unit = {},
     homeTab: @Composable (onOpenGroups: () -> Unit) -> Unit = {},
     profileTab: @Composable () -> Unit = {},
@@ -88,8 +89,14 @@ internal fun SaqzAppShell(
     // — o back do sistema não deve desfazer a troca —, e o gate de sessão colapsa o stack
     // fora de `Ready`, o que apagaria a aba escolhida a cada emissão. Viram rota no dia em
     // que houver mais de uma aba com tela de verdade.
+    //
+    // VUL-193: Início é a aba inicial — o login cai na Home do Fluxo 6, não em Grupos.
+    // [initialTab] deixa o invite landing pedir a aba Grupos explicitamente: os callbacks
+    // dele prometem a lista de grupos, e o `resetTo` do shell agora carrega essa intenção.
+    // `rememberSaveable` semeia só na primeira composição — trocar `initialTab` depois não
+    // sobrescreve a aba que a pessoa escolheu, e a rotação devolve a aba em uso.
     var catalogOpen by rememberSaveable { mutableStateOf(false) }
-    var activeTab by rememberSaveable { mutableStateOf(SaqzShellGroupsTab) }
+    var activeTab by rememberSaveable { mutableStateOf(initialTab) }
     // Uma saída, dois gatilhos: a seta da barra e o back do sistema (botão no Android,
     // gesto no iOS) chamam o mesmo fechamento. Sem isto o back agiria no shell por baixo
     // — ou sairia do app — com o catálogo ainda na tela.
@@ -185,6 +192,7 @@ private fun shellNavItems() = listOf(
 @Composable
 private fun SaqzAppShellPreview() = SaqzTheme {
     SaqzAppShell(
+        homeTab = { Box(Modifier.fillMaxWidth().fillMaxSize()) },
         groupsTab = { Box(Modifier.fillMaxWidth().fillMaxSize()) },
     )
 }
