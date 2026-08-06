@@ -66,7 +66,12 @@
         { Authorization: "Bearer " + token },
         (options || {}).headers || {}
       );
-      return fetch(config.apiBaseUrl + path, merged);
+      return fetch(config.apiBaseUrl + path, merged).then(function (response) {
+        // 401 com token recém-renovado = sessão inválida de verdade: derruba pro login.
+        // Mesma guarda do admin-session: resposta atrasada de sessão anterior não conta.
+        if (response.status === 401 && auth.currentUser === user) auth.signOut();
+        return response;
+      });
     });
   }
 
