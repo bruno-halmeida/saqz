@@ -340,7 +340,7 @@ class ChangePlanTest {
             return "pay_upgrade_${++chargeCounter}"
         }
 
-        override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-UPG"
+        override fun regeneratePixPayload(asaasChargeId: String) = PixCode("000201PIX-UPG", null)
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
         override fun findPayment(asaasPaymentId: String) = null
@@ -371,7 +371,7 @@ class ChangePlanTest {
             idempotencyKey: String,
         ) = "pay_upgrade_1"
 
-        override fun regeneratePixPayload(asaasChargeId: String) = "000201PIX-OK"
+        override fun regeneratePixPayload(asaasChargeId: String) = PixCode("000201PIX-OK", null)
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String): String =
             throw RuntimeException("invoice lookup failed")
@@ -420,7 +420,7 @@ class ChangePlanTest {
             idempotencyKey: String,
         ) = "pay_upgrade_1"
 
-        override fun regeneratePixPayload(asaasChargeId: String): String {
+        override fun regeneratePixPayload(asaasChargeId: String): PixCode {
             checkoutCalledInsideTransaction = checkoutCalledInsideTransaction || transaction.active
             throw RuntimeException("pix lookup failed")
         }

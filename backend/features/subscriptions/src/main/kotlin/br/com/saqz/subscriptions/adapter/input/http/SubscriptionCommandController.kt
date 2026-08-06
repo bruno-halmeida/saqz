@@ -77,6 +77,8 @@ data class CreateSubscriptionResponse(
     val currentPeriodEnd: Instant,
     val billingType: String,
     val pixCopyPaste: String?,
+    /** QR do Pix em PNG base64, cru (sem prefixo data:) — VUL-208, para a página web. */
+    val pixQrCodeBase64: String?,
     val invoiceUrl: String?,
 )
 
@@ -182,6 +184,7 @@ class SubscriptionCommandController(
                     currentPeriodEnd = result.subscription.currentPeriodEnd,
                     billingType = result.billingType.name,
                     pixCopyPaste = result.pixCopyPaste,
+                    pixQrCodeBase64 = result.pixQrCodeBase64,
                     invoiceUrl = result.invoiceUrl,
                 ),
             )

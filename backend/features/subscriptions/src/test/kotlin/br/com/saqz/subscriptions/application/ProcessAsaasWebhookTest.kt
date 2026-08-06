@@ -1064,7 +1064,7 @@ class ProcessAsaasWebhookTest {
             idempotencyKey: String,
         ): String = error("unused")
 
-        override fun regeneratePixPayload(asaasChargeId: String): String = error("unused")
+        override fun regeneratePixPayload(asaasChargeId: String): PixCode = error("unused")
 
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? = null
 

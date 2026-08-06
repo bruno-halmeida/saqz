@@ -34,7 +34,7 @@ interface AsaasGateway {
         description: String,
         idempotencyKey: String,
     ): String
-    fun regeneratePixPayload(asaasChargeId: String): String
+    fun regeneratePixPayload(asaasChargeId: String): PixCode
 
     /** Newest payment id for a subscription, if Asaas already generated one. */
     fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String?
@@ -48,6 +48,15 @@ interface AsaasGateway {
      */
     fun findPayment(asaasPaymentId: String): AsaasPaymentSnapshot?
 }
+
+/**
+ * Codigo Pix de uma cobranca: copia-e-cola + QR em PNG base64 (VUL-208). `encodedImage` vem
+ * cru do Asaas, sem prefixo `data:image/png;base64,` — prefixar e problema de quem renderiza.
+ */
+data class PixCode(
+    val payload: String,
+    val encodedImage: String?,
+)
 
 /** Recorte de `GET /payments/{id}` que a recuperacao de checkout precisa. */
 data class AsaasPaymentSnapshot(
