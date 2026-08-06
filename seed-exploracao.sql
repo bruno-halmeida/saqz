@@ -1,9 +1,12 @@
--- Seed de exploração geral: 1 dono, 20 atletas, 1 grupo e um financeiro com movimento.
+-- Seed de exploração geral: grupo, vínculos e financeiro para 1 dono e 20 atletas.
 --
--- O dono precisa EXISTIR ANTES: ele é o único que faz login, e login passa pelo Firebase,
--- que este script não alcança. Crie a conta pelo app (ou pelo Firebase Console) e passe o
--- e-mail dela aqui. Os 20 atletas são fabricados direto no banco, com `firebase_subject`
--- que não corresponde a conta nenhuma — eles aparecem no app, mas não entram.
+-- AS 21 CONTAS PRECISAM EXISTIR ANTES. Quem as cria é o `seed-usuarios.sh`, que passa pelo
+-- Firebase (conta logável, com senha) e pelo bootstrap `PUT /api/session` (linha em
+-- `access_users`). SQL não alcança o Firebase, então este arquivo só **procura** as
+-- pessoas — por e-mail — e monta o mundo em volta delas.
+--
+--   ./seed-usuarios.sh [local|server]      primeiro
+--   ./seed-exploracao.sh <email-do-dono>   depois
 --
 -- NADA RODA ISTO SOZINHO. Não é executado ao subir o compose, e não teria como ser: o
 -- `postgres` só executa o que está em /docker-entrypoint-initdb.d/ na inicialização do
@@ -30,11 +33,29 @@ SELECT id, display_name
 FROM access_users
 WHERE email = :'owner_email' AND deleted_at IS NULL;
 
+-- Os 20 atletas, na ordem do e-mail: atleta01@saqz.local … atleta20@saqz.local.
+-- A ordem importa — é ela que decide quem é mensalista e quem entra na cobrança.
+CREATE TEMP TABLE seed_atletas ON COMMIT DROP AS
+SELECT
+    id,
+    display_name,
+    (regexp_replace(email, '^atleta0*(\d+)@saqz\.local$', '\1'))::int AS n
+FROM access_users
+WHERE email ~ '^atleta\d{2}@saqz\.local$' AND deleted_at IS NULL;
+
 DO $$
+DECLARE
+    total int;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM seed_owner) THEN
         RAISE EXCEPTION
-            'Nenhum usuário ativo com esse e-mail. Crie a conta do dono pelo app primeiro — o login depende do Firebase e este script não cria conta lá.';
+            'Nenhum usuário ativo com esse e-mail. Rode ./seed-usuarios.sh antes — só ele cria conta no Firebase e faz o bootstrap.';
+    END IF;
+
+    SELECT count(*) INTO total FROM seed_atletas;
+    IF total <> 20 THEN
+        RAISE EXCEPTION
+            'Esperava 20 atletas (atleta01..20@saqz.local) e achei %. Rode ./seed-usuarios.sh contra ESTE backend: a conta existe no Firebase, mas a linha em access_users é por ambiente e só nasce no bootstrap.', total;
     END IF;
 END $$;
 
@@ -48,37 +69,22 @@ DELETE FROM group_expense_events WHERE group_id = '9a000000-0000-4000-8000-00000
 DELETE FROM group_expenses      WHERE group_id = '9a000000-0000-4000-8000-000000000001';
 DELETE FROM group_memberships   WHERE group_id = '9a000000-0000-4000-8000-000000000001';
 DELETE FROM access_groups       WHERE id       = '9a000000-0000-4000-8000-000000000001';
-DELETE FROM access_users        WHERE firebase_subject LIKE 'seed-atleta-%';
+-- As pessoas NÃO são apagadas: elas têm conta no Firebase e são reaproveitadas entre
+-- rodadas. Apagar a linha aqui deixaria a conta órfã, logando e caindo num bootstrap
+-- que recria o usuário sem nada em volta.
 
 -- ---------------------------------------------------------------------------
--- 20 atletas. Nome, apelido, telefone celular BR válido (DDD + 9 + 8 dígitos).
--- `email_verified` fica true: o seed não é o lugar de exercitar a faixa de aviso.
+-- O perfil que o bootstrap não preenche: ele grava só e-mail e nome, vindos do token.
+-- Telefone é celular BR válido (DDD + 9 + 8 dígitos), como o app exige.
 -- ---------------------------------------------------------------------------
 
-INSERT INTO access_users (
-    id, firebase_subject, email, email_verified, display_name, nickname, phone, city,
-    created_at, updated_at
-)
-SELECT
-    ('a71e7e00-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
-    'seed-atleta-' || lpad(n::text, 2, '0'),
-    'atleta' || lpad(n::text, 2, '0') || '@saqz.local',
-    true,
-    nome,
-    split_part(nome, ' ', 1),
-    '+55119' || lpad((70000000 + n)::text, 8, '0'),
-    'São Paulo',
-    now() - (n || ' days')::interval,
-    now() - (n || ' days')::interval
-FROM (
-    SELECT n, nome
-    FROM unnest(ARRAY[
-        'Ana Ribeiro', 'Bruno Tavares', 'Carla Mendes', 'Diego Barbosa', 'Elisa Fontes',
-        'Felipe Andrade', 'Gabriela Lima', 'Henrique Sales', 'Isabela Moura', 'João Peixoto',
-        'Karina Duarte', 'Lucas Vasques', 'Mariana Cordeiro', 'Nuno Ferraz', 'Olívia Bastos',
-        'Pedro Quintana', 'Renata Siqueira', 'Sérgio Antunes', 'Tatiana Reis', 'Vitor Camargo'
-    ]) WITH ORDINALITY AS t(nome, n)
-) AS atletas;
+UPDATE access_users AS users
+SET nickname = split_part(atletas.display_name, ' ', 1),
+    phone    = '+55119' || lpad((70000000 + atletas.n)::text, 8, '0'),
+    city     = 'São Paulo',
+    updated_at = now()
+FROM seed_atletas AS atletas
+WHERE users.id = atletas.id;
 
 -- ---------------------------------------------------------------------------
 -- O grupo. `modality` e `composition` preenchidos porque o CHECK exige os dois
@@ -137,23 +143,19 @@ INSERT INTO group_memberships (
 )
 SELECT
     '9a000000-0000-4000-8000-000000000001',
-    users.id,
+    atletas.id,
     'ATHLETE',
     now() - interval '100 days',
     now(),
-    (ARRAY['PONTA', 'CENTRAL', 'OPOSTO', 'LEVANTADOR', 'LIBERO'])[1 + (n % 5)],
-    CASE WHEN n <= 12 THEN 'MENSALISTA' ELSE 'AVULSO' END,
-    n <> 20,
+    (ARRAY['PONTA', 'CENTRAL', 'OPOSTO', 'LEVANTADOR', 'LIBERO'])[1 + (atletas.n % 5)],
+    CASE WHEN atletas.n <= 12 THEN 'MENSALISTA' ELSE 'AVULSO' END,
+    atletas.n <> 20,
     -- Atenção: o nível do VÍNCULO é em PT-BR, o do GRUPO é em inglês. Não é engano daqui.
-    (ARRAY['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'])[1 + (n % 3)],
-    (ARRAY['DIREITA', 'ESQUERDA', 'TANTO_FAZ'])[1 + (n % 3)],
-    165 + (n % 25),
-    users.nickname
-FROM access_users AS users
-CROSS JOIN LATERAL (
-    SELECT (right(users.firebase_subject, 2))::int AS n
-) AS idx
-WHERE users.firebase_subject LIKE 'seed-atleta-%';
+    (ARRAY['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'])[1 + (atletas.n % 3)],
+    (ARRAY['DIREITA', 'ESQUERDA', 'TANTO_FAZ'])[1 + (atletas.n % 3)],
+    165 + (atletas.n % 25),
+    split_part(atletas.display_name, ' ', 1)
+FROM seed_atletas AS atletas;
 
 -- ---------------------------------------------------------------------------
 -- Financeiro. Mensalidade de R$ 80,00 com vencimento no dia 10, para os 12 mensalistas,
@@ -167,35 +169,33 @@ INSERT INTO group_charges (
     created_by_user_id, changed_by_user_id, created_at, updated_at
 )
 SELECT
-    ('c8a46e00-' || lpad(mes.offset_meses::text, 4, '0') || '-4000-8000-' || lpad(idx.n::text, 12, '0'))::uuid,
+    ('c8a46e00-' || lpad(mes.offset_meses::text, 4, '0') || '-4000-8000-' || lpad(atletas.n::text, 12, '0'))::uuid,
     '9a000000-0000-4000-8000-000000000001',
-    users.id,
-    users.display_name,
+    atletas.id,
+    atletas.display_name,
     'MONTHLY',
     (date_trunc('month', current_date) - (mes.offset_meses || ' months')::interval)::date,
     8000,
     ((date_trunc('month', current_date) - (mes.offset_meses || ' months')::interval)::date + 9),
     status.valor,
-    CASE WHEN status.valor = 'PAID' THEN (ARRAY['PIX', 'CASH'])[1 + (idx.n % 2)] END,
+    CASE WHEN status.valor = 'PAID' THEN (ARRAY['PIX', 'CASH'])[1 + (atletas.n % 2)] END,
     owner.id,
     owner.id,
     now() - interval '30 days',
     now()
-FROM access_users AS users
+FROM seed_atletas AS atletas
 CROSS JOIN seed_owner AS owner
-CROSS JOIN LATERAL (SELECT (right(users.firebase_subject, 2))::int AS n) AS idx
 CROSS JOIN (VALUES (1), (0)) AS mes(offset_meses)
 CROSS JOIN LATERAL (
     SELECT CASE
-        WHEN mes.offset_meses = 1 AND idx.n <= 10 THEN 'PAID'
-        WHEN mes.offset_meses = 1                 THEN 'PENDING'
-        WHEN idx.n <= 6                            THEN 'PAID'
-        WHEN idx.n = 12                            THEN 'WAIVED'
+        WHEN mes.offset_meses = 1 AND atletas.n <= 10 THEN 'PAID'
+        WHEN mes.offset_meses = 1                     THEN 'PENDING'
+        WHEN atletas.n <= 6                           THEN 'PAID'
+        WHEN atletas.n = 12                           THEN 'WAIVED'
         ELSE 'PENDING'
     END AS valor
 ) AS status
-WHERE users.firebase_subject LIKE 'seed-atleta-%'
-  AND idx.n <= 12;
+WHERE atletas.n <= 12;
 
 -- ---------------------------------------------------------------------------
 -- Despesas e uma entrada. `OTHER` exige `custom_category`; as demais exigem que ela seja nula.
@@ -237,7 +237,7 @@ COMMIT;
 \echo ''
 \echo '=== seed aplicado ==='
 SELECT
-    (SELECT count(*) FROM access_users WHERE firebase_subject LIKE 'seed-atleta-%')                                    AS atletas,
+    (SELECT count(*) FROM access_users WHERE email ~ '^atleta\d{2}@saqz\.local$' AND deleted_at IS NULL) AS atletas,
     (SELECT count(*) FROM group_memberships WHERE group_id = '9a000000-0000-4000-8000-000000000001')                   AS vinculos,
     (SELECT count(*) FROM group_charges WHERE group_id = '9a000000-0000-4000-8000-000000000001')                       AS cobrancas,
     (SELECT count(*) FROM group_expenses WHERE group_id = '9a000000-0000-4000-8000-000000000001')                      AS lancamentos;
