@@ -163,15 +163,26 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `admin hero renders the three-way score without member response actions`() = runComposeUiTest {
+    fun `admin hero renders the three-way score and the member response actions`() = runComposeUiTest {
         setScreen(adminState())
 
         onNodeWithTag(HomeAdminTags.Hero).assertIsDisplayed()
         onNodeWithText("Vão").assertIsDisplayed()
         onNodeWithText("Não vão").assertIsDisplayed()
         onNodeWithText("Pendentes").assertIsDisplayed()
-        onAllNodesWithText("Vou").assertCountEquals(0)
-        onAllNodesWithText("Não vou").assertCountEquals(0)
+        // Dono e admin também jogam: o placar não substitui a resposta deles.
+        onNodeWithTag(HomeTags.ResponseYes).assertIsDisplayed()
+        onNodeWithTag(HomeTags.ResponseNo).assertIsDisplayed()
+    }
+
+    @Test
+    fun `admin hero response button emits the same respond intent`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(adminState(), intents::add)
+
+        onNodeWithTag(HomeTags.ResponseYes).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.Respond(AttendanceIntent.Confirm)), intents)
     }
 
     @Test

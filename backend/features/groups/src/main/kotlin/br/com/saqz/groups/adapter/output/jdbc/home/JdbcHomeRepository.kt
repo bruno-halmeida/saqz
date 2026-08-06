@@ -249,11 +249,12 @@ class JdbcHomeRepository(
                        WHERE attendance.game_id = games.id
                          AND attendance.status = 'DECLINED'
                    ) AS declined_count,
+                   -- Todo membro ativo joga, inclusive dono e admin: o papel administrativo
+                   -- não dispensa ninguém de responder.
                    (
                        SELECT count(*)
                        FROM group_memberships pending
                        WHERE pending.group_id = games.group_id
-                         AND pending.role = 'ATHLETE'
                          AND pending.active
                          AND NOT EXISTS (
                              SELECT 1

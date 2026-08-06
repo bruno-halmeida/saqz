@@ -107,7 +107,9 @@ internal fun GroupDetailsScreen(
             ) {
                 state.header?.let { GroupHeaderCard(header = it, isAdmin = state.isAdmin, onIntent = onIntent) }
                 state.nextGame?.let { GroupNextGameCard(nextGame = it, onIntent = onIntent) }
-                if (!state.isAdmin && state.nextGame != null) {
+                // Dono e admin respondem presença no mesmo lugar que o atleta: o papel
+                // administrativo muda o que ele gerencia, não o fato de que ele joga.
+                if (state.nextGame != null) {
                     GroupGameResponseSection(state = state, onIntent = onIntent)
                 }
                 state.attendance?.let {

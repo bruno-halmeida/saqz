@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -191,7 +192,12 @@ private fun HomeContent(
             } else {
                 member.nextGame?.let {
                     if (isAdminOfNextGame(it, member.admin)) {
-                        HomeAdminHero(game = it)
+                        HomeAdminHero(
+                            game = it,
+                            responding = state.responding,
+                            responseFailed = state.responseFailed,
+                            onIntent = onIntent,
+                        )
                     } else {
                         HomeHero(
                             game = it,
@@ -199,8 +205,9 @@ private fun HomeContent(
                             responseFailed = state.responseFailed,
                             onIntent = onIntent,
                         )
-                        HomeWaitlistExtras(game = it)
                     }
+                    // Fora do if: quem está na reserva vê a fila, admin ou não.
+                    HomeWaitlistExtras(game = it)
                 } ?: HomeNoGame(onIntent)
                 // VUL-202: abaixo do hero e acima de "Seus grupos". Antes do bloco do admin
                 // de propósito — o que a pessoa deve vem antes do que ela administra.
@@ -279,62 +286,12 @@ private fun HomeHero(
             style = SaqzTheme.typography.support,
             color = colors.textSecondary,
         )
-        when (game.ownAttendance) {
-            AttendanceStatus.Waitlisted -> {
-                val kind = game.waitlistKind ?: HomeWaitlistKind.Reserva
-                HomeWaitlistChip(kind = kind, position = game.waitlistPosition)
-                HomeWaitlistInfoBox(kind = kind)
-                HomeWaitlistActions(
-                    kind = kind,
-                    responding = responding,
-                    confirmationOpen = game.confirmationOpen,
-                    onLeave = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
-                    onViewGame = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
-                )
-                if (responseFailed) {
-                    Text(
-                        text = stringResource(Res.string.home_response_error),
-                        style = SaqzTheme.typography.support,
-                        color = colors.errorForeground,
-                        modifier = Modifier.testTag(HomeTags.ResponseError),
-                    )
-                }
-            }
-            else -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-                ) {
-                    HomeResponseButton(
-                        label = stringResource(Res.string.home_response_yes),
-                        danger = false,
-                        selected = game.ownAttendance == AttendanceStatus.Confirmed,
-                        loading = responding && game.ownAttendance == AttendanceStatus.Confirmed,
-                        enabled = game.confirmationOpen && !responding,
-                        modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
-                        onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
-                    )
-                    HomeResponseButton(
-                        label = stringResource(Res.string.home_response_no),
-                        danger = true,
-                        selected = game.ownAttendance == AttendanceStatus.Declined,
-                        loading = responding && game.ownAttendance == AttendanceStatus.Declined,
-                        enabled = game.confirmationOpen && !responding,
-                        modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
-                        onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
-                    )
-                }
-                HomeStatus(game.ownAttendance)
-                if (responseFailed) {
-                    Text(
-                        text = stringResource(Res.string.home_response_error),
-                        style = SaqzTheme.typography.support,
-                        color = colors.errorForeground,
-                        modifier = Modifier.testTag(HomeTags.ResponseError),
-                    )
-                }
-            }
-        }
+        HomeAttendanceControls(
+            game = game,
+            responding = responding,
+            responseFailed = responseFailed,
+            onIntent = onIntent,
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -351,6 +308,70 @@ private fun HomeHero(
             text = game.deadline,
             style = SaqzTheme.typography.caption,
             color = colors.textSecondary,
+        )
+    }
+}
+
+/**
+ * Seletor de presença do hero. Vive fora do `HomeHero` porque o hero do admin
+ * (VUL-192) usa o mesmo bloco: dono e admin são atletas do grupo e respondem
+ * presença no mesmo lugar que todo mundo.
+ */
+@Composable
+internal fun ColumnScope.HomeAttendanceControls(
+    game: HomeNextGameUi,
+    responding: Boolean,
+    responseFailed: Boolean,
+    onIntent: (HomeIntent) -> Unit,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    when (game.ownAttendance) {
+        AttendanceStatus.Waitlisted -> {
+            val kind = game.waitlistKind ?: HomeWaitlistKind.Reserva
+            HomeWaitlistChip(kind = kind, position = game.waitlistPosition)
+            HomeWaitlistInfoBox(kind = kind)
+            HomeWaitlistActions(
+                kind = kind,
+                responding = responding,
+                confirmationOpen = game.confirmationOpen,
+                onLeave = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+                onViewGame = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
+            )
+        }
+        else -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            ) {
+                HomeResponseButton(
+                    label = stringResource(Res.string.home_response_yes),
+                    danger = false,
+                    selected = game.ownAttendance == AttendanceStatus.Confirmed,
+                    loading = responding && game.ownAttendance == AttendanceStatus.Confirmed,
+                    enabled = game.confirmationOpen && !responding,
+                    modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
+                    onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
+                )
+                HomeResponseButton(
+                    label = stringResource(Res.string.home_response_no),
+                    danger = true,
+                    selected = game.ownAttendance == AttendanceStatus.Declined,
+                    loading = responding && game.ownAttendance == AttendanceStatus.Declined,
+                    enabled = game.confirmationOpen && !responding,
+                    modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
+                    onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+                )
+            }
+            HomeStatus(game.ownAttendance)
+        }
+    }
+    if (responseFailed) {
+        Text(
+            text = stringResource(Res.string.home_response_error),
+            style = SaqzTheme.typography.support,
+            color = colors.errorForeground,
+            modifier = Modifier.testTag(HomeTags.ResponseError),
         )
     }
 }

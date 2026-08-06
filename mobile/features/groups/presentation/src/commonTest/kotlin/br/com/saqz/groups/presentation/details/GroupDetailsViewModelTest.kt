@@ -474,6 +474,28 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `owner responds attendance like any athlete`() = runTest {
+        val group = sampleGroup(role = GroupRole.OWNER).copy(
+            gameConfig = GroupGameConfig(autoConfirmEnabled = true),
+        )
+        val attendance = FakeAttendanceGateway()
+        val vm = viewModel(
+            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            athleteGateway = monthlyAthleteGateway(),
+        )
+
+        assertTrue(vm.state.value.isAdmin, "owner still administers the group")
+        assertTrue(vm.state.value.autoConfirmationVisible, "mensalista owner keeps the auto confirmation switch")
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(1, attendance.respondCalls)
+        assertEquals(AttendanceIntent.Confirm, attendance.lastAttendanceCommand?.intent)
+    }
+
+    @Test
     fun `frozen response closes the response block without retry error`() = runTest {
         val attendance = FakeAttendanceGateway(
             respondResult = SaqzResult.Failure(AttendanceError.Frozen),

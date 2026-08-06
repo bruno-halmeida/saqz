@@ -72,6 +72,16 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals(true, detail.autoConfirmEnabled)
     }
 
+    @Test fun `detail counts the owner and admin memberships as pending`() {
+        val f = fixture()
+        // O dono ganha a associação que a criação do grupo grava: papel ADMIN, mas atleta como todo mundo.
+        execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) VALUES ('${f.group}','${f.owner}','ADMIN',now(),now())")
+
+        val detail = requireNotNull(JdbcAttendanceCommandRepository(dataSource).find(f.member, f.group, f.game))
+
+        assertEquals(2, detail.pendingCount)
+    }
+
     // --- VUL-152: ordenação da reserva por faixa + FIFO e colapso pós-prazo ---
     @Test fun `roster with priority on lists mensalistas before avulsos in fifo within each tier`() {
         val f = fixture(capacity = 2)

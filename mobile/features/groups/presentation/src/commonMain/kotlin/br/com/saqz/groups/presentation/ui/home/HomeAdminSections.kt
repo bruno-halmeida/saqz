@@ -100,12 +100,15 @@ internal fun isAdminOfNextGame(
 /**
  * Hero card variante admin: mesmo card ice com eyebrow "PRÓXIMO JOGO" e canto
  * direito "Encerra {dia} · {hora}" (do `confirmationDeadline` no fuso do jogo).
- * Placar em 3 colunas (Vão / Não vão / Pendentes) SEM Talvez. Sem seletor de
- * presença — o admin responde a própria presença no GameDetail.
+ * Placar em 3 colunas (Vão / Não vão / Pendentes) SEM Talvez, e o mesmo seletor
+ * de presença do hero de membro — dono e admin também jogam.
  */
 @Composable
 internal fun HomeAdminHero(
     game: HomeNextGameUi,
+    responding: Boolean,
+    responseFailed: Boolean,
+    onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -126,6 +129,12 @@ internal fun HomeAdminHero(
             going = game.confirmedCount,
             out = game.declinedCount,
             pending = game.pendingCount,
+        )
+        HomeAttendanceControls(
+            game = game,
+            responding = responding,
+            responseFailed = responseFailed,
+            onIntent = onIntent,
         )
     }
 }

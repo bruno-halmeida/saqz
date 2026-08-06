@@ -34,12 +34,10 @@ class GroupDetailsScreenTest {
         GroupDetailsTags.ManageInviteLink,
     )
 
+    // O seletor de presença NÃO entra aqui: ele não é de nenhuma das duas visões em
+    // particular, é de quem joga — e dono e admin também jogam.
     private val memberOnly = listOf(
         GroupDetailsTags.ViewGame,
-        GroupGameResponseTags.Section,
-        GroupGameResponseTags.Going,
-        GroupGameResponseTags.NotGoing,
-        GroupGameResponseTags.AutoConfirmation,
         GroupDetailsTags.ShortcutNotices,
         GroupDetailsTags.ShortcutSchedule,
         GroupDetailsTags.ShortcutChat,
@@ -55,6 +53,17 @@ class GroupDetailsScreenTest {
 
         adminOnly.forEach { onNodeWithTag(it).assertExists() }
         memberOnly.forEach { onAllNodesWithTag(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun adminWithNextGameStillGetsTheAttendanceSelector() = runComposeUiTest {
+        setScreen(
+            GroupDetailsPreviewData.admin.copy(nextGame = GroupDetailsPreviewData.member.nextGame),
+        )
+
+        onNodeWithTag(GroupGameResponseTags.Section).assertExists()
+        onNodeWithTag(GroupGameResponseTags.Going).assertExists()
+        onNodeWithTag(GroupGameResponseTags.NotGoing).assertExists()
     }
 
     @Test

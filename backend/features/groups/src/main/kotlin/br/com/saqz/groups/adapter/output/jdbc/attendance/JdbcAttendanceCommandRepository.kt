@@ -451,8 +451,11 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
                    (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count,
                    (SELECT count(*) FROM game_attendance d WHERE d.game_id=g.id AND d.status='DECLINED') AS declined_count,
+                   -- Todo membro ativo joga, inclusive dono e admin: o papel administrativo
+                   -- não dispensa ninguém de responder. Mesmo critério do candidato a
+                   -- auto-confirmação em JdbcAutoConfirmationRepository.candidates.
                    (SELECT count(*) FROM group_memberships pending
-                    WHERE pending.group_id=g.group_id AND pending.role='ATHLETE' AND pending.active
+                    WHERE pending.group_id=g.group_id AND pending.active
                       AND NOT EXISTS (
                           SELECT 1 FROM game_attendance response
                           WHERE response.game_id=g.id AND response.member_user_id=pending.user_id

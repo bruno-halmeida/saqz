@@ -337,8 +337,9 @@ class GroupDetailsViewModel(
                         responding = false,
                         responseFailed = false,
                         membershipType = membershipType,
-                        autoConfirmationVisible = group.role == GroupRole.ATHLETE &&
-                            membershipType == AthleteMembershipType.MENSALISTA &&
+                        // Dono e admin também são atletas do grupo: quem é mensalista tem
+                        // direito à auto-confirmação independente do papel administrativo.
+                        autoConfirmationVisible = membershipType == AthleteMembershipType.MENSALISTA &&
                             group.gameConfig.autoConfirmEnabled,
                         autoConfirmationEnabled = detail.autoConfirmEnabled,
                         autoConfirmationUpdating = false,
@@ -354,7 +355,7 @@ class GroupDetailsViewModel(
     private fun respond(intent: AttendanceIntent) {
         val current = state.value
         val game = current.nextGame ?: return
-        if (current.isAdmin || !game.confirmationOpen || current.responding) return
+        if (!game.confirmationOpen || current.responding) return
         if (!game.confirmationIsOpen()) {
             update { it.copy(nextGame = game.copy(confirmationOpen = false)) }
             return
