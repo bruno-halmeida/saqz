@@ -2,20 +2,25 @@
 # Cria as 21 contas do cenário de exploração como usuários DE VERDADE: conta no Firebase
 # (logável pelo app, com senha) e linha em `access_users` do ambiente escolhido.
 #
-#   ./seed-usuarios.sh                  # contra o backend local (localhost:8080)
-#   ./seed-usuarios.sh server           # contra o Server Dev
+#   ./seed-usuarios.sh local            # backend em localhost:8080 (compose de pé)
+#   ./seed-usuarios.sh server           # https://saqz-api.brunoalmeida.dev
 #
 # Depois rode `seed-exploracao.sh`, que monta grupo, vínculos e financeiro em cima destas.
 #
-# São três chamadas por pessoa:
-#   1. accounts:signUp        cria a conta no Firebase e devolve um idToken
-#   2. accounts:update        grava o displayName — o backend lê o claim `name` do token,
-#                             e nome é pré-condição do bootstrap
-#   3. PUT /api/session       bootstrap: é o que cria a linha em `access_users`
+# Por pessoa:
+#   1. accounts:signUp             cria a conta (EMAIL_EXISTS não é erro: já existe, segue)
+#   2. accounts:update             grava o displayName
+#   3. accounts:signInWithPassword token NOVO — este passo não é redundante, veja abaixo
+#   4. PUT /api/session            bootstrap: cria a linha em `access_users`
 #
-# Rodar de novo é seguro: conta que já existe cai no login em vez do cadastro, e o
-# bootstrap é idempotente. O projeto Firebase é o mesmo (`saqz-dev`) nos dois ambientes,
-# então as contas valem para local e servidor; o que muda é onde o passo 3 grava.
+# O passo 3 existe porque `accounts:update` só às vezes devolve `idToken` novo. Reusar o
+# token anterior manda ao backend um JWT sem o claim `name`, e `BootstrapSession` recusa
+# com InvalidDisplayName — 400 em toda conta recém-criada, e só nelas, porque conta que já
+# tinha nome trazia o claim desde o login. Pedir um token fresco depois de nomear é
+# determinístico e custa uma chamada.
+#
+# Rodar de novo é seguro. O projeto Firebase é o mesmo (`saqz-dev`) nos dois ambientes,
+# então as contas valem para local e servidor; o que muda é onde o passo 4 grava.
 
 set -euo pipefail
 
@@ -25,10 +30,11 @@ readonly api_key="${SAQZ_FIREBASE_API_KEY:-AIzaSyC_7NhdA7NOnL0SXzzNlcI2nAbBmwVod
 readonly identity="https://identitytoolkit.googleapis.com/v1"
 readonly senha="${SEED_PASSWORD:-saqz12345}"
 
-case "${1:-local}" in
+case "${1:-}" in
 local)  readonly api="${SEED_API:-http://localhost:8080}" ;;
 server) readonly api="${SEED_API:-https://saqz-api.brunoalmeida.dev}" ;;
-*)      echo "uso: $0 [local|server]" >&2; exit 64 ;;
+"")     echo "uso: $0 <local|server>  — o alvo é obrigatório para não semear no ambiente errado" >&2; exit 64 ;;
+*)      echo "alvo desconhecido: $1 (use 'local' ou 'server')" >&2; exit 64 ;;
 esac
 
 command -v curl >/dev/null || { echo "curl não encontrado" >&2; exit 69; }
@@ -59,48 +65,17 @@ readonly -a pessoas=(
     "atleta20@saqz.local|Vitor Camargo"
 )
 
-# Devolve o idToken, criando a conta ou entrando nela se já existir.
-token_de() {
-    local email="$1" resposta erro
+# Erro de conexão aqui vale por 21: melhor parar antes do laço do que falhar em cada um.
+# Sem -f de propósito: qualquer resposta HTTP prova que o host responde, mesmo 404.
+if ! curl -sS -o /dev/null --max-time 15 "$api/actuator/health" 2>/dev/null; then
+    echo "o backend não respondeu em $api" >&2
+    [[ "$1" == "local" ]] && echo "o compose está de pé? para o Server Dev: $0 server" >&2
+    exit 69
+fi
 
-    resposta="$(curl -sS "$identity/accounts:signUp?key=$api_key" \
-        -H 'content-type: application/json' \
-        -d "$(jq -nc --arg e "$email" --arg p "$senha" \
-              '{email:$e, password:$p, returnSecureToken:true}')")"
-
-    erro="$(jq -r '.error.message // empty' <<<"$resposta")"
-    if [[ "$erro" == "EMAIL_EXISTS" ]]; then
-        resposta="$(curl -sS "$identity/accounts:signInWithPassword?key=$api_key" \
-            -H 'content-type: application/json' \
-            -d "$(jq -nc --arg e "$email" --arg p "$senha" \
-                  '{email:$e, password:$p, returnSecureToken:true}')")"
-        erro="$(jq -r '.error.message // empty' <<<"$resposta")"
-        # Conta antiga com outra senha: o script não tem como adivinhar, e trocar a senha de
-        # alguém seria pior do que parar.
-        if [[ "$erro" == "INVALID_LOGIN_CREDENTIALS" || "$erro" == "INVALID_PASSWORD" ]]; then
-            echo "  $email já existe com OUTRA senha — apague no Firebase Console ou ajuste SEED_PASSWORD." >&2
-            return 1
-        fi
-    fi
-
-    [[ -z "$erro" ]] || { echo "  falha no Firebase para $email: $erro" >&2; return 1; }
-    jq -r .idToken <<<"$resposta"
-}
-
-# Grava o nome e devolve o token novo, já com o claim `name`.
-nomear() {
-    local token="$1" nome="$2" resposta erro
-
-    resposta="$(curl -sS "$identity/accounts:update?key=$api_key" \
-        -H 'content-type: application/json' \
-        -d "$(jq -nc --arg t "$token" --arg n "$nome" \
-              '{idToken:$t, displayName:$n, returnSecureToken:true}')")"
-
-    erro="$(jq -r '.error.message // empty' <<<"$resposta")"
-    [[ -z "$erro" ]] || { echo "  falha ao nomear: $erro" >&2; return 1; }
-
-    # `accounts:update` nem sempre devolve idToken novo; quando não devolve, o antigo serve.
-    jq -r '.idToken // empty' <<<"$resposta" | grep . || printf '%s' "$token"
+identidade() {
+    curl -sS --max-time 30 "$identity/accounts:$1?key=$api_key" \
+        -H 'content-type: application/json' -d "$2" 2>/dev/null || true
 }
 
 echo "backend: $api"
@@ -111,23 +86,48 @@ falhas=0
 for pessoa in "${pessoas[@]}"; do
     email="${pessoa%%|*}"
     nome="${pessoa#*|}"
+    credenciais="$(jq -nc --arg e "$email" --arg p "$senha" \
+        '{email:$e, password:$p, returnSecureToken:true}')"
 
     printf '%-24s %-18s ' "$email" "$nome"
 
-    if ! token="$(token_de "$email")" || [[ -z "$token" ]]; then
-        falhas=$((falhas + 1)); continue
-    fi
-    if ! token="$(nomear "$token" "$nome")" || [[ -z "$token" ]]; then
-        falhas=$((falhas + 1)); continue
+    # 1. conta existe? cria; se já existia, segue em frente.
+    erro="$(identidade signUp "$credenciais" | jq -r '.error.message // empty')"
+    if [[ -n "$erro" && "$erro" != "EMAIL_EXISTS" ]]; then
+        echo "Firebase recusou o cadastro: $erro"; falhas=$((falhas + 1)); continue
     fi
 
-    codigo="$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$api/api/session" \
-        -H "Authorization: Bearer $token")"
+    # 2. token para poder nomear.
+    entrada="$(identidade signInWithPassword "$credenciais")"
+    erro="$(jq -r '.error.message // empty' <<<"$entrada")"
+    if [[ -n "$erro" ]]; then
+        # Conta antiga com outra senha: adivinhar seria pior do que parar.
+        echo "não entrou: $erro (existe com outra senha? ajuste SEED_PASSWORD)"
+        falhas=$((falhas + 1)); continue
+    fi
+    token="$(jq -r '.idToken' <<<"$entrada")"
+
+    # 3. grava o nome e pede um token NOVO, agora com o claim `name`.
+    erro="$(identidade update "$(jq -nc --arg t "$token" --arg n "$nome" \
+        '{idToken:$t, displayName:$n, returnSecureToken:true}')" | jq -r '.error.message // empty')"
+    if [[ -n "$erro" ]]; then
+        echo "não gravou o nome: $erro"; falhas=$((falhas + 1)); continue
+    fi
+    token="$(identidade signInWithPassword "$credenciais" | jq -r '.idToken // empty')"
+    if [[ -z "$token" ]]; then
+        echo "não consegui token depois de nomear"; falhas=$((falhas + 1)); continue
+    fi
+
+    # 4. bootstrap.
+    resposta="$(curl -sS --max-time 30 -w $'\n%{http_code}' -X PUT "$api/api/session" \
+        -H "Authorization: Bearer $token" 2>/dev/null || true)"
+    codigo="${resposta##*$'\n'}"
+    corpo="${resposta%$'\n'*}"
 
     if [[ "$codigo" == "200" ]]; then
         echo "ok"
     else
-        echo "bootstrap devolveu HTTP $codigo"
+        echo "bootstrap HTTP ${codigo:-sem resposta} — $(jq -rc '.detail // .title // .' <<<"$corpo" 2>/dev/null || echo "$corpo")"
         falhas=$((falhas + 1))
     fi
 done
@@ -138,4 +138,4 @@ if (( falhas > 0 )); then
     exit 1
 fi
 echo "${#pessoas[@]} contas prontas. Todas entram no app com a senha acima."
-echo "Agora: ./seed-exploracao.sh owner@saqz.local ${1:-local}"
+echo "Agora: ./seed-exploracao.sh owner@saqz.local $1"
