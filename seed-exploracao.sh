@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Aplica seed-exploracao.sql no banco escolhido.
 #
-#   ./seed-exploracao.sh voce@exemplo.com            # banco local do compose
-#   ./seed-exploracao.sh voce@exemplo.com server     # Supabase do Server Dev
+#   ./seed-exploracao.sh local     # banco do compose
+#   ./seed-exploracao.sh server    # Supabase do Server Dev
+#
+# É só conveniência de conexão: o .sql é SQL puro e pode ser colado no editor do Supabase
+# ou em qualquer console, sem passar por aqui. O dono está fixo lá dentro
+# (`owner@saqz.local`), que é o que o seed-usuarios.sh cria.
 #
 # O alvo `server` é ambiente compartilhado e pede confirmação; SEED_YES=1 pula.
 # Nos dois casos o psql roda dentro de container, então nada precisa estar instalado.
@@ -15,22 +19,17 @@ set -euo pipefail
 
 readonly here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly sql="$here/seed-exploracao.sql"
+readonly target="${1:-}"
 
-readonly owner_email="${1:-}"
-readonly target="${2:-local}"
-
-if [[ -z "$owner_email" ]]; then
-    echo "uso: $0 <e-mail-do-dono> [local|server]" >&2
-    exit 64
-fi
-
-[[ -f "$sql" ]] || { echo "não achei $sql" >&2; exit 66; }
+[[ -n "$target" ]] || { echo "uso: $0 <local|server>" >&2; exit 64; }
+[[ -f "$sql" ]]    || { echo "não achei $sql" >&2; exit 66; }
 
 case "$target" in
 local)
     # `database` é o serviço do compose.yaml; -T porque a entrada vem de arquivo.
+    # ON_ERROR_STOP vem por -v e não do arquivo, para o .sql seguir sem meta-comando.
     exec docker compose -f "$here/compose.yaml" exec -T database \
-        psql -U saqz -d saqz -v owner_email="$owner_email" -f - <"$sql"
+        psql -U saqz -d saqz -v ON_ERROR_STOP=1 -f - <"$sql"
     ;;
 server)
     # Supabase, os mesmos parâmetros do SPRING_DATASOURCE_URL do compose.server.yaml.
@@ -60,7 +59,7 @@ server)
         postgres:16-alpine \
         psql -h aws-0-sa-east-1.pooler.supabase.com -p 5432 \
              -U postgres.jrwpmobttggeturyekot -d postgres \
-             -v owner_email="$owner_email" -f - <"$sql"
+             -v ON_ERROR_STOP=1 -f - <"$sql"
     ;;
 *)
     echo "alvo desconhecido: $target (use 'local' ou 'server')" >&2

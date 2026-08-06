@@ -5,33 +5,28 @@
 -- `access_users`). SQL não alcança o Firebase, então este arquivo só **procura** as
 -- pessoas — por e-mail — e monta o mundo em volta delas.
 --
---   ./seed-usuarios.sh [local|server]      primeiro
---   ./seed-exploracao.sh <email-do-dono>   depois
+--   ./seed-usuarios.sh <local|server>   primeiro
+--   ./seed-exploracao.sh <local|server> depois
+--
+-- É SQL puro, sem meta-comando de psql: dá para colar inteiro no editor do Supabase, no
+-- DBeaver ou em qualquer console. O `seed-exploracao.sh` é só conveniência de conexão.
 --
 -- NADA RODA ISTO SOZINHO. Não é executado ao subir o compose, e não teria como ser: o
 -- `postgres` só executa o que está em /docker-entrypoint-initdb.d/ na inicialização do
 -- volume, e nesse momento as tabelas ainda não existem — quem aplica as migrações é o
--- backend no startup, depois. Some-se a isso o dono precisar de conta no Firebase, e a
--- ordem obrigatória vira: subir o compose, criar a conta do dono pelo app, rodar isto.
---
--- Uso:
---   psql "$URL" -v owner_email=voce@exemplo.com -f seed-exploracao.sql
---   psql "$URL" -f seed-exploracao.sql            # usa o default abaixo
+-- backend no startup, depois. Some-se a isso as contas dependerem do Firebase, e a ordem
+-- obrigatória vira: subir o ambiente, rodar o seed-usuarios.sh, rodar isto.
 --
 -- Rodar de novo apaga o seed anterior e refaz: os UUIDs são fixos de propósito.
 
-\set ON_ERROR_STOP on
-\if :{?owner_email}
-\else
-  \set owner_email 'owner@saqz.local'
-\endif
-
 BEGIN;
 
+-- O dono. É o `owner@saqz.local` que o seed-usuarios.sh cria; se você quiser pendurar o
+-- cenário em outra conta, troque AQUI e em mais lugar nenhum.
 CREATE TEMP TABLE seed_owner ON COMMIT DROP AS
 SELECT id, display_name
 FROM access_users
-WHERE email = :'owner_email' AND deleted_at IS NULL;
+WHERE email = 'owner@saqz.local' AND deleted_at IS NULL;
 
 -- Os 20 atletas, na ordem do e-mail: atleta01@saqz.local … atleta20@saqz.local.
 -- A ordem importa — é ela que decide quem é mensalista e quem entra na cobrança.
@@ -231,11 +226,10 @@ CROSS JOIN (VALUES
 COMMIT;
 
 -- ---------------------------------------------------------------------------
--- Conferência
+-- Conferência. Num editor que só mostra o resultado da última consulta, rode estas duas
+-- separado — elas não alteram nada.
 -- ---------------------------------------------------------------------------
 
-\echo ''
-\echo '=== seed aplicado ==='
 SELECT
     (SELECT count(*) FROM access_users WHERE email ~ '^atleta\d{2}@saqz\.local$' AND deleted_at IS NULL) AS atletas,
     (SELECT count(*) FROM group_memberships WHERE group_id = '9a000000-0000-4000-8000-000000000001')                   AS vinculos,
