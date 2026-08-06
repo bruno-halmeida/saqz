@@ -1,11 +1,15 @@
 package br.com.saqz.composeapp
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.composeapp.navigation.AccessUiState
 import br.com.saqz.composeapp.navigation.AccessViewModel
@@ -23,6 +27,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @Composable
 fun SaqzApp(
+    modifier: Modifier = Modifier,
     reduceMotion: Boolean = false,
     reduceTransparency: Boolean = false,
 ) {
@@ -32,7 +37,18 @@ fun SaqzApp(
             reduceTransparency = reduceTransparency,
         ).toPreferences(),
     ) {
-        AccessGate()
+        // A tela de fundo do app. Sem ela, o que aparece atrás de qualquer destino que não
+        // pinte o próprio fundo é a janela do host: no iOS o `ComposeUIViewController` cai
+        // no systemBackground, preto no modo escuro. Só o `SaqzAppShell` pintava, então as
+        // abas ficavam certas e todo destino de fora — jogo, caixa, convite, plano — não.
+        // Aqui e não em cada tela: tela nova nasce com fundo, sem precisar lembrar.
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(SaqzTheme.colors.background),
+        ) {
+            AccessGate()
+        }
     }
 }
 
