@@ -258,19 +258,23 @@ private inline fun <T, R : Any> List<T>.mapNotNullOrInvalid(transform: (T) -> R?
 private inline fun <reified T : Enum<T>> enumOrNull(name: String): T? =
     runCatching { enumValueOf<T>(name) }.getOrNull()
 
+/** Campo opcional só é válido ausente, ou presente e reconhecido. Presente e não parseado é lixo. */
+private fun unparsed(raw: String?, parsed: Any?) = raw != null && parsed == null
+
 private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
     if (userId.isBlank() || displayName.isBlank()) return null
     val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
     val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
     val parsedFinancial = enumOrNull<AthleteFinancialStatus>(financialStatus)
-    val invalidPosition = position != null && parsedPosition == null
     val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
     val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
     val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
-    if (invalidPosition || parsedMembership == null || parsedFinancial == null) return null
-    if (secondaryPosition != null && parsedSecondaryPosition == null) return null
-    if (level != null && parsedLevel == null) return null
-    if (preferredSide != null && parsedPreferredSide == null) return null
+    if (unparsed(position, parsedPosition) || parsedMembership == null || parsedFinancial == null) return null
+    if (
+        unparsed(secondaryPosition, parsedSecondaryPosition) ||
+        unparsed(level, parsedLevel) ||
+        unparsed(preferredSide, parsedPreferredSide)
+    ) return null
     return AthleteRosterEntry(
         userId = userId,
         displayName = displayName,
@@ -294,15 +298,16 @@ private fun AthleteDto.toDomain(): Athlete? {
     if (userId.isBlank() || displayName.isBlank()) return null
     val parsedRole = enumOrNull<GroupRole>(role)
     val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
-    val invalidPosition = position != null && parsedPosition == null
-    if (parsedRole == null || invalidPosition) return null
-    val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType) ?: return null
+    val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
     val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
     val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
     val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
-    if (secondaryPosition != null && parsedSecondaryPosition == null) return null
-    if (level != null && parsedLevel == null) return null
-    if (preferredSide != null && parsedPreferredSide == null) return null
+    if (parsedRole == null || unparsed(position, parsedPosition) || parsedMembership == null) return null
+    if (
+        unparsed(secondaryPosition, parsedSecondaryPosition) ||
+        unparsed(level, parsedLevel) ||
+        unparsed(preferredSide, parsedPreferredSide)
+    ) return null
     return Athlete(
         userId = userId,
         displayName = displayName,
@@ -325,14 +330,15 @@ private fun OwnMembershipDto.toDomain(): OwnAthleteMembership? {
     val parsedRole = enumOrNull<GroupRole>(role)
     val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
     val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
-    val invalidPosition = position != null && parsedPosition == null
     val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
     val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
     val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
-    if (parsedRole == null || invalidPosition || parsedMembership == null) return null
-    if (secondaryPosition != null && parsedSecondaryPosition == null) return null
-    if (level != null && parsedLevel == null) return null
-    if (preferredSide != null && parsedPreferredSide == null) return null
+    if (parsedRole == null || unparsed(position, parsedPosition) || parsedMembership == null) return null
+    if (
+        unparsed(secondaryPosition, parsedSecondaryPosition) ||
+        unparsed(level, parsedLevel) ||
+        unparsed(preferredSide, parsedPreferredSide)
+    ) return null
     return OwnAthleteMembership(
         groupId = GroupId(groupId),
         groupName = groupName,

@@ -109,7 +109,7 @@ fun FinanceOverviewScreen(
         val branchModifier = Modifier.fillMaxWidth().height(maxHeight)
         when {
             state.isLoading -> FinanceOverviewLoading(branchModifier)
-            state.loadFailed -> FinanceOverviewFailure(branchModifier, onIntent)
+            state.loadFailed -> FinanceOverviewFailure(onIntent, branchModifier)
             state.isEmpty -> FinanceOverviewEmpty(branchModifier)
             else -> FinanceOverviewContent(state, onIntent, branchModifier)
         }
@@ -117,7 +117,7 @@ fun FinanceOverviewScreen(
 }
 
 @Composable
-private fun FinanceOverviewLoading(modifier: Modifier) {
+private fun FinanceOverviewLoading(modifier: Modifier = Modifier) {
     Box(modifier = modifier.testTag(FinanceOverviewTags.Loading), contentAlignment = Alignment.Center) {
         SaqzSpinner()
     }
@@ -125,8 +125,8 @@ private fun FinanceOverviewLoading(modifier: Modifier) {
 
 @Composable
 private fun FinanceOverviewFailure(
-    modifier: Modifier,
     onIntent: (FinanceOverviewIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
@@ -156,7 +156,7 @@ private fun FinanceOverviewFailure(
 }
 
 @Composable
-private fun FinanceOverviewEmpty(modifier: Modifier) {
+private fun FinanceOverviewEmpty(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .padding(SaqzTheme.metrics.horizontalPadding)
@@ -181,7 +181,7 @@ private fun FinanceOverviewEmpty(modifier: Modifier) {
 private fun FinanceOverviewContent(
     state: FinanceOverviewState,
     onIntent: (FinanceOverviewIntent) -> Unit,
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
     LazyColumn(

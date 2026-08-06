@@ -118,6 +118,9 @@ import org.robolectric.annotation.GraphicsMode
     qualifiers = RobolectricDeviceQualifiers.Pixel7,
     application = android.app.Application::class,
 )
+// Catálogo visual: cada @Test é uma prancha do design system. O tamanho é a
+// cobertura — quebrar em classes menores só espalharia a mesma galeria.
+@Suppress("LargeClass", "LongMethod")
 class SaqzScreenshotTest {
 
     private companion object {

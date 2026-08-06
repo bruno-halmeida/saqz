@@ -289,7 +289,12 @@ class AndroidAuthAdapterTest {
             }
         }
 
-        override fun createAccount(name: String, email: String, password: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit) {
+        override fun createAccount(
+            name: String,
+            email: String,
+            password: String,
+            done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
+        ) {
             calls += "create:$name:$email:$password"
             authDone = done
         }

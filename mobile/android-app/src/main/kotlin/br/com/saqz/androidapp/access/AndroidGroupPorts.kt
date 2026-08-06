@@ -28,7 +28,8 @@ internal class AndroidLocalGroupStateAdapter(
     override fun readPendingInvite(done: GroupValueCallback) = read(done, store::readPendingInvite)
     override fun writePendingInvite(value: String?, done: GroupResultCallback) = write(done) { store.writePendingInvite(value) }
     override fun readPendingAttendanceLink(done: GroupValueCallback) = read(done, store::readPendingAttendanceLink)
-    override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) = write(done) { store.writePendingAttendanceLink(value) }
+    override fun writePendingAttendanceLink(value: String?, done: GroupResultCallback) =
+        write(done) { store.writePendingAttendanceLink(value) }
 
     private fun read(done: GroupValueCallback, block: () -> String?) {
         try {

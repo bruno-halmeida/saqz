@@ -111,7 +111,8 @@ internal class AndroidLinkAdapter(
                 }
                 .orEmpty()
             val inviteCodes = queryEntries.filter { it.first == INVITE_PARAMETER }.map { it.second }.filter(::isValidInviteCode).distinct()
-            val attendanceCodes = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }.map { it.second }.filter(::isValidInviteCode).distinct()
+            val attendanceCodes = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }
+                .map { it.second }.filter(::isValidInviteCode).distinct()
             if (inviteCodes.isNotEmpty() && attendanceCodes.isNotEmpty()) return null
             if (inviteCodes.size == 1) return GroupLinkEvent.Invite(inviteCodes.single())
             if (attendanceCodes.size == 1) return GroupLinkEvent.Attendance(attendanceCodes.single())

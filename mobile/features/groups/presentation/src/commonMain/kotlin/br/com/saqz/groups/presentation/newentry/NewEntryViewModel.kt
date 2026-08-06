@@ -99,12 +99,14 @@ class NewEntryViewModel(
         if (current.isSaving) return
         val amountCents = parseEntryCents(current.amountText)
         val customCategory = current.customCategory.trim()
+        val amountInvalid = amountCents == null || amountCents <= 0L
+        val categoryInvalid = current.category == NewEntryCategory.Other &&
+            !isValidCustomCategory(customCategory)
         if (
-            amountCents == null ||
-            amountCents <= 0L ||
+            amountInvalid ||
             current.description.isBlank() ||
             !isEntryDate(current.date) ||
-            (current.category == NewEntryCategory.Other && !isValidCustomCategory(customCategory))
+            categoryInvalid
         ) {
             update { it.copy(error = GroupUiError.Validation) }
             return
