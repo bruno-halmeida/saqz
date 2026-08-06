@@ -459,7 +459,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BRANCH_DOMAIN = saqz.test-app.link;
 				BRANCH_LIVE_KEY = missing-branch-live-key;
 				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
@@ -489,7 +489,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BRANCH_DOMAIN = missing-branch-live-domain.invalid;
 				BRANCH_LIVE_KEY = missing-branch-live-key;
 				BRANCH_TEST_KEY = key_test_saqz_local_fixture;

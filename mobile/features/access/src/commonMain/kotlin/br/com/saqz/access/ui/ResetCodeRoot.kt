@@ -20,7 +20,10 @@ fun ResetCodeRoot(
     onBack: () -> Unit,
     onSignIn: () -> Unit,
     onOpenNewPassword: (email: String, token: String) -> Unit,
-    viewModel: ResetCodeViewModel = koinViewModel(parameters = { parametersOf(email) }),
+    viewModel: ResetCodeViewModel = koinViewModel(
+        key = "reset-code/$email",
+        parameters = { parametersOf(email) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

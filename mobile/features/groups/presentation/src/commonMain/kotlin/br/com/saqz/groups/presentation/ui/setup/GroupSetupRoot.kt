@@ -49,7 +49,10 @@ fun GroupSetupRoot(
     onDraftSave: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: GroupSetupViewModel = koinViewModel(parameters = { parametersOf(mode) }),
+    viewModel: GroupSetupViewModel = koinViewModel(
+        key = "group-setup/$mode",
+        parameters = { parametersOf(mode) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val photoViewModel: GroupPhotoViewModel = koinViewModel()

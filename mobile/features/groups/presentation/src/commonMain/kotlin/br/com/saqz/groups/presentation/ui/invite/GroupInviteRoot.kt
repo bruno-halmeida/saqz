@@ -24,7 +24,10 @@ fun GroupInviteRoot(
     onOpenMessagePreview: (groupName: String, inviteUrl: String) -> Unit,
     onOpenQr: (groupName: String, inviteUrl: String) -> Unit,
     onToast: (GroupInviteToast) -> Unit = {},
-    viewModel: GroupInviteViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    viewModel: GroupInviteViewModel = koinViewModel(
+        key = "invite/$groupId",
+        parameters = { parametersOf(groupId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
@@ -43,7 +46,12 @@ fun InvitePreviewMessageRoot(
     inviteUrl: String,
     onBack: () -> Unit,
     onShare: () -> Unit = {},
-    viewModel: InvitePreviewMessageViewModel = koinViewModel(parameters = { parametersOf(groupName, inviteUrl) }),
+    // O prefixo separa este Root do [InviteQrRoot]: os dois nasceram com `key = inviteUrl`,
+    // e a `key` do Koin substitui o nome da classe (VUL-205).
+    viewModel: InvitePreviewMessageViewModel = koinViewModel(
+        key = "invite-message/$inviteUrl",
+        parameters = { parametersOf(groupName, inviteUrl) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
@@ -62,7 +70,10 @@ fun InviteQrRoot(
     onBack: () -> Unit,
     onShare: () -> Unit = {},
     onSave: () -> Unit = {},
-    viewModel: InviteQrViewModel = koinViewModel(parameters = { parametersOf(groupName, inviteUrl) }),
+    viewModel: InviteQrViewModel = koinViewModel(
+        key = "invite-qr/$inviteUrl",
+        parameters = { parametersOf(groupName, inviteUrl) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->

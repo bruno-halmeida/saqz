@@ -17,7 +17,10 @@ fun NewEntryRoot(
     onBack: () -> Unit,
     onEffect: (NewEntryEffect) -> Unit,
     prefill: NewEntryPrefill? = null,
-    viewModel: NewEntryViewModel = koinViewModel(parameters = { parametersOf(groupId) }),
+    viewModel: NewEntryViewModel = koinViewModel(
+        key = "new-entry/$groupId",
+        parameters = { parametersOf(groupId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val prefillDescription = prefill?.let {
