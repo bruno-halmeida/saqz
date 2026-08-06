@@ -9,6 +9,7 @@ import br.com.saqz.subscriptions.application.AsaasPaymentSnapshot
 import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
 import br.com.saqz.subscriptions.application.CreditCardDetails
 import br.com.saqz.subscriptions.application.CreditCardHolderInfo
+import br.com.saqz.subscriptions.application.PixCode
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import com.fasterxml.jackson.databind.JsonNode
@@ -186,11 +187,14 @@ class HttpAsaasGateway(
             requireId(post("/payments", body), "payment")
         }
 
-    override fun regeneratePixPayload(asaasChargeId: String): String {
+    override fun regeneratePixPayload(asaasChargeId: String): PixCode {
         val response = get("/payments/$asaasChargeId/pixQrCode")
         val payload = response.path("payload").asText(null)
             ?: throw AsaasException(statusCode = 200, message = "Asaas pixQrCode response missing payload")
-        return payload
+        return PixCode(
+            payload = payload,
+            encodedImage = response.path("encodedImage").asText(null)?.takeIf { it.isNotBlank() },
+        )
     }
 
     override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {

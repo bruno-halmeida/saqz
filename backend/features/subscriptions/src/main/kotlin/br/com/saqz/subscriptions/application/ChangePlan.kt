@@ -156,7 +156,7 @@ class ChangePlan(
             subscription = subscription,
             chargedCents = chargedCents,
             oneOffChargeId = chargeId,
-            pixCopyPaste = pix,
+            pixCopyPaste = pix?.payload,
             invoiceUrl = invoice,
         )
     }

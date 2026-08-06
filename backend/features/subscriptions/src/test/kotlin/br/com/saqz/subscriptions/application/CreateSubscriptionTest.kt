@@ -168,6 +168,7 @@ class CreateSubscriptionTest {
     @Test
     fun `creates subscription without coupon and returns pix payload`() {
         gateway.pixPayload = "00020126PIX-COPY-PASTE"
+        gateway.pixQrImage = "QR-PNG-BASE64"
 
         val result = useCase.execute(baseCommand())
 
@@ -178,6 +179,7 @@ class CreateSubscriptionTest {
         assertNull(success.subscription.firstConfirmedAt)
         assertEquals("sub_1", success.subscription.asaasSubscriptionId)
         assertEquals("00020126PIX-COPY-PASTE", success.pixCopyPaste)
+        assertEquals("QR-PNG-BASE64", success.pixQrCodeBase64)
         assertTrue(subscriptions.lockedOwners.contains(ownerId))
         assertEquals(1, subscriptions.inserted.size)
     }
@@ -579,6 +581,7 @@ class CreateSubscriptionTest {
 
     private class FakeAsaasGateway : AsaasGateway {
         var pixPayload: String? = "00020126DEFAULT-PIX"
+        var pixQrImage: String? = null
         var invoiceUrl: String? = null
         var invoiceUrlThrows: Boolean = false
         var latestPaymentIdThrows: Boolean = false
@@ -624,7 +627,8 @@ class CreateSubscriptionTest {
             idempotencyKey: String,
         ) = error("unused")
 
-        override fun regeneratePixPayload(asaasChargeId: String) = pixPayload ?: error("no pix")
+        override fun regeneratePixPayload(asaasChargeId: String) =
+            PixCode(pixPayload ?: error("no pix"), pixQrImage)
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {
             if (latestPaymentIdThrows) throw RuntimeException("payment lookup failed")
             return if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null

@@ -536,7 +536,7 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
-    fun `regeneratePixPayload gets qr code and returns copia-e-cola payload`() {
+    fun `regeneratePixPayload gets qr code and returns copia-e-cola payload with image`() {
         val payload =
             "00020101021226730014br.gov.bcb.pix2551pix-h.asaas.com/pixqrcode/cobv/pay_1"
         server.enqueue(
@@ -546,8 +546,21 @@ class HttpAsaasGatewayTest {
             ),
         )
 
-        assertEquals(payload, gateway.regeneratePixPayload("pay_1"))
+        val pix = gateway.regeneratePixPayload("pay_1")
+
+        assertEquals(payload, pix.payload)
+        assertEquals("img", pix.encodedImage)
         assertEquals("GET", server.takeRequest().method)
+    }
+
+    @Test
+    fun `regeneratePixPayload tolerates missing encodedImage`() {
+        server.enqueue(json(200, """{"payload":"000201PIX-SEM-QR"}"""))
+
+        val pix = gateway.regeneratePixPayload("pay_1")
+
+        assertEquals("000201PIX-SEM-QR", pix.payload)
+        assertNull(pix.encodedImage)
     }
 
     @Test
