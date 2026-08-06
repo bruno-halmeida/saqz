@@ -2,10 +2,12 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.access.application.admin.PlatformAdminView
+import br.com.saqz.bootstrap.configuration.IdentitySecurityConfiguration
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.Test
+import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -21,6 +23,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(AdminWebCorsIntegrationTest.CorsTestConfiguration::class)
@@ -71,11 +74,58 @@ class AdminWebCorsIntegrationTest {
         )
     }
 
-    private fun options(path: String, origin: String): HttpResponse<String> {
+    @Test
+    fun `preflight do checkout passa sem bearer nos paths de assinatura`() {
+        listOf("/subscriptions" to "POST", "/subscriptions/me/receipts" to "GET", "/coupons/validate" to "POST")
+            .forEach { (path, method) ->
+                val response = options(path, origin = "http://127.0.0.1:8123", requestMethod = method)
+
+                assertEquals(200, response.statusCode(), "preflight de $path")
+                assertEquals(
+                    "http://127.0.0.1:8123",
+                    response.headers().firstValue("Access-Control-Allow-Origin").orElse(""),
+                    "header de $path",
+                )
+            }
+    }
+
+    @Test
+    fun `preflight do catalogo de planos passa sem bearer`() {
+        val response = options("/plans", origin = "http://127.0.0.1:8123")
+
+        assertEquals(200, response.statusCode())
+        assertEquals(
+            "http://127.0.0.1:8123",
+            response.headers().firstValue("Access-Control-Allow-Origin").orElse(""),
+        )
+    }
+
+    @Test
+    fun `preflight fora das superficies web nao libera a origem`() {
+        // Sem config registrada o Spring não devolve 403 — devolve a resposta sem o header
+        // Allow-Origin, e é a ausência dele que faz o browser bloquear a chamada.
+        val response = options("/groups", origin = "http://127.0.0.1:8123")
+
+        assertEquals(
+            "",
+            response.headers().firstValue("Access-Control-Allow-Origin").orElse(""),
+        )
+    }
+
+    @Test
+    fun `property vazia nao registra cors para nenhum path`() {
+        val source = IdentitySecurityConfiguration().corsConfigurationSource("")
+
+        listOf("/admin/me", "/plans", "/subscriptions").forEach { path ->
+            assertNull(source.getCorsConfiguration(MockHttpServletRequest("OPTIONS", path)), path)
+        }
+    }
+
+    private fun options(path: String, origin: String, requestMethod: String = "GET"): HttpResponse<String> {
         val request = HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
             .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
             .header("Origin", origin)
-            .header("Access-Control-Request-Method", "GET")
+            .header("Access-Control-Request-Method", requestMethod)
             .header("Access-Control-Request-Headers", "Authorization")
             .build()
         return client.send(request, HttpResponse.BodyHandlers.ofString())
