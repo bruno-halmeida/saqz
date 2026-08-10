@@ -80,14 +80,12 @@ class IdentitySecurityConfiguration {
         val source = UrlBasedCorsConfigurationSource()
         val allowed = origins.split(',').map(String::trim).filter(String::isNotEmpty)
         if (allowed.isNotEmpty()) {
-            source.registerCorsConfiguration(
-                "/admin/**",
-                CorsConfiguration().apply {
-                    allowedOrigins = allowed
-                    allowedMethods = listOf("GET", "POST", "OPTIONS")
-                    allowedHeaders = listOf("Authorization", "Content-Type")
-                },
-            )
+            val configuration = CorsConfiguration().apply {
+                allowedOrigins = allowed
+                allowedMethods = listOf("GET", "POST", "OPTIONS")
+                allowedHeaders = listOf("Authorization", "Content-Type")
+            }
+            WEB_PATHS.forEach { path -> source.registerCorsConfiguration(path, configuration) }
         }
         return source
     }
@@ -126,5 +124,11 @@ class IdentitySecurityConfiguration {
         /** Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer. */
         val ANONYMOUS_PATHS = setOf("/actuator/health", "/api/password-reset", "/webhooks/asaas")
         val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview")
+
+        /**
+         * As duas superfícies web servidas na origem do painel: o admin e a página de
+         * assinar (VUL-207). Registro por path é deliberado — o resto da API é só mobile.
+         */
+        val WEB_PATHS = listOf("/admin/**", "/plans", "/coupons/validate", "/subscriptions/**")
     }
 }
