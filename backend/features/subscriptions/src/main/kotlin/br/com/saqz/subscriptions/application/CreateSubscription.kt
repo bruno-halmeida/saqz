@@ -35,6 +35,7 @@ sealed interface CreateSubscriptionResult {
         val subscription: Subscription,
         val billingType: AsaasBillingType,
         val pixCopyPaste: String?,
+        val pixQrCodeBase64: String?,
         val invoiceUrl: String?,
     ) : CreateSubscriptionResult
 
@@ -127,6 +128,7 @@ class CreateSubscription(
                 subscription = checkout.subscription,
                 billingType = command.billingType,
                 pixCopyPaste = checkout.pixCopyPaste,
+                pixQrCodeBase64 = checkout.pixQrCodeBase64,
                 invoiceUrl = checkout.invoiceUrl,
             )
         }
@@ -289,6 +291,7 @@ class CreateSubscription(
     private data class Checkout(
         val subscription: Subscription,
         val pixCopyPaste: String?,
+        val pixQrCodeBase64: String?,
         val invoiceUrl: String?,
     )
 
@@ -306,17 +309,22 @@ class CreateSubscription(
     private fun resolveCheckout(committed: Subscription, now: Instant): Checkout {
         val paymentId = runCatching {
             asaasGateway.findLatestPaymentIdForSubscription(committed.asaasSubscriptionId)
-        }.getOrNull() ?: return Checkout(committed, null, null)
+        }.getOrNull() ?: return Checkout(committed, null, null, null)
 
         val payment = runCatching { asaasGateway.findPayment(paymentId) }.getOrNull()
         if (PaymentConfirmation.isPaid(payment?.status)) {
-            return Checkout(confirmPaidCharge(committed, paymentId, now), null, null)
+            return Checkout(confirmPaidCharge(committed, paymentId, now), null, null, null)
         }
 
         val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
         val invoice = payment?.invoiceUrl
             ?: runCatching { asaasGateway.findPaymentInvoiceUrl(paymentId) }.getOrNull()
-        return Checkout(committed, pixCopyPaste = pix, invoiceUrl = invoice)
+        return Checkout(
+            committed,
+            pixCopyPaste = pix?.payload,
+            pixQrCodeBase64 = pix?.encodedImage,
+            invoiceUrl = invoice,
+        )
     }
 
     /**
