@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Assinar · Saqz</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<style>
+/* Fonte e tokens copiados do painel (adm-web/index.html) — mesmos nomes do DS mobile. */
+@font-face {
+  font-family: "Inter";
+  src: url("/assets/inter-var.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --saqz-blue: #0638DF;
+  --saqz-blue-pressed: #052BB3;
+  --saqz-lime: #C7F300;
+  --saqz-navy: #0E1738;
+  --saqz-white: #FFFFFF;
+  --saqz-canvas: #F5F5F7;
+  --saqz-ice: #F4F8FB;
+  --saqz-border: #D8DDE8;
+  --saqz-muted: #667085;
+  --saqz-placeholder: #98A2B3;
+  --saqz-disabled-bg: #C9CED8;
+  --saqz-disabled-fg: #7A8291;
+  --saqz-success: #17B26A;
+  --saqz-warning: #F5A623;
+  --saqz-error: #E5484D;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--saqz-canvas);
+  color: var(--saqz-navy);
+  -webkit-font-smoothing: antialiased;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--saqz-white);
+  border-bottom: 1px solid var(--saqz-border);
+}
+header img { height: 28px; }
+header span { font-size: 15px; font-weight: 700; }
+main { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+.sub { font-size: 14px; color: var(--saqz-muted); margin: 0 0 20px; }
+.card {
+  background: var(--saqz-white);
+  border: 1px solid var(--saqz-border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+input {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  padding: 11px 12px;
+  border: 1px solid var(--saqz-border);
+  border-radius: 10px;
+  color: var(--saqz-navy);
+}
+input::placeholder { color: var(--saqz-placeholder); }
+input:focus { outline: 2px solid rgba(6, 56, 223, .35); border-color: var(--saqz-blue); }
+button { font: inherit; cursor: pointer; }
+.btn {
+  width: 100%;
+  margin-top: 18px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--saqz-blue);
+  border: 0;
+  border-radius: 999px;
+  padding: 13px;
+}
+.btn:active { background: var(--saqz-blue-pressed); }
+.btn[disabled] { background: var(--saqz-disabled-bg); color: var(--saqz-disabled-fg); cursor: default; }
+.btn-secundario {
+  width: 100%;
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--saqz-navy);
+  background: var(--saqz-white);
+  border: 1px solid var(--saqz-border);
+  border-radius: 999px;
+  padding: 12px;
+}
+.erro { display: none; font-size: 13px; font-weight: 600; color: var(--saqz-error); margin-top: 12px; }
+.erro.visivel { display: block; }
+
+/* Toggle mensal|anual */
+.ciclo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: var(--saqz-ice);
+  border: 1px solid var(--saqz-border);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+.ciclo button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--saqz-muted);
+}
+.ciclo button[aria-pressed="true"] { background: var(--saqz-navy); color: #fff; }
+
+/* Card de plano */
+.plano { cursor: pointer; transition: border-color .12s; }
+.plano:hover { border-color: var(--saqz-blue); }
+.plano .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.plano h2 { font-size: 17px; font-weight: 700; margin: 0; }
+.plano .preco { font-size: 17px; font-weight: 700; white-space: nowrap; }
+.plano .preco small { font-size: 12px; font-weight: 500; color: var(--saqz-muted); }
+.plano ul { margin: 10px 0 0; padding: 0 0 0 18px; font-size: 13.5px; color: var(--saqz-muted); }
+.plano li { margin: 3px 0; }
+.plano .escolher {
+  margin-top: 14px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--saqz-blue);
+  background: rgba(6, 56, 223, .08);
+  border: 0;
+  border-radius: 999px;
+  padding: 10px;
+}
+
+/* Método de pagamento */
+.metodos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.metodo {
+  border: 1px solid var(--saqz-border);
+  border-radius: 12px;
+  background: var(--saqz-white);
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.metodo[aria-pressed="true"] { border-color: var(--saqz-blue); background: var(--saqz-ice); color: var(--saqz-blue); }
+.metodo[disabled] { color: var(--saqz-disabled-fg); background: var(--saqz-canvas); cursor: default; }
+.metodo small { display: block; font-size: 11px; font-weight: 500; color: var(--saqz-placeholder); }
+
+/* Cupom */
+.linha-cupom { display: flex; gap: 8px; }
+.linha-cupom input { flex: 1; text-transform: uppercase; }
+.linha-cupom button {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--saqz-blue);
+  background: rgba(6, 56, 223, .08);
+  border: 0;
+  border-radius: 10px;
+  padding: 0 18px;
+}
+.cupom-ok { display: none; font-size: 13px; font-weight: 600; color: var(--saqz-success); margin-top: 8px; }
+.cupom-ok.visivel { display: block; }
+
+/* Resumo e Pix */
+.resumo { display: flex; justify-content: space-between; font-size: 14px; margin-top: 6px; }
+.resumo strong { font-size: 16px; }
+.qr {
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 16px auto;
+  border: 1px solid var(--saqz-border);
+  border-radius: 12px;
+  image-rendering: pixelated;
+}
+.copia-cola {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  background: var(--saqz-ice);
+  border: 1px solid var(--saqz-border);
+  border-radius: 10px;
+  padding: 12px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+.aguardando { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--saqz-muted); margin-top: 16px; }
+.pulso {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--saqz-warning);
+  animation: pulso 1.4s ease-in-out infinite;
+}
+@keyframes pulso { 50% { opacity: .25; } }
+
+.centro { text-align: center; padding: 36px 20px; }
+.centro .icone { font-size: 40px; line-height: 1; margin-bottom: 12px; }
+.spinner {
+  width: 28px; height: 28px;
+  margin: 48px auto;
+  border: 3px solid var(--saqz-border);
+  border-top-color: var(--saqz-blue);
+  border-radius: 50%;
+  animation: girar .8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+.rodape-sessao { font-size: 12.5px; color: var(--saqz-muted); text-align: center; margin-top: 20px; }
+.rodape-sessao button { border: 0; background: none; color: var(--saqz-blue); font-weight: 600; padding: 0; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="/assets/firebase-config.js"></script>
+</head>
+<body>
+<header><img src="/assets/logo.png" alt="Saqz"><span>Assinatura</span></header>
+<main>
+
+<section id="estado-carregando"><div class="spinner" role="status" aria-label="Carregando"></div></section>
+
+<section id="estado-login" hidden>
+  <h1>Entre para assinar</h1>
+  <p class="sub">Use a mesma conta do app Saqz.</p>
+  <div class="card">
+    <form id="form-login">
+      <label for="login-email">E-mail</label>
+      <input id="login-email" type="email" autocomplete="username" required>
+      <label for="login-senha">Senha</label>
+      <input id="login-senha" type="password" autocomplete="current-password" required>
+      <button class="btn" type="submit">Entrar</button>
+      <div class="erro" id="login-erro"></div>
+    </form>
+    <button class="btn-secundario" type="button" id="botao-google">Entrar com Google</button>
+  </div>
+  <p class="rodape-sessao">Ainda não tem conta? Crie no app Saqz.</p>
+</section>
+
+<section id="estado-assinante" hidden>
+  <div class="card centro">
+    <div class="icone">✅</div>
+    <h1>Você já é assinante</h1>
+    <p class="sub">Sua assinatura está ativa. Volte ao app para continuar.</p>
+  </div>
+</section>
+
+<section id="estado-planos" hidden>
+  <h1>Escolha seu plano</h1>
+  <p class="sub">Assine e crie seus grupos no Saqz.</p>
+  <div class="ciclo" role="group" aria-label="Ciclo de cobrança">
+    <button type="button" data-ciclo="MONTHLY" aria-pressed="true">Mensal</button>
+    <button type="button" data-ciclo="ANNUAL" aria-pressed="false">Anual</button>
+  </div>
+  <div id="lista-planos"></div>
+  <div class="erro" id="planos-erro"></div>
+</section>
+
+<section id="estado-dados" hidden>
+  <h1 id="dados-titulo">Quase lá</h1>
+  <p class="sub" id="dados-resumo-plano"></p>
+  <div class="card">
+    <form id="form-dados">
+      <label for="dados-cpf">CPF ou CNPJ do titular</label>
+      <input id="dados-cpf" inputmode="numeric" autocomplete="off" placeholder="Somente números" required>
+      <label for="dados-cupom">Cupom (opcional)</label>
+      <div class="linha-cupom">
+        <input id="dados-cupom" autocomplete="off" placeholder="CUPOM">
+        <button type="button" id="botao-cupom">Aplicar</button>
+      </div>
+      <div class="cupom-ok" id="cupom-ok"></div>
+      <div class="erro" id="cupom-erro"></div>
+      <label>Forma de pagamento</label>
+      <div class="metodos">
+        <button type="button" class="metodo" aria-pressed="true">Pix</button>
+        <!-- Habilitado no VUL-210 -->
+        <button type="button" class="metodo" disabled>Cartão<small>em breve</small></button>
+      </div>
+      <div class="resumo"><span>Total</span><strong id="dados-total"></strong></div>
+      <button class="btn" type="submit" id="botao-pagar">Gerar Pix</button>
+      <div class="erro" id="dados-erro"></div>
+    </form>
+  </div>
+  <button class="btn-secundario" type="button" id="botao-voltar-planos">Trocar de plano</button>
+</section>
+
+<section id="estado-pix" hidden>
+  <h1>Pague com Pix</h1>
+  <p class="sub" id="pix-resumo"></p>
+  <div class="card">
+    <img class="qr" id="pix-qr" alt="QR code do Pix" hidden>
+    <div class="copia-cola" id="pix-codigo"></div>
+    <button class="btn" type="button" id="botao-copiar">Copiar código Pix</button>
+    <div class="aguardando"><span class="pulso"></span><span>Aguardando a confirmação do pagamento…</span></div>
+  </div>
+  <button class="btn-secundario" type="button" id="botao-regerar">Gerar novo código</button>
+  <div class="erro" id="pix-erro"></div>
+</section>
+
+<section id="estado-sucesso" hidden>
+  <div class="card centro">
+    <div class="icone">🎉</div>
+    <h1>Assinatura ativa!</h1>
+    <p class="sub">Pagamento confirmado. Volte ao app Saqz e crie seu grupo.</p>
+  </div>
+</section>
+
+<section id="estado-erro" hidden>
+  <div class="card centro">
+    <div class="icone">⚠️</div>
+    <h1>Algo deu errado</h1>
+    <p class="sub" id="erro-detalhe">Não deu para carregar seus dados agora.</p>
+    <button class="btn" type="button" id="botao-tentar-novamente">Tentar de novo</button>
+  </div>
+</section>
+
+<p class="rodape-sessao" id="rodape-sessao" hidden></p>
+</main>
+<script src="assinar.js"></script>
+</body></html>
