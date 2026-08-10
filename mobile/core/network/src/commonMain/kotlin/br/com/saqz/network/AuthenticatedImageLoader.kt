@@ -11,6 +11,7 @@ import coil3.fetch.ImageFetchResult
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
 import coil3.toUri
+import kotlinx.coroutines.Dispatchers
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.onClose
 import org.koin.core.module.dsl.onOptions
@@ -48,15 +49,25 @@ internal suspend fun loadAuthenticatedImage(
 
 /** Builds the one shared Coil loader used for authenticated profile media. */
 fun authenticatedImageLoaderModule(context: PlatformContext): Module = module {
-    single<ImageLoader> {
-        val client = get<AuthenticatedNetworkClient>()
-        ImageLoader.Builder(context)
-            .components {
-                add(AuthenticatedImageFetcher.Factory(client))
-            }
-            .build()
-    }.onOptions { onClose { loader -> loader?.shutdown() } }
+    single<ImageLoader> { authenticatedImageLoader(context, get()) }
+        .onOptions { onClose { loader -> loader?.shutdown() } }
 }
+
+internal fun authenticatedImageLoader(
+    context: PlatformContext,
+    client: AuthenticatedNetworkClient,
+): ImageLoader = ImageLoader.Builder(context)
+    .components {
+        add(AuthenticatedImageFetcher.Factory(client))
+    }
+    // O fetcher do Coil roda em `Dispatchers.IO` por padrão, e este aqui pede o token ao
+    // `NativeAuthPort` — no iOS um adapter `@MainActor`, e o alvo compila em Swift 6, onde
+    // chamar de fora da main é **trap de runtime**: o app congela no debugger, sem crash e
+    // sem mensagem. Só a busca vem para a main, e nada nela bloqueia — o I/O sai da thread
+    // pelo próprio engine do Ktor e a decodificação continua no `decoderCoroutineContext`.
+    // Cobre também o `sessionInvalidator.invalidate()` do 401, que toca outro port.
+    .fetcherCoroutineContext(Dispatchers.Main)
+    .build()
 
 private class AuthenticatedImageFetcher(
     private val uri: Uri,

@@ -86,3 +86,51 @@ compose.resources {
     packageOfResClass = "br.com.saqz.composeapp.resources"
     generateResClass = always
 }
+
+// --- iOS API config ------------------------------------------------------------
+// O iOS precisa das mesmas URLs que o Android lê de `gradle.properties`. O Xcode não
+// enxerga o Gradle, então escrevemos um plist num caminho estável e uma shell phase do
+// `project.pbxproj` (logo após "Copy Firebase Plist") sobrescreve `SaqzAPIBaseURL` no
+// Info.plist built a partir dele. Assim `gradle.properties` é a fonte única para as duas
+// plataformas — mudar `saqz.api.devBaseUrl` rebroadcasta no iOS sem tocar no pbxproj.
+
+val devApiBaseUrl = providers.gradleProperty("saqz.api.devBaseUrl").orNull?.trim().orEmpty()
+    .ifEmpty { "http://127.0.0.1:8080" }
+val prodApiBaseUrl = providers.gradleProperty("saqz.api.prodBaseUrl").orNull?.trim().orEmpty()
+    .ifEmpty { "https://api.saqz.app" }
+
+val xcodeConfigDir = layout.buildDirectory.dir("xcode-frameworks")
+val apiConfigPlist = xcodeConfigDir.map { it.file("saqz-api-config.plist") }
+
+val generateIosApiConfig by tasks.registering {
+    description = "Writes the iOS API config plist consumed by the Xcode build phase."
+    group = "build"
+    outputs.file(apiConfigPlist)
+    val devUrl = devApiBaseUrl
+    val prodUrl = prodApiBaseUrl
+    val output = apiConfigPlist
+    doLast {
+        val file = output.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>dev</key>
+                <string>$devUrl</string>
+                <key>prod</key>
+                <string>$prodUrl</string>
+            </dict>
+            </plist>
+            """.trimIndent() + "\n",
+        )
+    }
+}
+
+// A shell phase "Build SaqzMobile" dispara `embedAndSignAppleFrameworkForXcode`; anexar a
+// geração do plist nela garante que o arquivo exista antes da phase que o lê.
+tasks.matching { it.name == "embedAndSignAppleFrameworkForXcode" }.configureEach {
+    dependsOn(generateIosApiConfig)
+}
