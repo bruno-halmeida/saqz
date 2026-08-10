@@ -6,6 +6,7 @@ import br.com.saqz.composeapp.di.stopSaqzKoin
 import br.com.saqz.composeapp.di.loadSaqzPlatformDependencies
 import br.com.saqz.composeapp.navigation.AccessRuntimeContract
 import br.com.saqz.composeapp.navigation.AccessViewModel
+import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateViewModel
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.profile.domain.ProfileGateway
 import br.com.saqz.profile.domain.ProfilePhotoSelectionPort
@@ -28,6 +29,7 @@ class SaqzKoinBootstrapTest {
             // C1: the entry point's whole graph — the session gate over the orchestrator.
             assertNotNull(koin.get<AccessRuntimeContract>())
             assertNotNull(koin.get<AccessViewModel>())
+            assertNotNull(koin.get<SubscriptionGateViewModel>())
             assertNotNull(koin.get<ProfileGateway>())
             assertNotNull(koin.get<ProfilePhotoSelectionPort>())
             assertNotNull(koin.get<OwnProfileViewModel>())

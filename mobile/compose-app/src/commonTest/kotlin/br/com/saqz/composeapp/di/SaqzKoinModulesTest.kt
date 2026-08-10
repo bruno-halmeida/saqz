@@ -99,6 +99,8 @@ import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.network.SessionInvalidator as NetworkSessionInvalidator
 import br.com.saqz.subscriptions.data.subscription.KtorSubscriptionGateway
+import br.com.saqz.subscriptions.data.purchase.KtorPurchaseInformationGateway
+import br.com.saqz.subscriptions.domain.purchase.PurchaseInformationGateway
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -193,6 +195,7 @@ class SaqzKoinModulesTest {
         assertIs<KtorSessionGateway>(koin.get<SessionGateway>())
         assertIs<KtorPasswordResetGateway>(koin.get<PasswordResetGateway>())
         assertIs<KtorSubscriptionGateway>(koin.get<SubscriptionGateway>())
+        assertIs<KtorPurchaseInformationGateway>(koin.get<PurchaseInformationGateway>())
         assertIs<KtorFinanceStatementGateway>(koin.get<FinanceStatementGateway>())
         assertIs<KtorFinanceOverviewGateway>(koin.get<FinanceOverviewGateway>())
 
