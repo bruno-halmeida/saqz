@@ -67,6 +67,62 @@ class SubscriptionsSchemaMigrationIntegrationTest {
         }
     }
 
+    @Test
+    fun `purchase information persistence has one reservation row and strict success history`() {
+        val userId = user("purchase-information-schema")
+        val reservationId = UUID.randomUUID()
+        val now = "2026-08-10T12:00:00Z"
+
+        execute(
+            "INSERT INTO subscription_purchase_information_emails " +
+                "(user_id, reservation_id, reservation_created_at, created_at, updated_at) " +
+                "VALUES ('$userId', '$reservationId', '$now', '$now', '$now')",
+        )
+        execute(
+            "INSERT INTO subscription_purchase_information_email_successes (user_id, succeeded_at) " +
+                "VALUES ('$userId', '$now')",
+        )
+
+        assertEquals(
+            1,
+            int("SELECT count(*) FROM subscription_purchase_information_emails WHERE user_id = '$userId'"),
+        )
+        assertEquals(
+            1,
+            int(
+                "SELECT count(*) FROM subscription_purchase_information_email_successes " +
+                    "WHERE user_id = '$userId'",
+            ),
+        )
+        assertEquals(
+            1,
+            int(
+                "SELECT count(*) FROM pg_indexes WHERE indexname = " +
+                    "'ix_subscription_purchase_information_email_successes_user_time'",
+            ),
+        )
+    }
+
+    @Test
+    fun `purchase information history foreign key and reservation pair constraint hold`() {
+        val userId = user("purchase-information-constraints")
+        val now = "2026-08-10T12:00:00Z"
+
+        assertFailsWith<Exception> {
+            execute(
+                "INSERT INTO subscription_purchase_information_email_successes (user_id, succeeded_at) " +
+                    "VALUES ('00000000-0000-0000-0000-000000000001', '$now')",
+            )
+        }
+        assertFailsWith<Exception> {
+            execute(
+                "INSERT INTO subscription_purchase_information_emails " +
+                    "(user_id, reservation_id, reservation_created_at, created_at, updated_at) " +
+                    "VALUES ('$userId', '${UUID.randomUUID()}', NULL, '$now', '$now')",
+            )
+        }
+    }
+
     private fun coupon(code: String): UUID {
         val id = UUID.randomUUID()
         val uniqueCode = "$code-${UUID.randomUUID().toString().take(8)}"
