@@ -15,10 +15,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface SubscriptionsRoute : NavKey {
 
-    /** 8a/8b: escolha de plano, ciclo e cupom. */
-    @Serializable
-    data object PlanSelection : SubscriptionsRoute
-
     /** 8c: plano, ciclo e cupom já escolhidos seguem como argumentos escalares. */
     @Serializable
     data class Payment(

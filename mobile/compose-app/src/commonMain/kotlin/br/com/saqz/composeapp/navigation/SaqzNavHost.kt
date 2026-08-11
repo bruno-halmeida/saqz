@@ -81,7 +81,6 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
 import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
-import br.com.saqz.subscriptions.presentation.planselection.ui.PlanSelectionRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import br.com.saqz.subscriptions.presentation.ui.planactive.PlanActiveRoot
 import org.koin.compose.koinInject
@@ -482,14 +481,6 @@ internal fun SaqzNavHost(
                         backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))
                     },
                     onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
-                )
-            }
-            entry<SubscriptionsRoute.PlanSelection> {
-                PlanSelectionRoot(
-                    onBack = pop,
-                    onContinue = { planId, cycle, couponCode ->
-                        backStack.add(SubscriptionsRoute.Payment(planId.name, cycle.name, couponCode))
-                    },
                 )
             }
             entry<SubscriptionsRoute.Payment> { route ->

@@ -55,7 +55,6 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(GroupsRoute.GameDetail::class, GroupsRoute.GameDetail.serializer())
             // VUL-108: registro incondicional (AGENTS.md) mesmo sem nenhuma tela ainda —
             // sem isso a rota não sobrevive à rotação quando VUL-109..111 a empilharem.
-            subclass(SubscriptionsRoute.PlanSelection::class, SubscriptionsRoute.PlanSelection.serializer())
             subclass(SubscriptionsRoute.Payment::class, SubscriptionsRoute.Payment.serializer())
             subclass(SubscriptionsRoute.PlanActive::class, SubscriptionsRoute.PlanActive.serializer())
             // VUL-112: mesmo registro incondicional — 8e ainda não tem tela ligada ao

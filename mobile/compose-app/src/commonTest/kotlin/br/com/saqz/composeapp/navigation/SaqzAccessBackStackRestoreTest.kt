@@ -99,7 +99,6 @@ class SaqzAccessBackStackRestoreTest {
         val saved = encodeToSavedState(
             saqzAccessBackStackSerializer,
             NavBackStack<NavKey>(
-                SubscriptionsRoute.PlanSelection,
                 SubscriptionsRoute.Payment(planId = "TITULAR", cycle = "MONTHLY", couponCode = "BEMVINDO10"),
                 SubscriptionsRoute.PlanActive,
             ),
@@ -108,7 +107,6 @@ class SaqzAccessBackStackRestoreTest {
 
         assertEquals(
             listOf<NavKey>(
-                SubscriptionsRoute.PlanSelection,
                 SubscriptionsRoute.Payment(planId = "TITULAR", cycle = "MONTHLY", couponCode = "BEMVINDO10"),
                 SubscriptionsRoute.PlanActive,
             ),
