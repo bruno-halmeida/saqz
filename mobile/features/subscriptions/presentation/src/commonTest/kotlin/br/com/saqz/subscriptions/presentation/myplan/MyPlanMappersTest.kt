@@ -76,13 +76,8 @@ class MyPlanMappersTest {
         entitled = true,
         plan = Plan.Organizador,
         cycle = SubscriptionCycle.Monthly,
-        pendingPlan = null,
-        pendingPlanEffectiveAt = null,
         currentPeriodEnd = "2026-08-30T00:00:00Z",
-        paymentMethod = null,
         usage = usage,
-        readOnly = false,
-        pastDueSince = null,
         canceledAt = canceledAt,
     )
 }

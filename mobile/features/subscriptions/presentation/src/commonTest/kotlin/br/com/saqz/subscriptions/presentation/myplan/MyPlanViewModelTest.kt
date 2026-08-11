@@ -1,15 +1,9 @@
 package br.com.saqz.subscriptions.presentation.myplan
 
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.subscriptions.domain.subscription.ChangePlanCommand
-import br.com.saqz.subscriptions.domain.subscription.ChangePlanResult
 import br.com.saqz.subscriptions.domain.subscription.CanceledSubscription
-import br.com.saqz.subscriptions.domain.subscription.CreateSubscriptionCommand
-import br.com.saqz.subscriptions.domain.subscription.CreatedSubscription
-import br.com.saqz.subscriptions.domain.subscription.CouponValidation
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Plan
-import br.com.saqz.subscriptions.domain.subscription.PlanDetails
 import br.com.saqz.subscriptions.domain.subscription.Receipt
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
@@ -247,13 +241,8 @@ private val ACTIVE_SUBSCRIPTION = MySubscription(
     entitled = true,
     plan = Plan.Organizador,
     cycle = SubscriptionCycle.Monthly,
-    pendingPlan = null,
-    pendingPlanEffectiveAt = null,
     currentPeriodEnd = "2026-08-30T00:00:00Z",
-    paymentMethod = null,
     usage = SubscriptionUsage(groupsUsed = 2, groupsLimit = 3),
-    readOnly = false,
-    pastDueSince = null,
     canceledAt = null,
 )
 
@@ -283,22 +272,7 @@ private class FakeSubscriptionGateway(
     var cancelCalls = 0
     private var receiptPageIndex = 0
 
-    override suspend fun plans(): SaqzResult<List<PlanDetails>, SubscriptionError> =
-        error("not used by MyPlanViewModel")
-
-    override suspend fun validateCoupon(
-        code: String,
-        planId: Plan,
-        cycle: SubscriptionCycle,
-    ): SaqzResult<CouponValidation, SubscriptionError> = error("not used by MyPlanViewModel")
-
     override suspend fun mySubscription(): SaqzResult<MySubscription, SubscriptionError> = subscriptionResult
-
-    override suspend fun create(command: CreateSubscriptionCommand): SaqzResult<CreatedSubscription, SubscriptionError> =
-        error("not used by MyPlanViewModel")
-
-    override suspend fun changePlan(command: ChangePlanCommand): SaqzResult<ChangePlanResult, SubscriptionError> =
-        error("not used by MyPlanViewModel")
 
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> {
         cancelCalls++
