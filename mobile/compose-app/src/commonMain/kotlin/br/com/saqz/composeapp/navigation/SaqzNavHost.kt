@@ -483,7 +483,6 @@ internal fun SaqzNavHost(
             entry<SubscriptionsRoute.MyPlan> {
                 MyPlanRoot(
                     onBack = pop,
-                    onOpenChangePlan = { backStack.add(SubscriptionRequired) },
                 )
             }
             entry<SubscriptionRequired> {

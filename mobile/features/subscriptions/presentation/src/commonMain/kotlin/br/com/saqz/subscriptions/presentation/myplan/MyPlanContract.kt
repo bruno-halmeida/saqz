@@ -2,7 +2,6 @@ package br.com.saqz.subscriptions.presentation.myplan
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.designsystem.UiText
-import br.com.saqz.subscriptions.domain.subscription.Plan
 
 /**
  * 8e — plano atual, uso, recibos e o menu Gerenciar. Todo texto composto (modelo + valor
@@ -23,11 +22,6 @@ data class MyPlanState(
     // página ter vindo cheia. Começa `false` — antes da primeira página não há o que pedir.
     val hasMoreReceipts: Boolean = false,
     val isLoadingMoreReceipts: Boolean = false,
-    val changeOptions: List<MyPlanChangeOptionUi> = emptyList(),
-    val isChangeSheetOpen: Boolean = false,
-    val isChangingPlan: Boolean = false,
-    val changeError: UiText? = null,
-    val pendingPayment: MyPlanPendingPaymentUi? = null,
     val isReceiptsSheetOpen: Boolean = false,
     val isCancelSheetOpen: Boolean = false,
     val isCanceling: Boolean = false,
@@ -36,19 +30,13 @@ data class MyPlanState(
 
 enum class MyPlanStatusTone { Active, PastDue, Canceled }
 
-/** O card "PLANO ATUAL" do 8e. [pendingChangeLine] só existe com downgrade agendado. */
+/** O card "PLANO ATUAL" do 8e. */
 @Immutable
 data class MyPlanCardUi(
     val name: String,
     val statusLabel: UiText,
     val statusTone: MyPlanStatusTone,
-    val priceLine: UiText,
-    // Data e forma de pagamento vêm de fontes separadas (uma já formatada, a outra um enum
-    // localizado) — o Screen as combina numa linha só, porque um único UiText.Res não
-    // aninha o resultado de outro (stringResource só aceita args primitivos).
     val nextChargeDate: String?,
-    val paymentMethodLabel: UiText?,
-    val pendingChangeLine: UiText?,
     // Só numa assinatura cancelada (achado do Codex no PR #93): `currentPeriodEnd` não é
     // cobrança futura nenhuma quando `canceledAt != null` — é até quando o acesso dura,
     // porque o cancelamento já parou a cobrança no Asaas. `nextChargeDate` fica nulo nesse
@@ -65,28 +53,10 @@ data class MyPlanUsageUi(
 )
 
 @Immutable
-data class MyPlanChangeOptionUi(
-    val planId: Plan,
-    val name: String,
-    val priceLine: UiText,
-    val isCurrent: Boolean,
-)
-
-@Immutable
 data class MyPlanReceiptUi(val id: String, val dateLabel: String, val valueLabel: String)
-
-@Immutable
-data class MyPlanPendingPaymentUi(
-    val message: UiText,
-    val pixCopyPaste: String?,
-    val invoiceUrl: String?,
-)
 
 sealed interface MyPlanIntent {
     data object Retry : MyPlanIntent
-    data object OpenChangePlan : MyPlanIntent
-    data object DismissChangePlan : MyPlanIntent
-    data class SelectPlan(val planId: Plan) : MyPlanIntent
     data object OpenReceipts : MyPlanIntent
     data object DismissReceipts : MyPlanIntent
     data object RetryReceipts : MyPlanIntent
@@ -95,5 +65,4 @@ sealed interface MyPlanIntent {
     data object OpenCancel : MyPlanIntent
     data object DismissCancel : MyPlanIntent
     data object ConfirmCancel : MyPlanIntent
-    data object DismissPendingPayment : MyPlanIntent
 }

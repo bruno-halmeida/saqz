@@ -165,10 +165,7 @@ private val ACTIVE = MyPlanState(
         name = "Organizador",
         statusLabel = UiText.Raw("Ativo"),
         statusTone = MyPlanStatusTone.Active,
-        priceLine = UiText.Raw("R$ 19,90/mês"),
         nextChargeDate = "24/08/2026",
-        paymentMethodLabel = null,
-        pendingChangeLine = null,
     ),
     usage = MyPlanUsageUi(
         ratioLabel = UiText.Raw("2 de 3 grupos"),

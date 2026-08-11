@@ -44,14 +44,12 @@ internal object MyPlanTags {
 
 /** 8e — plano atual, uso, recibos e o menu Gerenciar. A tela só empilha; cada bloco é uma
  * seção em `MyPlanSections.kt`. */
-@Suppress("UNUSED_PARAMETER")
 @Composable
 fun MyPlanScreen(
     state: MyPlanState,
     onBack: () -> Unit,
     onIntent: (MyPlanIntent) -> Unit,
     modifier: Modifier = Modifier,
-    onOpenChangePlan: (() -> Unit)? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Column(modifier = modifier.fillMaxSize().testTag(MyPlanTags.Screen)) {
@@ -102,10 +100,7 @@ internal object MyPlanPreviewData {
             name = "Organizador",
             statusLabel = UiText.Raw("Ativo"),
             statusTone = MyPlanStatusTone.Active,
-            priceLine = UiText.Raw("R$ 19,90/mês"),
             nextChargeDate = "24/08/2026",
-            paymentMethodLabel = null,
-            pendingChangeLine = null,
         ),
         usage = MyPlanUsageUi(
             ratioLabel = UiText.Raw("2 de 3 grupos"),
