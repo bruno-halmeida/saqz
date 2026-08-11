@@ -18,4 +18,22 @@
     <string name="catalog_section_data">Dados</string>
     <string name="catalog_section_feedback">Feedback</string>
     <string name="catalog_section_navigation">Navegação</string>
+    <string name="subscription_gate_title">Assinatura necessária</string>
+    <string name="subscription_gate_initial_message">Para continuar, confirme sua assinatura ou receba as informações por e-mail.</string>
+    <string name="subscription_gate_request">Receber por e-mail</string>
+    <string name="subscription_gate_refresh">Já assinei — atualizar</string>
+    <string name="subscription_gate_retry">Tentar novamente</string>
+    <string name="subscription_gate_sending_title">Enviando informações</string>
+    <string name="subscription_gate_sending_message">Estamos enviando as informações para o e-mail associado à sua conta.</string>
+    <string name="subscription_gate_sent_title">Informações enviadas</string>
+    <string name="subscription_gate_sent_message">As informações foram enviadas para o e-mail associado à sua conta.</string>
+    <string name="subscription_gate_email">E-mail associado: %1$s</string>
+    <string name="subscription_gate_purchase_failure_message">Não foi possível enviar as informações agora. Tente novamente.</string>
+    <string name="subscription_gate_verifying_title">Verificando assinatura</string>
+    <string name="subscription_gate_verifying_message">Aguarde enquanto confirmamos sua assinatura.</string>
+    <string name="subscription_gate_authorization_failure_message">Não foi possível confirmar sua assinatura agora. Tente novamente.</string>
+    <string name="subscription_gate_not_authorized_title">Assinatura necessária</string>
+    <string name="subscription_gate_not_authorized_message">Ainda não encontramos uma assinatura autorizada. Você pode receber as informações por e-mail ou atualizar a confirmação.</string>
+    <string name="subscription_gate_authorized_title">Assinatura confirmada</string>
+    <string name="subscription_gate_authorized_message">Acesso confirmado. Finalizando.</string>
 </resources>
