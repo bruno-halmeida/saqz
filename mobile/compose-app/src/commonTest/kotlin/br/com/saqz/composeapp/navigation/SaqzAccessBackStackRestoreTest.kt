@@ -92,14 +92,13 @@ class SaqzAccessBackStackRestoreTest {
     }
 
     @Test
-    fun `subscriptions routes round-trip through the real registered configuration`() {
-        // VUL-108 P2: SubscriptionsRoute leaves must be registered in
-        // saqzLocalNavConfiguration even before any screen pushes them, or the very first
-        // navigation to one of them would fail to survive rotation.
+    fun `my plan route round-trips through the real registered configuration`() {
+        // SubscriptionsRoute leaves must be registered in saqzLocalNavConfiguration even
+        // before any screen pushes them, or the very first navigation would fail to survive
+        // rotation.
         val saved = encodeToSavedState(
             saqzAccessBackStackSerializer,
             NavBackStack<NavKey>(
-                SubscriptionsRoute.PlanActive,
                 SubscriptionsRoute.MyPlan,
             ),
             saqzLocalNavConfiguration,
@@ -107,7 +106,6 @@ class SaqzAccessBackStackRestoreTest {
 
         assertEquals(
             listOf<NavKey>(
-                SubscriptionsRoute.PlanActive,
                 SubscriptionsRoute.MyPlan,
             ),
             restore(saved),

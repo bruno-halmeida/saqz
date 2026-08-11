@@ -80,7 +80,6 @@ import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
-import br.com.saqz.subscriptions.presentation.ui.planactive.PlanActiveRoot
 import org.koin.compose.koinInject
 
 // Legacy observable contract carried over from the product host: exactly one active
@@ -481,15 +480,6 @@ internal fun SaqzNavHost(
                     onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
                 )
             }
-            entry<SubscriptionsRoute.PlanActive> {
-                PlanActiveRoot(
-                    onCreateGroup = {
-                        backStack.dropPlansSegment()
-                        backStack.add(GroupsRoute.Create)
-                    },
-                    onViewMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
-                )
-            }
             entry<SubscriptionsRoute.MyPlan> {
                 MyPlanRoot(
                     onBack = pop,
@@ -754,15 +744,6 @@ private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this
     SessionAccessState.Bootstrapping,
     SessionAccessState.BootstrapError,
     -> AccessRoute.Login
-}
-
-/**
- * O 8d→2a: o pagamento já aconteceu (8a→8b→8c→8d), então o segmento do fluxo de planos sai
- * do stack antes do formulário de criação entrar — sem isso, o voltar do 2a devolveria a
- * pessoa a uma assinatura que já foi paga, sem como "desfazer" navegando.
- */
-internal fun MutableList<NavKey>.dropPlansSegment() {
-    while (lastOrNull() is SubscriptionsRoute) removeLastOrNull()
 }
 
 /**

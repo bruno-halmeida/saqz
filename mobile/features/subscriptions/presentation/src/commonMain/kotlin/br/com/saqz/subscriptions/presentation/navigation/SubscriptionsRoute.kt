@@ -4,7 +4,7 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 /**
- * Fluxo 8 · Assinaturas (8d plano ativo, 8e "Meu plano"). Não existe módulo de perfil neste
+ * Fluxo 8 · Assinaturas (8e "Meu plano"). Não existe módulo de perfil neste
  * repo ainda — a apresentação autenticada foi zerada num reset e está sendo reconstruída fluxo
  * a fluxo (só grupos e assinaturas existem hoje). Por isso 8e entra aqui; quando o módulo de
  * perfil existir de verdade, o ponto de entrada de lá só precisa navegar para esta rota.
@@ -13,10 +13,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 sealed interface SubscriptionsRoute : NavKey {
-
-    /** 8d: confirmação após a criação da assinatura. */
-    @Serializable
-    data object PlanActive : SubscriptionsRoute
 
     /** 8e: plano atual, uso, recibos e o menu Gerenciar (VUL-112). Sem argumento — a
      * tela busca tudo via `SubscriptionGateway.mySubscription()`. */
