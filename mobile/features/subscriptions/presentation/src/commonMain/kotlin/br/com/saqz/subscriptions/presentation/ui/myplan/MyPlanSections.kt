@@ -51,9 +51,7 @@ import br.com.saqz.subscriptions.resources.myplan_change_current_tag
 import br.com.saqz.subscriptions.resources.myplan_change_sheet_description
 import br.com.saqz.subscriptions.resources.myplan_change_sheet_title
 import br.com.saqz.subscriptions.resources.myplan_current_plan_label
-import br.com.saqz.subscriptions.resources.myplan_manage_add_coupon
 import br.com.saqz.subscriptions.resources.myplan_manage_change_plan
-import br.com.saqz.subscriptions.resources.myplan_manage_payment_method
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts_count
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts_count_one
@@ -168,24 +166,6 @@ internal fun MyPlanManageSection(
             }
             SaqzDivider()
         }
-        // `paymentMethod` chega `null` do backend hoje — `GetMySubscription` hard-coda o
-        // campo (achado do Codex no PR #93, gap de origem fora do escopo deste ticket).
-        // Linha em branco e sem ação é pior que omitir; fast-follow quando o backend expuser
-        // o valor de verdade.
-        if (state.plan?.paymentMethodLabel != null) {
-            MyPlanManageRow(
-                label = stringResource(Res.string.myplan_manage_payment_method),
-                tag = MyPlanTags.PaymentMethod,
-                onClick = null,
-            ) {
-                Text(
-                    text = state.plan.paymentMethodLabel.asString(),
-                    style = SaqzTheme.typography.caption,
-                    color = SaqzTheme.colors.textSecondary,
-                )
-            }
-            SaqzDivider()
-        }
         MyPlanManageRow(
             label = stringResource(Res.string.myplan_manage_receipts),
             tag = MyPlanTags.Receipts,
@@ -196,16 +176,6 @@ internal fun MyPlanManageSection(
                 style = SaqzTheme.typography.caption,
                 color = SaqzTheme.colors.textSecondary,
             )
-        }
-        SaqzDivider()
-        // ponytail: sem endpoint de "adicionar cupom pós-assinatura" no SubscriptionGateway
-        // hoje — a linha existe pela paridade visual com o export, sem ação por trás.
-        MyPlanManageRow(
-            label = stringResource(Res.string.myplan_manage_add_coupon),
-            tag = MyPlanTags.AddCoupon,
-            onClick = null,
-        ) {
-            SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
         }
     }
 }
