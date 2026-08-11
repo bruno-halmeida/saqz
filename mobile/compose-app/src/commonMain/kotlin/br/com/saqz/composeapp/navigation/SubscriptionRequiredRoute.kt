@@ -26,7 +26,7 @@ data object SubscriptionRequired : NavKey
 @Composable
 internal fun SubscriptionRequiredDestination(
     onBack: () -> Unit,
-    onAuthorizationGranted: () -> Unit,
+    onAuthorizationSuccess: () -> Unit,
     viewModel: SubscriptionGateViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -49,7 +49,7 @@ internal fun SubscriptionRequiredDestination(
     }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            SubscriptionGateEffect.AuthorizationGranted -> onAuthorizationGranted()
+            SubscriptionGateEffect.AuthorizationGranted -> onAuthorizationSuccess()
         }
     }
 

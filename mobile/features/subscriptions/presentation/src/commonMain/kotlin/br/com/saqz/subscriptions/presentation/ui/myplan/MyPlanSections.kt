@@ -146,8 +146,8 @@ internal fun MyPlanUsageCard(usage: MyPlanUsageUi, modifier: Modifier = Modifier
 internal fun MyPlanManageSection(
     state: MyPlanState,
     onIntent: (MyPlanIntent) -> Unit,
-    onOpenChangePlan: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onOpenChangePlan: (() -> Unit)? = null,
 ) = Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     SaqzSectionHeader(title = stringResource(Res.string.myplan_manage_title))
     // Assinatura efetivamente cancelada (achado do Codex no PR #93: `canceledAt != null`,

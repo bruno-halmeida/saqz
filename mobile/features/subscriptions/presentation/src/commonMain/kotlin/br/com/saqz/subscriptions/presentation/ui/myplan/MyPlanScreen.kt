@@ -58,8 +58,8 @@ fun MyPlanScreen(
     state: MyPlanState,
     onBack: () -> Unit,
     onIntent: (MyPlanIntent) -> Unit,
-    onOpenChangePlan: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onOpenChangePlan: (() -> Unit)? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Column(modifier = modifier.fillMaxSize().testTag(MyPlanTags.Screen)) {

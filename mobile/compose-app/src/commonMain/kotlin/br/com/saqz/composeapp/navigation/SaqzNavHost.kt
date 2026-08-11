@@ -526,7 +526,7 @@ internal fun SaqzNavHost(
             entry<SubscriptionRequired> {
                 SubscriptionRequiredDestination(
                     onBack = pop,
-                    onAuthorizationGranted = {
+                    onAuthorizationSuccess = {
                         backStack.replaceSubscriptionRequiredWithGroupCreation()
                     },
                 )
