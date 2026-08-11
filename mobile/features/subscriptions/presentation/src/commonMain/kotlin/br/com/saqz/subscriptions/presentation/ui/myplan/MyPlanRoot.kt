@@ -9,8 +9,14 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun MyPlanRoot(
     onBack: () -> Unit,
+    onOpenChangePlan: (() -> Unit)? = null,
     viewModel: MyPlanViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    MyPlanScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
+    MyPlanScreen(
+        state = state,
+        onBack = onBack,
+        onIntent = viewModel::onIntent,
+        onOpenChangePlan = onOpenChangePlan,
+    )
 }

@@ -401,10 +401,10 @@ internal fun SaqzNavHost(
                             onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
                             // Com plano ativo com vaga de grupo o "+" de 2n atalha direto
                             // para o 2a (`GroupListEffect.OpenCreateGroup`); sem plano
-                            // entitulador — ou limite atingido — ele abre o Fluxo 8 ·
-                            // Planos, e o `PlanActive` traz a pessoa de volta ao 2a.
+                            // entitulador — ou limite atingido — ele abre o gate de assinatura;
+                            // quando autorizado, o gate substitui a si mesmo pelo 2a.
                             onCreateGroup = { backStack.add(GroupsRoute.Create) },
-                            onOpenPlans = { backStack.add(SubscriptionsRoute.PlanSelection) },
+                            onOpenPlans = { backStack.add(SubscriptionRequired) },
                         )
                     },
                 )
@@ -517,7 +517,20 @@ internal fun SaqzNavHost(
                     onViewMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
                 )
             }
-            entry<SubscriptionsRoute.MyPlan> { MyPlanRoot(onBack = pop) }
+            entry<SubscriptionsRoute.MyPlan> {
+                MyPlanRoot(
+                    onBack = pop,
+                    onOpenChangePlan = { backStack.add(SubscriptionRequired) },
+                )
+            }
+            entry<SubscriptionRequired> {
+                SubscriptionRequiredDestination(
+                    onBack = pop,
+                    onAuthorizationGranted = {
+                        backStack.replaceSubscriptionRequiredWithGroupCreation()
+                    },
+                )
+            }
             entry<GroupsRoute.Create> {
                 GroupSetupDestination(GroupSetupMode.Create, backStack)
             }
@@ -685,6 +698,12 @@ private fun InviteError.toRouteError(): InviteLandingRouteError = when (this) {
 internal fun NavBackStack<NavKey>.openInviteExplore() {
     // "Explorar o app" é a entrada geral — o default do shell (aba Início, VUL-193).
     resetTo(SaqzShellDestination.Home)
+}
+
+/** Replace the gate entry with the group form after the shared entitlement is granted. */
+internal fun MutableList<NavKey>.replaceSubscriptionRequiredWithGroupCreation() {
+    if (lastOrNull() == SubscriptionRequired) removeLastOrNull()
+    add(GroupsRoute.Create)
 }
 
 /**

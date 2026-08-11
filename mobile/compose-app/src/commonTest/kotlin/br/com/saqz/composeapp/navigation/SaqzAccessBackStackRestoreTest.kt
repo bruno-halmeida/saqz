@@ -117,6 +117,20 @@ class SaqzAccessBackStackRestoreTest {
     }
 
     @Test
+    fun `subscription required route round-trips through the real registered configuration`() {
+        val saved = encodeToSavedState(
+            saqzAccessBackStackSerializer,
+            NavBackStack<NavKey>(SaqzShellDestination.Groups, SubscriptionRequired),
+            saqzLocalNavConfiguration,
+        )
+
+        assertEquals(
+            listOf<NavKey>(SaqzShellDestination.Groups, SubscriptionRequired),
+            restore(saved),
+        )
+    }
+
+    @Test
     fun `profile routes round-trip through the real registered configuration`() {
         val saved = encodeToSavedState(
             saqzAccessBackStackSerializer,

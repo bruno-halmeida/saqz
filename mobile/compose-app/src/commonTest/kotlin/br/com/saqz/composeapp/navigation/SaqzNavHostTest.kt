@@ -74,6 +74,30 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack.toList())
     }
 
+    @Test
+    fun unauthorizedGroupEntryUsesTheSubscriptionRequiredGate() {
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Groups)
+
+        stack += SubscriptionRequired
+
+        assertEquals(
+            listOf<NavKey>(SaqzShellDestination.Groups, SubscriptionRequired),
+            stack,
+        )
+    }
+
+    @Test
+    fun authorizationGrantedReplacesTheGateWithGroupCreation() {
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Groups, SubscriptionRequired)
+
+        stack.replaceSubscriptionRequiredWithGroupCreation()
+
+        assertEquals(
+            listOf<NavKey>(SaqzShellDestination.Groups, GroupsRoute.Create),
+            stack,
+        )
+    }
+
     // VUL-193: os callbacks do invite landing (BrowseOtherGroups e OpenAnotherGroup,
     // mais o back da top-bar que emite BrowseOtherGroups) prometem a lista de grupos.
     // Fazem `openInviteOtherGroups()` → `resetTo(SaqzShellDestination.Groups)`, e o destino

@@ -146,6 +146,7 @@ internal fun MyPlanUsageCard(usage: MyPlanUsageUi, modifier: Modifier = Modifier
 internal fun MyPlanManageSection(
     state: MyPlanState,
     onIntent: (MyPlanIntent) -> Unit,
+    onOpenChangePlan: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) = Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     SaqzSectionHeader(title = stringResource(Res.string.myplan_manage_title))
@@ -154,12 +155,14 @@ internal fun MyPlanManageSection(
     // rejeita `ChangePlan` quando o status já migrou, e a janela antes disso não deveria
     // deixar o usuário criar uma cobrança de upgrade que ele não quer mais.
     val canceled = state.plan?.statusTone == MyPlanStatusTone.Canceled
+    // Callers outside the composition root retain the legacy sheet until they provide a route callback.
+    val openChangePlan = onOpenChangePlan ?: { onIntent(MyPlanIntent.OpenChangePlan) }
     SaqzCard(padded = false) {
         if (!canceled) {
             MyPlanManageRow(
                 label = stringResource(Res.string.myplan_manage_change_plan),
                 tag = MyPlanTags.ChangePlan,
-                onClick = { onIntent(MyPlanIntent.OpenChangePlan) },
+                onClick = openChangePlan,
             ) {
                 SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
             }

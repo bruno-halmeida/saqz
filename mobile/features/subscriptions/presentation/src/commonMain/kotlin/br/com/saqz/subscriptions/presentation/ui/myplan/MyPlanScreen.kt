@@ -58,6 +58,7 @@ fun MyPlanScreen(
     state: MyPlanState,
     onBack: () -> Unit,
     onIntent: (MyPlanIntent) -> Unit,
+    onOpenChangePlan: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -84,7 +85,11 @@ fun MyPlanScreen(
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
                 state.usage?.let { MyPlanUsageCard(it) }
-                MyPlanManageSection(state = state, onIntent = onIntent)
+                MyPlanManageSection(
+                    state = state,
+                    onIntent = onIntent,
+                    onOpenChangePlan = onOpenChangePlan,
+                )
                 // Assinatura já efetivamente cancelada (achado do Codex no PR #93) não tem
                 // o que cancelar de novo — o backend já rejeita com AlreadyCanceled.
                 if (state.plan?.statusTone != MyPlanStatusTone.Canceled) {
