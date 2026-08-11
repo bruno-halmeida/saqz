@@ -90,36 +90,6 @@ class MaskedVisualTransformationTest {
     }
 
     @Test
-    fun card_number_formats_digits_in_groups_of_four() {
-        val transformed = CardNumberVisualTransformation().filter(AnnotatedString("4111111111111111"))
-
-        assertEquals("4111 1111 1111 1111", transformed.text.text)
-        assertEquals(16, transformed.offsetMapping.transformedToOriginal(transformed.text.length))
-    }
-
-    @Test
-    fun card_number_does_not_show_digits_beyond_the_mask() {
-        val transformed = CardNumberVisualTransformation().filter(AnnotatedString("41111111111111111234"))
-
-        assertEquals("4111 1111 1111 1111 123", transformed.text.text)
-    }
-
-    @Test
-    fun card_expiry_formats_month_and_year() {
-        val transformed = CardExpiryVisualTransformation().filter(AnnotatedString("1228"))
-
-        assertEquals("12/28", transformed.text.text)
-        assertEquals(4, transformed.offsetMapping.transformedToOriginal(transformed.text.length))
-    }
-
-    @Test
-    fun card_expiry_does_not_show_digits_beyond_the_mask() {
-        val transformed = CardExpiryVisualTransformation().filter(AnnotatedString("122899"))
-
-        assertEquals("12/28", transformed.text.text)
-    }
-
-    @Test
     fun cep_formats_digits_without_changing_the_raw_value() {
         val transformed = CepVisualTransformation().filter(AnnotatedString("12345678"))
 

@@ -20,8 +20,6 @@ kotlin {
             implementation(project(":core:domain"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
-            // O back do sistema/gesto é tratado dentro da 8c com checkout pendente (VUL-119).
-            implementation(libs.compose.ui.backhandler)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)
@@ -39,8 +37,8 @@ kotlin {
 
 compose.resources {
     // Público pelo mesmo motivo do :features:access (VUL-88): os screenshot tests deste
-    // módulo vivem em :android-app (Payment8cScreenshotTest, PlanSelection8a8bScreenshotTest,
-    // ...) e precisam nomear os strings de cada tela pra montar as cenas de estado.
+    // módulo vivem em :android-app (MyPlan8eScreenshotTest, ...) e precisam nomear os strings
+    // de cada tela pra montar as cenas de estado.
     publicResClass = true
     packageOfResClass = "br.com.saqz.subscriptions.resources"
     generateResClass = always

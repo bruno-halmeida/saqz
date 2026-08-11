@@ -79,8 +79,6 @@ import br.com.saqz.profile.presentation.exit.ProfileExitRoot
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
-import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
-import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import br.com.saqz.subscriptions.presentation.ui.planactive.PlanActiveRoot
 import org.koin.compose.koinInject
@@ -481,22 +479,6 @@ internal fun SaqzNavHost(
                         backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))
                     },
                     onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
-                )
-            }
-            entry<SubscriptionsRoute.Payment> { route ->
-                PaymentRoot(
-                    route = route,
-                    onBack = pop,
-                    onEffect = { effect ->
-                        when (effect) {
-                            // O recibo confirmou o pagamento: 8a/8c saem do stack junto — o
-                            // voltar do sistema na 8d não pode reabrir um checkout já pago.
-                            PaymentEffect.NavigateToPlanActive -> {
-                                backStack.dropPlansSegment()
-                                backStack.add(SubscriptionsRoute.PlanActive)
-                            }
-                        }
-                    },
                 )
             }
             entry<SubscriptionsRoute.PlanActive> {

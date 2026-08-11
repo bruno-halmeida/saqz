@@ -13,6 +13,9 @@
     <string name="myplan_pending_change">Troca para %1$s vale a partir de %2$s</string>
     <string name="myplan_billing_pix">Pix</string>
     <string name="myplan_billing_credit_card">Cartão de crédito</string>
+    <!-- "final 1234" no 8e (VUL-196) — binding pronto, backend ainda não expõe -->
+    <string name="myplan_billing_credit_card_last4">Cartão final %1$s</string>
+    <string name="myplan_billing_credit_card_brand_last4">%1$s final %2$s</string>
     <string name="myplan_usage_title">Uso do plano</string>
     <string name="myplan_usage_ratio">%1$d de %2$d grupos</string>
     <string name="myplan_usage_unlimited">Grupos ilimitados</string>

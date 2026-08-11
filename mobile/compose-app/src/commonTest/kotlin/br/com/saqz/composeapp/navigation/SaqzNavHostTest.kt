@@ -326,7 +326,6 @@ class SaqzNavHostTest {
     fun creatingAGroupFromPlanActiveDropsThePlansSegment() {
         val stack = mutableListOf<NavKey>(
             SaqzShellDestination.Home,
-            SubscriptionsRoute.Payment(planId = "Organizador", cycle = "Monthly"),
             SubscriptionsRoute.PlanActive,
         )
 
