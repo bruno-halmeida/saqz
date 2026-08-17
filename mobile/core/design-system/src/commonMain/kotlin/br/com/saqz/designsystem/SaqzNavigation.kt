@@ -39,6 +39,10 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * 10p — logo na home, título no detalhe. O logo vem do arquivo oficial: o design
  * system recebe o desenho pronto em [logo] e nunca redesenha nem redigita a marca.
+ *
+ * [windowInsets] é o da status bar por padrão: telas empilhadas nascem no topo da janela.
+ * Aba dentro do shell já nasce abaixo da faixa e da status bar — quem hospeda passa
+ * [WindowInsets] vazio para o título não descer de novo.
  */
 @Composable
 fun SaqzTopAppBar(
@@ -46,6 +50,7 @@ fun SaqzTopAppBar(
     title: String? = null,
     logo: (@Composable () -> Unit)? = null,
     onBack: (() -> Unit)? = null,
+    windowInsets: WindowInsets = WindowInsets.statusBars,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = SaqzTheme.colors
@@ -54,7 +59,7 @@ fun SaqzTopAppBar(
         modifier = modifier
             .fillMaxWidth()
             .background(colors.background)
-            .windowInsetsPadding(WindowInsets.statusBars)
+            .windowInsetsPadding(windowInsets)
             .heightIn(min = 56.dp)
             .padding(horizontal = metrics.subGrid),
         verticalAlignment = Alignment.CenterVertically,

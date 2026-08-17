@@ -15,14 +15,14 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.composeapp.shell.SaqzAppShell
-import br.com.saqz.composeapp.shell.SaqzShellCatalogTag
+import br.com.saqz.composeapp.shell.SaqzShellProfileTab
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 
 /**
  * O catálogo é interativo — é a diferença entre ele e o screenshot test. O que este teste
  * cobre é justamente o que o golden não podia: o toque muda estado de verdade, e a entrada
- * só existe quando o ambiente é dev.
+ * visível na Perfil não existe mais. O gate de ambiente continua; a abertura vira easter egg.
  */
 @OptIn(ExperimentalTestApi::class)
 class SaqzCatalogScreenTest {
@@ -70,15 +70,7 @@ class SaqzCatalogScreenTest {
     }
 
     @Test
-    fun theCatalogEntryIsAbsentOutsideDev() = runComposeUiTest {
-        setContent { SaqzTheme { SaqzAppShell(profileTab = { Text("Você está conectado.") }) } }
-        onNodeWithText("Perfil").performClick()
-        waitForIdle()
-        onNodeWithTag(SaqzShellCatalogTag).assertDoesNotExist()
-    }
-
-    @Test
-    fun theDevShellReachesTheCatalogAndComesBack() = runComposeUiTest {
+    fun theCatalogButtonIsGoneFromProfileEvenInDev() = runComposeUiTest {
         setContent {
             SaqzTheme {
                 SaqzAppShell(
@@ -87,11 +79,36 @@ class SaqzCatalogScreenTest {
                 )
             }
         }
-        // VUL-193: o shell abre na aba Início; a entrada do catálogo vive na aba Perfil.
         onNodeWithText("Perfil").performClick()
         waitForIdle()
-        onNodeWithTag(SaqzShellCatalogTag).performClick()
-        waitForIdle()
+        onNodeWithText("Catálogo do design system").assertDoesNotExist()
+    }
+
+    @Test
+    fun theCatalogStaysClosedOutsideDev() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    initialCatalogOpen = true,
+                    profileTab = { Text("Você está conectado.") },
+                )
+            }
+        }
+        onNodeWithTag(SaqzCatalogTags.Root).assertDoesNotExist()
+    }
+
+    @Test
+    fun theDevShellReachesTheCatalogAndComesBack() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    catalogEnabled = true,
+                    initialCatalogOpen = true,
+                    initialTab = SaqzShellProfileTab,
+                    profileTab = { Text("Você está conectado.") },
+                )
+            }
+        }
         onNodeWithTag(SaqzCatalogTags.Root).assertIsDisplayed()
         // Dois "Voltar" na árvore: o da barra do catálogo e o espécime de ícone da seção
         // Ações. O primeiro em ordem de layout é a barra.

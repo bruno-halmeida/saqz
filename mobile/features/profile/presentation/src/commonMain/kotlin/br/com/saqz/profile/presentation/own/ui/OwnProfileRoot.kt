@@ -1,5 +1,7 @@
 package br.com.saqz.profile.presentation.own.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,6 +21,7 @@ fun OwnProfileRoot(
     onOpenPasswordRecovery: () -> Unit,
     onSignOut: () -> Unit,
     refreshVersion: Int = 0,
+    topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
     viewModel: OwnProfileViewModel = koinViewModel(),
     imageLoader: ImageLoader = koinInject(),
 ) {
@@ -38,5 +41,10 @@ fun OwnProfileRoot(
             OwnProfileEffect.SignedOut -> onSignOut()
         }
     }
-    OwnProfileScreen(state = state, onIntent = viewModel::onIntent, imageLoader = imageLoader)
+    OwnProfileScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        imageLoader = imageLoader,
+        topBarWindowInsets = topBarWindowInsets,
+    )
 }

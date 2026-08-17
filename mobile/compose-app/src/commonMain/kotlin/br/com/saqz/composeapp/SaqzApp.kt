@@ -56,7 +56,8 @@ fun SaqzApp(
  * O catálogo do design system (VUL-51) só existe onde o app roda como dev. O ambiente já
  * chega pela plataforma em `SaqzPlatformDependencies.environment` e vive no
  * [NetworkConfig] do Koin — não há segunda fonte de verdade a inventar aqui, e o flavor
- * prod manda `"prod"`, então a entrada não aparece.
+ * prod manda `"prod"`, então o gate fica desligado. A abertura visível na Perfil saiu:
+ * o acesso vira easter egg, ainda sem gesto.
  */
 @Composable
 private fun AccessGate(
