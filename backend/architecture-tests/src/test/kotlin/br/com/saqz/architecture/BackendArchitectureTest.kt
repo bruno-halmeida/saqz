@@ -17,6 +17,7 @@ import kotlin.test.assertTrue
 class BackendArchitectureTest {
     private val workspaceRoot: Path = Path.of("../..").toAbsolutePath().normalize()
     private val backendRoot: Path = workspaceRoot.resolve("backend")
+    private val comments = Regex("""/\*.*?\*/|//[^\n]*""", RegexOption.DOT_MATCHES_ALL)
 
     @Test
     fun `ARCH-01 exposes separate bootstrap shared kernel identity and groups modules`() {
@@ -235,21 +236,21 @@ class BackendArchitectureTest {
         val forbidden = listOf("org.springframework.", "com.google.firebase.", "jakarta.persistence.", "java.sql.")
 
         featureLayerSources("domain", "application").forEach { source ->
-            assertTrue(forbidden.none(source.readText()::contains), source.toString())
+            assertTrue(forbidden.none(codeOf(source)::contains), source.toString())
         }
     }
 
     @Test
     fun `ARCH-16 all feature domain and application code stays adapter free`() {
         featureLayerSources("domain", "application").forEach { source ->
-            assertFalse(source.readText().contains(".adapter."), source.toString())
+            assertFalse(codeOf(source).contains(".adapter."), source.toString())
         }
     }
 
     @Test
     fun `ARCH-17 backend feature code never references bootstrap`() {
         featureDirectories().flatMap { kotlinSources(it.resolve("src/main/kotlin")) }.forEach { source ->
-            assertFalse(source.readText().contains("br.com.saqz.bootstrap"), source.toString())
+            assertFalse(codeOf(source).contains("br.com.saqz.bootstrap"), source.toString())
         }
     }
 
@@ -296,6 +297,15 @@ class BackendArchitectureTest {
                 kotlinSources(feature.resolve("src/main/kotlin/br/com/saqz/${feature.name}/$layer"))
             }
         }
+
+    /**
+     * O código do arquivo, sem comentários. KDoc que *cita* uma classe de adapter ou do
+     * bootstrap — `[br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException]` — é
+     * referência de documentação, não dependência: não gera import, não compila contra nada.
+     * A ARCH-14 logo acima já olha só as linhas de `import`; estas regras liam o arquivo cru e
+     * reprovavam por causa de um link de doc.
+     */
+    private fun codeOf(source: Path): String = source.readText().replace(comments, " ")
 
     private fun kotlinSources(root: Path): List<Path> =
         if (root.isDirectory()) {
