@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.di
 import br.com.saqz.composeapp.navigation.AccessOrchestrator
 import br.com.saqz.composeapp.navigation.AccessRuntimeContract
 import br.com.saqz.composeapp.navigation.AccessViewModel
+import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateViewModel
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModelOf
@@ -21,4 +22,5 @@ import org.koin.dsl.module
 internal val composePresentationModule = module {
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
+    viewModelOf(::SubscriptionGateViewModel)
 }

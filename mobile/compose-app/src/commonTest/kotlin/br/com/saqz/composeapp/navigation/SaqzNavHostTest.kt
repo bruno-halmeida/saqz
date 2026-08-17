@@ -15,7 +15,6 @@ import br.com.saqz.groups.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
-import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -72,6 +71,30 @@ class SaqzNavHostTest {
         stack.openInviteExplore()
 
         assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack.toList())
+    }
+
+    @Test
+    fun unauthorizedGroupEntryUsesTheSubscriptionRequiredGate() {
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Groups)
+
+        stack += SubscriptionRequired
+
+        assertEquals(
+            listOf<NavKey>(SaqzShellDestination.Groups, SubscriptionRequired),
+            stack,
+        )
+    }
+
+    @Test
+    fun authorizationGrantedReplacesTheGateWithGroupCreation() {
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Groups, SubscriptionRequired)
+
+        stack.replaceSubscriptionRequiredWithGroupCreation()
+
+        assertEquals(
+            listOf<NavKey>(SaqzShellDestination.Groups, GroupsRoute.Create),
+            stack,
+        )
     }
 
     // VUL-193: os callbacks do invite landing (BrowseOtherGroups e OpenAnotherGroup,
@@ -291,40 +314,6 @@ class SaqzNavHostTest {
         val signedOut = mutableListOf<NavKey>(AccessRoute.PasswordChanged)
         signedOut.finishPasswordChanged(SessionAccessState.SignedOut)
         assertEquals(listOf<NavKey>(AccessRoute.Login), signedOut)
-    }
-
-    /**
-     * VUL-113: "Criar meu grupo" na 8d empilha sobre um pagamento já concluído — o segmento
-     * do fluxo de planos cai do stack antes do formulário de criação entrar, senão o voltar
-     * do 2a reabriria 8d/8c/8b/8a já resolvidos.
-     */
-    @Test
-    fun creatingAGroupFromPlanActiveDropsThePlansSegment() {
-        val stack = mutableListOf<NavKey>(
-            SaqzShellDestination.Home,
-            SubscriptionsRoute.PlanSelection,
-            SubscriptionsRoute.Payment(planId = "Organizador", cycle = "Monthly"),
-            SubscriptionsRoute.PlanActive,
-        )
-
-        stack.dropPlansSegment()
-
-        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack)
-    }
-
-    // A base de grupos empilhada por baixo (VUL-72) não é parte do segmento de planos, e
-    // fica de pé.
-    @Test
-    fun dropPlansSegmentLeavesUnrelatedRoutesUntouched() {
-        val stack = mutableListOf<NavKey>(
-            SaqzShellDestination.Home,
-            GroupsRoute.Details("ceret"),
-            SubscriptionsRoute.PlanSelection,
-        )
-
-        stack.dropPlansSegment()
-
-        assertEquals(listOf<NavKey>(SaqzShellDestination.Home, GroupsRoute.Details("ceret")), stack)
     }
 
     /**

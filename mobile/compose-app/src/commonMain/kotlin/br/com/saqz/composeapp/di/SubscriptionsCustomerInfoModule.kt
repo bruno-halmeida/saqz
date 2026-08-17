@@ -10,7 +10,7 @@ import org.koin.dsl.module
  * A implementação real de [CustomerInfoProvider] — mora aqui, e não em
  * `subscriptions:presentation`, porque é o único módulo que enxerga tanto
  * `access:domain.SessionGateway` quanto `subscriptions:domain` (AGENTS.md §1: nenhuma
- * feature depende de outra). `PaymentViewModel` só conhece o contrato.
+ * feature depende de outra). `SubscriptionGateViewModel` só conhece o contrato.
  */
 internal class SessionCustomerInfoProvider(
     private val sessionGateway: SessionGateway,

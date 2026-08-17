@@ -40,9 +40,6 @@ import br.com.saqz.profile.presentation.exit.di.profileExitPresentationModule
 import br.com.saqz.profile.presentation.own.di.ownProfilePresentationModule
 import br.com.saqz.profile.presentation.photo.di.profilePhotoPresentationModule
 import br.com.saqz.subscriptions.presentation.myplan.di.myPlanPresentationModule
-import br.com.saqz.subscriptions.presentation.planactive.di.planActivePresentationModule
-import br.com.saqz.subscriptions.presentation.planselection.di.planSelectionPresentationModule
-import br.com.saqz.subscriptions.presentation.payment.di.paymentPresentationModule
 import coil3.PlatformContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.loadKoinModules
@@ -65,12 +62,9 @@ private val commonModules = listOf(
     accessPresentationModule,
     composePresentationModule,
     subscriptionsDataModule,
-    planActivePresentationModule(),
     myPlanPresentationModule(),
     subscriptionsCustomerInfoModule,
     groupCreationEntitlementModule,
-    paymentPresentationModule(),
-    planSelectionPresentationModule(),
     profileDataModule(),
     editProfilePresentationModule(),
     profileExitPresentationModule(),

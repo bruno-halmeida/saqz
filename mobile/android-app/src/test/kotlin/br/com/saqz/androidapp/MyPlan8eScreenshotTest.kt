@@ -5,10 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanCardUi
-import br.com.saqz.subscriptions.presentation.myplan.MyPlanChangeOptionUi
-import br.com.saqz.subscriptions.presentation.myplan.MyPlanPendingPaymentUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanReceiptUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
@@ -24,11 +21,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 8e — os estados que o VUL-112 introduz: o básico do export, downgrade agendado, troca
- * recusada por limite, upgrade com cobrança pendente, cancelamento, carregando, erro —
- * mais os dois que os 5 achados do Codex no PR #93 acrescentaram: assinatura cancelada
- * (status forçado + "acesso garantido até", em vez de "Ativo" com próxima cobrança falsa)
- * e falha ao carregar recibos (erro com retry, em vez de "nenhum recibo ainda").
+ * 8e — plano atual, status, uso, recibos, cancelamento, carregando e erro — mais os dois
+ * estados que os 5 achados do Codex no PR #93 acrescentaram: assinatura cancelada (status
+ * forçado + "acesso garantido até", em vez de "Ativo" com próxima cobrança falsa) e falha ao
+ * carregar recibos (erro com retry, em vez de "nenhum recibo ainda").
  *
  * Arquivo próprio (AGENTS.md §11): `:features:subscriptions:presentation` ainda não tem
  * Roborazzi próprio (nenhum ticket da onda 6 precisou até agora), então a cena entra aqui,
@@ -66,46 +62,6 @@ class MyPlan8eScreenshotTest {
     }
 
     @Test
-    fun myPlan8eDowngradeAgendado() = capture("8e-myplan-downgrade-agendado") {
-        MyPlanScreen(
-            state = ACTIVE.copy(
-                plan = ACTIVE.plan?.copy(
-                    pendingChangeLine = UiText.Raw("Troca para Amador vale a partir de 01/09/2026"),
-                ),
-            ),
-            onBack = {},
-            onIntent = {},
-        )
-    }
-
-    @Test
-    fun myPlan8eTrocaRecusadaPorLimite() = capture("8e-myplan-troca-recusada") {
-        MyPlanScreen(
-            state = ACTIVE.copy(
-                isChangeSheetOpen = true,
-                changeError = UiText.Raw("Você tem 3 grupos, o plano Amador permite 1. Reduza antes de trocar."),
-            ),
-            onBack = {},
-            onIntent = {},
-        )
-    }
-
-    @Test
-    fun myPlan8eCobrancaPendente() = capture("8e-myplan-cobranca-pendente") {
-        MyPlanScreen(
-            state = ACTIVE.copy(
-                pendingPayment = MyPlanPendingPaymentUi(
-                    message = UiText.Raw("Confirme o pagamento por Pix para concluir a troca de plano."),
-                    pixCopyPaste = "00020126chavepix",
-                    invoiceUrl = null,
-                ),
-            ),
-            onBack = {},
-            onIntent = {},
-        )
-    }
-
-    @Test
     fun myPlan8eCancelarAssinatura() = capture("8e-myplan-cancelar") {
         MyPlanScreen(state = ACTIVE.copy(isCancelSheetOpen = true), onBack = {}, onIntent = {})
     }
@@ -137,34 +93,6 @@ class MyPlan8eScreenshotTest {
                     accessUntilDate = "30/08/2026",
                 ),
             ),
-            onBack = {},
-            onIntent = {},
-        )
-    }
-
-    // Achado do Codex no PR #93 (rodada 2): quando a regeneração do Pix falha, o backend
-    // devolve só `invoiceUrl` — a folha mostra um link acionável em vez de ficar vazia.
-    @Test
-    fun myPlan8eCobrancaPendenteFatura() = capture("8e-myplan-cobranca-pendente-fatura") {
-        MyPlanScreen(
-            state = ACTIVE.copy(
-                pendingPayment = MyPlanPendingPaymentUi(
-                    message = UiText.Raw("Confirme o pagamento pela fatura para concluir a troca de plano."),
-                    pixCopyPaste = null,
-                    invoiceUrl = "https://www.asaas.com/i/abc123",
-                ),
-            ),
-            onBack = {},
-            onIntent = {},
-        )
-    }
-
-    // Achado do Codex no PR #93 (rodada 2): `paymentMethod` chega `null` do backend hoje
-    // (GetMySubscription hard-coda o campo) — a linha some em vez de aparecer em branco.
-    @Test
-    fun myPlan8eSemFormaDePagamento() = capture("8e-myplan-sem-forma-pagamento") {
-        MyPlanScreen(
-            state = ACTIVE.copy(plan = ACTIVE.plan?.copy(paymentMethodLabel = null)),
             onBack = {},
             onIntent = {},
         )
@@ -237,24 +165,16 @@ private val ACTIVE = MyPlanState(
         name = "Organizador",
         statusLabel = UiText.Raw("Ativo"),
         statusTone = MyPlanStatusTone.Active,
-        priceLine = UiText.Raw("R$ 19,90/mês"),
         nextChargeDate = "24/08/2026",
-        paymentMethodLabel = UiText.Raw("Pix"),
-        pendingChangeLine = null,
     ),
     usage = MyPlanUsageUi(
         ratioLabel = UiText.Raw("2 de 3 grupos"),
         progress = 2f / 3f,
-        helperText = UiText.Raw("Perto do limite? Suba de plano quando precisar de mais grupos."),
+        helperText = UiText.Raw("Perto do limite? Acompanhe seu uso para planejar os próximos grupos."),
     ),
     receipts = listOf(
         MyPlanReceiptUi("evt-1", "01/07/2026", "R$ 19,90"),
         MyPlanReceiptUi("evt-2", "01/06/2026", "R$ 19,90"),
         MyPlanReceiptUi("evt-3", "01/05/2026", "R$ 19,90"),
-    ),
-    changeOptions = listOf(
-        MyPlanChangeOptionUi(Plan.Titular, "Amador", UiText.Raw("Grátis"), isCurrent = false),
-        MyPlanChangeOptionUi(Plan.Organizador, "Organizador", UiText.Raw("R$ 19,90/mês"), isCurrent = true),
-        MyPlanChangeOptionUi(Plan.Ilimitado, "Quadra Cheia", UiText.Raw("R$ 39,90/mês"), isCurrent = false),
     ),
 )

@@ -12,5 +12,9 @@ fun MyPlanRoot(
     viewModel: MyPlanViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    MyPlanScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
+    MyPlanScreen(
+        state = state,
+        onBack = onBack,
+        onIntent = viewModel::onIntent,
+    )
 }

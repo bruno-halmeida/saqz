@@ -79,11 +79,7 @@ import br.com.saqz.profile.presentation.exit.ProfileExitRoot
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
-import br.com.saqz.subscriptions.presentation.payment.PaymentEffect
-import br.com.saqz.subscriptions.presentation.payment.ui.PaymentRoot
-import br.com.saqz.subscriptions.presentation.planselection.ui.PlanSelectionRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
-import br.com.saqz.subscriptions.presentation.ui.planactive.PlanActiveRoot
 import org.koin.compose.koinInject
 
 // Legacy observable contract carried over from the product host: exactly one active
@@ -401,10 +397,10 @@ internal fun SaqzNavHost(
                             onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
                             // Com plano ativo com vaga de grupo o "+" de 2n atalha direto
                             // para o 2a (`GroupListEffect.OpenCreateGroup`); sem plano
-                            // entitulador — ou limite atingido — ele abre o Fluxo 8 ·
-                            // Planos, e o `PlanActive` traz a pessoa de volta ao 2a.
+                            // entitulador — ou limite atingido — ele abre o gate de assinatura;
+                            // quando autorizado, o gate substitui a si mesmo pelo 2a.
                             onCreateGroup = { backStack.add(GroupsRoute.Create) },
-                            onOpenPlans = { backStack.add(SubscriptionsRoute.PlanSelection) },
+                            onOpenPlans = { backStack.add(SubscriptionRequired) },
                         )
                     },
                 )
@@ -484,40 +480,19 @@ internal fun SaqzNavHost(
                     onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
                 )
             }
-            entry<SubscriptionsRoute.PlanSelection> {
-                PlanSelectionRoot(
+            entry<SubscriptionsRoute.MyPlan> {
+                MyPlanRoot(
                     onBack = pop,
-                    onContinue = { planId, cycle, couponCode ->
-                        backStack.add(SubscriptionsRoute.Payment(planId.name, cycle.name, couponCode))
-                    },
                 )
             }
-            entry<SubscriptionsRoute.Payment> { route ->
-                PaymentRoot(
-                    route = route,
+            entry<SubscriptionRequired> {
+                SubscriptionRequiredDestination(
                     onBack = pop,
-                    onEffect = { effect ->
-                        when (effect) {
-                            // O recibo confirmou o pagamento: 8a/8c saem do stack junto — o
-                            // voltar do sistema na 8d não pode reabrir um checkout já pago.
-                            PaymentEffect.NavigateToPlanActive -> {
-                                backStack.dropPlansSegment()
-                                backStack.add(SubscriptionsRoute.PlanActive)
-                            }
-                        }
+                    onAuthorizationSuccess = {
+                        backStack.replaceSubscriptionRequiredWithGroupCreation()
                     },
                 )
             }
-            entry<SubscriptionsRoute.PlanActive> {
-                PlanActiveRoot(
-                    onCreateGroup = {
-                        backStack.dropPlansSegment()
-                        backStack.add(GroupsRoute.Create)
-                    },
-                    onViewMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
-                )
-            }
-            entry<SubscriptionsRoute.MyPlan> { MyPlanRoot(onBack = pop) }
             entry<GroupsRoute.Create> {
                 GroupSetupDestination(GroupSetupMode.Create, backStack)
             }
@@ -687,6 +662,12 @@ internal fun NavBackStack<NavKey>.openInviteExplore() {
     resetTo(SaqzShellDestination.Home)
 }
 
+/** Replace the gate entry with the group form after the shared entitlement is granted. */
+internal fun MutableList<NavKey>.replaceSubscriptionRequiredWithGroupCreation() {
+    if (lastOrNull() == SubscriptionRequired) removeLastOrNull()
+    add(GroupsRoute.Create)
+}
+
 /**
  * VUL-193: os callbacks do invite landing (BrowseOtherGroups e OpenAnotherGroup, mais o
  * back da top-bar) prometem a lista de grupos. O destino carrega `initialTab = Grupos`
@@ -762,15 +743,6 @@ private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this
     SessionAccessState.Bootstrapping,
     SessionAccessState.BootstrapError,
     -> AccessRoute.Login
-}
-
-/**
- * O 8d→2a: o pagamento já aconteceu (8a→8b→8c→8d), então o segmento do fluxo de planos sai
- * do stack antes do formulário de criação entrar — sem isso, o voltar do 2a devolveria a
- * pessoa a uma assinatura que já foi paga, sem como "desfazer" navegando.
- */
-internal fun MutableList<NavKey>.dropPlansSegment() {
-    while (lastOrNull() is SubscriptionsRoute) removeLastOrNull()
 }
 
 /**

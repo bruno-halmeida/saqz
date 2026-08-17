@@ -36,6 +36,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(AccessRoute.PasswordChanged::class, AccessRoute.PasswordChanged.serializer())
             subclass(AccessRoute.Bootstrap::class, AccessRoute.Bootstrap.serializer())
             subclass(SaqzShellDestination::class, SaqzShellDestination.serializer())
+            subclass(SubscriptionRequired::class, SubscriptionRequired.serializer())
             // As rotas de grupo entram no VUL-72: agora que o stack tem profundidade, é
             // este registro que faz um `Details` sobreviver à rotação e ao Recents.
             subclass(GroupsRoute.Create::class, GroupsRoute.Create.serializer())
@@ -52,11 +53,6 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             // VUL-151: rotas de jogo — registro incondicional para sobreviver à rotação.
             subclass(GroupsRoute.GameEditor::class, GroupsRoute.GameEditor.serializer())
             subclass(GroupsRoute.GameDetail::class, GroupsRoute.GameDetail.serializer())
-            // VUL-108: registro incondicional (AGENTS.md) mesmo sem nenhuma tela ainda —
-            // sem isso a rota não sobrevive à rotação quando VUL-109..111 a empilharem.
-            subclass(SubscriptionsRoute.PlanSelection::class, SubscriptionsRoute.PlanSelection.serializer())
-            subclass(SubscriptionsRoute.Payment::class, SubscriptionsRoute.Payment.serializer())
-            subclass(SubscriptionsRoute.PlanActive::class, SubscriptionsRoute.PlanActive.serializer())
             // VUL-112: mesmo registro incondicional — 8e ainda não tem tela ligada ao
             // NavDisplay, mas a rota precisa sobreviver à rotação assim que alguém a empilhar.
             subclass(SubscriptionsRoute.MyPlan::class, SubscriptionsRoute.MyPlan.serializer())

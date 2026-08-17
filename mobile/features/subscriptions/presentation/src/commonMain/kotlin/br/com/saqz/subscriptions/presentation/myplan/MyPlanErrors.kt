@@ -7,11 +7,7 @@ import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.myplan_generic_error
 import br.com.saqz.subscriptions.resources.myplan_network_error
 
-/**
- * Tradução genérica pra carga e cancelamento. `DowngradeBlocked` não passa por aqui: a
- * mensagem dele precisa do uso atual e do limite do plano-alvo, que só o ViewModel tem —
- * ver `MyPlanViewModel.downgradeBlockedMessage`.
- */
+/** Tradução genérica para carga, recibos e cancelamento. */
 fun SubscriptionError.toUiText(): UiText = when (this) {
     is SubscriptionError.Data -> error.toUiText()
     else -> UiText.Res(Res.string.myplan_generic_error)

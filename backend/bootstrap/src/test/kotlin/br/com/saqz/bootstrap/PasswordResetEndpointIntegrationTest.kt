@@ -379,6 +379,7 @@ class PasswordResetEndpointIntegrationTest {
             registry.add("spring.datasource.password") { database.password }
             registry.add("saqz.firebase.emulator.enabled") { "true" }
             registry.add("saqz.branch.domain") { "https://join.test" }
+            registry.add("saqz.subscription.purchase-url") { "https://checkout.test/assinar/" }
             registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
             registry.add("spring.mail.host") { "127.0.0.1" }
             registry.add("spring.mail.port") { smtp.smtp.port }

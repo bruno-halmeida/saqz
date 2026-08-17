@@ -4,32 +4,15 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 /**
- * Fluxo 8 · Planos (8a/8b escolha de plano+cupom, 8c pagamento, 8d plano ativo, 8e "Meu
- * plano"). Não existe módulo de perfil neste repo ainda — a apresentação autenticada foi
- * zerada num reset e está sendo reconstruída fluxo a fluxo (só grupos e assinaturas
- * existem hoje). Por isso 8e entra aqui, como as outras quatro; quando o módulo de perfil
- * existir de verdade, o ponto de entrada de lá só precisa navegar para esta rota.
+ * Fluxo 8 · Assinaturas (8e "Meu plano"). Não existe módulo de perfil neste
+ * repo ainda — a apresentação autenticada foi zerada num reset e está sendo reconstruída fluxo
+ * a fluxo (só grupos e assinaturas existem hoje). Por isso 8e entra aqui; quando o módulo de
+ * perfil existir de verdade, o ponto de entrada de lá só precisa navegar para esta rota.
  *
  * Depende só de `navigation3-runtime` pelo contrato [NavKey], nunca de `navigation3-ui`.
  */
 @Serializable
 sealed interface SubscriptionsRoute : NavKey {
-
-    /** 8a/8b: escolha de plano, ciclo e cupom. */
-    @Serializable
-    data object PlanSelection : SubscriptionsRoute
-
-    /** 8c: plano, ciclo e cupom já escolhidos seguem como argumentos escalares. */
-    @Serializable
-    data class Payment(
-        val planId: String,
-        val cycle: String,
-        val couponCode: String? = null,
-    ) : SubscriptionsRoute
-
-    /** 8d: confirmação após a criação da assinatura. */
-    @Serializable
-    data object PlanActive : SubscriptionsRoute
 
     /** 8e: plano atual, uso, recibos e o menu Gerenciar (VUL-112). Sem argumento — a
      * tela busca tudo via `SubscriptionGateway.mySubscription()`. */

@@ -325,6 +325,7 @@ class DisposableAccessFlowIntegrationTest {
             registry.add("spring.datasource.password") { database.password }
             registry.add("saqz.firebase.emulator.enabled") { "true" }
             registry.add("saqz.branch.domain") { "https://join.test" }
+            registry.add("saqz.subscription.purchase-url") { "https://checkout.test/assinar/" }
             registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
         }
     }

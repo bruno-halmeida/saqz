@@ -20,12 +20,8 @@ import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.subscriptions.domain.subscription.BillingType
-import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanCardUi
-import br.com.saqz.subscriptions.presentation.myplan.MyPlanChangeOptionUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanIntent
-import br.com.saqz.subscriptions.presentation.myplan.MyPlanPendingPaymentUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanReceiptUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
@@ -39,16 +35,11 @@ internal object MyPlanTags {
     const val Screen = "myplan"
     const val PlanCard = "myplan-plan-card"
     const val UsageCard = "myplan-usage-card"
-    const val ChangePlan = "myplan-change-plan"
-    const val PaymentMethod = "myplan-payment-method"
     const val Receipts = "myplan-receipts"
     const val LoadMoreReceipts = "myplan-load-more-receipts"
-    const val AddCoupon = "myplan-add-coupon"
     const val CancelButton = "myplan-cancel-button"
-    const val ChangeSheet = "myplan-change-sheet"
     const val ReceiptsSheet = "myplan-receipts-sheet"
     const val CancelSheet = "myplan-cancel-sheet"
-    const val PendingPaymentSheet = "myplan-pending-payment-sheet"
 }
 
 /** 8e — plano atual, uso, recibos e o menu Gerenciar. A tela só empilha; cada bloco é uma
@@ -84,7 +75,10 @@ fun MyPlanScreen(
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
                 state.usage?.let { MyPlanUsageCard(it) }
-                MyPlanManageSection(state = state, onIntent = onIntent)
+                MyPlanManageSection(
+                    state = state,
+                    onIntent = onIntent,
+                )
                 // Assinatura já efetivamente cancelada (achado do Codex no PR #93) não tem
                 // o que cancelar de novo — o backend já rejeita com AlreadyCanceled.
                 if (state.plan?.statusTone != MyPlanStatusTone.Canceled) {
@@ -94,15 +88,11 @@ fun MyPlanScreen(
         }
     }
 
-    MyPlanChangeSheet(state = state, onIntent = onIntent)
     MyPlanReceiptsSheet(state = state, onIntent = onIntent)
     MyPlanCancelSheet(state = state, onIntent = onIntent)
-    MyPlanPendingPaymentSheet(state = state, onIntent = onIntent)
 }
 
-// Dado das previews: os mesmos números do export (8e), para o print do PR bater com o
-// desenho — R$ 17,91/mês, cupom GALERA10 não existe no contrato de `MySubscription`
-// (ver MyPlanMappers.kt), então o preço mostrado é o de tabela do plano.
+// Dado das previews: os mesmos números do export (8e), para o print do PR bater com o desenho.
 internal object MyPlanPreviewData {
     val active = MyPlanState(
         isLoading = false,
@@ -110,31 +100,17 @@ internal object MyPlanPreviewData {
             name = "Organizador",
             statusLabel = UiText.Raw("Ativo"),
             statusTone = MyPlanStatusTone.Active,
-            priceLine = UiText.Raw("R$ 19,90/mês"),
             nextChargeDate = "24/08/2026",
-            paymentMethodLabel = UiText.Raw("Pix"),
-            pendingChangeLine = null,
         ),
         usage = MyPlanUsageUi(
             ratioLabel = UiText.Raw("2 de 3 grupos"),
             progress = 2f / 3f,
-            helperText = UiText.Raw("Perto do limite? Suba de plano quando precisar de mais grupos."),
+            helperText = UiText.Raw("Perto do limite? Acompanhe seu uso para planejar os próximos grupos."),
         ),
         receipts = listOf(
             MyPlanReceiptUi("evt-1", "01/07/2026", "R$ 19,90"),
             MyPlanReceiptUi("evt-2", "01/06/2026", "R$ 19,90"),
             MyPlanReceiptUi("evt-3", "01/05/2026", "R$ 19,90"),
-        ),
-        changeOptions = listOf(
-            MyPlanChangeOptionUi(Plan.Titular, "Amador", UiText.Raw("Grátis"), isCurrent = false),
-            MyPlanChangeOptionUi(Plan.Organizador, "Organizador", UiText.Raw("R$ 19,90/mês"), isCurrent = true),
-            MyPlanChangeOptionUi(Plan.Ilimitado, "Quadra Cheia", UiText.Raw("R$ 39,90/mês"), isCurrent = false),
-        ),
-    )
-
-    val pendingDowngrade = active.copy(
-        plan = active.plan?.copy(
-            pendingChangeLine = UiText.Raw("Troca para Amador vale a partir de 01/09/2026"),
         ),
     )
 
@@ -151,12 +127,6 @@ private fun MyPlanScreenActivePreview() = SaqzTheme {
 
 @Preview
 @Composable
-private fun MyPlanScreenPendingDowngradePreview() = SaqzTheme {
-    MyPlanScreen(state = MyPlanPreviewData.pendingDowngrade, onBack = {}, onIntent = {})
-}
-
-@Preview
-@Composable
 private fun MyPlanScreenLoadingPreview() = SaqzTheme {
     MyPlanScreen(state = MyPlanPreviewData.loading, onBack = {}, onIntent = {})
 }
@@ -165,16 +135,6 @@ private fun MyPlanScreenLoadingPreview() = SaqzTheme {
 @Composable
 private fun MyPlanScreenErrorPreview() = SaqzTheme {
     MyPlanScreen(state = MyPlanPreviewData.error, onBack = {}, onIntent = {})
-}
-
-@Preview
-@Composable
-private fun MyPlanScreenChangeSheetPreview() = SaqzTheme {
-    MyPlanScreen(
-        state = MyPlanPreviewData.active.copy(isChangeSheetOpen = true),
-        onBack = {},
-        onIntent = {},
-    )
 }
 
 @Preview

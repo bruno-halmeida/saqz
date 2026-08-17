@@ -14,6 +14,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("org.springframework:spring-web")
     implementation("org.springframework:spring-tx")
+    implementation(libs.spring.boot.starter.mail)
     implementation("org.springframework.security:spring-security-core")
     compileOnly("jakarta.servlet:jakarta.servlet-api")
 
@@ -24,6 +25,7 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(project(":postgres-testing"))
+    testImplementation(libs.greenmail)
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.springframework:spring-test")
     testImplementation("jakarta.servlet:jakarta.servlet-api")
