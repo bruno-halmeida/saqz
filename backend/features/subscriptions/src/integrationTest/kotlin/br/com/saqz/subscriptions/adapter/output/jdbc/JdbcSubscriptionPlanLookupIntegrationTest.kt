@@ -95,19 +95,58 @@ class JdbcSubscriptionPlanLookupIntegrationTest {
         assertNull(lookup.findEntitlingPlan(ownerId))
     }
 
+    @Test
+    fun `repository round-trips native enums including null billing and pending plans`() {
+        val stored = subscription(
+            status = SubscriptionStatus.ACTIVE,
+            firstConfirmedAt = Instant.now(),
+            pendingPlan = Plan.ORGANIZADOR,
+            billingType = null,
+        )
+        subscriptions.insert(stored)
+
+        val found = checkNotNull(subscriptions.findByOwnerUserId(ownerId))
+        assertEquals(Plan.TITULAR, found.plan)
+        assertEquals(SubscriptionCycle.MONTHLY, found.cycle)
+        assertEquals(SubscriptionStatus.ACTIVE, found.status)
+        assertNull(found.billingType)
+        assertEquals(Plan.ORGANIZADOR, found.pendingPlan)
+
+        val updated = found.copy(
+            plan = Plan.ILIMITADO,
+            cycle = SubscriptionCycle.ANNUAL,
+            status = SubscriptionStatus.PAST_DUE,
+            billingType = AsaasBillingType.CREDIT_CARD,
+            pendingPlan = null,
+            pendingUpgradePlan = Plan.TITULAR,
+        )
+        subscriptions.save(updated)
+
+        val reloaded = checkNotNull(subscriptions.findByOwnerUserId(ownerId))
+        assertEquals(Plan.ILIMITADO, reloaded.plan)
+        assertEquals(SubscriptionCycle.ANNUAL, reloaded.cycle)
+        assertEquals(SubscriptionStatus.PAST_DUE, reloaded.status)
+        assertEquals(AsaasBillingType.CREDIT_CARD, reloaded.billingType)
+        assertNull(reloaded.pendingPlan)
+        assertEquals(Plan.TITULAR, reloaded.pendingUpgradePlan)
+    }
+
     private fun subscription(
         status: SubscriptionStatus,
         firstConfirmedAt: Instant?,
         currentPeriodEnd: Instant = Instant.now().plusSeconds(86_400),
+        pendingPlan: Plan? = null,
+        billingType: AsaasBillingType? = AsaasBillingType.PIX,
     ) = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
         cycle = SubscriptionCycle.MONTHLY,
         asaasCustomerId = "cus_1",
         asaasSubscriptionId = "sub_${UUID.randomUUID()}",
-        billingType = AsaasBillingType.PIX,
+        billingType = billingType,
         currentPeriodEnd = currentPeriodEnd,
         status = status,
+        pendingPlan = pendingPlan,
         firstConfirmedAt = firstConfirmedAt,
     )
 }

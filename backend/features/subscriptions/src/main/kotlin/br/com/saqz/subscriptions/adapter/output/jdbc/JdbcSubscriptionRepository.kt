@@ -8,6 +8,7 @@ import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
+import java.sql.Types
 import java.time.Instant
 import java.util.UUID
 import javax.sql.DataSource
@@ -158,23 +159,33 @@ class JdbcSubscriptionRepository(
     ): org.springframework.jdbc.core.simple.JdbcClient.StatementSpec =
         this
             .param("ownerUserId", subscription.ownerUserId)
-            .param("plan", subscription.plan.name)
-            .param("cycle", subscription.cycle.name)
-            .param("status", subscription.status.name)
+            .enumParam("plan", subscription.plan.name)
+            .enumParam("cycle", subscription.cycle.name)
+            .enumParam("status", subscription.status.name)
             .param("asaasCustomerId", subscription.asaasCustomerId)
             .param("asaasSubscriptionId", subscription.asaasSubscriptionId)
-            .param("billingType", subscription.billingType?.name)
+            .enumParam("billingType", subscription.billingType?.name)
             .param("currentPeriodEnd", Timestamp.from(subscription.currentPeriodEnd))
             .param("canceledAt", subscription.canceledAt?.let(Timestamp::from))
-            .param("pendingPlan", subscription.pendingPlan?.name)
+            .enumParam("pendingPlan", subscription.pendingPlan?.name)
             .param("pendingPlanEffectiveAt", subscription.pendingPlanEffectiveAt?.let(Timestamp::from))
             .param("couponId", subscription.couponId)
             .param("couponCyclesRemaining", subscription.couponCyclesRemaining)
             .param("pastDueSince", subscription.pastDueSince?.let(Timestamp::from))
             .param("firstConfirmedAt", subscription.firstConfirmedAt?.let(Timestamp::from))
-            .param("pendingUpgradePlan", subscription.pendingUpgradePlan?.name)
+            .enumParam("pendingUpgradePlan", subscription.pendingUpgradePlan?.name)
             .param("pendingUpgradeChargeId", subscription.pendingUpgradeChargeId)
             .param("lastConfirmedPaymentId", subscription.lastConfirmedPaymentId)
+
+    /**
+     * PostgreSQL infers a native enum from an untyped parameter. VARCHAR bindings
+     * fail after V39 (`subscription_plan = character varying`).
+     */
+    private fun org.springframework.jdbc.core.simple.JdbcClient.StatementSpec.enumParam(
+        name: String,
+        value: String?,
+    ): org.springframework.jdbc.core.simple.JdbcClient.StatementSpec =
+        param(name, value, Types.OTHER)
 
     private fun mapSubscription(rs: java.sql.ResultSet): Subscription = Subscription(
         ownerUserId = rs.getObject("owner_user_id", UUID::class.java),
