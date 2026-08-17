@@ -155,6 +155,10 @@ button { font: inherit; cursor: pointer; }
 .metodo[disabled] { color: var(--saqz-disabled-fg); background: var(--saqz-canvas); cursor: default; }
 .metodo small { display: block; font-size: 11px; font-weight: 500; color: var(--saqz-placeholder); }
 
+/* Cartão */
+.linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.linha-dupla label { margin-top: 14px; }
+
 /* Cupom */
 .linha-cupom { display: flex; gap: 8px; }
 .linha-cupom input { flex: 1; text-transform: uppercase; }
@@ -277,9 +281,36 @@ button { font: inherit; cursor: pointer; }
       <div class="erro" id="cupom-erro"></div>
       <label>Forma de pagamento</label>
       <div class="metodos">
-        <button type="button" class="metodo" aria-pressed="true">Pix</button>
-        <!-- Habilitado no VUL-210 -->
-        <button type="button" class="metodo" disabled>Cartão<small>em breve</small></button>
+        <button type="button" class="metodo" data-metodo="PIX" aria-pressed="true">Pix</button>
+        <button type="button" class="metodo" data-metodo="CREDIT_CARD" aria-pressed="false">Cartão<small>crédito</small></button>
+      </div>
+      <div id="bloco-cartao" hidden>
+        <label for="cartao-numero">Número do cartão</label>
+        <input id="cartao-numero" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000">
+        <div class="linha-dupla">
+          <div>
+            <label for="cartao-validade">Validade</label>
+            <input id="cartao-validade" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA">
+          </div>
+          <div>
+            <label for="cartao-cvv">Código de segurança</label>
+            <input id="cartao-cvv" inputmode="numeric" autocomplete="cc-csc" placeholder="CVV">
+          </div>
+        </div>
+        <label for="cartao-titular">Nome como está no cartão</label>
+        <input id="cartao-titular" autocomplete="cc-name" placeholder="ANA SILVA">
+        <div class="linha-dupla">
+          <div>
+            <label for="cartao-cep">CEP</label>
+            <input id="cartao-cep" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000">
+          </div>
+          <div>
+            <label for="cartao-numero-endereco">Número</label>
+            <input id="cartao-numero-endereco" inputmode="numeric" autocomplete="off" placeholder="123">
+          </div>
+        </div>
+        <label for="cartao-telefone">Telefone com DDD</label>
+        <input id="cartao-telefone" inputmode="tel" autocomplete="tel" placeholder="(11) 90000-0000">
       </div>
       <div class="resumo"><span>Total</span><strong id="dados-total"></strong></div>
       <button class="btn" type="submit" id="botao-pagar">Gerar Pix</button>
@@ -302,6 +333,16 @@ button { font: inherit; cursor: pointer; }
   <div class="erro" id="pix-erro"></div>
 </section>
 
+<section id="estado-cartao" hidden>
+  <h1>Pagamento autorizado</h1>
+  <p class="sub" id="cartao-resumo"></p>
+  <div class="card">
+    <div class="centro"><div class="icone">💳</div></div>
+    <p class="sub">O pagamento foi aprovado. Estamos confirmando com a operadora — isso costuma levar alguns segundos.</p>
+    <div class="aguardando"><span class="pulso"></span><span>Aguardando a confirmação do pagamento…</span></div>
+  </div>
+</section>
+
 <section id="estado-sucesso" hidden>
   <div class="card centro">
     <div class="icone">🎉</div>
@@ -321,5 +362,6 @@ button { font: inherit; cursor: pointer; }
 
 <p class="rodape-sessao" id="rodape-sessao" hidden></p>
 </main>
+<script src="cartao.js"></script>
 <script src="assinar.js"></script>
 </body></html>
