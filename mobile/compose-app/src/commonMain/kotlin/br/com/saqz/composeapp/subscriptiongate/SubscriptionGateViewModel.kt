@@ -69,16 +69,24 @@ class SubscriptionGateViewModel(
             cancelOperation()
         } else if (visible && !authorized) {
             startPolling()
-            checkAuthorization()
+            checkAuthorization(showsProgress = false)
         }
     }
 
-    private fun checkAuthorization() {
+    /**
+     * [showsProgress] separa a consulta que a pessoa pediu da que roda sozinha. Só a
+     * primeira pinta Verificando/Sem autorização; a automática segue muda, senão o tique
+     * de 20 s apaga o "Informações enviadas" que a pessoa acabou de receber. Autorização
+     * concedida aparece dos dois jeitos — é ela que libera a criação.
+     */
+    private fun checkAuthorization(showsProgress: Boolean = true) {
         if (!visible || !foreground || authorized || operationActive) return
         val generation = lifecycleGeneration
         startOperation {
             if (!isCurrent(generation)) return@startOperation
-            update { it.copy(status = SubscriptionGateStatus.Verifying, failure = null) }
+            if (showsProgress) {
+                update { it.copy(status = SubscriptionGateStatus.Verifying, failure = null) }
+            }
             try {
                 val canCreateGroup = entitlement.canCreateGroup()
                 if (!isCurrent(generation)) return@startOperation
@@ -89,7 +97,7 @@ class SubscriptionGateViewModel(
                         it.copy(status = SubscriptionGateStatus.Authorized, failure = null)
                     }
                     emit(SubscriptionGateEffect.AuthorizationGranted)
-                } else {
+                } else if (showsProgress) {
                     update {
                         it.copy(status = SubscriptionGateStatus.NotAuthorized, failure = null)
                     }
@@ -97,7 +105,7 @@ class SubscriptionGateViewModel(
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Exception) {
-                if (!isCurrent(generation)) return@startOperation
+                if (!isCurrent(generation) || !showsProgress) return@startOperation
                 update {
                     it.copy(
                         status = SubscriptionGateStatus.Failed,
@@ -193,7 +201,7 @@ class SubscriptionGateViewModel(
         pollingJob = viewModelScope.launch {
             while (isActive && visible && foreground && !authorized) {
                 delay(POLL_INTERVAL_MILLIS)
-                if (visible && foreground && !authorized) checkAuthorization()
+                if (visible && foreground && !authorized) checkAuthorization(showsProgress = false)
             }
         }
     }

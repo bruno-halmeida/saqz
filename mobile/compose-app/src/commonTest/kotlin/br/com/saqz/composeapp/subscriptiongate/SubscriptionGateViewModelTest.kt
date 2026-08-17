@@ -151,6 +151,66 @@ class SubscriptionGateViewModelTest {
     }
 
     @Test
+    fun `automatic polling never erases the send confirmation`() = runTest {
+        val entitlement = FakeEntitlement(false)
+        withViewModel(
+            entitlement = entitlement,
+            purchase = FakePurchaseInformationGateway(SaqzResult.Success(Unit)),
+            customer = FakeCustomerInfoProvider(CustomerInfo("Ana", "ana.silva@example.com")),
+        ) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+            viewModel.onIntent(SubscriptionGateIntent.RequestPurchaseInformation)
+            runCurrent()
+            assertEquals(SubscriptionGateStatus.Sent, viewModel.state.value.status)
+
+            advanceTimeBy(SubscriptionGateViewModel.POLL_INTERVAL_MILLIS)
+            runCurrent()
+
+            assertEquals(2, entitlement.calls)
+            assertEquals(SubscriptionGateStatus.Sent, viewModel.state.value.status)
+            assertEquals("a***a@example.com", viewModel.state.value.maskedEmail)
+        }
+    }
+
+    @Test
+    fun `manual refresh still shows the verification progress`() = runTest {
+        val entitlement = FakeEntitlement(false).apply { pending = CompletableDeferred() }
+        withViewModel(entitlement = entitlement) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+            checkNotNull(entitlement.pending).complete(false)
+            runCurrent()
+            entitlement.pending = CompletableDeferred()
+
+            viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization)
+            runCurrent()
+
+            assertEquals(SubscriptionGateStatus.Verifying, viewModel.state.value.status)
+        }
+    }
+
+    @Test
+    fun `foreground bounce during a check never lets two requests overlap`() = runTest {
+        val entitlement = FakeEntitlement(false).apply { pending = CompletableDeferred() }
+        withViewModel(entitlement = entitlement) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+
+            // Sem runCurrent entre os dois: o cancelamento do primeiro check ainda não
+            // rodou o `finally` quando o segundo já começou.
+            viewModel.onIntent(SubscriptionGateIntent.ForegroundChanged(false))
+            viewModel.onIntent(SubscriptionGateIntent.ForegroundChanged(true))
+            runCurrent()
+
+            viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization)
+            runCurrent()
+
+            assertEquals(1, entitlement.maxActiveCalls)
+        }
+    }
+
+    @Test
     fun `purchase request exposes sending state until the server confirms delivery`() = runTest {
         val purchase = FakePurchaseInformationGateway(SaqzResult.Success(Unit)).apply {
             pending = CompletableDeferred()
