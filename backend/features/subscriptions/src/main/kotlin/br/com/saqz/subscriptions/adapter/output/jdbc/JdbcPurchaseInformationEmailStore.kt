@@ -3,6 +3,7 @@ package br.com.saqz.subscriptions.adapter.output.jdbc
 import br.com.saqz.subscriptions.application.PurchaseInformationReservation
 import br.com.saqz.subscriptions.application.PurchaseInformationReservationPort
 import br.com.saqz.subscriptions.application.PurchaseInformationReservationResult
+import br.com.saqz.subscriptions.application.SendPurchaseInformation
 import br.com.saqz.subscriptions.application.SubscriptionEmailLookup
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
@@ -239,8 +240,11 @@ class JdbcPurchaseInformationEmailStore(
 
     companion object {
         val DEFAULT_STALE_RESERVATION_AFTER: Duration = Duration.ofMinutes(1)
-        val DEDUPE_WINDOW: Duration = Duration.ofMinutes(15)
-        val SUCCESS_WINDOW: Duration = Duration.ofHours(1)
-        const val MAX_SUCCESSFUL_SENDS = 3
+
+        // A política é do caso de uso — o KDoc da porta manda aplicar estes valores aqui.
+        // Copiá-los deixaria dois donos, e só a cópia deste adapter valeria em produção.
+        val DEDUPE_WINDOW: Duration = SendPurchaseInformation.DEDUPE_WINDOW
+        val SUCCESS_WINDOW: Duration = SendPurchaseInformation.RATE_LIMIT_WINDOW
+        const val MAX_SUCCESSFUL_SENDS = SendPurchaseInformation.MAX_SUCCESSFUL_SENDS
     }
 }
