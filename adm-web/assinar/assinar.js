@@ -1,6 +1,7 @@
 // Página de assinatura (VUL-209): login Firebase (mesma conta do app), planos,
-// checkout Pix e poll de recibos. Config e API base vêm de /assets/firebase-config.js,
-// como no painel; sem o gate de admin — qualquer usuário autenticado passa.
+// checkout Pix ou cartão (VUL-210) e poll de recibos. Config e API base vêm de
+// /assets/firebase-config.js, como no painel; sem o gate de admin — qualquer usuário
+// autenticado passa.
 (function () {
   "use strict";
 
@@ -18,8 +19,10 @@
   var CHECKOUT_KEY = "saqz-assinar-checkout";
   var POLL_MS = 5000;
 
+  var cartao = window.SaqzCartao;
   var planos = [];
   var cicloEscolhido = "MONTHLY";
+  var metodoEscolhido = "PIX";
   var planoEscolhido = null;
   var cupomAplicado = null;
   var pollTimer = null;
@@ -28,7 +31,7 @@
   function $(id) { return document.getElementById(id); }
 
   function mostrar(estado) {
-    ["carregando", "login", "assinante", "planos", "dados", "pix", "sucesso", "erro"].forEach(function (nome) {
+    ["carregando", "login", "assinante", "planos", "dados", "pix", "cartao", "sucesso", "erro"].forEach(function (nome) {
       $("estado-" + nome).hidden = nome !== estado;
     });
     var user = auth.currentUser;
@@ -171,6 +174,10 @@
     $("cupom-ok").classList.remove("visivel");
     mostrarErro("cupom-erro", "");
     mostrarErro("dados-erro", "");
+    // Cada entrada na tela de dados começa no Pix e sem cartão nenhum em memória:
+    // trocar de plano não pode carregar dado de cartão da tentativa anterior.
+    limparFormCartao();
+    selecionarMetodo("PIX");
     $("dados-titulo").textContent = titulo;
     $("dados-resumo-plano").textContent =
       "Plano " + plano.name + " · " + (ciclo === "ANNUAL" ? "anual" : "mensal");
@@ -237,30 +244,98 @@
       });
   }
 
+  // ---- Cartão (VUL-210) ----
+  function lerFormCartao() {
+    return {
+      numero: $("cartao-numero").value,
+      validade: $("cartao-validade").value,
+      cvv: $("cartao-cvv").value,
+      titular: $("cartao-titular").value,
+      cep: $("cartao-cep").value,
+      numeroEndereco: $("cartao-numero-endereco").value,
+      telefone: $("cartao-telefone").value,
+    };
+  }
+
+  // O cartão sai da memória assim que deixa de ser necessário. Ele nunca chegou a
+  // localStorage nem à URL: só existiu nestes inputs e no corpo do POST.
+  function limparFormCartao() {
+    ["numero", "validade", "cvv", "titular", "cep", "numero-endereco", "telefone"]
+      .forEach(function (campo) { $("cartao-" + campo).value = ""; });
+  }
+
+  function atualizarRotuloPagar() {
+    $("botao-pagar").textContent =
+      metodoEscolhido === "CREDIT_CARD" ? "Pagar com cartão" : "Gerar Pix";
+  }
+
+  function selecionarMetodo(metodo) {
+    metodoEscolhido = metodo;
+    document.querySelectorAll(".metodo").forEach(function (botao) {
+      botao.setAttribute("aria-pressed", String(botao.dataset.metodo === metodo));
+    });
+    $("bloco-cartao").hidden = metodo !== "CREDIT_CARD";
+    mostrarErro("dados-erro", "");
+    atualizarRotuloPagar();
+  }
+
   function pagar() {
     var cpf = $("dados-cpf").value.replace(/\D/g, "");
     if (cpf.length !== 11 && cpf.length !== 14) {
       mostrarErro("dados-erro", "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
       return;
     }
+    var comCartao = metodoEscolhido === "CREDIT_CARD";
+    var formCartao = comCartao ? lerFormCartao() : null;
+    if (comCartao) {
+      var invalido = cartao.validar(formCartao);
+      if (invalido) {
+        mostrarErro("dados-erro", invalido);
+        return;
+      }
+    }
     mostrarErro("dados-erro", "");
     var botao = $("botao-pagar");
     botao.disabled = true;
+    // Antifraude é lento e o backend espera até 60s nesse caminho: rótulo honesto e
+    // nenhum reenvio automático. Retry é sempre manual, com o mesmo requestId — o
+    // backend compara o payload e rotaciona a chave de idempotência sozinho.
+    if (comCartao) botao.textContent = "Autorizando…";
     var user = auth.currentUser;
     checkoutAtual = checkoutPara(planoEscolhido.plano.id, planoEscolhido.ciclo);
-    apiJson("/subscriptions", {
+    var corpo = {
       requestId: checkoutAtual.requestId,
       planId: planoEscolhido.plano.id,
       cycle: planoEscolhido.ciclo,
-      billingType: "PIX",
+      billingType: metodoEscolhido,
       name: user.displayName || user.email,
       email: user.email,
       cpfCnpj: cpf,
       couponCode: cupomAplicado ? cupomAplicado.code : null,
-    })
+    };
+    if (comCartao) {
+      var blocos = cartao.blocosDoPagamento(formCartao, {
+        name: corpo.name,
+        email: corpo.email,
+        cpfCnpj: cpf,
+      });
+      corpo.creditCard = blocos.creditCard;
+      corpo.creditCardHolderInfo = blocos.creditCardHolderInfo;
+    }
+    apiJson("/subscriptions", corpo)
       .then(function (response) {
         if (response.status === 201) {
-          return response.json().then(mostrarPix);
+          return response.json().then(comCartao ? mostrarCartao : mostrarPix);
+        }
+        // Recusa tem shape próprio pinado com o mobile ({error, reason, message}),
+        // não o ApiProblem — por isso vem antes do tratamento genérico.
+        if (response.status === 402) {
+          return response.json().catch(function () { return {}; }).then(function (recusa) {
+            // A descrição da Asaas já vem em PT-BR e já diz que foi recusa: prefixar
+            // "Cartão recusado:" só faria a frase gaguejar.
+            mostrarErro("dados-erro", recusa.message ||
+              "Cartão recusado. Confira os dados ou tente outro cartão.");
+          });
         }
         return response.json().catch(function () { return {}; }).then(function (problema) {
           if (problema.code === "SUBSCRIPTION_CONFLICT") return iniciar();
@@ -288,7 +363,21 @@
       })
       .finally(function () {
         botao.disabled = false;
+        atualizarRotuloPagar();
       });
+  }
+
+  // Sem argumento de propósito: ao contrário do Pix, a resposta não traz nada para a
+  // tela — o cartão já foi autorizado e o que falta é o recibo do webhook.
+  function mostrarCartao() {
+    var total = cupomAplicado ? cupomAplicado.finalPriceCents : precoLista();
+    $("cartao-resumo").textContent =
+      "Plano " + planoEscolhido.plano.name + " · " + reais(total) +
+      (planoEscolhido.ciclo === "ANNUAL" ? "/ano" : "/mês");
+    // Autorizado: os dados do cartão não servem mais para nada nesta aba.
+    limparFormCartao();
+    mostrar("cartao");
+    iniciarPoll();
   }
 
   function mostrarPix(resposta) {
@@ -346,7 +435,7 @@
   }
 
   document.addEventListener("visibilitychange", function () {
-    if (!$("estado-pix").hidden) {
+    if (!$("estado-pix").hidden || !$("estado-cartao").hidden) {
       if (document.hidden) pararPoll();
       else iniciarPoll();
     }
@@ -380,6 +469,19 @@
       });
       renderizarPlanos();
     });
+  });
+  document.querySelectorAll(".metodo").forEach(function (botao) {
+    botao.addEventListener("click", function () { selecionarMetodo(botao.dataset.metodo); });
+  });
+  [
+    ["cartao-numero", cartao.mascaraNumero],
+    ["cartao-validade", cartao.mascaraValidade],
+    ["cartao-cvv", cartao.mascaraCvv],
+    ["cartao-cep", cartao.mascaraCep],
+    ["cartao-telefone", cartao.mascaraTelefone],
+  ].forEach(function (par) {
+    var campo = $(par[0]);
+    campo.addEventListener("input", function () { campo.value = par[1](campo.value); });
   });
   $("botao-cupom").addEventListener("click", validarCupom);
   $("form-dados").addEventListener("submit", function (event) {
