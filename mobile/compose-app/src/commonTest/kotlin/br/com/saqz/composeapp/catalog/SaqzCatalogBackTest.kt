@@ -16,7 +16,7 @@ import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
 import androidx.navigationevent.NavigationEventInput
 import br.com.saqz.composeapp.shell.SaqzAppShell
-import br.com.saqz.composeapp.shell.SaqzShellCatalogTag
+import br.com.saqz.composeapp.shell.SaqzShellProfileTab
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -43,8 +43,8 @@ class SaqzCatalogBackTest {
         override val navigationEventDispatcher: NavigationEventDispatcher,
     ) : NavigationEventDispatcherOwner
 
-    // VUL-193: o shell abre na aba Início, e o placeholder que carrega "Sair" e a entrada do
-    // catálogo passou a ser o conteúdo da aba Perfil.
+    // VUL-193: o shell abre na aba Início. Os testes que precisam da Perfil depois do
+    // catálogo fechar pedem a aba explicitamente — a abertura visível saiu da Perfil.
     private fun ComposeUiTest.openProfileTab() {
         onNodeWithText("Perfil").performClick()
         waitForIdle()
@@ -63,14 +63,13 @@ class SaqzCatalogBackTest {
                 SaqzTheme {
                     SaqzAppShell(
                         catalogEnabled = true,
+                        initialCatalogOpen = true,
+                        initialTab = SaqzShellProfileTab,
                         profileTab = { Text("Você está conectado.") },
                     )
                 }
             }
         }
-        openProfileTab()
-        onNodeWithTag(SaqzShellCatalogTag).performClick()
-        waitForIdle()
         onNodeWithTag(SaqzCatalogTags.Root).assertIsDisplayed()
 
         input.pressBack()
@@ -103,14 +102,13 @@ class SaqzCatalogBackTest {
                 SaqzTheme {
                     SaqzAppShell(
                         catalogEnabled = true,
+                        initialCatalogOpen = true,
+                        initialTab = SaqzShellProfileTab,
                         profileTab = { Text("Você está conectado.") },
                     )
                 }
             }
         }
-        openProfileTab()
-        onNodeWithTag(SaqzShellCatalogTag).performClick()
-        waitForIdle()
         onNodeWithTag(SaqzCatalogTags.SheetTrigger).performScrollTo().performClick()
         waitForIdle()
         onNodeWithText("Sair da conta?").assertIsDisplayed()

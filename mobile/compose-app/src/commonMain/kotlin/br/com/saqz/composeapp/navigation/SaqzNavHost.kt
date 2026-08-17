@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.navigation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
@@ -351,6 +352,9 @@ internal fun SaqzNavHost(
                                 )
                             },
                             refreshVersion = profileRefreshVersion,
+                            // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
+                            // descia de novo e o título Perfil ficava um inset abaixo da faixa.
+                            topBarWindowInsets = WindowInsets(),
                         )
                     },
                     banner = { onOpenHome ->

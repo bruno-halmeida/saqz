@@ -4,9 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
@@ -25,17 +25,13 @@ import br.com.saqz.composeapp.resources.shell_nav_finance
 import br.com.saqz.composeapp.resources.shell_nav_groups
 import br.com.saqz.composeapp.resources.shell_nav_home
 import br.com.saqz.composeapp.resources.shell_nav_profile
-import br.com.saqz.composeapp.resources.shell_open_catalog
 import br.com.saqz.designsystem.SaqzBottomNav
-import br.com.saqz.designsystem.SaqzButton
-import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
 internal const val SaqzShellContentTag = "saqz-shell-content"
-internal const val SaqzShellCatalogTag = "saqz-shell-catalog"
 internal const val SaqzShellTabContentTag = "saqz-shell-tab-content"
 
 internal const val SaqzShellGroupsTab = "grupos"
@@ -60,8 +56,9 @@ private const val SaqzShellFinanceTab = "financeiro"
  *
  * Início é a aba inicial do shell (VUL-193): o login cai aqui, e [homeTab] recebe a Home do
  * Fluxo 6. Perfil recebe o conteúdo real por [profileTab]; Financeiro recebe o caixa geral
- * por [financeTab]; a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra
- * e da entrada opcional do catálogo de desenvolvimento.
+ * por [financeTab]; a saída de sessão pertence à 7a/7e, e o shell só continua dono da barra.
+ * O catálogo de desenvolvimento (VUL-51) não tem mais botão na Perfil: a abertura vira
+ * easter egg, e [catalogEnabled] continua o gate de ambiente até o gesto existir.
  *
  * A barra tem **três abas para membro comum** e **quatro para quem administra grupo**
  * (VUL-200): [financeTabVisible] acende a aba Financeiro. Quem decide é o host — o shell não
@@ -77,6 +74,7 @@ private const val SaqzShellFinanceTab = "financeiro"
 internal fun SaqzAppShell(
     modifier: Modifier = Modifier,
     catalogEnabled: Boolean = false,
+    initialCatalogOpen: Boolean = false,
     initialTab: String = SaqzShellHomeTab,
     financeTabVisible: Boolean = false,
     groupsTab: @Composable () -> Unit = {},
@@ -99,7 +97,10 @@ internal fun SaqzAppShell(
     // dele prometem a lista de grupos, e o `resetTo` do shell agora carrega essa intenção.
     // `rememberSaveable` semeia só na primeira composição — trocar `initialTab` depois não
     // sobrescreve a aba que a pessoa escolheu, e a rotação devolve a aba em uso.
-    var catalogOpen by rememberSaveable { mutableStateOf(false) }
+    // ponytail: sem botão na Perfil. `catalogOpen` espera o easter egg; até o gesto ter
+    // contrato, só [initialCatalogOpen] liga — é o que os testes de back usam. Upgrade: o
+    // gesto chama `catalogOpen = true` aqui, ainda atrás de [catalogEnabled].
+    var catalogOpen by rememberSaveable { mutableStateOf(initialCatalogOpen) }
     var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
     val navItems = shellNavItems(financeTabVisible)
     // VUL-200: a aba ativa é sempre uma aba que a barra desenha; a que não está lá cai na
@@ -120,36 +121,24 @@ internal fun SaqzAppShell(
         return
     }
     Column(
-        // O inset do topo é do contêiner que não tem `SaqzTopAppBar`. O `MainActivity` chama
-        // `enableEdgeToEdge()`: a lista de grupos (2n) começa no `GroupListHeader`, então o
-        // shell aplica o inset nessa aba; a 7a começa com `SaqzTopAppBar`, que já o aplica.
-        // A faixa recebe o inset no próprio slot quando Perfil está ativa. O rodapé fica com
-        // o `SaqzBottomNav`, que já trata `navigationBars`.
+        // O inset do topo é do shell, em toda aba. O `MainActivity` chama `enableEdgeToEdge()`:
+        // a faixa e o conteúdo precisam nascer abaixo da status bar, e o `windowInsetsPadding`
+        // do Column **consome** o inset para os filhos. Sem isso a 7a (`SaqzTopAppBar`)
+        // aplicava o mesmo inset de novo — irmãos não compartilham o consumo — e o título
+        // Perfil caía um status bar abaixo da faixa. Destino empilhado fora do shell continua
+        // dono do próprio inset. O rodapé fica com o `SaqzBottomNav` (`navigationBars`).
         modifier = modifier
             .fillMaxSize()
             .background(SaqzTheme.colors.background)
-            .then(
-                if (activeTab == SaqzShellGroupsTab) {
-                    Modifier.windowInsetsPadding(WindowInsets.statusBars)
-                } else {
-                    Modifier
-                },
-            ),
+            .windowInsetsPadding(WindowInsets.statusBars),
     ) {
         // Acima do conteúdo e fora do `Box` com peso: a faixa empurra a aba para baixo em
         // vez de flutuar sobre ela — nada do que a pessoa ia tocar fica coberto.
-        Box(
-            modifier = if (activeTab == SaqzShellGroupsTab) {
-                Modifier
-            } else {
-                Modifier.windowInsetsPadding(WindowInsets.statusBars)
-            },
-        ) {
-            banner { selectedTab = SaqzShellHomeTab }
-        }
+        banner { selectedTab = SaqzShellHomeTab }
         Box(
             modifier = Modifier
                 .weight(1f)
+                .consumeWindowInsets(WindowInsets.statusBars)
                 .testTag(SaqzShellTabContentTag),
         ) {
             Box(
@@ -169,17 +158,6 @@ internal fun SaqzAppShell(
                     else -> Unit
                 }
             }
-        }
-        if (catalogEnabled && activeTab == SaqzShellProfileTab) {
-            SaqzButton(
-                label = stringResource(Res.string.shell_open_catalog),
-                onClick = { catalogOpen = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = SaqzTheme.metrics.horizontalPadding)
-                    .testTag(SaqzShellCatalogTag),
-                variant = SaqzButtonVariant.Secondary,
-            )
         }
         SaqzBottomNav(
             // Sem `when`: a barra só emite id que ela mesma desenha, e todo item da barra
@@ -224,5 +202,5 @@ private fun SaqzAppShellAdminPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun SaqzAppShellDevPreview() = SaqzTheme {
-    SaqzAppShell(catalogEnabled = true)
+    SaqzAppShell(catalogEnabled = true, initialCatalogOpen = true)
 }

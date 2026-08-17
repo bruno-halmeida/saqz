@@ -1,8 +1,13 @@
 package br.com.saqz.composeapp.shell
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,7 +20,9 @@ import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
+import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -124,6 +131,35 @@ class EmailVerificationBannerTest {
         onNodeWithTag(SaqzEmailBannerTag).assertIsDisplayed()
     }
 
+    /**
+     * Com a faixa na Perfil, o `SaqzTopAppBar` não pode reaplicar o inset da status bar:
+     * a faixa já nasceu abaixo dela, e um segundo inset empurrava o título para baixo.
+     */
+    @Test
+    fun theProfileTopBarSitsFlushUnderTheBanner() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SaqzAppShell(
+                    initialTab = SaqzShellProfileTab,
+                    banner = { EmailVerificationBanner(onRefresh = {}, auth = FakeAuthPort()) },
+                    profileTab = {
+                        Column {
+                            SaqzTopAppBar(
+                                title = "Perfil",
+                                windowInsets = WindowInsets(),
+                                modifier = Modifier.testTag(ProfileTopBarTag),
+                            )
+                            Text(ProfileTab)
+                        }
+                    },
+                )
+            }
+        }
+        val bannerBottom = onNodeWithTag(SaqzEmailBannerTag).getBoundsInRoot().bottom
+        val topBarTop = onNodeWithTag(ProfileTopBarTag).getBoundsInRoot().top
+        assertEquals(expected = 0f, actual = abs((topBarTop - bannerBottom).value), absoluteTolerance = 1f)
+    }
+
     /** [result] nulo é o envio que fica no ar: o callback nunca volta. */
     private class FakeAuthPort(
         private val result: OperationResult? = OperationResult.Success,
@@ -151,6 +187,7 @@ class EmailVerificationBannerTest {
         const val GroupsTab = "conteudo-grupos"
         const val HomeTab = "conteudo-inicio"
         const val ProfileTab = "conteudo-perfil"
+        const val ProfileTopBarTag = "shell-profile-topbar"
         const val Unverified = "Confirme seu e-mail para não perder o acesso à sua conta."
         const val Resent = "E-mail reenviado. Confira sua caixa de entrada."
         const val Failed = "Não foi possível reenviar agora. Tente de novo em instantes."
