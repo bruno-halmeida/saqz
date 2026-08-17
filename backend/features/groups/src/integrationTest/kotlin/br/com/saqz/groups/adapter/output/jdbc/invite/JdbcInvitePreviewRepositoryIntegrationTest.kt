@@ -175,7 +175,7 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
                 statement.setTimestamp(4, Timestamp.from(startsAt.minusSeconds(3_600)))
                 statement.setString(5, venueName)
                 statement.setString(6, court)
-                statement.setString(7, status)
+                statement.setObject(7, status, java.sql.Types.OTHER)
                 statement.executeUpdate()
             }
         }

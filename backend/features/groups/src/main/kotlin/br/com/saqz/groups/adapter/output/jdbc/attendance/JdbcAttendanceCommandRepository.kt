@@ -12,6 +12,7 @@ import br.com.saqz.groups.application.game.GameAttendanceCounts
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -198,7 +199,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                 .param("game", record.gameId)
                 .param("group", record.groupId)
                 .param("member", record.memberId)
-                .param("status", record.status.name)
+                .param("status", record.status.name, Types.OTHER)
                 .param("sequence", record.waitlistSequence, java.sql.Types.BIGINT)
                 .param("responded", Timestamp.from(record.respondedAt))
                 .param("updated", Timestamp.from(record.updatedAt))
@@ -214,9 +215,9 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .param("group", event.groupId)
             .param("member", event.memberId)
             .param("actor", event.actorId)
-            .param("source", event.source.name)
-            .param("old", event.oldStatus?.name, java.sql.Types.VARCHAR)
-            .param("new", event.newStatus.name)
+            .param("source", event.source.name, Types.OTHER)
+            .param("old", event.oldStatus?.name, Types.OTHER)
+            .param("new", event.newStatus.name, Types.OTHER)
             .param("reason", event.reason, java.sql.Types.VARCHAR)
             .param("occurred", Timestamp.from(event.occurredAt))
             .param("request", event.requestId, java.sql.Types.OTHER)

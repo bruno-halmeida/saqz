@@ -150,7 +150,7 @@ class JdbcAttendanceShareSnapshotIntegrationTest {
                 statement.setObject(1, game)
                 statement.setObject(2, group)
                 statement.setObject(3, member)
-                statement.setString(4, status)
+                statement.setObject(4, status, java.sql.Types.OTHER)
                 statement.setObject(5, waitlistSequence)
                 statement.setString(6, displayName)
                 statement.executeUpdate()

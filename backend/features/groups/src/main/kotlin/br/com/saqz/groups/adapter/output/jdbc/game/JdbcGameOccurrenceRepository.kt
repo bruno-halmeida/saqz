@@ -154,7 +154,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             .param("capacity", snapshot.capacity)
             .param("gameFeeCents", snapshot.gameFeeCents, Types.BIGINT)
             .param("notes", snapshot.notes, Types.VARCHAR)
-            .param("status", game.status.name)
+            .param("status", game.status.name, Types.OTHER)
             .param("detachedFromSeries", game.detachedFromSeries)
     }
 
