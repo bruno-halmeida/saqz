@@ -150,13 +150,13 @@ class JdbcFinanceStatementRepository(
             FROM (
                 SELECT charges.id,
                        'CHARGE' AS type,
-                       'IN' AS direction,
-                       CASE charges.kind
+                       'IN'::text AS direction,
+                       CASE charges.kind::text
                            WHEN 'MONTHLY' THEN 'Mensalidade · ' || charges.member_display_name
                            ELSE 'Cobrança · ' || charges.member_display_name
                        END AS title,
-                       charges.kind AS category,
-                       charges.paid_method,
+                       charges.kind::text AS category,
+                       charges.paid_method::text AS paid_method,
                        paid.occurred_at,
                        charges.amount_cents AS amount_cents
                 FROM paid_charge_events paid
@@ -170,12 +170,12 @@ class JdbcFinanceStatementRepository(
                 UNION ALL
                 SELECT expenses.id,
                        'EXPENSE' AS type,
-                       expenses.direction,
+                       expenses.direction::text,
                        expenses.description AS title,
-                       expenses.category,
-                       NULL::varchar AS paid_method,
+                       expenses.category::text,
+                       NULL::text AS paid_method,
                        expenses.expense_date::timestamp AT TIME ZONE groups.time_zone AS occurred_at,
-                       CASE expenses.direction
+                       CASE expenses.direction::text
                            WHEN 'OUT' THEN -expenses.amount_cents
                            ELSE expenses.amount_cents
                        END AS amount_cents
@@ -186,7 +186,7 @@ class JdbcFinanceStatementRepository(
                   AND expenses.status = 'ACTIVE'
                   AND expenses.expense_date >= :monthStart
                   AND expenses.expense_date < :monthEnd
-                  AND (:direction IS NULL OR expenses.direction = :direction)
+                  AND (:direction IS NULL OR expenses.direction::text = :direction)
             ) ledger
             ORDER BY ledger.occurred_at DESC, ledger.id DESC
             LIMIT :limit OFFSET :offset
