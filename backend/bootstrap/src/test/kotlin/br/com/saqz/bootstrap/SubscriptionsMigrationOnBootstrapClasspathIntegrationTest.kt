@@ -23,6 +23,9 @@ class SubscriptionsMigrationOnBootstrapClasspathIntegrationTest {
         assertTrue(typeExists("subscription_cycle"))
         assertTrue(typeExists("subscription_status"))
         assertTrue(typeExists("subscription_billing_type"))
+        assertTrue(typeExists("game_status"))
+        assertTrue(typeExists("attendance_status"))
+        assertTrue(typeExists("attendance_source"))
     }
 
     private fun tableExists(table: String): Boolean =

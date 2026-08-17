@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.game.recurrence.OccurrenceMaterializationR
 import java.sql.PreparedStatement
 import java.sql.Statement
 import java.sql.Timestamp
+import java.sql.Types
 import javax.sql.DataSource
 
 class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource) : OccurrenceMaterializationRepository {
@@ -55,7 +56,7 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
         setString(16, slot.venue.court)
         setInt(17, slot.capacity)
         setObject(18, slot.gameFeeCents)
-        setString(19, value.status.name)
+        setObject(19, value.status.name, Types.OTHER)
         setTimestamp(20, Timestamp.from(value.createdAt))
         setTimestamp(21, Timestamp.from(value.createdAt))
     }

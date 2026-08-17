@@ -12,8 +12,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.sql.Connection
-import java.time.Instant
 import java.time.Duration
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -60,7 +61,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     fun `first rotation inserts exact digest and creator`() {
         val fixture = fixture("insert")
         val digest = digest(1)
-        val expiresAt = Instant.parse("2026-07-16T18:00:00Z")
+        val expiresAt = futureExpiry()
 
         transaction.inTransaction {
             repository.rotate(command(fixture, digest, expiresAt))
@@ -75,7 +76,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     @Test
     fun `metadata lookup returns expiration creation time and creator display name`() {
         val fixture = fixture("metadata")
-        val expiresAt = Instant.parse("2026-08-16T18:00:00Z")
+        val expiresAt = futureExpiry()
 
         rotate(fixture, digest(1), expiresAt)
 
@@ -230,7 +231,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         assertFailsWith<RuntimeException> {
             transaction.inTransaction {
                 repository.rotate(
-                    RotateInviteCommand(missingGroup, digest(1), creator, Instant.parse("2026-07-16T18:00:00Z")),
+                    RotateInviteCommand(missingGroup, digest(1), creator, futureExpiry()),
                 )
             }
         }
@@ -248,7 +249,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     private fun rotate(
         fixture: Fixture,
         digest: InviteTokenDigest,
-        expiresAt: Instant = Instant.parse("2026-07-16T18:00:00Z"),
+        expiresAt: Instant = futureExpiry(),
     ) = transaction.inTransaction {
         repository.rotate(command(fixture, digest, expiresAt))
     }
@@ -256,13 +257,16 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     private fun command(
         fixture: Fixture,
         digest: InviteTokenDigest,
-        expiresAt: Instant = Instant.parse("2026-07-16T18:00:00Z"),
+        expiresAt: Instant = futureExpiry(),
     ) = RotateInviteCommand(
         groupId = fixture.group,
         digest = digest,
         createdByUserId = fixture.owner,
         expiresAt = expiresAt,
     )
+
+    // timestamptz guarda microssegundos; sem truncar, Instant.now() (nanos) não bate no round-trip.
+    private fun futureExpiry(): Instant = Instant.now().plus(Duration.ofDays(7)).truncatedTo(ChronoUnit.MICROS)
 
     private fun digest(seed: Int) = InviteTokenDigest.from(ByteArray(32) { index -> (seed + index).toByte() })
 
