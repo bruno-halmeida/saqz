@@ -186,6 +186,59 @@ class SubscriptionGateViewModelTest {
     }
 
     @Test
+    fun `rate limited request reports sent instead of a retry that cannot succeed`() = runTest {
+        val purchase = FakePurchaseInformationGateway(
+            SaqzResult.Failure(PurchaseInformationError.RateLimited(retryAfterSeconds = 1800)),
+        )
+        withViewModel(
+            entitlement = FakeEntitlement(false),
+            purchase = purchase,
+            customer = FakeCustomerInfoProvider(CustomerInfo("Ana", "ana.silva@example.com")),
+        ) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+            viewModel.onIntent(SubscriptionGateIntent.RequestPurchaseInformation)
+            runCurrent()
+
+            assertEquals(SubscriptionGateStatus.Sent, viewModel.state.value.status)
+            assertEquals("a***a@example.com", viewModel.state.value.maskedEmail)
+            assertEquals(null, viewModel.state.value.failure)
+        }
+    }
+
+    @Test
+    fun `account without email gets a permanent failure instead of a retry`() = runTest {
+        val purchase = FakePurchaseInformationGateway(
+            SaqzResult.Failure(PurchaseInformationError.EmailNotFound),
+        )
+        withViewModel(entitlement = FakeEntitlement(false), purchase = purchase) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+            viewModel.onIntent(SubscriptionGateIntent.RequestPurchaseInformation)
+            runCurrent()
+
+            assertEquals(SubscriptionGateStatus.Failed, viewModel.state.value.status)
+            assertEquals(SubscriptionGateFailure.EmailMissing, viewModel.state.value.failure)
+        }
+    }
+
+    @Test
+    fun `in progress request stays recoverable because the retry window is under a minute`() = runTest {
+        val purchase = FakePurchaseInformationGateway(
+            SaqzResult.Failure(PurchaseInformationError.InProgress(retryAfterSeconds = 30)),
+        )
+        withViewModel(entitlement = FakeEntitlement(false), purchase = purchase) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+            viewModel.onIntent(SubscriptionGateIntent.RequestPurchaseInformation)
+            runCurrent()
+
+            assertEquals(SubscriptionGateStatus.Failed, viewModel.state.value.status)
+            assertEquals(SubscriptionGateFailure.PurchaseInformation, viewModel.state.value.failure)
+        }
+    }
+
+    @Test
     fun `purchase exception is recoverable and never reports sent`() = runTest {
         val purchase = FakePurchaseInformationGateway(SaqzResult.Success(Unit)).apply {
             exception = IllegalStateException("temporary transport failure")

@@ -65,6 +65,10 @@ class SubscriptionGate213ScreenshotTest {
                 status = SubscriptionGateStatus.Failed,
                 failure = SubscriptionGateFailure.PurchaseInformation,
             ),
+            "conta-sem-email" to SubscriptionGateState(
+                status = SubscriptionGateStatus.Failed,
+                failure = SubscriptionGateFailure.EmailMissing,
+            ),
             "falha-verificacao" to SubscriptionGateState(
                 status = SubscriptionGateStatus.Failed,
                 failure = SubscriptionGateFailure.Authorization,

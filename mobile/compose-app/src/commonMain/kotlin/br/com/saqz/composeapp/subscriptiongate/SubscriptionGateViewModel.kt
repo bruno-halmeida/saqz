@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.subscriptiongate
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
+import br.com.saqz.subscriptions.domain.purchase.PurchaseInformationError
 import br.com.saqz.subscriptions.domain.purchase.PurchaseInformationGateway
 import br.com.saqz.subscriptions.domain.subscription.CustomerInfoProvider
 import br.com.saqz.domain.SaqzResult
@@ -151,12 +152,34 @@ class SubscriptionGateViewModel(
                         failure = null,
                     )
                 }
-                is SaqzResult.Failure -> update {
-                    it.copy(
-                        status = SubscriptionGateStatus.Failed,
-                        failure = SubscriptionGateFailure.PurchaseInformation,
-                        maskedEmail = null,
-                    )
+                is SaqzResult.Failure -> when (result.error) {
+                    // RateLimited só existe depois de três envios concluídos na última hora
+                    // (repetição dentro da janela de dedupe já volta como sucesso). O e-mail
+                    // está na caixa da pessoa, então "enviado" é a verdade e oferecer "tentar
+                    // novamente" por até uma hora só produz falha.
+                    is PurchaseInformationError.RateLimited -> update {
+                        it.copy(
+                            status = SubscriptionGateStatus.Sent,
+                            maskedEmail = maskEmail(email),
+                            failure = null,
+                        )
+                    }
+                    PurchaseInformationError.EmailNotFound -> update {
+                        it.copy(
+                            status = SubscriptionGateStatus.Failed,
+                            failure = SubscriptionGateFailure.EmailMissing,
+                            maskedEmail = null,
+                        )
+                    }
+                    // InProgress inclusive: a reserva vence em até um minuto, então tentar
+                    // de novo é o conselho certo.
+                    else -> update {
+                        it.copy(
+                            status = SubscriptionGateStatus.Failed,
+                            failure = SubscriptionGateFailure.PurchaseInformation,
+                            maskedEmail = null,
+                        )
+                    }
                 }
             }
         }

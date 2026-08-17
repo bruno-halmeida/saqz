@@ -61,6 +61,10 @@ class SubscriptionGateScreenTest {
             ) to ("Enviando informações" to "Não foi possível enviar as informações agora. Tente novamente."),
             SubscriptionGateState(
                 status = SubscriptionGateStatus.Failed,
+                failure = SubscriptionGateFailure.EmailMissing,
+            ) to ("E-mail não cadastrado" to "Sua conta não tem e-mail cadastrado. Adicione um e-mail no seu perfil e tente de novo."),
+            SubscriptionGateState(
+                status = SubscriptionGateStatus.Failed,
                 failure = SubscriptionGateFailure.Authorization,
             ) to ("Verificando assinatura" to "Não foi possível confirmar sua assinatura agora. Tente novamente."),
             SubscriptionGateState(status = SubscriptionGateStatus.Verifying) to ("Verificando assinatura" to "Aguarde enquanto confirmamos sua assinatura."),
@@ -161,5 +165,24 @@ class SubscriptionGateScreenTest {
             ),
             intents,
         )
+    }
+
+    @Test
+    fun accountWithoutEmailDropsTheSendActionAndKeepsTheRefresh() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                SubscriptionGateScreen(
+                    state = SubscriptionGateState(
+                        status = SubscriptionGateStatus.Failed,
+                        failure = SubscriptionGateFailure.EmailMissing,
+                    ),
+                    onIntent = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        assertTrue(onAllNodesWithTag(SubscriptionGateTags.Request).fetchSemanticsNodes().isEmpty())
+        onNodeWithTag(SubscriptionGateTags.Refresh).assertIsDisplayed()
     }
 }

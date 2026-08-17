@@ -23,6 +23,9 @@ sealed interface SubscriptionGateFailure {
     data object Authorization : SubscriptionGateFailure
 
     data object PurchaseInformation : SubscriptionGateFailure
+
+    /** A conta não tem e-mail: reenviar nunca resolve, então a tela não oferece o envio. */
+    data object EmailMissing : SubscriptionGateFailure
 }
 
 sealed interface SubscriptionGateIntent {

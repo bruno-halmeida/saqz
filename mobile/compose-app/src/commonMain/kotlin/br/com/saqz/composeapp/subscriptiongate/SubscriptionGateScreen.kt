@@ -24,6 +24,8 @@ import br.com.saqz.composeapp.resources.subscription_gate_authorized_message
 import br.com.saqz.composeapp.resources.subscription_gate_authorized_title
 import br.com.saqz.composeapp.resources.subscription_gate_authorization_failure_message
 import br.com.saqz.composeapp.resources.subscription_gate_email
+import br.com.saqz.composeapp.resources.subscription_gate_email_missing_message
+import br.com.saqz.composeapp.resources.subscription_gate_email_missing_title
 import br.com.saqz.composeapp.resources.subscription_gate_initial_message
 import br.com.saqz.composeapp.resources.subscription_gate_not_authorized_message
 import br.com.saqz.composeapp.resources.subscription_gate_not_authorized_title
@@ -154,14 +156,18 @@ private fun SubscriptionGateBody(
                 modifier = Modifier.fillMaxWidth().padding(top = SaqzTheme.metrics.subGrid),
                 verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
             ) {
-                SaqzButton(
-                    label = requestLabel,
-                    onClick = { onIntent(SubscriptionGateIntent.RequestPurchaseInformation) },
-                    modifier = Modifier.testTag(SubscriptionGateTags.Request),
-                    fullWidth = true,
-                    enabled = !isBusy,
-                    loading = status == SubscriptionGateStatus.Sending,
-                )
+                // Sem e-mail na conta o envio não tem como funcionar: o botão sai em vez
+                // de virar um "tentar novamente" que sempre falha.
+                if (state.failure != SubscriptionGateFailure.EmailMissing) {
+                    SaqzButton(
+                        label = requestLabel,
+                        onClick = { onIntent(SubscriptionGateIntent.RequestPurchaseInformation) },
+                        modifier = Modifier.testTag(SubscriptionGateTags.Request),
+                        fullWidth = true,
+                        enabled = !isBusy,
+                        loading = status == SubscriptionGateStatus.Sending,
+                    )
+                }
                 SaqzButton(
                     label = refreshLabel,
                     onClick = { onIntent(SubscriptionGateIntent.RefreshAuthorization) },
@@ -221,14 +227,18 @@ private fun statusCopy(state: SubscriptionGateState): SubscriptionGateCopy = whe
         message = stringResource(Res.string.subscription_gate_authorized_message),
         accessibilityLabel = stringResource(Res.string.subscription_gate_authorized_title),
     )
-    SubscriptionGateStatus.Failed -> if (state.failure == SubscriptionGateFailure.PurchaseInformation) {
-        SubscriptionGateCopy(
+    SubscriptionGateStatus.Failed -> when (state.failure) {
+        SubscriptionGateFailure.PurchaseInformation -> SubscriptionGateCopy(
             title = stringResource(Res.string.subscription_gate_sending_title),
             message = stringResource(Res.string.subscription_gate_purchase_failure_message),
             accessibilityLabel = stringResource(Res.string.subscription_gate_purchase_failure_message),
         )
-    } else {
-        SubscriptionGateCopy(
+        SubscriptionGateFailure.EmailMissing -> SubscriptionGateCopy(
+            title = stringResource(Res.string.subscription_gate_email_missing_title),
+            message = stringResource(Res.string.subscription_gate_email_missing_message),
+            accessibilityLabel = stringResource(Res.string.subscription_gate_email_missing_message),
+        )
+        else -> SubscriptionGateCopy(
             title = stringResource(Res.string.subscription_gate_verifying_title),
             message = stringResource(Res.string.subscription_gate_authorization_failure_message),
             accessibilityLabel = stringResource(Res.string.subscription_gate_authorization_failure_message),
@@ -258,6 +268,15 @@ private fun SubscriptionGatePurchaseFailurePreview() = SubscriptionGatePreview(
     SubscriptionGateState(
         status = SubscriptionGateStatus.Failed,
         failure = SubscriptionGateFailure.PurchaseInformation,
+    ),
+)
+
+@Preview(name = "Conta sem e-mail")
+@Composable
+private fun SubscriptionGateEmailMissingPreview() = SubscriptionGatePreview(
+    SubscriptionGateState(
+        status = SubscriptionGateStatus.Failed,
+        failure = SubscriptionGateFailure.EmailMissing,
     ),
 )
 

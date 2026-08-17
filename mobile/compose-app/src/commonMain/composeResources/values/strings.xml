@@ -29,6 +29,8 @@
     <string name="subscription_gate_sent_message">As informações foram enviadas para o e-mail associado à sua conta.</string>
     <string name="subscription_gate_email">E-mail associado: %1$s</string>
     <string name="subscription_gate_purchase_failure_message">Não foi possível enviar as informações agora. Tente novamente.</string>
+    <string name="subscription_gate_email_missing_title">E-mail não cadastrado</string>
+    <string name="subscription_gate_email_missing_message">Sua conta não tem e-mail cadastrado. Adicione um e-mail no seu perfil e tente de novo.</string>
     <string name="subscription_gate_verifying_title">Verificando assinatura</string>
     <string name="subscription_gate_verifying_message">Aguarde enquanto confirmamos sua assinatura.</string>
     <string name="subscription_gate_authorization_failure_message">Não foi possível confirmar sua assinatura agora. Tente novamente.</string>
