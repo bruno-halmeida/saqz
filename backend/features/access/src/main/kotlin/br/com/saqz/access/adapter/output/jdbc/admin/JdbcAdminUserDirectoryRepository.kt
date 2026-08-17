@@ -39,7 +39,7 @@ class JdbcAdminUserDirectoryRepository(
                    OR u.email ILIKE '%' || :query || '%')
               AND (:plan::text IS NULL
                    OR (:plan = 'FREE' AND s.plan IS NULL)
-                   OR s.plan = :plan)
+                   OR s.plan::text = :plan)
               AND (:status::text IS NULL
                    OR (:status = 'suspended' AND u.suspended_at IS NOT NULL)
                    OR (:status = 'active' AND u.suspended_at IS NULL))
@@ -82,7 +82,7 @@ class JdbcAdminUserDirectoryRepository(
                    OR u.email ILIKE '%' || :query || '%')
               AND (:plan::text IS NULL
                    OR (:plan = 'FREE' AND s.plan IS NULL)
-                   OR s.plan = :plan)
+                   OR s.plan::text = :plan)
               AND (:status::text IS NULL
                    OR (:status = 'suspended' AND u.suspended_at IS NOT NULL)
                    OR (:status = 'active' AND u.suspended_at IS NULL))
@@ -108,7 +108,7 @@ class JdbcAdminUserDirectoryRepository(
             SELECT u.id, u.display_name, u.email, u.nickname, u.phone, u.city,
                    u.suspended_at, u.created_at, u.updated_at,
                    s.plan, s.cycle, s.created_at AS subscribed_at,
-                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS subscription_status
+                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status::text END AS subscription_status
             FROM access_users u
             LEFT JOIN subscriptions s ON s.owner_user_id = u.id
                  AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)

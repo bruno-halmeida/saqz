@@ -27,7 +27,7 @@ class JdbcAdminSubscriptionDirectoryRepository(
         val rows = jdbc.sql(
             """
             SELECT s.owner_user_id, s.plan, s.cycle, s.current_period_end,
-                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS status,
+                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status::text END AS status,
                    s.canceled_at, s.past_due_since, s.created_at,
                    s.coupon_id, s.coupon_cycles_remaining,
                    u.display_name AS owner_name, u.email AS owner_email,
@@ -39,10 +39,10 @@ class JdbcAdminSubscriptionDirectoryRepository(
             WHERE (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
                    OR u.email ILIKE '%' || :query || '%')
-              AND (:plan::text IS NULL OR s.plan = :plan)
+              AND (:plan::text IS NULL OR s.plan::text = :plan)
               AND (:status::text IS NULL
-                   OR (:status = 'CANCELED' AND (s.canceled_at IS NOT NULL OR s.status = 'CANCELED'))
-                   OR (:status <> 'CANCELED' AND s.status = :status AND s.canceled_at IS NULL))
+                   OR (:status = 'CANCELED' AND (s.canceled_at IS NOT NULL OR s.status::text = 'CANCELED'))
+                   OR (:status <> 'CANCELED' AND s.status::text = :status AND s.canceled_at IS NULL))
             ORDER BY s.created_at DESC, s.owner_user_id
             LIMIT :size OFFSET :offset
             """.trimIndent(),
@@ -63,10 +63,10 @@ class JdbcAdminSubscriptionDirectoryRepository(
             WHERE (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
                    OR u.email ILIKE '%' || :query || '%')
-              AND (:plan::text IS NULL OR s.plan = :plan)
+              AND (:plan::text IS NULL OR s.plan::text = :plan)
               AND (:status::text IS NULL
-                   OR (:status = 'CANCELED' AND (s.canceled_at IS NOT NULL OR s.status = 'CANCELED'))
-                   OR (:status <> 'CANCELED' AND s.status = :status AND s.canceled_at IS NULL))
+                   OR (:status = 'CANCELED' AND (s.canceled_at IS NOT NULL OR s.status::text = 'CANCELED'))
+                   OR (:status <> 'CANCELED' AND s.status::text = :status AND s.canceled_at IS NULL))
             """.trimIndent(),
         )
             .param("query", query?.trim()?.takeIf { it.isNotEmpty() })
@@ -82,7 +82,7 @@ class JdbcAdminSubscriptionDirectoryRepository(
         val summary = jdbc.sql(
             """
             SELECT s.owner_user_id, s.plan, s.cycle, s.current_period_end,
-                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status END AS status,
+                   CASE WHEN s.canceled_at IS NOT NULL THEN 'CANCELED' ELSE s.status::text END AS status,
                    s.canceled_at, s.past_due_since, s.created_at,
                    s.coupon_id, s.coupon_cycles_remaining,
                    u.display_name AS owner_name, u.email AS owner_email,
