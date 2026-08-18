@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
+import java.sql.Types
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -75,8 +76,8 @@ class JdbcAthleteRosterRepository(
             ORDER BY coalesce(u.nickname, u.display_name), m.user_id
             """.trimIndent(),
         ).param("actorId", actorId).param("groupId", groupId)
-        if (filter.membershipType != null) spec = spec.param("membershipType", filter.membershipType.name)
-        if (filter.position != null) spec = spec.param("position", filter.position.name)
+        if (filter.membershipType != null) spec = spec.param("membershipType", filter.membershipType.name, Types.OTHER)
+        if (filter.position != null) spec = spec.param("position", filter.position.name, Types.OTHER)
         if (!filter.search.isNullOrBlank()) spec = spec.param("search", filter.search)
         val rows = spec.query(::mapRosterRow).list()
 
