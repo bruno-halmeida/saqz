@@ -46,6 +46,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -145,6 +146,7 @@ fun LoginScreen(
             Spacer(Modifier.height(LoginMetrics.fieldGap))
         }
 
+        val form = rememberSaqzFormScope(onSubmit = { onIntent(LoginIntent.SubmitPasswordLogin) })
         SaqzInput(
             value = state.email,
             onValueChange = { onIntent(LoginIntent.UpdateEmail(it)) },
@@ -155,6 +157,7 @@ fun LoginScreen(
             placeholder = stringResource(Res.string.login_email_placeholder),
             errorText = state.emailError?.asString(),
             leadingContent = { SaqzIcon(SaqzIcons.Mail, tint = colors.primary, size = LoginMetrics.icon) },
+            ime = form.imeNext(),
             modifier = Modifier.testTag(LoginTags.Email),
         )
         Spacer(Modifier.height(LoginMetrics.fieldGap))
@@ -167,6 +170,7 @@ fun LoginScreen(
             inlineLabel = true,
             errorText = state.passwordError?.asString(),
             leadingContent = { SaqzIcon(SaqzIcons.Lock, tint = colors.primary, size = LoginMetrics.icon) },
+            ime = form.imeDone(),
             modifier = Modifier.testTag(LoginTags.Password),
         )
         Spacer(Modifier.height(LoginMetrics.wideGap))

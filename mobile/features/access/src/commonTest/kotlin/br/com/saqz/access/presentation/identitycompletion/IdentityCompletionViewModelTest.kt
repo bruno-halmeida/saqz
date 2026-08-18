@@ -76,9 +76,20 @@ class IdentityCompletionViewModelTest {
     @Test fun `the chosen image reaches the screen once it is decoded`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
-        fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
+        fixture.viewModel.onIntent(IdentityCompletionIntent.ChooseLibrary)
         fixture.photos.complete(ProfilePhotoResult.Selected(PNG_PIXEL, "image/png"))
 
+        assertEquals("library", fixture.photos.lastChoice)
+        assertEquals(1, fixture.viewModel.state.first { it.photo != null }.photo?.width)
+    }
+
+    @Test fun `taking a photo uses the camera instead of the library`() = runTest(mainDispatcher) {
+        val fixture = fixture()
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.ChooseCamera)
+        fixture.photos.complete(ProfilePhotoResult.Selected(PNG_PIXEL, "image/png"))
+
+        assertEquals("camera", fixture.photos.lastChoice)
         assertEquals(1, fixture.viewModel.state.first { it.photo != null }.photo?.width)
     }
 
@@ -87,7 +98,7 @@ class IdentityCompletionViewModelTest {
     @Test fun `undecodable bytes leave the circle empty instead of crashing`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
-        fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
+        fixture.viewModel.onIntent(IdentityCompletionIntent.ChooseLibrary)
         fixture.photos.complete(ProfilePhotoResult.Selected(byteArrayOf(1, 2, 3), "image/jpeg"))
         runCurrent()
 
@@ -97,7 +108,7 @@ class IdentityCompletionViewModelTest {
     @Test fun `giving up on the picker leaves no trace on the screen`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
-        fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
+        fixture.viewModel.onIntent(IdentityCompletionIntent.ChooseLibrary)
         fixture.photos.complete(ProfilePhotoResult.Cancelled)
         runCurrent()
 
@@ -110,7 +121,7 @@ class IdentityCompletionViewModelTest {
     @Test fun `a picker failure warns without blocking the registration`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
-        fixture.viewModel.onIntent(IdentityCompletionIntent.PickPhoto)
+        fixture.viewModel.onIntent(IdentityCompletionIntent.ChooseLibrary)
         fixture.photos.complete(ProfilePhotoResult.Failed)
         runCurrent()
 
@@ -145,14 +156,16 @@ class IdentityCompletionViewModelTest {
     private class FakePhotoPort : NativeProfilePhotoPort {
         private var callback: ProfilePhotoCallback? = null
         var cancelled = false
+        var lastChoice: String? = null
 
-        override fun chooseCamera(done: ProfilePhotoCallback): Cancelable = register(done)
+        override fun chooseCamera(done: ProfilePhotoCallback): Cancelable = register("camera", done)
 
-        override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable = register(done)
+        override fun chooseLibrary(done: ProfilePhotoCallback): Cancelable = register("library", done)
 
         fun complete(result: ProfilePhotoResult) = callback!!.complete(result)
 
-        private fun register(done: ProfilePhotoCallback): Cancelable {
+        private fun register(choice: String, done: ProfilePhotoCallback): Cancelable {
+            lastChoice = choice
             callback = done
             return object : Cancelable {
                 override fun cancel() { cancelled = true }

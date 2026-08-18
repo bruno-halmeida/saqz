@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -61,11 +62,18 @@ class IdentityCompletionScreenTest {
         assertEquals(IdentityCompletionIntent.Submit, intent)
     }
 
-    @Test fun `the photo picker asks the platform for an image`() = runComposeUiTest {
+    @Test fun `done on the phone field completes the registration`() = runComposeUiTest {
         var intent: IdentityCompletionIntent? = null
         content(onIntent = { intent = it })
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performImeAction()
+        assertEquals(IdentityCompletionIntent.Submit, intent)
+    }
+
+    @Test fun `the photo picker asks to choose a source`() = runComposeUiTest {
+        var picked = false
+        content(onPickPhoto = { picked = true })
         onNodeWithTag(Identity1cTags.Photo).performClick()
-        assertEquals(IdentityCompletionIntent.PickPhoto, intent)
+        assertEquals(true, picked)
     }
 
     @Test fun `the back control leaves the incomplete identity`() = runComposeUiTest {
@@ -135,5 +143,6 @@ class IdentityCompletionScreenTest {
     private fun ComposeUiTest.content(
         state: IdentityCompletionState = IdentityCompletionState(),
         onIntent: (IdentityCompletionIntent) -> Unit = {},
-    ) = setContent { SaqzTheme { IdentityCompletionScreen(state, onIntent) } }
+        onPickPhoto: () -> Unit = {},
+    ) = setContent { SaqzTheme { IdentityCompletionScreen(state, onIntent, onPickPhoto) } }
 }

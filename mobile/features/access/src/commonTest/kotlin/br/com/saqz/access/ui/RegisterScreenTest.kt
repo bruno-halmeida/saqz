@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
@@ -77,6 +78,13 @@ class RegisterScreenTest {
         var intent: RegisterIntent? = null
         content(onIntent = { intent = it })
         onNodeWithTag(RegisterTags.Submit).performScrollTo().performClick()
+        assertEquals(RegisterIntent.Submit, intent)
+    }
+
+    @Test fun `done on the password field submits`() = runComposeUiTest {
+        var intent: RegisterIntent? = null
+        content(onIntent = { intent = it })
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[3].performImeAction()
         assertEquals(RegisterIntent.Submit, intent)
     }
 

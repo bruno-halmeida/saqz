@@ -5,6 +5,9 @@ import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
+import br.com.saqz.access.domain.port.NativeUser
+import br.com.saqz.access.domain.port.OperationResult
+import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationStateMachine
@@ -133,12 +136,25 @@ class RegisterViewModel(
                 clearDraft()
                 update { it.copy(isLoading = false) }
                 onSessionIntent(SessionIntent.Accept(AuthTransition.Authenticated(result.user)))
+                requestVerificationEmail(result.user)
             }
         }
     }
 
     private fun clearDraft() {
         listOf(KeyName, KeyEmail, KeyPhone).forEach { savedState.remove<String>(it) }
+    }
+
+    /**
+     * Confirmação no nascimento da conta, sem esperar o "Reenviar" da faixa. Falha de
+     * entrega não desfaz o cadastro: a sessão já entrou, e a faixa continua podendo
+     * reenviar. Já verificado (conta Google reaproveitada neste caminho) não dispara.
+     */
+    private fun requestVerificationEmail(user: NativeUser) {
+        if (user.emailVerified) return
+        auth.sendVerification(object : ResultCallback {
+            override fun complete(result: OperationResult) = Unit
+        })
     }
 
     /**

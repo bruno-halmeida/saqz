@@ -67,6 +67,8 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.SaqzFormIme
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -176,6 +178,7 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(AccessMetrics.fieldGap),
         ) {
+            val form = rememberSaqzFormScope(onSubmit = { onIntent(RegisterIntent.Submit) })
             RegisterInput(
                 value = state.name,
                 onValueChange = { onIntent(RegisterIntent.UpdateName(it)) },
@@ -184,6 +187,7 @@ fun RegisterScreen(
                 enabled = !state.isLoading,
                 errorText = stringResource(Res.string.register_error_name).takeIf { state.invalidName },
                 tag = RegisterTags.Name,
+                ime = form.imeNext(),
             )
             // O e-mail é o único campo com duas recusas possíveis, e elas se comportam de
             // formas diferentes. A malformada é como as outras três — mensagem no slot do
@@ -203,6 +207,7 @@ fun RegisterScreen(
                     errorText = stringResource(Res.string.login_error_email_invalid)
                         .takeIf { state.emailError == RegisterEmailError.Invalid },
                     tag = RegisterTags.Email,
+                    ime = form.imeNext(),
                 )
                 if (state.emailError == RegisterEmailError.Taken) {
                     Text(
@@ -226,6 +231,7 @@ fun RegisterScreen(
                 enabled = !state.isLoading,
                 errorText = stringResource(Res.string.register_error_phone).takeIf { state.invalidPhone },
                 tag = RegisterTags.Phone,
+                ime = form.imeNext(),
             )
             RegisterInput(
                 value = state.password,
@@ -242,6 +248,7 @@ fun RegisterScreen(
                     null -> null
                 },
                 tag = RegisterTags.Password,
+                ime = form.imeDone(),
             )
         }
         // O helper mora fora do `SaqzInput` só por causa do `margin-top:-4px` do export; o
@@ -420,6 +427,7 @@ private fun RegisterInput(
     enabled: Boolean = true,
     invalid: Boolean = false,
     errorText: String? = null,
+    ime: SaqzFormIme? = null,
 ) = SaqzInput(
     value = value,
     onValueChange = onValueChange,
@@ -432,6 +440,7 @@ private fun RegisterInput(
     // Sem rótulo acima: o export desenha só o placeholder dentro do campo.
     inlineLabel = true,
     leadingContent = { SaqzIcon(icon, tint = SaqzTheme.colors.primary, size = AccessMetrics.fieldIcon) },
+    ime = ime,
     modifier = Modifier.testTag(tag),
 )
 

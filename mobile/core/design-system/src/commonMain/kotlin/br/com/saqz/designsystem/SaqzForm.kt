@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
@@ -38,12 +39,15 @@ class SaqzFormIme internal constructor(
  *
  * Uso:
  * ```
- * SaqzForm {
+ * SaqzForm(onSubmit = { onIntent(Submit) }) {
  *     SaqzInput(..., imeNext())
  *     SaqzInput(..., imeNext())
- *     SaqzInput(..., imeDone())  // último campo: fecha o teclado
+ *     SaqzInput(..., imeDone())  // último campo: fecha o teclado e envia
  * }
  * ```
+ *
+ * Fora de um [SaqzForm] — tela que já tem o próprio layout — o mesmo scope vem de
+ * [rememberSaqzFormScope].
  *
  * `@Immutable` é o que mantém quem recebe este scope skippable. Receiver conta como parâmetro
  * para o Compose, e a inferência marcaria esta classe como instável por dois motivos que não dá
@@ -53,7 +57,10 @@ class SaqzFormIme internal constructor(
  * guardam nunca muda depois da construção.
  */
 @Immutable
-class SaqzFormScope internal constructor(private val focusManager: FocusManager) {
+class SaqzFormScope internal constructor(
+    private val focusManager: FocusManager,
+    private val onSubmit: () -> Unit,
+) {
     /**
      * `Next` e não `Down`: `Down` é busca geométrica e, numa linha com dois campos lado a lado
      * (validade e CVV do cartão, cada um com `weight(1f)`), pula o vizinho e cai no campo de
@@ -73,7 +80,12 @@ class SaqzFormScope internal constructor(private val focusManager: FocusManager)
     private val done by lazy {
         SaqzFormIme(
             imeAction = ImeAction.Done,
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManager.clearFocus()
+                    onSubmit()
+                },
+            ),
         )
     }
 
@@ -84,10 +96,28 @@ class SaqzFormScope internal constructor(private val focusManager: FocusManager)
     fun imeNext(): SaqzFormIme = next
 
     /**
-     * Para o último campo do formulário: tecla de ação = "Concluído", limpa o foco e fecha o
-     * teclado.
+     * Para o último campo do formulário: tecla de ação = "Concluído". Fecha o teclado e,
+     * quando o [SaqzForm] (ou o [rememberSaqzFormScope]) recebeu [onSubmit], dispara o envio
+     * — o mesmo gesto do botão primário.
      */
     fun imeDone(): SaqzFormIme = done
+}
+
+/**
+ * Scope de IME para tela que **não** usa o container [SaqzForm] — login, cadastro e as
+ * demais que já têm o próprio layout. [onSubmit] é o envio do último campo; sem ele o
+ * Done só fecha o teclado.
+ *
+ * [onSubmit] passa por `rememberUpdatedState`: o scope é estável (os [SaqzFormIme] não
+ * recriam a cada recomposição) e a lambda lida é sempre a da composição atual.
+ */
+@Composable
+fun rememberSaqzFormScope(onSubmit: (() -> Unit)? = null): SaqzFormScope {
+    val focusManager = LocalFocusManager.current
+    val currentOnSubmit = rememberUpdatedState(onSubmit)
+    return remember(focusManager) {
+        SaqzFormScope(focusManager) { currentOnSubmit.value?.invoke() }
+    }
 }
 
 /**
@@ -95,19 +125,22 @@ class SaqzFormScope internal constructor(private val focusManager: FocusManager)
  * + espaçamento padrão entre itens. Cada campo dentro de [content] declara seu IME via
  * [SaqzFormScope.imeNext] / [SaqzFormScope.imeDone].
  *
+ * [onSubmit] é o que o último campo dispara no Done, além de fechar o teclado. Sem ele o
+ * Done só limpa o foco — o comportamento antigo, para o caso em que o envio ainda não existe.
+ *
  * Substitui o pattern manual de `Column(verticalScroll(...).imePadding())` que era replicado
  * por tela e que deixava o teclado cobrir os campos de baixo.
  */
 @Composable
 fun SaqzForm(
     modifier: Modifier = Modifier,
+    onSubmit: (() -> Unit)? = null,
     horizontalPadding: Dp = SaqzTheme.metrics.horizontalPadding,
     verticalPadding: Dp = SaqzTheme.metrics.grid,
     itemSpacing: Dp = SaqzTheme.metrics.subGrid,
     content: @Composable SaqzFormScope.() -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
-    val scope = remember(focusManager) { SaqzFormScope(focusManager) }
+    val scope = rememberSaqzFormScope(onSubmit)
     Column(
         modifier = modifier
             .imePadding()

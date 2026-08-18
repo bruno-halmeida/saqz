@@ -25,6 +25,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.resources.Res
 import br.com.saqz.profile.resources.profile_exit_body
@@ -172,6 +173,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.DeleteConfirmationCon
         style = SaqzTheme.typography.body,
         color = colors.textSecondary,
     )
+    val form = rememberSaqzFormScope(onSubmit = { onIntent(ProfileExitIntent.ConfirmDelete) })
     SaqzInput(
         value = state.confirmationEmail,
         onValueChange = { onIntent(ProfileExitIntent.UpdateConfirmationEmail(it)) },
@@ -182,6 +184,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.DeleteConfirmationCon
         errorText = state.error?.let { errorText(it, state.email) },
         invalid = state.error != null,
         enabled = !state.isDeleting,
+        ime = form.imeDone(),
         modifier = Modifier.testTag(ProfileExitTags.ConfirmationEmail),
     )
     SaqzButton(

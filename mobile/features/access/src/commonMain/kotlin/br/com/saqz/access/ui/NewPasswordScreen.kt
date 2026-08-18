@@ -25,6 +25,7 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
@@ -76,6 +77,7 @@ fun NewPasswordScreen(
             SaqzInlineAlert(text = alert.asString(), tone = SaqzInlineAlertTone.Error)
         }
         Spacer(Modifier.height(HEADER_TO_FIELDS))
+        val form = rememberSaqzFormScope(onSubmit = { onIntent(NewPasswordIntent.Submit) })
         SaqzInput(
             value = state.password,
             onValueChange = { onIntent(NewPasswordIntent.UpdatePassword(it)) },
@@ -85,6 +87,7 @@ fun NewPasswordScreen(
             inlineLabel = true,
             errorText = state.passwordError?.asString(),
             leadingContent = { SaqzIcon(SaqzIcons.Lock, tint = SaqzTheme.colors.primary) },
+            ime = form.imeNext(),
             modifier = Modifier.testTag(NewPasswordTags.Password),
         )
         Spacer(Modifier.height(NEW_PASSWORD_FIELD_GAP))
@@ -99,6 +102,7 @@ fun NewPasswordScreen(
             helperText = stringResource(Res.string.access_password_hint),
             errorText = state.confirmationError?.asString(),
             leadingContent = { SaqzIcon(SaqzIcons.Lock, tint = SaqzTheme.colors.primary) },
+            ime = form.imeDone(),
             modifier = Modifier.testTag(NewPasswordTags.Confirmation),
         )
         Spacer(Modifier.height(NEW_PASSWORD_FIELD_GAP))

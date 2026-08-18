@@ -30,6 +30,7 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
@@ -83,6 +84,7 @@ fun ForgotPasswordScreen(
         )
         Spacer(Modifier.height(FIELD_GAP))
     }
+    val form = rememberSaqzFormScope(onSubmit = { onIntent(ForgotPasswordIntent.Submit) })
     SaqzInput(
         value = state.email,
         onValueChange = { onIntent(ForgotPasswordIntent.UpdateEmail(it)) },
@@ -92,6 +94,7 @@ fun ForgotPasswordScreen(
         inlineLabel = true,
         placeholder = stringResource(Res.string.login_email_placeholder),
         leadingContent = { SaqzIcon(SaqzIcons.Mail, tint = SaqzTheme.colors.primary) },
+        ime = form.imeDone(),
         modifier = Modifier.testTag(ForgotPasswordTags.Email),
     )
     Spacer(Modifier.height(FIELD_GAP))

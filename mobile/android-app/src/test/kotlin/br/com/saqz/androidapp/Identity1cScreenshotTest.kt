@@ -41,6 +41,7 @@ class Identity1cScreenshotTest {
         IdentityCompletionScreen(
             state = IdentityCompletionState(name = "Ana Costa", phone = "11999990000"),
             onIntent = {},
+            onPickPhoto = {},
         )
     }
 
@@ -54,6 +55,7 @@ class Identity1cScreenshotTest {
                 photoFailed = true,
             ),
             onIntent = {},
+            onPickPhoto = {},
         )
     }
 

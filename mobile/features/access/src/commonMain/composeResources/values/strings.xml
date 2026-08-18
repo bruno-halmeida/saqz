@@ -62,6 +62,9 @@
 
     <!-- 1c · concluir cadastro -->
     <string name="identity_add_photo">Adicionar foto</string>
+    <string name="identity_photo_sheet_title">Sua foto</string>
+    <string name="identity_photo_take">Tirar foto</string>
+    <string name="identity_photo_gallery">Escolher da galeria</string>
     <string name="identity_headline">Quase</string>
     <string name="identity_headline_emphasis">lá!</string>
     <string name="identity_supporting_text">Confirme seu nome e adicione um telefone para a galera te encontrar.</string>

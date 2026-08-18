@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
@@ -68,6 +69,13 @@ class LoginScreenTest {
     @Test fun `primary action submits password login`() = runComposeUiTest {
         var intent: LoginIntent? = null; content(onIntent = { intent = it })
         onNodeWithTag(LoginTags.Submit).performClick()
+        assertEquals(LoginIntent.SubmitPasswordLogin, intent)
+    }
+
+    @Test fun `done on the password field submits password login`() = runComposeUiTest {
+        var intent: LoginIntent? = null
+        content(onIntent = { intent = it })
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performImeAction()
         assertEquals(LoginIntent.SubmitPasswordLogin, intent)
     }
 

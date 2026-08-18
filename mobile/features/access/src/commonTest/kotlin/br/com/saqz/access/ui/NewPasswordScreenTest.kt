@@ -7,7 +7,9 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.newpassword.NewPasswordIntent
@@ -59,6 +61,14 @@ class NewPasswordScreenTest {
         var intent: NewPasswordIntent? = null
         content(onIntent = { intent = it })
         onNodeWithTag(NewPasswordTags.Submit).performClick()
+        assertEquals(NewPasswordIntent.Submit, intent)
+    }
+
+    @Test
+    fun `done on the confirmation field submits`() = runComposeUiTest {
+        var intent: NewPasswordIntent? = null
+        content(onIntent = { intent = it })
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performImeAction()
         assertEquals(NewPasswordIntent.Submit, intent)
     }
 

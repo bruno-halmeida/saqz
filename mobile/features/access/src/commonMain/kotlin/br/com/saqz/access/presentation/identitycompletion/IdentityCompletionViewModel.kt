@@ -67,7 +67,8 @@ class IdentityCompletionViewModel(
         when (intent) {
             is IdentityCompletionIntent.UpdateName -> session.onIntent(SessionIntent.UpdateName(intent.value))
             is IdentityCompletionIntent.UpdatePhone -> session.onIntent(SessionIntent.UpdatePhone(intent.value))
-            IdentityCompletionIntent.PickPhoto -> pickPhoto()
+            IdentityCompletionIntent.ChooseCamera -> pickPhoto(photos::chooseCamera)
+            IdentityCompletionIntent.ChooseLibrary -> pickPhoto(photos::chooseLibrary)
             IdentityCompletionIntent.Submit -> session.onIntent(SessionIntent.CompleteIdentity)
             IdentityCompletionIntent.Back -> session.onIntent(SessionIntent.Logout)
         }
@@ -80,16 +81,13 @@ class IdentityCompletionViewModel(
     }
 
     /**
-     * A galeria, e não a câmera: o export desenha um botão só, e nenhuma das 11 telas do
-     * fluxo 1 tem a folha de escolha entre as duas origens.
-     *
-     * ponytail: quando a folha existir, é `chooseCamera` que entra aqui ao lado —
-     * `NativeProfilePhotoPort` já expõe as duas.
+     * A folha de origem (câmera ou galeria) mora no Root: daqui só sai o pedido para a
+     * porta nativa, que já expõe as duas.
      */
-    private fun pickPhoto() {
+    private fun pickPhoto(open: (ProfilePhotoCallback) -> Cancelable) {
         choosing?.cancel()
         pickFailed = false
-        choosing = photos.chooseLibrary(object : ProfilePhotoCallback {
+        choosing = open(object : ProfilePhotoCallback {
             override fun complete(result: ProfilePhotoResult) {
                 choosing = null
                 when (result) {

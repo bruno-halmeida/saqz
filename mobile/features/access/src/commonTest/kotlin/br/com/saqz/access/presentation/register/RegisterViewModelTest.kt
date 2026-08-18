@@ -109,6 +109,37 @@ class RegisterViewModelTest {
             sessionIntents.last(),
         )
         assertTrue(!viewModel.state.value.isLoading)
+        assertEquals(1, auth.verificationRequests)
+    }
+
+    @Test
+    fun `a created account asks Firebase for the confirmation email`() = runTest(mainDispatcher) {
+        val (viewModel, auth) = fixture()
+        viewModel.submitValidForm()
+
+        auth.complete(AuthResult.Success(USER))
+
+        assertEquals(1, auth.verificationRequests)
+    }
+
+    @Test
+    fun `an already verified account does not request another confirmation email`() = runTest(mainDispatcher) {
+        val (viewModel, auth) = fixture()
+        viewModel.submitValidForm()
+
+        auth.complete(AuthResult.Success(USER.copy(emailVerified = true)))
+
+        assertEquals(0, auth.verificationRequests)
+    }
+
+    @Test
+    fun `a provider refusal never requests a confirmation email`() = runTest(mainDispatcher) {
+        val (viewModel, auth) = fixture()
+        viewModel.submitValidForm()
+
+        auth.complete(AuthResult.Failure(NativeFailureCode.EMAIL_IN_USE))
+
+        assertEquals(0, auth.verificationRequests)
     }
 
     // VUL-101: o telefone validado sobe à sessão **antes** do provedor, senão o observe
@@ -325,6 +356,7 @@ class RegisterViewModelTest {
         auth.complete(AuthResult.Success(USER))
 
         assertTrue(viewModel.state.value.isLoading, "ViewModel morta não escreve estado")
+        assertEquals(0, auth.verificationRequests, "callback descartado não dispara o e-mail")
         // Este caminho de transição cala; o do orquestrador, não — e é ele que vale.
         // O discard limpa o depósito da 1b para não sobrar no SignedOut (Codex/VUL-101).
         assertEquals(
@@ -405,6 +437,7 @@ class RegisterViewModelTest {
 
     private class FakeAuthPort : NativeAuthPort {
         val accounts = mutableListOf<AccountCall>()
+        var verificationRequests = 0
 
         // Todos os callbacks, e não só o último: o `createAccount` não cancela, então o
         // teste da guarda de geração precisa disparar um envio **velho** depois do novo.
@@ -423,7 +456,9 @@ class RegisterViewModelTest {
             object : Cancelable { override fun cancel() = Unit }
         override fun signInWithPassword(email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithGoogle(done: AuthCallback) = Unit
-        override fun sendVerification(done: ResultCallback) = Unit
+        override fun sendVerification(done: ResultCallback) {
+            verificationRequests += 1
+        }
         override fun reloadUser(done: AuthCallback) = Unit
         override fun updateDisplayName(name: String, done: AuthCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) = Unit

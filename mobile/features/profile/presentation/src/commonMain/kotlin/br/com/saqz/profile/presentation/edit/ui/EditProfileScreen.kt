@@ -37,6 +37,7 @@ import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.domain.PhoneVisibility
 import br.com.saqz.profile.fake.FakeProfileGateway
@@ -264,6 +265,7 @@ private fun EditProfileFieldsCard(
 ) {
     val form = state.form
     val enabled = !state.isSaving
+    val ime = rememberSaqzFormScope(onSubmit = { onIntent(EditProfileIntent.Submit) })
     SaqzCard {
         SaqzInput(
             value = form.displayName,
@@ -276,6 +278,7 @@ private fun EditProfileFieldsCard(
             ),
             enabled = enabled,
             leadingContent = { SaqzIcon(SaqzIcons.User, tint = SaqzTheme.colors.primary) },
+            ime = ime.imeNext(),
             modifier = Modifier.testTag(EditProfileTags.DisplayName),
         )
         SaqzInput(
@@ -287,6 +290,7 @@ private fun EditProfileFieldsCard(
                 EditProfileFieldError.NicknameInvalid,
             ),
             enabled = enabled,
+            ime = ime.imeNext(),
             modifier = Modifier.testTag(EditProfileTags.Nickname),
         )
         SaqzInput(
@@ -302,6 +306,7 @@ private fun EditProfileFieldsCard(
             ),
             enabled = enabled,
             leadingContent = { SaqzIcon(SaqzIcons.Phone, tint = SaqzTheme.colors.primary) },
+            ime = ime.imeNext(),
             modifier = Modifier.testTag(EditProfileTags.Phone),
         )
         SaqzInput(
@@ -311,6 +316,7 @@ private fun EditProfileFieldsCard(
             kind = SaqzInputKind.Email,
             enabled = false,
             leadingContent = { SaqzIcon(SaqzIcons.Mail, tint = SaqzTheme.colors.disabledForeground) },
+            ime = ime.imeNext(),
             modifier = Modifier.testTag(EditProfileTags.Email),
         )
         SaqzInput(
@@ -322,6 +328,7 @@ private fun EditProfileFieldsCard(
                 EditProfileFieldError.CityInvalid,
             ),
             enabled = enabled,
+            ime = ime.imeDone(),
             modifier = Modifier.testTag(EditProfileTags.City),
         )
         EditProfilePrivacy(

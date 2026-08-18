@@ -31,7 +31,9 @@ sealed interface IdentityCompletionIntent {
 
     data class UpdatePhone(val value: String) : IdentityCompletionIntent
 
-    data object PickPhoto : IdentityCompletionIntent
+    data object ChooseCamera : IdentityCompletionIntent
+
+    data object ChooseLibrary : IdentityCompletionIntent
 
     data object Submit : IdentityCompletionIntent
 

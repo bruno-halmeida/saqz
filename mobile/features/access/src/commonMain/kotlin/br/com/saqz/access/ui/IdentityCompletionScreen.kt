@@ -48,6 +48,7 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.PhoneVisualTransformation
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
@@ -106,6 +107,7 @@ private val FIELD_GAP = 12.dp
 fun IdentityCompletionScreen(
     state: IdentityCompletionState,
     onIntent: (IdentityCompletionIntent) -> Unit,
+    onPickPhoto: () -> Unit,
     modifier: Modifier = Modifier,
 ) = AccessScaffold(modifier) {
     SaqzIconButton(
@@ -117,7 +119,7 @@ fun IdentityCompletionScreen(
         SaqzIcon(SaqzIcons.ChevronLeft)
     }
     Spacer(Modifier.height(BACK_GAP))
-    PhotoPicker(photo = state.photo, onPick = { onIntent(IdentityCompletionIntent.PickPhoto) })
+    PhotoPicker(photo = state.photo, onPick = onPickPhoto)
     Spacer(Modifier.height(HEADER_GAP))
     AccessHeader(
         title = stringResource(Res.string.identity_headline),
@@ -141,6 +143,7 @@ fun IdentityCompletionScreen(
         )
         Spacer(Modifier.height(FIELD_GAP))
     }
+    val form = rememberSaqzFormScope(onSubmit = { onIntent(IdentityCompletionIntent.Submit) })
     SaqzInput(
         value = state.name,
         onValueChange = { onIntent(IdentityCompletionIntent.UpdateName(it)) },
@@ -149,6 +152,7 @@ fun IdentityCompletionScreen(
         inlineLabel = true,
         errorText = stringResource(Res.string.register_error_name).takeIf { state.invalidName },
         leadingContent = { SaqzIcon(SaqzIcons.User, tint = SaqzTheme.colors.primary) },
+        ime = form.imeNext(),
         modifier = Modifier.testTag(Identity1cTags.Name),
     )
     Spacer(Modifier.height(FIELD_GAP))
@@ -163,6 +167,7 @@ fun IdentityCompletionScreen(
         helperText = stringResource(Res.string.identity_phone_privacy),
         errorText = stringResource(Res.string.register_error_phone).takeIf { state.invalidPhone },
         leadingContent = { SaqzIcon(SaqzIcons.Phone, tint = SaqzTheme.colors.primary) },
+        ime = form.imeDone(),
         modifier = Modifier.testTag(Identity1cTags.Phone),
     )
     Spacer(Modifier.height(FIELD_GAP))
@@ -237,7 +242,7 @@ private fun PhotoPicker(photo: ImageBitmap?, onPick: () -> Unit) {
 @Preview(name = "1c — completar cadastro", widthDp = 390, heightDp = 844)
 @Composable
 private fun IdentityCompletionScreenPreview() = SaqzTheme {
-    IdentityCompletionScreen(IdentityCompletionState(name = "Ana Costa"), {})
+    IdentityCompletionScreen(IdentityCompletionState(name = "Ana Costa"), {}, {})
 }
 
 @Preview(name = "1c — a foto não subiu", widthDp = 390, heightDp = 844)
@@ -245,6 +250,7 @@ private fun IdentityCompletionScreenPreview() = SaqzTheme {
 private fun IdentityCompletionPhotoFailedPreview() = SaqzTheme {
     IdentityCompletionScreen(
         IdentityCompletionState(name = "Ana Costa", phone = "(11) 99999-0000", photoFailed = true),
+        {},
         {},
     )
 }

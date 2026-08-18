@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.runComposeUiTest
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -51,6 +52,16 @@ class EditProfileScreenTest {
         onNodeWithTag(EditProfileTags.visibility(PhoneVisibility.EVERYONE)).performClick()
 
         assertEquals(EditProfileIntent.SelectPhoneVisibility(PhoneVisibility.EVERYONE), intent)
+    }
+
+    @Test
+    fun `done no campo da cidade salva o perfil`() = runComposeUiTest {
+        var intent: EditProfileIntent? = null
+        content(onIntent = { intent = it })
+
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[3].performImeAction()
+
+        assertEquals(EditProfileIntent.Submit, intent)
     }
 
     @Test

@@ -61,6 +61,20 @@ class SaqzFormTest {
         field("titular").assertIsNotFocused()
     }
 
+    @Test
+    fun doneOnTheLastFieldSubmitsTheForm() = runComposeUiTest {
+        var submits = 0
+        setContent { SaqzTheme { CardShapedForm(onSubmit = { submits += 1 }) } }
+
+        field("titular").performClick()
+        waitForIdle()
+        field("titular").performImeAction()
+        waitForIdle()
+
+        assertEquals(1, submits)
+        field("titular").assertIsNotFocused()
+    }
+
     /**
      * O par `imeAction` + `keyboardActions` viaja junto num [SaqzFormIme]; se o [SaqzInput]
      * ligasse só as ações e deixasse o `imeAction` cair no `Default`, o teclado mostraria a
@@ -86,7 +100,7 @@ class SaqzFormTest {
 }
 
 @Composable
-private fun CardShapedForm() = SaqzForm {
+private fun CardShapedForm(onSubmit: (() -> Unit)? = null) = SaqzForm(onSubmit = onSubmit) {
     SaqzInput("numero", {}, label = "Número do cartão", ime = imeNext())
     Row {
         SaqzInput("validade", {}, label = "Validade", modifier = Modifier.weight(1f), ime = imeNext())

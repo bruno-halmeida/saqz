@@ -1,10 +1,12 @@
 package br.com.saqz.profile.presentation.exit
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
@@ -51,6 +53,28 @@ class ProfileExitScreenTest {
         onNodeWithTag(ProfileExitTags.ConfirmDelete).assertExists()
         onNodeWithTag(ProfileExitTags.CancelDelete).assertExists()
         onNodeWithText("Excluir sua conta de vez?").assertExists()
+    }
+
+    @Test
+    fun `done no email de confirmacao confirma a exclusao`() = runComposeUiTest {
+        var intent: ProfileExitIntent? = null
+        setContent {
+            SaqzTheme {
+                ProfileExitScreen(
+                    state = ProfileExitState(
+                        email = "person@example.com",
+                        sheet = ProfileExitSheet.ConfirmDelete,
+                    ),
+                    onIntent = { intent = it },
+                    onClose = {},
+                    onLogout = {},
+                )
+            }
+        }
+
+        onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0].performImeAction()
+
+        assertEquals(ProfileExitIntent.ConfirmDelete, intent)
     }
 
     @Test
