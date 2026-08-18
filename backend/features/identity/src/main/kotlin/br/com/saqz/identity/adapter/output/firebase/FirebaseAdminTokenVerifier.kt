@@ -5,6 +5,7 @@ import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.AuthErrorCode
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import java.net.ConnectException
@@ -69,11 +70,15 @@ private fun classify(failure: FirebaseAuthException): Exception {
     val unavailableCause = generateSequence<Throwable>(failure) { it.cause }
         .any { it is SocketTimeoutException || it is ConnectException }
     if (unavailableCause) return FirebaseProviderFailure(failure)
+    return mapAuthErrorCode(failure.authErrorCode, failure)
+}
 
-    return when (failure.authErrorCode?.name) {
-        "EXPIRED_ID_TOKEN" -> ExpiredFirebaseToken(failure)
-        "REVOKED_ID_TOKEN" -> RevokedFirebaseToken(failure)
-        "INVALID_ID_TOKEN" -> InvalidFirebaseToken(failure)
-        else -> FirebaseProviderFailure(failure)
-    }
+internal fun mapAuthErrorCode(code: AuthErrorCode?, cause: Exception? = null): Exception = when (code) {
+    AuthErrorCode.EXPIRED_ID_TOKEN -> ExpiredFirebaseToken(cause)
+    AuthErrorCode.REVOKED_ID_TOKEN -> RevokedFirebaseToken(cause)
+    AuthErrorCode.INVALID_ID_TOKEN,
+    AuthErrorCode.USER_NOT_FOUND,
+    AuthErrorCode.USER_DISABLED,
+    -> InvalidFirebaseToken(cause)
+    else -> FirebaseProviderFailure(cause)
 }

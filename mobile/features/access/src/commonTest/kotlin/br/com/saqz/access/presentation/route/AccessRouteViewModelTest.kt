@@ -17,6 +17,7 @@ import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -81,7 +82,7 @@ class AccessRouteViewModelTest {
     fun `BOOTSTRAP mode projects the failure when the shared session bootstrap fails`() = runTest(mainDispatcher) {
         val fixture = bootstrappingFixture()
 
-        fixture.gateway.calls.single().complete(SaqzResult.Failure(AccessError.Unauthenticated))
+        fixture.gateway.calls.single().complete(SaqzResult.Failure(AccessError.DataFailure(DataError.Server)))
         runCurrent()
 
         assertEquals(AccessRouteState.Bootstrap(isLoading = false, failed = true), fixture.viewModel.state.value)
@@ -99,7 +100,7 @@ class AccessRouteViewModelTest {
     @Test
     fun `RetryBootstrap forwards to the shared session and re-enters Bootstrapping`() = runTest(mainDispatcher) {
         val fixture = bootstrappingFixture()
-        fixture.gateway.calls.single().complete(SaqzResult.Failure(AccessError.Unauthenticated))
+        fixture.gateway.calls.single().complete(SaqzResult.Failure(AccessError.DataFailure(DataError.Server)))
         runCurrent()
 
         fixture.viewModel.onIntent(AccessRouteIntent.RetryBootstrap)
@@ -156,8 +157,8 @@ class AccessRouteViewModelTest {
         override fun signInWithGoogle(done: AuthCallback) = Unit
         override fun updateDisplayName(name: String, done: AuthCallback) = Unit
         override fun idToken(forceRefresh: Boolean, done: TokenCallback) = Unit
-        override fun signOut(done: ResultCallback) = Unit
-        override fun reloadUser(done: AuthCallback) = Unit
+        override fun signOut(done: ResultCallback) = done.complete(OperationResult.Success)
+        override fun reloadUser(done: AuthCallback) = done.complete(AuthResult.Success(verifiedNamedUser))
         override fun sendVerification(done: ResultCallback) = Unit
     }
 

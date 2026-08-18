@@ -162,11 +162,12 @@ class SessionAccessStateMachineTest {
         val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Unknown)))
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
 
         fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
 
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
-        assertEquals(0, fixture.auth.reloadCalls)
+        assertEquals(1, fixture.auth.reloadCalls)
     }
 
     // ---- o portão pré-bootstrap: o nome é pré-condição do backend ----
@@ -229,6 +230,7 @@ class SessionAccessStateMachineTest {
         val fixture = namelessFixture(SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
         fixture.claimIdentity(name = "Pessoa Nova", phone = "(11) 99999-0000")
         runCurrent()
+        fixture.confirmProviderStillPresent()
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
 
         fixture.session.result = SaqzResult.Success(phoneRequiredSession)
@@ -322,6 +324,7 @@ class SessionAccessStateMachineTest {
         )
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
 
         val otherSession = phoneRequiredSession.copy(
@@ -802,6 +805,7 @@ class SessionAccessStateMachineTest {
         fixture.machine.onIntent(SessionIntent.UpdatePhoto(photo))
         fixture.claimIdentity(name = "Ana Costa", phone = "(11) 98888-0000")
         runCurrent()
+        fixture.confirmProviderStillPresent()
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
 
         fixture.session.result = SaqzResult.Success(session)
@@ -836,6 +840,7 @@ class SessionAccessStateMachineTest {
         val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
         fixture.auth.deferSignOut = true
         fixture.machine.onIntent(SessionIntent.Logout)
@@ -938,6 +943,7 @@ class SessionAccessStateMachineTest {
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
 
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
         assertEquals(0, fixture.auth.signOutCalls)
@@ -948,6 +954,7 @@ class SessionAccessStateMachineTest {
         val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
         fixture.session.result = SaqzResult.Success(session)
 
         fixture.machine.onIntent(SessionIntent.RetryBootstrap)
@@ -966,19 +973,32 @@ class SessionAccessStateMachineTest {
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
 
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
     }
 
     @Test
-    fun `unauthenticated bootstrap remains a retryable bootstrap error`() = runTest {
+    fun `unauthenticated bootstrap signs out instead of retrying`() = runTest {
         val fixture = fixture(this, SaqzResult.Failure(AccessError.Unauthenticated))
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
 
-        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
-        assertEquals(0, fixture.auth.signOutCalls)
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(1, fixture.auth.signOutCalls)
+    }
+
+    @Test
+    fun `a deleted native identity during bootstrap signs out instead of retrying`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Server)))
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS))
+
+        assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
+        assertEquals(1, fixture.auth.signOutCalls)
     }
 
     @Test
@@ -990,6 +1010,7 @@ class SessionAccessStateMachineTest {
 
         fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
         runCurrent()
+        fixture.confirmProviderStillPresent()
 
         assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
     }
@@ -1076,6 +1097,10 @@ class SessionAccessStateMachineTest {
         machine.onIntent(SessionIntent.CompleteIdentity)
         auth.completeAuth(AuthResult.Success(verified.copy(displayName = name)))
         auth.completeToken(TokenResult.Success("fresh-token"))
+    }
+
+    private fun Fixture.confirmProviderStillPresent() {
+        auth.completeAuth(AuthResult.Success(verified))
     }
 
     /** A 1c com sessão levando uma recusa por campo do backend. */

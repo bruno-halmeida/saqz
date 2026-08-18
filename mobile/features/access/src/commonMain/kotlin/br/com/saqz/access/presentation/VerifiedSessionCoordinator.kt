@@ -4,6 +4,7 @@ import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.NativeUser
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ProfilePhotoResult
@@ -628,10 +629,28 @@ class SessionAccessStateMachine(
             // não pode chegar até ele. A pergunta é **antes** do pedido — o mesmo critério
             // de [Turn.emit] nos outros efeitos externos da conclusão.
             when (val result = turn.emit { session.bootstrap() } ?: return@launch) {
-                is SaqzResult.Failure -> turn.publish(SessionAccessState.BootstrapError)
+                is SaqzResult.Failure -> handleBootstrapFailure(result.error, turn)
                 is SaqzResult.Success -> resumePendingOrGate(result.value, turn)
             }
         }
+    }
+
+    /**
+     * Retry is for a backend that is down. A deleted Firebase user is not: iOS restores
+     * `currentUser` from Keychain, and bootstrap only offered Retry.
+     */
+    private fun handleBootstrapFailure(error: AccessError, turn: Turn) {
+        if (!turn.current()) return
+        if (error == AccessError.Unauthenticated) {
+            logout()
+            return
+        }
+        auth.reloadUser(authCallback { result ->
+            if (!turn.current()) return@authCallback
+            val deadIdentity = result is AuthResult.Failure &&
+                result.code == NativeFailureCode.INVALID_CREDENTIALS
+            if (deadIdentity) logout() else turn.publish(SessionAccessState.BootstrapError)
+        })
     }
 
     /**

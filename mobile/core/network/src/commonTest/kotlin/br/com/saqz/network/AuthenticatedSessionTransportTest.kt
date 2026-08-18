@@ -147,10 +147,27 @@ class AuthenticatedNetworkClientTest {
     }
 
     @Test
-    fun `current token failure returns unavailable without HTTP request`() = runTest {
-        var requests = 0
+    fun `current token failure refreshes before giving up`() = runTest {
         val fixture = fixture(
             tokens = RecordingTokenProvider(current = TokenResult.Unavailable),
+            response = { resourceResponse() },
+        )
+
+        val result = fixture.execute()
+
+        assertIs<NetworkResult.Success<TransportPayload>>(result)
+        assertEquals(listOf(false, true), fixture.tokens.forceRefreshCalls)
+        assertEquals(0, fixture.invalidator.calls)
+    }
+
+    @Test
+    fun `current and refresh token failure returns unavailable without HTTP request`() = runTest {
+        var requests = 0
+        val fixture = fixture(
+            tokens = RecordingTokenProvider(
+                current = TokenResult.Unavailable,
+                refresh = TokenResult.Unavailable,
+            ),
             response = {
                 requests += 1
                 resourceResponse()
@@ -161,17 +178,18 @@ class AuthenticatedNetworkClientTest {
 
         assertEquals(NetworkError.Unavailable, assertIs<NetworkResult.Failure>(result).error)
         assertEquals(0, requests)
+        assertEquals(0, fixture.invalidator.calls)
     }
 
     @Test
-    fun `refresh failure returns unavailable without invalidating session`() = runTest {
+    fun `refresh failure after 401 invalidates the native session`() = runTest {
         val tokens = RecordingTokenProvider(refresh = TokenResult.Unavailable)
         val fixture = fixture(tokens = tokens, response = { unauthorized() })
 
         val result = fixture.execute()
 
         assertEquals(NetworkError.Unavailable, assertIs<NetworkResult.Failure>(result).error)
-        assertEquals(0, fixture.invalidator.calls)
+        assertEquals(1, fixture.invalidator.calls)
     }
 
     @Test

@@ -3,10 +3,12 @@ package br.com.saqz.identity.adapter.output.firebase
 import br.com.saqz.identity.application.RawIdentityToken
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.sharedkernel.RequestIdentity
+import com.google.firebase.auth.AuthErrorCode
 import org.junit.jupiter.api.Test
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertSame
 
 class FirebaseAdminTokenVerifierTest {
@@ -69,6 +71,13 @@ class FirebaseAdminTokenVerifierTest {
     @Test
     fun `rejects revoked token without exposing provider failure`() {
         assertSame(TokenVerification.Rejected, verifierThrowing(RevokedFirebaseToken()).verify(RawIdentityToken("secret")))
+    }
+
+    @Test
+    fun `maps a deleted or disabled identity to rejection`() {
+        assertIs<InvalidFirebaseToken>(mapAuthErrorCode(AuthErrorCode.USER_NOT_FOUND))
+        assertIs<InvalidFirebaseToken>(mapAuthErrorCode(AuthErrorCode.USER_DISABLED))
+        assertIs<InvalidFirebaseToken>(mapAuthErrorCode(AuthErrorCode.INVALID_ID_TOKEN))
     }
 
     @Test

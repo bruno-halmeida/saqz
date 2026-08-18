@@ -18,6 +18,7 @@ enum IOSAuthFailure: Error, Equatable, Sendable {
     case networkUnavailable
     case providerUnavailable
     case userNotFound
+    case sessionExpired
     case tooManyRequests
     case unknown
 }
@@ -81,8 +82,12 @@ enum IOSAuthFailureMapper {
             .authMethodConflict
         case AuthErrorCode.networkError.rawValue:
             .networkUnavailable
-        case AuthErrorCode.userNotFound.rawValue:
+        case AuthErrorCode.userNotFound.rawValue,
+             AuthErrorCode.userDisabled.rawValue:
             .userNotFound
+        case AuthErrorCode.invalidUserToken.rawValue,
+             AuthErrorCode.userTokenExpired.rawValue:
+            .sessionExpired
         // O único bloqueio real do login: quem conta tentativa é o Firebase, não o
         // backend. Sem este caso a recusa chegaria como `.unknown` e a 1a não teria
         // como trocar o contador cosmético pela mensagem de conta bloqueada.
@@ -160,7 +165,11 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     }
 
     func reloadUser(done: AuthCallback) {
-        firebase.reloadUser { done.complete(result: $0.authResult) }
+        firebase.reloadUser { [self] result in
+            dropLocalSessionIfNeeded(forceRefresh: false, result) {
+                done.complete(result: result.authResult)
+            }
+        }
     }
 
     func updateDisplayName(name: String, done: AuthCallback) {
@@ -168,11 +177,27 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     }
 
     func idToken(forceRefresh: Bool, done: TokenCallback) {
-        firebase.idToken(forceRefresh: forceRefresh) { done.complete(result___: $0.tokenResult) }
+        firebase.idToken(forceRefresh: forceRefresh) { [self] result in
+            dropLocalSessionIfNeeded(forceRefresh: forceRefresh, result) {
+                done.complete(result___: result.tokenResult)
+            }
+        }
     }
 
     func signOut(done: ResultCallback) {
         firebase.signOut { done.complete(result__: $0.operationResult) }
+    }
+
+    private func dropLocalSessionIfNeeded<T>(
+        forceRefresh: Bool,
+        _ result: Result<T, IOSAuthFailure>,
+        then: @escaping () -> Void
+    ) {
+        guard case .failure(let failure) = result, failure.shouldDropLocalSession(afterForcedRefresh: forceRefresh) else {
+            then()
+            return
+        }
+        firebase.signOut { _ in then() }
     }
 }
 
@@ -215,22 +240,22 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
     }
 
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
-        guard let user = auth.currentUser else { completion(.failure(.providerUnavailable)); return }
+        guard let user = auth.currentUser else { completion(.failure(.userNotFound)); return }
         user.sendEmailVerification { error in Self.complete(error: error, completion: completion) }
     }
 
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
-        guard let user = auth.currentUser else { completion(.failure(.providerUnavailable)); return }
+        guard let user = auth.currentUser else { completion(.failure(.userNotFound)); return }
         user.reload { [weak self] error in
             guard error == nil, let current = self?.auth.currentUser else {
-                completion(.failure(error.map(IOSAuthFailureMapper.map) ?? .providerUnavailable)); return
+                completion(.failure(error.map(IOSAuthFailureMapper.map) ?? .userNotFound)); return
             }
             Task { @MainActor in completion(.success(IOSAuthUser(current))) }
         }
     }
 
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
-        guard let user = auth.currentUser else { completion(.failure(.providerUnavailable)); return }
+        guard let user = auth.currentUser else { completion(.failure(.userNotFound)); return }
         let request = user.createProfileChangeRequest()
         request.displayName = name
         request.commitChanges { error in
@@ -240,11 +265,11 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
     }
 
     func idToken(forceRefresh: Bool, completion: @escaping (Result<String, IOSAuthFailure>) -> Void) {
-        guard let user = auth.currentUser else { completion(.failure(.providerUnavailable)); return }
+        guard let user = auth.currentUser else { completion(.failure(.userNotFound)); return }
         user.getIDTokenForcingRefresh(forceRefresh) { token, error in
             Task { @MainActor in
-                if let token { completion(.success(token)) }
-                else { completion(.failure(error.map(IOSAuthFailureMapper.map) ?? .providerUnavailable)) }
+                if let token { completion(.success(token)); return }
+                completion(.failure(error.map(IOSAuthFailureMapper.map) ?? .providerUnavailable))
             }
         }
     }
@@ -369,7 +394,18 @@ private extension IOSAuthFailure {
         case .networkUnavailable: .networkUnavailable
         case .providerUnavailable: .providerUnavailable
         case .tooManyRequests: .tooManyRequests
-        case .unknown: .unknown
+        case .sessionExpired, .unknown: .unknown
+        }
+    }
+
+    func shouldDropLocalSession(afterForcedRefresh forceRefresh: Bool) -> Bool {
+        switch self {
+        case .userNotFound:
+            true
+        case .sessionExpired:
+            forceRefresh
+        default:
+            false
         }
     }
 }

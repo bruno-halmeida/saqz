@@ -248,6 +248,63 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(IOSAuthFailureMapper.map(code: 17999), .unknown)
     }
 
+    func testFirebaseErrorMapperTreatsDeletedUserAsMissingIdentity() {
+        XCTAssertEqual(IOSAuthFailureMapper.map(code: 17005), .userNotFound)
+        XCTAssertEqual(IOSAuthFailureMapper.map(code: 17011), .userNotFound)
+    }
+
+    func testFirebaseErrorMapperKeepsExpiredTokenDistinctFromDeletedUser() {
+        XCTAssertEqual(IOSAuthFailureMapper.map(code: 17017), .sessionExpired)
+        XCTAssertEqual(IOSAuthFailureMapper.map(code: 17014), .sessionExpired)
+    }
+
+    func testIDTokenForADeletedUserDropsTheLocalSession() {
+        let fixture = makeFixture()
+        fixture.firebase.tokenResult = .failure(.userNotFound)
+        fixture.firebase.signOutResult = .success(())
+        let callback = RecordingTokenCallback()
+
+        fixture.adapter.idToken(forceRefresh: false, done: callback)
+
+        XCTAssertEqual(fixture.firebase.events, [.token(forceRefresh: false), .signOut])
+        XCTAssertTrue((callback.result as? TokenResultFailure)?.code === NativeFailureCode.invalidCredentials)
+    }
+
+    func testExpiredIDTokenDoesNotDropSessionUntilForcedRefreshFails() {
+        let fixture = makeFixture()
+        fixture.firebase.tokenResult = .failure(.sessionExpired)
+        let callback = RecordingTokenCallback()
+
+        fixture.adapter.idToken(forceRefresh: false, done: callback)
+
+        XCTAssertEqual(fixture.firebase.events, [.token(forceRefresh: false)])
+        XCTAssertTrue((callback.result as? TokenResultFailure)?.code === NativeFailureCode.unknown)
+    }
+
+    func testForcedRefreshOfExpiredIDTokenDropsTheLocalSession() {
+        let fixture = makeFixture()
+        fixture.firebase.tokenResult = .failure(.sessionExpired)
+        fixture.firebase.signOutResult = .success(())
+        let callback = RecordingTokenCallback()
+
+        fixture.adapter.idToken(forceRefresh: true, done: callback)
+
+        XCTAssertEqual(fixture.firebase.events, [.token(forceRefresh: true), .signOut])
+        XCTAssertTrue((callback.result as? TokenResultFailure)?.code === NativeFailureCode.unknown)
+    }
+
+    func testReloadForADeletedUserDropsTheLocalSession() {
+        let fixture = makeFixture()
+        fixture.firebase.reloadResult = .failure(.userNotFound)
+        fixture.firebase.signOutResult = .success(())
+        let callback = RecordingAuthCallback()
+
+        fixture.adapter.reloadUser(done: callback)
+
+        XCTAssertEqual(fixture.firebase.events, [.signOut])
+        XCTAssertTrue((callback.result as? AuthResultFailure)?.code === NativeFailureCode.invalidCredentials)
+    }
+
     private func makeFixture() -> (adapter: IOSAuthAdapter, firebase: FakeFirebaseAuthClient, google: FakeGoogleSignInClient) {
         let firebase = FakeFirebaseAuthClient()
         let google = FakeGoogleSignInClient()

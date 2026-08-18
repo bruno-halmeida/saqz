@@ -67,12 +67,20 @@ class AuthenticatedNetworkClient(
         execute: suspend (String) -> NetworkResult<T>,
     ): NetworkResult<T> {
         val current = token(forceRefresh = false)
-        if (current !is TokenResult.Available) return NetworkResult.Failure(NetworkError.Unavailable)
-        val first = execute(current.value)
+        val bearer = if (current is TokenResult.Available) {
+            current
+        } else {
+            token(forceRefresh = true)
+        }
+        if (bearer !is TokenResult.Available) return NetworkResult.Failure(NetworkError.Unavailable)
+        val first = execute(bearer.value)
         if (!first.isUnauthorized()) return first
 
-        val refreshed = refresh(current.value)
-        if (refreshed !is TokenResult.Available) return NetworkResult.Failure(NetworkError.Unavailable)
+        val refreshed = refresh(bearer.value)
+        if (refreshed !is TokenResult.Available) {
+            sessionInvalidator.invalidate()
+            return NetworkResult.Failure(NetworkError.Unavailable)
+        }
         val second = execute(refreshed.value)
         if (second.isUnauthorized()) sessionInvalidator.invalidate()
         return second
