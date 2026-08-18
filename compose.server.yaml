@@ -27,6 +27,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.saqz-api.rule=Host(`saqz-api.brunoalmeida.dev`)"
+      - "traefik.http.routers.saqz-api.entrypoints=websecure"
+      - "traefik.http.routers.saqz-api.tls=true"
       - "traefik.http.services.saqz-api.loadbalancer.server.port=8080"
 
   adm-web:
@@ -43,6 +45,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.saqz-web.rule=Host(`saqzweb.brunoalmeida.dev`)"
+      - "traefik.http.routers.saqz-web.entrypoints=websecure"
+      - "traefik.http.routers.saqz-web.tls=true"
       - "traefik.http.services.saqz-web.loadbalancer.server.port=80"
 
   landing-page:
@@ -57,6 +61,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.saqz-landing.rule=Host(`saqz.app`) || Host(`www.saqz.app`)"
+      - "traefik.http.routers.saqz-landing.entrypoints=websecure"
+      - "traefik.http.routers.saqz-landing.tls=true"
       - "traefik.http.services.saqz-landing.loadbalancer.server.port=80"
       # www -> apex, so search engines see a single canonical host
       - "traefik.http.middlewares.saqz-landing-www.redirectregex.regex=^https?://www\\.saqz\\.app/(.*)"
@@ -83,6 +89,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.saqz-mail.rule=Host(`saqz-mail.brunoalmeida.dev`)"
+      - "traefik.http.routers.saqz-mail.entrypoints=websecure"
+      - "traefik.http.routers.saqz-mail.tls=true"
       - "traefik.http.services.saqz-mail.loadbalancer.server.port=8025"
 
   # Local postgres kept available under a profile, but not started by default
