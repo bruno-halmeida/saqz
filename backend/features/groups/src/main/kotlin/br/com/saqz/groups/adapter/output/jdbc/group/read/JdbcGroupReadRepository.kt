@@ -81,7 +81,7 @@ class JdbcGroupReadRepository(
             slots.duration_minutes AS slot_duration_minutes,
             CASE
                 WHEN groups.owner_user_id = :actorUserId THEN 'OWNER'
-                ELSE memberships.role
+                ELSE memberships.role::text
             END AS resolved_role
         FROM access_groups groups
         LEFT JOIN group_memberships memberships

@@ -204,7 +204,7 @@ class JdbcHomeRepository(
                    groups.name AS group_name,
                    CASE
                        WHEN groups.owner_user_id = :actor THEN 'OWNER'
-                       ELSE memberships.role
+                       ELSE memberships.role::text
                    END AS role,
                    (
                        SELECT count(*)

@@ -187,7 +187,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
 
     private companion object {
         const val ROLE = """
-            SELECT CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role END
+            SELECT CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role::text END
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor
             WHERE g.id = :groupId
@@ -202,7 +202,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                    v.name AS venue_name, v.address AS venue_address, v.court AS venue_court,
                    (SELECT s.duration_minutes FROM group_regular_slots s
                     WHERE s.group_id = g.id ORDER BY s.position, s.weekday, s.start_time LIMIT 1) AS default_duration,
-                   CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role END AS actor_role
+                   CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role::text END AS actor_role
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor
             LEFT JOIN group_venues v ON v.group_id = g.id AND v.id = g.default_venue_id

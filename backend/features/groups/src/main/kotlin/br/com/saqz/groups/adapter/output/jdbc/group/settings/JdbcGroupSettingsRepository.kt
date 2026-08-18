@@ -8,6 +8,7 @@ import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.IanaTimeZone
 import java.sql.ResultSet
+import java.sql.Types
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.util.UUID
 import javax.sql.DataSource
@@ -98,13 +99,13 @@ class JdbcGroupSettingsRepository(
             """.trimIndent(),
         )
             .param("name", profile.name)
-            .param("modality", profile.modality.name)
-            .param("composition", profile.composition.name)
+            .param("modality", profile.modality.name, Types.OTHER)
+            .param("composition", profile.composition.name, Types.OTHER)
             .param("description", profile.description)
             .param("city", profile.city)
-            .param("level", profile.level?.name)
+            .param("level", profile.level?.name, Types.OTHER)
             .param("customLevel", profile.customLevel)
-            .param("playStyle", profile.playStyle?.name)
+            .param("playStyle", profile.playStyle?.name, Types.OTHER)
             .param("customPlayStyle", profile.customPlayStyle)
             .param("defaultCapacity", profile.defaultCapacity)
             .param("defaultConfirmationLeadMinutes", profile.defaultConfirmationLeadMinutes)
@@ -112,7 +113,7 @@ class JdbcGroupSettingsRepository(
             .param("monthlyFeeCents", profile.monthlyFeeCents)
             .param("monthlyDueDay", profile.monthlyDueDay)
             .param("mensalistaPriority", profile.mensalistaPriority)
-            .param("promotionMode", profile.promotionMode?.name)
+            .param("promotionMode", profile.promotionMode?.name, Types.OTHER)
             .param("autoConfirmEnabled", profile.autoConfirmEnabled)
             .param("pixKey", profile.pixKey)
             .param("pixLabel", profile.pixLabel)

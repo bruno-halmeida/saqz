@@ -144,7 +144,7 @@ class JdbcAdminUserDirectoryRepository(
         val groups = jdbc.sql(
             """
             SELECT g.id, g.name,
-                   CASE WHEN g.owner_user_id = :id THEN 'OWNER' ELSE m.role END AS role,
+                   CASE WHEN g.owner_user_id = :id THEN 'OWNER' ELSE m.role::text END AS role,
                    (SELECT count(*) FROM group_memberships gm WHERE gm.group_id = g.id) AS members
             FROM group_memberships m
             JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL

@@ -26,7 +26,7 @@ class JdbcAthleteRepository(
         SELECT
             m.user_id,
             u.display_name,
-            CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role END AS role,
+            CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role::text END AS role,
             m.position,
             m.secondary_position,
             m.level,
@@ -72,7 +72,7 @@ class JdbcAthleteRepository(
         SELECT
             updated.user_id,
             u.display_name,
-            CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role END AS role,
+            CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role::text END AS role,
             updated.position,
             updated.secondary_position,
             updated.level,
@@ -140,7 +140,7 @@ class JdbcAthleteRepository(
         SELECT
             updated.user_id,
             u.display_name,
-            CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role END AS role,
+            CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role::text END AS role,
             updated.position,
             updated.secondary_position,
             updated.level,

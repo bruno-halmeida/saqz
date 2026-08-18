@@ -344,7 +344,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                    g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
                    ag.mensalista_priority,ag.promotion_mode,
                    :actor::uuid AS actor_id,
-                   CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
+                   CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role::text END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
                    a.updated_at AS attendance_updated_at,a.version AS attendance_version,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
@@ -421,7 +421,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
                    g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,ag.promotion_mode,
-                   CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role END AS actor_role,
+                   CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role::text END AS actor_role,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL

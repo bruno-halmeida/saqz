@@ -76,7 +76,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         """
         SELECT CASE
             WHEN groups.owner_user_id = :userId THEN 'OWNER'
-            ELSE memberships.role
+            ELSE memberships.role::text
         END AS resolved_role
         FROM access_groups groups
         LEFT JOIN group_memberships memberships
@@ -261,7 +261,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         )
         SELECT CASE
             WHEN target_group.owner_user_id = :userId THEN 'OWNER'
-            ELSE persisted_membership.role
+            ELSE persisted_membership.role::text
         END AS resolved_role
         FROM target_group
         LEFT JOIN persisted_membership ON true

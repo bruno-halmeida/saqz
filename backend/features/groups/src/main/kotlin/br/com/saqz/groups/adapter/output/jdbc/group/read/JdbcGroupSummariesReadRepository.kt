@@ -30,7 +30,7 @@ class JdbcGroupSummariesReadRepository(
             END AS profile_status,
             CASE
                 WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER'
-                ELSE memberships.role
+                ELSE memberships.role::text
             END AS resolved_role,
             (SELECT count(*) FROM group_memberships members WHERE members.group_id = groups.id) AS member_count
         FROM group_memberships memberships
