@@ -5,9 +5,11 @@ import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult as NativeTokenResult
 import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
+import br.com.saqz.access.data.verification.KtorEmailVerificationGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.session.SessionGateway
 import br.com.saqz.access.domain.session.SessionInvalidator as AccessSessionInvalidator
+import br.com.saqz.access.domain.verification.EmailVerificationGateway
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.SessionInvalidator as NetworkSessionInvalidator
@@ -50,6 +52,7 @@ internal val coreNetworkModule = module {
 internal val accessDataModule = module {
     singleOf(::NativeTokenProvider) { bind<IdTokenProvider>() }
     single<SessionGateway> { KtorSessionGateway(get()) }
+    single<EmailVerificationGateway> { KtorEmailVerificationGateway(get()) }
     // Anônimo de propósito: quem esqueceu a senha não tem sessão, então resolve o
     // NetworkClient cru em vez do autenticado.
     single<PasswordResetGateway> { KtorPasswordResetGateway(get()) }

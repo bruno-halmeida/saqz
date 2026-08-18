@@ -96,17 +96,8 @@ internal class AndroidAuthAdapter(
 
     override fun createAccount(name: String, email: String, password: String, done: AuthCallback) =
         firebase.createAccount(name, email, password) { result ->
-            // A 1b morre no instante em que o observe autentica, e a ViewModel descarta o
-            // callback. O e-mail de confirmação tem que sair daqui, que sobrevive à tela.
-            requestVerificationIfUnverified(result)
             done.complete(result.toAuthResult())
         }
-
-    private fun requestVerificationIfUnverified(result: AndroidProviderResult<AndroidProviderUser>) {
-        val user = (result as? AndroidProviderResult.Success)?.value ?: return
-        if (user.emailVerified) return
-        firebase.sendVerification { }
-    }
 
     override fun signInWithPassword(email: String, password: String, done: AuthCallback) =
         firebase.signInWithPassword(email, password) { done.complete(it.toAuthResult()) }
@@ -159,6 +150,10 @@ internal class AndroidAuthAdapter(
 internal class FirebaseSdkAuthClient(
     private val auth: FirebaseAuth,
 ) : AndroidFirebaseAuthClient {
+    init {
+        auth.setLanguageCode("pt-BR")
+    }
+
     override fun observe(listener: (AndroidProviderUser?) -> Unit): Cancelable {
         val sdkListener = FirebaseAuth.AuthStateListener { listener(it.currentUser?.toProvider()) }
         auth.addAuthStateListener(sdkListener)

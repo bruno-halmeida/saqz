@@ -60,12 +60,11 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.firebase.events, [
             .create(email: "ana@example.test", password: "provider-policy"),
             .updateDisplayName("Ana"),
-            .sendVerification,
         ])
         XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.displayName, "Ana")
     }
 
-    func testCreateAccountRequestsVerificationForUnverifiedUser() {
+    func testCreateAccountDoesNotRequestFirebaseVerificationForUnverifiedUser() {
         let fixture = makeFixture()
         fixture.firebase.createResult = .success(
             IOSAuthUser(subject: "firebase-user-1", email: "ana@example.test", emailVerified: false, displayName: nil)
@@ -75,7 +74,7 @@ final class IOSAuthAdapterTests: XCTestCase {
 
         fixture.adapter.createAccount(name: "Ana", email: "ana@example.test", password: "provider-policy", done: RecordingAuthCallback())
 
-        XCTAssertTrue(fixture.firebase.events.contains(.sendVerification))
+        XCTAssertFalse(fixture.firebase.events.contains(.sendVerification))
     }
 
     func testCreateAccountSkipsVerificationWhenEmailIsAlreadyVerified() {

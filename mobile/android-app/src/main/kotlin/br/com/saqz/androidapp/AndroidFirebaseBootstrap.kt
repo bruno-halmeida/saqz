@@ -74,6 +74,7 @@ internal object AndroidFirebaseBootstrap {
             val app = FirebaseApp.getApps(applicationContext).firstOrNull { it.name == appName }
                 ?: FirebaseApp.initializeApp(applicationContext, options, appName)
             sdkAuth = FirebaseAuth.getInstance(app)
+            sdkAuth.setLanguageCode("pt-BR")
             FirebaseAuthClient { host, port -> sdkAuth.useEmulator(host, port) }
         },
         configuration = configuration,

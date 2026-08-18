@@ -7,7 +7,9 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
+import br.com.saqz.access.domain.verification.EmailVerificationGateway
 import br.com.saqz.composeapp.SaqzPlatformDependencies
+import br.com.saqz.composeapp.access.BackendEmailVerificationAuth
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
@@ -144,7 +146,12 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
         )
     }
     single { SaqzNativePorts(access = dependencies.access, groups = dependencies.groups) }
-    single<NativeAuthPort> { get<SaqzNativePorts>().access.auth }
+    single<NativeAuthPort> {
+        BackendEmailVerificationAuth(
+            auth = get<SaqzNativePorts>().access.auth,
+            gateway = { get<EmailVerificationGateway>() },
+        )
+    }
     single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
     single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
     single<NativeSharePort> { get<SaqzNativePorts>().access.share }

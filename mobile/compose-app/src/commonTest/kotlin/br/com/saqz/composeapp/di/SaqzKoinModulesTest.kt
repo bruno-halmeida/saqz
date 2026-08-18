@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.di
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
+import br.com.saqz.access.data.verification.KtorEmailVerificationGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
@@ -22,6 +23,7 @@ import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.port.ValueCallback
 import br.com.saqz.access.domain.port.ValueResult
 import br.com.saqz.access.domain.session.SessionGateway
+import br.com.saqz.access.domain.verification.EmailVerificationGateway
 import br.com.saqz.access.domain.session.SessionInvalidator as AccessSessionInvalidator
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
@@ -194,6 +196,7 @@ class SaqzKoinModulesTest {
         assertSame(koin.get<DelegatingSessionInvalidator>(), koin.get<NetworkSessionInvalidator>())
         assertIs<KtorSessionGateway>(koin.get<SessionGateway>())
         assertIs<KtorPasswordResetGateway>(koin.get<PasswordResetGateway>())
+        assertIs<KtorEmailVerificationGateway>(koin.get<EmailVerificationGateway>())
         assertIs<KtorSubscriptionGateway>(koin.get<SubscriptionGateway>())
         assertIs<KtorPurchaseInformationGateway>(koin.get<PurchaseInformationGateway>())
         assertIs<KtorFinanceStatementGateway>(koin.get<FinanceStatementGateway>())

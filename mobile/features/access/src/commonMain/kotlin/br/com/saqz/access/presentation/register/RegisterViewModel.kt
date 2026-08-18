@@ -204,8 +204,8 @@ class RegisterViewModel(
      * significaria criar a conta e deixá-la deslogada, com um cadastro que ela não sabe que
      * existe. O que esta guarda protege é o **estado desta tela** — ViewModel morta não
      * escreve `isLoading`, erro de campo nem alerta. O e-mail de confirmação também não
-     * passa por aqui: os adapters disparam `sendVerification` no `createAccount`, porque
-     * este callback chega depois de a 1b ter sido desmontada.
+     * passa por aqui: o `NativeAuthPort` composto dispara o pedido ao backend no
+     * `createAccount`, porque este callback chega depois de a 1b ter sido desmontada.
      */
     private var submission = 0
 

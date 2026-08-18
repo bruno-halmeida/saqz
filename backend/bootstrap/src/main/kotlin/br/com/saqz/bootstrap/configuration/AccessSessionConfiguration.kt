@@ -12,8 +12,13 @@ import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.groups.adapter.input.http.AccessEntryRequestController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.input.http.EmailVerificationController
 import br.com.saqz.access.adapter.input.http.PasswordResetController
 import br.com.saqz.access.adapter.output.jdbc.passwordreset.JdbcPasswordResetRepository
+import br.com.saqz.access.application.emailverification.RequestEmailVerification
+import br.com.saqz.access.application.emailverification.VerificationLinkGenerator
+import br.com.saqz.access.application.emailverification.VerificationLinkMailer
+import br.com.saqz.access.application.emailverification.VerificationSendLog
 import br.com.saqz.access.application.passwordreset.PasswordAccounts
 import br.com.saqz.access.application.passwordreset.PasswordReset
 import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
@@ -40,6 +45,7 @@ import br.com.saqz.access.adapter.output.jdbc.photo.JdbcUserPhotoRepository
 import br.com.saqz.access.adapter.output.media.UserPhotoConverter
 import br.com.saqz.access.application.photo.UserPhotoService
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.mail.EmailVerificationMailer
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
@@ -333,6 +339,41 @@ class AccessSessionConfiguration {
 
     @Bean
     fun passwordResetController(passwordReset: PasswordReset) = PasswordResetController(passwordReset)
+
+    @Bean
+    fun emailVerificationMailer(sender: JavaMailSender, @Value("\${saqz.mail.from}") from: String) =
+        EmailVerificationMailer(sender, from)
+
+    @Bean
+    fun verificationLinkGenerator(firebaseApp: FirebaseApp) = FirebaseVerificationLinks(firebaseApp)
+
+    @Bean
+    fun verificationSendLog(repository: JdbcPasswordResetRepository) = VerificationSendLog { bucket, now, floor ->
+        repository.recordRateLimit(bucket, now, floor)
+    }
+
+    @Bean
+    fun verificationLinkMailer(mailer: EmailVerificationMailer) = VerificationLinkMailer { recipient, link ->
+        try {
+            mailer.send(recipient, link)
+        } catch (failure: Exception) {
+            LoggerFactory.getLogger(AccessSessionConfiguration::class.java)
+                .error("email_verification_mail_failed", failure)
+            throw failure
+        }
+    }
+
+    @Bean
+    fun requestEmailVerification(
+        links: VerificationLinkGenerator,
+        mailer: VerificationLinkMailer,
+        sends: VerificationSendLog,
+        clock: Clock,
+    ) = RequestEmailVerification(links, mailer, sends, clock)
+
+    @Bean
+    fun emailVerificationController(verification: RequestEmailVerification) =
+        EmailVerificationController(verification)
 
     @Bean
     fun groupCreationRepository(dataSource: DataSource) = JdbcGroupCreationRepository(dataSource)

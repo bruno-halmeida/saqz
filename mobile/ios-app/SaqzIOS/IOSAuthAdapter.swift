@@ -124,13 +124,8 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
         firebase.createAccount(email: email, password: password) { [weak self] result in
             guard let self else { return }
             switch result {
-            case .success(let created):
-                firebase.updateDisplayName(name) { nameResult in
-                    // A 1b morre quando o observe autentica, e a ViewModel descarta o
-                    // callback. O e-mail de confirmação sai daqui, que sobrevive à tela.
-                    if !created.emailVerified {
-                        self.firebase.sendVerification { _ in }
-                    }
+            case .success:
+                self.firebase.updateDisplayName(name) { nameResult in
                     done.complete(result: nameResult.authResult)
                 }
             case .failure(let failure):
@@ -206,7 +201,10 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
     private let auth: Auth
     private var nextObservationID = 0
 
-    init(auth: Auth = .auth()) { self.auth = auth }
+    init(auth: Auth = .auth()) {
+        self.auth = auth
+        auth.languageCode = "pt-BR"
+    }
 
     func observe(_ listener: @escaping (IOSAuthUser?) -> Void) -> IOSAuthObservation {
         nextObservationID += 1

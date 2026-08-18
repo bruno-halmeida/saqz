@@ -61,21 +61,21 @@ class AndroidAuthAdapterTest {
         fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser()))
 
         assertEquals(
-            listOf("create:Ana:ana@example.test:strong-pass", "verification"),
+            listOf("create:Ana:ana@example.test:strong-pass"),
             fixture.firebase.calls,
         )
         assertEquals(nativeUser(), (result as AuthResult.Success).user)
     }
 
     @Test
-    fun createAccountRequestsVerificationForUnverifiedUser() {
+    fun createAccountDoesNotRequestFirebaseVerificationForUnverifiedUser() {
         val fixture = Fixture()
 
         fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { })
         fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser(emailVerified = false)))
 
         assertEquals(
-            listOf("create:Ana:ana@example.test:strong-pass", "verification"),
+            listOf("create:Ana:ana@example.test:strong-pass"),
             fixture.firebase.calls,
         )
     }

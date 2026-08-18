@@ -179,6 +179,7 @@ private struct LiveFirebaseBootstrapClient: FirebaseBootstrapClient {
         options.apiKey = configuration.apiKey
         options.bundleID = configuration.bundleID
         FirebaseApp.configure(options: options)
+        Auth.auth().languageCode = "pt-BR"
     }
 
     func useAuthEmulator(host: String, port: Int) {

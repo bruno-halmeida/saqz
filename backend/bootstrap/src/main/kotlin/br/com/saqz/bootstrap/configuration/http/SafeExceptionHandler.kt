@@ -7,12 +7,14 @@ import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
 import br.com.saqz.access.adapter.input.http.AccountSuspendedException
+import br.com.saqz.access.adapter.input.http.EmailVerificationRateLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeInvalidException
 import br.com.saqz.access.adapter.input.http.PasswordResetRateLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetTokenInvalidException
 import br.com.saqz.access.adapter.input.http.WeakPasswordException
+import br.com.saqz.access.application.emailverification.VerificationLinksUnavailable
 import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
 import br.com.saqz.groups.adapter.input.http.AthleteLimitExceededException
 import br.com.saqz.groups.adapter.input.http.EntryRequestAthleteLimitExceededException
@@ -161,8 +163,23 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 410, ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
     }
 
+    @ExceptionHandler(EmailVerificationRateLimitException::class)
+    fun emailVerificationRateLimit(
+        failure: EmailVerificationRateLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            429,
+            ErrorCode.EMAIL_VERIFICATION_RATE_LIMIT,
+            retryAfterSeconds = failure.retryAfterSeconds,
+        )
+    }
+
     /** Provedor de identidade fora do ar não é conta inexistente nem token inválido. */
-    @ExceptionHandler(PasswordAccountsUnavailable::class)
+    @ExceptionHandler(PasswordAccountsUnavailable::class, VerificationLinksUnavailable::class)
     fun passwordAccountsUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
     }

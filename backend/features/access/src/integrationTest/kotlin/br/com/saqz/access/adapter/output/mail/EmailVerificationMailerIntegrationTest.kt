@@ -9,14 +9,14 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.mail.javamail.JavaMailSenderImpl
-import java.time.Duration
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class VerificationCodeMailerIntegrationTest {
+class EmailVerificationMailerIntegrationTest {
     private val smtp = GreenMail(ServerSetup(0, "127.0.0.1", ServerSetup.PROTOCOL_SMTP))
-    private lateinit var mailer: VerificationCodeMailer
+    private lateinit var mailer: EmailVerificationMailer
 
     @BeforeAll
     fun startSmtp() {
@@ -24,7 +24,7 @@ class VerificationCodeMailerIntegrationTest {
         val sender = JavaMailSenderImpl()
         sender.host = "127.0.0.1"
         sender.port = smtp.smtp.port
-        mailer = VerificationCodeMailer(sender, "nao-responda@saqz.local")
+        mailer = EmailVerificationMailer(sender, "nao-responda@saqz.local")
     }
 
     @AfterAll
@@ -33,25 +33,25 @@ class VerificationCodeMailerIntegrationTest {
     }
 
     @Test
-    fun `entrega o codigo de acesso ao destinatario`() {
-        mailer.send("atleta@saqz.test", "4821", Duration.ofMinutes(10))
+    fun `entrega o botao com a marca e esconde a url do firebase`() {
+        val link = "https://saqz-dev.firebaseapp.com/__/auth/action?oobCode=abc&mode=verifyEmail"
+        mailer.send("atleta@saqz.test", link)
 
         assertTrue(smtp.waitForIncomingEmail(5_000, 1))
         val message = smtp.receivedMessages.single()
         assertEquals("atleta@saqz.test", message.allRecipients.single().toString())
         assertEquals("nao-responda@saqz.local", message.from.single().toString())
-        assertEquals("Seu código de acesso Saqz", message.subject)
+        assertEquals("Confirme seu e-mail no Saqz", message.subject)
         assertTrue(message.isMimeType("multipart/*"), message.contentType)
         val plain = message.plainText()
         val html = message.htmlText()
-        assertTrue(plain.contains("4821"), plain)
-        assertTrue(plain.contains("10 minutos"), plain)
-        assertTrue(plain.contains("Se não foi você que pediu este código, ignore este e-mail."), plain)
-        assertTrue(html.contains("4821"), html)
-        assertTrue(html.contains("#0638DF"), html)
-        assertTrue(html.contains("Sem stress."), html)
+        assertTrue(plain.contains(link), plain)
+        assertTrue(html.contains("Confirmar e-mail"), html)
+        assertTrue(html.contains("Quase lá."), html)
         assertTrue(html.contains("cid:saqz-mark"), html)
-        assertTrue(message.hasPart("image/png"), message.contentType)
+        assertTrue(html.contains("href=\"https://saqz-dev.firebaseapp.com/__/auth/action?oobCode=abc&amp;mode=verifyEmail\""), html)
+        assertFalse(html.contains("oobCode=abc&mode=verifyEmail"), html)
+        assertTrue(message.hasInlinePng(), message.contentType)
     }
 }
 
@@ -59,7 +59,7 @@ private fun MimeMessage.plainText(): String = firstPart("text/plain")
 
 private fun MimeMessage.htmlText(): String = firstPart("text/html")
 
-private fun MimeMessage.hasPart(mimeType: String): Boolean = containsPart(content, mimeType)
+private fun MimeMessage.hasInlinePng(): Boolean = containsPart(content, "image/png")
 
 private fun containsPart(content: Any?, mimeType: String): Boolean {
     if (content !is Multipart) return false
