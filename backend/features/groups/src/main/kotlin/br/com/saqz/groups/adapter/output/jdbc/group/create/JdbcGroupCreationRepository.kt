@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.IanaTimeZone
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
+import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -142,7 +143,7 @@ class JdbcGroupCreationRepository(
             :defaultCapacity, :defaultConfirmationLeadMinutes, :defaultGameFeeCents,
             :monthlyFeeCents, :monthlyDueDay,
             COALESCE(CAST(:mensalistaPriority AS boolean), true),
-            COALESCE(:promotionMode, 'FIFO'),
+            COALESCE(:promotionMode, 'FIFO'::public.promotion_mode),
             COALESCE(CAST(:autoConfirmEnabled AS boolean), false),
             :pixKey, :pixLabel,
             now(), now()
@@ -180,13 +181,13 @@ class JdbcGroupCreationRepository(
             .param("creationKey", command.creationKey)
             .param("name", profile.name)
             .param("timeZone", command.timeZone.value)
-            .param("modality", profile.modality.name)
-            .param("composition", profile.composition.name)
+            .param("modality", profile.modality.name, Types.OTHER)
+            .param("composition", profile.composition.name, Types.OTHER)
             .param("description", profile.description)
             .param("city", profile.city)
-            .param("level", profile.level?.name)
+            .param("level", profile.level?.name, Types.OTHER)
             .param("customLevel", profile.customLevel)
-            .param("playStyle", profile.playStyle?.name)
+            .param("playStyle", profile.playStyle?.name, Types.OTHER)
             .param("customPlayStyle", profile.customPlayStyle)
             .param("defaultCapacity", profile.defaultCapacity)
             .param("defaultConfirmationLeadMinutes", profile.defaultConfirmationLeadMinutes)
@@ -194,7 +195,7 @@ class JdbcGroupCreationRepository(
             .param("monthlyFeeCents", profile.monthlyFeeCents)
             .param("monthlyDueDay", profile.monthlyDueDay)
             .param("mensalistaPriority", profile.mensalistaPriority)
-            .param("promotionMode", profile.promotionMode?.name)
+            .param("promotionMode", profile.promotionMode?.name, Types.OTHER)
             .param("autoConfirmEnabled", profile.autoConfirmEnabled)
             // Na criação não existe "manter valor atual": vazio e ausente significam o mesmo (sem Pix).
             .param("pixKey", profile.pixKey?.ifEmpty { null })

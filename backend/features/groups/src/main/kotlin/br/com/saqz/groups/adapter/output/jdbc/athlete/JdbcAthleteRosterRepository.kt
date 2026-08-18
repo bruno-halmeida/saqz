@@ -122,7 +122,7 @@ class JdbcAthleteRosterRepository(
             SELECT
                 m.group_id,
                 g.name AS group_name,
-                CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role END AS role,
+                CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role::text END AS role,
                 m.position,
                 m.secondary_position,
                 m.level,

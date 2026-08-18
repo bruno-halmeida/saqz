@@ -107,7 +107,7 @@ class JdbcFinanceStatementRepository(
             """
 
         const val ROLE = """
-            SELECT CASE WHEN groups.owner_user_id = :actor THEN 'OWNER' ELSE memberships.role END
+            SELECT CASE WHEN groups.owner_user_id = :actor THEN 'OWNER' ELSE memberships.role::text END
             FROM access_groups groups
             LEFT JOIN group_memberships memberships
               ON memberships.group_id = groups.id AND memberships.user_id = :actor

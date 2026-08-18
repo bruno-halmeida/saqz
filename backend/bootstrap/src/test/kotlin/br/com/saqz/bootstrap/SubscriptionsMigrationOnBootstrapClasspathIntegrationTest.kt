@@ -37,6 +37,14 @@ class SubscriptionsMigrationOnBootstrapClasspathIntegrationTest {
         assertTrue(typeExists("athlete_membership_type"))
         assertTrue(typeExists("athlete_level"))
         assertTrue(typeExists("athlete_preferred_side"))
+        assertTrue(typeExists("group_role"))
+        assertTrue(typeExists("phone_visibility"))
+        assertTrue(typeExists("group_profile_status"))
+        assertTrue(typeExists("group_modality"))
+        assertTrue(typeExists("group_composition"))
+        assertTrue(typeExists("group_level"))
+        assertTrue(typeExists("court_play_style"))
+        assertTrue(typeExists("promotion_mode"))
     }
 
     private fun tableExists(table: String): Boolean =

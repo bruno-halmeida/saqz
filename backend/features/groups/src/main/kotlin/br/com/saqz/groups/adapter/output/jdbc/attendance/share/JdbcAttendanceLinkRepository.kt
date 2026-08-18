@@ -145,7 +145,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
     private companion object {
         const val LOCK_ROTATABLE_TARGET = """
             SELECT g.id, g.group_id, g.status, g.confirmation_deadline,
-                   CASE WHEN ag.owner_user_id = :actor THEN 'OWNER' ELSE membership.role END AS actor_role
+                   CASE WHEN ag.owner_user_id = :actor THEN 'OWNER' ELSE membership.role::text END AS actor_role
             FROM games g
             JOIN access_groups ag ON ag.id = g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships membership
@@ -198,7 +198,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
         """
 
         const val SNAPSHOT_ACCESS = """
-            SELECT CASE WHEN ag.owner_user_id = :actor THEN 'OWNER' ELSE membership.role END AS actor_role
+            SELECT CASE WHEN ag.owner_user_id = :actor THEN 'OWNER' ELSE membership.role::text END AS actor_role
             FROM games g
             JOIN access_groups ag ON ag.id = g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships membership

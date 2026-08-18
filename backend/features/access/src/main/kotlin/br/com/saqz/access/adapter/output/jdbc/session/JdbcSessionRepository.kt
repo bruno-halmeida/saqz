@@ -133,7 +133,7 @@ class JdbcSessionRepository(
             .param("nicknameProvided", command.nicknameProvided)
             .param("city", command.city, Types.VARCHAR)
             .param("cityProvided", command.cityProvided)
-            .param("phoneVisibility", command.phoneVisibility?.name, Types.VARCHAR)
+            .param("phoneVisibility", command.phoneVisibility?.name, Types.OTHER)
             .param("phoneVisibilityProvided", command.phoneVisibilityProvided)
             .param("subject", command.subject)
             .query { result, _ ->
@@ -178,7 +178,7 @@ class JdbcSessionRepository(
         SELECT
             groups.id AS group_id,
             groups.name AS group_name,
-            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role END AS role
+            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role::text END AS role
         FROM group_memberships memberships
         JOIN access_groups groups ON groups.id = memberships.group_id
         WHERE memberships.user_id = :userId

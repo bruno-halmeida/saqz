@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.membership.MembershipRepository
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import org.springframework.jdbc.core.simple.JdbcClient
+import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -19,7 +20,7 @@ class JdbcMembershipRepository(
         SELECT
             users.id AS user_id,
             users.display_name,
-            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role END AS role,
+            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role::text END AS role,
             CASE
                 WHEN groups.owner_user_id = memberships.user_id THEN 0
                 WHEN memberships.role = 'ADMIN' THEN 1
@@ -41,7 +42,7 @@ class JdbcMembershipRepository(
         SELECT
             users.id AS user_id,
             users.display_name,
-            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role END AS role
+            CASE WHEN groups.owner_user_id = memberships.user_id THEN 'OWNER' ELSE memberships.role::text END AS role
         FROM group_memberships memberships
         JOIN access_groups groups ON groups.id = memberships.group_id AND groups.deleted_at IS NULL
         JOIN access_users users ON users.id = memberships.user_id
@@ -76,7 +77,7 @@ class JdbcMembershipRepository(
     )
         .param("groupId", command.groupId)
         .param("userId", command.userId)
-        .param("role", command.role.name)
+        .param("role", command.role.name, Types.OTHER)
         .query(::mapMembership)
         .single()
 
