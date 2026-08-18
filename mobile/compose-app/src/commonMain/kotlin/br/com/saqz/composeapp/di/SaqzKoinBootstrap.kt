@@ -36,7 +36,6 @@ import br.com.saqz.network.authenticatedImageLoaderModule
 import br.com.saqz.network.toNetworkEnvironment
 import br.com.saqz.profile.data.di.profileDataModule
 import br.com.saqz.profile.presentation.edit.di.editProfilePresentationModule
-import br.com.saqz.profile.presentation.exit.di.profileExitPresentationModule
 import br.com.saqz.profile.presentation.own.di.ownProfilePresentationModule
 import br.com.saqz.profile.presentation.photo.di.profilePhotoPresentationModule
 import br.com.saqz.subscriptions.presentation.myplan.di.myPlanPresentationModule
@@ -67,7 +66,6 @@ private val commonModules = listOf(
     groupCreationEntitlementModule,
     profileDataModule(),
     editProfilePresentationModule(),
-    profileExitPresentationModule(),
     ownProfilePresentationModule(),
     groupsDataModule(),
     groupsPresentationModule(),

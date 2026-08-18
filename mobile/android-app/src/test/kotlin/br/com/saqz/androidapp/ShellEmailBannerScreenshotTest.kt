@@ -48,6 +48,7 @@ class ShellEmailBannerScreenshotTest {
         EmailVerificationBannerContent(
             message = stringResource(Res.string.shell_email_unverified),
             onResend = {},
+            onDismiss = {},
         )
     }
 
@@ -57,6 +58,7 @@ class ShellEmailBannerScreenshotTest {
         EmailVerificationBannerContent(
             message = stringResource(Res.string.shell_email_resent),
             onResend = null,
+            onDismiss = {},
         )
     }
 

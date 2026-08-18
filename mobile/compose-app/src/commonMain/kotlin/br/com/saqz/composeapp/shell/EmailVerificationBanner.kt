@@ -24,6 +24,7 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.composeapp.resources.Res
+import br.com.saqz.composeapp.resources.shell_email_dismiss
 import br.com.saqz.composeapp.resources.shell_email_resend
 import br.com.saqz.composeapp.resources.shell_email_resend_failed
 import br.com.saqz.composeapp.resources.shell_email_resent
@@ -32,6 +33,7 @@ import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -42,6 +44,7 @@ import org.koin.compose.koinInject
 
 internal const val SaqzEmailBannerTag = "shell-email-banner"
 internal const val SaqzEmailBannerResendTag = "shell-email-banner-resend"
+internal const val SaqzEmailBannerDismissTag = "shell-email-banner-dismiss"
 
 /**
  * Trava entre envios: o reenvio existe para quem não recebeu, não para quem quer insistir.
@@ -75,6 +78,7 @@ private const val ResendCooldownMillis = 60_000L
 @Composable
 fun EmailVerificationBanner(
     onRefresh: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     auth: NativeAuthPort = koinInject(),
     now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
@@ -120,6 +124,7 @@ fun EmailVerificationBanner(
             else -> stringResource(Res.string.shell_email_unverified)
         },
         loading = sending,
+        onDismiss = onDismiss,
         onResend = if (cooling) {
             null
         } else {
@@ -160,6 +165,7 @@ fun EmailVerificationBannerContent(
     onResend: (() -> Unit)?,
     modifier: Modifier = Modifier,
     loading: Boolean = false,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -196,6 +202,21 @@ fun EmailVerificationBannerContent(
                 modifier = Modifier.testTag(SaqzEmailBannerResendTag),
             )
         }
+        // Dispensar é da pessoa, não do sistema. A faixa não acaba sozinha — o VUL-76 tirou
+        // a trava do backend de propósito —, então quem já sabe que deve confirmar precisa
+        // de um jeito de tirar o aviso da frente. Quem guarda o dispensado é o shell, e o
+        // estado morre com a sessão: o próximo login lembra de novo, e quem confirmou não
+        // vê a faixa de jeito nenhum. O rótulo mora neste módulo: no iOS o `stringResource`
+        // do Compose não aceita o `Res` de outro source set (receiver type mismatch).
+        if (onDismiss != null) {
+            SaqzIconButton(
+                onClick = onDismiss,
+                contentDescription = stringResource(Res.string.shell_email_dismiss),
+                modifier = Modifier.testTag(SaqzEmailBannerDismissTag),
+            ) {
+                SaqzIcon(SaqzIcons.Close, tint = colors.accent, size = metrics.grid * 2)
+            }
+        }
     }
 }
 
@@ -205,6 +226,7 @@ private fun EmailVerificationBannerPreview() = SaqzTheme {
     EmailVerificationBannerContent(
         message = "Confirme seu e-mail para não perder o acesso à sua conta.",
         onResend = {},
+        onDismiss = {},
     )
 }
 
@@ -214,5 +236,6 @@ private fun EmailVerificationBannerSentPreview() = SaqzTheme {
     EmailVerificationBannerContent(
         message = "E-mail reenviado. Confira sua caixa de entrada.",
         onResend = null,
+        onDismiss = {},
     )
 }

@@ -50,7 +50,7 @@ class ShellEmailBannerRestorationTest {
         val auth = FakeAuthPort(result = null)
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
-            SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth, now = { CLOCK_START }) }
+            SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth, now = { CLOCK_START }) }
         }
 
         compose.onNodeWithTag(RESEND).performClick()
@@ -72,7 +72,7 @@ class ShellEmailBannerRestorationTest {
         var clock = CLOCK_START
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
-            SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth, now = { clock }) }
+            SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth, now = { clock }) }
         }
 
         compose.onNodeWithTag(RESEND).performClick()

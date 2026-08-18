@@ -32,7 +32,7 @@ class EmailVerificationBannerTest {
     @Test
     fun resendCallsTheProviderAndConfirms() = runComposeUiTest {
         val auth = FakeAuthPort()
-        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth) } }
+        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth) } }
 
         onNodeWithText(Unverified).assertIsDisplayed()
         onNodeWithTag(SaqzEmailBannerResendTag).performClick()
@@ -47,10 +47,28 @@ class EmailVerificationBannerTest {
      * de entrada da pessoa. O relógio do teste não avança sozinho, então o minuto não passa
      * e a ação continua fora da faixa.
      */
+    /**
+     * Dispensar é o pedido de quem já sabe que deve confirmar: a faixa não acaba sozinha,
+     * então sem esta porta o aviso fica na frente até o fim da sessão. Quem some com a
+     * faixa é o shell — aqui só se garante que o toque avisa.
+     */
+    @Test
+    fun dismissReportsTheRequest() = runComposeUiTest {
+        var dismissed = 0
+        setContent {
+            SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = { dismissed++ }, auth = FakeAuthPort()) }
+        }
+
+        onNodeWithTag(SaqzEmailBannerDismissTag).performClick()
+        waitForIdle()
+
+        assertEquals(1, dismissed)
+    }
+
     @Test
     fun resendLocksAfterASuccessfulSend() = runComposeUiTest {
         val auth = FakeAuthPort()
-        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth) } }
+        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth) } }
 
         onNodeWithTag(SaqzEmailBannerResendTag).assertExists()
         onNodeWithTag(SaqzEmailBannerResendTag).performClick()
@@ -70,7 +88,7 @@ class EmailVerificationBannerTest {
     @Test
     fun anInFlightResendAlreadyLocksTheAction() = runComposeUiTest {
         val auth = FakeAuthPort(result = null)
-        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth, now = { 0L }) } }
+        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth, now = { 0L }) } }
 
         onNodeWithTag(SaqzEmailBannerResendTag).performClick()
         waitForIdle()
@@ -84,7 +102,7 @@ class EmailVerificationBannerTest {
     @Test
     fun aFailedResendSaysSoAndStaysAvailable() = runComposeUiTest {
         val auth = FakeAuthPort(result = OperationResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
-        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, auth = auth) } }
+        setContent { SaqzTheme { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth) } }
 
         onNodeWithTag(SaqzEmailBannerResendTag).performClick()
         waitForIdle()
@@ -101,7 +119,7 @@ class EmailVerificationBannerTest {
     fun composingTheBannerAsksForARefresh() = runComposeUiTest {
         var refreshes = 0
         setContent {
-            SaqzTheme { EmailVerificationBanner(onRefresh = { refreshes++ }, auth = FakeAuthPort()) }
+            SaqzTheme { EmailVerificationBanner(onRefresh = { refreshes++ }, onDismiss = {}, auth = FakeAuthPort()) }
         }
         waitForIdle()
 
@@ -114,7 +132,7 @@ class EmailVerificationBannerTest {
         setContent {
             SaqzTheme {
                 SaqzAppShell(
-                    banner = { EmailVerificationBanner(onRefresh = {}, auth = FakeAuthPort()) },
+                    banner = { EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = FakeAuthPort()) },
                     homeTab = { Text(HomeTab) },
                     groupsTab = { Text(GroupsTab) },
                     profileTab = { Text(ProfileTab) },
@@ -141,7 +159,14 @@ class EmailVerificationBannerTest {
             SaqzTheme {
                 SaqzAppShell(
                     initialTab = SaqzShellProfileTab,
-                    banner = { EmailVerificationBanner(onRefresh = {}, auth = FakeAuthPort()) },
+                    banner = {
+                        EmailVerificationBanner(
+                            onRefresh = {},
+                            onDismiss = {},
+                            auth = FakeAuthPort(),
+                            modifier = Modifier.testTag(BannerOuterTag),
+                        )
+                    },
                     profileTab = {
                         Column {
                             SaqzTopAppBar(
@@ -155,7 +180,12 @@ class EmailVerificationBannerTest {
                 )
             }
         }
-        val bannerBottom = onNodeWithTag(SaqzEmailBannerTag).getBoundsInRoot().bottom
+        // Mede o nó **externo** da faixa, não o `SaqzEmailBannerTag`: aquele fica depois dos
+        // dois paddings na cadeia de modifiers, então cobre só o miolo do retângulo navy e
+        // deixa de fora o respiro da própria faixa (blockGap + grid). Encostar a barra ali
+        // é impossível por construção — a distância seria sempre esses 20dp, com ou sem o
+        // inset duplicado que este teste existe para pegar.
+        val bannerBottom = onNodeWithTag(BannerOuterTag).getBoundsInRoot().bottom
         val topBarTop = onNodeWithTag(ProfileTopBarTag).getBoundsInRoot().top
         assertEquals(expected = 0f, actual = abs((topBarTop - bannerBottom).value), absoluteTolerance = 1f)
     }
@@ -188,6 +218,7 @@ class EmailVerificationBannerTest {
         const val HomeTab = "conteudo-inicio"
         const val ProfileTab = "conteudo-perfil"
         const val ProfileTopBarTag = "shell-profile-topbar"
+        const val BannerOuterTag = "shell-email-banner-outer"
         const val Unverified = "Confirme seu e-mail para não perder o acesso à sua conta."
         const val Resent = "E-mail reenviado. Confira sua caixa de entrada."
         const val Failed = "Não foi possível reenviar agora. Tente de novo em instantes."

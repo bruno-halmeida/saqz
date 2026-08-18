@@ -9,5 +9,5 @@ sealed interface ProfileRoute : NavKey {
     data object Edit : ProfileRoute
 
     @Serializable
-    data class Exit(val email: String) : ProfileRoute
+    data object Exit : ProfileRoute
 }

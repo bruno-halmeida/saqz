@@ -343,14 +343,7 @@ internal fun SaqzNavHost(
                         OwnProfileRoot(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },
                             onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
-                            onSignOut = {
-                                backStack.add(
-                                    ProfileRoute.Exit(
-                                        email = (state.session as? SessionAccessState.Ready)
-                                            ?.session?.user?.email.orEmpty(),
-                                    ),
-                                )
-                            },
+                            onSignOut = { backStack.add(ProfileRoute.Exit) },
                             refreshVersion = profileRefreshVersion,
                             // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
                             // descia de novo e o título Perfil ficava um inset abaixo da faixa.
@@ -378,14 +371,21 @@ internal fun SaqzNavHost(
                         // Root é montado sempre — inclusive com o e-mail na frente —, e é
                         // dele o recarregamento na volta ao app.
                         val ready = state.session as? SessionAccessState.Ready
+                        // Dispensar a faixa de e-mail vale para **esta** sessão. O estado
+                        // vive aqui, na composição do shell autenticado, então sair derruba
+                        // junto e o próximo login lembra de novo — que é o ponto: o aviso
+                        // não some para sempre, só sai da frente de quem já entendeu.
+                        // `rememberSaveable` porque girar o aparelho não pode ressuscitá-lo.
+                        var emailBannerDismissed by rememberSaveable { mutableStateOf(false) }
                         HomeOwnChargesBannerRoot(
                             onOpenHome = onOpenHome,
-                            emailBanner = if (ready != null && !ready.emailVerified) {
+                            emailBanner = if (ready != null && !ready.emailVerified && !emailBannerDismissed) {
                                 {
                                     EmailVerificationBanner(
                                         onRefresh = {
                                             onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
                                         },
+                                        onDismiss = { emailBannerDismissed = true },
                                     )
                                 }
                             } else {
@@ -418,9 +418,8 @@ internal fun SaqzNavHost(
                     onBack = pop,
                 )
             }
-            entry<ProfileRoute.Exit> { route ->
+            entry<ProfileRoute.Exit> {
                 ProfileExitRoot(
-                    email = route.email,
                     onClose = pop,
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )

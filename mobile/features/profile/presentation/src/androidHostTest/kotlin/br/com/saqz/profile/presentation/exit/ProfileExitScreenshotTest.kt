@@ -38,55 +38,7 @@ class ProfileExitScreenshotTest {
 
     @Test
     fun sheet() = capture("perfil-sair-folha") {
-        ProfileExitScreen(
-            state = ProfileExitState(email = "rafael@email.com"),
-            onIntent = {},
-            onClose = {},
-            onLogout = {},
-        )
-    }
-
-    @Test
-    fun confirmation() = capture("perfil-sair-confirmacao") {
-        ProfileExitScreen(
-            state = ProfileExitState(
-                email = "rafael@email.com",
-                sheet = ProfileExitSheet.ConfirmDelete,
-            ),
-            onIntent = {},
-            onClose = {},
-            onLogout = {},
-        )
-    }
-
-    @Test
-    fun error() = capture("perfil-sair-erro") {
-        ProfileExitScreen(
-            state = ProfileExitState(
-                email = "rafael@email.com",
-                sheet = ProfileExitSheet.ConfirmDelete,
-                confirmationEmail = "rafael@email.com",
-                error = ProfileExitError.DeleteFailed,
-            ),
-            onIntent = {},
-            onClose = {},
-            onLogout = {},
-        )
-    }
-
-    @Test
-    fun loading() = capture("perfil-sair-carregando") {
-        ProfileExitScreen(
-            state = ProfileExitState(
-                email = "rafael@email.com",
-                sheet = ProfileExitSheet.ConfirmDelete,
-                confirmationEmail = "rafael@email.com",
-                isDeleting = true,
-            ),
-            onIntent = {},
-            onClose = {},
-            onLogout = {},
-        )
+        ProfileExitScreen(onClose = {}, onLogout = {})
     }
 
     private fun capture(name: String, content: @Composable () -> Unit) {

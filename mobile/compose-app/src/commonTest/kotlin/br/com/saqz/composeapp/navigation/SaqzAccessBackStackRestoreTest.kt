@@ -132,13 +132,13 @@ class SaqzAccessBackStackRestoreTest {
             saqzAccessBackStackSerializer,
             NavBackStack<NavKey>(
                 ProfileRoute.Edit,
-                ProfileRoute.Exit("atleta@example.test"),
+                ProfileRoute.Exit,
             ),
             saqzLocalNavConfiguration,
         )
 
         assertEquals(
-            listOf<NavKey>(ProfileRoute.Edit, ProfileRoute.Exit("atleta@example.test")),
+            listOf<NavKey>(ProfileRoute.Edit, ProfileRoute.Exit),
             restore(saved),
         )
     }

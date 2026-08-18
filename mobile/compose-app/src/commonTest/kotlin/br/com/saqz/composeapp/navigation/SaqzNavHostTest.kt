@@ -172,7 +172,7 @@ class SaqzNavHostTest {
         stack += GroupsRoute.Details("ceret")
         stack += GroupsRoute.Members("ceret")
         stack += ProfileRoute.Edit
-        stack += ProfileRoute.Exit("atleta@example.test")
+        stack += ProfileRoute.Exit
 
         reconcileAccessStack(stack, ready)
         reconcileAccessStack(stack, ready)
@@ -183,7 +183,7 @@ class SaqzNavHostTest {
                 GroupsRoute.Details("ceret"),
                 GroupsRoute.Members("ceret"),
                 ProfileRoute.Edit,
-                ProfileRoute.Exit("atleta@example.test"),
+                ProfileRoute.Exit,
             ),
             stack,
         )
@@ -220,7 +220,7 @@ class SaqzNavHostTest {
             SaqzShellDestination.Home,
             GroupsRoute.Details("ceret"),
             GroupsRoute.Schedule("ceret"),
-            ProfileRoute.Exit("atleta@example.test"),
+            ProfileRoute.Exit,
         )
         reconcileAccessStack(stack, SessionAccessState.SignedOut)
         assertEquals(listOf<NavKey>(AccessRoute.Login), stack)

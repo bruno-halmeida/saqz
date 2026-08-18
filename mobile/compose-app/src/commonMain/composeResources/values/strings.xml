@@ -10,6 +10,7 @@
     <string name="shell_email_resend">Reenviar</string>
     <string name="shell_email_resent">E-mail reenviado. Confira sua caixa de entrada.</string>
     <string name="shell_email_resend_failed">Não foi possível reenviar agora. Tente de novo em instantes.</string>
+    <string name="shell_email_dismiss">Fechar</string>
     <string name="catalog_title">Catálogo do design system</string>
     <string name="catalog_section_foundations">Fundamentos</string>
     <string name="catalog_section_actions">Ações</string>
