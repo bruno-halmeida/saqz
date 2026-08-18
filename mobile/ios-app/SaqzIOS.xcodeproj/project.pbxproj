@@ -200,9 +200,9 @@
 				A10000000000000000000061 /* Build SaqzMobile */,
 				A10000000000000000000062 /* Sources */,
 				A10000000000000000000021 /* Frameworks */,
+				A10000000000000000000063 /* Resources */,
 				A10000000000000000000133 /* Copy Firebase Plist */,
 				A10000000000000000000134 /* Configure API Base URL */,
-				A10000000000000000000063 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -340,7 +340,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\nset -eu\ncd \"$SRCROOT/..\"\n./gradlew :compose-app:embedAndSignAppleFrameworkForXcode";
+			shellScript = "set -eu\ncd \"$SRCROOT/..\"\nif [ \"YES\" = \"${OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED:-}\" ]; then\n  echo \"Skipping embedAndSignAppleFrameworkForXcode due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES\"\nelse\n  ./gradlew :compose-app:embedAndSignAppleFrameworkForXcode\nfi\n./gradlew :compose-app:generateIosApiConfig";
 		};
 		A10000000000000000000133 /* Copy Firebase Plist */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -358,6 +358,7 @@
 		};
 		A10000000000000000000134 /* Configure API Base URL */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -368,7 +369,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n    Debug) api_key=\"dev\" ;;\n    Release) api_key=\"prod\" ;;\n    *) exit 0 ;;\nesac\n\nconfig_plist=\"$SRCROOT/../compose-app/build/xcode-frameworks/saqz-api-config.plist\"\nbuilt_plist=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\nif [ ! -f \"$config_plist\" ]; then\n    echo \"warning: saqz-api-config.plist missing — run :compose-app:generateIosApiConfig first. Falling back to Info.plist default.\"\n    exit 0\nfi\n\napi_base_url=$(/usr/libexec/PlistBuddy -c \"Print :$api_key\" \"$config_plist\" 2>/dev/null || true)\nif [ -z \"$api_base_url\" ]; then\n    echo \"warning: API base URL for '$api_key' not found in saqz-api-config.plist. Falling back to Info.plist default.\"\n    exit 0\nfi\n\n/usr/libexec/PlistBuddy -c \"Delete :SaqzAPIBaseURL\" \"$built_plist\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :SaqzAPIBaseURL string $api_base_url\" \"$built_plist\"\n";
+			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n    Debug) api_key=\"dev\" ;;\n    Release) api_key=\"prod\" ;;\n    *) exit 0 ;;\nesac\n\nconfig_plist=\"$SRCROOT/../compose-app/build/xcode-api-config/saqz-api-config.plist\"\nbuilt_plist=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\nif [ ! -f \"$config_plist\" ]; then\n    echo \"error: saqz-api-config.plist missing after Gradle. Expected $config_plist\"\n    exit 1\nfi\n\napi_base_url=$(/usr/libexec/PlistBuddy -c \"Print :$api_key\" \"$config_plist\" 2>/dev/null || true)\nif [ -z \"$api_base_url\" ]; then\n    echo \"error: API base URL for '$api_key' not found in saqz-api-config.plist\"\n    exit 1\nfi\n\n/usr/libexec/PlistBuddy -c \"Delete :SaqzAPIBaseURL\" \"$built_plist\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :SaqzAPIBaseURL string $api_base_url\" \"$built_plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
