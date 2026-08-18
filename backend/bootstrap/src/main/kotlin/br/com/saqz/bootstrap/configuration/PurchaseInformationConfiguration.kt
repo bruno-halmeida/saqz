@@ -4,15 +4,22 @@ import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
+import br.com.saqz.subscriptions.adapter.input.http.CheckoutLoginController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionPurchaseInformationController
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCheckoutLoginTokenStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcPurchaseInformationEmailStore
 import br.com.saqz.subscriptions.adapter.output.mail.SmtpPurchaseInformationSender
+import br.com.saqz.subscriptions.application.CheckoutIdentitySessions
+import br.com.saqz.subscriptions.application.CheckoutLoginLinkFactory
+import br.com.saqz.subscriptions.application.CheckoutLoginTokens
 import br.com.saqz.subscriptions.application.PurchaseInformationReservationPort
 import br.com.saqz.subscriptions.application.PurchaseInformationSender
 import br.com.saqz.subscriptions.application.PurchaseInformationOperationalLog
+import br.com.saqz.subscriptions.application.RedeemCheckoutLogin
 import br.com.saqz.subscriptions.application.SendPurchaseInformation
 import br.com.saqz.subscriptions.application.SubscriptionEmailLookup
+import com.google.firebase.FirebaseApp
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -30,6 +37,31 @@ import javax.sql.DataSource
 class PurchaseInformationConfiguration {
     @Bean
     fun purchaseInformationEmailStore(dataSource: DataSource) = JdbcPurchaseInformationEmailStore(dataSource)
+
+    @Bean
+    fun checkoutLoginTokens(dataSource: DataSource): CheckoutLoginTokens = JdbcCheckoutLoginTokenStore(dataSource)
+
+    @Bean
+    fun checkoutLoginLinkFactory(
+        tokens: CheckoutLoginTokens,
+        @Value("\${saqz.subscription.purchase-url}") purchaseUrl: String,
+    ) = CheckoutLoginLinkFactory(tokens, purchaseUrl)
+
+    @Bean
+    fun checkoutIdentitySessions(
+        firebaseApp: FirebaseApp,
+        dataSource: DataSource,
+    ): CheckoutIdentitySessions = FirebaseCheckoutSessions(firebaseApp, dataSource)
+
+    @Bean
+    fun redeemCheckoutLogin(
+        tokens: CheckoutLoginTokens,
+        sessions: CheckoutIdentitySessions,
+        clock: Clock,
+    ) = RedeemCheckoutLogin(tokens, sessions, clock)
+
+    @Bean
+    fun checkoutLoginController(redeem: RedeemCheckoutLogin) = CheckoutLoginController(redeem)
 
     @Bean
     fun purchaseInformationSender(
@@ -57,9 +89,10 @@ class PurchaseInformationConfiguration {
         emailLookup: SubscriptionEmailLookup,
         reservations: PurchaseInformationReservationPort,
         sender: PurchaseInformationSender,
+        checkoutLinks: CheckoutLoginLinkFactory,
         clock: Clock,
         operationalLog: PurchaseInformationOperationalLog,
-    ) = SendPurchaseInformation(emailLookup, reservations, sender, clock, operationalLog)
+    ) = SendPurchaseInformation(emailLookup, reservations, sender, checkoutLinks, clock, operationalLog)
 
     @Bean
     fun subscriptionActorResolver(

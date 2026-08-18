@@ -3,8 +3,11 @@ package br.com.saqz.bootstrap
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.subscriptions.application.CheckoutIdentitySessions
 import com.icegreen.greenmail.util.GreenMail
 import com.icegreen.greenmail.util.ServerSetupTest
+import jakarta.mail.Multipart
+import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -29,6 +32,7 @@ import java.net.http.HttpResponse
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import javax.sql.DataSource
 
@@ -51,7 +55,8 @@ class PurchaseInformationEndpointIntegrationTest {
     @BeforeEach
     fun reset() {
         JdbcTemplate(dataSource).execute(
-            "TRUNCATE subscription_purchase_information_email_successes, " +
+            "TRUNCATE subscription_checkout_login_tokens, " +
+                "subscription_purchase_information_email_successes, " +
                 "subscription_purchase_information_emails, access_users CASCADE",
         )
         JdbcTemplate(dataSource).update(
@@ -79,8 +84,10 @@ class PurchaseInformationEndpointIntegrationTest {
 
         assertEquals(204, response.statusCode(), response.body())
         assertTrue(smtp.waitForIncomingEmail(5_000, 1))
-        assertEquals("owner@example.test", smtp.receivedMessages.single().allRecipients.single().toString())
-        assertFalse(smtp.receivedMessages.single().content.toString().contains("attacker@example.test"))
+        val delivered = smtp.receivedMessages.single()
+        assertEquals("owner@example.test", delivered.allRecipients.single().toString())
+        val raw = java.io.ByteArrayOutputStream().also { delivered.writeTo(it) }.toString(Charsets.UTF_8)
+        assertFalse(raw.contains("attacker@example.test"), raw)
     }
 
     @Test
@@ -140,6 +147,39 @@ class PurchaseInformationEndpointIntegrationTest {
         assertTrue(smtp.waitForIncomingEmail(5_000, 1))
     }
 
+    @Test
+    fun `purchase email carries a one-time login that signs the owner in`() {
+        assertEquals(204, post().statusCode())
+        assertTrue(smtp.waitForIncomingEmail(5_000, 1))
+        val message = smtp.receivedMessages.single()
+        val plain = message.textPart("text/plain")
+        val html = message.textPart("text/html")
+        val token = Regex("""https://checkout\.test/assinar/\?t=([A-Za-z0-9_-]{43})""")
+            .find(plain)
+            ?.groupValues
+            ?.get(1)
+        assertNotNull(token, plain)
+        assertTrue(html.contains("href=\"https://checkout.test/assinar/?t=$token\""), html)
+        assertFalse(plain.contains("customToken"))
+        assertFalse(html.contains("customToken"))
+
+        val first = redeem(token)
+        assertEquals(200, first.statusCode(), first.body())
+        assertTrue(first.body().contains("\"customToken\":\"checkout-custom-token\""), first.body())
+
+        val second = redeem(token)
+        assertEquals(410, second.statusCode(), second.body())
+        assertTrue(second.body().contains("CHECKOUT_LOGIN_TOKEN_INVALID"), second.body())
+    }
+
+    @Test
+    fun `checkout login is anonymous and rejects garbage without a session`() {
+        val response = redeem("not-a-real-token")
+
+        assertEquals(410, response.statusCode(), response.body())
+        assertTrue(response.body().contains("CHECKOUT_LOGIN_TOKEN_INVALID"), response.body())
+    }
+
     private fun post(body: String = "{}", bearer: String? = "purchase-token"): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(
             URI("http://127.0.0.1:$port/subscriptions/me/purchase-information"),
@@ -148,6 +188,32 @@ class PurchaseInformationEndpointIntegrationTest {
             .POST(HttpRequest.BodyPublishers.ofString(body))
         if (bearer != null) builder.header("Authorization", "Bearer $bearer")
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+    }
+
+    private fun redeem(token: String): HttpResponse<String> {
+        val request = HttpRequest.newBuilder(
+            URI("http://127.0.0.1:$port/subscriptions/checkout-login"),
+        )
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("""{"token":"$token"}"""))
+            .build()
+        return client.send(request, HttpResponse.BodyHandlers.ofString())
+    }
+
+    private fun MimeMessage.textPart(mimeType: String): String {
+        val found = findPart(content, mimeType)
+        return found ?: error("mensagem sem parte $mimeType")
+    }
+
+    private fun findPart(content: Any?, mimeType: String): String? {
+        if (content is String) return content.takeIf { mimeType.startsWith("text/plain") }
+        if (content !is Multipart) return null
+        for (index in 0 until content.count) {
+            val part = content.getBodyPart(index)
+            if (part.isMimeType(mimeType) && part.content is String) return part.content.toString()
+            findPart(part.content, mimeType)?.let { return it }
+        }
+        return null
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -162,6 +228,12 @@ class PurchaseInformationEndpointIntegrationTest {
             } else {
                 TokenVerification.Rejected
             }
+        }
+
+        @Bean
+        @Primary
+        fun purchaseInformationCheckoutIdentitySessions(): CheckoutIdentitySessions = CheckoutIdentitySessions {
+            "checkout-custom-token"
         }
     }
 

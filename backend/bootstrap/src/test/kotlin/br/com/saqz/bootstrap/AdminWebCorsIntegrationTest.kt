@@ -76,7 +76,7 @@ class AdminWebCorsIntegrationTest {
 
     @Test
     fun `preflight do checkout passa sem bearer nos paths de assinatura`() {
-        listOf("/subscriptions" to "POST", "/subscriptions/me/receipts" to "GET", "/coupons/validate" to "POST")
+        listOf("/subscriptions" to "POST", "/subscriptions/me/receipts" to "GET", "/subscriptions/checkout-login" to "POST", "/coupons/validate" to "POST")
             .forEach { (path, method) ->
                 val response = options(path, origin = "http://127.0.0.1:8123", requestMethod = method)
 

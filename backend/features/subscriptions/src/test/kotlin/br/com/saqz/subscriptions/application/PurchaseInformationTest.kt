@@ -20,6 +20,7 @@ class PurchaseInformationTest {
     private lateinit var emails: FakeSubscriptionEmailLookup
     private lateinit var reservations: FakePurchaseInformationReservationPort
     private lateinit var sender: RecordingPurchaseInformationSender
+    private lateinit var checkoutTokens: FakeCheckoutLoginTokens
     private lateinit var operationalLog: RecordingPurchaseInformationOperationalLog
     private lateinit var useCase: SendPurchaseInformation
 
@@ -29,11 +30,13 @@ class PurchaseInformationTest {
         emails = FakeSubscriptionEmailLookup(email)
         reservations = FakePurchaseInformationReservationPort()
         sender = RecordingPurchaseInformationSender()
+        checkoutTokens = FakeCheckoutLoginTokens()
         operationalLog = RecordingPurchaseInformationOperationalLog()
         useCase = SendPurchaseInformation(
             emailLookup = emails,
             reservations = reservations,
             sender = sender,
+            checkoutLinks = CheckoutLoginLinkFactory(checkoutTokens, "https://checkout.test/assinar/"),
             clock = clock,
             operationalLog = operationalLog,
         )
@@ -45,7 +48,9 @@ class PurchaseInformationTest {
 
         assertEquals(SendPurchaseInformationResult.Success, result)
         assertEquals(listOf(email), sender.recipients)
+        assertEquals(listOf("https://checkout.test/assinar/?t=${"A".repeat(43)}"), sender.checkoutLinks)
         assertEquals(listOf(ownerUserId), emails.lookups)
+        assertEquals(listOf(ownerUserId), checkoutTokens.issuedOwners)
         assertEquals(1, reservations.completed.size)
         assertTrue(reservations.released.isEmpty())
         assertEquals(start, reservations.completed.single().second)
@@ -124,6 +129,28 @@ class PurchaseInformationTest {
         assertFailsWith<IllegalArgumentException> {
             SendPurchaseInformationResult.RateLimited(retryAfterSeconds = -1)
         }
+    }
+
+    @Test
+    fun `maps checkout login issue failure to a typed failure without sending`() {
+        checkoutTokens.failure = IllegalStateException("token store unavailable")
+
+        val result = useCase.execute(SendPurchaseInformationCommand(ownerUserId))
+
+        assertEquals(SendPurchaseInformationResult.Failed, result)
+        assertTrue(sender.recipients.isEmpty())
+        assertEquals(1, reservations.released.size)
+        assertEquals(
+            listOf(
+                RecordingPurchaseInformationOperationalLog.Failure(
+                    ownerUserId,
+                    "reservation-1",
+                    "checkout-login",
+                    "IllegalStateException",
+                ),
+            ),
+            operationalLog.failures,
+        )
     }
 
     @Test
@@ -324,12 +351,30 @@ class PurchaseInformationTest {
                 .coerceAtLeast(1)
     }
 
+    private class FakeCheckoutLoginTokens : CheckoutLoginTokens {
+        val issuedOwners = mutableListOf<UUID>()
+        var failure: Exception? = null
+        var nextRaw: String = "A".repeat(43)
+
+        override fun issue(ownerUserId: UUID, now: Instant): String {
+            failure?.let { throw it }
+            issuedOwners += ownerUserId
+            return nextRaw
+        }
+
+        override fun findOpen(rawToken: String, now: Instant): OpenCheckoutLogin? = null
+
+        override fun consume(id: UUID, consumedAt: Instant): Boolean = false
+    }
+
     private class RecordingPurchaseInformationSender : PurchaseInformationSender {
         val recipients = mutableListOf<String>()
+        val checkoutLinks = mutableListOf<String>()
         var failure: Exception? = null
 
-        override fun send(recipient: String) {
+        override fun send(recipient: String, checkoutLink: String) {
             recipients += recipient
+            checkoutLinks += checkoutLink
             failure?.let { throw it }
         }
     }

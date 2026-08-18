@@ -106,6 +106,7 @@ class IdentitySecurityConfiguration {
             it.requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/password-reset/**").permitAll()
                 .requestMatchers("/api/invites/preview").permitAll()
+                .requestMatchers("/subscriptions/checkout-login").permitAll()
                 .requestMatchers("/webhooks/asaas").permitAll()
                 .anyRequest().authenticated()
         }
@@ -121,8 +122,16 @@ class IdentitySecurityConfiguration {
         .build()
 
     private companion object {
-        /** Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer. */
-        val ANONYMOUS_PATHS = setOf("/actuator/health", "/api/password-reset", "/webhooks/asaas")
+        /**
+         * Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer.
+         * O link do e-mail de assinar também chega antes de existir sessão Firebase.
+         */
+        val ANONYMOUS_PATHS = setOf(
+            "/actuator/health",
+            "/api/password-reset",
+            "/subscriptions/checkout-login",
+            "/webhooks/asaas",
+        )
         val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview")
 
         /**

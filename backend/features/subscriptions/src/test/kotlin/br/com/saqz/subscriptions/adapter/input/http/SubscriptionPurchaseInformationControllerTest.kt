@@ -2,6 +2,8 @@ package br.com.saqz.subscriptions.adapter.input.http
 
 import br.com.saqz.sharedkernel.ErrorCode
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.subscriptions.application.CheckoutLoginLinkFactory
+import br.com.saqz.subscriptions.application.CheckoutLoginTokens
 import br.com.saqz.subscriptions.application.PurchaseInformationReservation
 import br.com.saqz.subscriptions.application.PurchaseInformationReservationPort
 import br.com.saqz.subscriptions.application.PurchaseInformationReservationResult
@@ -170,6 +172,14 @@ class SubscriptionPurchaseInformationControllerTest {
             },
             reservations = FixedReservationPort(reservationOutcome),
             sender = sender,
+            checkoutLinks = CheckoutLoginLinkFactory(
+                tokens = object : CheckoutLoginTokens {
+                    override fun issue(ownerUserId: UUID, now: Instant) = "A".repeat(43)
+                    override fun findOpen(rawToken: String, now: Instant) = null
+                    override fun consume(id: UUID, consumedAt: Instant) = false
+                },
+                purchaseUrl = "https://checkout.test/assinar/",
+            ),
             clock = clock,
         ),
     )
@@ -201,7 +211,7 @@ class SubscriptionPurchaseInformationControllerTest {
     private class RecordingSender : PurchaseInformationSender {
         val recipients = mutableListOf<String>()
 
-        override fun send(recipient: String) {
+        override fun send(recipient: String, checkoutLink: String) {
             recipients += recipient
         }
     }

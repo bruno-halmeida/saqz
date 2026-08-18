@@ -16,7 +16,39 @@
     auth.useEmulator(config.authEmulatorUrl, { disableWarnings: true });
   }
 
-  var CHECKOUT_KEY = "saqz-assinar-checkout";
+  var loginPorLink = new URLSearchParams(window.location.search).get("t");
+  var redimindoLink = Boolean(loginPorLink);
+
+  function limparTokenDaUrl() {
+    if (!loginPorLink) return;
+    history.replaceState({}, "", window.location.pathname + window.location.hash);
+    loginPorLink = null;
+  }
+
+  function entrarComLink(raw) {
+    mostrar("carregando");
+    fetch(config.apiBaseUrl + "/subscriptions/checkout-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: raw }),
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error("status " + response.status);
+        return response.json();
+      })
+      .then(function (body) {
+        if (!body || !body.customToken) throw new Error("sem sessao");
+        limparTokenDaUrl();
+        redimindoLink = false;
+        return auth.signInWithCustomToken(body.customToken);
+      })
+      .catch(function () {
+        redimindoLink = false;
+        limparTokenDaUrl();
+        mostrar("login");
+        mostrarErro("login-erro", "Este link expirou. Entre com e-mail e senha.");
+      });
+  }
   var POLL_MS = 5000;
 
   var cartao = window.SaqzCartao;
@@ -498,8 +530,11 @@
   });
   $("botao-tentar-novamente").addEventListener("click", iniciar);
 
+  if (loginPorLink) entrarComLink(loginPorLink);
+
   auth.onAuthStateChanged(function (user) {
     pararPoll();
+    if (redimindoLink) return;
     if (user) iniciar();
     else mostrar("login");
   });

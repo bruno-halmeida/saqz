@@ -104,6 +104,39 @@ class SubscriptionsSchemaMigrationIntegrationTest {
     }
 
     @Test
+    fun `checkout login tokens store only the digest with a unique 32-byte value`() {
+        val userId = user("checkout-login-schema")
+        val digest = ByteArray(32) { 9 }
+        val hex = digest.joinToString("") { "%02x".format(it) }
+        val now = "2026-08-18T12:00:00Z"
+
+        execute(
+            "INSERT INTO subscription_checkout_login_tokens " +
+                "(id, user_id, token_digest, created_at, expires_at) VALUES " +
+                "('${UUID.randomUUID()}', '$userId', decode('$hex', 'hex'), '$now', '$now')",
+        )
+
+        assertEquals(
+            1,
+            int("SELECT count(*) FROM subscription_checkout_login_tokens WHERE user_id = '$userId'"),
+        )
+        assertFailsWith<Exception> {
+            execute(
+                "INSERT INTO subscription_checkout_login_tokens " +
+                    "(id, user_id, token_digest, created_at, expires_at) VALUES " +
+                    "('${UUID.randomUUID()}', '$userId', decode('$hex', 'hex'), '$now', '$now')",
+            )
+        }
+        assertFailsWith<Exception> {
+            execute(
+                "INSERT INTO subscription_checkout_login_tokens " +
+                    "(id, user_id, token_digest, created_at, expires_at) VALUES " +
+                    "('${UUID.randomUUID()}', '$userId', decode('aa', 'hex'), '$now', '$now')",
+            )
+        }
+    }
+
+    @Test
     fun `purchase information history foreign key and reservation pair constraint hold`() {
         val userId = user("purchase-information-constraints")
         val now = "2026-08-10T12:00:00Z"

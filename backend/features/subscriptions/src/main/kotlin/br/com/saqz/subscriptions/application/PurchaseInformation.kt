@@ -36,7 +36,7 @@ fun interface SubscriptionEmailLookup {
 
 /** Sends the purchase information after the application has secured a reservation. */
 fun interface PurchaseInformationSender {
-    fun send(recipient: String)
+    fun send(recipient: String, checkoutLink: String)
 }
 
 fun interface PurchaseInformationOperationalLog {
@@ -90,6 +90,7 @@ class SendPurchaseInformation(
     private val emailLookup: SubscriptionEmailLookup,
     private val reservations: PurchaseInformationReservationPort,
     private val sender: PurchaseInformationSender,
+    private val checkoutLinks: CheckoutLoginLinkFactory,
     private val clock: Clock = Clock.systemUTC(),
     private val operationalLog: PurchaseInformationOperationalLog =
         PurchaseInformationOperationalLog { _, _, _, _ -> },
@@ -129,19 +130,18 @@ class SendPurchaseInformation(
         email: String,
         reservation: PurchaseInformationReservation,
     ): SendPurchaseInformationResult {
+        val checkoutLink = try {
+            checkoutLinks.issue(reservation.ownerUserId, clock.instant())
+        } catch (cause: Exception) {
+            logFailure(reservation.ownerUserId, reservation.token, "checkout-login", cause)
+            releaseAfterFailure(reservation)
+            return SendPurchaseInformationResult.Failed
+        }
         try {
-            sender.send(email)
+            sender.send(email, checkoutLink)
         } catch (cause: Exception) {
             logFailure(reservation.ownerUserId, reservation.token, "send", cause)
-            val released = try {
-                reservations.release(reservation)
-            } catch (releaseCause: Exception) {
-                logFailure(reservation.ownerUserId, reservation.token, "release", releaseCause)
-                null
-            }
-            if (released == false) {
-                logFailure(reservation.ownerUserId, reservation.token, "release", "compare_and_set_false")
-            }
+            releaseAfterFailure(reservation)
             return SendPurchaseInformationResult.Failed
         }
 
@@ -155,6 +155,18 @@ class SendPurchaseInformation(
         } catch (cause: Exception) {
             logFailure(reservation.ownerUserId, reservation.token, "complete", cause)
             SendPurchaseInformationResult.Failed
+        }
+    }
+
+    private fun releaseAfterFailure(reservation: PurchaseInformationReservation) {
+        val released = try {
+            reservations.release(reservation)
+        } catch (releaseCause: Exception) {
+            logFailure(reservation.ownerUserId, reservation.token, "release", releaseCause)
+            null
+        }
+        if (released == false) {
+            logFailure(reservation.ownerUserId, reservation.token, "release", "compare_and_set_false")
         }
     }
 

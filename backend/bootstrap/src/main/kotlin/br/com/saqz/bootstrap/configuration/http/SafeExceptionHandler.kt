@@ -46,6 +46,7 @@ import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
 import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
+import br.com.saqz.subscriptions.adapter.input.http.CheckoutLoginTokenInvalidException
 import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
 import br.com.saqz.subscriptions.adapter.input.http.CouponExpiredException
 import br.com.saqz.subscriptions.adapter.input.http.CouponNotFoundException
@@ -56,6 +57,7 @@ import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestEx
 import br.com.saqz.subscriptions.adapter.input.http.PendingCheckoutMismatchException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionConflictException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
+import br.com.saqz.subscriptions.application.CheckoutIdentityUnavailable
 import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
@@ -179,7 +181,11 @@ class SafeExceptionHandler(
     }
 
     /** Provedor de identidade fora do ar não é conta inexistente nem token inválido. */
-    @ExceptionHandler(PasswordAccountsUnavailable::class, VerificationLinksUnavailable::class)
+    @ExceptionHandler(
+        PasswordAccountsUnavailable::class,
+        VerificationLinksUnavailable::class,
+        CheckoutIdentityUnavailable::class,
+    )
     fun passwordAccountsUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
     }
@@ -396,6 +402,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(UserPhotoNotFoundException::class)
     fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
+    }
+
+    @ExceptionHandler(CheckoutLoginTokenInvalidException::class)
+    fun checkoutLoginTokenInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 410, ErrorCode.CHECKOUT_LOGIN_TOKEN_INVALID)
     }
 
     @ExceptionHandler(InvalidCouponRequestException::class)
