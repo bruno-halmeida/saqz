@@ -5,9 +5,6 @@ import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeFailureCode
-import br.com.saqz.access.domain.port.NativeUser
-import br.com.saqz.access.domain.port.OperationResult
-import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.AuthenticationIntent
 import br.com.saqz.access.presentation.AuthenticationStateMachine
@@ -136,25 +133,12 @@ class RegisterViewModel(
                 clearDraft()
                 update { it.copy(isLoading = false) }
                 onSessionIntent(SessionIntent.Accept(AuthTransition.Authenticated(result.user)))
-                requestVerificationEmail(result.user)
             }
         }
     }
 
     private fun clearDraft() {
         listOf(KeyName, KeyEmail, KeyPhone).forEach { savedState.remove<String>(it) }
-    }
-
-    /**
-     * Confirmação no nascimento da conta, sem esperar o "Reenviar" da faixa. Falha de
-     * entrega não desfaz o cadastro: a sessão já entrou, e a faixa continua podendo
-     * reenviar. Já verificado (conta Google reaproveitada neste caminho) não dispara.
-     */
-    private fun requestVerificationEmail(user: NativeUser) {
-        if (user.emailVerified) return
-        auth.sendVerification(object : ResultCallback {
-            override fun complete(result: OperationResult) = Unit
-        })
     }
 
     /**
@@ -219,7 +203,9 @@ class RegisterViewModel(
      * exatamente o que a pessoa pediu ao tocar em "Criar conta". Bloquear a transição
      * significaria criar a conta e deixá-la deslogada, com um cadastro que ela não sabe que
      * existe. O que esta guarda protege é o **estado desta tela** — ViewModel morta não
-     * escreve `isLoading`, erro de campo nem alerta.
+     * escreve `isLoading`, erro de campo nem alerta. O e-mail de confirmação também não
+     * passa por aqui: os adapters disparam `sendVerification` no `createAccount`, porque
+     * este callback chega depois de a 1b ter sido desmontada.
      */
     private var submission = 0
 

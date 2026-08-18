@@ -60,8 +60,44 @@ class AndroidAuthAdapterTest {
         fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { result = it })
         fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser()))
 
-        assertEquals(listOf("create:Ana:ana@example.test:strong-pass"), fixture.firebase.calls)
+        assertEquals(
+            listOf("create:Ana:ana@example.test:strong-pass", "verification"),
+            fixture.firebase.calls,
+        )
         assertEquals(nativeUser(), (result as AuthResult.Success).user)
+    }
+
+    @Test
+    fun createAccountRequestsVerificationForUnverifiedUser() {
+        val fixture = Fixture()
+
+        fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { })
+        fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser(emailVerified = false)))
+
+        assertEquals(
+            listOf("create:Ana:ana@example.test:strong-pass", "verification"),
+            fixture.firebase.calls,
+        )
+    }
+
+    @Test
+    fun createAccountSkipsVerificationWhenEmailIsAlreadyVerified() {
+        val fixture = Fixture()
+
+        fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { })
+        fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser(emailVerified = true)))
+
+        assertEquals(listOf("create:Ana:ana@example.test:strong-pass"), fixture.firebase.calls)
+    }
+
+    @Test
+    fun createAccountDoesNotRequestVerificationWhenCreationFails() {
+        val fixture = Fixture()
+
+        fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { })
+        fixture.firebase.completeAuth(AndroidProviderResult.Failure(AndroidProviderFailure.EMAIL_IN_USE))
+
+        assertEquals(listOf("create:Ana:ana@example.test:strong-pass"), fixture.firebase.calls)
     }
 
     @Test

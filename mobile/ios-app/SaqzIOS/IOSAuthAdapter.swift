@@ -119,8 +119,15 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
         firebase.createAccount(email: email, password: password) { [weak self] result in
             guard let self else { return }
             switch result {
-            case .success:
-                firebase.updateDisplayName(name) { done.complete(result: $0.authResult) }
+            case .success(let created):
+                firebase.updateDisplayName(name) { nameResult in
+                    // A 1b morre quando o observe autentica, e a ViewModel descarta o
+                    // callback. O e-mail de confirmação sai daqui, que sobrevive à tela.
+                    if !created.emailVerified {
+                        self.firebase.sendVerification { _ in }
+                    }
+                    done.complete(result: nameResult.authResult)
+                }
             case .failure(let failure):
                 done.complete(result: failure.authResult)
             }

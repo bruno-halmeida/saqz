@@ -52,6 +52,7 @@ final class IOSAuthAdapterTests: XCTestCase {
             IOSAuthUser(subject: "firebase-user-1", email: "ana@example.test", emailVerified: false, displayName: nil)
         )
         fixture.firebase.updateNameResult = .success(user)
+        fixture.firebase.verificationResult = .success(())
         let callback = RecordingAuthCallback()
 
         fixture.adapter.createAccount(name: "Ana", email: "ana@example.test", password: "provider-policy", done: callback)
@@ -59,8 +60,46 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.firebase.events, [
             .create(email: "ana@example.test", password: "provider-policy"),
             .updateDisplayName("Ana"),
+            .sendVerification,
         ])
         XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.displayName, "Ana")
+    }
+
+    func testCreateAccountRequestsVerificationForUnverifiedUser() {
+        let fixture = makeFixture()
+        fixture.firebase.createResult = .success(
+            IOSAuthUser(subject: "firebase-user-1", email: "ana@example.test", emailVerified: false, displayName: nil)
+        )
+        fixture.firebase.updateNameResult = .success(user)
+        fixture.firebase.verificationResult = .success(())
+
+        fixture.adapter.createAccount(name: "Ana", email: "ana@example.test", password: "provider-policy", done: RecordingAuthCallback())
+
+        XCTAssertTrue(fixture.firebase.events.contains(.sendVerification))
+    }
+
+    func testCreateAccountSkipsVerificationWhenEmailIsAlreadyVerified() {
+        let fixture = makeFixture()
+        fixture.firebase.createResult = .success(user)
+        fixture.firebase.updateNameResult = .success(user)
+
+        fixture.adapter.createAccount(name: "Ana", email: "ana@example.test", password: "provider-policy", done: RecordingAuthCallback())
+
+        XCTAssertEqual(fixture.firebase.events, [
+            .create(email: "ana@example.test", password: "provider-policy"),
+            .updateDisplayName("Ana"),
+        ])
+    }
+
+    func testCreateAccountDoesNotRequestVerificationWhenCreationFails() {
+        let fixture = makeFixture()
+        fixture.firebase.createResult = .failure(.emailInUse)
+
+        fixture.adapter.createAccount(name: "Ana", email: "ana@example.test", password: "provider-policy", done: RecordingAuthCallback())
+
+        XCTAssertEqual(fixture.firebase.events, [
+            .create(email: "ana@example.test", password: "provider-policy"),
+        ])
     }
 
     func testCreateAccountMapsEmailAlreadyInUseWithoutProviderDetail() {
@@ -201,8 +240,8 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(IOSAuthFailureMapper.map(code: 17020), .networkUnavailable)
     }
 
-    // 17010 √© `AuthErrorCode.tooManyRequests` ‚Äî o √∫nico bloqueio real do login, j√° que
-    // quem conta tentativa √© o Firebase e n√£o o nosso backend. Sem o caso pr√≥prio ele
+    // 17010 ù `AuthErrorCode.tooManyRequests` ù o ùnico bloqueio real do login, jù que
+    // quem conta tentativa ù o Firebase e nùo o nosso backend. Sem o caso prùprio ele
     // cairia em `.unknown` e a 1a perderia a mensagem de conta bloqueada.
     func testFirebaseErrorMapperSeparatesTooManyRequestsFromUnknown() {
         XCTAssertEqual(IOSAuthFailureMapper.map(code: 17010), .tooManyRequests)
@@ -225,6 +264,7 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
         case google(idToken: String, accessToken: String)
         case token(forceRefresh: Bool)
         case signOut
+        case sendVerification
     }
 
     var createResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
@@ -262,7 +302,10 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
         events.append(.google(idToken: idToken, accessToken: accessToken)); completion(googleResult)
     }
 
-    func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) { completion(verificationResult) }
+    func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
+        events.append(.sendVerification)
+        completion(verificationResult)
+    }
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) { completion(reloadResult) }
 
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
