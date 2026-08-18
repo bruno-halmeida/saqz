@@ -3,9 +3,9 @@
 <meta charset="utf-8">
 <title>Assinar · Saqz</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0638DF">
 <meta name="robots" content="noindex">
 <style>
-/* Fonte e tokens copiados do painel (adm-web/index.html) — mesmos nomes do DS mobile. */
 @font-face {
   font-family: "Inter";
   src: url("/assets/inter-var.ttf") format("truetype-variations");
@@ -16,12 +16,14 @@
   --saqz-blue: #0638DF;
   --saqz-blue-pressed: #052BB3;
   --saqz-lime: #C7F300;
+  --saqz-ink: #071025;
   --saqz-navy: #0E1738;
   --saqz-white: #FFFFFF;
-  --saqz-canvas: #F5F5F7;
+  --saqz-paper: #F4F5F0;
+  --saqz-canvas: #F4F5F0;
   --saqz-ice: #F4F8FB;
-  --saqz-border: #D8DDE8;
-  --saqz-muted: #667085;
+  --saqz-border: #E4E7DF;
+  --saqz-muted: #667086;
   --saqz-placeholder: #98A2B3;
   --saqz-disabled-bg: #C9CED8;
   --saqz-disabled-fg: #7A8291;
@@ -33,23 +35,77 @@
 body {
   margin: 0;
   font-family: "Inter", sans-serif;
-  background: var(--saqz-canvas);
-  color: var(--saqz-navy);
+  background: var(--saqz-paper);
+  color: var(--saqz-ink);
   -webkit-font-smoothing: antialiased;
 }
-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px;
-  background: var(--saqz-white);
-  border-bottom: 1px solid var(--saqz-border);
+.shell { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
+
+.masthead {
+  position: relative;
+  overflow: hidden;
+  background: var(--saqz-blue);
+  color: #fff;
+  padding: 22px 0 28px;
 }
-header img { height: 28px; }
-header span { font-size: 15px; font-weight: 700; }
-main { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
-h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
-.sub { font-size: 14px; color: var(--saqz-muted); margin: 0 0 20px; }
+.masthead::before {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  right: -90px;
+  top: -80px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 50%;
+  box-shadow: 0 0 0 36px rgba(255, 255, 255, .05), 0 0 0 72px rgba(199, 243, 0, .12);
+  pointer-events: none;
+}
+.masthead .shell { position: relative; z-index: 1; }
+.masthead img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  background: var(--saqz-blue);
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 16px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--saqz-lime);
+}
+.kicker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--saqz-lime);
+  box-shadow: 0 0 0 5px rgba(199, 243, 0, .22);
+}
+.mast-title {
+  margin: 10px 0 0;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: .95;
+}
+
+main { padding: 28px 0 64px; }
+.coluna { max-width: 520px; margin: 0 auto; }
+h1 {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  margin: 0 0 6px;
+  line-height: 1.15;
+}
+.sub { font-size: 15px; line-height: 1.5; color: var(--saqz-muted); margin: 0 0 22px; }
 .card {
   background: var(--saqz-white);
   border: 1px solid var(--saqz-border);
@@ -65,48 +121,49 @@ input {
   padding: 11px 12px;
   border: 1px solid var(--saqz-border);
   border-radius: 10px;
-  color: var(--saqz-navy);
+  color: var(--saqz-ink);
+  background: var(--saqz-white);
 }
 input::placeholder { color: var(--saqz-placeholder); }
-input:focus { outline: 2px solid rgba(6, 56, 223, .35); border-color: var(--saqz-blue); }
+input:focus { outline: 2px solid rgba(199, 243, 0, .55); border-color: var(--saqz-ink); }
 button { font: inherit; cursor: pointer; }
 .btn {
   width: 100%;
   margin-top: 18px;
   font-size: 15px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--saqz-blue);
+  font-weight: 800;
+  color: var(--saqz-ink);
+  background: var(--saqz-lime);
   border: 0;
-  border-radius: 999px;
-  padding: 13px;
+  border-radius: 12px;
+  padding: 14px;
 }
-.btn:active { background: var(--saqz-blue-pressed); }
-.btn[disabled] { background: var(--saqz-disabled-bg); color: var(--saqz-disabled-fg); cursor: default; }
+.btn:active { filter: brightness(.96); }
+.btn[disabled] { background: var(--saqz-disabled-bg); color: var(--saqz-disabled-fg); cursor: default; filter: none; }
 .btn-secundario {
   width: 100%;
   margin-top: 10px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--saqz-navy);
+  color: var(--saqz-ink);
   background: var(--saqz-white);
   border: 1px solid var(--saqz-border);
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 12px;
 }
 .erro { display: none; font-size: 13px; font-weight: 600; color: var(--saqz-error); margin-top: 12px; }
 .erro.visivel { display: block; }
 
-/* Toggle mensal|anual */
 .ciclo {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
-  background: var(--saqz-ice);
+  background: var(--saqz-white);
   border: 1px solid var(--saqz-border);
   border-radius: 999px;
   padding: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+  max-width: 360px;
 }
 .ciclo button {
   border: 0;
@@ -114,33 +171,103 @@ button { font: inherit; cursor: pointer; }
   border-radius: 999px;
   padding: 9px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--saqz-muted);
 }
-.ciclo button[aria-pressed="true"] { background: var(--saqz-navy); color: #fff; }
+.ciclo button[aria-pressed="true"] { background: var(--saqz-ink); color: #fff; }
 
-/* Card de plano */
-.plano { cursor: pointer; transition: border-color .12s; }
-.plano:hover { border-color: var(--saqz-blue); }
-.plano .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.plano h2 { font-size: 17px; font-weight: 700; margin: 0; }
-.plano .preco { font-size: 17px; font-weight: 700; white-space: nowrap; }
-.plano .preco small { font-size: 12px; font-weight: 500; color: var(--saqz-muted); }
-.plano ul { margin: 10px 0 0; padding: 0 0 0 18px; font-size: 13.5px; color: var(--saqz-muted); }
-.plano li { margin: 3px 0; }
-.plano .escolher {
-  margin-top: 14px;
-  width: 100%;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--saqz-blue);
-  background: rgba(6, 56, 223, .08);
-  border: 0;
-  border-radius: 999px;
-  padding: 10px;
+#lista-planos {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  #lista-planos { grid-template-columns: 1fr 1fr 1fr; align-items: stretch; }
+  .ciclo { margin-left: auto; margin-right: auto; }
+  #estado-planos h1, #estado-planos .sub { text-align: center; }
+  #estado-planos .sub { max-width: 420px; margin-left: auto; margin-right: auto; }
 }
 
-/* Método de pagamento */
+.plano {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  height: 100%;
+  margin-bottom: 0;
+  transition: transform .12s ease, border-color .12s ease;
+}
+.plano:hover { border-color: var(--saqz-ink); }
+.plano .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.plano h2 {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.plano .preco { font-size: 18px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.plano .preco small { font-size: 12px; font-weight: 600; color: var(--saqz-muted); }
+.plano ul {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  font-size: 13.5px;
+  color: var(--saqz-muted);
+  flex: 1;
+}
+.plano li {
+  position: relative;
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.plano li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--saqz-lime);
+  box-shadow: 0 0 0 4px rgba(199, 243, 0, .18);
+}
+.plano .escolher {
+  margin-top: 16px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--saqz-ink);
+  background: var(--saqz-lime);
+  border: 0;
+  border-radius: 12px;
+  padding: 12px;
+}
+.plano--destaque {
+  background: var(--saqz-blue);
+  color: #fff;
+  border-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.plano--destaque::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -70px;
+  top: -50px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px rgba(199, 243, 0, .1);
+  pointer-events: none;
+}
+.plano--destaque .topo,
+.plano--destaque ul,
+.plano--destaque .escolher { position: relative; z-index: 1; }
+.plano--destaque .preco small,
+.plano--destaque ul { color: rgba(255, 255, 255, .78); }
+.plano--destaque li::before { box-shadow: 0 0 0 4px rgba(199, 243, 0, .22); }
+.plano--destaque:hover { border-color: transparent; }
+
 .metodos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 .metodo {
   border: 1px solid var(--saqz-border);
@@ -148,33 +275,36 @@ button { font: inherit; cursor: pointer; }
   background: var(--saqz-white);
   padding: 12px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
+  color: var(--saqz-ink);
 }
-.metodo[aria-pressed="true"] { border-color: var(--saqz-blue); background: var(--saqz-ice); color: var(--saqz-blue); }
-.metodo[disabled] { color: var(--saqz-disabled-fg); background: var(--saqz-canvas); cursor: default; }
+.metodo[aria-pressed="true"] {
+  border-color: var(--saqz-ink);
+  background: var(--saqz-ink);
+  color: #fff;
+}
+.metodo[aria-pressed="true"] small { color: var(--saqz-lime); }
+.metodo[disabled] { color: var(--saqz-disabled-fg); background: var(--saqz-paper); cursor: default; }
 .metodo small { display: block; font-size: 11px; font-weight: 500; color: var(--saqz-placeholder); }
 
-/* Cartão */
 .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .linha-dupla label { margin-top: 14px; }
 
-/* Cupom */
 .linha-cupom { display: flex; gap: 8px; }
 .linha-cupom input { flex: 1; text-transform: uppercase; }
 .linha-cupom button {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--saqz-blue);
-  background: rgba(6, 56, 223, .08);
+  font-weight: 800;
+  color: var(--saqz-ink);
+  background: var(--saqz-lime);
   border: 0;
   border-radius: 10px;
   padding: 0 18px;
 }
-.cupom-ok { display: none; font-size: 13px; font-weight: 600; color: var(--saqz-success); margin-top: 8px; }
+.cupom-ok { display: none; font-size: 13px; font-weight: 600; color: var(--saqz-navy); margin-top: 8px; }
 .cupom-ok.visivel { display: block; }
 
-/* Resumo e Pix */
 .resumo { display: flex; justify-content: space-between; font-size: 14px; margin-top: 6px; }
 .resumo strong { font-size: 16px; }
 .qr {
@@ -190,7 +320,7 @@ button { font: inherit; cursor: pointer; }
   font-family: ui-monospace, monospace;
   font-size: 12px;
   word-break: break-all;
-  background: var(--saqz-ice);
+  background: var(--saqz-paper);
   border: 1px solid var(--saqz-border);
   border-radius: 10px;
   padding: 12px;
@@ -200,36 +330,89 @@ button { font: inherit; cursor: pointer; }
 .aguardando { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--saqz-muted); margin-top: 16px; }
 .pulso {
   width: 10px; height: 10px; border-radius: 50%;
-  background: var(--saqz-warning);
+  background: var(--saqz-lime);
+  box-shadow: 0 0 0 5px rgba(199, 243, 0, .2);
   animation: pulso 1.4s ease-in-out infinite;
 }
 @keyframes pulso { 50% { opacity: .25; } }
 
 .centro { text-align: center; padding: 36px 20px; }
-.centro .icone { font-size: 40px; line-height: 1; margin-bottom: 12px; }
+.marca {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  background: var(--saqz-lime);
+  position: relative;
+}
+.marca::after {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: 14px;
+  width: 12px;
+  height: 22px;
+  border: solid var(--saqz-ink);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+.marca-espera {
+  background: var(--saqz-blue);
+}
+.marca-espera::after {
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--saqz-lime);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 8px rgba(199, 243, 0, .22);
+}
+.marca-erro {
+  background: #fff;
+  border: 2px solid var(--saqz-error);
+}
+.marca-erro::after {
+  left: 16px;
+  top: 25px;
+  width: 20px;
+  height: 3px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--saqz-error);
+  transform: none;
+}
 .spinner {
   width: 28px; height: 28px;
   margin: 48px auto;
   border: 3px solid var(--saqz-border);
-  border-top-color: var(--saqz-blue);
+  border-top-color: var(--saqz-lime);
   border-radius: 50%;
   animation: girar .8s linear infinite;
 }
 @keyframes girar { to { transform: rotate(360deg); } }
 .rodape-sessao { font-size: 12.5px; color: var(--saqz-muted); text-align: center; margin-top: 20px; }
-.rodape-sessao button { border: 0; background: none; color: var(--saqz-blue); font-weight: 600; padding: 0; }
+.rodape-sessao button { border: 0; background: none; color: var(--saqz-blue); font-weight: 700; padding: 0; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="/assets/firebase-config.js"></script>
 </head>
 <body>
-<header><img src="/assets/logo.png" alt="Saqz"><span>Assinatura</span></header>
-<main>
+<header class="masthead">
+  <div class="shell">
+    <img src="/assets/logo.png" alt="Saqz" width="48" height="48">
+    <p class="kicker">Saqz</p>
+    <p class="mast-title">Sua vez.</p>
+  </div>
+</header>
+<main class="shell">
 
-<section id="estado-carregando"><div class="spinner" role="status" aria-label="Carregando"></div></section>
+<section id="estado-carregando" class="coluna"><div class="spinner" role="status" aria-label="Carregando"></div></section>
 
-<section id="estado-login" hidden>
+<section id="estado-login" class="coluna" hidden>
   <h1>Entre para assinar</h1>
   <p class="sub">Use a mesma conta do app Saqz.</p>
   <div class="card">
@@ -246,17 +429,17 @@ button { font: inherit; cursor: pointer; }
   <p class="rodape-sessao">Ainda não tem conta? Crie no app Saqz.</p>
 </section>
 
-<section id="estado-assinante" hidden>
+<section id="estado-assinante" class="coluna" hidden>
   <div class="card centro">
-    <div class="icone">✅</div>
+    <div class="marca" aria-hidden="true"></div>
     <h1>Você já é assinante</h1>
     <p class="sub">Sua assinatura está ativa. Volte ao app para continuar.</p>
   </div>
 </section>
 
 <section id="estado-planos" hidden>
-  <h1>Escolha seu plano</h1>
-  <p class="sub">Assine e crie seus grupos no Saqz.</p>
+  <h1>Escolha o plano</h1>
+  <p class="sub">Jogo, presença e mensalidade num lugar só. Assine e crie seus grupos.</p>
   <div class="ciclo" role="group" aria-label="Ciclo de cobrança">
     <button type="button" data-ciclo="MONTHLY" aria-pressed="true">Mensal</button>
     <button type="button" data-ciclo="ANNUAL" aria-pressed="false">Anual</button>
@@ -265,7 +448,7 @@ button { font: inherit; cursor: pointer; }
   <div class="erro" id="planos-erro"></div>
 </section>
 
-<section id="estado-dados" hidden>
+<section id="estado-dados" class="coluna" hidden>
   <h1 id="dados-titulo">Quase lá</h1>
   <p class="sub" id="dados-resumo-plano"></p>
   <div class="card">
@@ -320,7 +503,7 @@ button { font: inherit; cursor: pointer; }
   <button class="btn-secundario" type="button" id="botao-voltar-planos">Trocar de plano</button>
 </section>
 
-<section id="estado-pix" hidden>
+<section id="estado-pix" class="coluna" hidden>
   <h1>Pague com Pix</h1>
   <p class="sub" id="pix-resumo"></p>
   <div class="card">
@@ -333,27 +516,27 @@ button { font: inherit; cursor: pointer; }
   <div class="erro" id="pix-erro"></div>
 </section>
 
-<section id="estado-cartao" hidden>
+<section id="estado-cartao" class="coluna" hidden>
   <h1>Pagamento autorizado</h1>
   <p class="sub" id="cartao-resumo"></p>
   <div class="card">
-    <div class="centro"><div class="icone">💳</div></div>
+    <div class="centro"><div class="marca marca-espera" aria-hidden="true"></div></div>
     <p class="sub">O pagamento foi aprovado. Estamos confirmando com a operadora — isso costuma levar alguns segundos.</p>
     <div class="aguardando"><span class="pulso"></span><span>Aguardando a confirmação do pagamento…</span></div>
   </div>
 </section>
 
-<section id="estado-sucesso" hidden>
+<section id="estado-sucesso" class="coluna" hidden>
   <div class="card centro">
-    <div class="icone">🎉</div>
-    <h1>Assinatura ativa!</h1>
+    <div class="marca" aria-hidden="true"></div>
+    <h1>Assinatura ativa.</h1>
     <p class="sub">Pagamento confirmado. Volte ao app Saqz e crie seu grupo.</p>
   </div>
 </section>
 
-<section id="estado-erro" hidden>
+<section id="estado-erro" class="coluna" hidden>
   <div class="card centro">
-    <div class="icone">⚠️</div>
+    <div class="marca marca-erro" aria-hidden="true"></div>
     <h1>Algo deu errado</h1>
     <p class="sub" id="erro-detalhe">Não deu para carregar seus dados agora.</p>
     <button class="btn" type="button" id="botao-tentar-novamente">Tentar de novo</button>
@@ -362,6 +545,6 @@ button { font: inherit; cursor: pointer; }
 
 <p class="rodape-sessao" id="rodape-sessao" hidden></p>
 </main>
-<script src="cartao.js?v=checkout-login"></script>
-<script src="assinar.js?v=checkout-login"></script>
+<script src="cartao.js?v=pix"></script>
+<script src="assinar.js?v=pix"></script>
 </body></html>

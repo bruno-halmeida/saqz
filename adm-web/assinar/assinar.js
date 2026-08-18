@@ -49,6 +49,7 @@
         mostrarErro("login-erro", "Este link expirou. Entre com e-mail e senha.");
       });
   }
+  var CHECKOUT_KEY = "saqz-assinar-checkout";
   var POLL_MS = 5000;
 
   var cartao = window.SaqzCartao;
@@ -177,7 +178,7 @@
     alvo.innerHTML = "";
     planos.forEach(function (plano) {
       var card = document.createElement("div");
-      card.className = "card plano";
+      card.className = plano.maxGroups == null ? "card plano plano--destaque" : "card plano";
       var preco = cicloEscolhido === "ANNUAL"
         ? reais(plano.annualPriceCents) + "<small>/ano</small>"
         : reais(plano.monthlyPriceCents) + "<small>/mês</small>";
