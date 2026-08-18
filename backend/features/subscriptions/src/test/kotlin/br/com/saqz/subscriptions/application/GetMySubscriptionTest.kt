@@ -178,6 +178,31 @@ class GetMySubscriptionTest {
         )
     }
 
+    @Test
+    fun `unconfirmed past due becomes entitled when Asaas already received the pix`() {
+        val pending = baseSubscription().copy(
+            status = SubscriptionStatus.PAST_DUE,
+            pastDueSince = now.minusSeconds(60),
+            firstConfirmedAt = null,
+        )
+        val repo = MutableSubscriptions(pending)
+        val recover = RecoverUnconfirmedPayment(
+            repo,
+            PaidAsaas(),
+            object : SubscriptionsTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = block()
+            },
+            clock,
+        )
+        val useCase = GetMySubscription(repo, FixedOwnedGroups(0), clock, recover)
+
+        val found = assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId))
+
+        assertTrue(found.subscription.entitled)
+        assertEquals(SubscriptionStatus.ACTIVE, found.subscription.status)
+        assertEquals(SubscriptionStatus.ACTIVE, repo.findByOwnerUserId(ownerId)!!.status)
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
@@ -188,6 +213,50 @@ class GetMySubscriptionTest {
         currentPeriodEnd = Instant.parse("2026-08-30T00:00:00Z"),
         status = SubscriptionStatus.ACTIVE,
     )
+
+    private class MutableSubscriptions(initial: Subscription) : SubscriptionRepository {
+        private var current: Subscription = initial
+        override fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription? = null
+        override fun findByOwnerUserId(ownerUserId: UUID): Subscription? =
+            current.takeIf { it.ownerUserId == ownerUserId }
+        override fun findByOwnerUserIdForUpdate(ownerUserId: UUID): Subscription? =
+            findByOwnerUserId(ownerUserId)
+        override fun findByPendingUpgradeChargeId(chargeId: String) = null
+        override fun findByLastConfirmedPaymentId(paymentId: String) = null
+        override fun lockOwner(ownerUserId: UUID) = Unit
+        override fun insert(subscription: Subscription) = error("unused")
+        override fun save(subscription: Subscription) {
+            current = subscription
+        }
+    }
+
+    private class PaidAsaas : AsaasGateway {
+        override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = error("unused")
+        override fun createSubscription(
+            asaasCustomerId: String,
+            plan: Plan,
+            cycle: SubscriptionCycle,
+            valueCents: Long,
+            billingType: AsaasBillingType,
+            idempotencyKey: String,
+            creditCard: CreditCardDetails?,
+            creditCardHolderInfo: CreditCardHolderInfo?,
+            remoteIp: String?,
+        ) = error("unused")
+        override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
+        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
+        override fun createOneOffCharge(
+            asaasCustomerId: String,
+            valueCents: Long,
+            description: String,
+            idempotencyKey: String,
+        ) = error("unused")
+        override fun regeneratePixPayload(asaasChargeId: String) = error("unused")
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = "pay_1"
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
+        override fun findPayment(asaasPaymentId: String) =
+            AsaasPaymentSnapshot(id = asaasPaymentId, status = "RECEIVED", invoiceUrl = null)
+    }
 
     private class MemorySubscriptions(private val subscription: Subscription?) : SubscriptionRepository {
         override fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription? = null

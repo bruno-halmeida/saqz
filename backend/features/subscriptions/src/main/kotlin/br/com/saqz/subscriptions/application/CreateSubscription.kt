@@ -65,6 +65,12 @@ class CreateSubscription(
     private val clock: Clock,
     private val creditCardTokens: CreditCardTokenStore = CreditCardTokenStore { _, _, _, _ -> },
 ) {
+    private val recoverUnconfirmed = RecoverUnconfirmedPayment(
+        subscriptions,
+        asaasGateway,
+        transaction,
+        clock,
+    )
     fun execute(command: CreateSubscriptionCommand): CreateSubscriptionResult {
         val name = command.name.trim()
         val email = command.email.trim()
@@ -121,7 +127,7 @@ class CreateSubscription(
         if (committed.status != SubscriptionStatus.CANCELED &&
             committed.firstConfirmedAt == null
         ) {
-            val checkout = resolveCheckout(committed, now)
+            val checkout = resolveCheckout(committed)
             return CreateSubscriptionResult.Success(
                 // Assinatura ja paga volta ACTIVE e sem checkout: e assim que o app sabe que
                 // nao deve oferecer pagamento de novo (nasce sempre PAST_DUE em blankSubscription).
@@ -306,16 +312,15 @@ class CreateSubscription(
      * comitou), mas o `invoiceUrl` agora sai do mesmo GET do status: se o Pix nao puder ser
      * regerado, a cobranca ainda chega ao usuario pelo boleto/fatura em vez de sumir.
      */
-    private fun resolveCheckout(committed: Subscription, now: Instant): Checkout {
+    private fun resolveCheckout(committed: Subscription): Checkout {
+        val recovered = recoverUnconfirmed.recoverIfPaid(committed)
+        if (recovered.firstConfirmedAt != null) {
+            return Checkout(recovered, null, null, null)
+        }
         val paymentId = runCatching {
             asaasGateway.findLatestPaymentIdForSubscription(committed.asaasSubscriptionId)
         }.getOrNull() ?: return Checkout(committed, null, null, null)
-
         val payment = runCatching { asaasGateway.findPayment(paymentId) }.getOrNull()
-        if (PaymentConfirmation.isPaid(payment?.status)) {
-            return Checkout(confirmPaidCharge(committed, paymentId, now), null, null, null)
-        }
-
         val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
         val invoice = payment?.invoiceUrl
             ?: runCatching { asaasGateway.findPaymentInvoiceUrl(paymentId) }.getOrNull()
@@ -326,27 +331,6 @@ class CreateSubscription(
             invoiceUrl = invoice,
         )
     }
-
-    /**
-     * Mesma confirmacao do webhook ([PaymentConfirmation]), sob lock, para os dois caminhos
-     * nao divergirem. Se o webhook chegou primeiro (ou chegar depois), `lastConfirmedPaymentId`
-     * faz o segundo virar no-op em vez de avancar `currentPeriodEnd` um ciclo de graca.
-     */
-    private fun confirmPaidCharge(committed: Subscription, paymentId: String, now: Instant): Subscription =
-        transaction.inTransaction {
-            val current = subscriptions.findByOwnerUserIdForUpdate(committed.ownerUserId) ?: committed
-            if (current.firstConfirmedAt != null ||
-                PaymentConfirmation.isAlreadyConfirmed(current, paymentId)
-            ) {
-                return@inTransaction current
-            }
-            val outcome = PaymentConfirmation.confirm(current, paymentId, now)
-            subscriptions.save(outcome.subscription)
-            outcome.fullPriceCentsToPush?.let { cents ->
-                runCatching { asaasGateway.updateSubscriptionValue(current.asaasSubscriptionId, cents) }
-            }
-            outcome.subscription
-        }
 
     private fun isValidEmail(email: String): Boolean =
         email.length in 3..254 && email.contains('@') && email.indexOf('@') in 1 until email.lastIndex

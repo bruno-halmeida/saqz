@@ -40,10 +40,12 @@ class GetMySubscription(
     private val subscriptions: SubscriptionRepository,
     private val ownedGroups: OwnedGroupCounter,
     private val clock: Clock = Clock.systemUTC(),
+    private val recoverUnconfirmed: RecoverUnconfirmedPayment? = null,
 ) {
     fun execute(ownerUserId: UUID): GetMySubscriptionResult {
-        val subscription = subscriptions.findByOwnerUserId(ownerUserId)
+        val found = subscriptions.findByOwnerUserId(ownerUserId)
             ?: return GetMySubscriptionResult.NotFound
+        val subscription = recoverIfNeeded(found)
         val now = clock.instant()
         return GetMySubscriptionResult.Found(
             MySubscriptionView(
@@ -61,6 +63,13 @@ class GetMySubscription(
                 canceledAt = subscription.canceledAt,
             ),
         )
+    }
+
+    private fun recoverIfNeeded(subscription: Subscription): Subscription {
+        if (recoverUnconfirmed == null) return subscription
+        if (subscription.firstConfirmedAt != null) return subscription
+        if (subscription.status != SubscriptionStatus.PAST_DUE) return subscription
+        return recoverUnconfirmed.recoverIfPaid(subscription)
     }
 
     private fun usageFor(ownerUserId: UUID, subscription: Subscription): SubscriptionUsage {

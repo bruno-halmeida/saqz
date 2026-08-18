@@ -149,6 +149,23 @@ class ListReceiptsTest {
     }
 
     @Test
+    fun `date-only confirmedDate uses processedAt instead of midnight UTC`() {
+        val events = FakeEventStore(
+            listOf(
+                event(
+                    id = "evt_date",
+                    payload = """{"id":"evt_date","event":"PAYMENT_RECEIVED","payment":{"id":"pay_pix","value":39.90,"confirmedDate":"2026-07-30"}}""",
+                    type = ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED,
+                ),
+            ),
+        )
+
+        val receipts = ListReceipts(events).execute(ownerId)
+
+        assertEquals(processedAt, receipts.single().confirmedAt)
+    }
+
+    @Test
     fun `returns empty when owner has no events`() {
         assertTrue(ListReceipts(FakeEventStore(emptyList())).execute(ownerId).isEmpty())
     }

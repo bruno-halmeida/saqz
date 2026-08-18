@@ -21,6 +21,7 @@ import br.com.saqz.subscriptions.application.CreateSubscription
 import br.com.saqz.subscriptions.application.CreditCardTokenStore
 import br.com.saqz.subscriptions.application.ListReceipts
 import br.com.saqz.subscriptions.application.ProcessAsaasWebhook
+import br.com.saqz.subscriptions.application.RecoverUnconfirmedPayment
 import br.com.saqz.subscriptions.application.SubscriptionEventStore
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.application.SubscriptionsTransactionRunner
@@ -93,6 +94,14 @@ class AsaasWebhookConfiguration {
         clock = clock,
         coupons = coupons,
     )
+
+    @Bean
+    fun recoverUnconfirmedPayment(
+        subscriptions: SubscriptionRepository,
+        asaasGateway: AsaasGateway,
+        transaction: SubscriptionsTransactionRunner,
+        clock: Clock,
+    ) = RecoverUnconfirmedPayment(subscriptions, asaasGateway, transaction, clock)
 
     @Bean
     fun asaasWebhookController(processAsaasWebhook: ProcessAsaasWebhook) =

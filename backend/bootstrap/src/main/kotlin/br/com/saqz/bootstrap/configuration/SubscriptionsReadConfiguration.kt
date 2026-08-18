@@ -16,8 +16,10 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.ListPlans
+import br.com.saqz.subscriptions.application.RecoverUnconfirmedPayment
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.application.ValidateCoupon
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -46,7 +48,13 @@ class SubscriptionsReadConfiguration {
         subscriptions: SubscriptionRepository,
         ownedGroups: OwnedGroupCounter,
         clock: Clock,
-    ) = GetMySubscription(subscriptions, ownedGroups, clock)
+        recoverUnconfirmed: ObjectProvider<RecoverUnconfirmedPayment>,
+    ) = GetMySubscription(
+        subscriptions,
+        ownedGroups,
+        clock,
+        recoverUnconfirmed.getIfAvailable(),
+    )
 
     @Bean
     fun authenticatedActorResolver(bootstrapSession: BootstrapSession): AuthenticatedActorResolver =

@@ -53,10 +53,8 @@ class ListReceipts(
         val payment = root.path("payment")
 
         val valueCents = paymentValueToCents(payment.path("value"))
-        val confirmedAt = payment.path("confirmedDate").asText(null)
-            ?.let { runCatching { Instant.parse(it + if (it.endsWith("Z") || it.contains("T")) "" else "T00:00:00Z") }.getOrNull() }
-            ?: payment.path("clientPaymentDate").asText(null)
-                ?.let { runCatching { Instant.parse(it + "T00:00:00Z") }.getOrNull() }
+        val confirmedAt = timestampFromAsaas(payment.path("confirmedDate").asText(null))
+            ?: timestampFromAsaas(payment.path("clientPaymentDate").asText(null))
             ?: processedAt
 
         return Receipt(
@@ -79,6 +77,17 @@ class ListReceipts(
             .multiply(BigDecimal(100))
             .setScale(0, RoundingMode.HALF_UP)
             .longValueExact()
+    }
+
+    /**
+     * `confirmedDate` da Asaas costuma vir só a data (`2026-08-18`). Tratar como meia-noite UTC
+     * faz o poll do /assinar/ achar que o recibo é anterior ao clique em pagar. Sem hora, vale
+     * o `processed_at` do webhook.
+     */
+    private fun timestampFromAsaas(raw: String?): Instant? {
+        if (raw.isNullOrBlank()) return null
+        if (!raw.contains("T")) return null
+        return runCatching { Instant.parse(raw) }.getOrNull()
     }
 
     companion object {

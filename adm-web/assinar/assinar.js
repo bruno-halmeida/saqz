@@ -441,7 +441,7 @@
     });
   }
 
-  // ---- Confirmação: recibo é o único sinal real de pagamento (status nasce PAST_DUE). ----
+  // ---- Confirmação: /me.entitled é o mesmo predicado do app (webhook ou recuperação Asaas). ----
   function iniciarPoll() {
     pararPoll();
     pollTimer = setInterval(verificarRecibo, POLL_MS);
@@ -452,13 +452,17 @@
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
 
+  // Confirmação: o /me pergunta a Asaas se o webhook se perdeu e devolve entitled —
+  // o mesmo predicado do botão "Já assinei" no app. Recibo com confirmedDate só-data
+  // ficava meia-noite UTC e nunca ganhava do startedAt da aba.
   function verificarRecibo() {
-    api("/subscriptions/me/receipts?limit=1&offset=0")
-      .then(function (response) { return response.ok ? response.json() : { receipts: [] }; })
-      .then(function (corpo) {
-        var recibo = corpo.receipts && corpo.receipts[0];
-        // Recibo antigo (assinatura anterior) não confirma este checkout.
-        if (recibo && checkoutAtual && recibo.confirmedAt >= checkoutAtual.startedAt) {
+    api("/subscriptions/me")
+      .then(function (response) {
+        if (!response.ok) return;
+        return response.json();
+      })
+      .then(function (me) {
+        if (me && me.entitled) {
           pararPoll();
           localStorage.removeItem(CHECKOUT_KEY);
           mostrar("sucesso");
