@@ -4,15 +4,17 @@ import br.com.saqz.subscriptions.application.ValidateCoupon
 import br.com.saqz.subscriptions.application.ValidateCouponResult
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
 
-data class ValidateCouponRequest(
-    val code: String? = null,
-    val planId: String? = null,
-    val cycle: String? = null,
+data class ValidateCouponRequest @JsonCreator constructor(
+    @JsonProperty("code") val code: String? = null,
+    @JsonProperty("planId") val planId: String? = null,
+    @JsonProperty("cycle") val cycle: String? = null,
 )
 
 data class ValidateCouponResponse(
