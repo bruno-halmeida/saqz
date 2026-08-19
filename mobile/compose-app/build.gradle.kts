@@ -90,25 +90,29 @@ compose.resources {
 // --- iOS API config ------------------------------------------------------------
 // O iOS precisa das mesmas URLs que o Android lê de `gradle.properties`. O Xcode não
 // enxerga o Gradle, então escrevemos um plist num caminho estável e uma shell phase do
-// `project.pbxproj` (logo após "Copy Firebase Plist") sobrescreve `SaqzAPIBaseURL` no
-// Info.plist built a partir dele. Assim `gradle.properties` é a fonte única para as duas
-// plataformas — mudar `saqz.api.devBaseUrl` rebroadcasta no iOS sem tocar no pbxproj.
+// `project.pbxproj` sobrescreve `SaqzAPIBaseURL` no Info.plist built. A pasta
+// `xcode-frameworks` é do Kotlin (`embedAndSignAppleFrameworkForXcode`); o plist mora
+// fora dela para o sync do framework não apagar o arquivo. A phase do Xcode pede
+// `generateIosApiConfig` no mesmo `./gradlew` — `dependsOn` em `embedAndSign*` não
+// pega: a task só nasce com env do Xcode e some no configuration cache.
 
 val devApiBaseUrl = providers.gradleProperty("saqz.api.devBaseUrl").orNull?.trim().orEmpty()
     .ifEmpty { "http://127.0.0.1:8080" }
 val prodApiBaseUrl = providers.gradleProperty("saqz.api.prodBaseUrl").orNull?.trim().orEmpty()
     .ifEmpty { "https://api.saqz.app" }
 
-val xcodeConfigDir = layout.buildDirectory.dir("xcode-frameworks")
-val apiConfigPlist = xcodeConfigDir.map { it.file("saqz-api-config.plist") }
+val xcodeApiConfigDir = layout.buildDirectory.dir("xcode-api-config")
+val apiConfigPlist = xcodeApiConfigDir.map { it.file("saqz-api-config.plist") }
 
-val generateIosApiConfig by tasks.registering {
+tasks.register("generateIosApiConfig") {
     description = "Writes the iOS API config plist consumed by the Xcode build phase."
     group = "build"
-    outputs.file(apiConfigPlist)
     val devUrl = devApiBaseUrl
     val prodUrl = prodApiBaseUrl
     val output = apiConfigPlist
+    inputs.property("devApiBaseUrl", devUrl)
+    inputs.property("prodApiBaseUrl", prodUrl)
+    outputs.file(output)
     doLast {
         val file = output.get().asFile
         file.parentFile.mkdirs()
@@ -127,10 +131,4 @@ val generateIosApiConfig by tasks.registering {
             """.trimIndent() + "\n",
         )
     }
-}
-
-// A shell phase "Build SaqzMobile" dispara `embedAndSignAppleFrameworkForXcode`; anexar a
-// geração do plist nela garante que o arquivo exista antes da phase que o lê.
-tasks.matching { it.name == "embedAndSignAppleFrameworkForXcode" }.configureEach {
-    dependsOn(generateIosApiConfig)
 }
