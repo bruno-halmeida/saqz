@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.domain.port.NativeFailureCode
 import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.composeapp.resources.Res
@@ -139,11 +140,18 @@ fun EmailVerificationBanner(
                 auth.sendVerification(object : ResultCallback {
                     override fun complete(result: OperationResult) {
                         sending = false
-                        // Falha destrava na hora: quem não conseguiu reenviar não deve
-                        // esperar o minuto de quem conseguiu.
-                        if (result is OperationResult.Failure) {
-                            failed = true
-                            lockedUntil = 0L
+                        when (result) {
+                            OperationResult.Success -> Unit
+                            // O backend já mandou o primeiro e-mail (cadastro) e recusa
+                            // reenvio antes de um minuto. Isso não é falha: é a mesma
+                            // trava da faixa. Destravar aqui devolvia o botão na hora e
+                            // o toque seguinte também não mandava nada.
+                            is OperationResult.Failure -> if (result.code == NativeFailureCode.TOO_MANY_REQUESTS) {
+                                failed = false
+                            } else {
+                                failed = true
+                                lockedUntil = 0L
+                            }
                         }
                     }
                 })

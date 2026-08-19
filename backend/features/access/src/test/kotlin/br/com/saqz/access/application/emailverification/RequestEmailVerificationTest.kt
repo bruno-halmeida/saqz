@@ -73,6 +73,21 @@ class RequestEmailVerificationTest {
     }
 
     @Test
+    fun `toque cedo demais nao consome a cota de IP nem a da conta`() {
+        useCase.request(unverified(), "10.0.0.1")
+        repeat(RequestEmailVerification.MAX_PER_IP) {
+            assertEquals(
+                RequestVerificationResult.TooSoon(60),
+                useCase.request(unverified(), "10.0.0.1"),
+            )
+        }
+        clock.advance(Duration.ofSeconds(60))
+
+        assertEquals(RequestVerificationResult.Accepted, useCase.request(unverified(), "10.0.0.1"))
+        assertEquals(2, mailer.sent.size)
+    }
+
+    @Test
     fun `estouro da cota devolve o fim da janela`() {
         repeat(RequestEmailVerification.MAX_PER_SUBJECT) {
             clock.advance(Duration.ofSeconds(60))

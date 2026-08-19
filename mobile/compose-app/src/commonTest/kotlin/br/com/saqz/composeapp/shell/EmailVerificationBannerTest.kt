@@ -113,6 +113,25 @@ class EmailVerificationBannerTest {
         assertEquals(2, auth.verificationCalls)
     }
 
+    // 429 é a trava de um minuto do backend, não uma falha de envio. Sem isso o botão
+    // voltava na hora, o toque seguinte também era recusado, e o e-mail novo nunca saía.
+    @Test
+    fun aRateLimitedResendKeepsTheCooldown() = runComposeUiTest {
+        val auth = FakeAuthPort(result = OperationResult.Failure(NativeFailureCode.TOO_MANY_REQUESTS))
+        setContent {
+            SaqzTheme {
+                EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = auth, now = { 0L })
+            }
+        }
+
+        onNodeWithTag(SaqzEmailBannerResendTag).performClick()
+        waitForIdle()
+
+        onNodeWithText(Resent).assertIsDisplayed()
+        onNodeWithTag(SaqzEmailBannerResendTag).assertDoesNotExist()
+        assertEquals(1, auth.verificationCalls)
+    }
+
     // `reloadUser` sai pelo [onRefresh]; quem o dispara é a resumida do ciclo de vida, e a
     // primeira delas acontece quando a faixa entra na composição.
     @Test

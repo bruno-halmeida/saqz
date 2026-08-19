@@ -26,13 +26,15 @@ class RequestEmailVerification(
         val email = identity.email?.trim()?.lowercase().orEmpty()
         if (email.isEmpty() || identity.emailVerified == true) return RequestVerificationResult.Accepted
         val now = clock.instant()
-        val ipWindow = sends.record("email-verification-ip:$ip", now, now.minus(RATE_LIMIT_WINDOW))
-        if (ipWindow.count > MAX_PER_IP) {
-            return RequestVerificationResult.RateLimited(secondsUntil(now, ipWindow.startedAt.plus(RATE_LIMIT_WINDOW)))
-        }
+        // A janela de reenvio vem antes da cota de IP: toque cedo demais não pode
+        // queimar o teto global e impedir o e-mail que sai depois de um minuto.
         val resend = sends.record("email-verification:${identity.subject}", now, now.minus(RESEND_WINDOW))
         if (resend.count > 1) {
             return RequestVerificationResult.TooSoon(secondsUntil(now, resend.startedAt.plus(RESEND_WINDOW)))
+        }
+        val ipWindow = sends.record("email-verification-ip:$ip", now, now.minus(RATE_LIMIT_WINDOW))
+        if (ipWindow.count > MAX_PER_IP) {
+            return RequestVerificationResult.RateLimited(secondsUntil(now, ipWindow.startedAt.plus(RATE_LIMIT_WINDOW)))
         }
         val quota = sends.record("email-verification-quota:${identity.subject}", now, now.minus(RATE_LIMIT_WINDOW))
         if (quota.count > MAX_PER_SUBJECT) {
