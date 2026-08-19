@@ -400,6 +400,72 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `recreates asaas subscription when pending payments were deleted`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+        gateway.missingPaymentsFor += "sub_old"
+
+        val success = assertIs<CreateSubscriptionResult.Success>(
+            useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR)),
+        )
+
+        assertEquals("sub_1", success.subscription.asaasSubscriptionId)
+        assertEquals(listOf("sub_old"), gateway.canceledSubscriptions)
+        assertEquals(5_990L, gateway.lastSubscriptionValueCents)
+        assertEquals("00020126DEFAULT-PIX", success.pixCopyPaste)
+        assertEquals(
+            "subscription-replace:$ownerId:sub_old",
+            gateway.subscriptionIdempotencyKeys.single(),
+        )
+    }
+
+    @Test
+    fun `recreates asaas subscription at discounted value when coupon arrives after pending checkout`() {
+        coupons.byCode["PROMO20"] = Coupon(id = couponId, code = "PROMO20", discountPercent = 20)
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+
+        val success = assertIs<CreateSubscriptionResult.Success>(
+            useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR, couponCode = "PROMO20")),
+        )
+
+        assertEquals("sub_1", success.subscription.asaasSubscriptionId)
+        assertEquals(couponId, success.subscription.couponId)
+        assertEquals(4_792L, gateway.lastSubscriptionValueCents)
+        assertEquals(listOf("sub_old"), gateway.canceledSubscriptions)
+        assertEquals(1, coupons.redemptions.size)
+    }
+
+    @Test
+    fun `keeps existing coupon discount when recreating after payments were deleted`() {
+        coupons.byCode["PROMO20"] = Coupon(id = couponId, code = "PROMO20", discountPercent = 20)
+        coupons.redemptions += CouponRedemption(couponId, ownerId, fixedNow.minusSeconds(3600))
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR, couponId = couponId))
+        gateway.missingPaymentsFor += "sub_old"
+
+        val success = assertIs<CreateSubscriptionResult.Success>(
+            useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR)),
+        )
+
+        assertEquals("sub_1", success.subscription.asaasSubscriptionId)
+        assertEquals(couponId, success.subscription.couponId)
+        assertEquals(4_792L, gateway.lastSubscriptionValueCents)
+        assertEquals(1, coupons.redemptions.size)
+    }
+
+    @Test
+    fun `does not recreate asaas subscription when payment lookup fails`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+        gateway.latestPaymentIdThrows = true
+
+        val success = assertIs<CreateSubscriptionResult.Success>(
+            useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR)),
+        )
+
+        assertEquals("sub_old", success.subscription.asaasSubscriptionId)
+        assertTrue(gateway.canceledSubscriptions.isEmpty())
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
     fun `refuses to reissue checkout when the retry asks for a different plan or cycle`() {
         subscriptions.insert(
             Subscription(
@@ -524,6 +590,20 @@ class CreateSubscriptionTest {
         assertEquals("https://asaas.test/i/abc", success.invoiceUrl)
     }
 
+    private fun unconfirmed(plan: Plan = Plan.TITULAR, couponId: UUID? = null) = Subscription(
+        ownerUserId = ownerId,
+        plan = plan,
+        cycle = SubscriptionCycle.MONTHLY,
+        asaasCustomerId = "cus_old",
+        asaasSubscriptionId = "sub_old",
+        billingType = AsaasBillingType.PIX,
+        currentPeriodEnd = fixedNow,
+        status = SubscriptionStatus.PAST_DUE,
+        pastDueSince = fixedNow,
+        firstConfirmedAt = null,
+        couponId = couponId,
+    )
+
     private fun baseCommand() = CreateSubscriptionCommand(
         ownerUserId = ownerId,
         requestId = requestId,
@@ -595,6 +675,8 @@ class CreateSubscriptionTest {
         var lastCreditCardHolderInfo: CreditCardHolderInfo? = null
         var lastRemoteIp: String? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
+        val canceledSubscriptions = mutableListOf<String>()
+        val missingPaymentsFor = mutableSetOf<String>()
 
         override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = "cus_1"
 
@@ -619,7 +701,9 @@ class CreateSubscriptionTest {
         }
 
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
-        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
+        override fun cancelSubscription(asaasSubscriptionId: String) {
+            canceledSubscriptions += asaasSubscriptionId
+        }
         override fun createOneOffCharge(
             asaasCustomerId: String,
             valueCents: Long,
@@ -631,6 +715,7 @@ class CreateSubscriptionTest {
             PixCode(pixPayload ?: error("no pix"), pixQrImage)
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String? {
             if (latestPaymentIdThrows) throw RuntimeException("payment lookup failed")
+            if (asaasSubscriptionId in missingPaymentsFor) return null
             return if (asaasSubscriptionId == "sub_old" || asaasSubscriptionId == "sub_1") "pay_1" else null
         }
 

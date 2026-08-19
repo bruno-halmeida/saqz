@@ -529,9 +529,11 @@
     mostrar("planos");
   });
   $("botao-copiar").addEventListener("click", copiarPix);
-  // Mesmo requestId: o backend re-emite o checkout em vez de criar outra cobrança.
+  // Re-POST /subscriptions: se a cobrança sumiu na Asaas, o backend cancela a
+  // assinatura velha e emite outra com o valor (e cupom) atuais.
   $("botao-regerar").addEventListener("click", function () {
     mostrar("dados");
+    pagar();
   });
   $("botao-tentar-novamente").addEventListener("click", iniciar);
 

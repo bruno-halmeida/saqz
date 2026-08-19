@@ -108,7 +108,7 @@ class CreateSubscription(
                             existing.cycle == command.cycle &&
                             (existing.billingType == null || existing.billingType == command.billingType)
                         ) {
-                            CommitOutcome.Committed(existing)
+                            CommitOutcome.Committed(existing, reusedUnconfirmed = true)
                         } else {
                             CommitOutcome.Rejected(CreateSubscriptionResult.PendingCheckoutMismatch)
                         }
@@ -119,23 +119,23 @@ class CreateSubscription(
             return CreateSubscriptionResult.CardDeclined(reason = ex.asaasCode, asaasDescription = ex.asaasDescription)
         }
 
-        val committed = when (outcome) {
+        val committedOutcome = when (outcome) {
             is CommitOutcome.Rejected -> return outcome.result
-            is CommitOutcome.Committed -> outcome.subscription
+            is CommitOutcome.Committed -> outcome
         }
+        val committed = committedOutcome.subscription
 
         if (committed.status != SubscriptionStatus.CANCELED &&
             committed.firstConfirmedAt == null
         ) {
-            val checkout = resolveCheckout(committed)
-            return CreateSubscriptionResult.Success(
-                // Assinatura ja paga volta ACTIVE e sem checkout: e assim que o app sabe que
-                // nao deve oferecer pagamento de novo (nasce sempre PAST_DUE em blankSubscription).
-                subscription = checkout.subscription,
-                billingType = command.billingType,
-                pixCopyPaste = checkout.pixCopyPaste,
-                pixQrCodeBase64 = checkout.pixQrCodeBase64,
-                invoiceUrl = checkout.invoiceUrl,
+            return unconfirmedCheckout(
+                committed = committed,
+                command = command,
+                name = name,
+                email = email,
+                cpfDigits = cpfDigits,
+                now = now,
+                allowReplace = committedOutcome.reusedUnconfirmed,
             )
         }
 
@@ -154,8 +154,65 @@ class CreateSubscription(
         return CommitOutcome.Committed(create(coupon, valueCents))
     }
 
+    /**
+     * Checkout ainda não pago: reaproveita a cobrança da Asaas se ela existir. Se as
+     * cobranças foram apagadas, ou se o cupom só entrou depois, cria uma assinatura
+     * nova com o valor certo — senão o front mostra desconto e a Asaas cobra o cheio.
+     */
+    private fun unconfirmedCheckout(
+        committed: Subscription,
+        command: CreateSubscriptionCommand,
+        name: String,
+        email: String,
+        cpfDigits: String,
+        now: Instant,
+        allowReplace: Boolean,
+    ): CreateSubscriptionResult {
+        val checkout = resolveCheckout(committed)
+        if (checkout.subscription.firstConfirmedAt != null) {
+            return successOf(checkout, command.billingType)
+        }
+        if (!allowReplace || !shouldReplaceCheckout(committed, command, checkout)) {
+            return successOf(checkout, command.billingType)
+        }
+        val couponOutcome = couponForReplace(committed, command, now)
+        if (couponOutcome is CouponOutcome.Failure) return couponOutcome.result
+        val coupon = (couponOutcome as CouponOutcome.Ok).coupon
+        val replaced = try {
+            transaction.inTransaction {
+                subscriptions.lockOwner(command.ownerUserId)
+                replaceUnconfirmed(committed, command, name, email, cpfDigits, coupon, now)
+            }
+        } catch (ex: CardDeclinedException) {
+            return CreateSubscriptionResult.CardDeclined(reason = ex.asaasCode, asaasDescription = ex.asaasDescription)
+        }
+        return successOf(resolveCheckout(replaced), command.billingType)
+    }
+
+    private fun shouldReplaceCheckout(
+        existing: Subscription,
+        command: CreateSubscriptionCommand,
+        checkout: Checkout,
+    ): Boolean {
+        if (checkout.paymentLookupFailed) return false
+        val couponPending = !command.couponCode.isNullOrBlank() && existing.couponId == null
+        return couponPending || !checkout.hasPayment
+    }
+
+    private fun successOf(checkout: Checkout, billingType: AsaasBillingType) =
+        CreateSubscriptionResult.Success(
+            subscription = checkout.subscription,
+            billingType = billingType,
+            pixCopyPaste = checkout.pixCopyPaste,
+            pixQrCodeBase64 = checkout.pixQrCodeBase64,
+            invoiceUrl = checkout.invoiceUrl,
+        )
+
     private sealed interface CommitOutcome {
-        data class Committed(val subscription: Subscription) : CommitOutcome
+        data class Committed(
+            val subscription: Subscription,
+            val reusedUnconfirmed: Boolean = false,
+        ) : CommitOutcome
         data class Rejected(val result: CreateSubscriptionResult) : CommitOutcome
     }
 
@@ -192,6 +249,7 @@ class CreateSubscription(
         command: CreateSubscriptionCommand,
         customerId: String,
         valueCents: Long,
+        idempotencyKey: String = "subscription-create:${command.ownerUserId}:${command.requestId}",
     ): AsaasSubscriptionCreation =
         asaasGateway.createSubscription(
             asaasCustomerId = customerId,
@@ -199,7 +257,7 @@ class CreateSubscription(
             cycle = command.cycle,
             valueCents = valueCents,
             billingType = command.billingType,
-            idempotencyKey = "subscription-create:${command.ownerUserId}:${command.requestId}",
+            idempotencyKey = idempotencyKey,
             creditCard = command.creditCard,
             creditCardHolderInfo = command.creditCardHolderInfo,
             remoteIp = command.remoteIp,
@@ -244,6 +302,55 @@ class CreateSubscription(
             coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
         }
         return reactivated
+    }
+
+    private fun replaceUnconfirmed(
+        existing: Subscription,
+        command: CreateSubscriptionCommand,
+        name: String,
+        email: String,
+        cpfDigits: String,
+        coupon: Coupon?,
+        now: Instant,
+    ): Subscription {
+        val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
+        runCatching { asaasGateway.cancelSubscription(existing.asaasSubscriptionId) }
+        val customerId = existing.asaasCustomerId.ifBlank {
+            asaasGateway.createCustomer(command.ownerUserId, name, email, cpfDigits)
+        }
+        val creation = createAsaasSubscription(
+            command,
+            customerId,
+            valueCents,
+            idempotencyKey = "subscription-replace:${command.ownerUserId}:${existing.asaasSubscriptionId}",
+        )
+        val replaced = blankSubscription(
+            ownerUserId = command.ownerUserId,
+            plan = command.plan,
+            cycle = command.cycle,
+            customerId = customerId,
+            asaasSubscriptionId = creation.asaasSubscriptionId,
+            billingType = command.billingType,
+            now = now,
+            coupon = coupon,
+        )
+        subscriptions.save(replaced)
+        persistCreditCardToken(creation)
+        if (coupon != null && !coupons.hasRedemption(coupon.id, command.ownerUserId)) {
+            coupons.saveRedemption(CouponRedemption(coupon.id, command.ownerUserId, now))
+        }
+        return replaced
+    }
+
+    private fun couponForReplace(
+        existing: Subscription,
+        command: CreateSubscriptionCommand,
+        now: Instant,
+    ): CouponOutcome {
+        if (existing.couponId != null) {
+            return CouponOutcome.Ok(coupons.findById(existing.couponId))
+        }
+        return resolveCoupon(command.couponCode, command.ownerUserId, now)
     }
 
     private fun blankSubscription(
@@ -299,6 +406,8 @@ class CreateSubscription(
         val pixCopyPaste: String?,
         val pixQrCodeBase64: String?,
         val invoiceUrl: String?,
+        val paymentLookupFailed: Boolean = false,
+        val hasPayment: Boolean = false,
     )
 
     /**
@@ -317,9 +426,13 @@ class CreateSubscription(
         if (recovered.firstConfirmedAt != null) {
             return Checkout(recovered, null, null, null)
         }
-        val paymentId = runCatching {
+        val paymentIdResult = runCatching {
             asaasGateway.findLatestPaymentIdForSubscription(committed.asaasSubscriptionId)
-        }.getOrNull() ?: return Checkout(committed, null, null, null)
+        }
+        if (paymentIdResult.isFailure) {
+            return Checkout(committed, null, null, null, paymentLookupFailed = true)
+        }
+        val paymentId = paymentIdResult.getOrNull() ?: return Checkout(committed, null, null, null)
         val payment = runCatching { asaasGateway.findPayment(paymentId) }.getOrNull()
         val pix = runCatching { asaasGateway.regeneratePixPayload(paymentId) }.getOrNull()
         val invoice = payment?.invoiceUrl
@@ -329,6 +442,7 @@ class CreateSubscription(
             pixCopyPaste = pix?.payload,
             pixQrCodeBase64 = pix?.encodedImage,
             invoiceUrl = invoice,
+            hasPayment = true,
         )
     }
 
