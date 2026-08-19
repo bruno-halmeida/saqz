@@ -8,7 +8,7 @@
   var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
 
   // Preencha o número (só dígitos, DDI+DDD) para o CTA final abrir o WhatsApp.
-  var WHATSAPP_NUMBER = '';
+  var WHATSAPP_NUMBER = '5534999576016';
   var WHATSAPP_MESSAGE = 'Oi! Quero uma vaga para meu grupo no pré-lançamento do Saqz.';
   if (WHATSAPP_NUMBER) {
     var waUrl = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(WHATSAPP_MESSAGE);
