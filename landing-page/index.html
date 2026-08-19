@@ -504,9 +504,11 @@
     .nav-links a { color:var(--ink); font-size:13px; letter-spacing:-.01em; text-decoration:none; opacity:.72; transition:opacity .2s ease; }
     .nav-links a:hover { opacity:1; }
     .site-footer { padding:30px 0 36px; }
+    .footer-inner { display:flex; flex-direction:column; gap:14px; }
     .footer-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px 24px; }
     .footer-logo { width:84px; height:auto; }
     .site-footer p { margin:0; color:#6e6e73; font-size:12px; }
+    .footer-legal { color:#8e8e93; font-size:11px; letter-spacing:.02em; text-align:center; }
     .footer-nav { display:flex; gap:20px; }
     .footer-nav a { color:#6e6e73; font-size:12px; text-decoration:none; }
     .footer-nav a:hover { color:var(--ink); }
@@ -604,7 +606,7 @@
     <!-- TODO: preencher WHATSAPP_NUMBER em assets/motion.js para este CTA abrir o WhatsApp de verdade -->
     <section class="final shell" id="interesse"><img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal><span class="eyebrow" data-reveal data-reveal-delay="80">Lista de interesse</span><h2 data-reveal data-reveal-delay="150">Quer organizar seu grupo com o Saqz?</h2><p data-reveal data-reveal-delay="220">Entre na lista para receber um convite quando abrirmos uma nova vaga durante o pré-lançamento.</p><div data-reveal data-reveal-delay="300"><a class="primary" href="#interesse">EU QUERO UMA VAGA <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">Abre uma conversa no WhatsApp · entrar na lista é gratuito</span></div></section>
   </main>
-  <footer class="site-footer"><div class="shell footer-row" data-reveal><img class="footer-logo" src="assets/saqz-logo.svg" alt="Saqz"><p>© 2026 Saqz · Feito para quem organiza vôlei de quadra</p><nav class="footer-nav" aria-label="Rodapé"><a href="#painel">Como funciona</a><a href="#faq">Perguntas</a><a href="#interesse">Lista de interesse</a></nav></div></footer>
+  <footer class="site-footer"><div class="shell footer-inner" data-reveal><div class="footer-row"><img class="footer-logo" src="assets/saqz-logo.svg" alt="Saqz"><p>© 2026 Saqz · Feito para quem organiza vôlei de quadra</p><nav class="footer-nav" aria-label="Rodapé"><a href="#painel">Como funciona</a><a href="#faq">Perguntas</a><a href="#interesse">Lista de interesse</a></nav></div><p class="footer-legal">Empresa responsável: BRUNO HENRIQUE DE ALMEIDA TECNOLOGIA DA INFORMACAO LTDA</p></div></footer>
   <script src="assets/motion.js"></script>
   <script src="assets/phone-carousel.js"></script>
   <script>
