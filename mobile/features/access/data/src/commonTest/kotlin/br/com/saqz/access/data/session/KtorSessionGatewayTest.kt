@@ -57,6 +57,17 @@ class KtorSessionGatewayTest {
         assertEquals("group-1", result.memberships.single().groupId.value)
         assertEquals("Group", result.memberships.single().groupName)
         assertEquals("ADMIN", result.memberships.single().role.value)
+        assertFalse(result.planOwner)
+    }
+
+    @Test
+    fun `bootstrap maps plan owner without requiring a group`() = runTest {
+        val body = """{"user":{"id":"user-1","email":null,"displayName":"Person"},"memberships":[],"planOwner":true}"""
+
+        val session = fixture { sessionResponse(body) }.gateway.bootstrap().success()
+
+        assertTrue(session.planOwner)
+        assertEquals(emptyList(), session.memberships)
     }
 
     @Test fun `bootstrap carries the verification flag and the photo url of the session`() = runTest {

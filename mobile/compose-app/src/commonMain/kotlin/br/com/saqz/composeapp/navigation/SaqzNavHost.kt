@@ -319,7 +319,7 @@ internal fun SaqzNavHost(
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
                     initialTab = route.resolvedTab(),
-                    financeTabVisible = state.session.administersAnyGroup(),
+                    financeTabVisible = state.session.isAccountOwner(),
                     financeTab = {
                         FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
                     },
@@ -405,6 +405,7 @@ internal fun SaqzNavHost(
                             // quando autorizado, o gate substitui a si mesmo pelo 2a.
                             onCreateGroup = { backStack.add(GroupsRoute.Create) },
                             onOpenPlans = { backStack.add(SubscriptionRequired) },
+                            isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                         )
                     },
                 )
@@ -713,15 +714,19 @@ internal fun MutableList<NavKey>.finishPasswordChanged(session: SessionAccessSta
 private val AdministratorRoles = setOf("OWNER", "ADMIN")
 
 /**
- * VUL-200: a aba Caixa só existe para quem administra algum grupo — o
+ * VUL-200: a aba Caixa só existe para quem administra — o
  * `GET /api/me/finance/overview` já filtra por `owner_user_id = :actorId OR
  * memberships.role = 'ADMIN'` (CTE `administered_groups`), então para os outros ela abria
  * uma tela zerada. **Os dois lados do `OR` importam**: o dono entra pela coluna do grupo, e
  * a membership dele é `OWNER` — por isso [AdministratorRoles] tem os dois papéis, e reduzir
  * a lista a `ADMIN` esconderia a aba de quem é dono do próprio grupo.
  *
+ * Quem **paga o plano** (`planOwner`) também é owner da conta, mesmo com zero grupos: a
+ * aba acende no bootstrap, sem esperar o primeiro grupo. O overview vazio ("sem grupo
+ * administrado") é o estado certo até o 2a.
+ *
  * A fonte do papel é a **própria sessão**, não o `ownProfile()`: o `AccessSession` já chega
- * com `memberships` e `role` do `PUT /api/session`, e o shell só existe em
+ * com `memberships`, `role` e `planOwner` do `PUT /api/session`, e o shell só existe em
  * [SessionAccessState.Ready] (o gate garante). Ou seja, o papel é conhecido **antes do
  * primeiro quadro** do shell — nenhuma chamada de rede a mais, nenhuma guarda de geração, e
  * principalmente nenhuma piscada da aba aparecendo depois que o perfil carrega.
@@ -731,13 +736,18 @@ private val AdministratorRoles = setOf("OWNER", "ADMIN")
  * caixa do valor é o backend.
  *
  * ponytail: as memberships são as do bootstrap da sessão. Criar o primeiro grupo no meio da
- * sessão só acende a aba no próximo bootstrap — o caixa daquele grupo continua a um toque
- * pelo detalhe. Se isso incomodar, o conserto é um `SessionIntent` de recarregar a sessão
- * depois do 2a, não um segundo carregador de papel aqui.
+ * sessão só acende a aba no próximo bootstrap — **exceto** o pagador do plano, que já entra
+ * como owner. O caixa daquele grupo continua a um toque pelo detalhe. Se isso incomodar, o
+ * conserto é um `SessionIntent` de recarregar a sessão depois do 2a, não um segundo
+ * carregador de papel aqui.
  */
 internal fun SessionAccessState.administersAnyGroup(): Boolean =
     this is SessionAccessState.Ready &&
         session.memberships.any { it.role.value.uppercase() in AdministratorRoles }
+
+internal fun SessionAccessState.isAccountOwner(): Boolean =
+    this is SessionAccessState.Ready &&
+        (session.planOwner || administersAnyGroup())
 
 private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this) {
     is SessionAccessState.Ready -> SaqzShellDestination.Home

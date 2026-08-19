@@ -53,6 +53,7 @@ internal data class SessionMembershipDto(
 internal data class SessionDto(
     val user: SessionUserDto,
     val memberships: List<SessionMembershipDto>,
+    val planOwner: Boolean = false,
 )
 
 class KtorSessionGateway(
@@ -125,6 +126,7 @@ private fun SessionDto.toAccessSession(): SaqzResult<AccessSession, AccessError>
                     role = AccessMembershipRole(it.role),
                 )
             },
+            planOwner = planOwner,
         ),
     )
 }

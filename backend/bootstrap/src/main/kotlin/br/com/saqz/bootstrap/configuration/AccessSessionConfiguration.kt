@@ -66,6 +66,7 @@ import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.preview.AnonymousInvitePreviewRateLimiter
 import br.com.saqz.groups.application.invite.preview.PreviewInvite
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
+import br.com.saqz.sharedkernel.subscription.PlanOwnerLookup
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPlanLookup
 import br.com.saqz.subscriptions.application.SubscriptionLimitsAdapter
@@ -192,7 +193,12 @@ class AccessSessionConfiguration {
     fun sessionRepository(dataSource: DataSource) = JdbcSessionRepository(dataSource)
 
     @Bean
-    fun bootstrapSession(repository: JdbcSessionRepository) = BootstrapSession(repository)
+    fun planOwnerLookup(lookup: SubscriptionPlanLookup) =
+        PlanOwnerLookup { lookup.findEntitlingPlan(it) != null }
+
+    @Bean
+    fun bootstrapSession(repository: JdbcSessionRepository, planOwners: PlanOwnerLookup) =
+        BootstrapSession(repository, planOwners)
 
     @Bean
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
@@ -204,7 +210,8 @@ class AccessSessionConfiguration {
     }
 
     @Bean
-    fun completeSessionProfile(repository: JdbcSessionRepository) = CompleteSessionProfile(repository)
+    fun completeSessionProfile(repository: JdbcSessionRepository, planOwners: PlanOwnerLookup) =
+        CompleteSessionProfile(repository, planOwners)
 
     @Bean
     fun deleteAccount(

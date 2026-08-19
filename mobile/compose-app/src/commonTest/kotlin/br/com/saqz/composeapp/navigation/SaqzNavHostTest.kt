@@ -324,20 +324,27 @@ class SaqzNavHostTest {
      */
     @Test
     fun onlyOwnerOrAdminMembershipsLightUpTheFinanceTab() {
-        assertFalse(SessionAccessState.Ready(session).administersAnyGroup())
-        assertFalse(SessionAccessState.Ready(sessionWith("ATHLETE")).administersAnyGroup())
-        assertTrue(SessionAccessState.Ready(sessionWith("OWNER")).administersAnyGroup())
-        assertTrue(SessionAccessState.Ready(sessionWith("ADMIN")).administersAnyGroup())
+        assertFalse(SessionAccessState.Ready(session).isAccountOwner())
+        assertFalse(SessionAccessState.Ready(sessionWith("ATHLETE")).isAccountOwner())
+        assertTrue(SessionAccessState.Ready(sessionWith("OWNER")).isAccountOwner())
+        assertTrue(SessionAccessState.Ready(sessionWith("ADMIN")).isAccountOwner())
         // Basta um grupo administrado entre vários.
-        assertTrue(SessionAccessState.Ready(sessionWith("ATHLETE", "ADMIN")).administersAnyGroup())
+        assertTrue(SessionAccessState.Ready(sessionWith("ATHLETE", "ADMIN")).isAccountOwner())
+    }
+
+    @Test
+    fun aPlanPayerIsAccountOwnerEvenWithoutGroups() {
+        val payer = SessionAccessState.Ready(session.copy(planOwner = true))
+        assertTrue(payer.isAccountOwner())
+        assertFalse(payer.administersAnyGroup())
     }
 
     // Fora de `Ready` não há sessão para consultar — e o shell nem existe (o gate colapsa).
     @Test
     fun theFinanceTabStaysHiddenWithoutASession() {
-        assertFalse(SessionAccessState.SignedOut.administersAnyGroup())
-        assertFalse(SessionAccessState.Bootstrapping.administersAnyGroup())
-        assertFalse(SessionAccessState.CompletingIdentity(session).administersAnyGroup())
+        assertFalse(SessionAccessState.SignedOut.isAccountOwner())
+        assertFalse(SessionAccessState.Bootstrapping.isAccountOwner())
+        assertFalse(SessionAccessState.CompletingIdentity(session).isAccountOwner())
     }
 
     private companion object {

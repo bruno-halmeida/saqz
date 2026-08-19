@@ -14,6 +14,8 @@
     <string name="groups_invite_decline">Recusar</string>
     <string name="groups_empty_title">Você ainda não participa de nenhum grupo</string>
     <string name="groups_empty_body">Crie o seu ou entre com o código que a galera te mandou.</string>
+    <string name="groups_empty_owner_title">Crie o seu primeiro grupo</string>
+    <string name="groups_empty_owner_body">Seu plano já está ativo. Monte o grupo para marcar os jogos.</string>
     <string name="groups_empty_create">Criar grupo</string>
     <string name="groups_empty_join">Entrar com código</string>
 

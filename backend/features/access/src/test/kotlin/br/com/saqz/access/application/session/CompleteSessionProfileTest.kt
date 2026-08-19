@@ -30,6 +30,18 @@ class CompleteSessionProfileTest {
     }
 
     @Test
+    fun `payer of an entitling plan is owner even without groups`() {
+        val repository = RecordingSessionRepository(view)
+
+        val result = CompleteSessionProfile(repository) { it == userId }
+            .execute("subject-1", "(11) 91111-2222", null)
+
+        val session = (result as CompleteSessionProfileResult.Success).session
+        assertTrue(session.planOwner)
+        assertTrue(session.memberships.isEmpty())
+    }
+
+    @Test
     fun `optional display name is validated and forwarded when present`() {
         val repository = RecordingSessionRepository(view)
 

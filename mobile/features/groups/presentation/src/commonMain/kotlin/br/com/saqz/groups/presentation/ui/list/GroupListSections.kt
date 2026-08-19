@@ -52,6 +52,8 @@ import br.com.saqz.groups.resources.groups_attendance_going
 import br.com.saqz.groups.resources.groups_confirm
 import br.com.saqz.groups.resources.groups_empty_body
 import br.com.saqz.groups.resources.groups_empty_create
+import br.com.saqz.groups.resources.groups_empty_owner_body
+import br.com.saqz.groups.resources.groups_empty_owner_title
 import br.com.saqz.groups.resources.groups_empty_title
 import br.com.saqz.groups.resources.groups_invite_accept
 import br.com.saqz.groups.resources.groups_invite_decline
@@ -338,6 +340,7 @@ internal fun GroupInviteCard(
 internal fun GroupListEmpty(
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
+    isPlanOwner: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -347,8 +350,12 @@ internal fun GroupListEmpty(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SaqzEmptyState(
-            title = stringResource(Res.string.groups_empty_title),
-            description = stringResource(Res.string.groups_empty_body),
+            title = stringResource(
+                if (isPlanOwner) Res.string.groups_empty_owner_title else Res.string.groups_empty_title,
+            ),
+            description = stringResource(
+                if (isPlanOwner) Res.string.groups_empty_owner_body else Res.string.groups_empty_body,
+            ),
             icon = SaqzIcons.Users,
             action = stringResource(Res.string.groups_empty_create),
             onAction = onCreate,

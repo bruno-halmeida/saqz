@@ -74,6 +74,7 @@ class SessionEndpointIntegrationTest {
         assertEquals("Session Person", body["user"]["displayName"].stringValue())
         assertTrue(body["user"]["emailVerified"].booleanValue())
         assertTrue(body["memberships"].isEmpty)
+        assertFalse(body["planOwner"].booleanValue())
     }
 
     @Test

@@ -41,6 +41,7 @@ data class SessionMembershipResponse(
 data class AccessSessionResponse(
     val user: SessionUserResponse,
     val memberships: List<SessionMembershipResponse>,
+    val planOwner: Boolean,
 )
 
 class UpdateSessionProfileRequest {
@@ -181,4 +182,5 @@ private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionRespon
             role = it.role,
         )
     },
+    planOwner = planOwner,
 )

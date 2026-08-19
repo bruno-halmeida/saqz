@@ -46,6 +46,7 @@ fun GroupListScreen(
     state: GroupListState,
     onIntent: (GroupListIntent) -> Unit,
     modifier: Modifier = Modifier,
+    isPlanOwner: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
     val onCreate: () -> Unit = { onIntent(GroupListIntent.CreateGroup) }
@@ -66,7 +67,7 @@ fun GroupListScreen(
                 error = state.error,
                 onRetry = { onIntent(GroupListIntent.Retry) },
             )
-            state.isEmpty -> GroupListEmpty(onCreate = onCreate)
+            state.isEmpty -> GroupListEmpty(onCreate = onCreate, isPlanOwner = isPlanOwner)
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),

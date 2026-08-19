@@ -81,6 +81,21 @@ class BootstrapSessionTest {
     }
 
     @Test
+    fun `payer of an entitling plan is owner even without groups`() {
+        val emptyView = SessionView(
+            UserAccount(userId, "subject-1", "person@example.test", AccessName.from("Person Name")),
+            emptyList(),
+        )
+        val repository = RecordingSessionRepository(emptyView)
+
+        val result = BootstrapSession(repository) { it == userId }.execute(identity())
+
+        val session = (result as BootstrapSessionResult.Success).session
+        assertTrue(session.planOwner)
+        assertTrue(session.memberships.isEmpty())
+    }
+
+    @Test
     fun `blank display name is rejected before write`() {
         assertBlocked(identity(displayName = "   "), BootstrapSessionResult.InvalidDisplayName)
     }

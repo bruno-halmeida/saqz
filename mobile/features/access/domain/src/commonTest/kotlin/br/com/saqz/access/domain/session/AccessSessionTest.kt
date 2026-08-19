@@ -6,8 +6,10 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AccessSessionTest {
     @Test fun `user preserves identity email and display name`() {
@@ -23,6 +25,11 @@ class AccessSessionTest {
 
     @Test fun `session accepts empty memberships`() {
         assertEquals(emptyList(), AccessSession(user(), emptyList()).memberships)
+        assertFalse(AccessSession(user(), emptyList()).planOwner)
+    }
+
+    @Test fun `session preserves plan owner without memberships`() {
+        assertTrue(AccessSession(user(), emptyList(), planOwner = true).planOwner)
     }
 
     @Test fun `session preserves multiple memberships in order`() {

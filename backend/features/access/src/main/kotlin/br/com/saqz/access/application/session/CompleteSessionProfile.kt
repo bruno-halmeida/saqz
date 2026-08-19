@@ -2,9 +2,11 @@ package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
+import br.com.saqz.sharedkernel.subscription.PlanOwnerLookup
 
 class CompleteSessionProfile(
     private val repository: SessionRepository,
+    private val planOwners: PlanOwnerLookup = PlanOwnerLookup { false },
 ) {
     fun execute(
         subject: String,
@@ -72,7 +74,7 @@ class CompleteSessionProfile(
             ),
         )
             ?: return CompleteSessionProfileResult.AccountNotFound
-        return CompleteSessionProfileResult.Success(session)
+        return CompleteSessionProfileResult.Success(session.withPlanOwner(planOwners))
     }
 
     private fun String.isValidNickname(): Boolean {

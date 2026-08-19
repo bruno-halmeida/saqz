@@ -29,6 +29,8 @@ data class AccessMembership(
 data class AccessSession(
     val user: AccessUser,
     val memberships: List<AccessMembership>,
+    /** Paga um plano entitulador: owner da conta mesmo sem grupo criado. */
+    val planOwner: Boolean = false,
 )
 
 sealed interface AccessError : SaqzError {

@@ -2,9 +2,11 @@ package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.sharedkernel.subscription.PlanOwnerLookup
 
 class BootstrapSession(
     private val repository: SessionRepository,
+    private val planOwners: PlanOwnerLookup = PlanOwnerLookup { false },
 ) {
     fun execute(identity: RequestIdentity): BootstrapSessionResult {
         val displayName = identity.displayName
@@ -22,6 +24,6 @@ class BootstrapSession(
                 displayName = displayName,
             ),
         )
-        return BootstrapSessionResult.Success(session)
+        return BootstrapSessionResult.Success(session.withPlanOwner(planOwners))
     }
 }

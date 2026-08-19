@@ -3,6 +3,7 @@ package br.com.saqz.access.application.session
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.sharedkernel.subscription.PlanOwnerLookup
 import java.util.UUID
 
 data class UserAccount(
@@ -27,7 +28,12 @@ data class SessionMembership(
 data class SessionView(
     val user: UserAccount,
     val memberships: List<SessionMembership>,
+    /** Paga um plano entitulador: owner da conta mesmo sem grupo criado. */
+    val planOwner: Boolean = false,
 )
+
+fun SessionView.withPlanOwner(planOwners: PlanOwnerLookup): SessionView =
+    copy(planOwner = planOwners.isPlanOwner(user.id))
 
 data class SessionUpsert(
     val subject: String,
