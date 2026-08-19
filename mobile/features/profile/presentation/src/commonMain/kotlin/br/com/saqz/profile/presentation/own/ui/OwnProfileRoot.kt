@@ -20,6 +20,8 @@ fun OwnProfileRoot(
     onOpenEditor: () -> Unit,
     onOpenPasswordRecovery: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenMyPlan: () -> Unit = {},
+    isPlanOwner: Boolean = false,
     refreshVersion: Int = 0,
     topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
     viewModel: OwnProfileViewModel = koinViewModel(),
@@ -38,6 +40,7 @@ fun OwnProfileRoot(
         when (effect) {
             OwnProfileEffect.OpenEditor -> onOpenEditor()
             OwnProfileEffect.OpenPasswordRecovery -> onOpenPasswordRecovery()
+            OwnProfileEffect.OpenMyPlan -> onOpenMyPlan()
             OwnProfileEffect.SignedOut -> onSignOut()
         }
     }
@@ -46,5 +49,6 @@ fun OwnProfileRoot(
         onIntent = viewModel::onIntent,
         imageLoader = imageLoader,
         topBarWindowInsets = topBarWindowInsets,
+        isPlanOwner = isPlanOwner,
     )
 }

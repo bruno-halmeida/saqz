@@ -9,11 +9,14 @@
     <string name="profile_groups">Grupos</string>
     <string name="profile_play_style">Como você joga</string>
     <string name="profile_account">Conta</string>
+    <string name="profile_owner_section">Organização</string>
+    <string name="profile_my_plan">Meu plano</string>
     <string name="profile_monthly_payments">Minhas mensalidades</string>
     <string name="profile_notifications">Notificações</string>
     <string name="profile_change_password">Trocar senha</string>
     <string name="profile_sign_out">Sair da conta</string>
     <string name="profile_empty_groups">Você ainda não está em nenhum grupo</string>
+    <string name="profile_empty_owner_groups">Crie um grupo para começar a organizar</string>
     <string name="profile_error_title">Não foi possível carregar seu perfil</string>
     <string name="profile_error_message">Confira sua conexão e tente novamente.</string>
     <string name="profile_retry">Tentar novamente</string>

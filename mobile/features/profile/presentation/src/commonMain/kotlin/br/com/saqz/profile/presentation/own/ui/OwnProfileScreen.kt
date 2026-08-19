@@ -76,12 +76,15 @@ import br.com.saqz.profile.resources.profile_attendance
 import br.com.saqz.profile.resources.profile_change_password
 import br.com.saqz.profile.resources.profile_edit_data
 import br.com.saqz.profile.resources.profile_empty_groups
+import br.com.saqz.profile.resources.profile_empty_owner_groups
 import br.com.saqz.profile.resources.profile_error_message
 import br.com.saqz.profile.resources.profile_error_title
 import br.com.saqz.profile.resources.profile_games
 import br.com.saqz.profile.resources.profile_groups
 import br.com.saqz.profile.resources.profile_monthly_payments
+import br.com.saqz.profile.resources.profile_my_plan
 import br.com.saqz.profile.resources.profile_notifications
+import br.com.saqz.profile.resources.profile_owner_section
 import br.com.saqz.profile.resources.profile_photo_content_description
 import br.com.saqz.profile.resources.profile_play_style
 import br.com.saqz.profile.resources.profile_retry
@@ -97,6 +100,7 @@ internal object OwnProfileTags {
     const val Stats = "own-profile-stats"
     const val Attendance = "own-profile-attendance"
     const val GroupsEmpty = "own-profile-groups-empty"
+    const val MyPlan = "own-profile-my-plan"
     const val Failure = "own-profile-failure"
     const val Retry = "own-profile-retry"
     const val MonthlyPayments = "own-profile-monthly-payments"
@@ -115,6 +119,7 @@ fun OwnProfileScreen(
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
+    isPlanOwner: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -182,7 +187,13 @@ fun OwnProfileScreen(
                         if (state.isEmpty) {
                             item(key = "groups-empty") {
                                 SaqzEmptyState(
-                                    title = stringResource(Res.string.profile_empty_groups),
+                                    title = stringResource(
+                                        if (isPlanOwner) {
+                                            Res.string.profile_empty_owner_groups
+                                        } else {
+                                            Res.string.profile_empty_groups
+                                        },
+                                    ),
                                     icon = SaqzIcons.Users,
                                     modifier = Modifier.testTag(OwnProfileTags.GroupsEmpty),
                                 )
@@ -197,6 +208,14 @@ fun OwnProfileScreen(
                                     onClick = { onIntent(OwnProfileIntent.OpenGroup(group.id)) },
                                     modifier = Modifier.testTag(OwnProfileTags.group(group.id)),
                                 )
+                            }
+                        }
+                        if (isPlanOwner) {
+                            item(key = "owner-header") {
+                                SaqzSectionHeader(title = stringResource(Res.string.profile_owner_section))
+                            }
+                            item(key = "owner-card") {
+                                OwnProfileOwnerCard(onIntent = onIntent)
                             }
                         }
                         item(key = "account-header") {
@@ -460,6 +479,18 @@ private fun OwnProfileGroupRow(
 }
 
 @Composable
+private fun OwnProfileOwnerCard(onIntent: (OwnProfileIntent) -> Unit) {
+    SaqzCard(padded = false) {
+        OwnProfileAccountRow(
+            icon = SaqzIcons.CreditCard,
+            label = stringResource(Res.string.profile_my_plan),
+            onClick = { onIntent(OwnProfileIntent.OpenMyPlan) },
+            modifier = Modifier.testTag(OwnProfileTags.MyPlan),
+        )
+    }
+}
+
+@Composable
 private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit) {
     SaqzCard(padded = false) {
         OwnProfileAccountRow(
@@ -564,6 +595,19 @@ private fun OwnProfileNoAttendancePreview() = SaqzTheme {
 @Composable
 private fun OwnProfileEmptyPreview() = SaqzTheme {
     OwnProfilePreview(OwnProfilePreviewData.empty)
+}
+
+@Preview(name = "7a — owner sem grupo", widthDp = 390, heightDp = 844)
+@Composable
+private fun OwnProfileOwnerEmptyPreview() = SaqzTheme {
+    val context = LocalPlatformContext.current
+    val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+    OwnProfileScreen(
+        state = OwnProfilePreviewData.empty,
+        onIntent = {},
+        imageLoader = imageLoader,
+        isPlanOwner = true,
+    )
 }
 
 @Preview(name = "7a — carregando", widthDp = 390, heightDp = 844)

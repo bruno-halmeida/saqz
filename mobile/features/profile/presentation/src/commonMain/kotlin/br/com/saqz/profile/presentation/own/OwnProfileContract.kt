@@ -44,6 +44,7 @@ sealed interface OwnProfileIntent {
     data object Refresh : OwnProfileIntent
     data object EditData : OwnProfileIntent
     data object OpenSettings : OwnProfileIntent
+    data object OpenMyPlan : OwnProfileIntent
     data object OpenMonthlyPayments : OwnProfileIntent
     data object OpenNotifications : OwnProfileIntent
     data object ChangePassword : OwnProfileIntent
@@ -54,6 +55,7 @@ sealed interface OwnProfileIntent {
 sealed interface OwnProfileEffect {
     data object OpenEditor : OwnProfileEffect
     data object OpenPasswordRecovery : OwnProfileEffect
+    data object OpenMyPlan : OwnProfileEffect
     data object SignedOut : OwnProfileEffect
 }
 

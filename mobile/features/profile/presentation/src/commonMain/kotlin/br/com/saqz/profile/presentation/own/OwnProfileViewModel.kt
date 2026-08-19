@@ -26,6 +26,7 @@ class OwnProfileViewModel(
             OwnProfileIntent.EditData -> emit(OwnProfileEffect.OpenEditor)
             OwnProfileIntent.ChangePassword -> emit(OwnProfileEffect.OpenPasswordRecovery)
             OwnProfileIntent.SignOut -> emit(OwnProfileEffect.SignedOut)
+            OwnProfileIntent.OpenMyPlan -> emit(OwnProfileEffect.OpenMyPlan)
             OwnProfileIntent.OpenSettings -> {
                 // TODO(Fluxo 7 · 7c): abrir a tela de notificações quando ela existir.
             }

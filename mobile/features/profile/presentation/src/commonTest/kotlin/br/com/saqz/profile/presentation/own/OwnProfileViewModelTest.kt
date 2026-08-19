@@ -136,6 +136,15 @@ class OwnProfileViewModelTest {
     }
 
     @Test
+    fun `opening my plan emits the subscription exit`() = runTest(dispatcher) {
+        val viewModel = OwnProfileViewModel(FakeProfileGateway())
+
+        viewModel.onIntent(OwnProfileIntent.OpenMyPlan)
+
+        assertEquals(OwnProfileEffect.OpenMyPlan, viewModel.effects.first())
+    }
+
+    @Test
     fun `change password emits the password recovery exit`() = runTest(dispatcher) {
         val viewModel = OwnProfileViewModel(FakeProfileGateway())
 

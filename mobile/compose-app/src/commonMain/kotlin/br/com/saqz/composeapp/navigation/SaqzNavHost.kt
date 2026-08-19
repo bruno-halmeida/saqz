@@ -344,6 +344,8 @@ internal fun SaqzNavHost(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },
                             onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
                             onSignOut = { backStack.add(ProfileRoute.Exit) },
+                            onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
+                            isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                             refreshVersion = profileRefreshVersion,
                             // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
                             // descia de novo e o título Perfil ficava um inset abaixo da faixa.

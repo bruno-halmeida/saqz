@@ -4,10 +4,9 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 /**
- * Fluxo 8 · Assinaturas (8e "Meu plano"). Não existe módulo de perfil neste
- * repo ainda — a apresentação autenticada foi zerada num reset e está sendo reconstruída fluxo
- * a fluxo (só grupos e assinaturas existem hoje). Por isso 8e entra aqui; quando o módulo de
- * perfil existir de verdade, o ponto de entrada de lá só precisa navegar para esta rota.
+ * Fluxo 8 · Assinaturas (8e "Meu plano"). O perfil (7a) navega para cá quando
+ * `planOwner` — quem paga o plano, mesmo sem grupo. A tela busca tudo via
+ * `SubscriptionGateway.mySubscription()`.
  *
  * Depende só de `navigation3-runtime` pelo contrato [NavKey], nunca de `navigation3-ui`.
  */
