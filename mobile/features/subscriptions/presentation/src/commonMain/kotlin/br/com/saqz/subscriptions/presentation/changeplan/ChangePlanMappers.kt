@@ -33,7 +33,6 @@ internal fun PlanCatalogItem.toCardUi(
 ): ChangePlanCardUi {
     val priceCents = if (cycle == SubscriptionCycle.Annual) annualPriceCents else monthlyPriceCents
     val scheduled = pendingPlan != null && id == pendingPlan
-    val scheduledAt = pendingPlanEffectiveAt
     return ChangePlanCardUi(
         plan = id,
         name = id.name,
@@ -44,8 +43,10 @@ internal fun PlanCatalogItem.toCardUi(
         benefits = benefits(),
         isCurrent = id == currentPlan,
         isScheduled = scheduled,
-        scheduledLabel = if (scheduled && scheduledAt != null) {
-            UiText.Res(Res.string.changeplan_scheduled_chip, listOf(isoDateToPtBr(scheduledAt)))
+        scheduledLabel = if (scheduled && pendingPlanEffectiveAt != null) {
+            UiText.Res(Res.string.changeplan_scheduled_chip, listOf(isoDateToPtBr(
+                pendingPlanEffectiveAt
+            )))
         } else {
             null
         },
