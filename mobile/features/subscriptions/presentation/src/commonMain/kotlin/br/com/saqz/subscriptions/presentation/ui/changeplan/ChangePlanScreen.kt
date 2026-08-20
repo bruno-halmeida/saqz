@@ -183,6 +183,14 @@ private fun ChangePlanCard(
                     tone = SaqzChipTone.Success,
                     dot = true,
                 )
+            } else {
+                card.scheduledLabel?.asString()?.let { label ->
+                    SaqzStatusChip(
+                        text = label,
+                        tone = SaqzChipTone.Accent,
+                        dot = true,
+                    )
+                }
             }
         }
         Text(
@@ -197,7 +205,7 @@ private fun ChangePlanCard(
                 color = colors.textSecondary,
             )
         }
-        if (!card.isCurrent) {
+        if (!card.isCurrent && !card.isScheduled) {
             SaqzButton(
                 label = stringResource(Res.string.changeplan_cta),
                 onClick = onSelect,

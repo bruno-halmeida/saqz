@@ -3,6 +3,8 @@
     <!-- 8e · Meu plano -->
     <string name="myplan_title">Meu plano</string>
     <string name="myplan_current_plan_label">PLANO ATUAL</string>
+    <string name="myplan_pending_note">Troca para %1$s já agendada para %2$s. Até lá você continua neste plano.</string>
+    <string name="myplan_usage_pending_helper">O limite de grupos já é o do plano %1$s, que passa a valer em %2$s.</string>
     <string name="myplan_status_active">Ativo</string>
     <string name="myplan_status_past_due">Pagamento pendente</string>
     <string name="myplan_status_canceled">Cancelado</string>

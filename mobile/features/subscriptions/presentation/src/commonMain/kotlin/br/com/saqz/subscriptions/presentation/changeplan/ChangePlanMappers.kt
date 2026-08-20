@@ -17,6 +17,7 @@ import br.com.saqz.subscriptions.resources.changeplan_benefit_whatsapp
 import br.com.saqz.subscriptions.resources.changeplan_pending_note
 import br.com.saqz.subscriptions.resources.changeplan_price_month
 import br.com.saqz.subscriptions.resources.changeplan_price_year
+import br.com.saqz.subscriptions.resources.changeplan_scheduled_chip
 
 internal fun MySubscription.toPendingNote(): UiText? {
     val pending = pendingPlan ?: return null
@@ -24,8 +25,15 @@ internal fun MySubscription.toPendingNote(): UiText? {
     return UiText.Res(Res.string.changeplan_pending_note, listOf(pending.name, isoDateToPtBr(at)))
 }
 
-internal fun PlanCatalogItem.toCardUi(currentPlan: Plan, cycle: SubscriptionCycle): ChangePlanCardUi {
+internal fun PlanCatalogItem.toCardUi(
+    currentPlan: Plan,
+    cycle: SubscriptionCycle,
+    pendingPlan: Plan? = null,
+    pendingPlanEffectiveAt: String? = null,
+): ChangePlanCardUi {
     val priceCents = if (cycle == SubscriptionCycle.Annual) annualPriceCents else monthlyPriceCents
+    val scheduled = pendingPlan != null && id == pendingPlan
+    val scheduledAt = pendingPlanEffectiveAt
     return ChangePlanCardUi(
         plan = id,
         name = id.name,
@@ -35,6 +43,12 @@ internal fun PlanCatalogItem.toCardUi(currentPlan: Plan, cycle: SubscriptionCycl
         ),
         benefits = benefits(),
         isCurrent = id == currentPlan,
+        isScheduled = scheduled,
+        scheduledLabel = if (scheduled && scheduledAt != null) {
+            UiText.Res(Res.string.changeplan_scheduled_chip, listOf(isoDateToPtBr(scheduledAt)))
+        } else {
+            null
+        },
     )
 }
 

@@ -227,7 +227,8 @@
     if (troca && assinaturaAtual.pendingPlan) {
       aviso.hidden = false;
       aviso.textContent = "Troca para " + assinaturaAtual.pendingPlan +
-        " já agendada para " + dataPt(assinaturaAtual.pendingPlanEffectiveAt) + ".";
+        " já agendada para " + dataPt(assinaturaAtual.pendingPlanEffectiveAt) +
+        ". Até lá você continua no plano atual.";
     } else {
       aviso.hidden = true;
       aviso.textContent = "";
@@ -245,9 +246,11 @@
     mostrarErro("planos-erro", "");
     planos.forEach(function (plano) {
       var atual = modoTroca() && plano.id === assinaturaAtual.plan;
+      var agendado = modoTroca() && assinaturaAtual.pendingPlan && plano.id === assinaturaAtual.pendingPlan;
       var classes = ["card", "plano"];
       if (plano.maxGroups == null) classes.push("plano--destaque");
       if (atual) classes.push("plano--atual");
+      if (agendado) classes.push("plano--agendado");
       var card = document.createElement("div");
       card.className = classes.join(" ");
       var preco = cicloEscolhido === "ANNUAL"
@@ -259,13 +262,17 @@
       if (plano.multiAdmin) beneficios.push("Vários administradores");
       if (plano.reports) beneficios.push("Relatórios");
       if (plano.whatsappSla) beneficios.push("Suporte prioritário no WhatsApp");
-      var rotulo = atual ? "Plano atual" : (modoTroca() ? "Trocar para este plano" : "Assinar este plano");
+      var rotulo = atual
+        ? "Plano atual"
+        : (agendado
+          ? ("A partir de " + dataPt(assinaturaAtual.pendingPlanEffectiveAt))
+          : (modoTroca() ? "Trocar para este plano" : "Assinar este plano"));
       card.innerHTML =
         '<div class="topo"><h2></h2><span class="preco">' + preco + "</span></div>" +
         "<ul>" + beneficios.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>" +
-        '<button type="button" class="escolher"' + (atual ? " disabled" : "") + ">" + rotulo + "</button>";
+        '<button type="button" class="escolher"' + (atual || agendado ? " disabled" : "") + ">" + rotulo + "</button>";
       card.querySelector("h2").textContent = plano.name;
-      if (!atual) {
+      if (!atual && !agendado) {
         card.querySelector(".escolher").addEventListener("click", function () {
           if (modoTroca()) trocarPlano(plano);
           else abrirDados(plano, cicloEscolhido, "Quase lá");

@@ -13,6 +13,7 @@ import br.com.saqz.subscriptions.resources.changeplan_benefit_groups_unlimited
 import br.com.saqz.subscriptions.resources.changeplan_pending_note
 import br.com.saqz.subscriptions.resources.changeplan_price_month
 import br.com.saqz.subscriptions.resources.changeplan_price_year
+import br.com.saqz.subscriptions.resources.changeplan_scheduled_chip
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -38,6 +39,33 @@ class ChangePlanMappersTest {
         assertFalse(card.isCurrent)
         assertEquals(UiText.Res(Res.string.changeplan_price_year, listOf("R$ 89,90")), card.priceLabel)
         assertEquals(UiText.Res(Res.string.changeplan_benefit_groups_unlimited), card.benefits.first())
+    }
+
+    @Test
+    fun `pending plan is scheduled on its card and not current`() {
+        val titular = PlanCatalogItem(
+            id = Plan.Titular,
+            monthlyPriceCents = 3_990,
+            annualPriceCents = 39_900,
+            maxGroups = 1,
+            maxAthletes = 25,
+            multiAdmin = false,
+            reports = false,
+            whatsappSla = false,
+        )
+        val card = titular.toCardUi(
+            currentPlan = Plan.Organizador,
+            cycle = SubscriptionCycle.Monthly,
+            pendingPlan = Plan.Titular,
+            pendingPlanEffectiveAt = "2026-08-30T00:00:00Z",
+        )
+
+        assertFalse(card.isCurrent)
+        assertTrue(card.isScheduled)
+        assertEquals(
+            UiText.Res(Res.string.changeplan_scheduled_chip, listOf("30/08/2026")),
+            card.scheduledLabel,
+        )
     }
 
     @Test

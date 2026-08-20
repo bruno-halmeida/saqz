@@ -70,6 +70,13 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
             SaqzStatusChip(text = plan.statusLabel.asString(), tone = plan.statusTone.toChipTone(), dot = true)
         }
         Text(text = plan.name, style = SaqzTheme.typography.title, color = colors.textPrimary)
+        plan.pendingNote?.let { note ->
+            Text(
+                text = note.asString(),
+                style = SaqzTheme.typography.support,
+                color = colors.primary,
+            )
+        }
         if (plan.nextChargeDate != null) {
             Row(
                 modifier = Modifier

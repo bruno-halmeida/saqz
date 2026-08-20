@@ -250,8 +250,16 @@ button { font: inherit; cursor: pointer; }
 .plano--atual {
   box-shadow: 0 0 0 2px var(--saqz-lime);
 }
+.plano--agendado {
+  box-shadow: 0 0 0 2px var(--saqz-blue);
+}
 .plano--atual .escolher:disabled {
   background: var(--saqz-lime);
+  opacity: 1;
+}
+.plano--agendado .escolher:disabled {
+  background: var(--saqz-blue);
+  color: #fff;
   opacity: 1;
 }
 .plano--destaque {
@@ -560,5 +568,5 @@ button { font: inherit; cursor: pointer; }
 <p class="rodape-sessao" id="rodape-sessao" hidden></p>
 </main>
 <script src="cartao.js?v=confirm"></script>
-<script src="assinar.js?v=reload-planos"></script>
+<script src="assinar.js?v=downgrade-agendado"></script>
 </body></html>

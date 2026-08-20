@@ -125,6 +125,8 @@ class ChangePlanViewModelTest {
         assertEquals(ChangePlanPhase.Catalog, viewModel.state.value.phase)
         assertEquals(Plan.Organizador, viewModel.state.value.currentPlan)
         assertNotNull(viewModel.state.value.pendingNote)
+        assertEquals(listOf(false, true, false), viewModel.state.value.plans.map { it.isCurrent })
+        assertEquals(listOf(true, false, false), viewModel.state.value.plans.map { it.isScheduled })
         assertNull(viewModel.state.value.scheduled)
         assertFalse(viewModel.state.value.isSubmitting)
     }

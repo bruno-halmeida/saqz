@@ -5,10 +5,12 @@ import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Receipt
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_pending_note
 import br.com.saqz.subscriptions.resources.myplan_status_active
 import br.com.saqz.subscriptions.resources.myplan_status_canceled
 import br.com.saqz.subscriptions.resources.myplan_status_past_due
 import br.com.saqz.subscriptions.resources.myplan_usage_helper
+import br.com.saqz.subscriptions.resources.myplan_usage_pending_helper
 import br.com.saqz.subscriptions.resources.myplan_usage_ratio
 import br.com.saqz.subscriptions.resources.myplan_usage_unlimited
 
@@ -31,6 +33,8 @@ internal fun MySubscription.toCardUi(): MyPlanCardUi {
     // o webhook para parar de mostrar "Ativo" com o botão de cancelar habilitado de novo.
     val canceled = canceledAt != null
     val effectiveStatus = if (canceled) SubscriptionStatus.Canceled else status
+    val pending = pendingPlan
+    val pendingAt = pendingPlanEffectiveAt
     return MyPlanCardUi(
         name = plan.name,
         statusLabel = effectiveStatus.toUiText(),
@@ -40,11 +44,18 @@ internal fun MySubscription.toCardUi(): MyPlanCardUi {
         // still follows currentPeriodEnd"). Mostrar como próxima cobrança seria falso.
         nextChargeDate = if (canceled) null else isoDateToPtBr(currentPeriodEnd),
         accessUntilDate = if (canceled) isoDateToPtBr(currentPeriodEnd) else null,
+        pendingNote = if (pending != null && pendingAt != null) {
+            UiText.Res(Res.string.myplan_pending_note, listOf(pending.name, isoDateToPtBr(pendingAt)))
+        } else {
+            null
+        },
     )
 }
 
 internal fun MySubscription.toUsageUi(): MyPlanUsageUi {
     val limit = usage.groupsLimit
+    val pending = pendingPlan
+    val pendingAt = pendingPlanEffectiveAt
     return MyPlanUsageUi(
         ratioLabel = if (limit != null) {
             UiText.Res(Res.string.myplan_usage_ratio, listOf(usage.groupsUsed, limit))
@@ -52,7 +63,11 @@ internal fun MySubscription.toUsageUi(): MyPlanUsageUi {
             UiText.Res(Res.string.myplan_usage_unlimited)
         },
         progress = limit?.let { if (it == 0) 0f else usage.groupsUsed.toFloat() / it },
-        helperText = UiText.Res(Res.string.myplan_usage_helper),
+        helperText = if (pending != null && pendingAt != null) {
+            UiText.Res(Res.string.myplan_usage_pending_helper, listOf(pending.name, isoDateToPtBr(pendingAt)))
+        } else {
+            UiText.Res(Res.string.myplan_usage_helper)
+        },
     )
 }
 

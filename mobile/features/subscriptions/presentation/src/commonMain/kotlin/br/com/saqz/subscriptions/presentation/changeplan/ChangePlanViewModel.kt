@@ -45,7 +45,7 @@ class ChangePlanViewModel(
 
     private fun select(plan: Plan) {
         val card = state.value.plans.firstOrNull { it.plan == plan } ?: return
-        if (card.isCurrent || state.value.isSubmitting) return
+        if (card.isCurrent || card.isScheduled || state.value.isSubmitting) return
         update { it.copy(confirmTarget = card, submitError = null) }
     }
 
@@ -87,7 +87,14 @@ class ChangePlanViewModel(
                     cycle = subscription.cycle,
                     currentPlan = subscription.plan,
                     pendingNote = subscription.toPendingNote(),
-                    plans = catalog.map { item -> item.toCardUi(subscription.plan, subscription.cycle) },
+                    plans = catalog.map { item ->
+                        item.toCardUi(
+                            currentPlan = subscription.plan,
+                            cycle = subscription.cycle,
+                            pendingPlan = subscription.pendingPlan,
+                            pendingPlanEffectiveAt = subscription.pendingPlanEffectiveAt,
+                        )
+                    },
                 )
             }
         }

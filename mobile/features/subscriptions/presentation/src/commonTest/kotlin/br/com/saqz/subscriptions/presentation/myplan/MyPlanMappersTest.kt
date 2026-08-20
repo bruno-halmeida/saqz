@@ -8,8 +8,10 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionUsage
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_pending_note
 import br.com.saqz.subscriptions.resources.myplan_status_active
 import br.com.saqz.subscriptions.resources.myplan_status_canceled
+import br.com.saqz.subscriptions.resources.myplan_usage_pending_helper
 import br.com.saqz.subscriptions.resources.myplan_usage_ratio
 import br.com.saqz.subscriptions.resources.myplan_usage_unlimited
 import kotlin.test.Test
@@ -26,6 +28,36 @@ class MyPlanMappersTest {
         assertEquals(MyPlanStatusTone.Active, card.statusTone)
         assertEquals("30/08/2026", card.nextChargeDate)
         assertNull(card.accessUntilDate)
+        assertNull(card.pendingNote)
+    }
+
+    @Test
+    fun `pending downgrade keeps the current plan name and dated note`() {
+        val card = subscription(
+            pendingPlan = Plan.Titular,
+            pendingPlanEffectiveAt = "2026-08-30T00:00:00Z",
+        ).toCardUi()
+
+        assertEquals("Organizador", card.name)
+        assertEquals(
+            UiText.Res(Res.string.myplan_pending_note, listOf("Titular", "30/08/2026")),
+            card.pendingNote,
+        )
+    }
+
+    @Test
+    fun `pending downgrade explains the tighter usage limit`() {
+        val usage = subscription(
+            usage = SubscriptionUsage(groupsUsed = 1, groupsLimit = 1),
+            pendingPlan = Plan.Titular,
+            pendingPlanEffectiveAt = "2026-08-30T00:00:00Z",
+        ).toUsageUi()
+
+        assertEquals(UiText.Res(Res.string.myplan_usage_ratio, listOf(1, 1)), usage.ratioLabel)
+        assertEquals(
+            UiText.Res(Res.string.myplan_usage_pending_helper, listOf("Titular", "30/08/2026")),
+            usage.helperText,
+        )
     }
 
     @Test
@@ -71,6 +103,8 @@ class MyPlanMappersTest {
         status: SubscriptionStatus = SubscriptionStatus.Active,
         canceledAt: String? = null,
         usage: SubscriptionUsage = SubscriptionUsage(groupsUsed = 2, groupsLimit = 3),
+        pendingPlan: Plan? = null,
+        pendingPlanEffectiveAt: String? = null,
     ) = MySubscription(
         status = status,
         entitled = true,
@@ -79,5 +113,7 @@ class MyPlanMappersTest {
         currentPeriodEnd = "2026-08-30T00:00:00Z",
         usage = usage,
         canceledAt = canceledAt,
+        pendingPlan = pendingPlan,
+        pendingPlanEffectiveAt = pendingPlanEffectiveAt,
     )
 }

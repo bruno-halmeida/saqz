@@ -3,6 +3,7 @@
     <string name="changeplan_title">Trocar de plano</string>
     <string name="changeplan_sub">O plano atual está marcado. A cobrança continua no mesmo ciclo.</string>
     <string name="changeplan_current">Plano atual</string>
+    <string name="changeplan_scheduled_chip">A partir de %1$s</string>
     <string name="changeplan_cta">Trocar para este plano</string>
     <string name="changeplan_benefit_groups">%1$d grupos</string>
     <string name="changeplan_benefit_groups_one">1 grupo</string>

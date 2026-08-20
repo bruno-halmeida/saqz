@@ -30,6 +30,8 @@ data class ChangePlanCardUi(
     val priceLabel: UiText,
     val benefits: List<UiText>,
     val isCurrent: Boolean,
+    val isScheduled: Boolean = false,
+    val scheduledLabel: UiText? = null,
 )
 
 @Immutable

@@ -42,6 +42,7 @@ data class MyPlanCardUi(
     // porque o cancelamento já parou a cobrança no Asaas. `nextChargeDate` fica nulo nesse
     // caso e este campo assume, com um rótulo diferente ("acesso garantido até").
     val accessUntilDate: String? = null,
+    val pendingNote: UiText? = null,
 )
 
 /** [progress] nulo é o plano sem limite de grupos (Quadra Cheia): a barra não desenha. */
