@@ -62,6 +62,7 @@ class ChangePlanTest {
         assertEquals("pay_upgrade_1", pending.subscription.pendingUpgradeChargeId)
         assertTrue(pending.chargedCents > 0L)
         assertEquals("000201PIX-UPG", pending.pixCopyPaste)
+        assertEquals("QR-PNG-UPG", pending.pixQrCodeBase64)
         assertTrue(gateway.valueUpdates.isEmpty())
         assertEquals(
             listOf("subscription-upgrade:$ownerId:$requestId"),
@@ -340,7 +341,7 @@ class ChangePlanTest {
             return "pay_upgrade_${++chargeCounter}"
         }
 
-        override fun regeneratePixPayload(asaasChargeId: String) = PixCode("000201PIX-UPG", null)
+        override fun regeneratePixPayload(asaasChargeId: String) = PixCode("000201PIX-UPG", "QR-PNG-UPG")
         override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = null
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
         override fun findPayment(asaasPaymentId: String) = null

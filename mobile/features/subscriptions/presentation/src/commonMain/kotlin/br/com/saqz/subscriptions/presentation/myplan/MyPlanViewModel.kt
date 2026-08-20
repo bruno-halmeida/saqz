@@ -17,7 +17,7 @@ private const val RECEIPTS_PAGE_SIZE = 20
 class MyPlanViewModel(
     private val gateway: SubscriptionGateway,
     initialState: MyPlanState = MyPlanState(),
-) : MviViewModel<MyPlanState, MyPlanIntent, Nothing>(initialState) {
+) : MviViewModel<MyPlanState, MyPlanIntent, MyPlanEffect>(initialState) {
 
     // Guarda de geração (AGENTS.md §4): um cancelamento bem-sucedido recarrega tudo, e essa
     // recarga descarta a própria resposta se outra já tiver começado depois dela.
@@ -43,6 +43,7 @@ class MyPlanViewModel(
             MyPlanIntent.OpenCancel -> update { it.copy(isCancelSheetOpen = true, cancelError = null) }
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
+            MyPlanIntent.OpenChangePlan -> emit(MyPlanEffect.OpenChangePlan)
         }
     }
 

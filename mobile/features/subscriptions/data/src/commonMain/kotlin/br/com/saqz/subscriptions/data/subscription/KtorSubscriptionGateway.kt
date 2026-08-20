@@ -7,6 +7,8 @@ import br.com.saqz.subscriptions.domain.subscription.*
 import br.com.saqz.network.*
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 @Serializable
 internal enum class PlanTransport { TITULAR, ORGANIZADOR, ILIMITADO }
@@ -32,6 +34,39 @@ internal data class MySubscriptionTransport(
     val currentPeriodEnd: String,
     val usage: SubscriptionUsageTransport,
     val canceledAt: String? = null,
+    val pendingPlan: PlanTransport? = null,
+    val pendingPlanEffectiveAt: String? = null,
+)
+
+@Serializable
+internal data class PlanCatalogItemTransport(
+    val id: PlanTransport,
+    val monthlyPriceCents: Long,
+    val annualPriceCents: Long,
+    val maxGroups: Int? = null,
+    val maxAthletes: Int? = null,
+    val multiAdmin: Boolean,
+    val reports: Boolean,
+    val whatsappSla: Boolean,
+)
+
+@Serializable
+internal data class ChangePlanRequestTransport(
+    val requestId: String,
+    val targetPlanId: PlanTransport,
+)
+
+@Serializable
+internal data class ChangePlanTransport(
+    val planId: PlanTransport,
+    val pendingPlanId: PlanTransport? = null,
+    val pendingPlanEffectiveAt: String? = null,
+    val pendingUpgradePlanId: PlanTransport? = null,
+    val status: SubscriptionStatusTransport,
+    val chargedCents: Long? = null,
+    val pixCopyPaste: String? = null,
+    val invoiceUrl: String? = null,
+    val pixQrCodeBase64: String? = null,
 )
 
 @Serializable
@@ -56,10 +91,32 @@ internal data class ReceiptListTransport(val receipts: List<ReceiptTransport>)
 class KtorSubscriptionGateway(
     private val network: AuthenticatedNetworkClient,
     private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+    private val json: Json = Json { explicitNulls = false; ignoreUnknownKeys = true },
 ) : SubscriptionGateway {
     override suspend fun mySubscription() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
         network.execute(HttpMethod.Get, "subscriptions/me", MySubscriptionTransport.serializer())
     }.mapSubscription { it.toDomain() }
+
+    override suspend fun listPlans() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+        network.execute(
+            HttpMethod.Get,
+            "plans",
+            ListSerializer(PlanCatalogItemTransport.serializer()),
+        )
+    }.mapSubscription { items -> items.map(PlanCatalogItemTransport::toDomain) }
+
+    override suspend fun changePlan(requestId: String, targetPlan: Plan) =
+        retryTransport(RetrySafety.IdempotentWrite, delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Post,
+                "subscriptions/me/change-plan",
+                ChangePlanTransport.serializer(),
+                NetworkRequest(json.encodeToString(ChangePlanRequestTransport.serializer(), ChangePlanRequestTransport(
+                    requestId = requestId,
+                    targetPlanId = targetPlan.toTransport(),
+                ))),
+            )
+        }.mapSubscription { it.toDomain() }
 
     override suspend fun cancel() = network.execute(
         HttpMethod.Post,
@@ -92,6 +149,31 @@ private fun MySubscriptionTransport.toDomain() = MySubscription(
     currentPeriodEnd = currentPeriodEnd,
     usage = usage.toDomain(),
     canceledAt = canceledAt,
+    pendingPlan = pendingPlan?.toDomain(),
+    pendingPlanEffectiveAt = pendingPlanEffectiveAt,
+)
+
+private fun PlanCatalogItemTransport.toDomain() = PlanCatalogItem(
+    id = id.toDomain(),
+    monthlyPriceCents = monthlyPriceCents,
+    annualPriceCents = annualPriceCents,
+    maxGroups = maxGroups,
+    maxAthletes = maxAthletes,
+    multiAdmin = multiAdmin,
+    reports = reports,
+    whatsappSla = whatsappSla,
+)
+
+private fun ChangePlanTransport.toDomain() = ChangedPlan(
+    plan = planId.toDomain(),
+    pendingPlan = pendingPlanId?.toDomain(),
+    pendingPlanEffectiveAt = pendingPlanEffectiveAt,
+    pendingUpgradePlan = pendingUpgradePlanId?.toDomain(),
+    status = status.toDomain(),
+    chargedCents = chargedCents,
+    pixCopyPaste = pixCopyPaste,
+    invoiceUrl = invoiceUrl,
+    pixQrCodeBase64 = pixQrCodeBase64,
 )
 
 private fun SubscriptionUsageTransport.toDomain() = SubscriptionUsage(groupsUsed, groupsLimit)
@@ -105,6 +187,12 @@ private fun PlanTransport.toDomain() = when (this) {
     PlanTransport.TITULAR -> Plan.Titular
     PlanTransport.ORGANIZADOR -> Plan.Organizador
     PlanTransport.ILIMITADO -> Plan.Ilimitado
+}
+
+private fun Plan.toTransport() = when (this) {
+    Plan.Titular -> PlanTransport.TITULAR
+    Plan.Organizador -> PlanTransport.ORGANIZADOR
+    Plan.Ilimitado -> PlanTransport.ILIMITADO
 }
 
 private fun SubscriptionCycleTransport.toDomain() = when (this) {
@@ -130,6 +218,7 @@ internal fun NetworkError.toSubscriptionError(): SubscriptionError = when (this)
         )
         problem.code == "SUBSCRIPTION_NOT_FOUND" -> SubscriptionError.NotFound
         problem.code == "SUBSCRIPTION_CONFLICT" -> SubscriptionError.Conflict
+        problem.code == "DOWNGRADE_BLOCKED" -> SubscriptionError.DowngradeBlocked
         else -> SubscriptionError.Data(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> SubscriptionError.Data(status.toDataError())

@@ -17,4 +17,8 @@ sealed interface SubscriptionsRoute : NavKey {
      * tela busca tudo via `SubscriptionGateway.mySubscription()`. */
     @Serializable
     data object MyPlan : SubscriptionsRoute
+
+    /** Catálogo de planos com a assinatura vigente marcada, para troca. */
+    @Serializable
+    data object ChangePlan : SubscriptionsRoute
 }

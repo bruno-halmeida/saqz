@@ -165,6 +165,7 @@ button { font: inherit; cursor: pointer; }
   margin-bottom: 18px;
   max-width: 360px;
 }
+.ciclo[hidden] { display: none; }
 .ciclo button {
   border: 0;
   background: transparent;
@@ -240,6 +241,18 @@ button { font: inherit; cursor: pointer; }
   border: 0;
   border-radius: 12px;
   padding: 12px;
+}
+.plano .escolher:disabled {
+  opacity: .55;
+  cursor: default;
+  background: var(--saqz-border);
+}
+.plano--atual {
+  box-shadow: 0 0 0 2px var(--saqz-lime);
+}
+.plano--atual .escolher:disabled {
+  background: var(--saqz-lime);
+  opacity: 1;
 }
 .plano--destaque {
   background: var(--saqz-blue);
@@ -438,9 +451,10 @@ button { font: inherit; cursor: pointer; }
 </section>
 
 <section id="estado-planos" hidden>
-  <h1>Escolha o plano</h1>
-  <p class="sub">Jogo, presença e mensalidade num lugar só. Assine e crie seus grupos.</p>
-  <div class="ciclo" role="group" aria-label="Ciclo de cobrança">
+  <h1 id="planos-titulo">Escolha o plano</h1>
+  <p class="sub" id="planos-sub">Jogo, presença e mensalidade num lugar só. Assine e crie seus grupos.</p>
+  <p class="sub" id="planos-aviso" hidden></p>
+  <div class="ciclo" id="ciclo-cobranca" role="group" aria-label="Ciclo de cobrança">
     <button type="button" data-ciclo="MONTHLY" aria-pressed="true">Mensal</button>
     <button type="button" data-ciclo="ANNUAL" aria-pressed="false">Anual</button>
   </div>
@@ -529,8 +543,8 @@ button { font: inherit; cursor: pointer; }
 <section id="estado-sucesso" class="coluna" hidden>
   <div class="card centro">
     <div class="marca" aria-hidden="true"></div>
-    <h1>Assinatura ativa.</h1>
-    <p class="sub">Pagamento confirmado. Volte ao app Saqz e crie seu grupo.</p>
+    <h1 id="sucesso-titulo">Assinatura ativa.</h1>
+    <p class="sub" id="sucesso-sub">Pagamento confirmado. Volte ao app Saqz e crie seu grupo.</p>
   </div>
 </section>
 
@@ -546,5 +560,5 @@ button { font: inherit; cursor: pointer; }
 <p class="rodape-sessao" id="rodape-sessao" hidden></p>
 </main>
 <script src="cartao.js?v=confirm"></script>
-<script src="assinar.js?v=confirm"></script>
+<script src="assinar.js?v=troca"></script>
 </body></html>

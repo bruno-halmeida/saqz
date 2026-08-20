@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changeplan_title">Trocar de plano</string>
+    <string name="changeplan_sub">O plano atual está marcado. A cobrança continua no mesmo ciclo.</string>
+    <string name="changeplan_current">Plano atual</string>
+    <string name="changeplan_cta">Trocar para este plano</string>
+    <string name="changeplan_benefit_groups">%1$d grupos</string>
+    <string name="changeplan_benefit_groups_one">1 grupo</string>
+    <string name="changeplan_benefit_groups_unlimited">Grupos ilimitados</string>
+    <string name="changeplan_benefit_athletes">Até %1$d atletas por grupo</string>
+    <string name="changeplan_benefit_athletes_unlimited">Atletas ilimitados</string>
+    <string name="changeplan_benefit_admins">Vários administradores</string>
+    <string name="changeplan_benefit_reports">Relatórios</string>
+    <string name="changeplan_benefit_whatsapp">Suporte prioritário no WhatsApp</string>
+    <string name="changeplan_price_month">%1$s/mês</string>
+    <string name="changeplan_price_year">%1$s/ano</string>
+    <string name="changeplan_pending_note">Troca para %1$s já agendada para %2$s.</string>
+    <string name="changeplan_confirm_title">Trocar para %1$s?</string>
+    <string name="changeplan_confirm">Trocar plano</string>
+    <string name="changeplan_keep">Manter plano atual</string>
+    <string name="changeplan_downgrade_blocked">Este plano não comporta o uso atual da sua conta. Reduza grupos ou atletas antes de trocar.</string>
+    <string name="changeplan_scheduled_title">Troca agendada</string>
+    <string name="changeplan_scheduled_sub">O plano %1$s passa a valer em %2$s. Até lá você continua no plano atual.</string>
+    <string name="changeplan_upgraded_title">Plano atualizado</string>
+    <string name="changeplan_upgraded_sub">Seu plano já está em vigor.</string>
+    <string name="changeplan_pix_title">Pague a diferença</string>
+    <string name="changeplan_pix_summary">Diferença do upgrade · %1$s</string>
+    <string name="changeplan_pix_copy">Copiar código Pix</string>
+    <string name="changeplan_pix_paid">Já paguei</string>
+    <string name="changeplan_pix_waiting">Ainda não confirmamos o pagamento. Se já pagou, aguarde alguns segundos e toque de novo.</string>
+    <string name="changeplan_pix_invoice">Abrir fatura</string>
+    <string name="changeplan_back_catalog">Ver planos</string>
+    <string name="changeplan_retry">Tentar de novo</string>
+</resources>

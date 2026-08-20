@@ -60,6 +60,8 @@
   var cupomAplicado = null;
   var pollTimer = null;
   var checkoutAtual = null;
+  var assinaturaAtual = null;
+  var trocaAlvo = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -91,6 +93,23 @@
 
   function reais(cents) {
     return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  function dataPt(iso) {
+    if (!iso) return "";
+    var partes = String(iso).split("T")[0].split("-");
+    if (partes.length !== 3) return "";
+    return partes[2] + "/" + partes[1] + "/" + partes[0];
+  }
+
+  function modoTroca() {
+    return Boolean(assinaturaAtual && assinaturaAtual.entitled && !assinaturaAtual.canceledAt);
+  }
+
+  function mostrarSucesso(titulo, sub) {
+    $("sucesso-titulo").textContent = titulo;
+    $("sucesso-sub").textContent = sub;
+    mostrar("sucesso");
   }
 
   function api(path, options) {
@@ -144,13 +163,20 @@
   // ---- Fluxo ----
   function iniciar() {
     mostrar("carregando");
+    assinaturaAtual = null;
+    trocaAlvo = null;
     api("/subscriptions/me")
       .then(function (response) {
         if (response.status === 404) return carregarPlanos();
         if (!response.ok) throw new Error("status " + response.status);
         return response.json().then(function (me) {
-          if (me.entitled) return mostrar("assinante");
-          if (me.status === "PAST_DUE") return retomarCheckout(me);
+          if (me.status === "PAST_DUE" && !me.entitled) return retomarCheckout(me);
+          if (me.entitled && me.canceledAt) return mostrar("assinante");
+          if (me.entitled) {
+            assinaturaAtual = me;
+            cicloEscolhido = me.cycle || "MONTHLY";
+            return carregarPlanos();
+          }
           return carregarPlanos();
         });
       })
@@ -168,17 +194,46 @@
       })
       .then(function (lista) {
         planos = lista;
+        atualizarCabecalhoPlanos();
         renderizarPlanos();
         mostrar("planos");
       });
   }
 
+  function atualizarCabecalhoPlanos() {
+    var troca = modoTroca();
+    $("planos-titulo").textContent = troca ? "Trocar de plano" : "Escolha o plano";
+    $("planos-sub").textContent = troca
+      ? "O plano atual está marcado. A cobrança continua no mesmo ciclo."
+      : "Jogo, presença e mensalidade num lugar só. Assine e crie seus grupos.";
+    $("ciclo-cobranca").hidden = troca;
+    var aviso = $("planos-aviso");
+    if (troca && assinaturaAtual.pendingPlan) {
+      aviso.hidden = false;
+      aviso.textContent = "Troca para " + assinaturaAtual.pendingPlan +
+        " já agendada para " + dataPt(assinaturaAtual.pendingPlanEffectiveAt) + ".";
+    } else {
+      aviso.hidden = true;
+      aviso.textContent = "";
+    }
+    if (troca) {
+      document.querySelectorAll(".ciclo button").forEach(function (botao) {
+        botao.setAttribute("aria-pressed", String(botao.dataset.ciclo === cicloEscolhido));
+      });
+    }
+  }
+
   function renderizarPlanos() {
     var alvo = $("lista-planos");
     alvo.innerHTML = "";
+    mostrarErro("planos-erro", "");
     planos.forEach(function (plano) {
+      var atual = modoTroca() && plano.id === assinaturaAtual.plan;
+      var classes = ["card", "plano"];
+      if (plano.maxGroups == null) classes.push("plano--destaque");
+      if (atual) classes.push("plano--atual");
       var card = document.createElement("div");
-      card.className = plano.maxGroups == null ? "card plano plano--destaque" : "card plano";
+      card.className = classes.join(" ");
       var preco = cicloEscolhido === "ANNUAL"
         ? reais(plano.annualPriceCents) + "<small>/ano</small>"
         : reais(plano.monthlyPriceCents) + "<small>/mês</small>";
@@ -188,16 +243,78 @@
       if (plano.multiAdmin) beneficios.push("Vários administradores");
       if (plano.reports) beneficios.push("Relatórios");
       if (plano.whatsappSla) beneficios.push("Suporte prioritário no WhatsApp");
+      var rotulo = atual ? "Plano atual" : (modoTroca() ? "Trocar para este plano" : "Assinar este plano");
       card.innerHTML =
         '<div class="topo"><h2></h2><span class="preco">' + preco + "</span></div>" +
         "<ul>" + beneficios.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>" +
-        '<button type="button" class="escolher">Assinar este plano</button>';
+        '<button type="button" class="escolher"' + (atual ? " disabled" : "") + ">" + rotulo + "</button>";
       card.querySelector("h2").textContent = plano.name;
-      card.querySelector(".escolher").addEventListener("click", function () {
-        abrirDados(plano, cicloEscolhido, "Quase lá");
-      });
+      if (!atual) {
+        card.querySelector(".escolher").addEventListener("click", function () {
+          if (modoTroca()) trocarPlano(plano);
+          else abrirDados(plano, cicloEscolhido, "Quase lá");
+        });
+      }
       alvo.appendChild(card);
     });
+  }
+
+  function mensagemTroca(problema) {
+    if (!problema) return "Não deu para trocar o plano agora. Tente de novo.";
+    if (problema.code === "DOWNGRADE_BLOCKED") {
+      return "Este plano não comporta o uso atual da sua conta. Reduza grupos ou atletas antes de trocar.";
+    }
+    if (problema.code === "SUBSCRIPTION_CONFLICT") {
+      return "Há um upgrade em andamento. Conclua o pagamento ou volte mais tarde.";
+    }
+    if (problema.fieldErrors && problema.fieldErrors.targetPlanId) {
+      return "Este já é o seu plano atual.";
+    }
+    return "Não deu para trocar o plano agora. Tente de novo.";
+  }
+
+  function trocarPlano(plano) {
+    planoEscolhido = { plano: plano, ciclo: assinaturaAtual.cycle };
+    trocaAlvo = plano.id;
+    mostrarErro("planos-erro", "");
+    mostrar("carregando");
+    checkoutAtual = checkoutPara(plano.id, assinaturaAtual.cycle);
+    apiJson("/subscriptions/me/change-plan", {
+      requestId: checkoutAtual.requestId,
+      targetPlanId: plano.id,
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          return response.json().catch(function () { return {}; }).then(function (problema) {
+            trocaAlvo = null;
+            mostrar("planos");
+            mostrarErro("planos-erro", mensagemTroca(problema));
+          });
+        }
+        return response.json().then(function (resposta) {
+          if (resposta.pendingUpgradePlanId) {
+            trocaAlvo = resposta.pendingUpgradePlanId;
+            mostrarPix(resposta, resposta.chargedCents);
+            return;
+          }
+          trocaAlvo = null;
+          localStorage.removeItem(CHECKOUT_KEY);
+          if (resposta.pendingPlanId) {
+            mostrarSucesso(
+              "Troca agendada.",
+              "O plano " + resposta.pendingPlanId + " passa a valer em " +
+                dataPt(resposta.pendingPlanEffectiveAt) + ". Até lá você continua no plano atual."
+            );
+            return;
+          }
+          mostrarSucesso("Plano atualizado.", "Volte ao app Saqz — seu plano já está em vigor.");
+        });
+      })
+      .catch(function () {
+        trocaAlvo = null;
+        mostrar("planos");
+        mostrarErro("planos-erro", "Não deu para trocar o plano agora. Tente de novo.");
+      });
   }
 
   function abrirDados(plano, ciclo, titulo) {
@@ -413,11 +530,14 @@
     iniciarPoll();
   }
 
-  function mostrarPix(resposta) {
-    var total = cupomAplicado ? cupomAplicado.finalPriceCents : precoLista();
+  function mostrarPix(resposta, totalCents) {
+    var total = totalCents != null
+      ? totalCents
+      : (cupomAplicado ? cupomAplicado.finalPriceCents : precoLista());
     $("pix-resumo").textContent =
-      "Plano " + planoEscolhido.plano.name + " · " + reais(total) +
-      (planoEscolhido.ciclo === "ANNUAL" ? "/ano" : "/mês");
+      (totalCents != null ? "Diferença do upgrade · " : ("Plano " + planoEscolhido.plano.name + " · ")) +
+      reais(total) +
+      (totalCents != null ? "" : (planoEscolhido.ciclo === "ANNUAL" ? "/ano" : "/mês"));
     var qr = $("pix-qr");
     if (resposta.pixQrCodeBase64) {
       qr.src = "data:image/png;base64," + resposta.pixQrCodeBase64;
@@ -462,10 +582,20 @@
         return response.json();
       })
       .then(function (me) {
-        if (me && me.entitled) {
+        if (!me) return;
+        if (trocaAlvo) {
+          if (me.plan === trocaAlvo) {
+            pararPoll();
+            localStorage.removeItem(CHECKOUT_KEY);
+            trocaAlvo = null;
+            mostrarSucesso("Plano atualizado.", "Pagamento confirmado. Volte ao app Saqz.");
+          }
+          return;
+        }
+        if (me.entitled) {
           pararPoll();
           localStorage.removeItem(CHECKOUT_KEY);
-          mostrar("sucesso");
+          mostrarSucesso("Assinatura ativa.", "Pagamento confirmado. Volte ao app Saqz e crie seu grupo.");
         }
       })
       .catch(function () { /* rede oscilou: o próximo tick tenta de novo */ });
@@ -532,6 +662,10 @@
   // Re-POST /subscriptions: se a cobrança sumiu na Asaas, o backend cancela a
   // assinatura velha e emite outra com o valor (e cupom) atuais.
   $("botao-regerar").addEventListener("click", function () {
+    if (modoTroca() && planoEscolhido) {
+      trocarPlano(planoEscolhido.plano);
+      return;
+    }
     mostrar("dados");
     pagar();
   });

@@ -2,8 +2,10 @@ package br.com.saqz.subscriptions.presentation.myplan
 
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.subscriptions.domain.subscription.CanceledSubscription
+import br.com.saqz.subscriptions.domain.subscription.ChangedPlan
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Plan
+import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
 import br.com.saqz.subscriptions.domain.subscription.Receipt
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
@@ -12,6 +14,7 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionUsage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -226,6 +229,13 @@ class MyPlanViewModelTest {
     }
 
     @Test
+    fun `opening change plan emits the navigation effect`() = runTest {
+        val viewModel = MyPlanViewModel(FakeSubscriptionGateway())
+        viewModel.onIntent(MyPlanIntent.OpenChangePlan)
+        assertEquals(MyPlanEffect.OpenChangePlan, viewModel.effects.first())
+    }
+
+    @Test
     fun `subscription failure surfaces as a load error`() = runTest {
         val gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.Conflict))
         val viewModel = MyPlanViewModel(gateway)
@@ -273,6 +283,14 @@ private class FakeSubscriptionGateway(
     private var receiptPageIndex = 0
 
     override suspend fun mySubscription(): SaqzResult<MySubscription, SubscriptionError> = subscriptionResult
+
+    override suspend fun listPlans(): SaqzResult<List<PlanCatalogItem>, SubscriptionError> =
+        SaqzResult.Success(emptyList())
+
+    override suspend fun changePlan(
+        requestId: String,
+        targetPlan: Plan,
+    ): SaqzResult<ChangedPlan, SubscriptionError> = SaqzResult.Failure(SubscriptionError.Conflict)
 
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> {
         cancelCalls++

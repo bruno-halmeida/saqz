@@ -25,6 +25,7 @@ sealed interface ChangePlanResult {
         val oneOffChargeId: String,
         val pixCopyPaste: String?,
         val invoiceUrl: String?,
+        val pixQrCodeBase64: String? = null,
     ) : ChangePlanResult
 
     /** Zero prorata delta — plan applied immediately. */
@@ -158,6 +159,7 @@ class ChangePlan(
             oneOffChargeId = chargeId,
             pixCopyPaste = pix?.payload,
             invoiceUrl = invoice,
+            pixQrCodeBase64 = pix?.encodedImage,
         )
     }
 

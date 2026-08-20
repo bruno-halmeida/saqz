@@ -23,6 +23,8 @@ import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzProgressBar
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzStatusChip
@@ -41,6 +43,7 @@ import br.com.saqz.subscriptions.resources.myplan_cancel_helper
 import br.com.saqz.subscriptions.resources.myplan_cancel_keep
 import br.com.saqz.subscriptions.resources.myplan_cancel_sheet_title
 import br.com.saqz.subscriptions.resources.myplan_current_plan_label
+import br.com.saqz.subscriptions.resources.myplan_manage_change_plan
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts_count
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts_count_one
@@ -129,6 +132,19 @@ internal fun MyPlanManageSection(
 ) = Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     SaqzSectionHeader(title = stringResource(Res.string.myplan_manage_title))
     SaqzCard(padded = false) {
+        if (state.plan?.statusTone != MyPlanStatusTone.Canceled) {
+            MyPlanManageRow(
+                label = stringResource(Res.string.myplan_manage_change_plan),
+                tag = MyPlanTags.ChangePlan,
+                onClick = { onIntent(MyPlanIntent.OpenChangePlan) },
+            ) {
+                SaqzIcon(
+                    SaqzIcons.ChevronRight,
+                    tint = SaqzTheme.colors.textSecondary,
+                    size = SaqzTheme.metrics.iconButtonSize / 2,
+                )
+            }
+        }
         MyPlanManageRow(
             label = stringResource(Res.string.myplan_manage_receipts),
             tag = MyPlanTags.Receipts,

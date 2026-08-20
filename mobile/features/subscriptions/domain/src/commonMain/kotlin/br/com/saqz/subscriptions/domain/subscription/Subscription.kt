@@ -21,6 +21,31 @@ data class MySubscription(
     val currentPeriodEnd: String,
     val usage: SubscriptionUsage,
     val canceledAt: String?,
+    val pendingPlan: Plan? = null,
+    val pendingPlanEffectiveAt: String? = null,
+)
+
+data class PlanCatalogItem(
+    val id: Plan,
+    val monthlyPriceCents: Long,
+    val annualPriceCents: Long,
+    val maxGroups: Int?,
+    val maxAthletes: Int?,
+    val multiAdmin: Boolean,
+    val reports: Boolean,
+    val whatsappSla: Boolean,
+)
+
+data class ChangedPlan(
+    val plan: Plan,
+    val pendingPlan: Plan?,
+    val pendingPlanEffectiveAt: String?,
+    val pendingUpgradePlan: Plan?,
+    val status: SubscriptionStatus,
+    val chargedCents: Long?,
+    val pixCopyPaste: String?,
+    val invoiceUrl: String?,
+    val pixQrCodeBase64: String?,
 )
 
 data class CanceledSubscription(
@@ -41,11 +66,19 @@ sealed interface SubscriptionError : SaqzError {
     data class Validation(val error: DataError.Validation) : SubscriptionError
     data object NotFound : SubscriptionError // 404 SUBSCRIPTION_NOT_FOUND
     data object Conflict : SubscriptionError // 409 SUBSCRIPTION_CONFLICT
+    data object DowngradeBlocked : SubscriptionError // 409 DOWNGRADE_BLOCKED
     data class Data(val error: DataError) : SubscriptionError
 }
 
 interface SubscriptionGateway {
     suspend fun mySubscription(): SaqzResult<MySubscription, SubscriptionError>
+
+    suspend fun listPlans(): SaqzResult<List<PlanCatalogItem>, SubscriptionError>
+
+    suspend fun changePlan(
+        requestId: String,
+        targetPlan: Plan,
+    ): SaqzResult<ChangedPlan, SubscriptionError>
 
     suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError>
 

@@ -113,6 +113,26 @@ class SaqzAccessBackStackRestoreTest {
     }
 
     @Test
+    fun `change plan route round-trips through the real registered configuration`() {
+        val saved = encodeToSavedState(
+            saqzAccessBackStackSerializer,
+            NavBackStack<NavKey>(
+                SubscriptionsRoute.MyPlan,
+                SubscriptionsRoute.ChangePlan,
+            ),
+            saqzLocalNavConfiguration,
+        )
+
+        assertEquals(
+            listOf<NavKey>(
+                SubscriptionsRoute.MyPlan,
+                SubscriptionsRoute.ChangePlan,
+            ),
+            restore(saved),
+        )
+    }
+
+    @Test
     fun `subscription required route round-trips through the real registered configuration`() {
         val saved = encodeToSavedState(
             saqzAccessBackStackSerializer,

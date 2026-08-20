@@ -80,6 +80,7 @@ import br.com.saqz.profile.presentation.exit.ProfileExitRoot
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import org.koin.compose.koinInject
 
@@ -489,7 +490,11 @@ internal fun SaqzNavHost(
             entry<SubscriptionsRoute.MyPlan> {
                 MyPlanRoot(
                     onBack = pop,
+                    onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
                 )
+            }
+            entry<SubscriptionsRoute.ChangePlan> {
+                ChangePlanRoot(onBack = pop)
             }
             entry<SubscriptionRequired> {
                 SubscriptionRequiredDestination(

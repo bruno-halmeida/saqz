@@ -91,6 +91,7 @@ data class ChangePlanResponse(
     val chargedCents: Long? = null,
     val pixCopyPaste: String? = null,
     val invoiceUrl: String? = null,
+    val pixQrCodeBase64: String? = null,
 )
 
 data class CancelSubscriptionResponse(
@@ -228,6 +229,7 @@ class SubscriptionCommandController(
                 chargedCents = result.chargedCents,
                 pixCopyPaste = result.pixCopyPaste,
                 invoiceUrl = result.invoiceUrl,
+                pixQrCodeBase64 = result.pixQrCodeBase64,
             )
             is ChangePlanResult.Upgraded -> ChangePlanResponse(
                 planId = result.subscription.plan.name,

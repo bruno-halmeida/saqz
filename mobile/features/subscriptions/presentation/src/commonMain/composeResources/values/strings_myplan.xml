@@ -13,6 +13,7 @@
     <string name="myplan_usage_unlimited">Grupos ilimitados</string>
     <string name="myplan_usage_helper">Perto do limite? Acompanhe seu uso para planejar os próximos grupos.</string>
     <string name="myplan_manage_title">Gerenciar</string>
+    <string name="myplan_manage_change_plan">Trocar de plano</string>
     <string name="myplan_manage_receipts">Recibos</string>
     <string name="myplan_manage_receipts_count">%1$d pagamentos</string>
     <string name="myplan_manage_receipts_count_one">%1$d pagamento</string>

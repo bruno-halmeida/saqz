@@ -36,6 +36,7 @@ internal object MyPlanTags {
     const val PlanCard = "myplan-plan-card"
     const val UsageCard = "myplan-usage-card"
     const val Receipts = "myplan-receipts"
+    const val ChangePlan = "myplan-change-plan"
     const val LoadMoreReceipts = "myplan-load-more-receipts"
     const val CancelButton = "myplan-cancel-button"
     const val ReceiptsSheet = "myplan-receipts-sheet"
