@@ -29,6 +29,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -79,6 +80,58 @@ class GroupPhotoViewModelTest {
         assertEquals(1, gateway.removeCalls)
     }
 
+    @Test
+    fun `create flow keeps the photo locally until the group exists`() = runTest(dispatcher) {
+        val gateway = FakePhotoGateway()
+        val selection = FakeSelection(GroupPhotoSelectionResult.Selected(selection()))
+        val viewModel = viewModel(gateway, selection)
+
+        viewModel.onIntent(GroupPhotoIntent.ChooseCamera)
+
+        assertEquals(1, selection.chooseCalls)
+        assertEquals("pending:preview", viewModel.state.value.photoUrl)
+        assertTrue(viewModel.state.value.hasPending)
+        assertNull(viewModel.state.value.error)
+        assertEquals(0, gateway.uploadCalls)
+        assertTrue(selection.cleaned.isEmpty())
+
+        viewModel.onIntent(GroupPhotoIntent.BindGroup("group-1"))
+
+        assertEquals("/api/groups/group-1/photo?v=photo-1", viewModel.state.value.photoUrl)
+        assertTrue(!viewModel.state.value.hasPending)
+        assertEquals(1, gateway.uploadCalls)
+        assertEquals(listOf("source"), selection.cleaned)
+    }
+
+    @Test
+    fun `create flow can remove a locally held photo without a group id`() = runTest(dispatcher) {
+        val gateway = FakePhotoGateway()
+        val selection = FakeSelection(GroupPhotoSelectionResult.Selected(selection()))
+        val viewModel = viewModel(gateway, selection)
+
+        viewModel.onIntent(GroupPhotoIntent.ChooseLibrary)
+        viewModel.onIntent(GroupPhotoIntent.Remove)
+
+        assertNull(viewModel.state.value.photoUrl)
+        assertTrue(!viewModel.state.value.hasPending)
+        assertNull(viewModel.state.value.error)
+        assertEquals(0, gateway.removeCalls)
+        assertEquals(listOf("source"), selection.cleaned)
+    }
+
+    @Test
+    fun `permission denial during create still opens the picker path`() = runTest(dispatcher) {
+        val selection = FakeSelection(GroupPhotoSelectionResult.CameraPermissionDenied)
+        val viewModel = viewModel(FakePhotoGateway(), selection)
+
+        viewModel.onIntent(GroupPhotoIntent.ChooseCamera)
+
+        assertEquals(1, selection.chooseCalls)
+        assertEquals(GroupPhotoUiError.CameraPermissionDenied, viewModel.state.value.error)
+        assertTrue(!viewModel.state.value.hasPending)
+        assertTrue(!viewModel.state.value.isLoading)
+    }
+
     private fun viewModel(
         gateway: FakePhotoGateway,
         selection: FakeSelection,
@@ -94,10 +147,17 @@ class GroupPhotoViewModelTest {
         private val result: GroupPhotoSelectionResult,
     ) : GroupPhotoSelectionPort {
         val cleaned = mutableListOf<String>()
+        var chooseCalls = 0
 
-        override suspend fun chooseCamera() = result
+        override suspend fun chooseCamera(): GroupPhotoSelectionResult {
+            chooseCalls++
+            return result
+        }
 
-        override suspend fun chooseLibrary() = result
+        override suspend fun chooseLibrary(): GroupPhotoSelectionResult {
+            chooseCalls++
+            return result
+        }
 
         override fun cleanup(source: String) {
             cleaned += source

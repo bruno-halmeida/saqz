@@ -8,6 +8,7 @@ internal data class GroupPhotoState(
     val isLoading: Boolean = false,
     val error: GroupPhotoUiError? = null,
     val changeVersion: Int = 0,
+    val hasPending: Boolean = false,
 )
 
 internal sealed interface GroupPhotoIntent {

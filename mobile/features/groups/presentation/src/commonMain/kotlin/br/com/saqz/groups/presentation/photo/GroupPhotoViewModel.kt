@@ -28,6 +28,7 @@ internal class GroupPhotoViewModel(
 ) : MviViewModel<GroupPhotoState, GroupPhotoIntent, Nothing>(GroupPhotoState()) {
     private var groupId: GroupId? = null
     private var groupVersion: GroupPhotoVersionToken? = null
+    private var pending: GroupPhotoSelection? = null
 
     override fun onIntent(intent: GroupPhotoIntent) {
         when (intent) {
@@ -39,15 +40,23 @@ internal class GroupPhotoViewModel(
         }
     }
 
+    override fun onCleared() {
+        discardPending()
+        super.onCleared()
+    }
+
     private fun bind(id: String?) {
         val nextId = id?.takeIf(String::isNotBlank)?.let(::GroupId)
         if (nextId == groupId && (nextId == null || state.value.isLoading)) return
+        val held = pending
         groupId = nextId
         groupVersion = null
-        if (nextId == null) {
-            update { it.copy(photoUrl = null, isLoading = false, error = null) }
-        } else {
-            load(nextId)
+        when {
+            nextId == null -> if (held == null) {
+                update { it.copy(photoUrl = null, isLoading = false, error = null, hasPending = false) }
+            }
+            held != null -> commitHeld(nextId, held)
+            else -> load(nextId)
         }
     }
 
@@ -65,12 +74,13 @@ internal class GroupPhotoViewModel(
                                     photoUrl = photoUrl(id, photo.version),
                                     isLoading = false,
                                     error = null,
+                                    hasPending = false,
                                 )
                             }
                             GroupPhotoReadResult.NotModified -> finish()
                         }
                         is SaqzResult.Failure -> if (result.error == br.com.saqz.groups.domain.photo.GroupPhotoError.NotFound) {
-                            update { it.copy(photoUrl = null, isLoading = false, error = null) }
+                            update { it.copy(photoUrl = null, isLoading = false, error = null, hasPending = false) }
                         } else {
                             finish(GroupPhotoUiError.LoadFailed)
                         }
@@ -84,14 +94,11 @@ internal class GroupPhotoViewModel(
         open: suspend () -> GroupPhotoSelectionResult,
     ) {
         if (state.value.isLoading) return
-        if (groupId == null) {
-            finish(GroupPhotoUiError.TargetUnavailable)
-            return
-        }
         update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             when (val result = open()) {
-                is GroupPhotoSelectionResult.Selected -> upload(result.value)
+                is GroupPhotoSelectionResult.Selected ->
+                    if (groupId == null) hold(result.value) else upload(result.value)
                 GroupPhotoSelectionResult.Cancelled -> finish()
                 GroupPhotoSelectionResult.CameraPermissionDenied -> finish(GroupPhotoUiError.CameraPermissionDenied)
                 GroupPhotoSelectionResult.LibraryPermissionDenied -> finish(GroupPhotoUiError.LibraryPermissionDenied)
@@ -100,8 +107,41 @@ internal class GroupPhotoViewModel(
         }
     }
 
+    private fun hold(selected: GroupPhotoSelection) {
+        if (previews.read(selected.preview.value) == null) {
+            selection.cleanup(selected.source.value)
+            finish(GroupPhotoUiError.SelectionFailed)
+            return
+        }
+        discardPending()
+        pending = selected
+        update {
+            it.copy(
+                photoUrl = pendingPhotoUrl(selected.preview.value),
+                isLoading = false,
+                error = null,
+                changeVersion = it.changeVersion + 1,
+                hasPending = true,
+            )
+        }
+    }
+
+    private fun commitHeld(id: GroupId, selected: GroupPhotoSelection) {
+        update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            when (val profile = profileGateway.readProfile(id)) {
+                is SaqzResult.Failure -> finish(GroupPhotoUiError.UploadFailed)
+                is SaqzResult.Success -> {
+                    groupVersion = GroupPhotoVersionToken(profile.value.versionToken.value)
+                    upload(selected)
+                }
+            }
+        }
+    }
+
     private suspend fun upload(selected: GroupPhotoSelection) {
         val id = groupId ?: return finish(GroupPhotoUiError.TargetUnavailable)
+        pending = null
         try {
             if (previews.read(selected.preview.value) == null) {
                 finish(GroupPhotoUiError.SelectionFailed)
@@ -140,6 +180,7 @@ internal class GroupPhotoViewModel(
                         isLoading = false,
                         error = null,
                         changeVersion = it.changeVersion + 1,
+                        hasPending = false,
                     )
                 }
                 GroupPhotoReadResult.NotModified -> finish(GroupPhotoUiError.UploadFailed)
@@ -148,10 +189,23 @@ internal class GroupPhotoViewModel(
     }
 
     private fun remove() {
+        if (state.value.isLoading) return
         val id = groupId
         val version = groupVersion
-        if (state.value.isLoading) return
-        if (id == null || version == null) {
+        if (id == null) {
+            discardPending()
+            update {
+                it.copy(
+                    photoUrl = null,
+                    isLoading = false,
+                    error = null,
+                    changeVersion = it.changeVersion + 1,
+                    hasPending = false,
+                )
+            }
+            return
+        }
+        if (version == null) {
             finish(GroupPhotoUiError.TargetUnavailable)
             return
         }
@@ -167,6 +221,7 @@ internal class GroupPhotoViewModel(
                             isLoading = false,
                             error = null,
                             changeVersion = it.changeVersion + 1,
+                            hasPending = false,
                         )
                     }
                 }
@@ -174,10 +229,17 @@ internal class GroupPhotoViewModel(
         }
     }
 
+    private fun discardPending() {
+        pending?.let { selection.cleanup(it.source.value) }
+        pending = null
+    }
+
     private fun finish(error: GroupPhotoUiError? = null) {
-        update { it.copy(isLoading = false, error = error) }
+        update { it.copy(isLoading = false, error = error, hasPending = pending != null) }
     }
 
     private fun photoUrl(id: GroupId, version: GroupPhotoVersionToken): String =
         "/api/groups/${id.value}/photo?v=${version.value.removeSurrounding("\"")}"
+
+    private fun pendingPhotoUrl(preview: String) = "pending:$preview"
 }

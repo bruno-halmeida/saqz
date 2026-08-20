@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -58,6 +60,8 @@ fun GroupSetupRoot(
     val photoViewModel: GroupPhotoViewModel = koinViewModel()
     val photoState by photoViewModel.state.collectAsStateWithLifecycle()
     var photoSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var committingCreatedGroupId by remember { mutableStateOf<String?>(null) }
+    val createdGroup by rememberUpdatedState(onGroupCreate)
 
     LaunchedEffect(mode) {
         photoViewModel.onIntent(
@@ -70,10 +74,23 @@ fun GroupSetupRoot(
             photoState.changeVersion > 0 -> photoSheetOpen = false
         }
     }
+    LaunchedEffect(committingCreatedGroupId, photoState.isLoading) {
+        val groupId = committingCreatedGroupId ?: return@LaunchedEffect
+        if (photoState.isLoading) return@LaunchedEffect
+        committingCreatedGroupId = null
+        createdGroup(groupId)
+    }
 
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            is GroupSetupEffect.Created -> onGroupCreate(effect.groupId)
+            is GroupSetupEffect.Created -> {
+                if (photoViewModel.state.value.hasPending) {
+                    committingCreatedGroupId = effect.groupId
+                    photoViewModel.onIntent(GroupPhotoIntent.BindGroup(effect.groupId))
+                } else {
+                    onGroupCreate(effect.groupId)
+                }
+            }
             GroupSetupEffect.Saved -> onGroupSave()
             GroupSetupEffect.Deleted -> onGroupDelete()
             GroupSetupEffect.DraftSaved -> onDraftSave()
