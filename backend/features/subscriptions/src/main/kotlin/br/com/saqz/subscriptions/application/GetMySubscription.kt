@@ -67,8 +67,6 @@ class GetMySubscription(
 
     private fun recoverIfNeeded(subscription: Subscription): Subscription {
         if (recoverUnconfirmed == null) return subscription
-        if (subscription.firstConfirmedAt != null) return subscription
-        if (subscription.status != SubscriptionStatus.PAST_DUE) return subscription
         return recoverUnconfirmed.recoverIfPaid(subscription)
     }
 

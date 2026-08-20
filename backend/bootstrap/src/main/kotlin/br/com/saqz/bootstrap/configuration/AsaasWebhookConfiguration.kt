@@ -101,7 +101,8 @@ class AsaasWebhookConfiguration {
         asaasGateway: AsaasGateway,
         transaction: SubscriptionsTransactionRunner,
         clock: Clock,
-    ) = RecoverUnconfirmedPayment(subscriptions, asaasGateway, transaction, clock)
+        coupons: CouponRepository,
+    ) = RecoverUnconfirmedPayment(subscriptions, asaasGateway, transaction, clock, coupons)
 
     @Bean
     fun asaasWebhookController(processAsaasWebhook: ProcessAsaasWebhook) =

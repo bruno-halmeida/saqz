@@ -35,6 +35,7 @@ class MyPlanViewModel(
     override fun onIntent(intent: MyPlanIntent) {
         when (intent) {
             MyPlanIntent.Retry -> load()
+            MyPlanIntent.Refresh -> load()
             MyPlanIntent.OpenReceipts -> update { it.copy(isReceiptsSheetOpen = true) }
             MyPlanIntent.DismissReceipts -> update { it.copy(isReceiptsSheetOpen = false) }
             MyPlanIntent.RetryReceipts -> loadReceipts()

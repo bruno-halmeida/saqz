@@ -203,6 +203,35 @@ class GetMySubscriptionTest {
         assertEquals(SubscriptionStatus.ACTIVE, repo.findByOwnerUserId(ownerId)!!.status)
     }
 
+    @Test
+    fun `paid upgrade charge becomes the current plan when reading me`() {
+        val pendingUpgrade = baseSubscription().copy(
+            status = SubscriptionStatus.ACTIVE,
+            firstConfirmedAt = now.minusSeconds(3_600),
+            pastDueSince = null,
+            plan = Plan.TITULAR,
+            pendingUpgradePlan = Plan.ORGANIZADOR,
+            pendingUpgradeChargeId = "pay_upgrade_1",
+        )
+        val repo = MutableSubscriptions(pendingUpgrade)
+        val recover = RecoverUnconfirmedPayment(
+            repo,
+            PaidAsaas(),
+            object : SubscriptionsTransactionRunner {
+                override fun <T> inTransaction(block: () -> T): T = block()
+            },
+            clock,
+        )
+        val useCase = GetMySubscription(repo, FixedOwnedGroups(0), clock, recover)
+
+        val found = assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId))
+
+        assertEquals(Plan.ORGANIZADOR, found.subscription.plan)
+        assertNull(found.subscription.pendingPlan)
+        assertEquals(Plan.ORGANIZADOR, repo.findByOwnerUserId(ownerId)!!.plan)
+        assertNull(repo.findByOwnerUserId(ownerId)!!.pendingUpgradeChargeId)
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
@@ -243,7 +272,7 @@ class GetMySubscriptionTest {
             creditCardHolderInfo: CreditCardHolderInfo?,
             remoteIp: String?,
         ) = error("unused")
-        override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
+        override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = Unit
         override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
         override fun createOneOffCharge(
             asaasCustomerId: String,

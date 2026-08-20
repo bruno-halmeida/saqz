@@ -107,16 +107,41 @@ class ChangePlanViewModelTest {
     }
 
     @Test
-    fun `immediate upgrade marks the new current plan`() = runTest {
+    fun `back to catalog reloads the current plan`() = runTest {
+        val viewModel = ChangePlanViewModel(
+            FakeChangePlanGateway(
+                changeResult = SaqzResult.Success(
+                    changed(
+                        pendingPlan = Plan.Titular,
+                        pendingPlanEffectiveAt = "2026-08-30T00:00:00Z",
+                    ),
+                ),
+            ),
+        )
+        viewModel.onIntent(ChangePlanIntent.SelectPlan(Plan.Titular))
+        viewModel.onIntent(ChangePlanIntent.ConfirmChange)
+        viewModel.onIntent(ChangePlanIntent.BackToCatalog)
+
+        assertEquals(ChangePlanPhase.Catalog, viewModel.state.value.phase)
+        assertEquals(Plan.Organizador, viewModel.state.value.currentPlan)
+        assertNotNull(viewModel.state.value.pendingNote)
+        assertNull(viewModel.state.value.scheduled)
+        assertFalse(viewModel.state.value.isSubmitting)
+    }
+
+    @Test
+    fun `immediate upgrade reloads the catalog with the new current plan`() = runTest {
         val viewModel = ChangePlanViewModel(
             FakeChangePlanGateway(changeResult = SaqzResult.Success(changed(plan = Plan.Ilimitado))),
         )
         viewModel.onIntent(ChangePlanIntent.SelectPlan(Plan.Ilimitado))
         viewModel.onIntent(ChangePlanIntent.ConfirmChange)
 
-        assertEquals(ChangePlanPhase.Upgraded, viewModel.state.value.phase)
+        assertEquals(ChangePlanPhase.Catalog, viewModel.state.value.phase)
         assertEquals(Plan.Ilimitado, viewModel.state.value.currentPlan)
         assertEquals(listOf(false, false, true), viewModel.state.value.plans.map { it.isCurrent })
+        assertNull(viewModel.state.value.pix)
+        assertFalse(viewModel.state.value.isSubmitting)
     }
 
     @Test
@@ -134,7 +159,7 @@ class ChangePlanViewModelTest {
     }
 
     @Test
-    fun `pix paid becomes upgraded when the subscription already changed`() = runTest {
+    fun `pix paid reloads the catalog with the new current plan`() = runTest {
         val gateway = FakeChangePlanGateway(
             changeResult = SaqzResult.Success(
                 changed(pendingUpgradePlan = Plan.Ilimitado, chargedCents = 1_500L, pixCopyPaste = "pix"),
@@ -147,9 +172,11 @@ class ChangePlanViewModelTest {
         gateway.subscriptionResult = SaqzResult.Success(ACTIVE.copy(plan = Plan.Ilimitado))
         viewModel.onIntent(ChangePlanIntent.PixPaid)
 
-        assertEquals(ChangePlanPhase.Upgraded, viewModel.state.value.phase)
+        assertEquals(ChangePlanPhase.Catalog, viewModel.state.value.phase)
         assertEquals(Plan.Ilimitado, viewModel.state.value.currentPlan)
+        assertEquals(listOf(false, false, true), viewModel.state.value.plans.map { it.isCurrent })
         assertNull(viewModel.state.value.pix)
+        assertFalse(viewModel.state.value.isSubmitting)
     }
 
     @Test
@@ -234,7 +261,20 @@ private class FakeChangePlanGateway(
         changeCalls++
         lastRequestId = requestId
         lastTarget = targetPlan
-        return changeResult
+        val result = changeResult
+        if (result is SaqzResult.Success && result.value.pendingUpgradePlan == null) {
+            val current = (subscriptionResult as? SaqzResult.Success)?.value
+            if (current != null) {
+                subscriptionResult = SaqzResult.Success(
+                    current.copy(
+                        plan = result.value.plan,
+                        pendingPlan = result.value.pendingPlan,
+                        pendingPlanEffectiveAt = result.value.pendingPlanEffectiveAt,
+                    ),
+                )
+            }
+        }
+        return result
     }
     override suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError> =
         SaqzResult.Failure(SubscriptionError.Conflict)

@@ -148,6 +148,7 @@ internal fun SaqzNavHost(
     var groupCashboxRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var settlementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var myPlanRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
@@ -491,10 +492,16 @@ internal fun SaqzNavHost(
                 MyPlanRoot(
                     onBack = pop,
                     onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
+                    refreshVersion = myPlanRefreshVersion,
                 )
             }
             entry<SubscriptionsRoute.ChangePlan> {
-                ChangePlanRoot(onBack = pop)
+                ChangePlanRoot(
+                    onBack = {
+                        myPlanRefreshVersion++
+                        pop()
+                    },
+                )
             }
             entry<SubscriptionRequired> {
                 SubscriptionRequiredDestination(

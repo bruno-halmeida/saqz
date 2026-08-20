@@ -236,6 +236,19 @@ class MyPlanViewModelTest {
     }
 
     @Test
+    fun `refresh reloads the current plan after a change`() = runTest {
+        val gateway = FakeSubscriptionGateway()
+        val viewModel = MyPlanViewModel(gateway)
+        assertEquals("Organizador", viewModel.state.value.plan?.name)
+
+        gateway.subscriptionResult = SaqzResult.Success(ACTIVE_SUBSCRIPTION.copy(plan = Plan.Ilimitado))
+        viewModel.onIntent(MyPlanIntent.Refresh)
+
+        assertEquals("Ilimitado", viewModel.state.value.plan?.name)
+        assertEquals(false, viewModel.state.value.isLoading)
+    }
+
+    @Test
     fun `subscription failure surfaces as a load error`() = runTest {
         val gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.Conflict))
         val viewModel = MyPlanViewModel(gateway)

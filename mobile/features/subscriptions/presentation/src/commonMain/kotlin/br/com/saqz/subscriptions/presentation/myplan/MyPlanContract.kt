@@ -57,6 +57,8 @@ data class MyPlanReceiptUi(val id: String, val dateLabel: String, val valueLabel
 
 sealed interface MyPlanIntent {
     data object Retry : MyPlanIntent
+    /** Recarrega `/me` depois de voltar da troca de plano — o ViewModel sobrevive no back stack. */
+    data object Refresh : MyPlanIntent
     data object OpenReceipts : MyPlanIntent
     data object DismissReceipts : MyPlanIntent
     data object RetryReceipts : MyPlanIntent

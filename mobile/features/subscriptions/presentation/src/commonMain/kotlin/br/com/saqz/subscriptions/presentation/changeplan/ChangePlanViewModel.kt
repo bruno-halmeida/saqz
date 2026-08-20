@@ -39,9 +39,7 @@ class ChangePlanViewModel(
             }
             ChangePlanIntent.ConfirmChange -> confirm()
             ChangePlanIntent.PixPaid -> checkPixPaid()
-            ChangePlanIntent.BackToCatalog -> update {
-                it.copy(phase = ChangePlanPhase.Catalog, pix = null, scheduled = null, submitError = null)
-            }
+            ChangePlanIntent.BackToCatalog -> load()
         }
     }
 
@@ -59,6 +57,7 @@ class ChangePlanViewModel(
         update {
             it.copy(
                 isLoading = true,
+                isSubmitting = false,
                 loadError = null,
                 submitError = null,
                 confirmTarget = null,
@@ -152,15 +151,7 @@ class ChangePlanViewModel(
                     ),
                 )
             }
-            else -> update {
-                it.copy(
-                    isSubmitting = false,
-                    confirmTarget = null,
-                    phase = ChangePlanPhase.Upgraded,
-                    currentPlan = result.plan,
-                    plans = it.plans.map { card -> card.copy(isCurrent = card.plan == result.plan) },
-                )
-            }
+            else -> load()
         }
     }
 
@@ -175,15 +166,7 @@ class ChangePlanViewModel(
                 }
                 is SaqzResult.Success -> {
                     if (result.value.plan == target) {
-                        update {
-                            it.copy(
-                                isSubmitting = false,
-                                phase = ChangePlanPhase.Upgraded,
-                                currentPlan = result.value.plan,
-                                plans = it.plans.map { card -> card.copy(isCurrent = card.plan == result.value.plan) },
-                                pix = null,
-                            )
-                        }
+                        load()
                     } else {
                         update {
                             it.copy(

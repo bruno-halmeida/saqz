@@ -200,6 +200,22 @@
       });
   }
 
+  function mostrarCatalogoAtualizado(aviso) {
+    return carregarPlanos()
+      .then(function () {
+        if (!aviso) return;
+        var el = $("planos-aviso");
+        el.hidden = false;
+        el.textContent = aviso;
+      })
+      .catch(function () {
+        mostrarSucesso(
+          "Plano atualizado.",
+          "Pagamento confirmado. Recarregue a página para ver o plano novo."
+        );
+      });
+  }
+
   function atualizarCabecalhoPlanos() {
     var troca = modoTroca();
     $("planos-titulo").textContent = troca ? "Trocar de plano" : "Escolha o plano";
@@ -299,15 +315,16 @@
           }
           trocaAlvo = null;
           localStorage.removeItem(CHECKOUT_KEY);
-          if (resposta.pendingPlanId) {
-            mostrarSucesso(
-              "Troca agendada.",
-              "O plano " + resposta.pendingPlanId + " passa a valer em " +
-                dataPt(resposta.pendingPlanEffectiveAt) + ". Até lá você continua no plano atual."
-            );
-            return;
-          }
-          mostrarSucesso("Plano atualizado.", "Volte ao app Saqz — seu plano já está em vigor.");
+          assinaturaAtual = Object.assign({}, assinaturaAtual, {
+            plan: resposta.planId,
+            pendingPlan: resposta.pendingPlanId || null,
+            pendingPlanEffectiveAt: resposta.pendingPlanEffectiveAt || null,
+          });
+          return mostrarCatalogoAtualizado(
+            resposta.pendingPlanId
+              ? null
+              : "Plano atualizado. Seu plano já está em vigor."
+          );
         });
       })
       .catch(function () {
@@ -588,7 +605,8 @@
             pararPoll();
             localStorage.removeItem(CHECKOUT_KEY);
             trocaAlvo = null;
-            mostrarSucesso("Plano atualizado.", "Pagamento confirmado. Volte ao app Saqz.");
+            assinaturaAtual = me;
+            mostrarCatalogoAtualizado("Pagamento confirmado. Seu plano já está em vigor.");
           }
           return;
         }
@@ -656,7 +674,7 @@
     pagar();
   });
   $("botao-voltar-planos").addEventListener("click", function () {
-    mostrar("planos");
+    iniciar();
   });
   $("botao-copiar").addEventListener("click", copiarPix);
   // Re-POST /subscriptions: se a cobrança sumiu na Asaas, o backend cancela a

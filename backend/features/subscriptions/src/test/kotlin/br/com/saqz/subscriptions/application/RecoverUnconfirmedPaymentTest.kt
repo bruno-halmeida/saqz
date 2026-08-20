@@ -74,6 +74,85 @@ class RecoverUnconfirmedPaymentTest {
         assertEquals(active, recovered)
     }
 
+    @Test
+    fun `paid upgrade charge applies the target plan without advancing the period`() {
+        val periodEnd = Instant.parse("2026-09-18T00:00:00Z")
+        val pendingUpgrade = pendingSubscription().copy(
+            status = SubscriptionStatus.ACTIVE,
+            firstConfirmedAt = now.minusSeconds(3_600),
+            pastDueSince = null,
+            plan = Plan.TITULAR,
+            currentPeriodEnd = periodEnd,
+            pendingUpgradePlan = Plan.ORGANIZADOR,
+            pendingUpgradeChargeId = "pay_upgrade_1",
+        )
+        val subscriptions = MemorySubscriptions(pendingUpgrade)
+        val gateway = RecordingAsaas(statusById = mapOf("pay_upgrade_1" to "RECEIVED"))
+        val useCase = RecoverUnconfirmedPayment(
+            subscriptions,
+            gateway,
+            ImmediateTransaction(),
+            clock,
+        )
+
+        val recovered = useCase.recoverIfPaid(pendingUpgrade)
+
+        assertEquals(Plan.ORGANIZADOR, recovered.plan)
+        assertNull(recovered.pendingUpgradePlan)
+        assertNull(recovered.pendingUpgradeChargeId)
+        assertEquals(periodEnd, recovered.currentPeriodEnd)
+        assertEquals("pay_upgrade_1", recovered.lastConfirmedPaymentId)
+        assertEquals(listOf("sub_1" to Plan.ORGANIZADOR.monthlyPriceCents), gateway.valueUpdates)
+        assertEquals(Plan.ORGANIZADOR, subscriptions.findByOwnerUserId(ownerId)!!.plan)
+    }
+
+    @Test
+    fun `pending upgrade pix leaves the current plan in place`() {
+        val pendingUpgrade = pendingSubscription().copy(
+            status = SubscriptionStatus.ACTIVE,
+            firstConfirmedAt = now.minusSeconds(3_600),
+            pastDueSince = null,
+            plan = Plan.TITULAR,
+            pendingUpgradePlan = Plan.ORGANIZADOR,
+            pendingUpgradeChargeId = "pay_upgrade_1",
+        )
+        val useCase = RecoverUnconfirmedPayment(
+            MemorySubscriptions(pendingUpgrade),
+            RecordingAsaas(statusById = mapOf("pay_upgrade_1" to "PENDING")),
+            ImmediateTransaction(),
+            clock,
+        )
+
+        val recovered = useCase.recoverIfPaid(pendingUpgrade)
+
+        assertEquals(Plan.TITULAR, recovered.plan)
+        assertEquals(Plan.ORGANIZADOR, recovered.pendingUpgradePlan)
+        assertEquals("pay_upgrade_1", recovered.pendingUpgradeChargeId)
+    }
+
+    @Test
+    fun `canceled subscription does not apply a paid upgrade charge`() {
+        val pendingUpgrade = pendingSubscription().copy(
+            status = SubscriptionStatus.ACTIVE,
+            firstConfirmedAt = now.minusSeconds(3_600),
+            pastDueSince = null,
+            canceledAt = now.minusSeconds(10),
+            plan = Plan.TITULAR,
+            pendingUpgradePlan = Plan.ORGANIZADOR,
+            pendingUpgradeChargeId = "pay_upgrade_1",
+        )
+        val useCase = RecoverUnconfirmedPayment(
+            MemorySubscriptions(pendingUpgrade),
+            RecordingAsaas(statusById = mapOf("pay_upgrade_1" to "RECEIVED")),
+            ImmediateTransaction(),
+            clock,
+        )
+
+        val recovered = useCase.recoverIfPaid(pendingUpgrade)
+
+        assertEquals(pendingUpgrade, recovered)
+    }
+
     private fun pendingSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
@@ -131,5 +210,40 @@ class RecoverUnconfirmedPaymentTest {
         override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
         override fun findPayment(asaasPaymentId: String) =
             AsaasPaymentSnapshot(id = asaasPaymentId, status = status, invoiceUrl = null)
+    }
+
+    private class RecordingAsaas(private val statusById: Map<String, String>) : AsaasGateway {
+        val valueUpdates = mutableListOf<Pair<String, Long>>()
+        override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = error("unused")
+        override fun createSubscription(
+            asaasCustomerId: String,
+            plan: Plan,
+            cycle: SubscriptionCycle,
+            valueCents: Long,
+            billingType: AsaasBillingType,
+            idempotencyKey: String,
+            creditCard: CreditCardDetails?,
+            creditCardHolderInfo: CreditCardHolderInfo?,
+            remoteIp: String?,
+        ) = error("unused")
+        override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) {
+            valueUpdates += asaasSubscriptionId to valueCents
+        }
+        override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
+        override fun createOneOffCharge(
+            asaasCustomerId: String,
+            valueCents: Long,
+            description: String,
+            idempotencyKey: String,
+        ) = error("unused")
+        override fun regeneratePixPayload(asaasChargeId: String) = error("unused")
+        override fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String) = error("unused")
+        override fun findPaymentInvoiceUrl(asaasPaymentId: String) = null
+        override fun findPayment(asaasPaymentId: String) =
+            AsaasPaymentSnapshot(
+                id = asaasPaymentId,
+                status = statusById[asaasPaymentId],
+                invoiceUrl = null,
+            )
     }
 }
