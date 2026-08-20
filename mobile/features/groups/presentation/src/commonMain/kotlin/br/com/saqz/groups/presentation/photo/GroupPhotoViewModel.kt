@@ -19,7 +19,7 @@ import br.com.saqz.groups.domain.photo.GroupPhotoVersionToken
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import kotlinx.coroutines.launch
 
-internal class GroupPhotoViewModel(
+class GroupPhotoViewModel(
     private val profileGateway: GroupProfileGateway,
     private val photoGateway: GroupPhotoGateway,
     private val selection: GroupPhotoSelectionPort,
@@ -37,6 +37,7 @@ internal class GroupPhotoViewModel(
             GroupPhotoIntent.ChooseLibrary -> choose(selection::chooseLibrary)
             GroupPhotoIntent.Remove -> remove()
             GroupPhotoIntent.ClearError -> update { it.copy(error = null) }
+            GroupPhotoIntent.Commit -> commit()
         }
     }
 
@@ -90,8 +91,7 @@ internal class GroupPhotoViewModel(
         update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             when (val result = open()) {
-                is GroupPhotoSelectionResult.Selected ->
-                    if (groupId == null) hold(result.value) else upload(result.value)
+                is GroupPhotoSelectionResult.Selected -> hold(result.value)
                 GroupPhotoSelectionResult.Cancelled -> finish()
                 GroupPhotoSelectionResult.CameraPermissionDenied -> finish(GroupPhotoUiError.CameraPermissionDenied)
                 GroupPhotoSelectionResult.LibraryPermissionDenied -> finish(GroupPhotoUiError.LibraryPermissionDenied)
@@ -120,6 +120,13 @@ internal class GroupPhotoViewModel(
                 hasPending = true,
             )
         }
+    }
+
+    private fun commit() {
+        val id = groupId
+        val held = pending
+        if (id == null || held == null || state.value.isLoading) return
+        commitHeld(id, held)
     }
 
     private fun commitHeld(id: GroupId, selected: GroupPhotoSelection) {
@@ -180,17 +187,21 @@ internal class GroupPhotoViewModel(
         if (state.value.isLoading) return
         val id = groupId
         val version = groupVersion
-        if (id == null) {
+        if (pending != null || id == null) {
             discardPending()
-            update {
-                it.copy(
-                    photoUrl = null,
-                    preview = null,
-                    isLoading = false,
-                    error = null,
-                    changeVersion = it.changeVersion + 1,
-                    hasPending = false,
-                )
+            if (id == null) {
+                update {
+                    it.copy(
+                        photoUrl = null,
+                        preview = null,
+                        isLoading = false,
+                        error = null,
+                        changeVersion = it.changeVersion + 1,
+                        hasPending = false,
+                    )
+                }
+            } else {
+                load(id)
             }
             return
         }

@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
 
 @Immutable
-internal data class GroupPhotoState(
+data class GroupPhotoState(
     val photoUrl: String? = null,
     val preview: ImageBitmap? = null,
     val isLoading: Boolean = false,
@@ -13,7 +13,7 @@ internal data class GroupPhotoState(
     val hasPending: Boolean = false,
 )
 
-internal sealed interface GroupPhotoIntent {
+sealed interface GroupPhotoIntent {
     data class BindGroup(val groupId: String?) : GroupPhotoIntent
 
     data object ChooseCamera : GroupPhotoIntent
@@ -23,9 +23,12 @@ internal sealed interface GroupPhotoIntent {
     data object Remove : GroupPhotoIntent
 
     data object ClearError : GroupPhotoIntent
+
+    /** Envia a foto retida depois do create/save do perfil, com a versão fresca. */
+    data object Commit : GroupPhotoIntent
 }
 
-internal sealed interface GroupPhotoUiError {
+sealed interface GroupPhotoUiError {
     data object CameraPermissionDenied : GroupPhotoUiError
     data object LibraryPermissionDenied : GroupPhotoUiError
     data object SelectionFailed : GroupPhotoUiError

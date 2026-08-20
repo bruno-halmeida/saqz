@@ -42,7 +42,7 @@ class GroupPhotoViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `upload refreshes the photo URL with the returned digest and cleans the source`() = runTest(dispatcher) {
+    fun `a bound group keeps the chosen photo locally until commit`() = runTest(dispatcher) {
         val gateway = FakePhotoGateway()
         val selection = FakeSelection(GroupPhotoSelectionResult.Selected(selection()))
         val viewModel = viewModel(gateway, selection)
@@ -52,6 +52,13 @@ class GroupPhotoViewModelTest {
         assertEquals(1, viewModel.state.value.preview?.width)
 
         viewModel.onIntent(GroupPhotoIntent.ChooseCamera)
+        val held = viewModel.state.first { it.hasPending && !it.isLoading }
+
+        assertEquals("pending:preview", held.photoUrl)
+        assertEquals(0, gateway.uploadCalls)
+        assertTrue(selection.cleaned.isEmpty())
+
+        viewModel.onIntent(GroupPhotoIntent.Commit)
         val uploaded = viewModel.state.first { it.photoUrl == "/api/groups/group-1/photo?v=photo-2" && !it.isLoading }
 
         assertEquals("/api/groups/group-1/photo?v=photo-2", uploaded.photoUrl)

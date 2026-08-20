@@ -55,15 +55,16 @@ fun GroupSetupRoot(
         key = "group-setup/$mode",
         parameters = { parametersOf(mode) },
     ),
+    photoViewModel: GroupPhotoViewModel = koinViewModel(key = "group-photo/$mode"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val photoViewModel: GroupPhotoViewModel = koinViewModel()
     val photoState by photoViewModel.state.collectAsStateWithLifecycle()
     var photoSheetOpen by rememberSaveable { mutableStateOf(false) }
-    var committingCreatedGroupId by remember { mutableStateOf<String?>(null) }
+    var pendingLeave by remember { mutableStateOf<GroupPhotoLeave?>(null) }
     val createdGroup by rememberUpdatedState(onGroupCreate)
+    val savedGroup by rememberUpdatedState(onGroupSave)
 
-    LaunchedEffect(mode) {
+    LaunchedEffect(mode, photoViewModel) {
         photoViewModel.onIntent(
             GroupPhotoIntent.BindGroup((mode as? GroupSetupMode.Edit)?.groupId),
         )
@@ -74,38 +75,56 @@ fun GroupSetupRoot(
             photoState.changeVersion > 0 -> photoSheetOpen = false
         }
     }
-    LaunchedEffect(committingCreatedGroupId, photoState.isLoading) {
-        val groupId = committingCreatedGroupId ?: return@LaunchedEffect
-        if (photoState.isLoading) return@LaunchedEffect
-        committingCreatedGroupId = null
-        createdGroup(groupId)
+    // Só `isLoading` não basta: no quadro em que o create/save dispara, a foto ainda
+    // está retida (`hasPending`) e o PUT nem começou. Sair aí derruba a ViewModel e
+    // o `onCleared` apaga o arquivo — criar e editar pareciam não gravar a imagem.
+    LaunchedEffect(pendingLeave, photoState.isLoading, photoState.hasPending) {
+        val leave = pendingLeave ?: return@LaunchedEffect
+        if (photoState.isLoading || photoState.hasPending) return@LaunchedEffect
+        pendingLeave = null
+        when (leave) {
+            is GroupPhotoLeave.Created -> createdGroup(leave.groupId)
+            GroupPhotoLeave.Saved -> savedGroup()
+        }
     }
 
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupSetupEffect.Created -> {
-                if (photoViewModel.state.value.hasPending) {
-                    committingCreatedGroupId = effect.groupId
+                if (photoViewModel.state.value.hasPending || photoViewModel.state.value.isLoading) {
+                    pendingLeave = GroupPhotoLeave.Created(effect.groupId)
                     photoViewModel.onIntent(GroupPhotoIntent.BindGroup(effect.groupId))
                 } else {
                     onGroupCreate(effect.groupId)
                 }
             }
-            GroupSetupEffect.Saved -> onGroupSave()
+            GroupSetupEffect.Saved -> {
+                if (photoViewModel.state.value.hasPending || photoViewModel.state.value.isLoading) {
+                    pendingLeave = GroupPhotoLeave.Saved
+                    photoViewModel.onIntent(GroupPhotoIntent.Commit)
+                } else {
+                    onGroupSave()
+                }
+            }
             GroupSetupEffect.Deleted -> onGroupDelete()
             GroupSetupEffect.DraftSaved -> onDraftSave()
             GroupSetupEffect.PickPhoto -> photoSheetOpen = true
         }
     }
+    val screenState = state.copy(
+        photoUrl = photoState.photoUrl,
+        photo = photoState.preview,
+        isSaving = state.isSaving || pendingLeave != null,
+    )
     Box(modifier.fillMaxSize()) {
         when (state.step) {
             GroupSetupStep.Form -> GroupSetupScreen(
-                state = state.copy(photoUrl = photoState.photoUrl, photo = photoState.preview),
+                state = screenState,
                 onIntent = viewModel::onIntent,
                 onBack = onBack,
             )
 
-            GroupSetupStep.Review -> GroupReviewScreen(state = state, onIntent = viewModel::onIntent)
+            GroupSetupStep.Review -> GroupReviewScreen(state = screenState, onIntent = viewModel::onIntent)
         }
         GroupPhotoSelectionSheet(
             open = photoSheetOpen,
@@ -123,4 +142,10 @@ fun GroupSetupRoot(
             error = photoState.error,
         )
     }
+}
+
+private sealed interface GroupPhotoLeave {
+    data class Created(val groupId: String) : GroupPhotoLeave
+
+    data object Saved : GroupPhotoLeave
 }
