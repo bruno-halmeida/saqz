@@ -24,7 +24,10 @@ data class AsaasWebhookCommand(
 sealed interface ProcessAsaasWebhookResult {
     data object Unauthorized : ProcessAsaasWebhookResult
     data object Accepted : ProcessAsaasWebhookResult
-    /** Local row not committed yet — Asaas should redeliver (HTTP 503). */
+    /**
+     * Unused by [ProcessAsaasWebhook] — unresolved events are accepted so Asaas does not
+     * interrupt the queue. The HTTP mapping remains for tests.
+     */
     data object SubscriptionNotReady : ProcessAsaasWebhookResult
 }
 
@@ -67,12 +70,12 @@ class ProcessAsaasWebhook(
                 return@inTransaction ProcessAsaasWebhookResult.Accepted
             }
 
+            // Sem linha local: corrida create-vs-webhook ou evento orfao do replay da fila.
+            // 503 aqui interrompe a fila inteira da Asaas (e-mail + risco de desativar em
+            // 14 dias). Checkout e upgrade Pix se recuperam no GET /me
+            // ([RecoverUnconfirmedPayment]).
             val current = resolveSubscription(command)
-                ?: return@inTransaction when {
-                    command.asaasSubscriptionId.isNullOrBlank() &&
-                        command.asaasPaymentId.isNullOrBlank() -> claimAndAccept(command, now)
-                    else -> ProcessAsaasWebhookResult.SubscriptionNotReady
-                }
+                ?: return@inTransaction claimAndAccept(command, now)
 
             if (!claimEvent(command, now, ownerUserId = current.ownerUserId)) {
                 return@inTransaction ProcessAsaasWebhookResult.Accepted

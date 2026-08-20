@@ -659,7 +659,7 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
-    fun `missing subscription returns not ready without claiming the event`() {
+    fun `missing subscription is audited without 503 so Asaas does not interrupt the queue`() {
         val result = useCase.execute(
             token,
             command(
@@ -668,8 +668,9 @@ class ProcessAsaasWebhookTest {
                 subscriptionId = "sub_missing",
             ),
         )
-        assertEquals(ProcessAsaasWebhookResult.SubscriptionNotReady, result)
-        assertTrue(events.rows.isEmpty())
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        assertEquals(fixedNow, events.rows.getValue("evt_orphan").processedAt)
+        assertNull(events.rows.getValue("evt_orphan").ownerUserId)
         assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
     }
 
@@ -692,14 +693,14 @@ class ProcessAsaasWebhookTest {
     }
 
     @Test
-    fun `missing subscription later becomes processable on retry`() {
+    fun `unresolved payment is claimed so a later retry does not 503 the queue`() {
         val cmd = command(
             eventId = "evt_race",
             type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
             subscriptionId = "sub_new",
         )
-        assertEquals(ProcessAsaasWebhookResult.SubscriptionNotReady, useCase.execute(token, cmd))
-        assertTrue(events.rows.isEmpty())
+        assertEquals(ProcessAsaasWebhookResult.Accepted, useCase.execute(token, cmd))
+        assertEquals(fixedNow, events.rows.getValue("evt_race").processedAt)
 
         subscriptions.save(
             baseSubscription().copy(
@@ -708,8 +709,7 @@ class ProcessAsaasWebhookTest {
             ),
         )
         assertEquals(ProcessAsaasWebhookResult.Accepted, useCase.execute(token, cmd))
-        assertEquals(SubscriptionStatus.ACTIVE, subscriptions.get("sub_new").status)
-        assertEquals(fixedNow, events.rows.getValue("evt_race").processedAt)
+        assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_new").status)
     }
 
     @Test
