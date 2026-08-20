@@ -36,6 +36,7 @@ class GroupListViewModel(
             is GroupListIntent.AcceptInvite -> dismissInvite(intent.id)
             is GroupListIntent.DeclineInvite -> dismissInvite(intent.id)
             GroupListIntent.Retry -> load()
+            GroupListIntent.Refresh -> load(softRefresh = true)
         }
     }
 
@@ -54,12 +55,20 @@ class GroupListViewModel(
         }
     }
 
-    private fun load() {
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, loadFailed = false, error = null) }
+        update {
+            if (softRefresh) {
+                it.copy(loadFailed = false, error = null)
+            } else {
+                it.copy(isLoading = true, loadFailed = false, error = null)
+            }
+        }
         viewModelScope.launch {
             when (val result = athleteGateway.ownProfile()) {
-                is SaqzResult.Failure -> showFailure(generation, result.error.toUiError())
+                is SaqzResult.Failure -> if (!softRefresh) {
+                    showFailure(generation, result.error.toUiError())
+                }
                 is SaqzResult.Success -> {
                     val memberships = result.value.memberships.filter(OwnAthleteMembership::active)
                     val cards = memberships.map { membership ->
@@ -71,7 +80,7 @@ class GroupListViewModel(
                         (card as? SaqzResult.Failure)?.error?.toUiError()
                     }
                     if (failure != null) {
-                        showFailure(generation, failure)
+                        if (!softRefresh) showFailure(generation, failure)
                     } else {
                         update {
                             it.copy(

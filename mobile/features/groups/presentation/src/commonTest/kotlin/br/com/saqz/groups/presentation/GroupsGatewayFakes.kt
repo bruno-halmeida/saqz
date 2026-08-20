@@ -138,6 +138,7 @@ class FakeAthleteGateway(
     var lastRemovedUserId: String? = null
     var lastUpdateCommand: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand? = null
     var lastStatsUserId: String? = null
+    var ownProfileCalls = 0
 
     override suspend fun roster(
         groupId: GroupId,
@@ -204,7 +205,10 @@ class FakeAthleteGateway(
         return removeResult
     }
 
-    override suspend fun ownProfile(): SaqzResult<OwnAthleteProfile, AthleteError> = ownProfileResult
+    override suspend fun ownProfile(): SaqzResult<OwnAthleteProfile, AthleteError> {
+        ownProfileCalls += 1
+        return ownProfileResult
+    }
 }
 
 class FakeGameGateway(

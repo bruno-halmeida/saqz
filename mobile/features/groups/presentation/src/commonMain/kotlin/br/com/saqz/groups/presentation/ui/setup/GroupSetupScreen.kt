@@ -305,6 +305,7 @@ private fun GroupSetupFooter(state: GroupSetupState, onIntent: (GroupSetupIntent
                     },
                 ),
                 onClick = { onIntent(GroupSetupIntent.Submit) },
+                enabled = !state.isSaving,
                 loading = state.isSaving,
                 fullWidth = true,
                 modifier = Modifier.testTag(GroupSetupTags.Submit),

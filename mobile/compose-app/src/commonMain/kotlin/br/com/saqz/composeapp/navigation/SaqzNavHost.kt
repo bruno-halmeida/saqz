@@ -145,6 +145,7 @@ internal fun SaqzNavHost(
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    var groupListRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupCashboxRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var settlementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
@@ -410,6 +411,7 @@ internal fun SaqzNavHost(
                             onCreateGroup = { backStack.add(GroupsRoute.Create) },
                             onOpenPlans = { backStack.add(SubscriptionRequired) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
+                            refreshVersion = groupListRefreshVersion,
                         )
                     },
                 )
@@ -512,16 +514,27 @@ internal fun SaqzNavHost(
                 )
             }
             entry<GroupsRoute.Create> {
-                GroupSetupDestination(GroupSetupMode.Create, backStack)
+                GroupSetupDestination(
+                    mode = GroupSetupMode.Create,
+                    backStack = backStack,
+                    onGroupListChanged = { groupListRefreshVersion++ },
+                )
             }
             entry<GroupsRoute.Edit> { route ->
-                GroupSetupDestination(GroupSetupMode.Edit(route.groupId), backStack)
+                GroupSetupDestination(
+                    mode = GroupSetupMode.Edit(route.groupId),
+                    backStack = backStack,
+                    onGroupListChanged = { groupListRefreshVersion++ },
+                )
             }
             entry<GroupsRoute.Details> { route ->
                 GroupDetailsRoot(
                     groupId = route.groupId,
                     onBack = pop,
-                    onEffect = { effect -> backStack.onDetailsEffect(effect, pop) },
+                    onEffect = { effect ->
+                        if (effect is GroupDetailsEffect.Left) groupListRefreshVersion++
+                        backStack.onDetailsEffect(effect, pop)
+                    },
                     refreshVersion = groupDetailsRefreshVersion,
                 )
             }
@@ -778,18 +791,29 @@ private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this
  * tratado — o formulário sempre fecha quando termina, só o destino muda.
  */
 @Composable
-private fun GroupSetupDestination(mode: GroupSetupMode, backStack: NavBackStack<NavKey>) {
+private fun GroupSetupDestination(
+    mode: GroupSetupMode,
+    backStack: NavBackStack<NavKey>,
+    onGroupListChanged: () -> Unit,
+) {
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     GroupSetupRoot(
         mode = mode,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
         onGroupCreate = { groupId ->
+            onGroupListChanged()
             pop()
             backStack.add(GroupsRoute.Details(groupId))
         },
-        onGroupSave = pop,
+        onGroupSave = {
+            onGroupListChanged()
+            pop()
+        },
         // Apagou: `Details` e `Edit` do grupo morto ficam para trás; volta para a lista.
-        onGroupDelete = { while (backStack.size > 1) backStack.removeLastOrNull() },
+        onGroupDelete = {
+            onGroupListChanged()
+            while (backStack.size > 1) backStack.removeLastOrNull()
+        },
         onDraftSave = pop,
         onBack = pop,
     )

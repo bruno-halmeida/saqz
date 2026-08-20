@@ -58,6 +58,9 @@ sealed interface GroupListIntent {
     data class DeclineInvite(val id: String) : GroupListIntent
 
     data object Retry : GroupListIntent
+
+    /** Recarrega a lista sem esqueleto — a volta do 2a, com a ViewModel ainda viva. */
+    data object Refresh : GroupListIntent
 }
 
 sealed interface GroupListEffect {

@@ -164,4 +164,39 @@ class GroupListViewModelTest {
         val state = GroupListState(isLoading = false, invite = GroupInviteUi("invite", "Grupo", "Admin"))
         assertFalse(state.isEmpty)
     }
+
+    @Test
+    fun `refresh reloads memberships without returning to the skeleton`() = runTest {
+        val athlete = FakeAthleteGateway()
+        val viewModel = GroupListViewModel(
+            athlete,
+            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
+            noPlan,
+        )
+        assertTrue(viewModel.state.value.isEmpty)
+        assertEquals(1, athlete.ownProfileCalls)
+
+        athlete.ownProfileResult = SaqzResult.Success(
+            br.com.saqz.groups.domain.athlete.OwnAthleteProfile(
+                userId = "me",
+                displayName = "Bruno",
+                phone = null,
+                memberships = listOf(
+                    OwnAthleteMembership(
+                        groupId = br.com.saqz.domain.GroupId("group-1"),
+                        groupName = "Old name",
+                        role = GroupRole.ADMIN,
+                        position = null,
+                        membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA,
+                        active = true,
+                    ),
+                ),
+            ),
+        )
+        viewModel.onIntent(GroupListIntent.Refresh)
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
+        assertEquals(2, athlete.ownProfileCalls)
+    }
 }

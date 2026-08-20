@@ -260,6 +260,7 @@ private fun GroupReviewFooter(state: GroupSetupState, onIntent: (GroupSetupInten
                     if (state.isSaving) Res.string.group_system_creating else Res.string.group_review_create,
                 ),
                 onClick = { onIntent(GroupSetupIntent.ConfirmCreate) },
+                enabled = !state.isSaving,
                 loading = state.isSaving,
                 fullWidth = true,
                 modifier = Modifier.testTag(GroupSetupTags.ReviewCreate),
@@ -268,6 +269,7 @@ private fun GroupReviewFooter(state: GroupSetupState, onIntent: (GroupSetupInten
                 label = stringResource(Res.string.group_review_edit),
                 onClick = { onIntent(GroupSetupIntent.BackToForm) },
                 variant = SaqzButtonVariant.Ghost,
+                enabled = !state.isSaving,
                 fullWidth = true,
                 modifier = Modifier.testTag(GroupSetupTags.ReviewEdit),
             )
