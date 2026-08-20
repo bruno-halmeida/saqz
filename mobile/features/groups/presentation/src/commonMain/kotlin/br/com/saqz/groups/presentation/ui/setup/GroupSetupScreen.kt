@@ -172,6 +172,7 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
     val form = state.form
     GroupPhotoSection(
         photoUrl = state.photoUrl,
+        photo = state.photo,
         groupName = form.name,
         isEditing = state.isEditing,
         onPick = { onIntent(GroupSetupIntent.PickPhoto) },

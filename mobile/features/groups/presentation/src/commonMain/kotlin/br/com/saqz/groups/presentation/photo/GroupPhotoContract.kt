@@ -1,10 +1,12 @@
 package br.com.saqz.groups.presentation.photo
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.ImageBitmap
 
 @Immutable
 internal data class GroupPhotoState(
     val photoUrl: String? = null,
+    val preview: ImageBitmap? = null,
     val isLoading: Boolean = false,
     val error: GroupPhotoUiError? = null,
     val changeVersion: Int = 0,

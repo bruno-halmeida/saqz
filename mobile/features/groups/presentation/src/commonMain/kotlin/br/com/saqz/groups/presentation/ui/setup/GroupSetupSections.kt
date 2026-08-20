@@ -1,11 +1,13 @@
 package br.com.saqz.groups.presentation.ui.setup
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
@@ -24,8 +26,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -132,11 +136,12 @@ internal fun GroupPhotoSection(
     isEditing: Boolean,
     onPick: () -> Unit,
     modifier: Modifier = Modifier,
+    photo: ImageBitmap? = null,
 ) {
     val label = stringResource(Res.string.group_setup_photo_label)
     val hint = when {
         isEditing -> stringResource(Res.string.group_setup_photo_edit_hint)
-        photoUrl != null -> stringResource(Res.string.group_setup_photo_added)
+        photoUrl != null || photo != null -> stringResource(Res.string.group_setup_photo_added)
         else -> stringResource(Res.string.group_setup_photo_hint)
     }
     SaqzCard(modifier = modifier) {
@@ -147,13 +152,14 @@ internal fun GroupPhotoSection(
         ) {
             GroupPhotoThumb(
                 photoUrl = photoUrl,
+                photo = photo,
                 groupName = groupName,
                 actionLabel = label,
                 onPick = onPick,
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (photoUrl != null && !isEditing && groupName.isNotBlank()) groupName else label,
+                    text = if ((photoUrl != null || photo != null) && !isEditing && groupName.isNotBlank()) groupName else label,
                     style = SaqzTheme.typography.label,
                     color = SaqzTheme.colors.textPrimary,
                 )
@@ -166,12 +172,14 @@ internal fun GroupPhotoSection(
 @Composable
 private fun GroupPhotoThumb(
     photoUrl: String?,
+    photo: ImageBitmap?,
     groupName: String,
     actionLabel: String,
     onPick: () -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
     val colors = SaqzTheme.colors
+    val hasPhoto = photo != null || photoUrl != null
     // 72 do export: o design system não tem token de miniatura, e 3 × sectionGap dá o número.
     val size = metrics.sectionGap * PhotoSizeFactor
     val badgeSize = metrics.sectionGap + metrics.subGrid
@@ -186,15 +194,18 @@ private fun GroupPhotoThumb(
             modifier = Modifier
                 .size(size)
                 .clip(shape)
-                .background(if (photoUrl == null) colors.surfaceSoft else colors.primary),
+                .background(if (hasPhoto && photo == null) colors.primary else colors.surfaceSoft),
             contentAlignment = Alignment.Center,
         ) {
-            if (photoUrl == null) {
-                SaqzIcon(SaqzIcons.Camera, tint = colors.primary)
-            } else {
-                // ponytail: sem carregador de imagem no módulo, a foto entra como as
-                // iniciais sobre o azul — o mesmo desenho que o `2b` mostra.
-                Text(
+            when {
+                photo != null -> Image(
+                    bitmap = photo,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                photoUrl == null -> SaqzIcon(SaqzIcons.Camera, tint = colors.primary)
+                else -> Text(
                     text = saqzInitials(groupName),
                     style = SaqzTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold),
                     color = colors.onPrimary,
@@ -208,12 +219,12 @@ private fun GroupPhotoThumb(
                 .offset(x = metrics.subGrid, y = metrics.subGrid)
                 .size(badgeSize)
                 .clip(CircleShape)
-                .background(if (photoUrl == null) colors.primary else colors.surface),
+                .background(if (hasPhoto) colors.surface else colors.primary),
             contentAlignment = Alignment.Center,
         ) {
             SaqzIcon(
-                icon = if (photoUrl == null) SaqzIcons.Plus else SaqzIcons.Camera,
-                tint = if (photoUrl == null) colors.onPrimary else colors.primary,
+                icon = if (hasPhoto) SaqzIcons.Camera else SaqzIcons.Plus,
+                tint = if (hasPhoto) colors.primary else colors.onPrimary,
                 size = metrics.horizontalPadding,
             )
         }

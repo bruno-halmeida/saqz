@@ -53,7 +53,7 @@ internal class GroupPhotoViewModel(
         groupVersion = null
         when {
             nextId == null -> if (held == null) {
-                update { it.copy(photoUrl = null, isLoading = false, error = null, hasPending = false) }
+                update { it.copy(photoUrl = null, preview = null, isLoading = false, error = null, hasPending = false) }
             }
             held != null -> commitHeld(nextId, held)
             else -> load(nextId)
@@ -69,18 +69,11 @@ internal class GroupPhotoViewModel(
                     groupVersion = GroupPhotoVersionToken(profile.value.versionToken.value)
                     when (val result = photoGateway.read(id)) {
                         is SaqzResult.Success -> when (val photo = result.value) {
-                            is GroupPhotoReadResult.Available -> update {
-                                it.copy(
-                                    photoUrl = photoUrl(id, photo.version),
-                                    isLoading = false,
-                                    error = null,
-                                    hasPending = false,
-                                )
-                            }
+                            is GroupPhotoReadResult.Available -> show(id, photo)
                             GroupPhotoReadResult.NotModified -> finish()
                         }
                         is SaqzResult.Failure -> if (result.error == br.com.saqz.groups.domain.photo.GroupPhotoError.NotFound) {
-                            update { it.copy(photoUrl = null, isLoading = false, error = null, hasPending = false) }
+                            update { it.copy(photoUrl = null, preview = null, isLoading = false, error = null, hasPending = false) }
                         } else {
                             finish(GroupPhotoUiError.LoadFailed)
                         }
@@ -107,17 +100,20 @@ internal class GroupPhotoViewModel(
         }
     }
 
-    private fun hold(selected: GroupPhotoSelection) {
-        if (previews.read(selected.preview.value) == null) {
+    private suspend fun hold(selected: GroupPhotoSelection) {
+        val bytes = previews.read(selected.preview.value)
+        if (bytes == null) {
             selection.cleanup(selected.source.value)
             finish(GroupPhotoUiError.SelectionFailed)
             return
         }
         discardPending()
         pending = selected
+        val preview = decodeGroupPhoto(bytes, GROUP_PHOTO_THUMB_PX)
         update {
             it.copy(
                 photoUrl = pendingPhotoUrl(selected.preview.value),
+                preview = preview,
                 isLoading = false,
                 error = null,
                 changeVersion = it.changeVersion + 1,
@@ -174,15 +170,7 @@ internal class GroupPhotoViewModel(
         when (val refreshed = photoGateway.read(id)) {
             is SaqzResult.Failure -> finish(GroupPhotoUiError.UploadFailed)
             is SaqzResult.Success -> when (val photo = refreshed.value) {
-                is GroupPhotoReadResult.Available -> update {
-                    it.copy(
-                        photoUrl = photoUrl(id, photo.version),
-                        isLoading = false,
-                        error = null,
-                        changeVersion = it.changeVersion + 1,
-                        hasPending = false,
-                    )
-                }
+                is GroupPhotoReadResult.Available -> show(id, photo, bumpChange = true)
                 GroupPhotoReadResult.NotModified -> finish(GroupPhotoUiError.UploadFailed)
             }
         }
@@ -197,6 +185,7 @@ internal class GroupPhotoViewModel(
             update {
                 it.copy(
                     photoUrl = null,
+                    preview = null,
                     isLoading = false,
                     error = null,
                     changeVersion = it.changeVersion + 1,
@@ -218,6 +207,7 @@ internal class GroupPhotoViewModel(
                     update {
                         it.copy(
                             photoUrl = null,
+                            preview = null,
                             isLoading = false,
                             error = null,
                             changeVersion = it.changeVersion + 1,
@@ -226,6 +216,24 @@ internal class GroupPhotoViewModel(
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun show(
+        id: GroupId,
+        photo: GroupPhotoReadResult.Available,
+        bumpChange: Boolean = false,
+    ) {
+        val preview = decodeGroupPhoto(photo.bytes, GROUP_PHOTO_THUMB_PX)
+        update {
+            it.copy(
+                photoUrl = photoUrl(id, photo.version),
+                preview = preview,
+                isLoading = false,
+                error = null,
+                changeVersion = if (bumpChange) it.changeVersion + 1 else it.changeVersion,
+                hasPending = false,
+            )
         }
     }
 

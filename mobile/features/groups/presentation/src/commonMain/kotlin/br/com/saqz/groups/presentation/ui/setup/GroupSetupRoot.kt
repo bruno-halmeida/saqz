@@ -100,7 +100,7 @@ fun GroupSetupRoot(
     Box(modifier.fillMaxSize()) {
         when (state.step) {
             GroupSetupStep.Form -> GroupSetupScreen(
-                state = state.copy(photoUrl = photoState.photoUrl),
+                state = state.copy(photoUrl = photoState.photoUrl, photo = photoState.preview),
                 onIntent = viewModel::onIntent,
                 onBack = onBack,
             )

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.ImageBitmap
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
@@ -82,6 +83,7 @@ data class GroupSetupState(
     val pixKey: String? = null,
     val pixLabel: String? = null,
     val photoUrl: String? = null,
+    val photo: ImageBitmap? = null,
     // Só o `2j` usa: "Os %d membros perdem o acesso…". Não sai do formulário.
     val memberCount: Int = 0,
     /** Só o OWNER pode excluir; enquanto o snapshot não chega, a ação fica escondida. */
