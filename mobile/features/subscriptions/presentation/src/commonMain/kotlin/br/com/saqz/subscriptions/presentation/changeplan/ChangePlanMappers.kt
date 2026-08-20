@@ -39,18 +39,20 @@ internal fun PlanCatalogItem.toCardUi(currentPlan: Plan, cycle: SubscriptionCycl
 }
 
 private fun PlanCatalogItem.benefits(): List<UiText> = buildList {
+    val groups = maxGroups
     add(
-        when (maxGroups) {
+        when (groups) {
             null -> UiText.Res(Res.string.changeplan_benefit_groups_unlimited)
             1 -> UiText.Res(Res.string.changeplan_benefit_groups_one)
-            else -> UiText.Res(Res.string.changeplan_benefit_groups, listOf(maxGroups))
+            else -> UiText.Res(Res.string.changeplan_benefit_groups, listOf(groups))
         },
     )
+    val athletes = maxAthletes
     add(
-        if (maxAthletes == null) {
+        if (athletes == null) {
             UiText.Res(Res.string.changeplan_benefit_athletes_unlimited)
         } else {
-            UiText.Res(Res.string.changeplan_benefit_athletes, listOf(maxAthletes))
+            UiText.Res(Res.string.changeplan_benefit_athletes, listOf(athletes))
         },
     )
     if (multiAdmin) add(UiText.Res(Res.string.changeplan_benefit_admins))

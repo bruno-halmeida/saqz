@@ -8,6 +8,7 @@ import br.com.saqz.subscriptions.domain.subscription.ChangedPlan
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.changeplan_pending_note
 import br.com.saqz.subscriptions.resources.changeplan_pix_summary
 import br.com.saqz.subscriptions.resources.changeplan_pix_waiting
 import br.com.saqz.subscriptions.resources.changeplan_scheduled_sub
