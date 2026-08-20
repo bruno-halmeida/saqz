@@ -32,6 +32,7 @@ import br.com.saqz.designsystem.SaqzMemberRow
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzStatusChip
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.members.GroupMemberAction
 import br.com.saqz.groups.presentation.members.GroupMembersFilter
@@ -231,6 +232,7 @@ internal fun GroupMemberListSection(
 
 @Composable
 private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     SaqzMemberRow(
         // TODO(VUL-96): o export escreve o "· você" em peso 400 e `textSecondary`, e o
         // `SaqzMemberRow` recebe o nome como String. Concatenado aqui até o design system
@@ -249,7 +251,14 @@ private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
             null
         },
         // A própria linha não abre sheet no 2k; a ViewModel repete a guarda.
-        onClick = if (member.isSelf) null else ({ onOpen(member.id) }),
+        onClick = if (member.isSelf) {
+            null
+        } else {
+            {
+                dismissKeyboard()
+                onOpen(member.id)
+            }
+        },
         modifier = Modifier.testTag(GroupMembersTags.member(member.id)),
         trailing = {
             if (member.isAdmin) {

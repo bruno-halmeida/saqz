@@ -48,6 +48,7 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.PhoneVisualTransformation
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -196,10 +197,18 @@ fun IdentityCompletionScreen(
 private fun PhotoPicker(photo: ImageBitmap?, onPick: () -> Unit) {
     val colors = SaqzTheme.colors
     val label = stringResource(Res.string.identity_add_photo)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clickable(onClickLabel = label, role = Role.Button, onClick = onPick)
+            .clickable(
+                onClickLabel = label,
+                role = Role.Button,
+                onClick = {
+                    dismissKeyboard()
+                    onPick()
+                },
+            )
             .testTag(Identity1cTags.Photo),
     ) {
         Box {

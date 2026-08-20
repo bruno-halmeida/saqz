@@ -43,6 +43,7 @@ import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzSwitch
 import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthleteLevel
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
@@ -319,6 +320,11 @@ private fun MemberEditorAttributes(state: MemberEditorState, onIntent: (MemberEd
 private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEditorIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
     val membershipLabel = stringResource(Res.string.member_editor_membership)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    val openBilling: () -> Unit = {
+        dismissKeyboard()
+        onIntent(MemberEditorIntent.OpenBilling)
+    }
     MemberEditorSection(stringResource(Res.string.member_editor_membership)) {
         SaqzSegmented(
             options = listOf(
@@ -353,7 +359,7 @@ private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEd
                 )
                 SaqzButton(
                     label = stringResource(Res.string.member_editor_change_billing),
-                    onClick = { onIntent(MemberEditorIntent.OpenBilling) },
+                    onClick = openBilling,
                     variant = SaqzButtonVariant.Secondary,
                     size = SaqzButtonSize.Sm,
                     fullWidth = true,
@@ -364,7 +370,7 @@ private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEd
         } else {
             SaqzButton(
                 label = stringResource(Res.string.member_editor_make_monthly),
-                onClick = { onIntent(MemberEditorIntent.OpenBilling) },
+                onClick = openBilling,
                 variant = SaqzButtonVariant.Secondary,
                 fullWidth = true,
                 enabled = state.operation == null,
@@ -429,6 +435,7 @@ private fun MemberEditorStatCell(value: String, label: String, modifier: Modifie
 
 @Composable
 private fun MemberEditorRemove(state: MemberEditorState, onIntent: (MemberEditorIntent) -> Unit) {
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Text(
         text = stringResource(Res.string.member_editor_remove),
         style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
@@ -440,7 +447,10 @@ private fun MemberEditorRemove(state: MemberEditorState, onIntent: (MemberEditor
                 enabled = state.operation == null,
                 onClickLabel = stringResource(Res.string.member_editor_remove),
                 role = Role.Button,
-                onClick = { onIntent(MemberEditorIntent.OpenRemove) },
+                onClick = {
+                    dismissKeyboard()
+                    onIntent(MemberEditorIntent.OpenRemove)
+                },
             )
             .padding(vertical = SaqzTheme.metrics.blockGap)
             .testTag(MemberEditorTags.Remove),

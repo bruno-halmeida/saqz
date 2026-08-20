@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_setup_add_slot
@@ -35,6 +36,7 @@ internal fun GroupAddSlotButton(
     val borderColor = SaqzTheme.colors.primary
     val dash = metrics.grid
     val shape = RoundedCornerShape(metrics.cardRadius)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -53,7 +55,14 @@ internal fun GroupAddSlotButton(
                     ),
                 )
             }
-            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+            .clickable(
+                onClickLabel = label,
+                role = Role.Button,
+                onClick = {
+                    dismissKeyboard()
+                    onClick()
+                },
+            )
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         horizontalArrangement = Arrangement.spacedBy(metrics.grid, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,

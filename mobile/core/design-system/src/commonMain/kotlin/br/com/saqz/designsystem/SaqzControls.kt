@@ -65,6 +65,7 @@ fun SaqzSwitch(
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val motion = SaqzTheme.motion
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     val track by animateColorAsState(
         targetValue = when {
             !enabled -> colors.disabledSurface
@@ -88,7 +89,10 @@ fun SaqzSwitch(
         value = checked,
         enabled = enabled,
         role = Role.Switch,
-        onValueChange = onCheckedChange,
+        onValueChange = {
+            dismissKeyboard()
+            onCheckedChange(it)
+        },
     )
     val control = @Composable {
         Box(
@@ -162,6 +166,7 @@ private fun SaqzStepperButton(
     onClick: () -> Unit,
 ) {
     val colors = SaqzTheme.colors
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Box(
         modifier = Modifier
             .sizeIn(
@@ -172,7 +177,10 @@ private fun SaqzStepperButton(
                 enabled = enabled,
                 onClickLabel = contentDescription,
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    dismissKeyboard()
+                    onClick()
+                },
             )
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
@@ -256,6 +264,7 @@ fun SaqzSegmented(
 ) {
     val colors = SaqzTheme.colors
     val motion = SaqzTheme.motion
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -301,7 +310,10 @@ fun SaqzSegmented(
                         .selectable(
                             selected = index == selected,
                             role = Role.Tab,
-                            onClick = { onSelect(index) },
+                            onClick = {
+                                dismissKeyboard()
+                                onSelect(index)
+                            },
                         )
                         .padding(vertical = 9.dp),
                     textAlign = TextAlign.Center,
@@ -329,10 +341,15 @@ fun SaqzChoiceChip(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    val pick = {
+        dismissKeyboard()
+        onClick()
+    }
     if (compact) {
         Box(
             modifier = modifier
-                .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .selectable(selected = selected, role = Role.Tab, onClick = pick)
                 .minimumInteractiveComponentSize(),
             contentAlignment = Alignment.Center,
         ) {
@@ -358,7 +375,7 @@ fun SaqzChoiceChip(
                 .clip(CircleShape)
                 .background(if (selected) colors.primary else colors.surface, CircleShape)
                 .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
-                .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .selectable(selected = selected, role = Role.Tab, onClick = pick)
                 .padding(horizontal = 14.dp, vertical = 9.dp),
             contentAlignment = Alignment.Center,
         ) {

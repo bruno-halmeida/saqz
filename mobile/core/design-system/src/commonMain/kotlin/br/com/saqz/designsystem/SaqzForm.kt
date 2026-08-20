@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -117,6 +118,23 @@ fun rememberSaqzFormScope(onSubmit: (() -> Unit)? = null): SaqzFormScope {
     val currentOnSubmit = rememberUpdatedState(onSubmit)
     return remember(focusManager) {
         SaqzFormScope(focusManager) { currentOnSubmit.value?.invoke() }
+    }
+}
+
+/**
+ * Tira o foco do campo e fecha o IME. Overlay na mesma janela (sheet, picker) não
+ * faz isso sozinho — um Dialog nativo faria. Sem delay: quem chama segue no mesmo
+ * clique, testes não esperam animação de teclado.
+ */
+@Composable
+fun rememberSaqzDismissKeyboard(): () -> Unit {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    return remember(focusManager, keyboard) {
+        {
+            focusManager.clearFocus(force = true)
+            keyboard?.hide()
+        }
     }
 }
 

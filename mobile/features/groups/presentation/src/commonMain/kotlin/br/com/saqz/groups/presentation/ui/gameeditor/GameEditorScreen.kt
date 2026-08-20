@@ -38,6 +38,7 @@ import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStepper
 import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.presentation.gameeditor.GameEditorEffect
@@ -428,11 +429,18 @@ private fun PickerRow(
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(metrics.inputRadius)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+                .clickable(
+                    role = androidx.compose.ui.semantics.Role.Button,
+                    onClick = {
+                        dismissKeyboard()
+                        onClick()
+                    },
+                )
                 .testTag(tag)
                 .background(colors.surface, shape)
                 .then(

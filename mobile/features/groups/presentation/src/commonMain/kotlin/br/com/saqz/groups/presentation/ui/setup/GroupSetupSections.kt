@@ -42,6 +42,7 @@ import br.com.saqz.designsystem.SaqzSegmented
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzStepper
 import br.com.saqz.designsystem.SaqzSwitch
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.saqzInitials
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupComposition
@@ -184,10 +185,18 @@ private fun GroupPhotoThumb(
     val size = metrics.sectionGap * PhotoSizeFactor
     val badgeSize = metrics.sectionGap + metrics.subGrid
     val shape = RoundedCornerShape(metrics.blockRadius)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Box(
         modifier = Modifier
             .size(size)
-            .clickable(onClickLabel = actionLabel, role = Role.Button, onClick = onPick)
+            .clickable(
+                onClickLabel = actionLabel,
+                role = Role.Button,
+                onClick = {
+                    dismissKeyboard()
+                    onPick()
+                },
+            )
             .testTag(GroupSetupTags.Photo),
     ) {
         Box(
@@ -543,6 +552,7 @@ private fun GroupSelectRow(
     val metrics = SaqzTheme.metrics
     val shape = RoundedCornerShape(metrics.inputRadius)
     val text = value ?: placeholder
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -554,7 +564,14 @@ private fun GroupSelectRow(
                 metrics.inputRadius,
                 metrics.subGrid / HairlineDivisor,
             )
-            .clickable(onClickLabel = text, role = Role.Button, onClick = onClick)
+            .clickable(
+                onClickLabel = text,
+                role = Role.Button,
+                onClick = {
+                    dismissKeyboard()
+                    onClick()
+                },
+            )
             .padding(horizontal = metrics.horizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),

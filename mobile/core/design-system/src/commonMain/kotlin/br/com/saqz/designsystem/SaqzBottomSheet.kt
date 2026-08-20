@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -86,6 +87,14 @@ fun SaqzBottomSheet(
         easing = motion.emphasized,
     )
     val closeLabel = stringResource(Res.string.action_close)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+
+    // Overlay na mesma janela: o TextField de baixo guarda o IME. Um Dialog nativo
+    // roubaria o foco sozinho; aqui o sheet tem de pedir, senão a folha sobe atrás
+    // do teclado. `force` impede o campo de reabrir o IME no mesmo frame.
+    LaunchedEffect(open) {
+        if (open) dismissKeyboard()
+    }
 
     // O back é a terceira saída, ao lado do scrim e do rodapé: botão no Android, gesto no
     // iOS. Fica aqui e não em cada tela porque uma sobreposição que ignora o back deixa o

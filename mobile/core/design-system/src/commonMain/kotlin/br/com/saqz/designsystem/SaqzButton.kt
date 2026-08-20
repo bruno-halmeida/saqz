@@ -252,6 +252,7 @@ fun SaqzIconButton(
 ) {
     val colors = SaqzTheme.colors
     val background = colors.iconButtonBackground(soft = soft, filled = filled, outlined = outlined)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
     // Duas caixas de propósito: o desenho do export manda no círculo (44dp), o piso de
     // acessibilidade manda no alvo (48dp). O toque e a semântica vivem na caixa externa,
     // o clip, o fundo e o glifo na interna — encolher o alvo para casar com o visual é
@@ -263,7 +264,10 @@ fun SaqzIconButton(
                 enabled = enabled,
                 onClickLabel = contentDescription,
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    dismissKeyboard()
+                    onClick()
+                },
             )
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,

@@ -1,12 +1,23 @@
 package br.com.saqz.designsystem
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
@@ -89,5 +100,38 @@ class SaqzBottomSheetPanelTest {
         }
 
         onNodeWithText("Aceitar e entrar").assertIsDisplayed()
+    }
+
+    @Test
+    fun openingTheSheetClearsFocusFromTheHostField() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                Box(Modifier.fillMaxSize()) {
+                    var open by remember { mutableStateOf(false) }
+                    Column {
+                        SaqzInput("ceret", {}, label = "Nome do grupo")
+                        Text(
+                            text = "Abrir picker",
+                            modifier = Modifier.clickable(
+                                role = Role.Button,
+                                onClick = { open = true },
+                            ),
+                        )
+                    }
+                    SaqzBottomSheet(open = open, onClose = { open = false }, title = "Modalidade") {}
+                }
+            }
+        }
+
+        val field = onNode(hasSetTextAction() and hasText("ceret"), useUnmergedTree = true)
+        field.performClick()
+        waitForIdle()
+        field.assertIsFocused()
+
+        onNodeWithText("Abrir picker").performClick()
+        waitForIdle()
+
+        field.assertIsNotFocused()
+        onNodeWithText("Modalidade").assertIsDisplayed()
     }
 }
