@@ -1,4 +1,6 @@
--- Seed de exploração geral: grupo, vínculos e financeiro para 1 dono e 20 atletas.
+-- Seed de exploração geral: plano TITULAR do dono, grupo, vínculos e financeiro
+-- para 1 dono e 20 atletas. Sem a assinatura o app trata o dono como não-entitled
+-- e as telas de gestão do grupo não batem com o cenário.
 --
 -- AS 21 CONTAS PRECISAM EXISTIR ANTES. Quem as cria é o `seed-usuarios.sh`, que passa pelo
 -- Firebase (conta logável, com senha) e pelo bootstrap `PUT /api/session` (linha em
@@ -67,6 +69,49 @@ BEGIN
     DELETE FROM group_expenses       WHERE group_id = c_group;
     DELETE FROM group_memberships    WHERE group_id = c_group;
     DELETE FROM access_groups        WHERE id       = c_group;
+
+    -- -----------------------------------------------------------------------
+    -- Plano do dono. TITULAR: 1 grupo, 25 atletas — cabe este cenário. IDs Asaas
+    -- são marcadores de seed (não existem na sandbox): o entitlement é local.
+    -- Trocar plano / cancelar por esta conta falha na Asaas; gestão do grupo, não.
+    -- -----------------------------------------------------------------------
+
+    INSERT INTO subscriptions (
+        owner_user_id, plan, cycle, status,
+        asaas_customer_id, asaas_subscription_id, billing_type,
+        current_period_end, first_confirmed_at, created_at, updated_at
+    ) VALUES (
+        v_owner,
+        'TITULAR',
+        'MONTHLY',
+        'ACTIVE',
+        'cus_seed_owner_saqz_local',
+        'sub_seed_owner_saqz_local',
+        'PIX',
+        now() + interval '20 days',
+        now() - interval '120 days',
+        now() - interval '120 days',
+        now()
+    )
+    ON CONFLICT (owner_user_id) DO UPDATE SET
+        plan = EXCLUDED.plan,
+        cycle = EXCLUDED.cycle,
+        status = EXCLUDED.status,
+        asaas_customer_id = EXCLUDED.asaas_customer_id,
+        asaas_subscription_id = EXCLUDED.asaas_subscription_id,
+        billing_type = EXCLUDED.billing_type,
+        current_period_end = EXCLUDED.current_period_end,
+        canceled_at = NULL,
+        pending_plan = NULL,
+        pending_plan_effective_at = NULL,
+        coupon_id = NULL,
+        coupon_cycles_remaining = NULL,
+        past_due_since = NULL,
+        first_confirmed_at = EXCLUDED.first_confirmed_at,
+        pending_upgrade_plan = NULL,
+        pending_upgrade_charge_id = NULL,
+        last_confirmed_payment_id = NULL,
+        updated_at = now();
 
     -- -----------------------------------------------------------------------
     -- O perfil que o bootstrap não preenche: ele grava só e-mail e nome, vindos do token.
@@ -249,7 +294,10 @@ SELECT
     (SELECT count(*) FROM access_users WHERE email ~ '^atleta\d{2}@saqz\.local$' AND deleted_at IS NULL) AS atletas,
     (SELECT count(*) FROM group_memberships WHERE group_id = '9a000000-0000-4000-8000-000000000001')     AS vinculos,
     (SELECT count(*) FROM group_charges     WHERE group_id = '9a000000-0000-4000-8000-000000000001')     AS cobrancas,
-    (SELECT count(*) FROM group_expenses    WHERE group_id = '9a000000-0000-4000-8000-000000000001')     AS lancamentos;
+    (SELECT count(*) FROM group_expenses    WHERE group_id = '9a000000-0000-4000-8000-000000000001')     AS lancamentos,
+    (SELECT plan::text || ' ' || status::text
+     FROM subscriptions s JOIN access_users u ON u.id = s.owner_user_id
+     WHERE u.email = 'owner@saqz.local') AS plano_do_dono;
 
 SELECT billing_month, status, count(*), sum(amount_cents) / 100.0 AS reais
 FROM group_charges
