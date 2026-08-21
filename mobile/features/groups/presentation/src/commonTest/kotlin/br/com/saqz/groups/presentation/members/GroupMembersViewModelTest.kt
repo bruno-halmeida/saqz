@@ -129,7 +129,7 @@ class GroupMembersViewModelTest {
     }
 
     @Test
-    fun `admin sem lookup de memberships nao recebe acoes de gestao`() = runTest {
+    fun `athlete sem lookup de memberships nao recebe acoes de gestao`() = runTest {
         val membership = FakeGroupMembershipGateway(
             listResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden)),
         )
@@ -137,15 +137,86 @@ class GroupMembersViewModelTest {
             "group-1",
             FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
             membership,
-            FakeGroupGateway(),
+            groupAs(GroupRole.ATHLETE),
         )
 
         val member = viewModel.state.value.members.single()
         assertEquals(listOf(GroupMemberAction.ViewProfile), member.sheetActions())
         viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Promote))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
 
         assertEquals(null, membership.lastRoleCommand)
+    }
+
+    @Test
+    fun `admin ve o dono na secao de admins mesmo sem lookup de memberships`() = runTest {
+        val viewModel = GroupMembersViewModel(
+            "group-1",
+            FakeAthleteGateway(
+                ownProfileResult = SaqzResult.Success(
+                    br.com.saqz.groups.domain.athlete.OwnAthleteProfile("carla", "Carla", null, emptyList()),
+                ),
+                rosterResult = SaqzResult.Success(
+                    listOf(
+                        sampleRosterEntry("owner", role = GroupRole.OWNER),
+                        sampleRosterEntry("carla", role = GroupRole.ADMIN),
+                        sampleRosterEntry("athlete"),
+                    ),
+                ),
+            ),
+            FakeGroupMembershipGateway(
+                listResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden)),
+            ),
+            groupAs(GroupRole.ADMIN),
+        )
+
+        assertEquals(listOf("owner", "carla"), viewModel.state.value.admins.map { it.id })
+        assertEquals(listOf("athlete"), viewModel.state.value.members.map { it.id })
+        assertTrue(viewModel.state.value.admins.single { it.id == "owner" }.isOwner)
+    }
+
+    @Test
+    fun `admin remove atleta e nao promove`() = runTest {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val membership = FakeGroupMembershipGateway()
+        val viewModel = GroupMembersViewModel("group-1", athlete, membership, groupAs(GroupRole.ADMIN))
+
+        val member = viewModel.state.value.members.single()
+        assertEquals(
+            listOf(GroupMemberAction.EditMember, GroupMemberAction.Remove),
+            member.sheetActions(),
+        )
+        viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Promote))
+        assertEquals(null, membership.lastRoleCommand)
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+        assertEquals("member-1", athlete.lastRemovedUserId)
+    }
+
+    @Test
+    fun `admin nao rebaixa nem remove o dono`() = runTest {
+        val athlete = FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.athlete.OwnAthleteProfile("carla", "Carla", null, emptyList()),
+            ),
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("owner", role = GroupRole.OWNER))),
+        )
+        val membership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership("owner", "Owner", GroupRole.OWNER))),
+        )
+        val viewModel = GroupMembersViewModel("group-1", athlete, membership, groupAs(GroupRole.ADMIN))
+
+        val owner = viewModel.state.value.admins.single()
+        assertEquals(listOf(GroupMemberAction.ViewProfile), owner.sheetActions())
+        viewModel.onIntent(GroupMembersIntent.OpenMember(owner.id))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Demote))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+
+        assertEquals(null, membership.lastRoleCommand)
+        assertEquals(null, athlete.lastRemovedUserId)
     }
 
     @Test
@@ -212,4 +283,12 @@ class GroupMembersViewModelTest {
         assertEquals(listOf("one"), viewModel.state.value.admins.map { it.id })
         assertTrue(viewModel.state.value.members.isEmpty())
     }
+
+    private fun groupAs(role: GroupRole) = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            br.com.saqz.groups.presentation.sampleVersionedGroup(
+                br.com.saqz.groups.presentation.sampleGroup(role = role),
+            ),
+        ),
+    )
 }

@@ -46,4 +46,21 @@ class MemberEditorScreenTest {
         onNodeWithTag(MemberEditorTags.side(AthletePreferredSide.DIREITA)).assertDoesNotExist()
         onNodeWithTag(MemberEditorTags.level(AthleteLevel.AVANCADO)).assertExists()
     }
+
+    @Test
+    fun `owner editor hides the remove action`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                MemberEditorScreen(
+                    state = memberEditorPreviewState.copy(
+                        role = br.com.saqz.groups.domain.group.GroupRole.OWNER,
+                    ),
+                    onIntent = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithTag(MemberEditorTags.Remove).assertDoesNotExist()
+    }
 }

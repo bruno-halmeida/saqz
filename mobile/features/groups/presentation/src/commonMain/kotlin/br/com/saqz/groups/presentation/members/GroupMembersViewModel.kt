@@ -82,7 +82,8 @@ class GroupMembersViewModel(
             }
 
             // O endpoint de memberships é de gestão: atleta comum recebe 403. Esse 403
-            // esperado não esconde o roster desde o VUL-134; admins ainda ganham os papéis.
+            // esperado não esconde o roster desde o VUL-134. Papel de cada linha vem do
+            // próprio roster (e do lookup, quando o dono/admin consegue lê-lo).
             val memberships = membershipGateway.listMemberships(GroupId(groupId))
             if (generation != loadGeneration) return@launch
             val roles = when (memberships) {
@@ -103,13 +104,17 @@ class GroupMembersViewModel(
                     }
                 }
             }
-            val canManageMembers = viewerRole == GroupRole.OWNER && memberships is SaqzResult.Success
+            val canManageAthletes = viewerRole == GroupRole.OWNER || viewerRole == GroupRole.ADMIN
+            val canManageRoles = viewerRole == GroupRole.OWNER
 
-            roster = (rosterResult as SaqzResult.Success).value.map {
-                it.toUi(
-                    role = roles[it.userId] ?: viewerRole.takeIf { role -> it.userId == ownProfile.userId },
+            roster = (rosterResult as SaqzResult.Success).value.map { entry ->
+                entry.toUi(
+                    role = roles[entry.userId]
+                        ?: viewerRole.takeIf { entry.userId == ownProfile.userId }
+                        ?: entry.role,
                     ownUserId = ownProfile.userId,
-                    canManageMembers = canManageMembers,
+                    canManageAthletes = canManageAthletes,
+                    canManageRoles = canManageRoles,
                 )
             }
             requests = emptyList()
@@ -141,6 +146,7 @@ class GroupMembersViewModel(
     private fun perform(action: GroupMemberAction) {
         val selected = state.value.selected ?: return
         if (action !in selected.sheetActions() || actionInFlight) return
+        if (selected.isOwner && action != GroupMemberAction.ViewProfile) return
         when (action) {
             GroupMemberAction.ViewProfile -> emit(GroupMembersEffect.OpenMemberProfile(selected.id))
             GroupMemberAction.EditMember -> emit(GroupMembersEffect.OpenMemberEditor(selected.id))
@@ -154,6 +160,7 @@ class GroupMembersViewModel(
     }
 
     private fun changeRole(member: MemberUi, role: AssignableGroupRole) {
+        if (member.isOwner) return
         actionInFlight = true
         update { it.copy(selected = null) }
         viewModelScope.launch {
@@ -168,6 +175,7 @@ class GroupMembersViewModel(
     }
 
     private fun remove(member: MemberUi) {
+        if (member.isOwner) return
         actionInFlight = true
         update { it.copy(selected = null) }
         viewModelScope.launch {
@@ -213,7 +221,8 @@ class GroupMembersViewModel(
 private fun AthleteRosterEntry.toUi(
     role: GroupRole?,
     ownUserId: String,
-    canManageMembers: Boolean,
+    canManageAthletes: Boolean,
+    canManageRoles: Boolean,
 ) = MemberUi(
     id = userId,
     name = displayName,
@@ -221,7 +230,9 @@ private fun AthleteRosterEntry.toUi(
         .joinToString(" · "),
     isAdmin = role == GroupRole.ADMIN || role == GroupRole.OWNER,
     isSelf = userId == ownUserId,
-    canManageMembers = canManageMembers,
+    canManageAthletes = canManageAthletes,
+    canManageRoles = canManageRoles,
+    isOwner = role == GroupRole.OWNER,
     // DESCONHECIDO é o contrato para atleta comum: não há filtro financeiro na tela e ele
     // deliberadamente não é convertido em status visual.
     stats = "",

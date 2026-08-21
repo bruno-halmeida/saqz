@@ -80,6 +80,7 @@ data class AthleteResponse(
 data class AthleteRosterEntryResponse(
     val userId: UUID,
     val displayName: String,
+    val role: GroupRole,
     val phone: String?,
     val position: String?,
     val membershipType: String,
@@ -301,11 +302,12 @@ private fun AthleteMembership.toResponse() = AthleteResponse(
     monthlyDueDay = monthlyDueDay,
 )
 
-private fun AthleteRosterEntry.toResponse(role: GroupRole?): AthleteRosterEntryResponse {
-    val canReadFinancial = role == GroupRole.OWNER || role == GroupRole.ADMIN
+private fun AthleteRosterEntry.toResponse(viewerRole: GroupRole?): AthleteRosterEntryResponse {
+    val canReadFinancial = viewerRole == GroupRole.OWNER || viewerRole == GroupRole.ADMIN
     return AthleteRosterEntryResponse(
         userId = userId,
         displayName = displayName.value,
+        role = role,
         phone = phone,
         position = position?.name,
         membershipType = membershipType.name,
@@ -318,7 +320,7 @@ private fun AthleteRosterEntry.toResponse(role: GroupRole?): AthleteRosterEntryR
         monthlyFeeCents = monthlyFeeCents.takeIf { canReadFinancial },
         monthlyDueDay = monthlyDueDay.takeIf { canReadFinancial },
         joinedAt = joinedAt,
-        financialStatus = when (role) {
+        financialStatus = when (viewerRole) {
             GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
             GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name
         },

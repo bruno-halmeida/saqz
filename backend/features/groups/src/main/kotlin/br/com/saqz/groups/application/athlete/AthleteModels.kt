@@ -109,6 +109,7 @@ data class AthleteRosterEntry(
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
     val joinedAt: Instant = Instant.EPOCH,
+    val role: GroupRole = GroupRole.ATHLETE,
 )
 
 sealed interface ListAthletesResult {

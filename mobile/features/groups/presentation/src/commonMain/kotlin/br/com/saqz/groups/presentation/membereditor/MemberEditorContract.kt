@@ -41,6 +41,7 @@ data class MemberEditorState(
     val billingAmountText: String = "",
     val billingDueDay: Int = 10,
     val role: GroupRole = GroupRole.ATHLETE,
+    val canManageRoles: Boolean = true,
     val billingSheetOpen: Boolean = false,
     val removeSheetOpen: Boolean = false,
     val operation: MemberEditorOperation? = null,
