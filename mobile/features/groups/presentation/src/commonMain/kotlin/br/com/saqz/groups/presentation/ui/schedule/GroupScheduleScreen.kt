@@ -52,8 +52,8 @@ internal fun GroupScheduleScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+    Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+        Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = stringResource(Res.string.group_schedule_title), onBack = onBack)
             Column(
                 modifier = Modifier

@@ -1,4 +1,5 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,7 +80,7 @@ internal fun GameDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
-    Box(modifier.fillMaxSize().testTag(GameDetailTags.Screen)) {
+    Box(modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GameDetailTags.Screen)) {
         Column(Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = stringResource(Res.string.game_detail_title), onBack = onBack)
             when {

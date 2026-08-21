@@ -1,7 +1,9 @@
 package br.com.saqz.composeapp.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -42,6 +45,7 @@ import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.EmailVerificationBanner
 import br.com.saqz.composeapp.shell.SaqzAppShell
 import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.domain.membership.InviteError
@@ -234,8 +238,13 @@ internal fun SaqzNavHost(
         // VUL-204: sem isto o `LocalViewModelStoreOwner` de dentro de uma entrada é a
         // Activity, e toda ViewModel de `koinViewModel()` é singleton **de processo**.
         //
-        // Os **dois** decorators, nesta ordem, e nenhum dos dois é opcional:
+        // Os decorators, nesta ordem — `foldRight` deixa o **primeiro** como o mais
+        // externo (DecoratedNavEntries.kt:224-229):
         //
+        // - o fundo opaco envolve cada destino para o slide do iOS não vazar o shell.
+        //   O `SaqzApp` só pinta atrás da pilha; no `AnimatedContent` as duas cenas
+        //   estão uma sobre a outra, e a que entra oca deixa a barra deslocada ¼
+        //   visível nos ~500 ms da transição;
         // - `entryDecorators` **substitui** a lista padrão do `navigation3-ui`, que é
         //   `listOf(rememberSaveableStateHolderNavEntryDecorator())` (NavDisplay.kt:259 e
         //   343 do 1.1.1). Omitir o saveable não custa só o `rememberSaveable` do app: sem
@@ -246,12 +255,12 @@ internal fun SaqzNavHost(
         //   é o `SaveableStateHolderImpl` do `compose runtime-saveable` que faz o
         //   `LocalSavedStateRegistryOwner provides registry` (SaveableStateHolder.kt:82-86
         //   do 1.11.2). O requisito é da versão do Compose: baixar `runtime-saveable`
-        //   derruba o app com esse mesmo erro, com os dois decorators no lugar;
-        // - a ordem é esta porque `decorateEntry` (DecoratedNavEntries.kt:224-229) faz
-        //   `foldRight`: o **primeiro** da lista é o mais externo. Trocar os dois de lugar
-        //   deixa o decorator de ViewModel lendo o owner de fora da entrada — o mesmo
-        //   estouro. Os dois casos estão travados em `SaqzNavHostViewModelScopeTest`.
+        //   derruba o app com esse mesmo erro, com os decorators no lugar;
+        // - saveable **antes** de ViewModel. Trocar os dois de lugar deixa o decorator de
+        //   ViewModel lendo o owner de fora da entrada — o mesmo estouro. Os dois casos
+        //   estão travados em `SaqzNavHostViewModelScopeTest`.
         entryDecorators = listOf(
+            rememberSaqzOpaqueEntryDecorator(),
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
         ),
@@ -667,11 +676,32 @@ internal fun SaqzNavHost(
     )
 }
 
+/**
+ * Fundo opaco em volta de cada destino. Sem isto o slide do iOS deixa o shell
+ * visível pelos buracos da tela que entra — o conteúdo frequentemente não chega
+ * no rodapé, e o `SaqzApp` só pinta atrás da pilha, não entre as duas cenas.
+ */
+@Composable
+private fun rememberSaqzOpaqueEntryDecorator(): NavEntryDecorator<NavKey> {
+    val background = SaqzTheme.colors.background
+    return remember(background) {
+        NavEntryDecorator { entry ->
+            Box(Modifier.fillMaxSize().background(background)) {
+                entry.Content()
+            }
+        }
+    }
+}
+
 /** Uma tela feia: o nome da rota e um link por saída. */
 @Composable
 private fun AccessSkeleton(name: String, vararg next: Pair<String, () -> Unit>) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).testTag("skeleton-$name"),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .padding(24.dp)
+            .testTag("skeleton-$name"),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,7 +100,7 @@ internal fun GroupCashboxScreen(
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
-    Box(modifier = modifier.fillMaxSize().testTag(GroupCashboxTags.Screen)) {
+    Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GroupCashboxTags.Screen)) {
         Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = state.groupName.ifBlank { null }, onBack = onBack)
             when {

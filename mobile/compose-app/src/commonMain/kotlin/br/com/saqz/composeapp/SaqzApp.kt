@@ -42,11 +42,11 @@ fun SaqzApp(
             reduceTransparency = reduceTransparency,
         ).toPreferences(),
     ) {
-        // A tela de fundo do app. Sem ela, o que aparece atrás de qualquer destino que não
-        // pinte o próprio fundo é a janela do host: no iOS o `ComposeUIViewController` cai
-        // no systemBackground, preto no modo escuro. Só o `SaqzAppShell` pintava, então as
-        // abas ficavam certas e todo destino de fora — jogo, caixa, convite, plano — não.
-        // Aqui e não em cada tela: tela nova nasce com fundo, sem precisar lembrar.
+        // Fundo da janela. No iOS o `ComposeUIViewController` cai no systemBackground
+        // (preto no modo escuro) onde o Compose não pinta. Isto cobre a splash e o que
+        // fica *atrás da pilha*. A transição empilhada precisa de fundo em cada destino
+        // — senão a cena que entra é oca e o shell vaza no slide. Isso mora no
+        // `rememberSaqzOpaqueEntryDecorator` e nas próprias telas.
         Box(
             modifier = modifier
                 .fillMaxSize()

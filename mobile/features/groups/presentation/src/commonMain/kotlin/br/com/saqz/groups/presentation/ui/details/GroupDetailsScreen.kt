@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,7 +93,12 @@ internal fun GroupDetailsScreen(
     photoFailed: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
-    Column(modifier = modifier.fillMaxSize().testTag(GroupDetailsTags.Screen)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .testTag(GroupDetailsTags.Screen),
+    ) {
         SaqzTopAppBar(title = state.header?.name, onBack = onBack)
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

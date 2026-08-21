@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.presentation.ui.myplan
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,7 +54,12 @@ fun MyPlanScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
-    Column(modifier = modifier.fillMaxSize().testTag(MyPlanTags.Screen)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .testTag(MyPlanTags.Screen),
+    ) {
         SaqzTopAppBar(title = stringResource(Res.string.myplan_title), onBack = onBack)
         when {
             state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

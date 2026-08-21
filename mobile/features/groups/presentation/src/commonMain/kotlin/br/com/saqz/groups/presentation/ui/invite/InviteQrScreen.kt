@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.invite
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,12 @@ internal fun InviteQrScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize().testTag(InviteQrTags.Screen)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .testTag(InviteQrTags.Screen),
+    ) {
         SaqzTopAppBar(title = stringResource(Res.string.invite_qr_title), onBack = onBack)
         Column(
             modifier = Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding),

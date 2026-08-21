@@ -1,6 +1,8 @@
 package br.com.saqz.access.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -20,7 +22,11 @@ fun BootstrapAccessScreen(
     onIntent: (SessionIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background),
+    ) {
         when (state) {
             SessionAccessState.Bootstrapping -> SaqzSpinner(Modifier.testTag("bootstrap-loading"))
             SessionAccessState.BootstrapError -> {

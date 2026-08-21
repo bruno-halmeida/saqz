@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.invite
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,7 +81,7 @@ internal fun GroupInviteScreen(
     onIntent: (GroupInviteIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.fillMaxSize().testTag(GroupInviteTags.Screen)) {
+    Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GroupInviteTags.Screen)) {
         Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = stringResource(Res.string.group_invite_title), onBack = onBack)
             if (state.isLoading) {

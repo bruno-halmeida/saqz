@@ -100,7 +100,7 @@ internal fun GameSettlementScreen(
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
-    Box(modifier.fillMaxSize().testTag(GameSettlementTags.Screen)) {
+    Box(modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GameSettlementTags.Screen)) {
         Column(Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = stringResource(Res.string.game_settlement_title), onBack = onBack)
             when {

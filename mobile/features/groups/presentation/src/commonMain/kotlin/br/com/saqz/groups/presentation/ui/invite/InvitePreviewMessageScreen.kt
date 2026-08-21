@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.invite
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,7 +37,12 @@ internal fun InvitePreviewMessageScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize().testTag(InvitePreviewTags.Screen)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.background)
+            .testTag(InvitePreviewTags.Screen),
+    ) {
         SaqzTopAppBar(title = stringResource(Res.string.invite_preview_title, state.groupName), onBack = onBack)
         Column(
             modifier = Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding),
