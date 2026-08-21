@@ -110,6 +110,11 @@ class GroupPhotoEndpointIntegrationTest {
         assertNull(photos.photo)
     }
 
+    @Test fun `upload accepts weak If-Match from a compressing proxy`() {
+        assertEquals(204, put(validPng, etag = "W/\"7\"").statusCode())
+        assertNotNull(photos.photo)
+    }
+
     @Test fun `stale upload returns conflict and preserves old photo`() {
         assertEquals(204, put(validPng).statusCode())
         val old = photos.photo?.bytes

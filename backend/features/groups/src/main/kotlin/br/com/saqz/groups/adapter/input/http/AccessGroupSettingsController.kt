@@ -166,19 +166,11 @@ class AccessGroupSettingsController(
     private fun parseGroupId(groupId: String): UUID =
         runCatching { UUID.fromString(groupId) }.getOrNull() ?: throw GroupNotFoundException()
 
-    private fun parseRequiredIfMatch(ifMatch: String?): Long {
-        if (ifMatch == null) throw PreconditionRequiredException()
-        return parseQuotedVersion(ifMatch)
-    }
+    private fun parseRequiredIfMatch(ifMatch: String?): Long =
+        QuotedResourceVersion.parseRequired(ifMatch)
 
     private fun parseLegacyIfMatch(ifMatch: String?): Long =
-        ifMatch?.let(::parseQuotedVersion)
-            ?: throw InvalidGroupRequestException(
-                mapOf("ifMatch" to listOf("must be a quoted positive version")),
-            )
-
-    private fun parseQuotedVersion(ifMatch: String): Long =
-        QUOTED_VERSION.matchEntire(ifMatch)?.groupValues?.get(1)?.toLongOrNull()
+        ifMatch?.let(QuotedResourceVersion::parse)
             ?: throw InvalidGroupRequestException(
                 mapOf("ifMatch" to listOf("must be a quoted positive version")),
             )
@@ -190,10 +182,6 @@ class AccessGroupSettingsController(
             GetGroupResult.AccessForbidden,
             -> error("updated group could not be read")
         }
-
-    private companion object {
-        val QUOTED_VERSION = Regex("\"([1-9][0-9]*)\"")
-    }
 }
 
 private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(

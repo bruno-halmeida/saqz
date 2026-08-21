@@ -63,7 +63,9 @@ internal class HttpTransport(
                     request.query.forEach { (name, value) -> parameters.append(name, value) }
                 }
                 if (bearerToken != null) bearerAuth(bearerToken)
-                request.headers.forEach { (name, value) -> header(name, value) }
+                request.headers.forEach { (name, value) ->
+                    header(name, if (isEntityTagHeader(name)) value.toStrongEntityTag() else value)
+                }
                 request.body?.let { body ->
                     contentType(ContentType.Application.Json)
                     setBody(body)
@@ -158,5 +160,7 @@ internal sealed interface TransportLogStyle {
 }
 
 internal fun HttpResponse.metadata() = NetworkResponseMetadata(
-    headers.entries().associate { (name, values) -> name to values },
+    headers.entries().associate { (name, values) ->
+        name to values.map { value -> if (isEntityTagHeader(name)) value.toStrongEntityTag() else value }
+    },
 )
