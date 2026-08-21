@@ -60,6 +60,25 @@ class GroupMembersScreenTest {
         onNodeWithText("Tornar admin").assertDoesNotExist()
     }
 
+    @Test fun `the sheet of an admin viewer removes a member without promoting`() = runComposeUiTest {
+        content(state = state.copy(selected = thiago.copy(canManageRoles = false)))
+
+        onNodeWithText("Editar jogador").assertExists()
+        onNodeWithText("Remover do grupo").assertExists()
+        onNodeWithText("Tornar admin").assertDoesNotExist()
+        onNodeWithText("Remover admin").assertDoesNotExist()
+    }
+
+    @Test fun `the sheet of the group owner offers only the profile`() = runComposeUiTest {
+        content(state = state.copy(selected = lucas.copy(isSelf = false, isOwner = true)))
+
+        onNodeWithText("Ver perfil").assertExists()
+        onNodeWithText("Remover admin").assertDoesNotExist()
+        onNodeWithText("Remover do grupo").assertDoesNotExist()
+        onNodeWithText("Tornar admin").assertDoesNotExist()
+        onNodeWithText("Editar jogador").assertDoesNotExist()
+    }
+
     @Test fun `the sheet acts on whoever was touched`() = runComposeUiTest {
         var intent: GroupMembersIntent? = null
         content(state = state.copy(selected = thiago), onIntent = { intent = it })

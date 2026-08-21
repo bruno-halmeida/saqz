@@ -515,6 +515,7 @@ fun sampleRosterEntry(
     userId: String = "member-1",
     financialStatus: br.com.saqz.groups.domain.athlete.AthleteFinancialStatus =
         br.com.saqz.groups.domain.athlete.AthleteFinancialStatus.DESCONHECIDO,
+    role: GroupRole = GroupRole.ATHLETE,
 ) = AthleteRosterEntry(
     userId = userId,
     displayName = "Member",
@@ -523,6 +524,7 @@ fun sampleRosterEntry(
     membershipType = AthleteMembershipType.MENSALISTA,
     active = true,
     financialStatus = financialStatus,
+    role = role,
 )
 
 fun sampleGame() = Game(

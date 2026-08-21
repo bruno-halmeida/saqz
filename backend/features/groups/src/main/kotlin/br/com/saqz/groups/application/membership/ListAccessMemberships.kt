@@ -15,7 +15,9 @@ class ListAccessMemberships(
     fun execute(actor: UUID, groupId: UUID): ListAccessMembershipsResult {
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
             ?: return ListAccessMembershipsResult.GroupNotFound
-        return when (accessPolicy.authorize(group.role, GroupAction.MANAGE_ROLES)) {
+        // Papéis na lista são leitura de gestão de elenco (dono e admin), não promoção.
+        // Trocar o papel em si continua em MANAGE_ROLES, só o dono.
+        return when (accessPolicy.authorize(group.role, GroupAction.MANAGE_ATHLETES)) {
             GroupAccessDecision.GroupNotFound -> ListAccessMembershipsResult.GroupNotFound
             GroupAccessDecision.Forbidden -> ListAccessMembershipsResult.AccessForbidden
             GroupAccessDecision.Allowed -> ListAccessMembershipsResult.Success(membershipRepository.list(groupId))

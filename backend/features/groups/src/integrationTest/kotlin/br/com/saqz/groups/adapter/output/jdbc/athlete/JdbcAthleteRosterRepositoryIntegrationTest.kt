@@ -56,6 +56,23 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
     }
 
     @Test
+    fun `list resolves owner admin and athlete roles`() {
+        val owner = insertUser("roster-roles-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val admin = insertUser("roster-roles-admin", "Admin Person")
+        val athlete = insertUser("roster-roles-athlete", "Athlete Person")
+        insertMembership(group, owner, role = "ADMIN")
+        insertMembership(group, admin, role = "ADMIN")
+        insertMembership(group, athlete, role = "ATHLETE")
+
+        val roles = repository.list(owner, group, AthleteRosterFilter()).associate { it.userId to it.role }
+
+        assertEquals(GroupRole.OWNER, roles[owner])
+        assertEquals(GroupRole.ADMIN, roles[admin])
+        assertEquals(GroupRole.ATHLETE, roles[athlete])
+    }
+
+    @Test
     fun `list returns raw membership attributes and joined at`() {
         val owner = insertUser("roster-attrs-owner", "Owner Person")
         val group = insertGroup(owner)

@@ -15,6 +15,7 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.isExpectedRosterAccessFailure
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
@@ -83,7 +84,7 @@ class MemberEditorViewModel(
             MemberEditorIntent.SaveBilling -> saveBilling()
             is MemberEditorIntent.AdminChanged -> changeRole(intent.value)
             MemberEditorIntent.Save -> save()
-            MemberEditorIntent.OpenRemove -> update { it.copy(removeSheetOpen = true) }
+            MemberEditorIntent.OpenRemove -> if (!state.value.isOwner) update { it.copy(removeSheetOpen = true) }
             MemberEditorIntent.DismissRemove -> update { it.copy(removeSheetOpen = false) }
             MemberEditorIntent.ConfirmRemove -> remove()
         }
@@ -113,11 +114,17 @@ class MemberEditorViewModel(
             }
             if (requestGeneration != generation) return@launch
 
-            val role = when (val result = membershipGateway.listMemberships(GroupId(groupId))) {
-                is SaqzResult.Failure -> return@launch showLoadFailure(requestGeneration, result.error.toUiError())
-                is SaqzResult.Success -> result.value.firstOrNull { it.userId == userId }?.role ?: GroupRole.ATHLETE
+            val listedRole = when (val result = membershipGateway.listMemberships(GroupId(groupId))) {
+                is SaqzResult.Failure -> {
+                    if (!result.error.isExpectedRosterAccessFailure()) {
+                        return@launch showLoadFailure(requestGeneration, result.error.toUiError())
+                    }
+                    null
+                }
+                is SaqzResult.Success -> result.value.firstOrNull { it.userId == userId }?.role
             }
             if (requestGeneration != generation) return@launch
+            val role = listedRole ?: entry.role
 
             member = entry
             val defaultFee = group.financeDefaults?.monthlyFeeCents
@@ -153,6 +160,7 @@ class MemberEditorViewModel(
                     billingAmountText = formatCents(currentFee),
                     billingDueDay = currentDueDay,
                     role = role,
+                    canManageRoles = group.role == GroupRole.OWNER,
                 ).restoreDraft(savedState)
             }
         }
@@ -275,7 +283,7 @@ class MemberEditorViewModel(
 
     private fun changeRole(admin: Boolean) {
         val current = state.value
-        if (current.isOwner || current.operation != null) return
+        if (current.isOwner || !current.canManageRoles || current.operation != null) return
         val requestGeneration = nextGeneration()
         update { it.copy(operation = MemberEditorOperation.Role, error = null) }
         viewModelScope.launch {
@@ -296,7 +304,7 @@ class MemberEditorViewModel(
     }
 
     private fun remove() {
-        if (state.value.operation != null) return
+        if (state.value.isOwner || state.value.operation != null) return
         val requestGeneration = nextGeneration()
         update { it.copy(operation = MemberEditorOperation.Remove, error = null) }
         viewModelScope.launch {

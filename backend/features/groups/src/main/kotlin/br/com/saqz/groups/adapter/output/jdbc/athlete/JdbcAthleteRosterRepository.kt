@@ -48,6 +48,10 @@ class JdbcAthleteRosterRepository(
             SELECT m.user_id,
                    coalesce(u.nickname, u.display_name) AS display_name,
                    CASE
+                       WHEN groups.owner_user_id = m.user_id THEN 'OWNER'
+                       ELSE m.role::text
+                   END AS role,
+                   CASE
                        WHEN m.user_id = :actorId
                            OR u.phone_visibility = 'EVERYONE'
                            OR (
@@ -105,6 +109,7 @@ class JdbcAthleteRosterRepository(
                 monthlyFeeCents = row.monthlyFeeCents,
                 monthlyDueDay = row.monthlyDueDay,
                 joinedAt = row.joinedAt,
+                role = row.role,
             )
         }
         return if (filter.financialStatus == null) withStatus else withStatus.filter { it.financialStatus == filter.financialStatus }
@@ -214,6 +219,7 @@ class JdbcAthleteRosterRepository(
         membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
         active = rs.getBoolean("active"),
         joinedAt = rs.getTimestamp("created_at").toInstant(),
+        role = GroupRole.valueOf(rs.getString("role")),
     )
 
     private data class RosterRow(
@@ -231,6 +237,7 @@ class JdbcAthleteRosterRepository(
         val membershipType: AthleteMembershipType,
         val active: Boolean,
         val joinedAt: Instant,
+        val role: GroupRole,
     )
 
     private fun ResultSet.getNullableInt(column: String): Int? {
