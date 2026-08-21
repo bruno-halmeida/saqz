@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,8 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.presentation.ui.components.GroupVenueRow
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_details_created_photo_failed
+import br.com.saqz.groups.resources.group_details_created_photo_failed_title
 import br.com.saqz.groups.resources.group_details_venue_edit
 import br.com.saqz.groups.resources.group_details_venue_map
 import org.jetbrains.compose.resources.stringResource
@@ -62,6 +65,7 @@ internal object GroupDetailsTags {
     const val ManageSchedule = "group-details-manage-schedule"
     const val ManageInviteLink = "group-details-manage-invite-link"
     const val Leave = "group-details-leave"
+    const val PhotoFailed = "group-details-photo-failed"
     const val OwnCharges = "group-details-own-charges"
     const val OwnChargesPending = "group-details-own-charges-pending"
     const val OwnChargesHistory = "group-details-own-charges-history"
@@ -85,6 +89,7 @@ internal fun GroupDetailsScreen(
     onBack: () -> Unit,
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
+    photoFailed: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
     Column(modifier = modifier.fillMaxSize().testTag(GroupDetailsTags.Screen)) {
@@ -105,6 +110,7 @@ internal fun GroupDetailsScreen(
                     .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
                 verticalArrangement = Arrangement.spacedBy(metrics.blockSpacing),
             ) {
+                if (photoFailed) GroupCreatedPhotoFailedBanner()
                 state.header?.let { GroupHeaderCard(header = it, isAdmin = state.isAdmin, onIntent = onIntent) }
                 state.nextGame?.let { GroupNextGameCard(nextGame = it, onIntent = onIntent) }
                 // Dono e admin respondem presença no mesmo lugar que o atleta: o papel
@@ -142,6 +148,23 @@ internal fun GroupDetailsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GroupCreatedPhotoFailedBanner() {
+    val colors = SaqzTheme.colors
+    SaqzCard(modifier = Modifier.testTag(GroupDetailsTags.PhotoFailed)) {
+        Text(
+            text = stringResource(Res.string.group_details_created_photo_failed_title),
+            color = colors.textPrimary,
+            style = SaqzTheme.typography.body,
+        )
+        Text(
+            text = stringResource(Res.string.group_details_created_photo_failed),
+            color = colors.textSecondary,
+            style = SaqzTheme.typography.support,
+        )
     }
 }
 

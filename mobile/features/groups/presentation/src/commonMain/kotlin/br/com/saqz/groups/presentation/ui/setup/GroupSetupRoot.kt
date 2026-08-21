@@ -45,7 +45,7 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun GroupSetupRoot(
     mode: GroupSetupMode,
-    onGroupCreate: (String) -> Unit,
+    onGroupCreate: (groupId: String, photoFailed: Boolean) -> Unit,
     onGroupSave: () -> Unit,
     onGroupDelete: () -> Unit,
     onDraftSave: () -> Unit,
@@ -71,9 +71,9 @@ fun GroupSetupRoot(
     LaunchedEffect(boundGroupId) {
         photos.onIntent(GroupPhotoIntent.BindGroup(boundGroupId))
     }
-    LaunchedEffect(photoState.error, photoState.changeVersion) {
+    LaunchedEffect(photoState.error, photoState.changeVersion, pendingLeave) {
         when {
-            photoState.error != null -> photoSheetOpen = true
+            photoState.error != null && pendingLeave !is GroupPhotoLeave.Created -> photoSheetOpen = true
             photoState.changeVersion > 0 -> photoSheetOpen = false
         }
     }
@@ -81,8 +81,11 @@ fun GroupSetupRoot(
     // está retida (`hasPending`) e o PUT nem começou. Sair aí derruba a ViewModel e
     // o `onCleared` apaga o arquivo — criar e editar pareciam não gravar a imagem.
     // Se o encode ainda roda, Commit/BindGroup no efeito seria no-op; o efeito
-    // dispara de novo quando `hasPending` fica true. Erro de foto não pode fechar
-    // a tela — o perfil já salvou e o usuário precisa tentar a imagem de novo.
+    // dispara de novo quando `hasPending` fica true.
+    //
+    // Create + foto falhou: o grupo já existe. Sair avisa a lista e abre o detalhe
+    // com o aviso. Ficar no 2a fazia o retry disparar outro POST. Edit pode ficar:
+    // o grupo já estava na lista e a foto ainda pode ser tentada aqui.
     LaunchedEffect(pendingLeave, photoState.isLoading, photoState.hasPending, photoState.error) {
         val leave = pendingLeave ?: return@LaunchedEffect
         if (photoState.isLoading) return@LaunchedEffect
@@ -94,9 +97,10 @@ fun GroupSetupRoot(
             return@LaunchedEffect
         }
         pendingLeave = null
-        if (photoState.error != null) return@LaunchedEffect
+        val photoFailed = photoState.error != null
+        if (photoFailed && leave is GroupPhotoLeave.Saved) return@LaunchedEffect
         when (leave) {
-            is GroupPhotoLeave.Created -> createdGroup(leave.groupId)
+            is GroupPhotoLeave.Created -> createdGroup(leave.groupId, photoFailed)
             GroupPhotoLeave.Saved -> savedGroup()
         }
     }
@@ -107,7 +111,7 @@ fun GroupSetupRoot(
                 if (photoViewModel.state.value.hasPending || photoViewModel.state.value.isLoading) {
                     pendingLeave = GroupPhotoLeave.Created(effect.groupId)
                 } else {
-                    onGroupCreate(effect.groupId)
+                    onGroupCreate(effect.groupId, false)
                 }
             }
             GroupSetupEffect.Saved -> {

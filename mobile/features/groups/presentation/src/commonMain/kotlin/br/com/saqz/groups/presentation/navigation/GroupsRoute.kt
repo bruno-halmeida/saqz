@@ -12,7 +12,7 @@ sealed interface GroupsRoute : NavKey {
     data object Create : GroupsRoute
 
     @Serializable
-    data class Details(val groupId: String) : GroupsRoute
+    data class Details(val groupId: String, val photoFailed: Boolean = false) : GroupsRoute
 
     @Serializable
     data class Edit(val groupId: String) : GroupsRoute

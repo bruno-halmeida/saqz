@@ -39,6 +39,7 @@ fun GroupDetailsRoot(
         parameters = { parametersOf(groupId) },
     ),
     refreshVersion: Int = 0,
+    photoFailed: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -58,5 +59,10 @@ fun GroupDetailsRoot(
             else -> onEffect(effect)
         }
     }
-    GroupDetailsScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
+    GroupDetailsScreen(
+        state = state,
+        onBack = onBack,
+        onIntent = viewModel::onIntent,
+        photoFailed = photoFailed,
+    )
 }
