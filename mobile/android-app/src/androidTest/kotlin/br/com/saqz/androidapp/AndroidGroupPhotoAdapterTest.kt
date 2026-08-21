@@ -24,7 +24,7 @@ class AndroidGroupPhotoAdapterTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val files = AndroidPhotoFiles(context)
 
-    @After fun cleanup() = files.purgeOrphans()
+    @After fun cleanup() = files.purge()
 
     @Test fun manifestRequestsNoBroadPhotoOrStoragePermission() {
         val permissions = context.packageManager.getPackageInfo(context.packageName, 0x00001000).requestedPermissions.orEmpty()
@@ -39,6 +39,17 @@ class AndroidGroupPhotoAdapterTest {
         val handle = files.handle(file)
         files.remove(handle)
         assertFalse(file.exists())
+    }
+
+    @Test fun purgeOrphansKeepsHeldPhotoBytesAndDropsEmptyCameraStubs() {
+        val held = files.createSource().apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val stub = files.createSource()
+
+        files.purgeOrphans()
+
+        assertTrue(held.isFile)
+        assertEquals(3, held.length())
+        assertFalse(stub.exists())
     }
 
     @Test fun invalidBytesFailBoundsInspectionBeforeDecode() {

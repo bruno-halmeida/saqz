@@ -42,6 +42,7 @@ import br.com.saqz.groups.resources.group_system_retry
 import br.com.saqz.groups.resources.group_system_save_draft
 import br.com.saqz.groups.resources.group_system_save_failure
 import br.com.saqz.groups.resources.group_system_save_failure_body
+import br.com.saqz.groups.resources.group_system_save_failure_edit
 import br.com.saqz.groups.resources.group_system_save_failure_title
 import br.com.saqz.groups.resources.group_system_sending_title
 import br.com.saqz.groups.resources.group_system_session_expired
@@ -87,12 +88,16 @@ internal fun GroupSaveFailureCard(
     onRetry: () -> Unit,
     onSaveDraft: () -> Unit,
     modifier: Modifier = Modifier,
+    isEditing: Boolean = false,
 ) {
     SaqzCard(modifier = modifier.testTag(GroupSetupTags.SaveFailure)) {
         GroupStatusRow(
             icon = SaqzIcons.CircleAlert,
             tint = SaqzTheme.colors.errorForeground,
-            title = stringResource(Res.string.group_system_save_failure),
+            title = stringResource(
+                if (isEditing) Res.string.group_system_save_failure_edit
+                else Res.string.group_system_save_failure,
+            ),
             body = stringResource(Res.string.group_system_save_failure_body),
         )
         Row(

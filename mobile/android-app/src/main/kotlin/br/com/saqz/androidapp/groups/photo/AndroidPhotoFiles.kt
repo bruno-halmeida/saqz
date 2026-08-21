@@ -64,8 +64,18 @@ internal class AndroidPhotoFiles(private val context: Context) {
         file?.takeIf { it.parentFile?.canonicalFile == directory.canonicalFile }?.delete()
     }
 
+    fun purge() {
+        directory.listFiles()?.forEach(File::delete)
+    }
+
+    // `attach()` da Activity re-registra os launchers e chamava um purge total.
+    // Isso apagava a foto já escolhida (rotação, câmera, recriação) e o PUT
+    // falhava porque o arquivo local sumia. Só o stub de 0 bytes da câmera
+    // abandonada é lixo — o restante fica até o `cleanup` depois do upload.
     fun purgeOrphans(keep: File? = null) {
-        directory.listFiles()?.filter { it != keep }?.forEach(File::delete)
+        directory.listFiles()
+            ?.filter { it != keep && it.length() == 0L }
+            ?.forEach(File::delete)
     }
 
     private fun copyBounded(source: InputStream, target: File) {

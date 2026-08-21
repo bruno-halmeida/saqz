@@ -137,6 +137,7 @@
     <string name="group_system_offline">Você está sem conexão. Vamos enviar sua resposta quando a internet voltar.</string>
     <string name="group_system_save_failure_title">Falha ao salvar</string>
     <string name="group_system_save_failure">Não foi possível criar o grupo</string>
+    <string name="group_system_save_failure_edit">Não foi possível salvar o grupo</string>
     <string name="group_system_save_failure_body">Suas informações continuam salvas aqui. Tente novamente.</string>
     <string name="group_system_retry">Tentar de novo</string>
     <string name="group_system_save_draft">Salvar rascunho</string>

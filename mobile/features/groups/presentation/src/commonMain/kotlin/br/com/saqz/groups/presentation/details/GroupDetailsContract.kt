@@ -48,6 +48,7 @@ data class GroupHeaderUi(
     val name: String,
     val subtitle: String,
     val summaryChips: List<GroupSummaryChipUi> = emptyList(),
+    val photoUrl: String? = null,
 )
 
 /**

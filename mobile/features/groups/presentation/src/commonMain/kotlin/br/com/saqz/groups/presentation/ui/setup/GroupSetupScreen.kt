@@ -163,6 +163,7 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
         GroupSaveFailureCard(
             onRetry = { onIntent(GroupSetupIntent.Retry) },
             onSaveDraft = { onIntent(GroupSetupIntent.SaveDraft) },
+            isEditing = state.isEditing,
         )
     }
 }

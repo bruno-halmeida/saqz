@@ -55,7 +55,9 @@ fun GroupSetupRoot(
         key = "group-setup/$mode",
         parameters = { parametersOf(mode) },
     ),
-    photoViewModel: GroupPhotoViewModel = koinViewModel(key = "group-photo/$mode"),
+    photoViewModel: GroupPhotoViewModel = koinViewModel(
+        key = "group-photo/${(mode as? GroupSetupMode.Edit)?.groupId ?: "create"}",
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val photoState by photoViewModel.state.collectAsStateWithLifecycle()
@@ -63,11 +65,11 @@ fun GroupSetupRoot(
     var pendingLeave by remember { mutableStateOf<GroupPhotoLeave?>(null) }
     val createdGroup by rememberUpdatedState(onGroupCreate)
     val savedGroup by rememberUpdatedState(onGroupSave)
+    val photos by rememberUpdatedState(photoViewModel)
+    val boundGroupId = (mode as? GroupSetupMode.Edit)?.groupId
 
-    LaunchedEffect(mode, photoViewModel) {
-        photoViewModel.onIntent(
-            GroupPhotoIntent.BindGroup((mode as? GroupSetupMode.Edit)?.groupId),
-        )
+    LaunchedEffect(boundGroupId) {
+        photos.onIntent(GroupPhotoIntent.BindGroup(boundGroupId))
     }
     LaunchedEffect(photoState.error, photoState.changeVersion) {
         when {
@@ -78,10 +80,21 @@ fun GroupSetupRoot(
     // Só `isLoading` não basta: no quadro em que o create/save dispara, a foto ainda
     // está retida (`hasPending`) e o PUT nem começou. Sair aí derruba a ViewModel e
     // o `onCleared` apaga o arquivo — criar e editar pareciam não gravar a imagem.
-    LaunchedEffect(pendingLeave, photoState.isLoading, photoState.hasPending) {
+    // Se o encode ainda roda, Commit/BindGroup no efeito seria no-op; o efeito
+    // dispara de novo quando `hasPending` fica true. Erro de foto não pode fechar
+    // a tela — o perfil já salvou e o usuário precisa tentar a imagem de novo.
+    LaunchedEffect(pendingLeave, photoState.isLoading, photoState.hasPending, photoState.error) {
         val leave = pendingLeave ?: return@LaunchedEffect
-        if (photoState.isLoading || photoState.hasPending) return@LaunchedEffect
+        if (photoState.isLoading) return@LaunchedEffect
+        if (photoState.hasPending) {
+            when (leave) {
+                is GroupPhotoLeave.Created -> photos.onIntent(GroupPhotoIntent.BindGroup(leave.groupId))
+                GroupPhotoLeave.Saved -> photos.onIntent(GroupPhotoIntent.Commit)
+            }
+            return@LaunchedEffect
+        }
         pendingLeave = null
+        if (photoState.error != null) return@LaunchedEffect
         when (leave) {
             is GroupPhotoLeave.Created -> createdGroup(leave.groupId)
             GroupPhotoLeave.Saved -> savedGroup()
@@ -93,7 +106,6 @@ fun GroupSetupRoot(
             is GroupSetupEffect.Created -> {
                 if (photoViewModel.state.value.hasPending || photoViewModel.state.value.isLoading) {
                     pendingLeave = GroupPhotoLeave.Created(effect.groupId)
-                    photoViewModel.onIntent(GroupPhotoIntent.BindGroup(effect.groupId))
                 } else {
                     onGroupCreate(effect.groupId)
                 }
@@ -101,7 +113,6 @@ fun GroupSetupRoot(
             GroupSetupEffect.Saved -> {
                 if (photoViewModel.state.value.hasPending || photoViewModel.state.value.isLoading) {
                     pendingLeave = GroupPhotoLeave.Saved
-                    photoViewModel.onIntent(GroupPhotoIntent.Commit)
                 } else {
                     onGroupSave()
                 }

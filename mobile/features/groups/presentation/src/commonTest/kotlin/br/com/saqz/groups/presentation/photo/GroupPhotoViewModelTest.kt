@@ -68,6 +68,30 @@ class GroupPhotoViewModelTest {
     }
 
     @Test
+    fun `binding the same group again does not upload a held photo`() = runTest(dispatcher) {
+        val gateway = FakePhotoGateway()
+        val selection = FakeSelection(GroupPhotoSelectionResult.Selected(selection()))
+        val viewModel = viewModel(gateway, selection)
+
+        viewModel.onIntent(GroupPhotoIntent.BindGroup("group-1"))
+        viewModel.awaitBound()
+        viewModel.onIntent(GroupPhotoIntent.ChooseCamera)
+        viewModel.state.first { it.hasPending && !it.isLoading }
+
+        viewModel.onIntent(GroupPhotoIntent.BindGroup("group-1"))
+
+        assertEquals(0, gateway.uploadCalls)
+        assertTrue(viewModel.state.value.hasPending)
+        assertEquals("pending:preview", viewModel.state.value.photoUrl)
+        assertTrue(selection.cleaned.isEmpty())
+
+        viewModel.onIntent(GroupPhotoIntent.Commit)
+        viewModel.state.first { it.photoUrl == "/api/groups/group-1/photo?v=photo-2" && !it.isLoading }
+
+        assertEquals(1, gateway.uploadCalls)
+    }
+
+    @Test
     fun `permission denial is visible in the sheet state`() = runTest(dispatcher) {
         val selection = FakeSelection(GroupPhotoSelectionResult.CameraPermissionDenied)
         val viewModel = viewModel(FakePhotoGateway(), selection)

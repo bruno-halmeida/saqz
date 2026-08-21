@@ -33,6 +33,7 @@ import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
@@ -674,6 +675,7 @@ private fun GroupDetailsState.from(group: Group): GroupDetailsState {
                 profile?.level?.label(),
             ).joinToString(" · ").ifBlank { group.timeZone.id },
             summaryChips = profile.toSummaryChips(),
+            photoUrl = groupPhotoUrl(group.id.value, group.version),
         ),
         venue = profile?.defaultVenue?.let { VenueUi(it.name, it.address) },
     )

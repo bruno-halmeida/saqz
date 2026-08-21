@@ -44,6 +44,7 @@ import br.com.saqz.groups.presentation.list.GroupCardAttendance
 import br.com.saqz.groups.presentation.list.GroupCardGameUi
 import br.com.saqz.groups.presentation.list.GroupCardUi
 import br.com.saqz.groups.presentation.list.GroupInviteUi
+import br.com.saqz.groups.presentation.photo.GroupRemotePhoto
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_member_attendance_maybe
@@ -153,7 +154,7 @@ internal fun GroupCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
         ) {
-            GroupCardAvatar(modality = group.modality, hasPhoto = group.photoUrl != null)
+            GroupCardAvatar(modality = group.modality, photoUrl = group.photoUrl)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(TightGap),
@@ -244,23 +245,28 @@ private fun GroupCardAttendanceChip(attendance: GroupCardAttendance) = when (att
 }
 
 @Composable
-private fun GroupCardAvatar(modality: GroupModality, hasPhoto: Boolean) {
+private fun GroupCardAvatar(modality: GroupModality, photoUrl: String?) {
     val colors = SaqzTheme.colors
     Box(
         modifier = Modifier
             .size(AvatarSize)
-            .clip(RoundedCornerShape(AvatarRadius))
-            .background(if (hasPhoto) colors.primary else colors.surfaceSoft),
+            .clip(RoundedCornerShape(AvatarRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        // ponytail: o módulo não tem carregador de imagem, então a foto do grupo ainda
-        // não pinta — o quadrado azul do export fica, com o glifo em cima. Teto: entra
-        // Coil (ou o port de foto) no ticket que ligar o gateway.
-        SaqzIcon(
-            icon = modality.avatarIcon(),
-            tint = if (hasPhoto) colors.onPrimary else colors.primary,
-            size = AvatarGlyph,
-        )
+        GroupRemotePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.surfaceSoft),
+                contentAlignment = Alignment.Center,
+            ) {
+                SaqzIcon(
+                    icon = modality.avatarIcon(),
+                    tint = colors.primary,
+                    size = AvatarGlyph,
+                )
+            }
+        }
     }
 }
 

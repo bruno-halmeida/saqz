@@ -50,6 +50,7 @@ import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.PromotionMode
+import br.com.saqz.groups.presentation.photo.GroupRemotePhoto
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.components.GroupFormCard
@@ -213,12 +214,17 @@ private fun GroupPhotoThumb(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-                photoUrl == null -> SaqzIcon(SaqzIcons.Camera, tint = colors.primary)
-                else -> Text(
-                    text = saqzInitials(groupName),
-                    style = SaqzTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold),
-                    color = colors.onPrimary,
-                )
+                else -> GroupRemotePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
+                    if (photoUrl == null) {
+                        SaqzIcon(SaqzIcons.Camera, tint = colors.primary)
+                    } else {
+                        Text(
+                            text = saqzInitials(groupName),
+                            style = SaqzTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold),
+                            color = colors.onPrimary,
+                        )
+                    }
+                }
             }
         }
         Box(

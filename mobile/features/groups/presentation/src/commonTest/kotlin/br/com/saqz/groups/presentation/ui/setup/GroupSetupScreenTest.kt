@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.setup
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -61,5 +62,26 @@ class GroupSetupScreenTest {
         onNodeWithTag(GroupSetupTags.Submit).performClick()
         waitForIdle()
         assertTrue(intents.isEmpty())
+    }
+
+    @Test
+    fun editSaveFailureUsesSaveCopy() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(
+                    state = GroupSetupState(
+                        mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                        form = PreviewCourtForm,
+                        saveFailed = true,
+                    ),
+                    onIntent = {},
+                    onBack = {},
+                )
+            }
+        }
+        waitForIdle()
+
+        onNodeWithText("Não foi possível salvar o grupo").assertExists()
+        onNodeWithText("Não foi possível criar o grupo").assertDoesNotExist()
     }
 }

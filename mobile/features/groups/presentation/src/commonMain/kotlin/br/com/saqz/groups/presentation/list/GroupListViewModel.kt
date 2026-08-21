@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 
@@ -119,8 +120,7 @@ private fun Group.toCard(membership: OwnAthleteMembership) = GroupCardUi(
     ).ifEmpty { listOf("Grupo") }.joinToString(" · "),
     modality = profile?.modality?.toPresentation() ?: br.com.saqz.groups.model.GroupModality.COURT_VOLLEYBALL,
     isAdmin = membership.role != br.com.saqz.groups.domain.group.GroupRole.ATHLETE,
-    // Group photo is binary and has no URL in the group read model; the avatar falls back
-    // to the modality glyph until the image-loader flow consumes GroupPhotoGateway.
+    photoUrl = groupPhotoUrl(id.value, version),
     nextGame = null,
 )
 

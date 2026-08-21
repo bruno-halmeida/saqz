@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -62,6 +63,7 @@ import br.com.saqz.groups.presentation.details.MemberPreviewUi
 import br.com.saqz.groups.presentation.details.MemberStatusUi
 import br.com.saqz.groups.presentation.details.NextGameUi
 import br.com.saqz.groups.presentation.details.NoticeUi
+import br.com.saqz.groups.presentation.photo.GroupRemotePhoto
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_details_admin
 import br.com.saqz.groups.resources.group_details_cash
@@ -126,7 +128,7 @@ internal fun GroupHeaderCard(
                 horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GroupEmblem()
+                GroupEmblem(photoUrl = header.photoUrl)
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
@@ -149,25 +151,31 @@ internal fun GroupHeaderCard(
     }
 }
 
-// O quadrado azul do símbolo. Sem componente no design system: emblema de grupo não está
-// no fluxo 10, então nasce na jornada. A bola faz o papel do logo enquanto o grupo não
-// tem foto — carregar imagem de rede é assunto do ticket que ligar o gateway.
 @Composable
-private fun GroupEmblem() {
+private fun GroupEmblem(photoUrl: String?) {
     val metrics = SaqzTheme.metrics
+    val colors = SaqzTheme.colors
     Box(
         modifier = Modifier
             .size(metrics.emblemSize)
-            .clip(RoundedCornerShape(metrics.cardRadius))
-            .background(SaqzTheme.colors.primary),
+            .clip(RoundedCornerShape(metrics.cardRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(DesignSystemRes.drawable.volleyballWatermark),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(SaqzTheme.colors.onPrimary),
-            modifier = Modifier.size(metrics.iconButtonSize).clearAndSetSemantics {},
-        )
+        GroupRemotePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(DesignSystemRes.drawable.volleyballWatermark),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(colors.onPrimary),
+                    modifier = Modifier.size(metrics.iconButtonSize).clearAndSetSemantics {},
+                )
+            }
+        }
     }
 }
 

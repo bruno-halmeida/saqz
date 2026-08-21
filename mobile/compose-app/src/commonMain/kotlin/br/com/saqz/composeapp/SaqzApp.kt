@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -15,10 +17,13 @@ import br.com.saqz.composeapp.navigation.AccessUiState
 import br.com.saqz.composeapp.navigation.AccessViewModel
 import br.com.saqz.composeapp.navigation.SaqzNavHost
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.photo.LocalGroupPhotoImageLoader
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
+import coil3.ImageLoader
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.mp.KoinPlatformTools
 
 /**
  * C1 composition root: theme + session gate + the acesso→shell back stack. Everything it
@@ -47,7 +52,12 @@ fun SaqzApp(
                 .fillMaxSize()
                 .background(SaqzTheme.colors.background),
         ) {
-            AccessGate()
+            val imageLoader = remember {
+                KoinPlatformTools.defaultContext().getOrNull()?.getOrNull<ImageLoader>()
+            }
+            CompositionLocalProvider(LocalGroupPhotoImageLoader provides imageLoader) {
+                AccessGate()
+            }
         }
     }
 }

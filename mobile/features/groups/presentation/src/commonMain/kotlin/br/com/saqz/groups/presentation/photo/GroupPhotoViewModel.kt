@@ -48,7 +48,9 @@ class GroupPhotoViewModel(
 
     private fun bind(id: String?) {
         val nextId = id?.takeIf(String::isNotBlank)?.let(::GroupId)
-        if (nextId == groupId && (nextId == null || state.value.isLoading)) return
+        // BindGroup no mesmo id não envia a foto retida: a câmera recria a
+        // composition e o save do perfil receberia 409.
+        if (nextId == groupId) return
         val held = pending
         groupId = nextId
         groupVersion = null

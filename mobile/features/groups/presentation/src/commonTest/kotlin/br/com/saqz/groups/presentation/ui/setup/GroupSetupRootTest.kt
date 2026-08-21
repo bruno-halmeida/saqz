@@ -34,6 +34,7 @@ import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort
 import br.com.saqz.groups.presentation.photo.GROUP_PHOTO_PNG_PIXEL
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
+import br.com.saqz.groups.presentation.photo.GroupPhotoUiError
 import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -141,6 +142,77 @@ class GroupSetupRootTest {
         assertTrue(!photo.state.value.hasPending)
     }
 
+    @Test
+    fun `rebinding after picking a photo does not upload until save`() = runComposeUiTest {
+        val photos = FakePhotoGateway()
+        var saved = 0
+        val setup = createViewModel(GroupSetupMode.Edit("group-1"))
+        val photo = photoViewModel(photos)
+
+        setContent {
+            SaqzTheme {
+                GroupSetupRoot(
+                    mode = GroupSetupMode.Edit("group-1"),
+                    onGroupCreate = {},
+                    onGroupSave = { saved++ },
+                    onGroupDelete = {},
+                    onDraftSave = {},
+                    onBack = {},
+                    viewModel = setup,
+                    photoViewModel = photo,
+                )
+            }
+        }
+        waitForIdle()
+        photo.onIntent(GroupPhotoIntent.ChooseCamera)
+        waitUntil(timeoutMillis = 10_000) { photo.state.value.hasPending && !photo.state.value.isLoading }
+
+        photo.onIntent(GroupPhotoIntent.BindGroup("group-1"))
+        waitForIdle()
+
+        assertEquals(0, photos.uploadCalls)
+        assertTrue(photo.state.value.hasPending)
+
+        setup.onIntent(GroupSetupIntent.Submit)
+        waitUntil(timeoutMillis = 10_000) { saved == 1 }
+
+        assertEquals(1, photos.uploadCalls)
+        assertEquals(1, saved)
+    }
+
+    @Test
+    fun `a failed photo commit after save stays on the screen`() = runComposeUiTest {
+        val photos = FakePhotoGateway(uploadFails = true)
+        var saved = 0
+        val setup = createViewModel(GroupSetupMode.Edit("group-1"))
+        val photo = photoViewModel(photos)
+
+        setContent {
+            SaqzTheme {
+                GroupSetupRoot(
+                    mode = GroupSetupMode.Edit("group-1"),
+                    onGroupCreate = {},
+                    onGroupSave = { saved++ },
+                    onGroupDelete = {},
+                    onDraftSave = {},
+                    onBack = {},
+                    viewModel = setup,
+                    photoViewModel = photo,
+                )
+            }
+        }
+        waitForIdle()
+        photo.onIntent(GroupPhotoIntent.ChooseCamera)
+        waitUntil(timeoutMillis = 10_000) { photo.state.value.hasPending && !photo.state.value.isLoading }
+
+        setup.onIntent(GroupSetupIntent.Submit)
+        waitUntil(timeoutMillis = 10_000) { photo.state.value.error != null && !photo.state.value.isLoading }
+
+        assertEquals(0, saved)
+        assertEquals(GroupPhotoUiError.UploadFailed, photo.state.value.error)
+        assertTrue(!photo.state.value.hasPending)
+    }
+
     private fun createViewModel(
         mode: GroupSetupMode = GroupSetupMode.Create,
     ) = GroupSetupViewModel(
@@ -179,12 +251,15 @@ class GroupSetupRootTest {
         override fun cancel(source: String) = Unit
     }
 
-    private class FakePhotoGateway : GroupPhotoGateway {
+    private class FakePhotoGateway(
+        private val uploadFails: Boolean = false,
+    ) : GroupPhotoGateway {
         var uploadCalls = 0
         private var readCalls = 0
 
         override suspend fun upload(command: GroupPhotoUploadCommand): SaqzResult<GroupPhotoReceipt, GroupPhotoError> {
             uploadCalls++
+            if (uploadFails) return SaqzResult.Failure(GroupPhotoError.StaleVersion)
             return SaqzResult.Success(GroupPhotoReceipt(GroupPhotoVersionToken("\"group-3\"")))
         }
 

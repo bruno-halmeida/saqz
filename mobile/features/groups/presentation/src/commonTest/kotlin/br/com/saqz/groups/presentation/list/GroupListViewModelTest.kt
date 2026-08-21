@@ -65,6 +65,7 @@ class GroupListViewModelTest {
         assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
         assertEquals("Vôlei do CERET", viewModel.state.value.groups.single().name)
         assertEquals("Quadra · São Paulo", viewModel.state.value.groups.single().meta)
+        assertEquals("/api/groups/group-1/photo?v=2", viewModel.state.value.groups.single().photoUrl)
         assertNull(viewModel.state.value.groups.single().nextGame)
     }
 
