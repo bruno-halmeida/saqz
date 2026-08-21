@@ -58,6 +58,7 @@ class KtorAthleteGatewayTest {
         assertEquals(null, athlete.monthlyFeeCents)
         assertEquals(null, athlete.monthlyDueDay)
         assertEquals("2026-08-01T12:00:00Z", athlete.joinedAt)
+        assertEquals(br.com.saqz.groups.domain.group.GroupRole.OWNER, athlete.role)
     }
 
     @Test
@@ -229,7 +230,7 @@ class KtorAthleteGatewayTest {
         )
 
     private fun MockRequestHandleScope.roster() = respond(
-        """{"athletes":[{"userId":"member-1","displayName":"Member","phone":null,"position":"PONTA","membershipType":"MENSALISTA","active":true,"financialStatus":"DESCONHECIDO","nickname":"Raio","secondaryPosition":"CENTRAL","level":"AVANCADO","preferredSide":"DIREITA","heightCm":190,"monthlyFeeCents":null,"monthlyDueDay":null,"joinedAt":"2026-08-01T12:00:00Z"}]}""",
+        """{"athletes":[{"userId":"member-1","displayName":"Member","role":"OWNER","phone":null,"position":"PONTA","membershipType":"MENSALISTA","active":true,"financialStatus":"DESCONHECIDO","nickname":"Raio","secondaryPosition":"CENTRAL","level":"AVANCADO","preferredSide":"DIREITA","heightCm":190,"monthlyFeeCents":null,"monthlyDueDay":null,"joinedAt":"2026-08-01T12:00:00Z"}]}""",
         headers = jsonHeaders(),
     )
 

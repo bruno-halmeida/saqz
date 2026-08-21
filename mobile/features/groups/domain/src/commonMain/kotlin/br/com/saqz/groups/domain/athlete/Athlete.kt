@@ -34,6 +34,7 @@ data class AthleteRosterEntry(
     val monthlyDueDay: Int? = null,
     /** ISO-8601 vindo da API; a apresentação é dona de formatá-lo. */
     val joinedAt: String = "",
+    val role: GroupRole = GroupRole.ATHLETE,
 )
 
 data class AthleteRosterFilter(

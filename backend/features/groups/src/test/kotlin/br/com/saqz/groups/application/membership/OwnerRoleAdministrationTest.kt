@@ -33,8 +33,13 @@ class OwnerRoleAdministrationTest {
     }
 
     @Test
-    fun `admin cannot list access memberships`() {
-        assertListForbidden(GroupRole.ADMIN)
+    fun `admin lists exact memberships`() {
+        val fixture = fixture(GroupRole.ADMIN)
+
+        val result = fixture.list.execute(actor, groupId)
+
+        assertEquals(ListAccessMembershipsResult.Success(listOf(owner, admin, athlete)), result)
+        assertEquals(1, fixture.memberships.listCalls)
     }
 
     @Test
@@ -105,6 +110,11 @@ class OwnerRoleAdministrationTest {
     @Test
     fun `admin cannot promote an athlete`() {
         assertChangeForbidden(GroupRole.ADMIN, athlete, PersistedMembershipRole.ADMIN)
+    }
+
+    @Test
+    fun `admin cannot demote the owner`() {
+        assertChangeForbidden(GroupRole.ADMIN, owner, PersistedMembershipRole.ATHLETE)
     }
 
     @Test

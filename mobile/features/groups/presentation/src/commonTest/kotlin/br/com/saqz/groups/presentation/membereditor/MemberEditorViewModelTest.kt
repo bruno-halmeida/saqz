@@ -230,6 +230,40 @@ class MemberEditorViewModelTest {
     }
 
     @Test
+    fun `admin viewer cannot change member role`() = runTest {
+        val membership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
+        )
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            membership,
+            viewerRole = GroupRole.ADMIN,
+        )
+
+        assertFalse(viewModel.state.value.canManageRoles)
+        viewModel.onIntent(MemberEditorIntent.AdminChanged(true))
+
+        assertNull(membership.lastRoleCommand)
+    }
+
+    @Test
+    fun `owner cannot be removed from the editor`() = runTest {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val viewModel = editor(
+            athlete,
+            FakeGroupMembershipGateway(
+                listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Owner", GroupRole.OWNER))),
+            ),
+        )
+
+        viewModel.onIntent(MemberEditorIntent.OpenRemove)
+        viewModel.onIntent(MemberEditorIntent.ConfirmRemove)
+
+        assertFalse(viewModel.state.value.removeSheetOpen)
+        assertEquals(null, athlete.lastRemovedUserId)
+    }
+
+    @Test
     fun `role change sends assignable role and updates state`() = runTest {
         val membership = FakeGroupMembershipGateway(
             listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
@@ -349,6 +383,7 @@ class MemberEditorViewModelTest {
             listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
         ),
         savedState: SavedStateHandle = SavedStateHandle(),
+        viewerRole: GroupRole = GroupRole.OWNER,
     ) = MemberEditorViewModel(
         GROUP_ID,
         USER_ID,
@@ -358,7 +393,7 @@ class MemberEditorViewModelTest {
         FakeGroupGateway(
             readResult = SaqzResult.Success(
                 br.com.saqz.groups.presentation.sampleVersionedGroup().copy(
-                    group = br.com.saqz.groups.presentation.sampleGroup().copy(
+                    group = br.com.saqz.groups.presentation.sampleGroup(role = viewerRole).copy(
                         financeDefaults = GroupFinanceDefaults(1500, 8500, 10),
                     ),
                 ),

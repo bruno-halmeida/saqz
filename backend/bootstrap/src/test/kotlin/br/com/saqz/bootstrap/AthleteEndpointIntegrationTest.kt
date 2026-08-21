@@ -126,6 +126,7 @@ class AthleteEndpointIntegrationTest {
         assertEquals("+5511987654321", entry["phone"].stringValue())
         assertEquals("PENDENTE", entry["financialStatus"].stringValue())
         assertEquals("AVULSO", entry["membershipType"].stringValue())
+        assertEquals("ATHLETE", entry["role"].stringValue())
     }
 
     @Test

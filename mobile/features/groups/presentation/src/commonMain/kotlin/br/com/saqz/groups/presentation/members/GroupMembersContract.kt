@@ -23,8 +23,12 @@ data class MemberUi(
     val isSelf: Boolean,
     /** "18 jogos · 92% de presença", só no cabeçalho do sheet. */
     val stats: String,
-    /** Somente o OWNER pode usar as mutações de gestão deste sheet. */
-    val canManageMembers: Boolean = true,
+    /** Dono e admin: editar elenco e remover. Promover/rebaixar continua só com o dono. */
+    val canManageAthletes: Boolean = true,
+    /** Somente o OWNER promove e rebaixa. */
+    val canManageRoles: Boolean = true,
+    /** O dono do grupo não sai do elenco nem perde o papel. */
+    val isOwner: Boolean = false,
 )
 
 @Immutable
@@ -66,11 +70,22 @@ val GroupMembersState.memberCount: Int get() = totalCount - adminCount
 /**
  * A diferença entre o sheet do 2k e o do 2l. Admin troca "Editar jogador" por
  * "Ver perfil" e "Tornar admin" por "Remover admin"; remover do grupo fecha os dois.
+ * O dono do grupo é imutável: ninguém rebaixa nem remove. Admin promovido edita e
+ * remove elenco, mas não promove — isso fica com o OWNER.
  */
 fun MemberUi.sheetActions(): List<GroupMemberAction> = when {
-    !canManageMembers -> listOf(GroupMemberAction.ViewProfile)
-    isAdmin -> listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Demote, GroupMemberAction.Remove)
-    else -> listOf(GroupMemberAction.EditMember, GroupMemberAction.Promote, GroupMemberAction.Remove)
+    isOwner -> listOf(GroupMemberAction.ViewProfile)
+    !canManageAthletes && !canManageRoles -> listOf(GroupMemberAction.ViewProfile)
+    isAdmin -> buildList {
+        add(GroupMemberAction.ViewProfile)
+        if (canManageRoles) add(GroupMemberAction.Demote)
+        if (canManageAthletes) add(GroupMemberAction.Remove)
+    }
+    else -> buildList {
+        add(if (canManageAthletes) GroupMemberAction.EditMember else GroupMemberAction.ViewProfile)
+        if (canManageRoles) add(GroupMemberAction.Promote)
+        if (canManageAthletes) add(GroupMemberAction.Remove)
+    }
 }
 
 sealed interface GroupMembersIntent {

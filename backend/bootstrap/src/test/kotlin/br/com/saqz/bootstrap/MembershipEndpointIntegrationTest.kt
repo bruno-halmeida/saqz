@@ -76,9 +76,13 @@ class MembershipEndpointIntegrationTest {
     }
 
     @Test
-    fun `admin cannot list memberships`() {
+    fun `admin lists memberships`() {
         read.role = GroupRole.ADMIN
-        assertProblem(getMemberships(groupId), 403, "ACCESS_FORBIDDEN")
+        val response = getMemberships(groupId)
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals(3, body.size())
     }
 
     @Test

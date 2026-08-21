@@ -248,6 +248,16 @@ class AthleteManagementTest {
     }
 
     @Test
+    fun `admin cannot remove the group owner`() {
+        val fixture = fixture(GroupRole.ADMIN)
+
+        val result = fixture.remove.execute(actor, groupId, owner.userId)
+
+        assertSame(RemoveAthleteResult.OwnerImmutable, result)
+        assertTrue(fixture.athletes.removedUserIds.isEmpty())
+    }
+
+    @Test
     fun `removing an absent row is an idempotent success`() {
         val fixture = fixture(GroupRole.OWNER)
 

@@ -53,6 +53,7 @@ private data class AthleteDto(
 private data class RosterEntryDto(
     val userId: String = "",
     val displayName: String = "",
+    val role: String = "ATHLETE",
     val phone: String? = null,
     val position: String? = null,
     val membershipType: String = "",
@@ -263,13 +264,14 @@ private fun unparsed(raw: String?, parsed: Any?) = raw != null && parsed == null
 
 private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
     if (userId.isBlank() || displayName.isBlank()) return null
+    val parsedRole = enumOrNull<GroupRole>(role)
     val parsedPosition = position?.let { enumOrNull<AthletePosition>(it) }
     val parsedMembership = enumOrNull<AthleteMembershipType>(membershipType)
     val parsedFinancial = enumOrNull<AthleteFinancialStatus>(financialStatus)
     val parsedSecondaryPosition = secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
     val parsedLevel = level?.let { enumOrNull<AthleteLevel>(it) }
     val parsedPreferredSide = preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
-    if (unparsed(position, parsedPosition) || parsedMembership == null || parsedFinancial == null) return null
+    if (parsedRole == null || unparsed(position, parsedPosition) || parsedMembership == null || parsedFinancial == null) return null
     if (
         unparsed(secondaryPosition, parsedSecondaryPosition) ||
         unparsed(level, parsedLevel) ||
@@ -291,6 +293,7 @@ private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
         joinedAt = joinedAt,
+        role = parsedRole,
     )
 }
 

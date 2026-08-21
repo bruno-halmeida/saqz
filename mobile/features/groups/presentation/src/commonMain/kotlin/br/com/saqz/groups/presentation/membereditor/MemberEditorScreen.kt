@@ -176,7 +176,9 @@ fun MemberEditorScreen(
                     MemberEditorMembership(state, onIntent)
                     MemberEditorPermissions(state, onIntent)
                     MemberEditorStats(state)
-                    MemberEditorRemove(state, onIntent)
+                    if (!state.isOwner) {
+                        MemberEditorRemove(state, onIntent)
+                    }
                     SaqzButton(
                         label = stringResource(Res.string.member_editor_save),
                         onClick = { onIntent(MemberEditorIntent.Save) },
@@ -389,13 +391,17 @@ private fun MemberEditorPermissions(state: MemberEditorState, onIntent: (MemberE
                 checked = state.role == br.com.saqz.groups.domain.group.GroupRole.ADMIN,
                 onCheckedChange = { onIntent(MemberEditorIntent.AdminChanged(it)) },
                 label = stringResource(Res.string.member_editor_admin),
-                enabled = !state.isOwner && state.operation == null,
+                enabled = !state.isOwner && state.canManageRoles && state.operation == null,
                 modifier = Modifier.testTag(MemberEditorTags.Admin),
             )
             Text(
                 text = stringResource(Res.string.member_editor_admin_hint),
                 style = SaqzTheme.typography.support,
-                color = if (state.isOwner) SaqzTheme.colors.disabledForeground else SaqzTheme.colors.textSecondary,
+                color = if (state.isOwner || !state.canManageRoles) {
+                    SaqzTheme.colors.disabledForeground
+                } else {
+                    SaqzTheme.colors.textSecondary
+                },
             )
         }
     }
