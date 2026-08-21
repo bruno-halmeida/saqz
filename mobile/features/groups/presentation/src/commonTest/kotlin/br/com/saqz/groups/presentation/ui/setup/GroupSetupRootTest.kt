@@ -57,7 +57,7 @@ class GroupSetupRootTest {
             SaqzTheme {
                 GroupSetupRoot(
                     mode = GroupSetupMode.Create,
-                    onGroupCreate = created::add,
+                    onGroupCreate = { id, _ -> created += id },
                     onGroupSave = {},
                     onGroupDelete = {},
                     onDraftSave = {},
@@ -90,7 +90,7 @@ class GroupSetupRootTest {
             SaqzTheme {
                 GroupSetupRoot(
                     mode = GroupSetupMode.Create,
-                    onGroupCreate = created::add,
+                    onGroupCreate = { id, _ -> created += id },
                     onGroupSave = {},
                     onGroupDelete = {},
                     onDraftSave = {},
@@ -109,6 +109,39 @@ class GroupSetupRootTest {
     }
 
     @Test
+    fun `a failed photo commit after create still leaves and reports the photo failure`() = runComposeUiTest {
+        val photos = FakePhotoGateway(uploadFails = true)
+        val created = mutableListOf<Pair<String, Boolean>>()
+        val setup = createViewModel()
+        val photo = photoViewModel(photos)
+
+        setContent {
+            SaqzTheme {
+                GroupSetupRoot(
+                    mode = GroupSetupMode.Create,
+                    onGroupCreate = { id, failed -> created += id to failed },
+                    onGroupSave = {},
+                    onGroupDelete = {},
+                    onDraftSave = {},
+                    onBack = {},
+                    viewModel = setup,
+                    photoViewModel = photo,
+                )
+            }
+        }
+        waitForIdle()
+        photo.onIntent(GroupPhotoIntent.ChooseCamera)
+        waitUntil(timeoutMillis = 10_000) { photo.state.value.hasPending && !photo.state.value.isLoading }
+
+        setup.onIntent(GroupSetupIntent.ConfirmCreate)
+        waitUntil(timeoutMillis = 10_000) { created.isNotEmpty() }
+
+        assertEquals(1, photos.uploadCalls)
+        assertEquals(listOf("group-1" to true), created)
+        assertEquals(GroupPhotoUiError.UploadFailed, photo.state.value.error)
+    }
+
+    @Test
     fun `saving an edit uploads the held photo before leaving`() = runComposeUiTest {
         val photos = FakePhotoGateway()
         var saved = 0
@@ -119,7 +152,7 @@ class GroupSetupRootTest {
             SaqzTheme {
                 GroupSetupRoot(
                     mode = GroupSetupMode.Edit("group-1"),
-                    onGroupCreate = {},
+                    onGroupCreate = { _, _ -> },
                     onGroupSave = { saved++ },
                     onGroupDelete = {},
                     onDraftSave = {},
@@ -153,7 +186,7 @@ class GroupSetupRootTest {
             SaqzTheme {
                 GroupSetupRoot(
                     mode = GroupSetupMode.Edit("group-1"),
-                    onGroupCreate = {},
+                    onGroupCreate = { _, _ -> },
                     onGroupSave = { saved++ },
                     onGroupDelete = {},
                     onDraftSave = {},
@@ -191,7 +224,7 @@ class GroupSetupRootTest {
             SaqzTheme {
                 GroupSetupRoot(
                     mode = GroupSetupMode.Edit("group-1"),
-                    onGroupCreate = {},
+                    onGroupCreate = { _, _ -> },
                     onGroupSave = { saved++ },
                     onGroupDelete = {},
                     onDraftSave = {},

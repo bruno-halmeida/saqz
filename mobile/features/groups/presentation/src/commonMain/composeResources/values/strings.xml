@@ -191,6 +191,8 @@
     <string name="group_details_view_game">Ver jogo</string>
     <string name="group_details_create_next_game">Criar próximo jogo</string>
     <string name="group_details_edit_group">Editar grupo</string>
+    <string name="group_details_created_photo_failed_title">Grupo criado</string>
+    <string name="group_details_created_photo_failed">A foto não carregou. Você pode tentar de novo em Editar grupo.</string>
     <string name="group_details_going_count">%1$d vão</string>
     <string name="group_details_maybe_count">%1$d talvez</string>
     <string name="group_details_pending_count">%1$d pendentes</string>

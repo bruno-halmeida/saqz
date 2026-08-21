@@ -2,6 +2,8 @@ package br.com.saqz.groups.presentation.ui.list
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
@@ -79,6 +81,48 @@ class GroupListRootTest {
         waitForIdle()
 
         assertEquals(1, athlete.ownProfileCalls)
+    }
+
+    @Test
+    fun `returning to a stacked list reloads once for the bump it missed`() = runComposeUiTest {
+        val athlete = FakeAthleteGateway()
+        val viewModel = GroupListViewModel(
+            athlete,
+            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
+            noPlan,
+        )
+        var refreshVersion by mutableIntStateOf(0)
+        var onScreen by mutableStateOf(true)
+
+        setContent {
+            val stateHolder = rememberSaveableStateHolder()
+            SaqzTheme {
+                if (onScreen) {
+                    stateHolder.SaveableStateProvider("groups-list") {
+                        GroupListRoot(
+                            onOpenGroup = {},
+                            onCreateGroup = {},
+                            onOpenPlans = {},
+                            refreshVersion = refreshVersion,
+                            viewModel = viewModel,
+                        )
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        assertEquals(1, athlete.ownProfileCalls)
+
+        runOnIdle { onScreen = false }
+        waitForIdle()
+        athlete.ownProfileResult = SaqzResult.Success(membershipProfile())
+        runOnIdle { refreshVersion = 1 }
+        waitForIdle()
+        runOnIdle { onScreen = true }
+        waitForIdle()
+
+        assertEquals(2, athlete.ownProfileCalls)
+        assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
     }
 
     private fun membershipProfile() = OwnAthleteProfile(

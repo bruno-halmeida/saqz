@@ -524,12 +524,19 @@ internal fun SaqzNavHost(
                 GroupSetupDestination(
                     mode = GroupSetupMode.Edit(route.groupId),
                     backStack = backStack,
-                    onGroupListChanged = { groupListRefreshVersion++ },
+                    onGroupListChanged = {
+                        // Edit empilha sobre Details: a lista já recarregava; o detalhe
+                        // ficava com foto e nome antigos porque a ViewModel sobrevive no
+                        // fundo da pilha — o mesmo buraco do acerto (VUL-195).
+                        groupListRefreshVersion++
+                        groupDetailsRefreshVersion++
+                    },
                 )
             }
             entry<GroupsRoute.Details> { route ->
                 GroupDetailsRoot(
                     groupId = route.groupId,
+                    photoFailed = route.photoFailed,
                     onBack = pop,
                     onEffect = { effect ->
                         if (effect is GroupDetailsEffect.Left) groupListRefreshVersion++
@@ -788,7 +795,9 @@ private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this
 /**
  * O `2a`/`2i`: as duas rotas do formulário compartilham a mesma ligação, porque o modo já
  * carrega a diferença. Os cinco efeitos saem por callback (AGENTS.md §6) e cada um é
- * tratado — o formulário sempre fecha quando termina, só o destino muda.
+ * tratado — o formulário sempre fecha quando termina, só o destino muda. Salvar o `2i`
+ * avisa a lista e o detalhe (os dois ficam no fundo da pilha); criar só a lista, porque
+ * o detalhe do grupo novo ainda vai nascer.
  */
 @Composable
 private fun GroupSetupDestination(
@@ -800,10 +809,10 @@ private fun GroupSetupDestination(
     GroupSetupRoot(
         mode = mode,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
-        onGroupCreate = { groupId ->
+        onGroupCreate = { groupId, photoFailed ->
             onGroupListChanged()
             pop()
-            backStack.add(GroupsRoute.Details(groupId))
+            backStack.add(GroupsRoute.Details(groupId, photoFailed))
         },
         onGroupSave = {
             onGroupListChanged()

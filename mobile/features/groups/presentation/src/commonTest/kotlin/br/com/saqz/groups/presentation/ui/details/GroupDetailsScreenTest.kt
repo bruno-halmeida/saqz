@@ -244,12 +244,27 @@ class GroupDetailsScreenTest {
         }
     }
 
+    @Test
+    fun createdPhotoFailedBannerExplainsTheGroupExists() = runComposeUiTest {
+        setScreen(GroupDetailsPreviewData.admin, photoFailed = true)
+
+        onNodeWithTag(GroupDetailsTags.PhotoFailed).assertExists()
+        onNodeWithText("Grupo criado").assertExists()
+        onNodeWithText("A foto não carregou. Você pode tentar de novo em Editar grupo.").assertExists()
+    }
+
     private fun ComposeUiTest.setScreen(
         state: GroupDetailsState,
         onIntent: (GroupDetailsIntent) -> Unit = {},
+        photoFailed: Boolean = false,
     ) = setContent {
         SaqzTheme {
-            GroupDetailsScreen(state = state, onBack = {}, onIntent = onIntent)
+            GroupDetailsScreen(
+                state = state,
+                onBack = {},
+                onIntent = onIntent,
+                photoFailed = photoFailed,
+            )
         }
     }
 }

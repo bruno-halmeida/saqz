@@ -11,6 +11,7 @@ class GroupsRouteTest {
             GroupsRoute.List,
             GroupsRoute.Create,
             GroupsRoute.Details("group-1"),
+            GroupsRoute.Details("group-1", photoFailed = true),
             GroupsRoute.Edit("group-2"),
             GroupsRoute.Members("group-3"),
             GroupsRoute.Schedule("group-4"),
