@@ -72,6 +72,23 @@ class KtorGroupGatewayTest {
             )
         }
 
+    @Test fun `read stores weak proxy ETag as a strong version token`() =
+        runTest {
+            assertEquals(
+                "\"7\"",
+                fixture {
+                    respond(
+                        baseJson(),
+                        HttpStatusCode.OK,
+                        headersOf(
+                            HttpHeaders.ContentType to listOf("application/json"),
+                            HttpHeaders.ETag to listOf("W/\"7\""),
+                        ),
+                    )
+                }.gateway.read(GroupId(ID)).success<VersionedGroup>().versionToken.value,
+            )
+        }
+
     @Test fun `settings update uses exact route`() =
         runTest {
             fixture { req ->

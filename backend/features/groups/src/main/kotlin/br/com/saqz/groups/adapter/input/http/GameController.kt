@@ -129,10 +129,7 @@ class GameController(
     }
 
     private fun uuid(value: String): UUID = runCatching { UUID.fromString(value) }.getOrElse { throw GameNotFoundException() }
-    private fun version(value: String?): Long {
-        if (value == null) throw PreconditionRequiredException()
-        return Regex("\"([1-9][0-9]*)\"").matchEntire(value)?.groupValues?.get(1)?.toLong() ?: invalid("ifMatch", "must be a quoted positive version")
-    }
+    private fun version(value: String?): Long = QuotedResourceVersion.parseRequired(value)
     private fun invalid(field: String, message: String): Nothing = throw InvalidGroupRequestException(mapOf(field to listOf(message)))
 }
 

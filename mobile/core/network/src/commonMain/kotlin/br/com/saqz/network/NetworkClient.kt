@@ -66,7 +66,7 @@ class NetworkClient(
             request = request,
             logStyle = mediaLogStyle(path),
             configure = {
-                upload.etag?.let { header(HttpHeaders.IfMatch, it) }
+                upload.etag?.let { header(HttpHeaders.IfMatch, it.toStrongEntityTag()) }
                 setBody(content)
             },
         ) { response ->
@@ -107,7 +107,7 @@ class NetworkClient(
                     NetworkBinaryBody(
                         bytes = bytes,
                         contentType = contentType,
-                        etag = response.headers[HttpHeaders.ETag],
+                        etag = response.headers[HttpHeaders.ETag]?.toStrongEntityTag(),
                         cacheControl = response.headers[HttpHeaders.CacheControl],
                     ),
                     response.metadata(),

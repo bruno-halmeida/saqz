@@ -38,7 +38,7 @@ class GroupPhotoController(
     ): ResponseEntity<Void> {
         val actor = actorResolver.resolve(identity)
         val parsedGroupId = parseGroupId(groupId)
-        val expectedVersion = parseRequiredIfMatch(ifMatch)
+        val expectedVersion = QuotedResourceVersion.parseRequired(ifMatch)
         val contentType = file.contentType ?: throw InvalidGroupPhotoException(GroupPhotoRejection.UNSUPPORTED_TYPE)
         return when (
             val result = service.upload(actor, parsedGroupId, expectedVersion, contentType, file.inputStream)
@@ -86,7 +86,7 @@ class GroupPhotoController(
     ): ResponseEntity<Void> {
         val actor = actorResolver.resolve(identity)
         return when (
-            val result = service.remove(actor, parseGroupId(groupId), parseRequiredIfMatch(ifMatch))
+            val result = service.remove(actor, parseGroupId(groupId), QuotedResourceVersion.parseRequired(ifMatch))
         ) {
             is RemoveGroupPhotoResult.Success -> ResponseEntity.noContent().eTag(result.groupVersion.toString()).build()
             RemoveGroupPhotoResult.GroupNotFound -> throw GroupNotFoundException()
@@ -97,14 +97,4 @@ class GroupPhotoController(
 
     private fun parseGroupId(raw: String): UUID = runCatching { UUID.fromString(raw) }.getOrNull()
         ?: throw GroupNotFoundException()
-
-    private fun parseRequiredIfMatch(raw: String?): Long {
-        if (raw == null) throw PreconditionRequiredException()
-        return QUOTED_VERSION.matchEntire(raw)?.groupValues?.get(1)?.toLongOrNull()
-            ?: throw InvalidGroupRequestException(mapOf("ifMatch" to listOf("must be a quoted positive version")))
-    }
-
-    private companion object {
-        val QUOTED_VERSION = Regex("\"([1-9][0-9]*)\"")
-    }
 }

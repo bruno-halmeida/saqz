@@ -198,7 +198,7 @@ class AttendanceController(
         ?.takeUnless { it == AttendanceIntent.PROMOTE }
         ?: invalid("intent")
     private fun uuid(value: String): UUID = runCatching { UUID.fromString(value) }.getOrElse { throw GameNotFoundException() }
-    private fun version(value: String?): Long { if (value == null) throw PreconditionRequiredException(); return Regex("\"([1-9][0-9]*)\"").matchEntire(value)?.groupValues?.get(1)?.toLong() ?: invalid("ifMatch") }
+    private fun version(value: String?): Long { if (value == null) throw PreconditionRequiredException(); return Regex("(?:W/)?\"([1-9][0-9]*)\"").matchEntire(value.trim())?.groupValues?.get(1)?.toLong() ?: invalid("ifMatch") }
     private fun <T : Any> required(value: T?, field: String): T = value ?: invalid(field)
     private fun invalid(field: String): Nothing = throw InvalidGroupRequestException(mapOf(field to listOf("is required or invalid")))
 }

@@ -87,6 +87,16 @@ class PrivateMediaNetworkTest {
         client(engine).uploadMedia(HttpMethod.Put, "photo", upload("png".encodeToByteArray(), etag = "\"group-v4\""))
     }
 
+    @Test fun `upload sends weak proxy ETags as strong If-Match`() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("\"1\"", request.headers[HttpHeaders.IfMatch])
+            request.body.toByteArray()
+            respond("")
+        }
+
+        client(engine).uploadMedia(HttpMethod.Put, "photo", upload("png".encodeToByteArray(), etag = "W/\"1\""))
+    }
+
     @Test fun `multipart writer aborts a source larger than its declaration`() = runTest {
         val upload = NetworkMediaUpload("file", "photo.png", ContentType.Image.PNG, 2, openChannel = {
             ByteReadChannel("three".encodeToByteArray())

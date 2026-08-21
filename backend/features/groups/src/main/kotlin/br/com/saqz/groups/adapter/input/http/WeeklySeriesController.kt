@@ -78,7 +78,7 @@ class WeeklySeriesController(private val actors:VerifiedGroupActorResolver,priva
         when(result){SeriesBoundaryResult.Applied,SeriesBoundaryResult.Replay->Unit;SeriesBoundaryResult.NotFound->throw GameNotFoundException();SeriesBoundaryResult.VersionConflict->throw VersionConflictException();SeriesBoundaryResult.InvalidBoundary->invalid("boundary","is invalid for the selected occurrence");is SeriesBoundaryResult.Invalid->throw InvalidGroupRequestException(result.errors.groupBy({it.field},{it.message}))}
         return when(val loaded=series.read(actor,group,lineage)){is WeeklySeriesResult.Success->ResponseEntity.ok().eTag(loaded.series.version.toString()).body(loaded.series.response());else->throwResult(loaded)}
     }
-    private fun version(value:String?):Long{if(value==null)throw PreconditionRequiredException();return Regex("\"([1-9][0-9]*)\"").matchEntire(value)?.groupValues?.get(1)?.toLong()?:invalid("ifMatch","must be a quoted positive version")}
+    private fun version(value:String?):Long=QuotedResourceVersion.parseRequired(value)
     private fun uuid(value:String)=runCatching{UUID.fromString(value)}.getOrElse{throw GameNotFoundException()}
     private fun throwResult(result:WeeklySeriesResult):Nothing=when(result){WeeklySeriesResult.NotFound->throw GameNotFoundException();WeeklySeriesResult.Forbidden->throw AccessForbiddenException();WeeklySeriesResult.Conflict->throw VersionConflictException();is WeeklySeriesResult.Invalid->throw InvalidGroupRequestException(result.errors.groupBy({it.field},{it.message}));is WeeklySeriesResult.Success->error("success")}
     private fun invalid(field:String,message:String):Nothing=throw InvalidGroupRequestException(mapOf(field to listOf(message)))
